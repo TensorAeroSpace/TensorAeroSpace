@@ -1,0 +1,54 @@
+# IDEs
+.project
+.pydevproject
+.idea
+.vscode
+.settings
+venv/
+./.ipynb_checkpoints
+.ipynb_checkpoints
+# Random files
+*~
+.env
+\#*
+backend/*.env
+backend/*.rdb
+*.rdb
+*.env
+*/*/.env
+backend/.env
+docs/build
+virtualenv/
+htmlcov/
+
+/build
+/dist
+/aircraftmodel.egg-info
+
+# Python compiled byte code
+*.pyc
+
+# SQLite3 database
+*.sqlite
+
+# Node modules
+node_modules/
+yarn.lock
+npm-debug.log
+
+# Coverage
+coverage/
+.coverage
+.cache
+# static validation files
+.eslintrc
+.sass-lint.yml
+.prospector.yml
+.coveragerc
+
+# in case we run shippable tests don't include it
+shippable/
+
+# not include scripts because they come from external module
+scripts/
+
