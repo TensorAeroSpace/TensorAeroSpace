@@ -65,8 +65,6 @@ class LongitudinalF16(ModelBase):
 
         self.initialise_system(x0, number_time_steps)
 
-
-
     def import_linear_system(self):
         """
         Retrieves the stored linearised matrices obtained from Matlab
@@ -148,7 +146,7 @@ class LongitudinalF16(ModelBase):
         self.xt = x0
         self.store_states[:, self.time_step] = np.reshape(self.xt, [-1, ])
 
-    def run_step(self, ut_0: np.ndarray):
+    def run_step(self, ut_0: np.array):
         """
         Runs one time step of the iteration.
         :param ut: input to the system

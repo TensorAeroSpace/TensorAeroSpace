@@ -6,12 +6,16 @@ from tensorairspace.aircraftmodel.model.f16.linear.longitudinal.model import Lon
 
 
 class LinearLongitudinalF16(gym.Env, EzPickle):
-    def __init__(self, initial_state: any, reference_signal, number_time_steps, tracking_states=['alpha', 'q'],
+    def __init__(self, initial_state: any,
+                 reference_signal,
+                 number_time_steps,
+                 tracking_states=['alpha', 'q'],
                  state_space=['alpha', 'q'],
-                 control_space=['stab'], output_space=['alpha', 'q'],
+                 control_space=['stab'],
+                 output_space=['alpha', 'q'],
                  return_reward=False):
         """
-            inital_state - начальное состояние
+            initial_state - начальное состояние
             reference_signal - заданный сигнал
             tracking_state - отслеживаемое состояние
             state_space - пространство состояний
@@ -41,15 +45,12 @@ class LinearLongitudinalF16(gym.Env, EzPickle):
         reward = next_state[self.indices_tracking_states][0] - self.ref_signal[:, self.model.time_step]
         if self.model.time_step == self.number_time_steps:
             return next_state, reward, True, {}
-
         return next_state, reward, False, {}
 
     def reset(self):
         self.model = None
         self.model = LongitudinalF16(self.initial_state, number_time_steps=self.number_time_steps,
                                      selected_state_output=self.output_space, t0=0)
-        self.indices_tracking_states = [self.state_space.index(self.tracking_states[i]) for i in
-                                        range(len(self.tracking_states))]
         self.ref_signal = self.reference_signal
         self.model.initialise_system(x0=self.initial_state, number_time_steps=self.number_time_steps)
 
