@@ -5,48 +5,45 @@ import numpy as np
 from scipy.io import loadmat
 from scipy.signal import *
 
-from tensorairspace.aircraftmodel.model.base import ModelBase
 
+class LongitudinalF16():
+    def __init__(self, x0, selected_state_output=None, dt: float = 0.01):
+        # Массивы с историей
+        self.u_history = []
+        self.x_history = []
 
-class LongitudinalF16(ModelBase):
-    """
-    Самолет F-16 ✈ в изолированном продольном канале.
+        # Параметры для модли
+        self.dt = dt
+        self.x0 = x0
 
-    Пространство действий:
-        * stab_act: руль высоты [град]
+        self.selected_state_output = selected_state_output
 
+        # Массивы с обаботанными данными
+        self.state_history = []
+        self.control_history = []
+        self.store_outputs = []
 
-    Пространство состояний:
-        * alpha:  угол атаки  [рад]
-        * wz: угловая скорость тангажа [рад/с]
-        * stab: полжение руля высоты [рад]
-        * dstab: угловая скорость руля высоты [рад/с]
-
-    """
-
-    def __init__(self, x0, number_time_steps, selected_state_output=None, t0=0, dt: float = 0.01):
-        super().__init__(x0, selected_state_output, t0, dt)
-        self.discretisation_time = dt
-        self.folder = os.path.join(os.path.dirname(__file__), '../data')
+        # Массивы с доступными
+        # Пространстом состояний и пространством управления
+        self.list_state = []
+        self.control_list = []
 
         # Selected data for the system
-        self.selected_states = ["theta", "alpha", "q", "ele"]
-        self.selected_output = ["theta", "alpha", "q", "nz"]
-        self.list_state = self.selected_output
-        self.selected_input = ["ele", ]
-        self.control_list = self.selected_input
+        self.selected_states = ["theta", "alpha", "q", "ele"]  # сотояния системы
+        self.selected_output = ["theta", "alpha", "q", "nz"]  # выход системы
+        self.list_state = self.selected_output  # состояния
+        self.selected_input = ["ele", ]  # выходные состояния
+        self.control_list = self.selected_input  # чем управляем
 
         if self.selected_state_output:
             self.selected_state_index = [self.list_state.index(val) for val in self.selected_state_output]
 
         self.state_space = self.selected_states
         self.action_space = self.selected_input
-        # ele
-        # Limitations of the system
+
         self.input_magnitude_limits = [25, ]
         self.input_rate_limits = [60, ]
 
-        # Store the number of inputs, states and outputs
         self.number_inputs = len(self.selected_input)
         self.number_outputs = len(self.selected_output)
         self.number_states = len(self.selected_states)
@@ -63,7 +60,15 @@ class LongitudinalF16(ModelBase):
         self.filt_C = None
         self.filt_D = None
 
-        self.initialise_system(x0, number_time_steps)
+        self.folder = os.path.join(os.path.dirname(__file__), './data')
+
+    def restart(self):
+        self.u_history = []
+        self.x_history = [self.x0]
+        self.state_history = []
+        self.control_history = []
+        self.list_state = []
+        self.control_list = []
 
     def import_linear_system(self):
         """
@@ -116,7 +121,7 @@ class LongitudinalF16(ModelBase):
         rows = dict(zip(keySet, range(len(keySet))))
         return rows
 
-    def initialise_system(self, x0, number_time_steps):
+    def initialise_system(self, x0):
         """
         Initialises the F-16 aircraft dynamics
         :param x0: the initial states
@@ -130,39 +135,40 @@ class LongitudinalF16(ModelBase):
         self.simplify_system()
 
         # Store the number of time steps
-        self.number_time_steps = number_time_steps
-        self.time_step = 0
 
         # Discretise the system according to the discretisation time
         (self.filt_A, self.filt_B, self.filt_C, self.filt_D, _) = cont2discrete((self.filt_A, self.filt_B, self.filt_C,
                                                                                  self.filt_D),
-                                                                                self.discretisation_time)
+                                                                                self.dt)
 
-        self.store_states = np.zeros((self.number_states, self.number_time_steps + 1))
-        self.store_input = np.zeros((self.number_inputs, self.number_time_steps))
-        self.store_outputs = np.zeros((self.number_outputs, self.number_time_steps))
+        self.store_states = [x0]
+        self.store_input = []
+        self.store_outputs = []
 
         self.x0 = x0
         self.xt = x0
-        self.store_states[:, self.time_step] = np.reshape(self.xt, [-1, ])
 
-    def run_step(self, ut_0: np.array):
+    def run_step(self, ut_0: np.ndarray):
         """
         Runs one time step of the iteration.
         :param ut: input to the system
         :return: xt1 --> the next time step state
         """
-        if self.time_step != 0:
-            ut_1 = self.store_input[:, self.time_step - 1]
+        if len(self.store_input) != 0:
+            print("self.store_input", self.store_input)
+            print("self.store_input[-1]", self.store_input[-1])
+
+            ut_1 = self.store_input[-1]
         else:
             ut_1 = ut_0
+        print("ut_1", ut_1)
         ut = [0, ]
         for i in range(self.number_inputs):
             ut[i] = max(min(max(min(ut_0[i],
                                     np.reshape(
-                                        np.array([ut_1[i] + self.input_rate_limits[i] * self.discretisation_time]),
+                                        np.array([ut_1[i] + self.input_rate_limits[i] * self.dt]),
                                         [-1, 1])),
-                                np.reshape(np.array([ut_1[i] - self.input_rate_limits[i] * self.discretisation_time]),
+                                np.reshape(np.array([ut_1[i] - self.input_rate_limits[i] * self.dt]),
                                            [-1, 1])),
                             np.array([[self.input_magnitude_limits[i]]])),
                         - np.array([[self.input_magnitude_limits[i]]]))
@@ -170,9 +176,10 @@ class LongitudinalF16(ModelBase):
         self.xt1 = np.matmul(self.filt_A, np.reshape(self.xt, [-1, 1])) + np.matmul(self.filt_B,
                                                                                     np.reshape(ut, [-1, 1]))
         output = np.matmul(self.filt_C, np.reshape(self.xt, [-1, 1]))
-        self.store_input[:, self.time_step] = np.reshape(ut, [ut.shape[0]])
-        self.store_outputs[:, self.time_step] = np.reshape(output, [output.shape[0]])
-        self.store_states[:, self.time_step + 1] = np.reshape(self.xt1, [self.xt1.shape[0]])
+
+        self.store_input.append([np.reshape(ut, [ut.shape[0]])])
+        self.store_outputs.append(np.reshape(output, [output.shape[0]]))
+        self.store_states.append(np.reshape(self.xt1, [self.xt1.shape[0]]))
         self.update_system_attributes()
         if self.selected_state_output:
             return np.array(self.xt1[self.selected_state_index])
@@ -184,64 +191,3 @@ class LongitudinalF16(ModelBase):
         :return:
         """
         self.xt = self.xt1
-        self.time_step += 1
-
-    def get_state(self, state_name: str, to_deg: bool = False, to_rad: bool = False):
-        """
-        Получить массив состояния
-
-        Args:
-            state_name: Название состояния
-            to_deg: Конвертировать в градусы
-            to_rad: Конвертировать в радианы
-
-        Returns:
-            Массив истории выбранного состояния
-
-        Пример:
-
-        >>> state_hist = model.get_state('alpha', to_deg=True)
-
-        """
-        if state_name == 'wz':
-            state_name = 'q'
-        if state_name == 'wx':
-            state_name = 'p'
-        if state_name == 'wy':
-            state_name = 'r'
-        if state_name not in self.selected_states:
-            raise Exception(f"{state_name} нет в списке состояний, доступные {self.selected_states}")
-        index = self.selected_states.index(state_name)
-        if to_deg:
-            return np.rad2deg(self.store_states[index][:self.number_time_steps - 1])
-        if to_rad:
-            return np.deg2rad(self.store_states[index][:self.number_time_steps - 1])
-        return self.store_states[index][:self.number_time_steps - 1]
-
-    def get_control(self, control_name: str, to_deg: bool = False, to_rad: bool = False):
-        """
-        Получить массив сигнала управления
-
-        Args:
-            control_name: Название сигнала управления
-            to_deg: Конвертировать в градусы
-
-        Returns:
-            Массив истории выбранного сигнала управления
-
-        Пример:
-
-        >>> state_hist = model.get_control('stab', to_deg=True)
-        """
-        if control_name in ['stab', 'ele']:
-            control_name = 'ele'
-        if control_name in ['rud', 'dir']:
-            control_name = 'rud'
-        if control_name not in self.selected_input or control_name not in ["ele", "ail", "rud"]:
-            raise Exception(f"{control_name} нет в списке сигналов управления, доступные {self.selected_input}")
-        index = self.selected_input.index(control_name)
-        if to_deg:
-            return np.rad2deg(self.store_input[index])[:self.number_time_steps - 1]
-        if to_rad:
-            return np.deg2rad(self.store_states[index][:self.number_time_steps - 1])
-        return self.store_input[index][:self.number_time_steps - 1]
