@@ -28,6 +28,7 @@ TensorAirSpace: a library for applied reinforcement learning in aerospace
    :caption: Агенты:
 
    agent/ihdp
+   agent/dqn
 
 Indices and tables
 ==================
