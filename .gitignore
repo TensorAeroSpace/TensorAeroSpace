@@ -8,6 +8,7 @@ venv/
 ./.ipynb_checkpoints
 .ipynb_checkpoints
 # Random files
+*.egg-info
 *~
 .env
 \#*
