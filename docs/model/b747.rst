@@ -1,0 +1,34 @@
+Самолет BOEING-747
+========================================
+
+BOEING-747 — двухпалубный широкофюзеляжный пассажирский самолет.
+
+.. image:: https://upload.wikimedia.org/wikipedia/commons/b/b8/B-747_Iberia.jpg
+  :width: 400
+  :alt: BOEING-747
+
+
+.. list-table:: ЛТХ
+   :widths: 30 60
+   :header-rows: 1
+
+   * -  Модификация
+     -  Boeing-747
+   * -  Длина, м
+     -  70.7
+   * -  Размах крыла, м
+     -    64.4
+   * -   Высота самолета,м
+     -      19.4
+   * -  Площадь крыла, м2
+     -     541.2
+   * -  Нормальная взлетная масса, кг
+     - 11467
+
+.. autoclass:: tensorairspace.aircraftmodel.model.b747.model.LongitudinalB747
+    :members:
+
+
+Referene: 
+1.  Heffley R. K., Jewell W. F. Aircraft handling qualities data. – NASA, 1972. – №. AD-A277031.
+2.  Abd Elwahab S. et al. Evaluation of boeing 747-e lateral autopilot using flying and handling qualities specifications //2017 International Conference on Communication, Control, Computing and Electronics Engineering (ICCCCEE). – IEEE, 2017. – С. 1-8.

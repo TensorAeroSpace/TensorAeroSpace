@@ -19,6 +19,9 @@ TensorAirSpace: a library for applied reinforcement learning in aerospace
    :caption: Объекты управления:
 
    model/f16
+   model/b747
+   model/EVL
+   model/typical_rocket
 
 .. toctree::
    :maxdepth: 2
