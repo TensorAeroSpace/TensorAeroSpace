@@ -20,7 +20,7 @@
 project = 'TensorAirSpace'
 copyright = '2022, mr9bit, dexfrost89, yakovglee'
 author = 'mr9bit, dexfrost89, yakovglee'
-
+source_suffix = ['.rst', '.md']
 # The full version, including alpha/beta/rc tags
 release = '0.001'
 
@@ -68,3 +68,40 @@ extensions = [
     "sphinx.ext.napoleon",
     "sphinx.ext.mathjax",
 ]
+
+from m2r import M2R
+from recommonmark.transform import AutoStructify
+import os
+import sys
+sys.path.insert(0, os.path.abspath('..'))
+
+import tensorairspace
+
+
+m2r = M2R()
+
+def process_docstring(app, what, name, obj, options, lines):
+    """Enable markdown syntax in docstrings"""
+
+    markdown = "\n".join(lines)
+
+    # ast = cm_parser.parse(markdown)
+    # html = cm_renderer.render(ast)
+    rest = m2r(markdown)
+
+    rest.replace("\r\n", "\n")
+    del lines[:]
+    lines.extend(rest.split("\n"))
+
+github_doc_root = 'https://github.com/tensorforce/tensorforce/tree/master/docs/'
+
+recommonmark_config = dict(
+    url_resolver=(lambda url: github_doc_root + url), auto_toc_tree_section='Contents',
+    enable_eval_rst=True
+)
+
+
+def setup(app):
+    app.add_config_value('recommonmark_config', recommonmark_config, True)
+    app.add_transform(AutoStructify)
+    app.connect('autodoc-process-docstring', process_docstring)

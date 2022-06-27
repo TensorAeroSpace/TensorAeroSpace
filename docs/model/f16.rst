@@ -1,0 +1,32 @@
+Самолет F-16 Fighting Falcon
+========================================
+
+General Dynamics F-16 Fighting Falcon — американский многофункциональный лёгкий истребитель четвёртого поколения.
+
+.. image:: img/f-16_fighting_falcon.jpg
+  :width: 400
+  :alt: Модель F-16
+
+
+.. list-table:: ЛТХ
+   :widths: 30 60
+   :header-rows: 1
+
+   * -  Модификация
+     -  F-16A Block 10
+   * -  Размах крыла, м
+     -    9.45
+   * -  Длина самолета со штангой ПВД,м
+     -     15.03
+   * -   Высота самолета,м
+     -      5.09
+   * -  Площадь крыла, м2
+     -     27.87
+   * -  Угол стреловидности, град
+     -    40.0
+   * -  Нормальная взлетная масса, кг
+     - 11467
+
+
+.. autoclass:: tensorairspace.aircraftmodel.model.f16.linear.longitudinal.model.LongitudinalF16
+    :members:
