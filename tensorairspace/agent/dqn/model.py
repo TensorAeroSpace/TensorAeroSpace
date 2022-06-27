@@ -1,5 +1,4 @@
 import tensorflow as tf
-print(tf.__version__)
 
 import gym
 import time
@@ -245,22 +244,3 @@ class PERAgent:  # Double DQN with Proportional Prioritization
 
     def e_decay(self):
         self.epsilon *= self.epsilon_decay
-
-
-
-test_model()
-
-env = gym.make("CartPole-v0")
-num_actions = env.action_space.n
-model = Model(num_actions)
-target_model = Model(num_actions)
-agent = PERAgent(model, target_model, env)
-# test before
-rewards_sum = agent.evaluation(env)
-print("Before Training: %d out of 200" % rewards_sum)  # 9 out of 200
-
-agent.train()
-# test after
-# env = gym.wrappers.Monitor(env, './recording', force=True)
-rewards_sum = agent.evaluation(env)
-print("After Training: %d out of 200" % rewards_sum)  # 200 out of 200
