@@ -20,19 +20,18 @@
 
 #. Блоки In1/Out1 были переименованы в соответствующие названия.
 
+#. В State-Space были заданы следующие параметры (для удобства работы использовали MATLAB Scripts)
+
 	.. image:: img/sim_ss.png
   		:width: 400
   		:alt: Блок Stae-Space
 
-#. В State-Space были заданы следующие параметры (для удобства работы использовали MATLAB Scripts)
-
 #. Был создан MATLAB Script со следующим кодом:
 
-.. code block:: matlab
-	
+	.. code-block:: matlab
 		clear;
 
-		flag = 1;
+		flag = 1;s
 
 		% Инициализцаия параметров
 		[A,B,C,D] = b747_model(flag);
