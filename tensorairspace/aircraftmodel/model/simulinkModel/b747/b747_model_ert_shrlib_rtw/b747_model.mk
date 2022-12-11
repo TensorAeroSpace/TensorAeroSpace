@@ -2,7 +2,7 @@
 ## Makefile generated for Simulink model 'b747_model'. 
 ## 
 ## Makefile     : b747_model.mk
-## Generated on : Sat Dec 10 13:26:17 2022
+## Generated on : Sun Dec 11 10:04:55 2022
 ## MATLAB Coder version: 3.0 (R2015b)
 ## 
 ## Build Info:
@@ -34,7 +34,7 @@ MATLAB_ROOT               = D:/MATLAB2015
 MATLAB_BIN                = D:/MATLAB2015/bin
 MATLAB_ARCH_BIN           = D:/MATLAB2015/bin/win64
 MASTER_ANCHOR_DIR         = 
-START_DIR                 = G:/TensorAirSpace/model/test/b747
+START_DIR                 = G:/project/TensorAirSpace/tensorairspace/aircraftmodel/model/simulinkModel/b747
 ARCH                      = win64
 SOLVER                    = 
 SOLVER_OBJ                = 
