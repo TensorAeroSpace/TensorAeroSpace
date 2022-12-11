@@ -126,3 +126,12 @@ class ExtY_T(ctypes.Structure):
         ("theta", real_T),
         ("time", real_T),
     ]
+
+
+class ExtY_T_r(ctypes.Structure):
+    _fields_ = [
+        ("w", real_T),
+        ("q", real_T),
+        ("theta", real_T),
+        ("time", real_T),
+    ]

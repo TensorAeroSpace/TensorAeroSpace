@@ -5,7 +5,7 @@
  *
  * Model version                  : 1.27
  * Simulink Coder version         : 8.9 (R2015b) 13-Aug-2015
- * C/C++ source code generated on : Sat Dec 10 13:58:08 2022
+ * C/C++ source code generated on : Sun Dec 11 11:10:04 2022
  *
  * Target selection: ert_shrlib.tlc
  * Embedded hardware selection: Intel->x86-64 (Windows64)
@@ -200,14 +200,14 @@ void elv_model_derivatives(void)
   _rtXdot->w[0] = 0.0;
   _rtXdot->w[1] = 0.0;
   _rtXdot->w[2] = 0.0;
+  _rtXdot->w[0] += -100.858 * elv_model_X.w[0];
   _rtXdot->w[0] += elv_model_X.w[1];
+  _rtXdot->w[0] += -0.1256 * elv_model_X.w[2];
   _rtXdot->w[1] += 14.7805 * elv_model_X.w[0];
   _rtXdot->w[1] += 0.01958 * elv_model_X.w[2];
-  _rtXdot->w[2] += -100.858 * elv_model_X.w[0];
   _rtXdot->w[2] += elv_model_X.w[1];
-  _rtXdot->w[2] += -0.1256 * elv_model_X.w[2];
+  _rtXdot->w[0] += 20.42 * elv_model_U.ref_signal;
   _rtXdot->w[1] += 3.4858 * elv_model_U.ref_signal;
-  _rtXdot->w[2] += 20.42 * elv_model_U.ref_signal;
 }
 
 /* Model initialize function */
@@ -267,7 +267,7 @@ void elv_model_initialize(void)
                 sizeof(ExtY_elv_model_T));
 
   /* InitializeConditions for StateSpace: '<Root>/State-Space' */
-  elv_model_X.w[0] = 0.0;
+  elv_model_X.w[0] = 0.001;
   elv_model_X.w[1] = 0.0;
   elv_model_X.w[2] = 0.0;
 }
