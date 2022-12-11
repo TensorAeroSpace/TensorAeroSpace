@@ -3,9 +3,9 @@
  *
  * Code generated for Simulink model 'b747_model'.
  *
- * Model version                  : 1.25
+ * Model version                  : 1.26
  * Simulink Coder version         : 8.9 (R2015b) 13-Aug-2015
- * C/C++ source code generated on : Sat Dec 10 13:36:59 2022
+ * C/C++ source code generated on : Sun Dec 11 10:04:50 2022
  *
  * Target selection: ert_shrlib.tlc
  * Embedded hardware selection: Intel->x86-64 (Windows64)
@@ -132,12 +132,6 @@ void b747_model_step(void)
     b747_model_M->Timing.t[0] = rtsiGetT(&b747_model_M->solverInfo);
   }
 
-  if (rtmIsMajorTimeStep(b747_model_M)) {
-    /* DigitalClock: '<Root>/Digital Clock' */
-    b747_model_Y.sim_time = (((b747_model_M->Timing.clockTick1+
-      b747_model_M->Timing.clockTickH1* 4294967296.0)) * 0.1);
-  }
-
   /* Outport: '<Root>/u' incorporates:
    *  StateSpace: '<Root>/State-Space'
    */
@@ -157,6 +151,12 @@ void b747_model_step(void)
    *  StateSpace: '<Root>/State-Space'
    */
   b747_model_Y.theta = b747_model_X.u[3];
+  if (rtmIsMajorTimeStep(b747_model_M)) {
+    /* DigitalClock: '<Root>/Digital Clock' */
+    b747_model_Y.sim_time = (((b747_model_M->Timing.clockTick1+
+      b747_model_M->Timing.clockTickH1* 4294967296.0)) * 0.1);
+  }
+
   if (rtmIsMajorTimeStep(b747_model_M)) {
     rt_ertODEUpdateContinuousStates(&b747_model_M->solverInfo);
 
@@ -282,7 +282,7 @@ void b747_model_initialize(void)
   b747_model_X.u[0] = 0.0;
   b747_model_X.u[1] = 0.0;
   b747_model_X.u[2] = 0.0;
-  b747_model_X.u[3] = 0.0;
+  b747_model_X.u[3] = 0.05;
 }
 
 /* Model terminate function */

@@ -3,9 +3,9 @@
  *
  * Code generated for Simulink model 'b747_model'.
  *
- * Model version                  : 1.25
+ * Model version                  : 1.26
  * Simulink Coder version         : 8.9 (R2015b) 13-Aug-2015
- * C/C++ source code generated on : Sat Dec 10 13:36:59 2022
+ * C/C++ source code generated on : Sun Dec 11 10:04:50 2022
  *
  * Target selection: ert_shrlib.tlc
  * Embedded hardware selection: Intel->x86-64 (Windows64)
@@ -83,11 +83,11 @@ typedef struct {
 
 /* External outputs (root outports fed by signals with auto storage) */
 typedef struct {
-  real_T sim_time;                     /* '<Root>/sim_time ' */
   real_T u;                            /* '<Root>/u' */
   real_T w;                            /* '<Root>/w' */
   real_T q;                            /* '<Root>/q' */
   real_T theta;                        /* '<Root>/theta' */
+  real_T sim_time;                     /* '<Root>/sim_time ' */
 } ExtY_b747_model_T;
 
 /* Real-time Model Data Structure */
