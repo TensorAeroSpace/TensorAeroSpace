@@ -4,11 +4,11 @@ clear;
 
 [A, B, C, D] = elv_data();
 
-init = [0 0 0.0];
-ref_signal = -0.01;
+init = [0.001 0 0];
+ref_signal = -0.0;
 
 t_s = 0;
-t_e = 500;
+t_e = 1.5;
 dt = 0.1;
 
 sim_out = sim('elv_model.slx');
