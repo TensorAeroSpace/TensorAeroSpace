@@ -1,0 +1,8 @@
+../elv_model_win64.dll
+elv_model_M		elv_model_M	data
+elv_model_M_		elv_model_M_	data
+elv_model_U		elv_model_U	data
+elv_model_Y		elv_model_Y	data
+elv_model_initialize		elv_model_initialize
+elv_model_step		elv_model_step
+elv_model_terminate		elv_model_terminate

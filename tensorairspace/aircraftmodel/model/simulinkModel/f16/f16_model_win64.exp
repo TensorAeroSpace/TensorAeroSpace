@@ -1,0 +1,8 @@
+../f16_model_win64.dll
+f16_model_M		f16_model_M	data
+f16_model_M_		f16_model_M_	data
+f16_model_U		f16_model_U	data
+f16_model_Y		f16_model_Y	data
+f16_model_initialize		f16_model_initialize
+f16_model_step		f16_model_step
+f16_model_terminate		f16_model_terminate
