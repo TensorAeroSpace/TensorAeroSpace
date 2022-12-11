@@ -1,0 +1,8 @@
+../rocket_model_win64.dll
+rocket_model_M		rocket_model_M	data
+rocket_model_M_		rocket_model_M_	data
+rocket_model_U		rocket_model_U	data
+rocket_model_Y		rocket_model_Y	data
+rocket_model_initialize		rocket_model_initialize
+rocket_model_step		rocket_model_step
+rocket_model_terminate		rocket_model_terminate
