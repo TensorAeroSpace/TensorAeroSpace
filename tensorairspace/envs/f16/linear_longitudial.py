@@ -5,6 +5,7 @@ from gym.utils import seeding, EzPickle
 from tensorairspace.aircraftmodel.model.f16.linear.longitudinal.model import LongitudinalF16
 
 
+
 class LinearLongitudinalF16(gym.Env, EzPickle):
     def __init__(self, initial_state: any,
                  reference_signal,
@@ -13,7 +14,8 @@ class LinearLongitudinalF16(gym.Env, EzPickle):
                  state_space=['alpha', 'q'],
                  control_space=['stab'],
                  output_space=['alpha', 'q'],
-                 return_reward=False):
+                 return_reward=False, 
+                 reward_func=None):
         """
             initial_state - начальное состояние
             reference_signal - заданный сигнал
@@ -31,7 +33,11 @@ class LinearLongitudinalF16(gym.Env, EzPickle):
         self.control_space = control_space
         self.output_space = output_space
         self.reference_signal = reference_signal
-
+        if reward_func:
+            self.reward_func = reward_func
+        else:
+            self.reward_func = self.reward
+            
         self.model = LongitudinalF16(initial_state, number_time_steps=number_time_steps,
                                      selected_state_output=output_space, t0=0)
         self.indices_tracking_states = [state_space.index(tracking_states[i]) for i in range(len(tracking_states))]
@@ -39,10 +45,13 @@ class LinearLongitudinalF16(gym.Env, EzPickle):
         self.ref_signal = reference_signal
         self.model.initialise_system(x0=initial_state, number_time_steps=number_time_steps)
         self.number_time_steps = number_time_steps
-
+    
+    def reward(state, ref_signal, ts):
+       return state[0] - ref_signal[:, ts]
+        
     def step(self, action: np.ndarray):
         next_state = self.model.run_step(action)
-        reward = next_state[self.indices_tracking_states][0] - self.ref_signal[:, self.model.time_step]
+        reward = self.reward_func(next_state[self.indices_tracking_states], self.ref_signal, self.model.time_step)
         if self.model.time_step == self.number_time_steps:
             return next_state, reward, True, {}
         return next_state, reward, False, {}
