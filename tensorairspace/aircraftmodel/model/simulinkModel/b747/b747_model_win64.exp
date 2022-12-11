@@ -1,0 +1,8 @@
+../b747_model_win64.dll
+b747_model_M		b747_model_M	data
+b747_model_M_		b747_model_M_	data
+b747_model_U		b747_model_U	data
+b747_model_Y		b747_model_Y	data
+b747_model_initialize		b747_model_initialize
+b747_model_step		b747_model_step
+b747_model_terminate		b747_model_terminate
