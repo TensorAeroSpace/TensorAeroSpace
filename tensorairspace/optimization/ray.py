@@ -15,7 +15,7 @@ class HyperParamOptimizationOptuna(HyperParamOptimizationBase):
         """
         super().__init__()
     
-    def run_optimization(self, func:Callable, param_space, tune_config=tu ne.TuneConfig(num_samples=5), **kwargs):
+    def run_optimization(self, func:Callable, param_space, tune_config=tune.TuneConfig(num_samples=5), **kwargs):
         """Запуск поиска гиперпараметров
 
         Args:
