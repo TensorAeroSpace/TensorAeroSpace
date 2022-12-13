@@ -7,7 +7,7 @@ class HyperParamOptimizationBase(ABC):
     """
         Класс интерфейс для поиск гиперпараметров
     """
-    def __init__(self, direction:str) -> None:
+    def __init__(self) -> None:
         pass
     
     def run_optimization(self, func, n_trials):
@@ -31,6 +31,8 @@ class HyperParamOptimizationOptuna(HyperParamOptimizationBase):
             direction (str): Направление поиска. Ex. minimize|maximaze
         """
         super().__init__()
+        if direction not in ['minimize','maximaze' ]:
+            raise ValueError("Выберите один из вариантов minimize или maximaze")
         self.study = optuna.create_study(direction=direction)
     
     def run_optimization(self, func:Callable, n_trials:int):
@@ -65,7 +67,7 @@ class HyperParamOptimizationOptuna(HyperParamOptimizationBase):
         fig, ax = plt.subplots(figsize=figsize)
         ax.plot(range(len(self.study.trials)), x)
         ax.set_xticks(range(len(self.study.trials)))
-        ax.set_xticklabels(x_labels, rotation=45, multialignment="left")
+        ax.set_xticklabels(x_labels, rotation=90, multialignment="left")
         ax.set_title("График поиска гиперпараметров")
         ax.set_ylabel("Значении функции", fontsize=15)
         ax.set_xlabel("Итерации", fontsize=15)

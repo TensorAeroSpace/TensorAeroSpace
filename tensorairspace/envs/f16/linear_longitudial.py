@@ -46,8 +46,9 @@ class LinearLongitudinalF16(gym.Env, EzPickle):
         self.model.initialise_system(x0=initial_state, number_time_steps=number_time_steps)
         self.number_time_steps = number_time_steps
     
+    @staticmethod
     def reward(state, ref_signal, ts):
-       return state[0] - ref_signal[:, ts]
+       return np.abs(state[0] - ref_signal[:, ts])
         
     def step(self, action: np.ndarray):
         next_state = self.model.run_step(action)

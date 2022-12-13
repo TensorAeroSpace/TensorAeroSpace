@@ -39,7 +39,7 @@ class Critic:
         self.number_states = len(selected_states)
         self.number_tracking_states = len(tracking_states)
         self.indices_tracking_states = indices_tracking_states
-        print(self.indices_tracking_states)
+        #print(self.indices_tracking_states)
         self.xt = None
         self.xt_1 = np.zeros((self.number_states, 1))
         self.xt_ref = None
