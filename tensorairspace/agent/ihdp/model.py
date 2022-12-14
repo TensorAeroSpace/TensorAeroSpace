@@ -5,6 +5,18 @@ import numpy as np
 
 
 class IHDPAgent(object):
+    """IHDP Агент управления
+
+    Args:
+        actor_settings (dict): Настройки Actor
+        critic_settings (dict): Настройки Critic
+        incremental_settings (dict): Настройки инкрементальной модели
+        tracking_states (_type_): Отслеживаемые состояния
+        selected_states (_type_): Выбранные состояния
+        selected_input (_type_): Выбранные входные сигналы
+        number_time_steps (_type_): Количество временных шагов
+        indices_tracking_states (_type_): Индекс отслеживаемых состояний
+    """
     def __init__(self, actor_settings: dict, critic_settings: dict, incremental_settings: dict, tracking_states,
                  selected_states, selected_input, number_time_steps, indices_tracking_states):
         actor_keys = [
@@ -61,6 +73,16 @@ class IHDPAgent(object):
                                                   incremental_settings["input_rate_limits"])
 
     def predict(self, xt, reference_signals, time_step):
+        """Сделать предикт и получить следующи сигналы управления
+
+        Args:
+            xt (_type_): Текущее состояния объекта управления на шаге t
+            reference_signals (_type_): Заданный сигнал управления
+            time_step (_type_): Текущий сигнал управления
+
+        Returns:
+            ut (_type_): Сигнал управления на шаге t+1
+        """
         xt_ref = np.reshape(reference_signals[:, time_step], [-1, 1])
         ut = self.actor.run_actor_online(xt, xt_ref)
 
