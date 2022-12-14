@@ -1,28 +1,8 @@
-#!/usr/bin/env python
-"""Provides class Actor with the function approximator (NN) of the Actor
-
-Actor creates the Neural Network model with Tensorflow and it can train the network online.
-The user can decide the number of layers, the number of neurons, the batch size and the number
-of epochs and activation functions.
-"""
-
 import glob
 
 import numpy as np
 import tensorflow as tf
 from tensorflow.keras.layers import Dense, Flatten
-
-"----------------------------------------------------------------------------------------------------------------------"
-__author__ = "Jose Ignacio de Alvear Cardenas"
-__copyright__ = "Copyright (C) 2020 Jose Ignacio"
-__credits__ = []
-__license__ = "MIT"
-__version__ = "2.0.1"
-__maintainer__ = "Jose Ignacio de Alvear Cardenas"
-__email__ = "j.i.dealvearcardenas@student.tudelft.nl"
-__status__ = "Production"
-"----------------------------------------------------------------------------------------------------------------------"
-
 
 class Actor:
     # Class attributes
@@ -39,6 +19,34 @@ class Actor:
                  type_PE='3211', amplitude_3211=1, pulse_length_3211=15, WB_limits=30,
                  maximum_input=25, maximum_q_rate=20, cascaded_actor=False, NN_initial=None,
                  cascade_tracking_state=['alpha', 'wz'], model_path: str = None):
+        """Модель Актера в IHDP
+           Предоставляет классу Актера функцию-аппроксиматор (NN) Актера.
+           Актер создает модель нейронной сети с помощью Tensorflow и может обучать сеть онлайн.
+           Пользователь может выбрать количество слоев, количество нейронов, размер партии и количество эпох и активационных функций.
+
+        Args:
+            selected_inputs (_type_): Выбранные сигналы управления
+            selected_states (_type_): Выбранные сигналы состояния
+            tracking_states (_type_): Отслеживаемые состояния
+            indices_tracking_states (_type_): Индексы отслеживаемых состояний
+            number_time_steps (_type_): Количество временных шагов
+            start_training (_type_): Шаг с которого начинается обучение
+            layers (tuple, optional): _description_. Слои модели Defaults to (6, 1).
+            activations (tuple, optional): _description_. Слои активации ('sigmoid', 'sigmoid').
+            learning_rate (float, optional): скорость_обучения. Defaults to 0.9.
+            learning_rate_cascaded (float, optional): Скорость обучения в каскадном режиме. Defaults to 0.9.
+            learning_rate_exponent_limit (int, optional): предел экспоненты скорости обучения. Defaults to 10.
+            type_PE (str, optional): Тип PE. Defaults to '3211'.
+            amplitude_3211 (int, optional): Амплитуда 3211. Defaults to 1.
+            pulse_length_3211 (int, optional): Длина пульса 3211. Defaults to 15.
+            WB_limits (int, optional): Лимит весов. Defaults to 30.
+            maximum_input (int, optional): Максимальное значение. Defaults to 25.
+            maximum_q_rate (int, optional): Максимальная скорость. Defaults to 20.
+            cascaded_actor (bool, optional): Включить каскадный режим сети. Defaults to False.
+            NN_initial (_type_, optional): Инициализации весов. Defaults to None.
+            cascade_tracking_state (list, optional): Трекинг в каскадном режиме. Defaults to ['alpha', 'wz'].
+            model_path (str, optional): Путь к модели для загрузки весов. Defaults to None.
+        """
         self.number_inputs = len(selected_inputs)
         self.selected_states = selected_states
         self.cascade_tracking_state = cascade_tracking_state
@@ -101,10 +109,8 @@ class Actor:
         self.store_q = np.zeros((1, self.number_time_steps))
 
     def build_actor_model(self):
-        """
-        Function that creates the actor ANN architecture. It is a densely connected neural network. The user
-        can decide the number of layers, the number of neurons, as well as the activation function.
-        :return:
+        """Функция, создающая сеть Actor (актера). Это полносвязная сеть. 
+        Можно определить количество слоев, количество нейронов в слою, а так же функции активации
         """
 
         # First Neural Network
@@ -125,13 +131,19 @@ class Actor:
             self.rmsprop_dict[count] = 0
 
     def save_model(self):
+        """Сохранение модели
+        """
         self.model.save_weights("actor_weight.h5")
 
     def save_dut_dWb(self):
+        """Сохранение градиента
+        """
         for i in range(len(self.dut_dWb)):
             np.save(f"./actor_dut_dWb/{i}_dut_dWb.txt", self.dut_dWb[i])
 
     def load_dut_dWb(self):
+        """Загрузка градиента
+        """
         line = []
         for file in glob.glob('./actor_dut_dWb/*'):
             line.append(tf.constant((np.load(file, allow_pickle=True))))
@@ -139,6 +151,8 @@ class Actor:
         self.dut_dWb_1 = line
 
     def load_model(self):
+        """Загрузка весов модели
+        """
         self.model.load_weights(self.model_path)
 
     def create_NN(self, store_weights, seed):
@@ -172,11 +186,14 @@ class Actor:
         return model, store_weights
 
     def run_actor_online(self, xt, xt_ref):
-        """
-        Generate input to the system with the reference and real states.
-        :param xt: current time_step states
-        :param xt_ref: current time step reference states
-        :return: ut --> input to the system and the incremental model
+        """Сгенерируйте ввод в систему с заданным и реальным состояниями.
+
+        Args:
+            xt (_type_): текущее состояние временного шага
+            xt_ref (_type_): заданное состояния текущего временного шага
+
+        Returns:
+            ut (_type_): ввод в систему и инкрементную модель
         """
 
         if self.cascaded_actor:
@@ -250,14 +267,14 @@ class Actor:
         return self.ut
 
     def train_actor_online(self, Jt1, dJt1_dxt1, G):
+        """Получает элементы цепного правила, вычисляет градиент и применяет его к соответствующим весам и смещениям.
+
+        Args:
+            Jt1 (_type_): dEa/dJ
+            dJt1_dxt1 (_type_): dJ/dx
+            G (_type_): dx/du, полученное из инкрементной модели
         """
-        Obtains the elements of the chain rule, computes the gradient and applies it to the corresponding weights and
-        biases.
-        :param Jt1: dEa/dJ
-        :param dJt1_dxt1: dJ/dx
-        :param G: dx/du, obtained from the incremental model
-        :return:
-        """
+        
         Jt1 = Jt1.flatten()[0]
 
         chain_rule = Jt1 * np.matmul(np.reshape(G[self.indices_tracking_states, :], [-1, 1]).T, dJt1_dxt1)
@@ -272,15 +289,15 @@ class Actor:
             self.model = self.check_WB_limits(count, self.model)
 
     def train_actor_online_adaptive_alpha(self, Jt1, dJt1_dxt1, G, incremental_model, critic, xt_ref1):
-        """
-        Train the actor with an adaptive alpha depending on the sign and magnitude of the network errors
-        :param Jt1: the evaluation of the critic with the next time step prediction of the incremental model
-        :param dJt1_dxt1: the gradient of the critic network with respect to the next time prediction of the incremental model
-        :param G: the input distribution matrix
-        :param incremental_model: the incremental model
-        :param critic: the critic
-        :param xt_ref1: reference states at the next time step
-        :return:
+        """Обучение Actor (актера). с помощью адаптивной альфы в зависимости от знака и величины сетевых ошибок
+
+        Args:
+            Jt1 (_type_): оценка критика с предсказанием следующего временного шага инкрементной модели
+            dJt1_dxt1 (_type_): градиент критической сети по отношению к следующему прогнозу времени инкрементной модели
+            G (_type_): матрица распределения входных данных
+            incremental_model (_type_): инкрементная модель
+            critic (_type_): Критик
+            xt_ref1 (_type_): заданное состояния на следующем временном шаге
         """
         Ec_actor_before = 0.5 * np.square(Jt1)
         # print("ACTOR LOSS xt1 before= ", Ec_actor_before)
@@ -315,15 +332,15 @@ class Actor:
                 # print("ACTOR LEARNING_RATE = ", self.learning_rate)
 
     def train_actor_online_adam(self, Jt1, dJt1_dxt1, G, incremental_model, critic, xt_ref1):
-        """
-        Train the actor with the Adam optimizer .
-        :param Jt1: the evaluation of the critic with the next time step prediction of the incremental model
-        :param dJt1_dxt1: the gradient of the critic network with respect to the next time prediction of the incremental model
-        :param G: the input distribution matrix
-        :param incremental_model: the incremental model
-        :param critic: the critic
-        :param xt_ref1: reference states at the next time step
-        :return:
+        """Обучение Actor (актера) с помощью оптимизатора Adam.
+
+        Args:
+            Jt1 (_type_): оценка критика с предсказанием следующего временного шага инкрементной модели
+            dJt1_dxt1 (_type_): градиент критической сети по отношению к следующему прогнозу времени инкрементной модели
+            G (_type_): матрица распределения входных данных
+            incremental_model (_type_): инкрементная модель
+            critic (_type_): Критик
+            xt_ref1 (_type_): заданное состояния на следующем временном шаге
         """
         if self.cascaded_actor:
             Ec_actor_before = 0.5 * np.square(Jt1)
@@ -385,16 +402,17 @@ class Actor:
             # print("ACTOR LOSS xt1 after= ", Ec_actor_after)
 
     def train_actor_online_alpha_decay(self, Jt1, dJt1_dxt1, G, incremental_model, critic, xt_ref1):
+        """Обучите актера со скоростью обучения, которая уменьшается с количеством временных шагов
+
+        Args:
+            Jt1 (_type_): оценка критика с предсказанием следующего временного шага инкрементной модели
+            dJt1_dxt1 (_type_): градиент критической сети по отношению к следующему прогнозу времени инкрементной модели
+            G (_type_): матрица распределения входных данных
+            incremental_model (_type_): инкрементная модель
+            critic (_type_): Критик
+            xt_ref1 (_type_): заданное состояния на следующем временном шаге
         """
-        Train the actor with a learning rate that decay with the number of time steps
-        :param Jt1: the evaluation of the critic with the next time step prediction of the incremental model
-        :param dJt1_dxt1: the gradient of the critic network with respect to the next time prediction of the incremental model
-        :param G: the input distribution matrix
-        :param incremental_model: the incremental model
-        :param critic: the critic
-        :param xt_ref1: reference states at the next time step
-        :return:
-        """
+        
         if self.cascaded_actor:
             Ec_actor_before = 0.5 * np.square(Jt1)
             # print("ACTOR LOSS xt1 before= ", Ec_actor_before)
@@ -475,15 +493,19 @@ class Actor:
             # print("ACTOR LOSS xt1 after= ", Ec_actor_after)
 
     def compute_Adam_update(self, count, gradient, model, learning_rate):
+        """Вычисляет обновление Adam и применяет его к обновлениям веса.
+
+        Args:
+            count (_type_): индекс анализируемой весовой матрицы
+            gradient (_type_): вычисленный градиент для каждого из весов
+            model (_type_): модель где обновляем веса
+            learning_rate (_type_): скорость обучения анализируемой модели
+
+        Returns:
+            model (_type_): обновленная модель
+            learning_rate (_type_): обновленная скорость обучения
         """
-        Computes the Adam update and applies it to the weight updates.
-        :param count: index of weight matrix being analysed
-        :param gradient: computed gradient for each of the weights
-        :param model: NN of the weights that are being updated
-        :param learning_rate: the learning rate of the model being analysed
-        :return: model --> return the updated model
-                learning_rate --> return the updated learning rate
-        """
+        
         momentum = self.beta_momentum * self.momentum_dict[count] + (1 - self.beta_momentum) * gradient
         self.momentum_dict[count] = momentum
         momentum_corrected = momentum / (1 - np.power(self.beta_momentum, self.time_step + 1))
@@ -508,11 +530,16 @@ class Actor:
         return model, learning_rate
 
     def check_WB_limits(self, count, model):
+        """Проверка, не превышают ли какие-либо веса и смещения установленный предел (WB_limits), и насыщайте значения.
+
+        Args:
+            count (_type_): индекс в анализируемой модели model.trainable_variables
+            model (_type_): модель актера
+
+        Returns:
+            _type_: модель актера
         """
-        Check whether any of the weights and biases exceed the limit imposed (WB_limits) and saturate the values
-        :param count: index within the model.trainable_variables being analysed
-        :return:
-        """
+        
         WB_variable = model.trainable_variables[count].numpy()
         WB_variable[WB_variable > self.WB_limits] = self.WB_limits
         WB_variable[WB_variable < -self.WB_limits] = -self.WB_limits
@@ -520,9 +547,10 @@ class Actor:
         return model
 
     def compute_persistent_excitation(self, *args):
-        """
-        Computation of the persistent excitation at each time step. Formula obtained from Pedro's thesis
-        :return: e0 --> PE deviation
+        """Расчет постоянного возбуждения на каждом временном шаге. 
+
+        Returns:
+            e0 (_type_): отклонение PE
         """
         if len(args) == 1:
             t = args[0] + 1
@@ -549,9 +577,7 @@ class Actor:
         return e0
 
     def update_actor_attributes(self):
-        """
-        The attributes that change with every time step are updated
-        :return:
+        """Атрибуты, которые меняются с каждым временным шагом, обновляются
         """
         self.time_step += 1
         self.dut_dWb_1 = self.dut_dWb
@@ -566,10 +592,16 @@ class Actor:
                     counter * 2].numpy().flatten()
 
     def evaluate_actor(self, *args):
-        """
-        Evaluation of the actor NN given an input or attributes stored in the object
-        :param args: the real and reference states could be provided as input for the evaluation, or not if already stored
-        :return: ut --> input to the system and the incremental model
+        """Оценка актора с учетом входных данных или атрибутов, хранящихся в объекте
+        
+        Args:
+            args: реальное и эталонное состояния могут быть предоставлены в качестве входных данных для оценки или нет, если они уже сохранены
+        
+        Raises:
+            Exception: _description_
+
+        Returns:
+            ut _type_: ввод в систему и инкрементную модель
         """
         if len(args) == 0:
             xt = self.xt
@@ -626,13 +658,15 @@ class Actor:
                          np.reshape(self.maximum_input, ut.shape)),
                      np.reshape(-self.maximum_input, ut.shape))
         return ut
+    
     def restart_time_step(self):
+        """Перезапуск временного шага
+        """
         self.time_step = 0
 
     def restart_actor(self):
         """
-        Restart the actor attributes
-        :return:
+        Перезапустите атрибуты актера
         """
         self.time_step = 0
         self.xt = None
