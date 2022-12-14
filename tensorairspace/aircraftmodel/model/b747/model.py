@@ -11,6 +11,14 @@ class LongitudinalB747(ModelBase):
     """
     Boing 747 в продольном канале управления
     
+    
+    Args:
+        x0 (_type_): Начальное состояние объекта управления
+        number_time_steps (_type_): Количество временных шагов
+        selected_state_output (_type_, optional): Выбранные состояние объекта управления. Defaults to None.
+        t0 (int, optional): Начальное время. Defaults to 0.
+        dt (float, optional): Частота дискретизации. Defaults to 0.01.
+            
     Пространство действий:
         * ele: руль высоты [град]
 
@@ -33,6 +41,7 @@ class LongitudinalB747(ModelBase):
 
     def __init__(self, x0, number_time_steps, selected_state_output=None, t0=0, dt: float = 0.01):
         super().__init__(x0, selected_state_output, t0, dt)
+
         self.discretisation_time = dt
 
         # Selected data for the system
@@ -72,9 +81,7 @@ class LongitudinalB747(ModelBase):
         self.initialise_system(x0, number_time_steps)
 
     def import_linear_system(self):
-        """
-        Retrieves the stored linearised matrices obtained from Matlab
-        :return:
+        """Сохраненные линеаризованные матрицы
         """
         self.A = np.array([
             [-0.0212, 0.0466,    0,   0.1153],
@@ -105,12 +112,13 @@ class LongitudinalB747(ModelBase):
         ])
 
     def initialise_system(self, x0, number_time_steps):
+        """Инициализация системы
+
+        Args:
+            x0 (_type_): Начальное состояние объекта управления
+            number_time_steps (_type_): количество временных шагов в итерации
         """
-        Initialises the F-16 aircraft dynamics
-        :param x0: the initial states
-        :param number_time_steps: the number of time steps within an iteration
-        :return:
-        """
+
         # Import the stored system
         self.import_linear_system()
 
@@ -131,11 +139,14 @@ class LongitudinalB747(ModelBase):
         self.xt = x0
         self.store_states[:, self.time_step] = np.reshape(self.xt, [-1, ])
 
-    def run_step(self, ut_0: np.ndarray):
-        """
-        Runs one time step of the iteration.
-        :param ut: input to the system
-        :return: xt1 --> the next time step state
+    def run_step(self, ut_0: np.ndarray) -> np.ndarray:
+        """Выполняет один временной шаг итерации.
+
+        Args:
+            ut_0 (np.ndarray): Вектор управления
+
+        Returns:
+            xt1 (np.ndarray): Состояние объекта управления на шаге t+1
         """
         if self.time_step != 0:
             ut_1 = self.store_input[:, self.time_step - 1]
@@ -166,9 +177,7 @@ class LongitudinalB747(ModelBase):
         return np.array(self.xt1)
 
     def update_system_attributes(self):
-        """
-        The attributes that change with every time step are updated
-        :return:
+        """Атрибуты, которые меняются с каждым временным шагом, обновляются
         """
         self.xt = self.xt1
         self.time_step += 1
