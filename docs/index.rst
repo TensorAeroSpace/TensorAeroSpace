@@ -8,6 +8,11 @@ TensorAirSpace: a library for applied reinforcement learning in aerospace
 
 Библиотека TensorAirSpace предоставляет возможность применения методов reinforcement learning к различным объектам управления.
 
+.. toctree::
+   :maxdepth: 2
+   :caption: User guide:
+
+   guide/installation.rst
 
 .. toctree::
    :maxdepth: 2
@@ -24,6 +29,7 @@ TensorAirSpace: a library for applied reinforcement learning in aerospace
 
    agent/ihdp
    agent/dqn
+   optimization/optuna_based.rst
 
 .. toctree::
    :maxdepth: 2
@@ -31,11 +37,13 @@ TensorAirSpace: a library for applied reinforcement learning in aerospace
 
    signals/signals.rst
 
+
 .. toctree::
    :maxdepth: 2
    :caption: Примеры:
-
-   example/agent/ihdp/example_ihdp.rst
+   
+   example/env/LinearLongitudinalF16.rst
+   example/agent/ihdp/example_ihdp.rst 
    example/optimization/example_optimization.rst
    example/simulink/sim_pyth.rst
 

@@ -22,10 +22,15 @@ class LongitudinalF16(ModelBase):
         * stab: полжение руля высоты [рад]
         * dstab: угловая скорость руля высоты [рад/с]
 
+    Args:
+        x0 (_type_): Начальное состояние
+        number_time_steps (any): Количество шагов моделирования
+        selected_state_output (any): Пространство полного выхода (с учетом помех)
+        dt (any): Частота дискретизации
     """
 
-    def __init__(self, x0, number_time_steps, selected_state_output=None, t0=0, dt: float = 0.01):
-        super().__init__(x0, selected_state_output, t0, dt)
+    def __init__(self, x0, number_time_steps, selected_state_output=None, dt: float = 0.01):
+        super().__init__(x0, selected_state_output, 0, dt)
         self.discretisation_time = dt
         self.folder = os.path.join(os.path.dirname(__file__), '../data')
 
@@ -67,7 +72,7 @@ class LongitudinalF16(ModelBase):
 
     def import_linear_system(self):
         """
-        Retrieves the stored linearised matrices obtained from Matlab
+        Извлекает сохраненные линеаризованные матрицы, полученные из Matlab при линеаризации
         :return:
         """
         x = loadmat(self.folder + '/A.mat')
@@ -83,9 +88,7 @@ class LongitudinalF16(ModelBase):
         self.D = x['D_lo']
 
     def simplify_system(self):
-        """
-        Function which simplifies the F-16 matrices. The filtered matrices are stored as part of the object
-        :return:
+        """Функция, упрощающая матрицы F-16. Отфильтрованные матрицы сохраняются как часть объекта
         """
 
         # Create dictionaries with the information from the system
@@ -104,11 +107,14 @@ class LongitudinalF16(ModelBase):
         self.filt_D = self.C[selected_rows_output[:, None], 12 + selected_rows_input] + \
                       self.D[selected_rows_output[:, None], selected_rows_input]
 
-    def create_dictionary(self, file_name):
-        """
-        Creates dictionaries from the available states, inputs and outputs
-        :param file_name: name of the file to be read
-        :return: rows --> dictionary with the rows used of the input/state/output vectors
+    def create_dictionary(self, file_name):       
+        """Создает словари из доступных состояний, входов и выходов
+
+        Args:
+            file_name (_type_): имя файла для чтения
+
+        Returns:
+            rows: словарь со строками, используемыми для входных/состоятельных/выходных векторов
         """
         full_name = self.folder + '/keySet_' + file_name + '.txt'
         with open(full_name, 'r') as f:
@@ -116,13 +122,14 @@ class LongitudinalF16(ModelBase):
         rows = dict(zip(keySet, range(len(keySet))))
         return rows
 
-    def initialise_system(self, x0, number_time_steps):
+    def initialise_system(self, x0, number_time_steps):        
+        """Инициализирует динамику самолета F-16.
+
+        Args:
+            x0 (_type_): Начальное состояние
+            number_time_steps (_type_): Количество шагов моделирования
         """
-        Initialises the F-16 aircraft dynamics
-        :param x0: the initial states
-        :param number_time_steps: the number of time steps within an iteration
-        :return:
-        """
+        
         # Import the stored system
         self.import_linear_system()
 
@@ -147,11 +154,15 @@ class LongitudinalF16(ModelBase):
         self.store_states[:, self.time_step] = np.reshape(self.xt, [-1, ])
 
     def run_step(self, ut_0: np.array):
+        """Выполняет один временной шаг итерации.
+
+        Args:
+            ut_0 (np.array): Сигнал управления для получения состояния управления
+
+        Returns:
+            xt1: Состояние объекта управлния на следующем временном интервале t+1
         """
-        Runs one time step of the iteration.
-        :param ut: input to the system
-        :return: xt1 --> the next time step state
-        """
+        
         if self.time_step != 0:
             ut_1 = self.store_input[:, self.time_step - 1]
         else:
@@ -179,9 +190,7 @@ class LongitudinalF16(ModelBase):
         return np.array(self.xt1)
 
     def update_system_attributes(self):
-        """
-        The attributes that change with every time step are updated
-        :return:
+        """Обновление атрибутов, которые меняются с каждым временным шагом, обновляются
         """
         self.xt = self.xt1
         self.time_step += 1

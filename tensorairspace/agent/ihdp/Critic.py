@@ -1,27 +1,8 @@
-#!/usr/bin/env python
-"""Provides class Critic with the function approximator (NN) of the Critic
-
-Critic creates the Neural Network model with Tensorflow and it can train the network online.
- The user can decide the number of layers, the number of neurons, the batch size and the number
-of epochs and activation functions.
-"""
 import random
 
 import numpy as np
 import tensorflow as tf
 from tensorflow.keras.layers import Dense, Flatten
-
-"----------------------------------------------------------------------------------------------------------------------"
-__author__ = "Jose Ignacio de Alvear Cardenas"
-__copyright__ = "Copyright (C) 2020 Jose Ignacio"
-__credits__ = []
-__license__ = "MIT"
-__version__ = "2.0.1"
-__maintainer__ = "Jose Ignacio de Alvear Cardenas"
-__email__ = "j.i.dealvearcardenas@student.tudelft.nl"
-__status__ = "Production"
-"----------------------------------------------------------------------------------------------------------------------"
-
 
 class Critic:
     """Предоставляет классу Critic аппроксиматор функций (NN) класса Critic.

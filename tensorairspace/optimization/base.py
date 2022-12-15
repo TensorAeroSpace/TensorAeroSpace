@@ -8,15 +8,26 @@ class HyperParamOptimizationBase(ABC):
         Класс интерфейс для поиск гиперпараметров
     """
     def __init__(self) -> None:
+        """Инициализация
+        """
         pass
     
-    def run_optimization(self, func, n_trials):
+    def run_optimization(self):
+        """Запуск оптимизации
+        """
         pass
     
     def get_best_param(self)->dict:
+        """Получить лучшие найденные параметры
+
+        Returns:
+            dict: Лучшие параметры
+        """
         pass
 
     def plot_parms(self, fig_size):
+        """Построить график шагов оптимизации
+        """
         pass
     
 

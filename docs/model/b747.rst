@@ -7,6 +7,8 @@ BOEING-747 — двухпалубный широкофюзеляжный пас�
   :width: 400
   :alt: BOEING-747
 
+ЛТХ
+----
 
 .. list-table:: ЛТХ
    :widths: 30 60
@@ -25,10 +27,22 @@ BOEING-747 — двухпалубный широкофюзеляжный пас�
    * -  Нормальная взлетная масса, кг
      - 11467
 
+Модель
+------
+
 .. autoclass:: tensorairspace.aircraftmodel.model.b747.model.LongitudinalB747
     :members:
 
 
-Referene: 
+Среда моделирования OpenAI Gym
+------------------------------
+
+.. autoclass:: tensorairspace.envs.LinearLongitudinalB747
+    :members:
+
+
+Источники
+----------
+
 1.  Heffley R. K., Jewell W. F. Aircraft handling qualities data. – NASA, 1972. – №. AD-A277031.
 2.  Abd Elwahab S. et al. Evaluation of boeing 747-e lateral autopilot using flying and handling qualities specifications //2017 International Conference on Communication, Control, Computing and Electronics Engineering (ICCCCEE). – IEEE, 2017. – С. 1-8.

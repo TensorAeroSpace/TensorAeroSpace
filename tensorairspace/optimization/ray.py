@@ -3,7 +3,7 @@ from .base import HyperParamOptimizationBase
 from typing import Callable
 
 
-class HyperParamOptimizationOptuna(HyperParamOptimizationBase):
+class HyperParamOptimizationRay(HyperParamOptimizationBase):
     """
         Поиск гиперпараметров модели
     """
@@ -35,4 +35,9 @@ class HyperParamOptimizationOptuna(HyperParamOptimizationBase):
         return self.study.best_trial.params
     
     def plot_parms(self):
+        """Построить график поиска гипераметров (WIP)
+
+        Raises:
+            NotImplementedError:  (WIP)
+        """
         raise NotImplementedError()

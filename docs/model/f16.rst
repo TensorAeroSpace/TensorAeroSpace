@@ -7,6 +7,8 @@ General Dynamics F-16 Fighting Falcon — американский многоф�
   :width: 400
   :alt: Модель F-16
 
+ЛТХ
+---
 
 .. list-table:: ЛТХ
    :widths: 30 60
@@ -27,6 +29,15 @@ General Dynamics F-16 Fighting Falcon — американский многоф�
    * -  Нормальная взлетная масса, кг
      - 11467
 
+Модель
+------
 
-.. autoclass:: tensorairspace.aircraftmodel.model.f16.linear.longitudinal.model.LongitudinalF16
+.. autoclass:: tensorairspace.aircraftmodel.LongitudinalF16
+    :members:
+    :inherited-members:
+
+Среда моделирования OpenAI Gym
+------------------------------
+
+.. autoclass:: tensorairspace.envs.LinearLongitudinalF16
     :members:

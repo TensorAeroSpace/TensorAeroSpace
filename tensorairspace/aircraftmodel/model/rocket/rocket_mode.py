@@ -7,7 +7,7 @@ from tensorairspace.aircraftmodel.model.constant import state_to_latex_rus, stat
 from tensorairspace.aircraftmodel.model.f16.nonlinear.utils import output2dict
 
 
-class LongitudinalB747(ModelBase):
+class RocketELV(ModelBase):
     """
     Boing 747 в продольном канале управления
     
@@ -46,7 +46,7 @@ class LongitudinalB747(ModelBase):
 
         # Selected data for the system
         self.selected_states = ["u", "w", "q", "theta"]
-        self.selected_output = ["u", "w", "q", "theta"]
+        self.selected_output = ["q", "theta", "alpha", "u", "a_zcg", "a_zp", "gamma"]
         self.list_state = self.selected_states
         self.selected_input = ["ele", ]
         self.control_list = self.selected_input
@@ -84,28 +84,24 @@ class LongitudinalB747(ModelBase):
         """Сохраненные линеаризованные матрицы
         """
         self.A = np.array([
-            [-0.0212, 0.0466,    0,   0.1153],
-            [-0.2229,  -0.5839,   0.9404, 0],
-            [0.0150, -0.5031,  -0.5015, 0],
-            [0, 0, 1, 0],
+            [0,     1.0,    0.0],
+            [4.7805,  0,   0.01958],
+            [-100.85,   1,  -0.1256],
         ])
 
         self.B = np.array([
             [0],
-            [-0.0340],
-            [-0.5746],
-            [0]
+            [3.4858],
+            [20.42],
         ])
 
         self.C = np.array([
-            [1, 0, 0, 0],
-            [0, 1, 0, 0],
-            [0, 0, 1, 0],
-            [0, 0, 0, 1],
+            [0],
+            [3.4858],
+            [20.42],
         ])
 
         self.D = np.array([
-            [0],
             [0],
             [0],
             [0],
