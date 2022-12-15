@@ -20,11 +20,7 @@ Incremental Heuristic Dynamic Programming
 Источники
 ---------
 - `Incremental Model Based Heuristic Dynamic Programming for Nonlinear Adaptive Flight Control <https://www.researchgate.net/publication/313696777_Incremental_Model_Based_Heuristic_Dynamic_Programming_for_Nonlinear_Adaptive_Flight_Control>`_
-
-
-Пример использования
---------------------
-
+- https://github.com/joigalcar3/IHDP
 
 С какими окружениями gym можно использовать?
 --------------------------------------------

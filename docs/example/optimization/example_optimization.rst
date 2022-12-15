@@ -11,6 +11,10 @@
     from tensorairspace.utils import generate_time_period
     from tensorairspace.signals import unit_step
 
+.. warning::
+    Перед началом создаем объект класса `HyperParamOptimizationOptuna` в основе которого лежит библиотека `Optuna`.
+    Мы сделали обертку вокруг нее для удобства пользования, если вам неудобно пользоваться нашей оберткой вы всегда можете использовать просто `Optuna`.
+
 
 .. code:: ipython3
 
@@ -22,6 +26,7 @@
     tp = generate_time_period(tn=20)
     number_time_steps = len(tp)
     reference_signals = np.reshape(unit_step(degree=5, tp=tp, time_step=10, output_rad=True), [1, -1])
+
 
 .. code:: ipython3
 
@@ -79,6 +84,19 @@
             ut = model.predict(xt, reference_signals, step)
             xt, reward, done, info = env.step(np.array(ut))
         return reward
+
+.. warning::
+
+    Критерий который мы будем использовать для оптимизации это модуль разницы между текущим состоянием и заданным. Расчет данного критерия происходит в методе `tensorairspace.envs.LinearLongitudinalF16.reward`. 
+
+    .. code:: python
+
+        @staticmethod
+        def reward(state, ref_signal, ts):
+            return np.abs(state[0] - ref_signal[:, ts])
+    
+    В дальнейшем мы планируем добавить и иные кретерии оптимальности в данную библиотеку 
+
 
 .. code:: ipython3
 
