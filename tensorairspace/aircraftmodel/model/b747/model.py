@@ -46,7 +46,7 @@ class LongitudinalB747(ModelBase):
 
         # Selected data for the system
         self.selected_states = ["u", "w", "q", "theta"]
-        self.selected_output = ["q", "theta", "alpha", "u", "a_zcg", "a_zp", "gamma"]
+        self.selected_output = ["u", "w", "q", "theta"]
         self.list_state = self.selected_states
         self.selected_input = ["ele", ]
         self.control_list = self.selected_input

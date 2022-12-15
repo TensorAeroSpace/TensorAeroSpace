@@ -29,12 +29,14 @@ TensorAirSpace: a library for applied reinforcement learning in aerospace
 
    agent/ihdp
    agent/dqn
+   optimization/optuna_based.rst
 
 .. toctree::
    :maxdepth: 2
    :caption: Сигналы:
 
    signals/signals.rst
+
 
 .. toctree::
    :maxdepth: 2

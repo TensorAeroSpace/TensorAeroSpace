@@ -22,10 +22,10 @@ class LinearLongitudinalB747(gym.Env, EzPickle):
     def __init__(self, initial_state: any,
                  reference_signal,
                  number_time_steps,
-                 tracking_states=['alpha', 'q'],
-                 state_space=['alpha', 'q'],
+                 tracking_states=['theta', 'q'],
+                 state_space=['theta', 'q'],
                  control_space=['stab'],
-                 output_space=['alpha', 'q'],
+                 output_space=['theta', 'q'],
                  reward_func=None):
 
         EzPickle.__init__(self)
