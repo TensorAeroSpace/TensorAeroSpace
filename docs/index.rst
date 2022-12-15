@@ -34,8 +34,9 @@ TensorAirSpace: a library for applied reinforcement learning in aerospace
 .. toctree::
    :maxdepth: 2
    :caption: Примеры:
-
-   example/agent/ihdp/example_ihdp.rst
+   
+   example/env/LinearLongitudinalF16.rst
+   example/agent/ihdp/example_ihdp.rst 
    example/optimization/example_optimization.rst
    example/simulink/sim_pyth.rst
 
