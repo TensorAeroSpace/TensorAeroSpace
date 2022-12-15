@@ -10,16 +10,42 @@ Incremental Heuristic Dynamic Programming
 включает такие три основных элемента, как:
 
 1.	Инкрементная модель предназначенная для определения линеаризованной динамики системы для выбранного состояния.
-2.	Исполнитель предназначен для создания управляющего сигнала.
+2.	Исполнитель (Актер) предназначен для создания управляющего сигнала.
 3.	Критик предназначен для оценки действий исполнителя
 
 .. image:: img/ihdp/ihdp.png
   :width: 800
   :alt: IHDP
 
-
-
-
-Источники:
-
+Источники
+---------
 - `Incremental Model Based Heuristic Dynamic Programming for Nonlinear Adaptive Flight Control <https://www.researchgate.net/publication/313696777_Incremental_Model_Based_Heuristic_Dynamic_Programming_for_Nonlinear_Adaptive_Flight_Control>`_
+
+
+Пример использования
+--------------------
+
+
+С какими окружениями gym можно использовать?
+--------------------------------------------
+- LinearLongitudinalF16-v0
+
+
+Документация
+------------
+
+.. autoclass:: tensorairspace.agent.IHDPAgent
+  :members:
+  :inherited-members:
+
+.. autoclass:: tensorairspace.agent.ihdp.Actor
+  :members:
+  :inherited-members:
+
+.. autoclass:: tensorairspace.agent.ihdp.Critic
+  :members:
+  :inherited-members:
+
+.. autoclass:: tensorairspace.agent.ihdp.IncrementalModel
+  :members:
+  :inherited-members:

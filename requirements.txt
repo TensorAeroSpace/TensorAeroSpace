@@ -111,3 +111,4 @@ zipp==3.7.0
 optuna
 m2r
 recommonmark
+scikit-learn

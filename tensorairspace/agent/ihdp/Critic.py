@@ -24,6 +24,27 @@ __status__ = "Production"
 
 
 class Critic:
+    """Предоставляет классу Critic аппроксиматор функций (NN) класса Critic.
+
+    Critic создает модель нейронной сети с помощью Tensorflow и может обучать сеть онлайн.
+    Пользователь может выбрать количество слоев, количество нейронов, размер партии и количество эпох и активационных функций.
+
+    Args:
+        Q_weights (_type_): _description_
+        selected_states (_type_): Выбранные состояния
+        tracking_states (_type_): Отслеживаемые состояния
+        indices_tracking_states (_type_): Индекс отслеживаемых состояний
+        number_time_steps (_type_): Количесво врменных шагов
+        start_training (_type_): Начало обучения
+        gamma (float, optional): Gamma. Defaults to 0.8.
+        learning_rate (int, optional): Скорость обучения. Defaults to 2.
+        learning_rate_exponent_limit (int, optional): предел экспоненты скорости обучения. Defaults to 10.
+        layers (tuple, optional): Количество слоев и нейронов в слоях. Defaults to (10, 6, 1).
+        activations (tuple, optional): Функции активации в слоях. Defaults to ("sigmoid", "sigmoid", "linear").
+        WB_limits (int, optional): Ограничения значения в весах. Defaults to 30.
+        NN_initial (_type_, optional): Начальные значения в весах. Defaults to None.
+        model_path (_type_, optional): Путь к модели. Defaults to None.
+    """
     # Class attributes
     # Attributes related to RMSprop
     beta_rmsprop = 0.999
@@ -39,7 +60,7 @@ class Critic:
         self.number_states = len(selected_states)
         self.number_tracking_states = len(tracking_states)
         self.indices_tracking_states = indices_tracking_states
-        print(self.indices_tracking_states)
+        #print(self.indices_tracking_states)
         self.xt = None
         self.xt_1 = np.zeros((self.number_states, 1))
         self.xt_ref = None
@@ -96,12 +117,18 @@ class Critic:
         self.replay = []
 
     def save_model(self):
+        """Сохранение модели
+        """
         self.model.save_weights("./critic_weight.h5")
 
     def load_model(self):
+        """Загрузка весов
+        """
         self.model.load_weights(self.model_path)
 
     def save_Jt_ct(self):
+        """Сохранение оценки состояния критиком
+        """
         np.save("./critic_jt", [
             self.Jt_1,
             self.Jt,
@@ -110,6 +137,8 @@ class Critic:
         ])
 
     def load_Jt_ct(self):
+        """Загрузка оценки состоянгия критиком
+        """
         data = np.load("./critic_jt.npy", allow_pickle=True)
         self.Jt_1 = data[0]
         self.Jt = data[1]
@@ -117,10 +146,8 @@ class Critic:
         self.ct = data[3]
 
     def build_critic_model(self):
-        """
-        Function that creates the neural network. At the moment, it is a densely connected neural network. The user
-        can decide the number of layers, the number of neurons, as well as the activation function.
-        :return:
+        """Функция, создающая нейронную сеть. На данный момент это плотно связанная нейронная сеть. Пользователь может 
+        определять количество слоев, количество нейронов, а также функцию активации.
         """
         # initializer = tf.keras.initializers.GlorotNormal()
         initializer = tf.keras.initializers.VarianceScaling(
@@ -149,13 +176,17 @@ class Critic:
             self.rmsprop_dict[count] = 0
 
     def run_train_critic_online_adaptive_alpha(self, xt, xt_ref):
+        """Функция, которая оценивает один раз критическую нейронную сеть и возвращает значение J(xt). В то же
+        время он обучает аппроксиматор функции с адаптивной схемой скорости обучения.
+
+        Args:
+            xt (_type_): текущее состояние временного шага
+            xt_ref (_type_): Заданное состояния текущего временного шага для вычисления одношаговой функции стоимости
+
+        Returns:
+            Jt (_type_): оценка критика на текущем временном шаге
         """
-        Function that evaluates once the critic neural network and returns the value of J(xt). At the same
-        time, it trains the function approximator with an adaptive learning rate scheme.
-        :param xt: current time step states
-        :param xt_ref: current time step reference states for the computation of the one-step cost function
-        :return: Jt --> evaluation of the critic at the current time step
-        """
+        
         nn_input, dJt_dW = self.compute_forward_pass(xt, xt_ref)
         dE_dJ, ec_critic_before, EC_critic_before = self.compute_loss_derivative()
         weight_cache = [tf.Variable(self.model.trainable_variables[i].numpy())
@@ -194,13 +225,17 @@ class Critic:
         return self.Jt
 
     def run_train_critic_online_adam(self, xt, xt_ref):
+        """Функция, которая оценивает один раз критическую нейронную сеть и возвращает значение J(xt). В то же
+        время, он обучает аппроксиматор функции с помощью оптимизатора Adam.
+
+        Args:
+            xt (_type_): текущее состояние временного шага
+            xt_ref (_type_): Заданное состояния текущего временного шага для вычисления одношаговой функции стоимости
+
+        Returns:
+            Jt (_type_): оценка критика на текущем временном шаге
         """
-        Function that evaluates once the critic neural network and returns the value of J(xt). At the same
-        time, it trains the function approximator with the Adam optimizer.
-        :param xt: current time step states
-        :param xt_ref: current time step reference states for the computation of the one-step cost function
-        :return: Jt --> evaluation of the critic at the current time step
-        """
+
         # Safe the information in the replay attribute
         self.replay.append((self.xt_1, xt, self.ct_1))
 
@@ -222,13 +257,14 @@ class Critic:
         return self.Jt
 
     def adam_iteration(self, dJt_dW, dE_dJ):
+        """Адам обновляет все веса и смещения, учитывая производную функции потерь по отношению к NN.
+        выход и производная выхода нейронной сети относительно весов и смещений.
+
+        Args:
+            dJt_dW (_type_): производная выхода NN по весам и смещениям
+            dE_dJ (_type_): производная функции потерь по выходу NN
         """
-        Adam update to all the weights and biases given the derivative of the loss function with respect to the NN
-        output and the derivative of the neural network output with respect to the weights and biases.
-        :param dJt_dW: derivative of the NN output with respect to the weights and biases
-        :param dE_dJ: derivative of the loss function with respect to the NN output
-        :return:
-        """
+
         if self.time_step > self.start_training:
             for count in range(len(dJt_dW)):
                 gradient = dE_dJ * dJt_dW[count]
@@ -256,14 +292,18 @@ class Critic:
             self.learning_rate = max(self.learning_rate * 0.995, 0.000001)
 
     def run_train_critic_online_alpha_decay(self, xt, xt_ref):
+        """Функция, которая оценивает один раз критическую нейронную сеть и возвращает значение J(xt). В то же
+        время обучает аппроксиматор функции градиентным спуском. Скорость обучения падает с увеличением количества
+        временные шаги.
+
+        Args:
+            xt (_type_): текущее состояние временного шага
+            xt_ref (_type_): Заданное состояния текущего временного шага для вычисления одношаговой функции стоимости
+
+        Returns:
+            Jt (_type_): оценка критика на текущем временном шаге
         """
-        Function that evaluates once the critic neural network and returns the value of J(xt). At the same
-        time, it trains the function approximator with gradient descent. The learning rate decays with the number of
-        time steps.
-        :param xt: current time step states
-        :param xt_ref: current time step reference states for the computation of the one-step cost function
-        :return: Jt --> evaluation of the critic at the current time step
-        """
+
         # Safe the information in the replay attribute
         self.replay.append((self.xt_1, xt, self.ct_1))
 
@@ -299,11 +339,13 @@ class Critic:
         return self.Jt
 
     def train_critic_replay_adam(self, replay_size, iteration):
+        """Функция, обучающая критика значениям, хранящимся в повторе.
+
+        Args:
+            xt (_type_): текущее состояние временного шага
+            xt_ref (_type_): Заданное состояния текущего временного шага для вычисления одношаговой функции стоимости
         """
-        Function that trains the critic with values stored in the replay.
-        :param xt: current time step states
-        :param xt_ref: current time step reference states for the computation of the one-step cost function
-        """
+
         # Compute the number of data points used in the replay training
         replay_size = min(replay_size, len(self.replay))
 
@@ -339,12 +381,15 @@ class Critic:
             # print("CRITIC LOSS xt after= ", Ec_critic_after)
 
     def compute_forward_pass(self, xt, xt_ref, replay=False):
-        """
-        Compute the output of the critic, as well as the derivative of Jt with respect to the network weights and biases
-        :param xt: states
-        :param xt_ref: reference states
-        :return: nn_input --> formatted input to the neural network
-                dJt_dW --> derivative of the loss function with respect to the weights and biases
+        """Вычислите результат критика, а также производную от Jt по весам и смещениям сети.
+
+        Args:
+            xt (_type_): Состояние
+            xt_ref (_type_): Заданное состояние
+
+        Returns:
+            nn_input (_type_): форматированный ввод в нейронную сеть
+            dJt_dW (_type_): производная функции потерь по весам и смещениям
         """
         # If it is online, safe the input in the object
         if not replay:
@@ -384,12 +429,14 @@ class Critic:
             return nn_input, dJt_dW, Jt
 
     def compute_loss_derivative(self, *args):
+        """Вычисляет производную функции потерь по Jt
+
+        Returns:
+            dE_dJ (_type_): производная функции потерь по Jt
+            ec_critic_before (_type_): ошибка сети перед тренировкой
+            EC_critic_before (_type_): функция потерь сети до обучения
         """
-        Computes the derivative of the loss function with respect to Jt
-        :return: dE_dJ --> derivative of the loss function with respect to Jt
-                ec_critic_before --> error of the network before the training
-                EC_critic_before --> loss function of the network before the training
-        """
+
         # In the case that there are no inputs, obtain data from the object attributes
         if len(args) == 0:
             tracked_states = np.reshape(self.xt_1[self.indices_tracking_states, :], [-1, 1])
@@ -426,10 +473,10 @@ class Critic:
         return dE_dJ, ec_critic_before, EC_critic_before
 
     def check_WB_limits(self, count):
-        """
-        Check whether any of the weights and biases exceed the limit imposed (WB_limits) and saturate the values
-        :param count: index within the model.trainable_variables being analysed
-        :return:
+        """Проверка, не превышают ли какие-либо веса и смещения установленный предел (WB_limits), и насыщайте значения.
+
+        Args:
+            count (_type_): индекс в анализируемой модели model.trainable_variables
         """
         WB_variable = self.model.trainable_variables[count].numpy()
         WB_variable[WB_variable > self.WB_limits] = self.WB_limits
@@ -437,13 +484,17 @@ class Critic:
         self.model.trainable_variables[count].assign(WB_variable)
 
     def evaluate_critic(self, xt, xt_ref):
+        """Функция, которая оценивает один раз критическую нейронную сеть и возвращает значение J(xt).
+
+        Args:
+            xt (_type_): Состояние
+            xt_ref (_type_): Заданное состояние
+
+        Returns:
+            Jt (_type_): оценка критика на текущем временном шаге
+            dJt_dxt (_type_): градиент функции стоимости по отношению к входу (xt)
         """
-        Function that evaluates once the critic neural network and returns the value of J(xt).
-        :param xt: current time step states
-        :param xt_ref: current time step reference state
-        :return: Jt --> evaluation of the critic at the current time step
-                dJt_dxt --> gradient of the cost function with respect to the input (xt)
-        """
+
         tracked_states = np.reshape(xt[self.indices_tracking_states, :], [-1, 1])
         xt_error = np.reshape(tracked_states - xt_ref, [-1, 1])
         nn_input = tf.constant(np.array([(xt_error)]).astype('float32'))
@@ -458,21 +509,25 @@ class Critic:
         return Jt, dJt_dxt
 
     def c_computation(self):
+        """Вычисление одношаговой функции стоимости с полученными реальным и эталонным состояниями.
+
+        Returns:
+            ct: Текущий временной шаг one-step cost функции
         """
-        Computation of the one-step cost function with the received real and reference states.
-        :return: ct --> current time step one-step cost function
-        """
+        
         ct = np.matmul(np.matmul((np.reshape(self.xt[self.indices_tracking_states, :], [-1, 1]) - self.xt_ref).T,
                                  self.Q), (np.reshape(self.xt[self.indices_tracking_states, :], [-1, 1]) - self.xt_ref))
         self.store_c[0, self.time_step] = ct[0]
         return ct
 
     def targets_computation_online(self, *args):
+        """Вычисляет цель на текущем временном шаге с одношаговой функцией стоимости предыдущего
+        временной шаг и текущая функция стоимости.
+
+        Returns:
+            target: цель предыдущего временного шага.
         """
-        Computes the target at the current time step with the one-step cost function of the previous
-        time step and the current cost function.
-        :return: target --> the target of the previous time step.
-        """
+        
         if len(args) == 0:
             target = np.reshape(-self.ct_1 - self.gamma * self.Jt, [-1, 1])
         elif len(args) == 2:
@@ -485,9 +540,7 @@ class Critic:
         return target
 
     def update_critic_attributes(self):
-        """
-        The attributes that change with every time step are updated
-        :return:
+        """Атрибуты, которые меняются с каждым временным шагом, обновляются
         """
         self.time_step += 1
         self.ct_1 = self.ct
@@ -500,12 +553,12 @@ class Critic:
                 counter * 2].numpy().flatten()
     
     def restart_time_step(self):
+        """Обнуление врменного шага
+        """
         self.time_step = 0
         
     def restart_critic(self):
-        """
-        Restart the Critic.
-        :return:
+        """Рестарт Критика.
         """
         # Declaration of attributes regarding the states and rewards
         self.time_step = 0

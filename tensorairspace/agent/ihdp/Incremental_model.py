@@ -1,26 +1,20 @@
-#!/usr/bin/env python
-"""Provides class IncrementalModel in order to identify the system
-
-IncrementalModel computes the A and x matrices required for the system identification,
-computes the F and G matrices required for the incremental model and evaluates the
-identified model in order to provide the estimates states at the next time step.
-"""
-
 import numpy as np
-
-"----------------------------------------------------------------------------------------------------------------------"
-__author__ = "Jose Ignacio de Alvear Cardenas"
-__copyright__ = "Copyright (C) 2020 Jose Ignacio"
-__credits__ = []
-__license__ = "MIT"
-__version__ = "1.0.1"
-__maintainer__ = "Jose Ignacio de Alvear Cardenas"
-__email__ = "j.i.dealvearcardenas@student.tudelft.nl"
-__status__ = "Production"
-"----------------------------------------------------------------------------------------------------------------------"
 
 
 class IncrementalModel:
+    """Предоставляет класс IncrementalModel для идентификации системы
+
+    IncrementalModel вычисляет матрицы A и x, необходимые для идентификации системы,
+    вычисляет матрицы F и G, необходимые для инкрементной модели, и оценивает идентифицированной модели, чтобы обеспечить оценки состояний на следующем временном шаге.
+    
+    Args:
+        selected_states (_type_): Выбранные состояния
+        selected_input (_type_): Выбранные управляющие сигналы
+        number_time_steps (_type_): Количество временных шагов
+        discretisation_time (float, optional): Время дискретизации. Defaults to 0.5.
+        input_magnitude_limits (int, optional): Пределы входных управляющих сигнгалов. Defaults to 25.
+        input_rate_limits (int, optional): Ограничения скорости управляющих сигнгалов. Defaults to 60.
+    """
 
     def __init__(self, selected_states, selected_input, number_time_steps, discretisation_time=0.5,
                  input_magnitude_limits=25, input_rate_limits=60):
@@ -57,22 +51,28 @@ class IncrementalModel:
         self.input_rate_limits = input_rate_limits
 
     def save_matrix(self):
+        """Сохранить матрицы
+        """
         np.save('./incremental_model/g', self.G)
         np.save('./incremental_model/f', self.F)
         np.save('./incremental_model/delta_ut', self.delta_ut)
         np.save('./incremental_model/delta_xt', self.delta_xt)
 
     def load_matrix(self):
+        """Загрузить матрицы
+        """
         self.G = np.load('./incremental_model/g.npy', )
         self.F = np.load('./incremental_model/f.npy', )
         self.delta_ut = np.load('./incremental_model/delta_ut.npy', )
         self.delta_xt = np.load('./incremental_model/delta_xt.npy', )
 
     def build_A_LS_matrix(self):
+        """Строит матрицу А, необходимую для онлайн-метода идентификации методом наименьших квадратов.
+
+        Returns:
+            A_LS_matrix: Матрица наименьших квадратов
         """
-        Builds the A matrix required in the Least Squares online identification method
-        :return: A_LS_matrix --> A matrix of the LS
-        """
+        
         if self.time_step >= self.L:
             x_component = np.flip(self.store_delta_xt[:, self.time_step - self.L:self.time_step], 1).T
             u_component = np.flip(self.store_delta_ut[:, self.time_step - self.L:self.time_step], 1).T
@@ -88,9 +88,10 @@ class IncrementalModel:
         return A_LS_matrix
 
     def build_x_LS_vector(self):
-        """
-        Builds the x vector required in the Least Squares of the online system identification
-        :return: x_LS_vector--> x vector required in the LS
+        """Строит вектор x, требуемый в методе наименьших квадратов онлайн-идентификации системы.
+
+        Returns:
+            x_LS_vector: x вектор который в требуется в наименьших квадратах
         """
         if self.time_step == 0:
             self.xt_1 = self.xt
@@ -110,12 +111,15 @@ class IncrementalModel:
         return x_LS_vector
 
     def identify_incremental_model_LS(self, xt, ut_0):
-        """
-        Computes the F and G matrices of the system identification
-        :param xt: current time step states
-        :param ut: current time step input
-        :return: G --> the input distribution matrix
-        """
+        """Вычисляет матрицы F и G идентификации системы
+
+        Args:
+            xt (_type_): текущее состояние на временном шаге t
+            ut_0 (_type_): входной сигнал на текущем временном шаге
+
+        Returns:
+            G (_type_): матрица распределения входных данных
+        """        
         # Verifying that the inputs meets the platforms constraints
         if self.time_step == 0:
             self.ut_1 = ut_0
@@ -143,10 +147,12 @@ class IncrementalModel:
         return self.G
 
     def evaluate_incremental_model(self, *args):
+        """Оценивает состояния следующего временного шага
+
+        Returns:
+            xt1_est (_type_): оценка состояния следующего временного шага
         """
-        Estimates the next time step states
-        :return: xt1_est --> next time step state estimation
-        """
+        
         if len(args) == 0:
             # Estimate the next time step states
             self.xt1_est = self.xt + np.matmul(self.F, self.delta_xt) + np.matmul(self.G, self.delta_ut)
@@ -187,22 +193,21 @@ class IncrementalModel:
             return xt1_est
 
     def update_incremental_model_attributes(self):
+        """Атрибуты, которые меняются с каждым временным шагом, обновляются
         """
-        The attributes that change with every time step are updated
-        :return:
-        """
+
         # Update the object state and input variables
         self.xt_1 = self.xt
         self.ut_1 = self.ut
         self.time_step += 1
 
     def restart_time_step(self):
+        """Обнуление временного шага
+        """
         self.time_step = 0
 
     def restart_incremental_model(self):
-        """
-        Restarts the incremental model.
-        :return:
+        """Перезапускает инкрементную модель.
         """
         self.time_step = 0
         self.store_delta_xt = np.zeros((self.number_states, self.number_time_steps))
