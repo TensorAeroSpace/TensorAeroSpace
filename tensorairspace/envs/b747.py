@@ -2,12 +2,12 @@ import gym
 import numpy as np
 from gym import error, spaces
 from gym.utils import seeding, EzPickle
-from tensorairspace.aircraftmodel.model.f16.linear.longitudinal.model import LongitudinalF16
+from tensorairspace.aircraftmodel import LongitudinalB747
 
 
 
-class LinearLongitudinalF16(gym.Env, EzPickle):
-    """Моделирование объекта управления LongitudinalF16 в среде моделирования OpenAI Gym для обучения агентов с исскуственным интелектом
+class LinearLongitudinalB747(gym.Env, EzPickle):
+    """Моделирование объекта управления LongitudinalB747 в среде моделирования OpenAI Gym для обучения агентов с исскуственным интелектом
 
     Args:
         initial_state (any): Начальное состояние
@@ -42,7 +42,7 @@ class LinearLongitudinalF16(gym.Env, EzPickle):
         else:
             self.reward_func = self.reward
             
-        self.model = LongitudinalF16(initial_state, number_time_steps=number_time_steps,
+        self.model = LongitudinalB747(initial_state, number_time_steps=number_time_steps,
                                      selected_state_output=output_space, t0=0)
         self.indices_tracking_states = [state_space.index(tracking_states[i]) for i in range(len(tracking_states))]
         
@@ -86,7 +86,7 @@ class LinearLongitudinalF16(gym.Env, EzPickle):
         """Восстановление среды моделирования в начальные условия
         """
         self.model = None
-        self.model = LongitudinalF16(self.initial_state, number_time_steps=self.number_time_steps,
+        self.model = LongitudinalB747(self.initial_state, number_time_steps=self.number_time_steps,
                                      selected_state_output=self.output_space, t0=0)
         self.ref_signal = self.reference_signal
         self.model.initialise_system(x0=self.initial_state, number_time_steps=self.number_time_steps)

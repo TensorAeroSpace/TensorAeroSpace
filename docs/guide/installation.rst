@@ -23,8 +23,8 @@
 
 .. code:: shell
 
-    docker build -it tensor_aero_space .
-    sudo docker run  -v ./tensorairspace:/app/tensorairspace -v ./example:/app/example -v ./docs:/app/docs -p 8888:8888 -it tensor_aero_space
+    docker build -t tensor_aero_space .
+    docker run  -v ./tensorairspace:/app/tensorairspace -v ./example:/app/example -v ./docs:/app/docs -p 8888:8888 -it tensor_aero_space
 
 
 .. note::
