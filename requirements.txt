@@ -112,3 +112,4 @@ optuna
 m2r
 recommonmark
 scikit-learn
+ray
