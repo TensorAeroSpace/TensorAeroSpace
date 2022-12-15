@@ -1,1 +1,0 @@
-["npos", "epos", "altitude", "phi", "theta", "psi", "velocity", "alpha", "beta", "p", "q", "r", "thrust", "ele", "ail", "rud", "dLEF", "fidelity_flag"]

@@ -65,4 +65,4 @@ class LinearLongitudinalF16(gym.Env, EzPickle):
         self.model.initialise_system(x0=self.initial_state, number_time_steps=self.number_time_steps)
 
     def render(self):
-        print("Not implimented")
+        raise NotImplementedError()

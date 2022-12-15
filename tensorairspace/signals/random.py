@@ -14,11 +14,6 @@ def full_random_signal(t0: float, dt: float, tn: float, sd: tuple, sv: tuple) ->
 
     Returns:
        Массив с случайным сигналом по частоте и амплидуте
-
-    Пример:
-
-    >>> signal =  full_random_signal(0,0.01,20, (-0.5, 0.5), (-0.5, 0.5))
-
     """
     sd_min, sd_max = sd
     sv_min, sv_max = sv
