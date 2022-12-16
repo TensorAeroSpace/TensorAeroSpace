@@ -43,7 +43,7 @@ class LinearLongitudinalF16(gym.Env, EzPickle):
             self.reward_func = self.reward
             
         self.model = LongitudinalF16(initial_state, number_time_steps=number_time_steps,
-                                     selected_state_output=output_space, t0=0)
+                                     selected_state_output=output_space)
         self.indices_tracking_states = [state_space.index(tracking_states[i]) for i in range(len(tracking_states))]
         
         self.ref_signal = reference_signal
@@ -87,7 +87,7 @@ class LinearLongitudinalF16(gym.Env, EzPickle):
         """
         self.model = None
         self.model = LongitudinalF16(self.initial_state, number_time_steps=self.number_time_steps,
-                                     selected_state_output=self.output_space, t0=0)
+                                     selected_state_output=self.output_space)
         self.ref_signal = self.reference_signal
         self.model.initialise_system(x0=self.initial_state, number_time_steps=self.number_time_steps)
 

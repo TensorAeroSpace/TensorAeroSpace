@@ -14,11 +14,17 @@ ENV PATH=$CONDA_DIR/bin:$PATH
 
 WORKDIR /app
 
-COPY requirements.txt requirements.txt
-COPY start.sh start.sh
+
 
 RUN pip install --upgrade pip
+
+
+
+
+COPY start.sh start.sh
+COPY requirements.txt requirements.txt
 RUN pip install -r requirements.txt     
+RUN pip install jupyter
 
 EXPOSE 8888
 RUN chmod +x /app/start.sh
