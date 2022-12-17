@@ -32,7 +32,7 @@ class ModelBase:
         self.u_history = []
         self.x_history = []
 
-        # Параметры для модли
+        # Параметры для модели
         self.dt = dt
         self.time_step = 1  # 1 - потому что матлаб
         self.t0 = t0
@@ -45,13 +45,13 @@ class ModelBase:
         self.yt = None
         self.ut = None
 
-        # Массивы с обаботанными данными
+        # Массивы с обработанными данными
         self.state_history = []
         self.control_history = []
         self.store_outputs = []
 
         # Массивы с доступными
-        # Пространстом состояний и пространством управления
+        # Пространством состояний и пространством управления
         self.list_state = []
         self.control_list = []
 

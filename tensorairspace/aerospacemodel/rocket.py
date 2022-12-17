@@ -9,7 +9,7 @@ from tensorairspace.aerospacemodel.f16.nonlinear.utils import output2dict
 
 class MissileModel(ModelBase):
     """
-    Boing 747 в продольном канале управления
+    Ракета в продольном канале управления
     
     
     Args:

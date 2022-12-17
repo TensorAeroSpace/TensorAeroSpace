@@ -4,7 +4,7 @@ def unit_step(tp:np.array, degree:int, time_step:int=10, dt:float=0.01, output_r
     """Генерация ступенчатого сигнала
 
     Args:
-        degree (int): Угол отлонения
+        degree (int): Угол отклонения
         tp (np.array): Временной промежуток
         time_step (ing): Время ступеньки
         dt (float): Частота дискретизации

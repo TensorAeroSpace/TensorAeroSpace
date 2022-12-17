@@ -9,7 +9,7 @@ from tensorairspace.aerospacemodel.f16.nonlinear.utils import output2dict
 
 class ELVRocket(ModelBase):
     """
-    ELV рокета в продольном канале управления
+    ELV ракета в продольном канале управления
     
     
     Args:

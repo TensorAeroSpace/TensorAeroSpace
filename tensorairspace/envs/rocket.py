@@ -7,7 +7,7 @@ from tensorairspace.aerospacemodel import MissileModel
 
 
 class LinearLongitudinalMissileModel(gym.Env, EzPickle):
-    """Моделирование объекта управления LongitudinalB747 в среде моделирования OpenAI Gym для обучения агентов с исскуственным интелектом
+    """Моделирование объекта управления MissileModel в среде моделирования OpenAI Gym для обучения агентов с искусственным интеллектом
 
     Args:
         initial_state (any): Начальное состояние
@@ -52,7 +52,7 @@ class LinearLongitudinalMissileModel(gym.Env, EzPickle):
     
     @staticmethod
     def reward(state, ref_signal, ts):
-        """Оценка упавления
+        """Оценка управления
 
         Args:
             state (_type_): Текущее состояния
@@ -60,7 +60,7 @@ class LinearLongitudinalMissileModel(gym.Env, EzPickle):
             ts (_type_): Временное шаг
 
         Returns:
-            reward (float): Оценка упавления
+            reward (float): Оценка управления
         """
         return np.abs(state[0] - ref_signal[:, ts])
         

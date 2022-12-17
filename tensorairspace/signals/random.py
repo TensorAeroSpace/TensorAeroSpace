@@ -3,7 +3,7 @@ import numpy as np
 
 def full_random_signal(t0: float, dt: float, tn: float, sd: tuple, sv: tuple) -> np.ndarray:
     """
-    Случайный сигнал по частоте и амплидуте
+    Случайный сигнал по частоте и амплитуде
 
     Args:
         t0: Начальное время
@@ -13,7 +13,7 @@ def full_random_signal(t0: float, dt: float, tn: float, sd: tuple, sv: tuple) ->
         sv: Ограничения значений по значению сигнала (min, max)
 
     Returns:
-       Массив с случайным сигналом по частоте и амплидуте
+       Массив с случайным сигналом по частоте и амплитуде
     """
     sd_min, sd_max = sd
     sv_min, sv_max = sv

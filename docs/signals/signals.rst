@@ -40,7 +40,7 @@
 .. image:: img/sinusoid.png
   		:alt: Синусоидный сигнал
 
-Случайный сигнал по частоте и амплидуте
+Случайный сигнал по частоте и амплитуде
 ---------------------------------------
 
 .. autofunction:: tensorairspace.signals.random.full_random_signal
@@ -54,4 +54,4 @@
     signal =  full_random_signal(0,0.01,20, (-0.5, 0.5), (-0.5, 0.5))
 
 .. image:: img/full_random.png
-  		:alt: Случайный сигнал по частоте и амплидуте
+  		:alt: Случайный сигнал по частоте и амплитуде
