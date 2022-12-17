@@ -45,6 +45,7 @@ TensorAirSpace: a library for applied reinforcement learning in aerospace
    example/env/LinearLongitudinalF16.rst
    example/agent/ihdp/example_ihdp.rst 
    example/optimization/example_optimization.rst
+   example/failure/ihdp-failure.rst
    example/simulink/sim_pyth.rst
 
 

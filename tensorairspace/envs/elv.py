@@ -2,11 +2,11 @@ import gym
 import numpy as np
 from gym import error, spaces
 from gym.utils import seeding, EzPickle
-from tensorairspace.aerospacemodel import LongitudinalB747
+from tensorairspace.aerospacemodel import ELVRocket
 
 
 
-class LinearLongitudinalB747(gym.Env, EzPickle):
+class LinearLongitudinalELVRocket(gym.Env, EzPickle):
     """Моделирование объекта управления LongitudinalB747 в среде моделирования OpenAI Gym для обучения агентов с исскуственным интелектом
 
     Args:
@@ -42,7 +42,7 @@ class LinearLongitudinalB747(gym.Env, EzPickle):
         else:
             self.reward_func = self.reward
             
-        self.model = LongitudinalB747(initial_state, number_time_steps=number_time_steps,
+        self.model = ELVRocket(initial_state, number_time_steps=number_time_steps,
                                      selected_state_output=output_space, t0=0)
         self.indices_tracking_states = [state_space.index(tracking_states[i]) for i in range(len(tracking_states))]
         
