@@ -2,7 +2,7 @@ import gym
 import numpy as np
 from gym import error, spaces
 from gym.utils import seeding, EzPickle
-from tensorairspace.aircraftmodel.model.f16.linear.longitudinal.model import LongitudinalF16
+from tensorairspace.aerospacemodel.f16.linear.longitudinal.model import LongitudinalF16
 
 
 

@@ -32,7 +32,7 @@ General Dynamics F-16 Fighting Falcon — американский многоф�
 Модель
 ------
 
-.. autoclass:: tensorairspace.aircraftmodel.LongitudinalF16
+.. autoclass:: tensorairspace.aerospacemodel.LongitudinalF16
     :members:
     :inherited-members:
 

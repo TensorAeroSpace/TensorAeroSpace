@@ -27,10 +27,21 @@ BOEING-747 — двухпалубный широкофюзеляжный пас�
    * -  Нормальная взлетная масса, кг
      - 11467
 
+Математическая модель 
+---------------------
+
+.. math::
+
+  \begin{bmatrix}
+  1 & 2 & 3\\
+  a & b & c
+  \end{bmatrix}
+
+
 Модель
 ------
 
-.. autoclass:: tensorairspace.aircraftmodel.model.b747.model.LongitudinalB747
+.. autoclass:: tensorairspace.aerospacemodel.LongitudinalB747
     :members:
 
 

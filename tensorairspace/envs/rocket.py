@@ -2,7 +2,7 @@ import gym
 import numpy as np
 from gym import error, spaces
 from gym.utils import seeding, EzPickle
-from tensorairspace.aircraftmodel import RocketModel
+from tensorairspace.aerospacemodel import RocketModel
 
 
 
