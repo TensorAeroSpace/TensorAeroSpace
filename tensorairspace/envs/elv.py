@@ -86,7 +86,7 @@ class LinearLongitudinalELVRocket(gym.Env, EzPickle):
         """Восстановление среды моделирования в начальные условия
         """
         self.model = None
-        self.model = LongitudinalB747(self.initial_state, number_time_steps=self.number_time_steps,
+        self.model = ELVRocket(self.initial_state, number_time_steps=self.number_time_steps,
                                      selected_state_output=self.output_space, t0=0)
         self.ref_signal = self.reference_signal
         self.model.initialise_system(x0=self.initial_state, number_time_steps=self.number_time_steps)

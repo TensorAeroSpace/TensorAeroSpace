@@ -2,7 +2,7 @@ import gym
 import numpy as np
 from gym import error, spaces
 from gym.utils import seeding, EzPickle
-from tensorairspace.aerospacemodel import RocketModel
+from tensorairspace.aerospacemodel import MissileModel
 
 
 
@@ -42,7 +42,7 @@ class LinearLongitudinalELVRocket(gym.Env, EzPickle):
         else:
             self.reward_func = self.reward
             
-        self.model = RocketModel(initial_state, number_time_steps=number_time_steps,
+        self.model = MissileModel(initial_state, number_time_steps=number_time_steps,
                                      selected_state_output=output_space, t0=0)
         self.indices_tracking_states = [state_space.index(tracking_states[i]) for i in range(len(tracking_states))]
         
@@ -86,7 +86,7 @@ class LinearLongitudinalELVRocket(gym.Env, EzPickle):
         """Восстановление среды моделирования в начальные условия
         """
         self.model = None
-        self.model = LongitudinalB747(self.initial_state, number_time_steps=self.number_time_steps,
+        self.model = MissileModel(self.initial_state, number_time_steps=self.number_time_steps,
                                      selected_state_output=self.output_space, t0=0)
         self.ref_signal = self.reference_signal
         self.model.initialise_system(x0=self.initial_state, number_time_steps=self.number_time_steps)
