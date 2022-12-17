@@ -11,12 +11,14 @@ tf.random.set_seed(1)
 
 class Model(tf.keras.Model):
 
-    "Класс для DQN модели"
+    """Нейросеть для глубокой Q нейросети. Принимает на вход количество действий. Содержит методы для инициализации,
+    forward и выбора действия.
+
+    Args:
+        num_actions (int): количество действий
+    """
 
     def __init__(self, num_actions):
-
-        "Инициализация"
-
         super().__init__(name='basic_prddqn')
         self.fc1 = kl.Dense(32, activation='relu', kernel_initializer='he_uniform')
         self.fc2 = kl.Dense(32, activation='relu', kernel_initializer='he_uniform')
@@ -24,7 +26,13 @@ class Model(tf.keras.Model):
 
     def call(self, inputs):
 
-        "Функция forward. Возвращает q функции для действий"
+        """Функция forward. Возвращает q функции для действий.
+
+        Args:
+            inputs (_type_): батч входных данных
+
+        Returns:
+            x (_type_): батч векторов Q функций для действий"""
 
         x = self.fc1(inputs)
         x = self.fc2(x)
@@ -33,7 +41,18 @@ class Model(tf.keras.Model):
 
     def action_value(self, obs):
 
-        "Функция стратегии. Принимает на вход состояние, возвращает действие."
+        """Функция стратегии. Возвращает действие.
+
+        Args:
+            obs (_type_): батч входных данных
+
+        Returns:
+            best_action (_type_): батч векторов действий
+
+            или если на вход подан батч размера 1
+
+            best_action (_int_): лучшее действие
+            q_values (_type_): q функции для действий в данном состоянии"""
 
         q_values = self.predict(obs)
         best_action = np.argmax(q_values, axis=-1)
@@ -42,7 +61,7 @@ class Model(tf.keras.Model):
 
 def test_model():
 
-    "функция для проверки работоспособности модели"
+    """функция для проверки работоспособности модели"""
 
     env = gym.make('CartPole-v0')
     print('num_actions: ', env.action_space.n)
@@ -58,11 +77,15 @@ def test_model():
 
 class SumTree:
 
-    "Класс бинарного дерева для реплей буфера"
+    """Класс бинарного дерева поиска для приоретизированного реплей буфера агента
+
+    Args:
+        capacity (int): Размер буфера
+    """
 
     def __init__(self, capacity):
 
-        "Инициализация"
+        """Инициализация"""
 
         self.capacity = capacity    # N, the size of replay buffer, so as to the number of sum tree's leaves
         self.tree = np.zeros(2 * capacity - 1)  # equation, to calculate the number of nodes in a sum tree
@@ -72,13 +95,21 @@ class SumTree:
     @property
     def total_p(self):
 
-        "Количество записей в буфере"
+        """Количество записей в буфере
+
+        Returns:
+            (_int_): количество записей в буфере"""
 
         return self.tree[0]
 
     def add(self, priority, transition):
 
-        "Функция для добавления объекта в буфер"
+        """Функция для добавления объекта в буффер
+
+        Args:
+            priority (int): приоритет добавляемого перехода
+            transition (__type__): вектор перехода S, A, R, S'
+        """
 
         idx = self.next_idx + self.capacity - 1
         self.transitions[self.next_idx] = transition
@@ -87,7 +118,12 @@ class SumTree:
 
     def update(self, idx, priority):
 
-        "Обновление приоритетов в буфере"
+        """Функция для обновления приоритета объекта с заданным индексом
+
+        Args:
+            idx (int): индекс перехода
+            priority (int): приоритет обновляемого перехода
+        """
 
         change = priority - self.tree[idx]
         self.tree[idx] = priority
@@ -95,7 +131,12 @@ class SumTree:
 
     def _propagate(self, idx, change):
 
-        "Обратное распространение приоритетов"
+        """Функция для обратного обновления приоритетов в дереве
+
+        Args:
+            idx (int): индекс перехода
+            priority (int): приоритет обновляемого перехода
+        """
 
         parent = (idx - 1) // 2
         self.tree[parent] += change
@@ -104,7 +145,16 @@ class SumTree:
 
     def get_leaf(self, s):
 
-        "Получение значения листа дерева"
+        """Функция для получения объекта по заданному приоритету
+
+        Args:
+            s (int): приоритет по которому отсекается переход
+
+        Returns:
+            idx (int): индекс перехода
+            priority (int): приоритет обновляемого перехода
+            transitions (__type__): необходимый переход
+        """
 
         idx = self._retrieve(0, s)   # from root
         trans_idx = idx - self.capacity + 1
@@ -112,7 +162,15 @@ class SumTree:
 
     def _retrieve(self, idx, s):
 
-        "Поиск элемента в дереве"
+        """Функция для поиска объекта по заданному приоритету и индексу
+
+        Args:
+            idx (int): индекс в котором в данный момент осуществляется поиск
+            s (int): приоритет по которому отсекается переход
+
+        Returns:
+            idx (int): индекс найденного перехода
+        """
 
         left = 2 * idx + 1
         right = left + 1
