@@ -9,8 +9,10 @@ import tensorflow.keras.optimizers as ko
 np.random.seed(1)
 tf.random.set_seed(1)
 
-# Neural Network Model Defined at Here.
 class Model(tf.keras.Model):
+    
+    "Class for agent network"
+    
     def __init__(self, num_actions):
         super().__init__(name='basic_prddqn')
         # you can try different kernel initializer
