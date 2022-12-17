@@ -10,6 +10,20 @@ ELV(Expendable launch vehicle) - ракета-носитель, предназн
 
 
 
+Модель
+------
+
+.. autoclass:: tensorairspace.aerospacemodel.ELVRocket
+    :members:
+
+
+Среда моделирования OpenAI Gym
+------------------------------
+
+.. autoclass:: tensorairspace.envs.LinearLongitudinalELVRocket
+    :members:
+
+
 
 Источники
 ---------

@@ -1,6 +1,6 @@
 import matplotlib.pyplot as plt
 import numpy as np
-from scipy.signal import *
+from scipy.signal import cont2discrete
 
 from tensorairspace.aerospacemodel.base import ModelBase
 from tensorairspace.aerospacemodel.utils.constant import state_to_latex_rus, state_to_latex_eng

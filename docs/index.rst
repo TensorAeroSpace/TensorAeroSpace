@@ -49,7 +49,7 @@ Github репозиторий: https://github.com/TensorAirSpace/TensorAirSpace
    :maxdepth: 2
    :caption: Примеры:
    
-   example/env/LinearLongitudinalF16.rst
+   example/env/examples.rst
    example/agent/ihdp/example_ihdp.rst 
    example/optimization/example_optimization.rst
    example/failure/ihdp-failure.rst

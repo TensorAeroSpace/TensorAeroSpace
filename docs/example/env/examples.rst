@@ -75,7 +75,7 @@ LinearLongitudinalF16-v0
 
 
 LinearLongitudinalB747-v0
-----------------------
+-------------------------
 
 
 .. code:: ipython3
@@ -148,7 +148,7 @@ LinearLongitudinalB747-v0
 
 
 LinearLongitudinalMissileModel-v0
-----------------------
+---------------------------------
 
 
 
@@ -225,7 +225,7 @@ LinearLongitudinalMissileModel-v0
 
 
 LinearLongitudinalELVRocket-v0
-----------------------
+------------------------------
 
 
 

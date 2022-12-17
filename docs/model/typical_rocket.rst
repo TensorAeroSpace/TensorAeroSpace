@@ -104,6 +104,14 @@
 .. autoclass:: tensorairspace.aerospacemodel.MissileModel
     :members:
 
+Среда моделирования OpenAI Gym
+------------------------------
+
+.. autoclass:: tensorairspace.envs.LinearLongitudinalMissileModel
+    :members:
+
+
+
 Источники
 ---------
 
