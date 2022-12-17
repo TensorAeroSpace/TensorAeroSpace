@@ -147,6 +147,10 @@
     model = IHDPAgent(actor_settings, critic_settings, incremental_settings, env.tracking_states, env.state_space, env.control_space, number_time_steps, env.indices_tracking_states)
 
 
+.. note::
+
+    В данном примере происходит моделирование резкого изменения угла атаки при помощи изменения параметра :math:`z_{\alpha}` в матрице A Пространств состояний
+    
 
 .. code:: ipython3
 
