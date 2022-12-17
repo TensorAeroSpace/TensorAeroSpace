@@ -35,7 +35,7 @@
 
     dt = 0.01
     tp = generate_time_period(tn=20)
-    tp_sinusoid = sinusoid(tp=tp, amplitude=0.01, frequency=10)
+    tp_sinusoid = sinusoid(tp=tp, amplitude=10, frequency=0.01)
 
 .. image:: img/sinusoid.png
   		:alt: Синусоидный сигнал

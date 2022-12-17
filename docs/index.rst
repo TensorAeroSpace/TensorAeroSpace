@@ -3,10 +3,17 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-TensorAirSpace: a library for applied reinforcement learning in aerospace 
-==========================================================================
+.. note:: 
 
-Библиотека TensorAirSpace предоставляет возможность применения методов reinforcement learning к различным объектам управления.
+   В скором времени библиотека изменит свой адрес. C TensorAirSpace на TensorAeroSpace
+
+Добро пожаловь в документацию TensorAirSpace! - RL for Aerospace
+================================================================
+
+TensorAirSpace - это набор объектов управления, сред моделирования OpenAI Gym и реализации алгоритмов Reinforcement Learning (RL)
+
+Github репозиторий: https://github.com/TensorAirSpace/TensorAirSpace
+
 
 .. toctree::
    :maxdepth: 2

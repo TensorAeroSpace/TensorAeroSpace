@@ -11,6 +11,6 @@ register(
 )
 
 register(
-    id='LinearLongitudinalELVRocket-v0',
-    entry_point='tensorairspace.envs:LinearLongitudinalELVRocket',
+    id='LinearLongitudinalMissileModel-v0',
+    entry_point='tensorairspace.envs:LinearLongitudinalMissileModel',
 )

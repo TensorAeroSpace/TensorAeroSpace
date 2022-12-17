@@ -6,7 +6,7 @@ from tensorairspace.aerospacemodel import MissileModel
 
 
 
-class LinearLongitudinalELVRocket(gym.Env, EzPickle):
+class LinearLongitudinalMissileModel(gym.Env, EzPickle):
     """Моделирование объекта управления LongitudinalB747 в среде моделирования OpenAI Gym для обучения агентов с исскуственным интелектом
 
     Args:

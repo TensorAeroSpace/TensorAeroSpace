@@ -20,7 +20,7 @@ def unit_step(tp:np.array, degree:int, time_step:int=10, dt:float=0.01, output_r
 
 
 
-def sinusoid(tp: np.ndarray, amplitude: float, frequency: int) -> np.ndarray:
+def sinusoid(tp: np.ndarray, frequency : float, amplitude: int) -> np.ndarray:
     """
     Синусоидальный сигнал
 
@@ -32,4 +32,4 @@ def sinusoid(tp: np.ndarray, amplitude: float, frequency: int) -> np.ndarray:
     Returns:
         Синусоидный сигнал
     """
-    return np.sin(tp * amplitude) * frequency
+    return np.sin(tp * amplitude) * frequency 
