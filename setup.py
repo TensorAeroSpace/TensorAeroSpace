@@ -1,12 +1,12 @@
 from setuptools import setup
-from pip.req import parse_requirements
 
-install_reqs = parse_requirements('./requirements.txt')
-reqs = [str(ir.req) for ir in install_reqs]
+
+with open('./requirements.txt') as f:
+    required = f.read().splitlines()
 
 setup(name='tensorairspace',
         version='0.1.1',
-        install_requires=reqs,
+        install_requires=required,
         python_requires=">=3.7",
         description="TensorAirSpace! - RL for Aerospace.",
         url="https://github.com/TensorAirSpace/TensorAirSpace",
