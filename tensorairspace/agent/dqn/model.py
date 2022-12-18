@@ -184,7 +184,26 @@ class SumTree:
 
 class PERAgent:
 
-    "Класс для DQN агента"
+    """Агент DQN.
+
+        Args:
+            model (__type__): нейросетевая модель глубокой Q сети
+            target_model (__type__): нейросетевая модель для целевой глубокой Q сети
+            env (__type__): gym среда
+            learning_rate (float, optional)
+            epsilon (float, optional): вероятность исследования среды
+            epsilon_dacay (float, optional): уменьшение вероятности исследования среды за эпизод
+            min_epsilon (float, optional): минимальная вероятность исследования среды
+            gamma (float, optional)
+            batch_size (float, optional)
+            target_update_iter (int, optional): количество эпизодов для обновления целевой сети
+            train_nums (int, optional): количество эпизодов обучения
+            buffer_size (int, optional)
+            replay_period (int, optional)
+            alpha (float, optional)
+            beta (float, optional)
+            beta_increment_per_sample (float, optional)
+        """
 
     def __init__(self, model, target_model, env, learning_rate=.0012, epsilon=.1, epsilon_dacay=0.995, min_epsilon=.01,
                  gamma=.9, batch_size=8, target_update_iter=400, train_nums=5000, buffer_size=200, replay_period=20,
@@ -228,15 +247,23 @@ class PERAgent:
 
     def _per_loss(self, y_target, y_pred):
 
-        "Получение функции ошибки"
+        """Получение ошибки при обучении
+
+                Args:
+                    y_target (__type__): q функции сгенерированные целевой нейросетью
+                    y_pred (int): q функции сгенерированные основной нейросетью
+
+                Returns:
+                    loss (float): ошибка
+                """
 
         return tf.reduce_mean(self.is_weight * tf.math.squared_difference(y_target, y_pred))
 
     def train(self):
 
-        "Функция для обучения"
+        """Функция для обучения
+                """
 
-        # initialize the initial observation of the agent
         obs = self.env.reset()
         for t in range(1, self.train_nums):
             best_action, q_values = self.model.action_value(obs[None])  # input the obs to the network model
@@ -264,7 +291,10 @@ class PERAgent:
 
     def train_step(self):
 
-        "Шаг обучения"
+        """Функция для шага обучения
+            Returns:
+                    losses (float): ошибки после одного шага обучения
+                """
 
         idxes, self.is_weight = self.sum_tree_sample(self.batch_size)
         # Double Q-Learning
@@ -290,10 +320,17 @@ class PERAgent:
 
         return losses
 
-    # proportional prioritization sampling
     def sum_tree_sample(self, k):
 
-        "Получение элемента из буфера"
+        """Получение батча для обучения
+
+                Args:
+                    k (int): размер получаемого батча
+
+                Returns:
+                    idxes (int): индексы объектов из батча
+                    is_weights (float): приоритеты объектов из батча
+                """
 
         idxes = []
         is_weights = np.empty((k, 1))
@@ -314,7 +351,15 @@ class PERAgent:
 
     def evaluation(self, env, render=False):
 
-        "Валидация обученной сети"
+        """Получение батча для обучения
+
+                Args:
+                    env (__type__): среда
+                    render (bool, optional): визуализировать ли среду или нет
+
+                Returns:
+                    ep_reward (float): суммарная награда за эпизод
+                """
 
         obs, done, ep_reward = env.reset(), False, 0
         # one episode until done
@@ -328,8 +373,20 @@ class PERAgent:
         env.close()
         return ep_reward
 
-    # store transitions into replay butter, now sum tree.
     def store_transition(self, priority, obs, action, reward, next_state, done):
+        """Сохранение перехода в буфере
+
+                        Args:
+                            priority (int): приоритет
+                            obs (__type__): наблюдение
+                            action (int): действие
+                            reward (float): награда
+                            next_state (__type__): следующее наблюдение
+                            done: выполнено ли задание или нет
+
+                        Returns:
+                            ep_reward (float): суммарная награда за эпизод
+                        """
         transition = [obs, action, reward, next_state, done]
         self.replay_buffer.add(priority, transition)
 
@@ -339,16 +396,33 @@ class PERAgent:
 
     # e-greedy
     def get_action(self, best_action):
+        """жадная функция стратегии. Возвращает случайное действие если происходит исследование среды
+
+                                Args:
+                                    best_action (int): лучшее действие
+
+                                Returns:
+                                    action (float): принятое согласно стратегии действие
+                                """
         if np.random.rand() < self.epsilon:
             return self.env.action_space.sample()
         return best_action
 
     # assign the current network parameters to target network
     def update_target_model(self):
+        """Функция обновления целевой нейросети
+                                        """
         self.target_model.set_weights(self.model.get_weights())
 
     def get_target_value(self, obs):
+        """Функция получения q значений целевой нейросети
+            Returns:
+                                    q_values (float): q значения целевой сети
+                                                """
         return self.target_model.predict(obs)
 
     def e_decay(self):
+        """Функция для уменьшения вероятности исследования сети
+                """
+
         self.epsilon *= self.epsilon_decay
