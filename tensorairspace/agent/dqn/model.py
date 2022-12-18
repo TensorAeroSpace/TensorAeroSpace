@@ -9,31 +9,60 @@ import tensorflow.keras.optimizers as ko
 np.random.seed(1)
 tf.random.set_seed(1)
 
-# Neural Network Model Defined at Here.
 class Model(tf.keras.Model):
+
+    """Нейросеть для глубокой Q нейросети. Принимает на вход количество действий. Содержит методы для инициализации,
+    forward и выбора действия.
+
+    Args:
+        num_actions (int): количество действий
+    """
+
     def __init__(self, num_actions):
         super().__init__(name='basic_prddqn')
-        # you can try different kernel initializer
         self.fc1 = kl.Dense(32, activation='relu', kernel_initializer='he_uniform')
         self.fc2 = kl.Dense(32, activation='relu', kernel_initializer='he_uniform')
         self.logits = kl.Dense(num_actions, name='q_values')
 
-    # forward propagation
     def call(self, inputs):
+
+        """Функция forward. Возвращает q функции для действий.
+
+        Args:
+            inputs (_type_): батч входных данных
+
+        Returns:
+            x (_type_): батч векторов Q функций для действий"""
+
         x = self.fc1(inputs)
         x = self.fc2(x)
         x = self.logits(x)
         return x
 
-    # a* = argmax_a' Q(s, a')
     def action_value(self, obs):
+
+        """Функция стратегии. Возвращает действие.
+
+        Args:
+            obs (_type_): батч входных данных
+
+        Returns:
+            best_action (_type_): батч векторов действий
+
+            или если на вход подан батч размера 1
+
+            best_action (_int_): лучшее действие
+            q_values (_type_): q функции для действий в данном состоянии"""
+
         q_values = self.predict(obs)
         best_action = np.argmax(q_values, axis=-1)
         return best_action if best_action.shape[0] > 1 else best_action[0], q_values[0]
 
 
-# To test whether the model works
 def test_model():
+
+    """функция для проверки работоспособности модели"""
+
     env = gym.make('CartPole-v0')
     print('num_actions: ', env.action_space.n)
     model = Model(env.action_space.n)
@@ -46,10 +75,18 @@ def test_model():
     print('res of test model: ', best_action, q_values)  # 0 [ 0.00896799 -0.02111824]
 
 
-# replay buffer
 class SumTree:
-    # little modified from https://github.com/jaromiru/AI-blog/blob/master/SumTree.py
+
+    """Класс бинарного дерева поиска для приоретизированного реплей буфера агента
+
+    Args:
+        capacity (int): Размер буфера
+    """
+
     def __init__(self, capacity):
+
+        """Инициализация"""
+
         self.capacity = capacity    # N, the size of replay buffer, so as to the number of sum tree's leaves
         self.tree = np.zeros(2 * capacity - 1)  # equation, to calculate the number of nodes in a sum tree
         self.transitions = np.empty(capacity, dtype=object)
@@ -57,31 +94,84 @@ class SumTree:
 
     @property
     def total_p(self):
+
+        """Количество записей в буфере
+
+        Returns:
+            (_int_): количество записей в буфере"""
+
         return self.tree[0]
 
     def add(self, priority, transition):
+
+        """Функция для добавления объекта в буффер
+
+        Args:
+            priority (int): приоритет добавляемого перехода
+            transition (__type__): вектор перехода S, A, R, S'
+        """
+
         idx = self.next_idx + self.capacity - 1
         self.transitions[self.next_idx] = transition
         self.update(idx, priority)
         self.next_idx = (self.next_idx + 1) % self.capacity
 
     def update(self, idx, priority):
+
+        """Функция для обновления приоритета объекта с заданным индексом
+
+        Args:
+            idx (int): индекс перехода
+            priority (int): приоритет обновляемого перехода
+        """
+
         change = priority - self.tree[idx]
         self.tree[idx] = priority
         self._propagate(idx, change)    # O(logn)
 
     def _propagate(self, idx, change):
+
+        """Функция для обратного обновления приоритетов в дереве
+
+        Args:
+            idx (int): индекс перехода
+            priority (int): приоритет обновляемого перехода
+        """
+
         parent = (idx - 1) // 2
         self.tree[parent] += change
         if parent != 0:
             self._propagate(parent, change)
 
     def get_leaf(self, s):
+
+        """Функция для получения объекта по заданному приоритету
+
+        Args:
+            s (int): приоритет по которому отсекается переход
+
+        Returns:
+            idx (int): индекс перехода
+            priority (int): приоритет обновляемого перехода
+            transitions (__type__): необходимый переход
+        """
+
         idx = self._retrieve(0, s)   # from root
         trans_idx = idx - self.capacity + 1
         return idx, self.tree[idx], self.transitions[trans_idx]
 
     def _retrieve(self, idx, s):
+
+        """Функция для поиска объекта по заданному приоритету и индексу
+
+        Args:
+            idx (int): индекс в котором в данный момент осуществляется поиск
+            s (int): приоритет по которому отсекается переход
+
+        Returns:
+            idx (int): индекс найденного перехода
+        """
+
         left = 2 * idx + 1
         right = left + 1
         if left >= len(self.tree):
@@ -92,7 +182,29 @@ class SumTree:
             return self._retrieve(right, s - self.tree[left])
 
 
-class PERAgent:  # Double DQN with Proportional Prioritization
+class PERAgent:
+
+    """Агент DQN.
+
+        Args:
+            model (__type__): нейросетевая модель глубокой Q сети
+            target_model (__type__): нейросетевая модель для целевой глубокой Q сети
+            env (__type__): gym среда
+            learning_rate (float, optional)
+            epsilon (float, optional): вероятность исследования среды
+            epsilon_dacay (float, optional): уменьшение вероятности исследования среды за эпизод
+            min_epsilon (float, optional): минимальная вероятность исследования среды
+            gamma (float, optional)
+            batch_size (float, optional)
+            target_update_iter (int, optional): количество эпизодов для обновления целевой сети
+            train_nums (int, optional): количество эпизодов обучения
+            buffer_size (int, optional)
+            replay_period (int, optional)
+            alpha (float, optional)
+            beta (float, optional)
+            beta_increment_per_sample (float, optional)
+        """
+
     def __init__(self, model, target_model, env, learning_rate=.0012, epsilon=.1, epsilon_dacay=0.995, min_epsilon=.01,
                  gamma=.9, batch_size=8, target_update_iter=400, train_nums=5000, buffer_size=200, replay_period=20,
                  alpha=0.4, beta=0.4, beta_increment_per_sample=0.001):
@@ -134,10 +246,24 @@ class PERAgent:  # Double DQN with Proportional Prioritization
         self.abs_error_upper = 1
 
     def _per_loss(self, y_target, y_pred):
+
+        """Получение ошибки при обучении
+
+                Args:
+                    y_target (__type__): q функции сгенерированные целевой нейросетью
+                    y_pred (int): q функции сгенерированные основной нейросетью
+
+                Returns:
+                    loss (float): ошибка
+                """
+
         return tf.reduce_mean(self.is_weight * tf.math.squared_difference(y_target, y_pred))
 
     def train(self):
-        # initialize the initial observation of the agent
+
+        """Функция для обучения
+                """
+
         obs = self.env.reset()
         for t in range(1, self.train_nums):
             best_action, q_values = self.model.action_value(obs[None])  # input the obs to the network model
@@ -164,6 +290,12 @@ class PERAgent:  # Double DQN with Proportional Prioritization
                 obs = next_obs
 
     def train_step(self):
+
+        """Функция для шага обучения
+            Returns:
+                    losses (float): ошибки после одного шага обучения
+                """
+
         idxes, self.is_weight = self.sum_tree_sample(self.batch_size)
         # Double Q-Learning
         best_action_idxes, _ = self.model.action_value(self.b_next_states)  # get actions through the current network
@@ -188,8 +320,18 @@ class PERAgent:  # Double DQN with Proportional Prioritization
 
         return losses
 
-    # proportional prioritization sampling
     def sum_tree_sample(self, k):
+
+        """Получение батча для обучения
+
+                Args:
+                    k (int): размер получаемого батча
+
+                Returns:
+                    idxes (int): индексы объектов из батча
+                    is_weights (float): приоритеты объектов из батча
+                """
+
         idxes = []
         is_weights = np.empty((k, 1))
         self.beta = min(1., self.beta + self.beta_increment_per_sample)
@@ -208,6 +350,17 @@ class PERAgent:  # Double DQN with Proportional Prioritization
         return idxes, is_weights
 
     def evaluation(self, env, render=False):
+
+        """Получение батча для обучения
+
+                Args:
+                    env (__type__): среда
+                    render (bool, optional): визуализировать ли среду или нет
+
+                Returns:
+                    ep_reward (float): суммарная награда за эпизод
+                """
+
         obs, done, ep_reward = env.reset(), False, 0
         # one episode until done
         while not done:
@@ -220,8 +373,20 @@ class PERAgent:  # Double DQN with Proportional Prioritization
         env.close()
         return ep_reward
 
-    # store transitions into replay butter, now sum tree.
     def store_transition(self, priority, obs, action, reward, next_state, done):
+        """Сохранение перехода в буфере
+
+                        Args:
+                            priority (int): приоритет
+                            obs (__type__): наблюдение
+                            action (int): действие
+                            reward (float): награда
+                            next_state (__type__): следующее наблюдение
+                            done: выполнено ли задание или нет
+
+                        Returns:
+                            ep_reward (float): суммарная награда за эпизод
+                        """
         transition = [obs, action, reward, next_state, done]
         self.replay_buffer.add(priority, transition)
 
@@ -231,16 +396,33 @@ class PERAgent:  # Double DQN with Proportional Prioritization
 
     # e-greedy
     def get_action(self, best_action):
+        """жадная функция стратегии. Возвращает случайное действие если происходит исследование среды
+
+                                Args:
+                                    best_action (int): лучшее действие
+
+                                Returns:
+                                    action (float): принятое согласно стратегии действие
+                                """
         if np.random.rand() < self.epsilon:
             return self.env.action_space.sample()
         return best_action
 
     # assign the current network parameters to target network
     def update_target_model(self):
+        """Функция обновления целевой нейросети
+                                        """
         self.target_model.set_weights(self.model.get_weights())
 
     def get_target_value(self, obs):
+        """Функция получения q значений целевой нейросети
+            Returns:
+                                    q_values (float): q значения целевой сети
+                                                """
         return self.target_model.predict(obs)
 
     def e_decay(self):
+        """Функция для уменьшения вероятности исследования сети
+                """
+
         self.epsilon *= self.epsilon_decay
