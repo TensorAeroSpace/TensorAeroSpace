@@ -1,6 +1,6 @@
 import matplotlib.pyplot as plt
 import numpy as np
-from scipy.signal import *
+from scipy.signal import cont2discrete
 
 from tensorairspace.aerospacemodel.base import ModelBase
 from tensorairspace.aerospacemodel.utils.constant import state_to_latex_rus, state_to_latex_eng
@@ -9,7 +9,7 @@ from tensorairspace.aerospacemodel.f16.nonlinear.utils import output2dict
 
 class ELVRocket(ModelBase):
     """
-    ELV рокета в продольном канале управления
+    ELV ракета в продольном канале управления
     
     
     Args:
@@ -23,14 +23,14 @@ class ELVRocket(ModelBase):
         * ele: руль высоты [град]
 
     Пространство состояний:
-        * $\theta$ - Тангаж  [град]
-        * $q$ - Угловая скорость Тангажа [град/с]
-        * $q$ - Продольная скорость ЛА [м/с]
+        * theta - Тангаж  [град]
+        * q - Угловая скорость Тангажа [град/с]
+        * w - Продольная скорость ЛА [м/с]
 
     Пространство выхода:
-        * $\theta$ - Тангаж  [град]
-        * $q$ - Угловая скорость Тангажа [град/с]
-        * $q$ - Продольная скорость ЛА [м/с]
+        * theta - Тангаж  [град]
+        * q - Угловая скорость Тангажа [град/с]
+        * w - Продольная скорость ЛА [м/с]
     """
 
     def __init__(self, x0, number_time_steps, selected_state_output=None, t0=0, dt: float = 0.01):

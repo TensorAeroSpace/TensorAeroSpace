@@ -1,6 +1,6 @@
 import matplotlib.pyplot as plt
 import numpy as np
-from scipy.signal import *
+from scipy.signal import cont2discrete
 
 from tensorairspace.aerospacemodel.base import ModelBase
 from tensorairspace.aerospacemodel.utils.constant import state_to_latex_rus, state_to_latex_eng
@@ -8,7 +8,7 @@ from tensorairspace.aerospacemodel.f16.nonlinear.utils import output2dict
 
 class LongitudinalB747(ModelBase):
     """
-    Boing 747 в продольном канале управления
+    Boeing 747 в продольном канале управления
     
     
     Args:
@@ -19,20 +19,20 @@ class LongitudinalB747(ModelBase):
         dt (float, optional): Частота дискретизации. Defaults to 0.01.
             
     Пространство действий:
-        * ele: руль высоты [град]
+        - ele: руль высоты [град]
 
 
     Пространство состояний:
-        * $u$ - Продольная скорость ЛА [м/с]
-        * $w$ - Нормальная скорость ЛА [м/с]
-        * $q$ - Угловая скорость Тангажа [град/с]
-        * $\theta$ - Тангаж [град]
+        - u - Продольная скорость ЛА [м/с]
+        - w - Нормальная скорость ЛА [м/с]
+        - q - Угловая скорость Тангажа [град/с]
+        - theta - Тангаж [град]
 
     Пространство выхода:
-        * $u$ - Продольная скорость ЛА [м/с]
-        * $w$ - Нормальная скорость ЛА [м/с]
-        * $q$ - Угловая скорость Тангажа [град/с]
-        * $\theta$ - Тангаж [град]
+        - u - Продольная скорость ЛА [м/с]
+        - w - Нормальная скорость ЛА [м/с]
+        - q - Угловая скорость Тангажа [град/с]
+        - theta - Тангаж [град]
     """
 
     def __init__(self, x0, number_time_steps, selected_state_output=None, t0=0, dt: float = 0.01):

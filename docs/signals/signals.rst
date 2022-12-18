@@ -35,12 +35,12 @@
 
     dt = 0.01
     tp = generate_time_period(tn=20)
-    tp_sinusoid = sinusoid(tp=tp, amplitude=0.01, frequency=10)
+    tp_sinusoid = sinusoid(tp=tp, amplitude=10, frequency=0.01)
 
 .. image:: img/sinusoid.png
   		:alt: Синусоидный сигнал
 
-Случайный сигнал по частоте и амплидуте
+Случайный сигнал по частоте и амплитуде
 ---------------------------------------
 
 .. autofunction:: tensorairspace.signals.random.full_random_signal
@@ -54,4 +54,4 @@
     signal =  full_random_signal(0,0.01,20, (-0.5, 0.5), (-0.5, 0.5))
 
 .. image:: img/full_random.png
-  		:alt: Случайный сигнал по частоте и амплидуте
+  		:alt: Случайный сигнал по частоте и амплитуде

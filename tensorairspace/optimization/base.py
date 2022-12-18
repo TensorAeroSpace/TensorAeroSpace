@@ -36,7 +36,7 @@ class HyperParamOptimizationOptuna(HyperParamOptimizationBase):
         Поиск гиперпараметров модели
     """
     def __init__(self, direction:str) -> None:
-        """Иницаилизация поиска гиеперпараметров
+        """Инициализация поиска гиперпараметров
 
         Args:
             direction (str): Направление поиска. Ex. minimize|maximaze
@@ -50,16 +50,16 @@ class HyperParamOptimizationOptuna(HyperParamOptimizationBase):
         """Запуск поиска гиперпараметров
 
         Args:
-            func (void): Функиция поиска параметров
+            func (void): Функция поиска параметров
             n_trials (int): Количество попыток для поиска
         """
         self.study.optimize(func, n_trials=n_trials)
     
     def get_best_param(self)->dict:
-        """Получить лучшие гиперпараметры
+        """Получить лучшие гиперпараметров
 
         Returns:
-            dict: Словарь с лучшеми гиперпараметрами
+            dict: Словарь с лучшими гиперпараметрами
         """
         return self.study.best_trial.params
     

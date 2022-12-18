@@ -1,18 +1,20 @@
 Установка
 =========
 
-Для установки склонируйте репозиторий 
+Для установки клонируйте репозиторий 
 
 .. code:: shell
 
     git clone https://github.com/TensorAirSpace/TensorAirSpace.git
     cd TensorAirSpace
     
-Установите необходимые пакеты через ваш пакетный менеджер 
+Создайте виртуальное окружение и активируйте его
+
+Установите наш пакет
 
 .. code:: shell
 
-    pip install -r requirements.txt
+    pip install -e .
 
 
 Или же запустите проект через Docker образ
@@ -24,7 +26,7 @@
 .. code:: shell
 
     docker build -t tensor_aero_space .
-    docker run  -v tensorairspace:/app/tensorairspace -v example:/app/example -v docs:/app/docs -p 8888:8888 -it tensor_aero_space
+    docker run -v example:/app/example -p 8888:8888 -it tensor_aero_space
 
 
 .. note::

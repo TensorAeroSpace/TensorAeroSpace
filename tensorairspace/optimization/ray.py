@@ -8,7 +8,7 @@ class HyperParamOptimizationRay(HyperParamOptimizationBase):
         Поиск гиперпараметров модели
     """
     def __init__(self, direction:str) -> None:
-        """Иницаилизация поиска гиеперпараметров
+        """Инициализация поиска гиперпараметров
 
         Args:
             direction (str): Направление поиска. Ex. minimize|maximaze
@@ -19,23 +19,23 @@ class HyperParamOptimizationRay(HyperParamOptimizationBase):
         """Запуск поиска гиперпараметров
 
         Args:
-            func (Callable): Функиция поиска параметров
-            param_space (_type_): Переменые для поиска
+            func (Callable): Функция поиска параметров
+            param_space (_type_): Переменные для поиска
             tune_config (_type_, optional): Параметры оптимизации. Defaults to tune.TuneConfig(num_samples=5).
         """
         self.tuner = tune.Tuner(func, param_space=param_space, tune_config=tune_config, **kwargs)
         self.results = self.tuner.fit()
 
     def get_best_param(self)->dict:
-        """Получить лучшие гиперпараметры
+        """Получить лучшие гиперпараметров
 
         Returns:
-            dict: Словарь с лучшеми гиперпараметрами
+            dict: Словарь с лучшими гиперпараметрами
         """
         return self.study.best_trial.params
     
     def plot_parms(self):
-        """Построить график поиска гипераметров (WIP)
+        """Построить график поиска гиперпараметров (WIP)
 
         Raises:
             NotImplementedError:  (WIP)

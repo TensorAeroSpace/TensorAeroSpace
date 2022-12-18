@@ -14,17 +14,17 @@ ENV PATH=$CONDA_DIR/bin:$PATH
 
 WORKDIR /app
 
-
-
-RUN pip install --upgrade pip
-
-
-
-
 COPY start.sh start.sh
 COPY requirements.txt requirements.txt
-RUN pip install -r requirements.txt     
+RUN pip install --upgrade pip
+
+COPY tensorairspace /app/tensorairspace
+COPY setup.py /app/setup.py
+
+RUN pip install -e .
 RUN pip install jupyter
+RUN rm -rf $HOME/.cache/pip
+
 
 EXPOSE 8888
 RUN chmod +x /app/start.sh
