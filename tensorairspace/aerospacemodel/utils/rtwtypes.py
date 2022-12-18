@@ -1,12 +1,11 @@
 import ctypes
 
 """
-/*=======================================================================*
- * Fixed width word size data types:                                     *
- *   int8_T, int16_T, int32_T     - signed 8, 16, or 32 bit integers     *
- *   uint8_T, uint16_T, uint32_T  - unsigned 8, 16, or 32 bit integers   *
- *   real32_T, real64_T           - 32 and 64 bit floating point numbers *
- *=======================================================================*/
+  Fixed width word size data types:                                     
+    int8_T, int16_T, int32_T     - signed 8, 16, or 32 bit integers     
+    uint8_T, uint16_T, uint32_T  - unsigned 8, 16, or 32 bit integers   
+    real32_T, real64_T           - 32 and 64 bit floating point numbers 
+
 """
 int8_T = ctypes.c_byte
 uint8_T = ctypes.c_ubyte
@@ -19,10 +18,9 @@ uint64_T = ctypes.c_ulonglong
 real32_T = ctypes.c_float
 real64_T = ctypes.c_double
 """
-/*===========================================================================*
- * Generic type definitions: boolean_T, char_T, byte_T, int_T, uint_T,       *
- *                           real_T, time_T, ulong_T, ulonglong_T.           *
- *===========================================================================*/
+
+  Generic type definitions: boolean_T, char_T, byte_T, int_T, uint_T,       
+                            real_T, time_T, ulong_T, ulonglong_T.           
 """
 real_T = ctypes.c_double
 time_T = ctypes.c_double
@@ -34,12 +32,13 @@ ulonglong_T = ctypes.c_ulonglong
 char_T = ctypes.c_char
 uchar_T = ctypes.c_ubyte
 char_T = ctypes.c_byte
-"""
-/*===========================================================================*
- * Complex number type definitions                                           *
- *===========================================================================*/
-"""
 
+"""
+    Complex number:
+        creal32_T, creal64_T, creal_T - 32, 64, 16 bit 
+        cint8_T, cint16_T, cint32_T, cint64_T - 8, 16, 32, 64 bit 
+        cuint8_T, cuint16_T, cuint32_T, cuint64_T - 8, 16, 32, 64 bit 
+"""
 
 class creal32_T(ctypes.Structure):
     _fields_ = [
@@ -119,6 +118,10 @@ class cuint64_T(ctypes.Structure):
 
 
 class ExtY_T(ctypes.Structure):
+    """
+        Output parameters Simulink model
+        (name, type)
+    """
     _fields_ = [
         ("u", real_T),
         ("w", real_T),
@@ -129,6 +132,10 @@ class ExtY_T(ctypes.Structure):
 
 
 class ExtY_T_r(ctypes.Structure):
+    """
+        Output parameters Simulink model short
+        (name, type)
+    """
     _fields_ = [
         ("w", real_T),
         ("q", real_T),

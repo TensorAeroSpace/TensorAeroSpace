@@ -53,3 +53,5 @@ shippable/
 # not include scripts because they come from external module
 scripts/
 
+.DS_Store
+
