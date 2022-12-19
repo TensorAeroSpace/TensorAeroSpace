@@ -1,5 +1,5 @@
 Поиск гиперпараметров агента
-===================================
+============================
 
 .. autoclass:: tensorairspace.optimization.HyperParamOptimizationOptuna
     :members:
