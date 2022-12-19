@@ -58,7 +58,7 @@
 
 Пример использования Simulink модели Ту с Python:
 
-Модель находится в tensorairspace/aerospacemodel/exampleModel
+Модель находится в https://github.com/TensorAirSpace/simulink-example
 
 	.. image:: img/model.png
   		:width: 400
