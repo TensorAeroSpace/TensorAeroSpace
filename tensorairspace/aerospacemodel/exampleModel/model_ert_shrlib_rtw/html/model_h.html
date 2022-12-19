@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html>
+<head>
+<script type="text/javascript" src="./js/coder_app.js"></script>
+<meta http-equiv="content-type" content="text/html; charset=utf-8" />
+<script type="text/javascript" src="./rtwreport_utils.js"></script>
+<script type="text/javascript" src="./rtwannotate.js"></script>
+<link rel="stylesheet" type="text/css" href="./css/coder_app.css"/>
+</head>
+<body onload="srcFileOnload();">
+<pre id="code">
+<table class="code" id="codeTbl">
+<tr name="1" id="1">
+<td>1</td><td><span class="ct">/*</span></td></tr>
+<tr name="2" id="2">
+<td>2</td><td><span class="ct"> * File: model.h</span></td></tr>
+<tr name="3" id="3">
+<td>3</td><td><span class="ct"> *</span></td></tr>
+<tr name="4" id="4">
+<td>4</td><td><span class="ct"> * Code generated for Simulink model 'model'.</span></td></tr>
+<tr name="5" id="5">
+<td>5</td><td><span class="ct"> *</span></td></tr>
+<tr name="6" id="6">
+<td>6</td><td><span class="ct"> * Model version                  : 1.41</span></td></tr>
+<tr name="7" id="7">
+<td>7</td><td><span class="ct"> * Simulink Coder version         : 8.9 (R2015b) 13-Aug-2015</span></td></tr>
+<tr name="8" id="8">
+<td>8</td><td><span class="ct"> * C/C++ source code generated on : Sun Dec 18 21:44:12 2022</span></td></tr>
+<tr name="9" id="9">
+<td>9</td><td><span class="ct"> *</span></td></tr>
+<tr name="10" id="10">
+<td>10</td><td><span class="ct"> * Target selection: ert_shrlib.tlc</span></td></tr>
+<tr name="11" id="11">
+<td>11</td><td><span class="ct"> * Embedded hardware selection: Intel-&gt;x86-64 (Windows64)</span></td></tr>
+<tr name="12" id="12">
+<td>12</td><td><span class="ct"> * Code generation objectives: Unspecified</span></td></tr>
+<tr name="13" id="13">
+<td>13</td><td><span class="ct"> * Validation result: Not run</span></td></tr>
+<tr name="14" id="14">
+<td>14</td><td><span class="ct"> */</span></td></tr>
+<tr name="15" id="15">
+<td>15</td><td></td></tr>
+<tr name="16" id="16">
+<td>16</td><td><span class="pp">#ifndef</span> <a id="16c9" class="tk">RTW_HEADER_model_h_</a></td></tr>
+<tr name="17" id="17">
+<td>17</td><td><span class="pp">#define</span> <a id="17c9" class="tk">RTW_HEADER_model_h_</a></td></tr>
+<tr name="18" id="18">
+<td>18</td><td><span class="pp">#include &lt;string.h&gt;</span></td></tr>
+<tr name="19" id="19">
+<td>19</td><td><span class="pp">#ifndef</span> <a id="19c9" class="tk">model_COMMON_INCLUDES_</a></td></tr>
+<tr name="20" id="20">
+<td>20</td><td><span class="pp"># define</span> <a id="20c10" class="tk">model_COMMON_INCLUDES_</a></td></tr>
+<tr name="21" id="21">
+<td>21</td><td><span class="pp">#include "rtwtypes.h"</span></td></tr>
+<tr name="22" id="22">
+<td>22</td><td><span class="pp">#include "rtw_continuous.h"</span></td></tr>
+<tr name="23" id="23">
+<td>23</td><td><span class="pp">#include "rtw_solver.h"</span></td></tr>
+<tr name="24" id="24">
+<td>24</td><td><span class="pp">#endif</span>                                 <span class="ct">/* model_COMMON_INCLUDES_ */</span></td></tr>
+<tr name="25" id="25">
+<td>25</td><td></td></tr>
+<tr name="26" id="26">
+<td>26</td><td><span class="pp">#include "model_types.h"</span></td></tr>
+<tr name="27" id="27">
+<td>27</td><td></td></tr>
+<tr name="28" id="28">
+<td>28</td><td><span class="ct">/* Macros for accessing real-time model data structure */</span></td></tr>
+<tr name="29" id="29">
+<td>29</td><td><span class="pp">#ifndef</span> <a id="29c9" class="tk">rtmGetErrorStatus</a></td></tr>
+<tr name="30" id="30">
+<td>30</td><td><span class="pp"># define</span> <a id="30c10" class="tk">rtmGetErrorStatus</a>(<a id="30c28" class="tk">rtm</a>)        ((<a id="30c42" class="tk">rtm</a>)-&gt;<a id="30c48" class="tk">errorStatus</a>)</td></tr>
+<tr name="31" id="31">
+<td>31</td><td><span class="pp">#endif</span></td></tr>
+<tr name="32" id="32">
+<td>32</td><td></td></tr>
+<tr name="33" id="33">
+<td>33</td><td><span class="pp">#ifndef</span> <a id="33c9" class="tk">rtmSetErrorStatus</a></td></tr>
+<tr name="34" id="34">
+<td>34</td><td><span class="pp"># define</span> <a id="34c10" class="tk">rtmSetErrorStatus</a>(<a id="34c28" class="tk">rtm</a>, <a id="34c33" class="tk">val</a>)   ((<a id="34c42" class="tk">rtm</a>)-&gt;<a id="34c48" class="tk">errorStatus</a> = (<a id="34c63" class="tk">val</a>))</td></tr>
+<tr name="35" id="35">
+<td>35</td><td><span class="pp">#endif</span></td></tr>
+<tr name="36" id="36">
+<td>36</td><td></td></tr>
+<tr name="37" id="37">
+<td>37</td><td><span class="pp">#ifndef</span> <a id="37c9" class="tk">rtmGetStopRequested</a></td></tr>
+<tr name="38" id="38">
+<td>38</td><td><span class="pp"># define</span> <a id="38c10" class="tk">rtmGetStopRequested</a>(<a id="38c30" class="tk">rtm</a>)      ((<a id="38c42" class="tk">rtm</a>)-&gt;<a id="38c48" class="tk">Timing</a>.<a id="38c55" class="tk">stopRequestedFlag</a>)</td></tr>
+<tr name="39" id="39">
+<td>39</td><td><span class="pp">#endif</span></td></tr>
+<tr name="40" id="40">
+<td>40</td><td></td></tr>
+<tr name="41" id="41">
+<td>41</td><td><span class="pp">#ifndef</span> <a id="41c9" class="tk">rtmSetStopRequested</a></td></tr>
+<tr name="42" id="42">
+<td>42</td><td><span class="pp"># define</span> <a id="42c10" class="tk">rtmSetStopRequested</a>(<a id="42c30" class="tk">rtm</a>, <a id="42c35" class="tk">val</a>) ((<a id="42c42" class="tk">rtm</a>)-&gt;<a id="42c48" class="tk">Timing</a>.<a id="42c55" class="tk">stopRequestedFlag</a> = (<a id="42c76" class="tk">val</a>))</td></tr>
+<tr name="43" id="43">
+<td>43</td><td><span class="pp">#endif</span></td></tr>
+<tr name="44" id="44">
+<td>44</td><td></td></tr>
+<tr name="45" id="45">
+<td>45</td><td><span class="pp">#ifndef</span> <a id="45c9" class="tk">rtmGetStopRequestedPtr</a></td></tr>
+<tr name="46" id="46">
+<td>46</td><td><span class="pp"># define</span> <a id="46c10" class="tk">rtmGetStopRequestedPtr</a>(<a id="46c33" class="tk">rtm</a>)   (<a id="46c41" class="tk">&amp;</a>((<a id="46c44" class="tk">rtm</a>)-&gt;<a id="46c50" class="tk">Timing</a>.<a id="46c57" class="tk">stopRequestedFlag</a>))</td></tr>
+<tr name="47" id="47">
+<td>47</td><td><span class="pp">#endif</span></td></tr>
+<tr name="48" id="48">
+<td>48</td><td></td></tr>
+<tr name="49" id="49">
+<td>49</td><td><span class="pp">#ifndef</span> <a id="49c9" class="tk">rtmGetT</a></td></tr>
+<tr name="50" id="50">
+<td>50</td><td><span class="pp"># define</span> <a id="50c10" class="tk">rtmGetT</a>(<a id="50c18" class="tk">rtm</a>)                  (<a id="50c41" class="tk">rtmGetTPtr</a>((<a id="50c53" class="tk">rtm</a>))[0])</td></tr>
+<tr name="51" id="51">
+<td>51</td><td><span class="pp">#endif</span></td></tr>
+<tr name="52" id="52">
+<td>52</td><td></td></tr>
+<tr name="53" id="53">
+<td>53</td><td><span class="ct">/* Block signals (auto storage) */</span></td></tr>
+<tr name="54" id="54">
+<td>54</td><td><span class="kw">typedef</span> <span class="kw">struct</span> <span class="br">{</span></td></tr>
+<tr name="55" id="55">
+<td>55</td><td>  <a id="55c3" class="tk">real_T</a> <a id="55c10" class="tk">Integrator1</a>;                  <span class="ct">/* '<a class="ct blk" blk_line="55">&lt;Root&gt;/Integrator1</a>' */</span></td></tr>
+<tr name="56" id="56">
+<td>56</td><td>  <a id="56c3" class="tk">real_T</a> <a id="56c10" class="tk">Sum3</a>;                         <span class="ct">/* '<a class="ct blk" blk_line="56">&lt;Root&gt;/Sum3</a>' */</span></td></tr>
+<tr name="57" id="57">
+<td>57</td><td>  <a id="57c3" class="tk">real_T</a> <a id="57c10" class="tk">Sum5</a>;                         <span class="ct">/* '<a class="ct blk" blk_line="57">&lt;Root&gt;/Sum5</a>' */</span></td></tr>
+<tr name="58" id="58">
+<td>58</td><td>  <a id="58c3" class="tk">real_T</a> <a id="58c10" class="tk">Gain6</a>;                        <span class="ct">/* '<a class="ct blk" blk_line="58">&lt;Root&gt;/Gain6</a>' */</span></td></tr>
+<tr name="59" id="59">
+<td>59</td><td>  <a id="59c3" class="tk">real_T</a> <a id="59c10" class="tk">Sum2</a>;                         <span class="ct">/* '<a class="ct blk" blk_line="59">&lt;Root&gt;/Sum2</a>' */</span></td></tr>
+<tr name="60" id="60">
+<td>60</td><td>  <a id="60c3" class="tk">real_T</a> <a id="60c10" class="tk">Saturation</a>;                   <span class="ct">/* '<a class="ct blk" blk_line="60">&lt;S1&gt;/Saturation</a>' */</span></td></tr>
+<tr name="61" id="61">
+<td>61</td><td>  <a id="61c3" class="tk">real_T</a> <a id="61c10" class="tk">Sum</a>;                          <span class="ct">/* '<a class="ct blk" blk_line="61">&lt;S1&gt;/Sum</a>' */</span></td></tr>
+<tr name="62" id="62">
+<td>62</td><td>  <a id="62c3" class="tk">real_T</a> <a id="62c10" class="tk">Sum1</a>;                         <span class="ct">/* '<a class="ct blk" blk_line="62">&lt;Root&gt;/Sum1</a>' */</span></td></tr>
+<tr name="63" id="63">
+<td>63</td><td><span class="br">}</span> <a id="63c3" class="tk">B_model_T</a>;</td></tr>
+<tr name="64" id="64">
+<td>64</td><td></td></tr>
+<tr name="65" id="65">
+<td>65</td><td><span class="ct">/* Continuous states (auto storage) */</span></td></tr>
+<tr name="66" id="66">
+<td>66</td><td><span class="kw">typedef</span> <span class="kw">struct</span> <span class="br">{</span></td></tr>
+<tr name="67" id="67">
+<td>67</td><td>  <a id="67c3" class="tk">real_T</a> <a id="67c10" class="tk">Integrator1_CSTATE</a>;           <span class="ct">/* '<a class="ct blk" blk_line="67">&lt;Root&gt;/Integrator1</a>' */</span></td></tr>
+<tr name="68" id="68">
+<td>68</td><td>  <a id="68c3" class="tk">real_T</a> <a id="68c10" class="tk">Integrator4_CSTATE</a>;           <span class="ct">/* '<a class="ct blk" blk_line="68">&lt;Root&gt;/Integrator4</a>' */</span></td></tr>
+<tr name="69" id="69">
+<td>69</td><td>  <a id="69c3" class="tk">real_T</a> <a id="69c10" class="tk">Integrator3_CSTATE</a>;           <span class="ct">/* '<a class="ct blk" blk_line="69">&lt;Root&gt;/Integrator3</a>' */</span></td></tr>
+<tr name="70" id="70">
+<td>70</td><td>  <a id="70c3" class="tk">real_T</a> <a id="70c10" class="tk">Integrator_CSTATE</a>;            <span class="ct">/* '<a class="ct blk" blk_line="70">&lt;Root&gt;/Integrator</a>' */</span></td></tr>
+<tr name="71" id="71">
+<td>71</td><td>  <a id="71c3" class="tk">real_T</a> <a id="71c10" class="tk">Integrator2_CSTATE</a>;           <span class="ct">/* '<a class="ct blk" blk_line="71">&lt;Root&gt;/Integrator2</a>' */</span></td></tr>
+<tr name="72" id="72">
+<td>72</td><td>  <a id="72c3" class="tk">real_T</a> <a id="72c10" class="tk">Integrator2_CSTATE_j</a>;         <span class="ct">/* '<a class="ct blk" blk_line="72">&lt;S1&gt;/Integrator2</a>' */</span></td></tr>
+<tr name="73" id="73">
+<td>73</td><td>  <a id="73c3" class="tk">real_T</a> <a id="73c10" class="tk">TransferFcn1_CSTATE</a>;          <span class="ct">/* '<a class="ct blk" blk_line="73">&lt;Root&gt;/Transfer Fcn1</a>' */</span></td></tr>
+<tr name="74" id="74">
+<td>74</td><td>  <a id="74c3" class="tk">real_T</a> <a id="74c10" class="tk">TransferFcn_CSTATE</a>;           <span class="ct">/* '<a class="ct blk" blk_line="74">&lt;S1&gt;/Transfer Fcn</a>' */</span></td></tr>
+<tr name="75" id="75">
+<td>75</td><td><span class="br">}</span> <a id="75c3" class="tk">X_model_T</a>;</td></tr>
+<tr name="76" id="76">
+<td>76</td><td></td></tr>
+<tr name="77" id="77">
+<td>77</td><td><span class="ct">/* State derivatives (auto storage) */</span></td></tr>
+<tr name="78" id="78">
+<td>78</td><td><span class="kw">typedef</span> <span class="kw">struct</span> <span class="br">{</span></td></tr>
+<tr name="79" id="79">
+<td>79</td><td>  <a id="79c3" class="tk">real_T</a> <a id="79c10" class="tk">Integrator1_CSTATE</a>;           <span class="ct">/* '<a class="ct blk" blk_line="79">&lt;Root&gt;/Integrator1</a>' */</span></td></tr>
+<tr name="80" id="80">
+<td>80</td><td>  <a id="80c3" class="tk">real_T</a> <a id="80c10" class="tk">Integrator4_CSTATE</a>;           <span class="ct">/* '<a class="ct blk" blk_line="80">&lt;Root&gt;/Integrator4</a>' */</span></td></tr>
+<tr name="81" id="81">
+<td>81</td><td>  <a id="81c3" class="tk">real_T</a> <a id="81c10" class="tk">Integrator3_CSTATE</a>;           <span class="ct">/* '<a class="ct blk" blk_line="81">&lt;Root&gt;/Integrator3</a>' */</span></td></tr>
+<tr name="82" id="82">
+<td>82</td><td>  <a id="82c3" class="tk">real_T</a> <a id="82c10" class="tk">Integrator_CSTATE</a>;            <span class="ct">/* '<a class="ct blk" blk_line="82">&lt;Root&gt;/Integrator</a>' */</span></td></tr>
+<tr name="83" id="83">
+<td>83</td><td>  <a id="83c3" class="tk">real_T</a> <a id="83c10" class="tk">Integrator2_CSTATE</a>;           <span class="ct">/* '<a class="ct blk" blk_line="83">&lt;Root&gt;/Integrator2</a>' */</span></td></tr>
+<tr name="84" id="84">
+<td>84</td><td>  <a id="84c3" class="tk">real_T</a> <a id="84c10" class="tk">Integrator2_CSTATE_j</a>;         <span class="ct">/* '<a class="ct blk" blk_line="84">&lt;S1&gt;/Integrator2</a>' */</span></td></tr>
+<tr name="85" id="85">
+<td>85</td><td>  <a id="85c3" class="tk">real_T</a> <a id="85c10" class="tk">TransferFcn1_CSTATE</a>;          <span class="ct">/* '<a class="ct blk" blk_line="85">&lt;Root&gt;/Transfer Fcn1</a>' */</span></td></tr>
+<tr name="86" id="86">
+<td>86</td><td>  <a id="86c3" class="tk">real_T</a> <a id="86c10" class="tk">TransferFcn_CSTATE</a>;           <span class="ct">/* '<a class="ct blk" blk_line="86">&lt;S1&gt;/Transfer Fcn</a>' */</span></td></tr>
+<tr name="87" id="87">
+<td>87</td><td><span class="br">}</span> <a id="87c3" class="tk">XDot_model_T</a>;</td></tr>
+<tr name="88" id="88">
+<td>88</td><td></td></tr>
+<tr name="89" id="89">
+<td>89</td><td><span class="ct">/* State disabled  */</span></td></tr>
+<tr name="90" id="90">
+<td>90</td><td><span class="kw">typedef</span> <span class="kw">struct</span> <span class="br">{</span></td></tr>
+<tr name="91" id="91">
+<td>91</td><td>  <a id="91c3" class="tk">boolean_T</a> <a id="91c13" class="tk">Integrator1_CSTATE</a>;        <span class="ct">/* '<a class="ct blk" blk_line="91">&lt;Root&gt;/Integrator1</a>' */</span></td></tr>
+<tr name="92" id="92">
+<td>92</td><td>  <a id="92c3" class="tk">boolean_T</a> <a id="92c13" class="tk">Integrator4_CSTATE</a>;        <span class="ct">/* '<a class="ct blk" blk_line="92">&lt;Root&gt;/Integrator4</a>' */</span></td></tr>
+<tr name="93" id="93">
+<td>93</td><td>  <a id="93c3" class="tk">boolean_T</a> <a id="93c13" class="tk">Integrator3_CSTATE</a>;        <span class="ct">/* '<a class="ct blk" blk_line="93">&lt;Root&gt;/Integrator3</a>' */</span></td></tr>
+<tr name="94" id="94">
+<td>94</td><td>  <a id="94c3" class="tk">boolean_T</a> <a id="94c13" class="tk">Integrator_CSTATE</a>;         <span class="ct">/* '<a class="ct blk" blk_line="94">&lt;Root&gt;/Integrator</a>' */</span></td></tr>
+<tr name="95" id="95">
+<td>95</td><td>  <a id="95c3" class="tk">boolean_T</a> <a id="95c13" class="tk">Integrator2_CSTATE</a>;        <span class="ct">/* '<a class="ct blk" blk_line="95">&lt;Root&gt;/Integrator2</a>' */</span></td></tr>
+<tr name="96" id="96">
+<td>96</td><td>  <a id="96c3" class="tk">boolean_T</a> <a id="96c13" class="tk">Integrator2_CSTATE_j</a>;      <span class="ct">/* '<a class="ct blk" blk_line="96">&lt;S1&gt;/Integrator2</a>' */</span></td></tr>
+<tr name="97" id="97">
+<td>97</td><td>  <a id="97c3" class="tk">boolean_T</a> <a id="97c13" class="tk">TransferFcn1_CSTATE</a>;       <span class="ct">/* '<a class="ct blk" blk_line="97">&lt;Root&gt;/Transfer Fcn1</a>' */</span></td></tr>
+<tr name="98" id="98">
+<td>98</td><td>  <a id="98c3" class="tk">boolean_T</a> <a id="98c13" class="tk">TransferFcn_CSTATE</a>;        <span class="ct">/* '<a class="ct blk" blk_line="98">&lt;S1&gt;/Transfer Fcn</a>' */</span></td></tr>
+<tr name="99" id="99">
+<td>99</td><td><span class="br">}</span> <a id="99c3" class="tk">XDis_model_T</a>;</td></tr>
+<tr name="100" id="100">
+<td>100</td><td></td></tr>
+<tr name="101" id="101">
+<td>101</td><td><span class="pp">#ifndef</span> <a id="101c9" class="tk">ODE3_INTG</a></td></tr>
+<tr name="102" id="102">
+<td>102</td><td><span class="pp">#define</span> <a id="102c9" class="tk">ODE3_INTG</a></td></tr>
+<tr name="103" id="103">
+<td>103</td><td></td></tr>
+<tr name="104" id="104">
+<td>104</td><td><span class="ct">/* ODE3 Integration Data */</span></td></tr>
+<tr name="105" id="105">
+<td>105</td><td><span class="kw">typedef</span> <span class="kw">struct</span> <span class="br">{</span></td></tr>
+<tr name="106" id="106">
+<td>106</td><td>  <a id="106c3" class="tk">real_T</a> <a id="106c10" class="tk">*</a><a id="106c11" class="tk">y</a>;                           <span class="ct">/* output */</span></td></tr>
+<tr name="107" id="107">
+<td>107</td><td>  <a id="107c3" class="tk">real_T</a> <a id="107c10" class="tk">*</a><a id="107c11" class="tk">f</a>[3];                        <span class="ct">/* derivatives */</span></td></tr>
+<tr name="108" id="108">
+<td>108</td><td><span class="br">}</span> <a id="108c3" class="tk">ODE3_IntgData</a>;</td></tr>
+<tr name="109" id="109">
+<td>109</td><td></td></tr>
+<tr name="110" id="110">
+<td>110</td><td><span class="pp">#endif</span></td></tr>
+<tr name="111" id="111">
+<td>111</td><td></td></tr>
+<tr name="112" id="112">
+<td>112</td><td><span class="ct">/* External inputs (root inport signals with auto storage) */</span></td></tr>
+<tr name="113" id="113">
+<td>113</td><td><span class="kw">typedef</span> <span class="kw">struct</span> <span class="br">{</span></td></tr>
+<tr name="114" id="114">
+<td>114</td><td>  <a id="114c3" class="tk">real_T</a> <a id="114c10" class="tk">refSignal</a>;                    <span class="ct">/* '<a class="ct blk" blk_line="114">&lt;Root&gt;/refSignal</a>' */</span></td></tr>
+<tr name="115" id="115">
+<td>115</td><td><span class="br">}</span> <a id="115c3" class="tk">ExtU_model_T</a>;</td></tr>
+<tr name="116" id="116">
+<td>116</td><td></td></tr>
+<tr name="117" id="117">
+<td>117</td><td><span class="ct">/* External outputs (root outports fed by signals with auto storage) */</span></td></tr>
+<tr name="118" id="118">
+<td>118</td><td><span class="kw">typedef</span> <span class="kw">struct</span> <span class="br">{</span></td></tr>
+<tr name="119" id="119">
+<td>119</td><td>  <a id="119c3" class="tk">real_T</a> <a id="119c10" class="tk">Wz</a>;                           <span class="ct">/* '<a class="ct blk" blk_line="119">&lt;Root&gt;/Wz</a>' */</span></td></tr>
+<tr name="120" id="120">
+<td>120</td><td>  <a id="120c3" class="tk">real_T</a> <a id="120c10" class="tk">theta_big</a>;                    <span class="ct">/* '<a class="ct blk" blk_line="120">&lt;Root&gt;/theta_big</a>' */</span></td></tr>
+<tr name="121" id="121">
+<td>121</td><td>  <a id="121c3" class="tk">real_T</a> <a id="121c10" class="tk">H</a>;                            <span class="ct">/* '<a class="ct blk" blk_line="121">&lt;Root&gt;/H</a>' */</span></td></tr>
+<tr name="122" id="122">
+<td>122</td><td>  <a id="122c3" class="tk">real_T</a> <a id="122c10" class="tk">alpha</a>;                        <span class="ct">/* '<a class="ct blk" blk_line="122">&lt;Root&gt;/alpha</a>' */</span></td></tr>
+<tr name="123" id="123">
+<td>123</td><td>  <a id="123c3" class="tk">real_T</a> <a id="123c10" class="tk">theta_small</a>;                  <span class="ct">/* '<a class="ct blk" blk_line="123">&lt;Root&gt;/theta_small </a>' */</span></td></tr>
+<tr name="124" id="124">
+<td>124</td><td><span class="br">}</span> <a id="124c3" class="tk">ExtY_model_T</a>;</td></tr>
+<tr name="125" id="125">
+<td>125</td><td></td></tr>
+<tr name="126" id="126">
+<td>126</td><td><span class="ct">/* Real-time Model Data Structure */</span></td></tr>
+<tr name="127" id="127">
+<td>127</td><td><span class="kw">struct</span> <a id="127c8" class="tk">tag_RTM_model_T</a> <span class="br">{</span></td></tr>
+<tr name="128" id="128">
+<td>128</td><td>  <span class="kw">const</span> <a id="128c9" class="tk">char_T</a> <a id="128c16" class="tk">*</a><a id="128c17" class="tk">errorStatus</a>;</td></tr>
+<tr name="129" id="129">
+<td>129</td><td>  <a id="129c3" class="tk">RTWSolverInfo</a> <a id="129c17" class="tk">solverInfo</a>;</td></tr>
+<tr name="130" id="130">
+<td>130</td><td></td></tr>
+<tr name="131" id="131">
+<td>131</td><td>  <span class="ct">/*</span></td></tr>
+<tr name="132" id="132">
+<td>132</td><td><span class="ct">   * ModelData:</span></td></tr>
+<tr name="133" id="133">
+<td>133</td><td><span class="ct">   * The following substructure contains information regarding</span></td></tr>
+<tr name="134" id="134">
+<td>134</td><td><span class="ct">   * the data used in the model.</span></td></tr>
+<tr name="135" id="135">
+<td>135</td><td><span class="ct">   */</span></td></tr>
+<tr name="136" id="136">
+<td>136</td><td>  <span class="kw">struct</span> <span class="br">{</span></td></tr>
+<tr name="137" id="137">
+<td>137</td><td>    <a id="137c5" class="tk">X_model_T</a> <a id="137c15" class="tk">*</a><a id="137c16" class="tk">contStates</a>;</td></tr>
+<tr name="138" id="138">
+<td>138</td><td>    <a id="138c5" class="tk">int_T</a> <a id="138c11" class="tk">*</a><a id="138c12" class="tk">periodicContStateIndices</a>;</td></tr>
+<tr name="139" id="139">
+<td>139</td><td>    <a id="139c5" class="tk">real_T</a> <a id="139c12" class="tk">*</a><a id="139c13" class="tk">periodicContStateRanges</a>;</td></tr>
+<tr name="140" id="140">
+<td>140</td><td>    <a id="140c5" class="tk">real_T</a> <a id="140c12" class="tk">*</a><a id="140c13" class="tk">derivs</a>;</td></tr>
+<tr name="141" id="141">
+<td>141</td><td>    <a id="141c5" class="tk">boolean_T</a> <a id="141c15" class="tk">*</a><a id="141c16" class="tk">contStateDisabled</a>;</td></tr>
+<tr name="142" id="142">
+<td>142</td><td>    <a id="142c5" class="tk">boolean_T</a> <a id="142c15" class="tk">zCCacheNeedsReset</a>;</td></tr>
+<tr name="143" id="143">
+<td>143</td><td>    <a id="143c5" class="tk">boolean_T</a> <a id="143c15" class="tk">derivCacheNeedsReset</a>;</td></tr>
+<tr name="144" id="144">
+<td>144</td><td>    <a id="144c5" class="tk">boolean_T</a> <a id="144c15" class="tk">blkStateChange</a>;</td></tr>
+<tr name="145" id="145">
+<td>145</td><td>    <a id="145c5" class="tk">real_T</a> <a id="145c12" class="tk">odeY</a>[8];</td></tr>
+<tr name="146" id="146">
+<td>146</td><td>    <a id="146c5" class="tk">real_T</a> <a id="146c12" class="tk">odeF</a>[3][8];</td></tr>
+<tr name="147" id="147">
+<td>147</td><td>    <a id="147c5" class="tk">ODE3_IntgData</a> <a id="147c19" class="tk">intgData</a>;</td></tr>
+<tr name="148" id="148">
+<td>148</td><td>  <span class="br">}</span> <a id="148c5" class="tk">ModelData</a>;</td></tr>
+<tr name="149" id="149">
+<td>149</td><td></td></tr>
+<tr name="150" id="150">
+<td>150</td><td>  <span class="ct">/*</span></td></tr>
+<tr name="151" id="151">
+<td>151</td><td><span class="ct">   * Sizes:</span></td></tr>
+<tr name="152" id="152">
+<td>152</td><td><span class="ct">   * The following substructure contains sizes information</span></td></tr>
+<tr name="153" id="153">
+<td>153</td><td><span class="ct">   * for many of the model attributes such as inputs, outputs,</span></td></tr>
+<tr name="154" id="154">
+<td>154</td><td><span class="ct">   * dwork, sample times, etc.</span></td></tr>
+<tr name="155" id="155">
+<td>155</td><td><span class="ct">   */</span></td></tr>
+<tr name="156" id="156">
+<td>156</td><td>  <span class="kw">struct</span> <span class="br">{</span></td></tr>
+<tr name="157" id="157">
+<td>157</td><td>    <a id="157c5" class="tk">int_T</a> <a id="157c11" class="tk">numContStates</a>;</td></tr>
+<tr name="158" id="158">
+<td>158</td><td>    <a id="158c5" class="tk">int_T</a> <a id="158c11" class="tk">numPeriodicContStates</a>;</td></tr>
+<tr name="159" id="159">
+<td>159</td><td>    <a id="159c5" class="tk">int_T</a> <a id="159c11" class="tk">numSampTimes</a>;</td></tr>
+<tr name="160" id="160">
+<td>160</td><td>  <span class="br">}</span> <a id="160c5" class="tk">Sizes</a>;</td></tr>
+<tr name="161" id="161">
+<td>161</td><td></td></tr>
+<tr name="162" id="162">
+<td>162</td><td>  <span class="ct">/*</span></td></tr>
+<tr name="163" id="163">
+<td>163</td><td><span class="ct">   * Timing:</span></td></tr>
+<tr name="164" id="164">
+<td>164</td><td><span class="ct">   * The following substructure contains information regarding</span></td></tr>
+<tr name="165" id="165">
+<td>165</td><td><span class="ct">   * the timing information for the model.</span></td></tr>
+<tr name="166" id="166">
+<td>166</td><td><span class="ct">   */</span></td></tr>
+<tr name="167" id="167">
+<td>167</td><td>  <span class="kw">struct</span> <span class="br">{</span></td></tr>
+<tr name="168" id="168">
+<td>168</td><td>    <a id="168c5" class="tk">uint32_T</a> <a id="168c14" class="tk">clockTick0</a>;</td></tr>
+<tr name="169" id="169">
+<td>169</td><td>    <a id="169c5" class="tk">time_T</a> <a id="169c12" class="tk">stepSize0</a>;</td></tr>
+<tr name="170" id="170">
+<td>170</td><td>    <a id="170c5" class="tk">uint32_T</a> <a id="170c14" class="tk">clockTick1</a>;</td></tr>
+<tr name="171" id="171">
+<td>171</td><td>    <a id="171c5" class="tk">SimTimeStep</a> <a id="171c17" class="tk">simTimeStep</a>;</td></tr>
+<tr name="172" id="172">
+<td>172</td><td>    <a id="172c5" class="tk">boolean_T</a> <a id="172c15" class="tk">stopRequestedFlag</a>;</td></tr>
+<tr name="173" id="173">
+<td>173</td><td>    <a id="173c5" class="tk">time_T</a> <a id="173c12" class="tk">*</a><a id="173c13" class="tk">t</a>;</td></tr>
+<tr name="174" id="174">
+<td>174</td><td>    <a id="174c5" class="tk">time_T</a> <a id="174c12" class="tk">tArray</a>[2];</td></tr>
+<tr name="175" id="175">
+<td>175</td><td>  <span class="br">}</span> <a id="175c5" class="tk">Timing</a>;</td></tr>
+<tr name="176" id="176">
+<td>176</td><td><span class="br">}</span>;</td></tr>
+<tr name="177" id="177">
+<td>177</td><td></td></tr>
+<tr name="178" id="178">
+<td>178</td><td><span class="ct">/* Block signals (auto storage) */</span></td></tr>
+<tr name="179" id="179">
+<td>179</td><td><span class="kw">extern</span> <a id="179c8" class="tk">B_model_T</a> <a id="179c18" class="tk">model_B</a>;</td></tr>
+<tr name="180" id="180">
+<td>180</td><td></td></tr>
+<tr name="181" id="181">
+<td>181</td><td><span class="ct">/* Continuous states (auto storage) */</span></td></tr>
+<tr name="182" id="182">
+<td>182</td><td><span class="kw">extern</span> <a id="182c8" class="tk">X_model_T</a> <a id="182c18" class="tk">model_X</a>;</td></tr>
+<tr name="183" id="183">
+<td>183</td><td></td></tr>
+<tr name="184" id="184">
+<td>184</td><td><span class="ct">/* External inputs (root inport signals with auto storage) */</span></td></tr>
+<tr name="185" id="185">
+<td>185</td><td><span class="kw">extern</span> <a id="185c8" class="tk">ExtU_model_T</a> <a id="185c21" class="tk">model_U</a>;</td></tr>
+<tr name="186" id="186">
+<td>186</td><td></td></tr>
+<tr name="187" id="187">
+<td>187</td><td><span class="ct">/* External outputs (root outports fed by signals with auto storage) */</span></td></tr>
+<tr name="188" id="188">
+<td>188</td><td><span class="kw">extern</span> <a id="188c8" class="tk">ExtY_model_T</a> <a id="188c21" class="tk">model_Y</a>;</td></tr>
+<tr name="189" id="189">
+<td>189</td><td></td></tr>
+<tr name="190" id="190">
+<td>190</td><td><span class="ct">/* Model entry point functions */</span></td></tr>
+<tr name="191" id="191">
+<td>191</td><td><span class="kw">extern</span> <span class="kw">void</span> <a id="191c13" class="tk">model_initialize</a>(<span class="kw">void</span>);</td></tr>
+<tr name="192" id="192">
+<td>192</td><td><span class="kw">extern</span> <span class="kw">void</span> <a id="192c13" class="tk">model_step</a>(<span class="kw">void</span>);</td></tr>
+<tr name="193" id="193">
+<td>193</td><td><span class="kw">extern</span> <span class="kw">void</span> <a id="193c13" class="tk">model_terminate</a>(<span class="kw">void</span>);</td></tr>
+<tr name="194" id="194">
+<td>194</td><td></td></tr>
+<tr name="195" id="195">
+<td>195</td><td><span class="ct">/* Real-time Model object */</span></td></tr>
+<tr name="196" id="196">
+<td>196</td><td><span class="kw">extern</span> <a id="196c8" class="tk">RT_MODEL_model_T</a> <a id="196c25" class="tk">*</a><span class="kw">const</span> <a id="196c32" class="tk">model_M</a>;</td></tr>
+<tr name="197" id="197">
+<td>197</td><td></td></tr>
+<tr name="198" id="198">
+<td>198</td><td><span class="ct">/*-</span></td></tr>
+<tr name="199" id="199">
+<td>199</td><td><span class="ct"> * These blocks were eliminated from the model due to optimizations:</span></td></tr>
+<tr name="200" id="200">
+<td>200</td><td><span class="ct"> *</span></td></tr>
+<tr name="201" id="201">
+<td>201</td><td><span class="ct"> * Block '<a class="ct blk" blk_line="201">&lt;Root&gt;/Scope8</a>' : Unused code path elimination</span></td></tr>
+<tr name="202" id="202">
+<td>202</td><td><span class="ct"> * Block '<a class="ct blk" blk_line="202">&lt;S1&gt;/Scope</a>' : Unused code path elimination</span></td></tr>
+<tr name="203" id="203">
+<td>203</td><td><span class="ct"> * Block '<a class="ct blk" blk_line="203">&lt;S1&gt;/Scope2</a>' : Unused code path elimination</span></td></tr>
+<tr name="204" id="204">
+<td>204</td><td><span class="ct"> */</span></td></tr>
+<tr name="205" id="205">
+<td>205</td><td></td></tr>
+<tr name="206" id="206">
+<td>206</td><td><span class="ct">/*-</span></td></tr>
+<tr name="207" id="207">
+<td>207</td><td><span class="ct"> * The generated code includes comments that allow you to trace directly</span></td></tr>
+<tr name="208" id="208">
+<td>208</td><td><span class="ct"> * back to the appropriate location in the model.  The basic format</span></td></tr>
+<tr name="209" id="209">
+<td>209</td><td><span class="ct"> * is &lt;system&gt;/block_name, where system is the system number (uniquely</span></td></tr>
+<tr name="210" id="210">
+<td>210</td><td><span class="ct"> * assigned by Simulink) and block_name is the name of the block.</span></td></tr>
+<tr name="211" id="211">
+<td>211</td><td><span class="ct"> *</span></td></tr>
+<tr name="212" id="212">
+<td>212</td><td><span class="ct"> * Use the MATLAB hilite_system command to trace the generated code back</span></td></tr>
+<tr name="213" id="213">
+<td>213</td><td><span class="ct"> * to the model.  For example,</span></td></tr>
+<tr name="214" id="214">
+<td>214</td><td><span class="ct"> *</span></td></tr>
+<tr name="215" id="215">
+<td>215</td><td><span class="ct"> * hilite_system('<a class="ct blk" blk_line="215">&lt;S3&gt;</a>')    - opens system 3</span></td></tr>
+<tr name="216" id="216">
+<td>216</td><td><span class="ct"> * hilite_system('<a class="ct blk" blk_line="216">&lt;S3&gt;/Kp</a>') - opens and selects block Kp which resides in S3</span></td></tr>
+<tr name="217" id="217">
+<td>217</td><td><span class="ct"> *</span></td></tr>
+<tr name="218" id="218">
+<td>218</td><td><span class="ct"> * Here is the system hierarchy for this model</span></td></tr>
+<tr name="219" id="219">
+<td>219</td><td><span class="ct"> *</span></td></tr>
+<tr name="220" id="220">
+<td>220</td><td><span class="ct"> * '<a class="ct blk" blk_line="220">&lt;Root&gt;</a>' : 'model'</span></td></tr>
+<tr name="221" id="221">
+<td>221</td><td><span class="ct"> * '<a class="ct blk" blk_line="221">&lt;S1&gt;</a>'   : 'model/Subsystem'</span></td></tr>
+<tr name="222" id="222">
+<td>222</td><td><span class="ct"> */</span></td></tr>
+<tr name="223" id="223">
+<td>223</td><td><span class="pp">#endif</span>                                 <span class="ct">/* RTW_HEADER_model_h_ */</span></td></tr>
+<tr name="224" id="224">
+<td>224</td><td></td></tr>
+<tr name="225" id="225">
+<td>225</td><td><span class="ct">/*</span></td></tr>
+<tr name="226" id="226">
+<td>226</td><td><span class="ct"> * File trailer for generated code.</span></td></tr>
+<tr name="227" id="227">
+<td>227</td><td><span class="ct"> *</span></td></tr>
+<tr name="228" id="228">
+<td>228</td><td><span class="ct"> * [EOF]</span></td></tr>
+<tr name="229" id="229">
+<td>229</td><td><span class="ct"> */</span></td></tr>
+<tr name="230" id="230">
+<td>230</td><td></td></tr>
+</table>
+</pre>
+</body>
+</html>
