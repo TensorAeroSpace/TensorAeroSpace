@@ -24,7 +24,7 @@ htmlcov/
 
 /build
 /dist
-/aircraftmodel.egg-info
+/aerospacemodel.egg-info
 
 # Python compiled byte code
 *.pyc
@@ -52,4 +52,6 @@ shippable/
 
 # not include scripts because they come from external module
 scripts/
+
+.DS_Store
 

@@ -3,16 +3,25 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-TensorAirSpace: a library for applied reinforcement learning in aerospace 
-==========================================================================
+.. note:: 
 
-Библиотека TensorAirSpace предоставляет возможность применения методов reinforcement learning к различным объектам управления.
+   В скором времени библиотека изменит свой адрес. C TensorAirSpace на TensorAeroSpace
+
+Добро пожаловать в документацию TensorAirSpace! - RL for Aerospace
+==================================================================
+
+TensorAirSpace - это набор объектов управления, сред моделирования OpenAI Gym и реализации алгоритмов Reinforcement Learning (RL)
+
+Github репозиторий: https://github.com/TensorAirSpace/TensorAirSpace
+
 
 .. toctree::
    :maxdepth: 2
-   :caption: Теория:
+   :caption: User guide:
 
-   theory/quality_indicators
+   guide/installation.rst
+   guide/unity_env.rst
+  
 
 .. toctree::
    :maxdepth: 2
@@ -22,6 +31,7 @@ TensorAirSpace: a library for applied reinforcement learning in aerospace
    model/b747
    model/EVL
    model/typical_rocket
+   model/unity_env.rst
 
 .. toctree::
    :maxdepth: 2
@@ -29,6 +39,28 @@ TensorAirSpace: a library for applied reinforcement learning in aerospace
 
    agent/ihdp
    agent/dqn
+   optimization/optuna_based.rst
+
+.. toctree::
+   :maxdepth: 2
+   :caption: Сигналы:
+
+   signals/signals.rst
+
+
+.. toctree::
+   :maxdepth: 2
+   :caption: Примеры:
+   
+   example/env/examples.rst
+   example/agent/ihdp/example_ihdp.rst 
+   example/optimization/example_optimization.rst
+   example/failure/ihdp-failure.rst
+   example/simulink/sim_pyth.rst
+   example/simulink/your_sim.rst
+   example/env/unity_example.rst
+
+
 
 Indices and tables
 ==================
