@@ -7,8 +7,8 @@
 
    В скором времени библиотека изменит свой адрес. C TensorAirSpace на TensorAeroSpace
 
-Добро пожаловь в документацию TensorAirSpace! - RL for Aerospace
-================================================================
+Добро пожаловать в документацию TensorAirSpace! - RL for Aerospace
+==================================================================
 
 TensorAirSpace - это набор объектов управления, сред моделирования OpenAI Gym и реализации алгоритмов Reinforcement Learning (RL)
 
@@ -20,6 +20,8 @@ Github репозиторий: https://github.com/TensorAirSpace/TensorAirSpace
    :caption: User guide:
 
    guide/installation.rst
+   guide/unity_env.rst
+  
 
 .. toctree::
    :maxdepth: 2
@@ -29,6 +31,7 @@ Github репозиторий: https://github.com/TensorAirSpace/TensorAirSpace
    model/b747
    model/EVL
    model/typical_rocket
+   model/unity_env.rst
 
 .. toctree::
    :maxdepth: 2
@@ -55,6 +58,7 @@ Github репозиторий: https://github.com/TensorAirSpace/TensorAirSpace
    example/failure/ihdp-failure.rst
    example/simulink/sim_pyth.rst
    example/simulink/your_sim.rst
+   example/env/unity_example.rst
 
 
 

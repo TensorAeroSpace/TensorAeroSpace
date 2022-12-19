@@ -110,11 +110,20 @@
 -  :math:`m_q` - частная производная момента тангажа по угловой скорости
 -  :math:`m_{\theta}` - частная производная момента тангажа по углу тангажа
 
+
 Модель
 ------
 
 .. autoclass:: tensorairspace.aerospacemodel.MissileModel
     :members:
+
+
+Среда моделирования OpenAI Gym
+------------------------------
+
+.. autoclass:: tensorairspace.envs.LinearLongitudinalMissileModel
+    :members:
+
 
 Источники
 ---------
