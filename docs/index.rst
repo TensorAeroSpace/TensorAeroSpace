@@ -35,6 +35,7 @@ Github репозиторий: https://github.com/TensorAirSpace/TensorAirSpace
    model/b747
    model/EVL
    model/typical_rocket
+   model/unity_env.rst
 
 .. toctree::
    :maxdepth: 2
@@ -60,6 +61,7 @@ Github репозиторий: https://github.com/TensorAirSpace/TensorAirSpace
    example/optimization/example_optimization.rst
    example/failure/ihdp-failure.rst
    example/simulink/sim_pyth.rst
+   example/env/unity_example.rst
 
 
 

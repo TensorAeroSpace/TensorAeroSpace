@@ -37,7 +37,11 @@
 Для запуска примера взаимодействия агента dqn необходимо установить основной проект
 TensorAirSpace. В папке example необходимо выбрать ноутбук example_dqn.ipynb
 
-Последовательно выполните ячейки. Когда на 3й ячейке появится надпись
+Последовательно выполните ячейки.
+
+
+
+Когда на 3й ячейке появится надпись
 
 [INFO] Listening on port 5004. Start training by pressing the Play button in the Unity Editor.
 
@@ -52,4 +56,16 @@ TensorAirSpace. В папке example необходимо выбрать ноу
   :alt: guide4
 
 Необходимо дождаться окончания работы со средой.
+
+Для взаимодействия со средой была сделана функция получающая gym обертку нашей unity
+среды и класс обёртка для агентов с дискретным пространством действий.
+
+.. autoclass:: tensorairspace.envs.unity_env.get_plane_env
+  :members:
+  :inherited-members:
+
+.. autoclass:: tensorairspace.envs.unity_env.unity_discrete_env
+  :members:
+  :inherited-members:
+
 
