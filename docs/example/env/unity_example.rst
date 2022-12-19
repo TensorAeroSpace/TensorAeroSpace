@@ -1,19 +1,11 @@
-Пример запуска Unity среды с dqn агентом
+Пример запуска Unity среды с DQN агентом
 ==================================================
 
-Перед выполнением данного примера найстройте unity среду по инструкции в разделе
-Использование unity среды.
+.. image:: img/img_demo_unity.gif
+  :width: 800
 
-Для взаимодействия со средой была сделана функция получающая gym обертку нашей unity
-среды и класс обёртка для агентов с дискретным пространством действий.
-
-.. autoclass:: tensorairspace.envs.unity_env.get_plane_env
-  :members:
-  :inherited-members:
-
-.. autoclass:: tensorairspace.envs.unity_env.unity_discrete_env
-  :members:
-  :inherited-members:
+Перед выполнением данного примера настройте unity среду по инструкции в разделе
+Настройки Unity среды.
 
 Импорты модели и среды
 
@@ -22,7 +14,7 @@
     from tensorairspace.agent.dqn.model import Model, PERAgent
     from tensorairspace.envs.unity_env import get_plane_env, unity_discrete_env
 
-Запуск теста dqn агента. После запуска данной ячейки необходимо запустить среду Unity
+Запуск теста DQN агента. После запуска данной ячейки необходимо запустить среду Unity
 
 .. code:: ipython3
 
@@ -45,8 +37,6 @@
     [WARNING] uint8_visual was set to true, but visual observations are not in use. This setting will not have any effect.
     [WARNING] The environment contains multiple observations. You must define allow_multiple_obs=True to receive them all. Otherwise, only the first visual observation (or vector observation ifthere are no visual observations) will be provided in the observation.
     D:\anaconda3\envs\unity-env\lib\site-packages\gym\logger.py:34: UserWarning: WARN: Box bound precision lowered by casting to float32
-      warnings.warn(colorize("%s: %s" % ("WARN", msg % args), "yellow"))
-    After Training: -500 out of 200
 
 Экран запуска взаимодействия
 

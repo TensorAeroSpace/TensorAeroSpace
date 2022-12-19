@@ -12,12 +12,9 @@ DQN
 
 .. autoclass:: tensorairspace.agent.dqn.model.Model
   :members:
-  :inherited-members:
 
 .. autoclass:: tensorairspace.agent.dqn.model.SumTree
   :members:
-  :inherited-members:
 
 .. autoclass:: tensorairspace.agent.dqn.model.PERAgent
   :members:
-  :inherited-members:
