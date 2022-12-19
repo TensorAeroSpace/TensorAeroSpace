@@ -54,6 +54,7 @@ Github репозиторий: https://github.com/TensorAirSpace/TensorAirSpace
    example/optimization/example_optimization.rst
    example/failure/ihdp-failure.rst
    example/simulink/sim_pyth.rst
+   example/simulink/your_sim.rst
 
 
 
