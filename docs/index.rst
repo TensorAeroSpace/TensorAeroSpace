@@ -23,6 +23,12 @@ Github репозиторий: https://github.com/TensorAirSpace/TensorAirSpace
 
 .. toctree::
    :maxdepth: 2
+   :caption: Unity guide:
+
+   unity/unity_env.rst
+
+.. toctree::
+   :maxdepth: 2
    :caption: Объекты управления:
 
    model/f16
