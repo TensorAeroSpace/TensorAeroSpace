@@ -1,48 +1,28 @@
 Пример запуска Unity среды с dqn агентом
 ==================================================
 
-Для установки клонируйте репозиторий
+Перед выполнением данного примера найстройте unity среду по инструкции в разделе
+Использование unity среды.
 
-.. code:: shell
+Для взаимодействия со средой была сделана функция получающая gym обертку нашей unity
+среды и класс обёртка для агентов с дискретным пространством действий.
 
-    git clone git@github.com:TensorAirSpace/UnityAirplaneEnvironment.git
+.. autoclass:: tensorairspace.envs.unity_env.get_plane_env
+  :members:
+  :inherited-members:
 
-Установите пакет для работы с unity ml agents
+.. autoclass:: tensorairspace.envs.unity_env.unity_discrete_env
+  :members:
+  :inherited-members:
 
-.. code:: shell
-
-    pip install gym==0.20.0 gym-unity==0.28.0
-
-Установите Unity hub по ссылке
-
-- https://unity.com/download
-
-Скачайте и установите версию Unity 2021.3.5f1 по ссылке
-
-- https://unity.com/releases/editor/archive
-
-Откройте проект в unity hub. Для этого нажмите на кнопку open и найдите
-репозиторий на диске. Затем нажмите на кнопку open в папке репозитория.
-
-Затем откройте проект в unity hub.
-
-Для запуска примера взаимодействия агента dqn необходимо установить основной проект
-TensorAirSpace. В папке example необходимо выбрать ноутбук example_dqn.ipynb
-
-Последовательно выполните ячейки.
-
-
-
-Когда на 3й ячейке появится надпись
-
-[INFO] Listening on port 5004. Start training by pressing the Play button in the Unity Editor.
-
-Запустите среду нажав на кнопку запуска в среде unity
+Импорты модели и среды
 
 .. code:: ipython3
 
     from tensorairspace.agent.dqn.model import Model, PERAgent
     from tensorairspace.envs.unity_env import get_plane_env, unity_discrete_env
+
+Запуск теста dqn агента. После запуска данной ячейки необходимо запустить среду Unity
 
 .. code:: ipython3
 
@@ -68,6 +48,13 @@ TensorAirSpace. В папке example необходимо выбрать ноу
       warnings.warn(colorize("%s: %s" % ("WARN", msg % args), "yellow"))
     After Training: -500 out of 200
 
+Экран запуска взаимодействия
+
+.. image:: img/6.png
+  :width: 800
+  :alt: guide6
+
+Пример запуска взаимодействия с случайным агентом
 
 .. code:: ipython3
 
@@ -103,6 +90,8 @@ TensorAirSpace. В папке example необходимо выбрать ноу
     [-2.3451948e-01  8.8675082e-01 -5.1349407e-01  5.1649964e-01
      -1.3739325e-01  3.4209377e-01  1.5065831e-04]
     ...
+
+Пример запуска взаимодействия с случайным агентом
 
 .. code:: ipython3
 
