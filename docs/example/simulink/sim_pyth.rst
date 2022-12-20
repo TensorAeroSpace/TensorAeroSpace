@@ -89,176 +89,544 @@
 
 Пример использования Simulink модели Боинга-747 с Python:
 
-.. code-block:: python
+.. container:: cell code
 
-  import os
-  import ctypes
+   .. code:: python
 
-  import matplotlib.pyplot as plt
+      import os
+      import ctypes
 
-  from tensorairspace.aerospacemodel.utils.rtwtypes import *
-  
-  # Загружаем dll модель
-  b747_dll_path = os.path.abspath("../tensorairspace/aerospacemodel/model/simulinkModel/b747/b747_model_win64.dll")
-  b747_dll = ctypes.windll.LoadLibrary(b747_dll_path)
+      import matplotlib.pyplot as plt
 
-  b747_model_initialize = b747_dll.b747_model_initialize
-  b747_model_step = b747_dll.b747_model_step
-  b747_model_terminate = b747_dll.b747_model_terminate
+      from tensorairspace.aerospacemodel.utils.rtwtypes import *
 
-  # Model Parameters
-  ref_signal = real32_T.in_dll(b747_dll, "b747_model_U")
+.. container:: cell markdown
 
-  # Model output
-  b747_Y = ExtY_T.in_dll(b747_dll, "b747_model_Y")
+   .. rubric:: Боинг 747
+      :name: боинг-747
 
-  b747_model_initialize()
+.. container:: cell code
 
-  b747_time = []
-  b747_u = []
-  b747_w = []
-  b747_q = []
-  b747_theta = []
+   .. code:: python
 
-  for step in range(int(2100)):
-      b747_model_step()
-      
-      b747_time.append(float(b747_Y.time))
-      b747_u.append(float(b747_Y.u))
-      b747_w.append(float(b747_Y.w))
-      b747_q.append(float(b747_Y.q))
-      b747_theta.append(float(b747_Y.theta))
+      b747_dll_path = os.path.abspath("../tensorairspace/aerospacemodel/model/simulinkModel/b747/b747_model_win64.dll")
+      b747_dll = ctypes.windll.LoadLibrary(b747_dll_path)
 
-  b747_model_terminate()
+      b747_model_initialize = b747_dll.b747_model_initialize
+      b747_model_step = b747_dll.b747_model_step
+      b747_model_terminate = b747_dll.b747_model_terminate
+
+      # Model Parameters
+      ref_signal = real32_T.in_dll(b747_dll, "b747_model_U")
+
+      # Model output
+      b747_Y = ExtY_T.in_dll(b747_dll, "b747_model_Y")
+
+.. container:: cell code
+
+   .. code:: python
+
+      b747_model_initialize()
+
+      b747_time = []
+      b747_u = []
+      b747_w = []
+      b747_q = []
+      b747_theta = []
+
+      for step in range(int(2100)):
+          b747_model_step()
+          
+          b747_time.append(float(b747_Y.time))
+          b747_u.append(float(b747_Y.u))
+          b747_w.append(float(b747_Y.w))
+          b747_q.append(float(b747_Y.q))
+          b747_theta.append(float(b747_Y.theta))
+
+      b747_model_terminate()
+
+   .. container:: output execute_result
+
+      ::
+
+         -116768371
+
+.. container:: cell code
+
+   .. code:: python
+
+      plt.plot(b747_time, b747_u)
+
+      plt.xlabel('t, [сек]')
+      plt.ylabel('u, [м/c]')
+
+   .. container:: output execute_result
+
+      ::
+
+         Text(0, 0.5, 'u, [м/c]')
+
+   .. container:: output display_data
+
+      .. image:: img/1d956d83a4eb35a3ba92960c5c8cebccabb52475.png
+
+.. container:: cell code
+
+   .. code:: python
+
+      plt.plot(b747_time, b747_w)
+
+      plt.xlabel('t, [сек]')
+      plt.ylabel('w, [м/c]')
+
+   .. container:: output execute_result
+
+      ::
+
+         Text(0, 0.5, 'w, [м/c]')
+
+   .. container:: output display_data
+
+      .. image:: img/d4bb03fc0fedcdc1492ceef2f129b9b221da7adf.png
+
+.. container:: cell code
+
+   .. code:: python
+
+      plt.plot(b747_time, b747_q)
+
+      plt.xlabel('t, [сек]')
+      plt.ylabel('q, [рад/c]')
+
+   .. container:: output execute_result
+
+      ::
+
+         Text(0, 0.5, 'q, [рад/c]')
+
+   .. container:: output display_data
+
+      .. image:: img/3ca94c40701bd7000df9db25864bcb033471af45.png
+
+.. container:: cell code
+
+   .. code:: python
+
+      plt.plot(b747_time, b747_theta)
+
+      plt.xlabel('t, [сек]')
+      plt.ylabel(r'$\theta$, [рад]')
+
+   .. container:: output execute_result
+
+      ::
+
+         Text(0, 0.5, '$\\theta$, [рад]')
+
+   .. container:: output display_data
+
+      .. image:: img/c2db9455ddd8a3be7f69f0900a88ef365d86d0c7.png
+
 
 
 Пример использования Simulink модели F-16 с Python:
 
-.. code-block:: python
+.. container:: cell code
 
-  import os
-  import ctypes
+   .. code:: python
 
-  import matplotlib.pyplot as plt
+      import os
+      import ctypes
 
-  from tensorairspace.aerospacemodel.utils.rtwtypes import *
-  
-  # Загружаем dll модель
-  f16_dll_path = os.path.abspath("../tensorairspace/aerospacemodel/model/simulinkModel/f16/f16_model_win64.dll")
-  f16_dll = ctypes.windll.LoadLibrary(f16_dll_path)
+      import matplotlib.pyplot as plt
 
-  f16_model_initialize = f16_dll.f16_model_initialize
-  f16_model_step = f16_dll.f16_model_step
-  f16_model_terminate = f16_dll.f16_model_terminate
+      from tensorairspace.aerospacemodel.utils.rtwtypes import *
 
-  # Model Parameters
-  ref_signal = real32_T.in_dll(f16_dll, "f16_model_U")
+.. container:: cell markdown
 
-  # Model output
-  f16_Y = ExtY_T.in_dll(f16_dll, "f16_model_Y")
+   .. rubric:: F-16
+      :name: f-16
 
-  f16_model_initialize()
+.. container:: cell code
 
-  f16_time = []
-  f16_u = []
-  f16_w = []
-  f16_q = []
-  f16_theta = []
+   .. code:: python
 
-  for step in range(int(2100)):
-      f16_model_step()
-      
-      f16_time.append(float(f16_Y.time))
-      f16_u.append(float(f16_Y.u))
-      f16_w.append(float(f16_Y.w))
-      f16_q.append(float(f16_Y.q))
-      f16_theta.append(float(f16_Y.theta))
-      
-  f16_model_terminate()
+      f16_dll_path = os.path.abspath("../tensorairspace/aerospacemodel/model/simulinkModel/f16/f16_model_win64.dll")
+      f16_dll = ctypes.windll.LoadLibrary(f16_dll_path)
+
+      f16_model_initialize = f16_dll.f16_model_initialize
+      f16_model_step = f16_dll.f16_model_step
+      f16_model_terminate = f16_dll.f16_model_terminate
+
+      # Model Parameters
+      ref_signal = real32_T.in_dll(f16_dll, "f16_model_U")
+
+      # Model output
+      f16_Y = ExtY_T.in_dll(f16_dll, "f16_model_Y")
+
+.. container:: cell code
+
+   .. code:: python
+
+      f16_model_initialize()
+
+      f16_time = []
+      f16_u = []
+      f16_w = []
+      f16_q = []
+      f16_theta = []
+
+      for step in range(int(2100)):
+          f16_model_step()
+          
+          f16_time.append(float(f16_Y.time))
+          f16_u.append(float(f16_Y.u))
+          f16_w.append(float(f16_Y.w))
+          f16_q.append(float(f16_Y.q))
+          f16_theta.append(float(f16_Y.theta))
+          
+      f16_model_terminate()
+
+   .. container:: output execute_result
+
+      ::
+
+         -116768371
+
+.. container:: cell code
+
+   .. code:: python
+
+      plt.plot(f16_time, f16_u)
+
+      plt.xlabel('t, [сек]')
+      plt.ylabel('u, [м/c]')
+
+   .. container:: output execute_result
+
+      ::
+
+         Text(0, 0.5, 'u, [м/c]')
+
+   .. container:: output display_data
+
+      .. image:: img/49fb3125d2081891029fba77e3a1d3f62d709876.png
+
+.. container:: cell code
+
+   .. code:: python
+
+      plt.plot(f16_time, f16_w)
+
+      plt.xlabel('t, [сек]')
+      plt.ylabel('w, [м/c]')
+
+   .. container:: output execute_result
+
+      ::
+
+         Text(0, 0.5, 'w, [м/c]')
+
+   .. container:: output display_data
+
+      .. image:: img/8bb6669c2226f4d6315c22e9e8888b56f878e832.png
+
+.. container:: cell code
+
+   .. code:: python
+
+      plt.plot(f16_time, f16_q)
+
+      plt.xlabel('t, [сек]')
+      plt.ylabel('q, [рад/c]')
+
+   .. container:: output execute_result
+
+      ::
+
+         Text(0, 0.5, 'q, [рад/c]')
+
+   .. container:: output display_data
+
+      .. image:: img/066cdf4d4c608a870abb79db3b0080a765a62b96.png
+
+.. container:: cell code
+
+   .. code:: python
+
+      plt.plot(f16_time, f16_theta)
+
+      plt.xlabel('t, [сек]')
+      plt.ylabel(r'$\theta$, [рад]')
+
+   .. container:: output execute_result
+
+      ::
+
+         Text(0, 0.5, '$\\theta$, [рад]')
+
+   .. container:: output display_data
+
+      .. image:: img/e35193b58c1bca5e0f9d471520fbb8063795b50c.png
+
 
 
 Пример использования Simulink модели ELV с Python:
 
-.. code-block:: python
+.. container:: cell code
 
-  import os
-  import ctypes
+   .. code:: python
 
-  import matplotlib.pyplot as plt
+      import os
+      import ctypes
 
-  from tensorairspace.aerospacemodel.utils.rtwtypes import *
-  
-  # Загружаем dll модель
-  elv_dll_path = os.path.abspath("../tensorairspace/aerospacemodel/model/simulinkModel/elv/elv_model_win64.dll")
-  elv_dll = ctypes.windll.LoadLibrary(elv_dll_path)
+      import matplotlib.pyplot as plt
 
-  elv_model_initialize = elv_dll.elv_model_initialize
-  elv_model_step = elv_dll.elv_model_step
-  elv_model_terminate = elv_dll.elv_model_terminate
+      from tensorairspace.aerospacemodel.utils.rtwtypes import *
 
-  # Model Parameters
-  ref_signal = real32_T.in_dll(elv_dll, "elv_model_U")
+.. container:: cell markdown
 
-  # Model output
-  elv_Y = ExtY_T_r.in_dll(elv_dll, "elv_model_Y")
+   .. rubric:: ELV
+      :name: elv
 
-  elv_model_initialize()
+.. container:: cell code
 
-  elv_time = []
-  elv_w = []
-  elv_q = []
-  elv_theta = []
+   .. code:: python
 
-  for step in range(int(20)):
-      elv_model_step()
-      
-      elv_time.append(float(elv_Y.time))
-      elv_w.append(float(elv_Y.w))
-      elv_q.append(float(elv_Y.q))
-      elv_theta.append(float(elv_Y.theta))
-      
-  elv_model_terminate()
+      elv_dll_path = os.path.abspath("../tensorairspace/aerospacemodel/model/simulinkModel/elv/elv_model_win64.dll")
+      elv_dll = ctypes.windll.LoadLibrary(elv_dll_path)
+
+      elv_model_initialize = elv_dll.elv_model_initialize
+      elv_model_step = elv_dll.elv_model_step
+      elv_model_terminate = elv_dll.elv_model_terminate
+
+      # Model Parameters
+      ref_signal = real32_T.in_dll(elv_dll, "elv_model_U")
+
+      # Model output
+      elv_Y = ExtY_T_r.in_dll(elv_dll, "elv_model_Y")
+
+.. container:: cell code
+
+   .. code:: python
+
+      elv_model_initialize()
+
+      elv_time = []
+      elv_w = []
+      elv_q = []
+      elv_theta = []
+
+      for step in range(int(20)):
+          elv_model_step()
+          
+          elv_time.append(float(elv_Y.time))
+          elv_w.append(float(elv_Y.w))
+          elv_q.append(float(elv_Y.q))
+          elv_theta.append(float(elv_Y.theta))
+          
+      elv_model_terminate()
+
+   .. container:: output execute_result
+
+      ::
+
+         -116768371
+
+.. container:: cell code
+
+   .. code:: python
+
+      plt.plot(elv_time, elv_w)
+
+      plt.xlabel('t, [сек]')
+      plt.ylabel('w, [рад/c]')
+
+   .. container:: output execute_result
+
+      ::
+
+         Text(0, 0.5, 'w, [рад/c]')
+
+   .. container:: output display_data
+
+      .. image:: img/9010a17073b06c7889077018e13a3ae56684f593.png
+
+.. container:: cell code
+
+   .. code:: python
+
+      plt.plot(elv_time, elv_q)
+
+      plt.xlabel('t, [сек]')
+      plt.ylabel('q, [рад/c]')
+
+   .. container:: output execute_result
+
+      ::
+
+         Text(0, 0.5, 'q, [рад/c]')
+
+   .. container:: output display_data
+
+      .. image:: img/6c4f9db03680280abd415b3ec1f024ecbdc64353.png
+
+.. container:: cell code
+
+   .. code:: python
+
+      plt.plot(elv_time, elv_theta)
+
+      plt.xlabel('t, [сек]')
+      plt.ylabel(r'$\theta$, [рад]')
+
+   .. container:: output execute_result
+
+      ::
+
+         Text(0, 0.5, '$\\theta$, [рад]')
+
+   .. container:: output display_data
+
+      .. image:: img/4775f06a550c2d893164b0bdaf7d359f3afc4f04.png
+
 
 Пример использования Simulink модели типичной ракеты с Python:
 
-.. code-block:: python
+.. container:: cell code
 
-  import os
-  import ctypes
+   .. code:: python
 
-  import matplotlib.pyplot as plt
+      import os
+      import ctypes
 
-  from tensorairspace.aerospacemodel.utils.rtwtypes import *
-  
-  # Загружаем dll модель
-  rocket_dll_path = os.path.abspath("../tensorairspace/aerospacemodel/model/simulinkModel/rocket/rocket_model_win64.dll")
-  rocket_dll = ctypes.windll.LoadLibrary(rocket_dll_path)
+      import matplotlib.pyplot as plt
 
-  rocket_model_initialize = rocket_dll.rocket_model_initialize
-  rocket_model_step = rocket_dll.rocket_model_step
-  rocket_model_terminate = rocket_dll.rocket_model_terminate
+      from tensorairspace.aerospacemodel.utils.rtwtypes import *
 
-  # Model Parameters
-  ref_signal = real32_T.in_dll(rocket_dll, "rocket_model_U")
+.. container:: cell markdown
 
-  # Model output
-  rocket_Y = ExtY_T.in_dll(rocket_dll, "rocket_model_Y")
+   .. rubric:: Rocket
+      :name: rocket
 
-  rocket_model_initialize()
+.. container:: cell code
 
-  rocket_time = []
-  rocket_u = []
-  rocket_w = []
-  rocket_q = []
-  rocket_theta = []
+   .. code:: python
 
-  for step in range(int(2100)):
-      rocket_model_step()
-      
-      rocket_time.append(float(rocket_Y.time))
-      rocket_u.append(float(rocket_Y.u))
-      rocket_w.append(float(rocket_Y.w))
-      rocket_q.append(float(rocket_Y.q))
-      rocket_theta.append(float(rocket_Y.theta))
-      
-  rocket_model_terminate()
+      rocket_dll_path = os.path.abspath("../tensorairspace/aerospacemodel/model/simulinkModel/rocket/rocket_model_win64.dll")
+      rocket_dll = ctypes.windll.LoadLibrary(rocket_dll_path)
+
+      rocket_model_initialize = rocket_dll.rocket_model_initialize
+      rocket_model_step = rocket_dll.rocket_model_step
+      rocket_model_terminate = rocket_dll.rocket_model_terminate
+
+      # Model Parameters
+      ref_signal = real32_T.in_dll(rocket_dll, "rocket_model_U")
+
+      # Model output
+      rocket_Y = ExtY_T.in_dll(rocket_dll, "rocket_model_Y")
+
+.. container:: cell code
+
+   .. code:: python
+
+      rocket_model_initialize()
+
+      rocket_time = []
+      rocket_u = []
+      rocket_w = []
+      rocket_q = []
+      rocket_theta = []
+
+      for step in range(int(2100)):
+          rocket_model_step()
+          
+          rocket_time.append(float(rocket_Y.time))
+          rocket_u.append(float(rocket_Y.u))
+          rocket_w.append(float(rocket_Y.w))
+          rocket_q.append(float(rocket_Y.q))
+          rocket_theta.append(float(rocket_Y.theta))
+          
+      rocket_model_terminate()
+
+   .. container:: output execute_result
+
+      ::
+
+         -116768371
+
+.. container:: cell code
+
+   .. code:: python
+
+      plt.plot(rocket_time, rocket_u)
+
+      plt.xlabel('t, [сек]')
+      plt.ylabel('u, [м/c]')
+
+   .. container:: output execute_result
+
+      ::
+
+         Text(0, 0.5, 'u, [м/c]')
+
+   .. container:: output display_data
+
+      .. image:: img/14065962e5e7b95769106defe74a45839316524b.png
+
+.. container:: cell code
+
+   .. code:: python
+
+      plt.plot(rocket_time, rocket_w)
+
+      plt.xlabel('t, [сек]')
+      plt.ylabel('w, [м/c]')
+
+   .. container:: output execute_result
+
+      ::
+
+         Text(0, 0.5, 'w, [м/c]')
+
+   .. container:: output display_data
+
+      .. image:: img/2ccbd419db52781eab564bbc37a9f5855cc93c37.png
+
+.. container:: cell code
+
+   .. code:: python
+
+      plt.plot(rocket_time, rocket_q)
+
+      plt.xlabel('t, [сек]')
+      plt.ylabel('q, [рад/c]')
+
+   .. container:: output execute_result
+
+      ::
+
+         Text(0, 0.5, 'q, [рад/c]')
+
+   .. container:: output display_data
+
+      .. image:: img/deab0f2643965809f749d259c6ba8cf34cb29dcd.png
+
+.. container:: cell code
+
+   .. code:: python
+
+      plt.plot(rocket_time, rocket_theta)
+
+      plt.xlabel('t, [сек]')
+      plt.ylabel(r'$\theta$, [рад]')
+
+   .. container:: output execute_result
+
+      ::
+
+         Text(0, 0.5, '$\\theta$, [рад]')
+
+   .. container:: output display_data
+
+      .. image:: img/3755763dbacba75c5c0e52c97ac146c21287ca8d.png

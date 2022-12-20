@@ -128,4 +128,4 @@
 Источники
 ---------
 
-1. Arikapalli V. S. N. et al. Missile Longitudinal Dynamics Control Design using Pole Placement and LQR Methods--A Critical Analysis //Defence Science Journal. – 2021. – Т. 71. – №. 5.
+1. Arikapalli V. S. N. et al. Missile Longitudinal Dynamics Control Design using Pole Placement and LQR Methods--A Critical Analysis //Defence Science Journal. – 2021. – Т. 71. – №. 5. (https://www.strategicfront.org/forums/attachments/16232-article-text-62198-1-10-20210902-pdf.20806/)
