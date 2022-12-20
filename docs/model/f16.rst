@@ -143,3 +143,8 @@ General Dynamics F-16 Fighting Falcon — американский многоф�
 
 .. autoclass:: tensorairspace.envs.LinearLongitudinalF16
     :members:
+
+Источники
+---------
+
+1. Albert Farr´e Gabernet Controllers for Systems with Bounded Actuators: Modeling and control of an F-16 aircraft // UNIVERSITY OF CALIFORNIA, IRVINE (https://cpb-us-e2.wpmucdn.com/sites.uci.edu/dist/2/1678/files/2014/11/MSthesis_AFarre07.pdf)
