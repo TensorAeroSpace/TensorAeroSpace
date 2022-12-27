@@ -35,4 +35,11 @@
 .. image:: img/5.png
   :width: 800
 
+Затем внутри редактора Unity который откроется вместе с проектом откройте папку
+Assets\AlbLab3\Scenes\MLAgentsScenes и выберите нужную сцену например MLAgentsScene
+для запуска простой среды
+
+.. image:: img/6.png
+  :width: 800
+
 Среда готова к работе
