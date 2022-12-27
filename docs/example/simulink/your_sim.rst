@@ -65,67 +65,182 @@
   		:width: 400
   		:alt: Модель
 
-.. code-block:: python
+.. container:: cell code
 
-  import os
-  import ctypes
+   .. code:: python
 
-  import matplotlib.pyplot as plt
+      import os
+      import ctypes
 
-  from tensorairspace.aerospacemodel.utils.rtwtypes import *
+      import matplotlib.pyplot as plt
 
-  # Описываем интерфейс взаимодействия
-  class ExtY(ctypes.Structure):
-    """
-        Output parameters Simulink model
-    """
-    _fields_ = [
-        ("Wz", real_T),
-        ("theta_big", real_T),
-        ("H", real_T),
-        ("alpha", real_T),
-        ("theta_small", real_T),
-    ]
+      from rtwtypes import *
 
-    
-  class ExtU(ctypes.Structure):
-      """
-          INput parameters Simulink model
-      """
-      _fields_ = [
-          ("ref_signal", real_T),
-      ]
-  
-  # Загружаем dll модель
-  dll_path = os.path.abspath("../tensorairspace/aerospacemodel/model/exampleModel/model_ert_shrlib_rtw/model.so")
-  dll = ctypes.cdll.LoadLibrary(dll_path)
+.. container:: cell code
 
-  model_initialize = dll.model_initialize
-  model_step = dll.model_step
-  model_terminate = dll.model_terminate
+   .. code:: python
 
-  X = ExtU.in_dll(dll, "model_U")
+      class ExtY(ctypes.Structure):
+          """
+              Output parameters Simulink model
+              (name, type)
+          """
+          _fields_ = [
+              ("Wz", real_T),
+              ("theta_big", real_T),
+              ("H", real_T),
+              ("alpha", real_T),
+              ("theta_small", real_T),
+          ]
 
-  Y = ExtY.in_dll(dll, "model_Y")
+          
+      class ExtU(ctypes.Structure):
+          """
+              INput parameters Simulink model
+              (name, type)
+          """
+          _fields_ = [
+              ("ref_signal", real_T),
+          ]
 
-  model_initialize()
+.. container:: cell code
 
-  wz = []
-  theta_big = []
-  H = []
-  alpha = []
-  theta_small = []
+   .. code:: python
 
-  for step in range(int(2100)):
+      dll_path = os.path.abspath("model.so")
+      dll = ctypes.cdll.LoadLibrary(dll_path)
 
-      ref_signal.ref_signal = -0.1
+.. container:: cell code
 
-      model_step()
-      
-      wz.append(Y.Wz)
-      theta_big.append(Y.theta_big)
-      H.append(Y.H)
-      alpha.append(Y.alpha)
-      theta_small.append(Y.theta_small)
+   .. code:: python
 
-  model_terminate()
+      X = ExtU.in_dll(dll, 'model_U')
+      Y = ExtY.in_dll(dll, 'model_Y')
+
+.. container:: cell code
+
+   .. code:: python
+
+      model_initialize = dll.model_initialize
+      model_step = dll.model_step
+      model_terminate = dll.model_terminate
+
+.. container:: cell code
+
+   .. code:: python
+
+      model_initialize()
+
+      wz = []
+      theta_big = []
+      H = []
+      alpha = []
+      theta_small = []
+
+      for step in range(int(2100)):
+          X.ref_signal = -0.1
+          model_step()
+          
+          wz.append(Y.Wz)
+          theta_big.append(Y.theta_big)
+          H.append(Y.H)
+          alpha.append(Y.alpha)
+          theta_small.append(Y.theta_small)
+
+      model_terminate()
+
+   .. container:: output execute_result
+
+      ::
+
+         0
+
+.. container:: cell code
+
+   .. code:: python
+
+      plt.plot(wz)
+
+      plt.ylabel('$w_z$, [рад/с]')
+
+   .. container:: output execute_result
+
+      ::
+
+         Text(0, 0.5, '$w_z$, [рад/с]')
+
+   .. container:: output display_data
+
+      .. image:: img/wz.png
+
+.. container:: cell code
+
+   .. code:: python
+
+      plt.plot(H)
+
+      plt.ylabel('H, [м]')
+
+   .. container:: output execute_result
+
+      ::
+
+         Text(0, 0.5, 'H, [м]')
+
+   .. container:: output display_data
+
+      .. image:: img/h.png
+
+.. container:: cell code
+
+   .. code:: python
+
+      plt.plot(theta_big)
+
+      plt.ylabel('$\Theta$, [рад]')
+
+   .. container:: output execute_result
+
+      ::
+
+         Text(0, 0.5, '$\\Theta$, [рад]')
+
+   .. container:: output display_data
+
+      .. image:: img/theta_big.png
+
+.. container:: cell code
+
+   .. code:: python
+
+      plt.plot(theta_small)
+
+      plt.ylabel(r'$\theta$, [рад]')
+
+   .. container:: output execute_result
+
+      ::
+
+         Text(0, 0.5, '$\\theta$, [рад]')
+
+   .. container:: output display_data
+
+      .. image:: img/theta_small.png
+
+.. container:: cell code
+
+   .. code:: python
+
+      plt.plot(alpha)
+
+      plt.ylabel(r'$\alpha$, [рад]')
+
+   .. container:: output execute_result
+
+      ::
+
+         Text(0, 0.5, '$\\alpha$, [рад]')
+
+   .. container:: output display_data
+
+      .. image:: img/alpha.png
