@@ -7,6 +7,30 @@ from .model import GaussianPolicy, QNetwork, DeterministicPolicy
 
 
 class SAC(object):
+    """Soft Actor-Critic (SAC) алгоритм для обучения с подкреплением.
+
+    Аргументы:
+        num_inputs (int): Размерность входного пространства состояний.
+        action_space: Пространство действий агента.
+        args: Параметры и настройки алгоритма.
+
+    Атрибуты:
+        gamma (float): Коэффициент дисконтирования.
+        tau (float): Коэффициент для мягкого обновления весов целевой сети.
+        alpha (float): Коэффициент для регуляризации политики.
+        policy_type (str): Тип политики ("Gaussian" или "Deterministic").
+        target_update_interval (int): Интервал обновления весов целевой сети.
+        automatic_entropy_tuning (bool): Флаг автоматической настройки энтропии.
+        device: Устройство для вычислений (cpu или cuda).
+
+        critic: Сеть критика.
+        critic_optim: Оптимизатор для обновления весов критика.
+        critic_target: Целевая сеть критика.
+
+        policy: Политика агента.
+        policy_optim: Оптимизатор для обновления весов политики.
+
+    """
     def __init__(self, num_inputs, action_space, args):
 
         self.gamma = args.gamma
@@ -42,6 +66,16 @@ class SAC(object):
             self.policy_optim = Adam(self.policy.parameters(), lr=args.lr)
 
     def select_action(self, state, evaluate=False):
+        """Выбор действия на основе текущего состояния.
+
+        Аргументы:
+            state: Текущее состояние агента.
+            evaluate (bool): Флаг режима оценки.
+
+        Возвращает:
+            action: Выбранное действие.
+
+        """
         state = torch.FloatTensor(state).to(self.device).unsqueeze(0)
         if evaluate is False:
             action, _, _ = self.policy.sample(state)
@@ -50,6 +84,21 @@ class SAC(object):
         return action.detach().cpu().numpy()[0]
 
     def update_parameters(self, memory, batch_size, updates):
+        """Обновление параметров сетей на основе мини-пакета из памяти.
+
+        Аргументы:
+            memory: Память для хранения переходов.
+            batch_size (int): Размер мини-пакета.
+            updates (int): Количество обновлений.
+
+        Возвращает:
+            qf1_loss (float): Значение функции потерь для первой Q-сети.
+            qf2_loss (float): Значение функции потерь для второй Q-сети.
+            policy_loss (float): Значение функции потерь для политики.
+            alpha_loss (float): Значение функции потерь для коэффициента alpha.
+            alpha_tlogs (float): Значение коэффициента alpha.
+
+        """
         # Sample a batch from memory
         state_batch, action_batch, reward_batch, next_state_batch, mask_batch = memory.sample(batch_size=batch_size)
 
@@ -105,6 +154,14 @@ class SAC(object):
 
     # Save model parameters
     def save_checkpoint(self, env_name, suffix="", ckpt_path=None):
+        """Сохранение параметров моделей в файл.
+
+        Аргументы:
+            env_name (str): Имя среды.
+            suffix (str): Суффикс для имени файла.
+            ckpt_path (str): Путь для сохранения файла.
+
+        """
         if not os.path.exists('checkpoints/'):
             os.makedirs('checkpoints/')
         if ckpt_path is None:
@@ -118,6 +175,13 @@ class SAC(object):
 
     # Load model parameters
     def load_checkpoint(self, ckpt_path, evaluate=False):
+        """Загрузка параметров моделей из файла.
+
+        Аргументы:
+            ckpt_path (str): Путь к файлу.
+            evaluate (bool): Флаг режима оценки.
+
+        """
         print('Loading models from {}'.format(ckpt_path))
         if ckpt_path is not None:
             checkpoint = torch.load(ckpt_path)

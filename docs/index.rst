@@ -39,6 +39,7 @@ Github репозиторий: https://github.com/TensorAirSpace/TensorAirSpace
 
    agent/ihdp
    agent/dqn
+   agent/sac
    optimization/optuna_based.rst
 
 .. toctree::
