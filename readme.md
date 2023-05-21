@@ -35,6 +35,7 @@ docker run -v example:/app/example -p 8888:8888 -it tensor_aero_space
 
 - IHDP (Incremental Heuristic Dynamic Programming)
 - DQN (Deep Q Learning)
+- SAC (Soft Actor Critic)
 
 ## Объекты управления
 
