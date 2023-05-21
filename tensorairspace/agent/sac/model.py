@@ -42,7 +42,7 @@ class ValueNetwork(nn.Module):
         Args:
             state (torch.Tensor): Тензор входного состояния.
 
-         Returns:
+        Returns:
             torch.Tensor: Тензор выходного значения.
 
         """
@@ -91,7 +91,7 @@ class QNetwork(nn.Module):
             state (torch.Tensor): Тензор входного состояния.
             action (torch.Tensor): Тензор входного действия.
 
-         Returns:
+        Returns:
             Tuple[torch.Tensor, torch.Tensor]: Тензоры Q1 и Q2.
 
         """
@@ -152,7 +152,7 @@ class GaussianPolicy(nn.Module):
         Args:
             state (torch.Tensor): Тензор входного состояния.
 
-         Returns:
+        Returns:
             Tuple[torch.Tensor, torch.Tensor]: Тензоры среднего значения и логарифма стандартного отклонения.
 
         """
@@ -169,7 +169,7 @@ class GaussianPolicy(nn.Module):
         Args:
             state (torch.Tensor): Тензор входного состояния.
 
-         Returns:
+        Returns:
             Tuple[torch.Tensor, torch.Tensor, torch.Tensor]: Тензор действия, логарифм вероятности и среднее значение.
 
         """
@@ -192,7 +192,7 @@ class GaussianPolicy(nn.Module):
         Args:
             device (Union[str, torch.device]): Устройство для перемещения модели.
 
-         Returns:
+        Returns:
             GaussianPolicy: Перемещенная модель.
 
         """
@@ -245,7 +245,7 @@ class DeterministicPolicy(nn.Module):
         Args:
             state (torch.Tensor): Тензор входного состояния.
 
-         Returns:
+        Returns:
             torch.Tensor: Тензор среднего значения.
 
         """
@@ -260,7 +260,7 @@ class DeterministicPolicy(nn.Module):
         Args:
             state (torch.Tensor): Тензор входного состояния.
 
-         Returns:
+        Returns:
             Tuple[torch.Tensor, torch.Tensor, torch.Tensor]: Тензор действия, фиктивное значение логарифма вероятности и среднее значение.
 
         """
@@ -276,7 +276,7 @@ class DeterministicPolicy(nn.Module):
         Args:
             device (Union[str, torch.device]): Устройство для перемещения модели.
 
-         Returns:
+        Returns:
             DeterministicPolicy: Перемещенная модель.
 
         """

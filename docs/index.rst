@@ -3,16 +3,12 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-.. note:: 
-
-   В скором времени библиотека изменит свой адрес. C TensorAirSpace на TensorAeroSpace
-
-Добро пожаловать в документацию TensorAirSpace! - RL for Aerospace
+Добро пожаловать в документацию TensorAeroSpace! - RL for Aerospace
 ==================================================================
 
-TensorAirSpace - это набор объектов управления, сред моделирования OpenAI Gym и реализации алгоритмов Reinforcement Learning (RL)
+TensorAeroSpace - это набор объектов управления, сред моделирования OpenAI Gym и реализации алгоритмов Reinforcement Learning (RL)
 
-Github репозиторий: https://github.com/TensorAirSpace/TensorAirSpace
+Github репозиторий: https://github.com/TensorAeroSpace/TensorAeroSpace
 
 
 .. toctree::
@@ -54,7 +50,8 @@ Github репозиторий: https://github.com/TensorAirSpace/TensorAirSpace
    :caption: Примеры:
    
    example/env/examples.rst
-   example/agent/ihdp/example_ihdp.rst 
+   example/agent/ihdp/example_ihdp.rst
+   example/agent/sac/example-sac-f16.rst
    example/optimization/example_optimization.rst
    example/failure/ihdp-failure.rst
    example/simulink/sim_pyth.rst
