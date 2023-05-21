@@ -1,4 +1,4 @@
-# TensorAirSpace 
+# TensorAeroSpace 
 
 [![Documentation Status](https://readthedocs.org/projects/tensoraerospace/badge/?version=latest)](https://tensoraerospace.readthedocs.io/en/latest/?badge=latest)
 ---
@@ -6,7 +6,7 @@
 
 ![](./img/logo-no-background.png)
 
-**TensorAirSpace** - это набор объектов управления, сред моделирования OpenAI Gym и реализации алгоритмов Reinforcement Learning (RL)
+**TensorAeroSpace** - это набор объектов управления, сред моделирования OpenAI Gym и реализации алгоритмов Reinforcement Learning (RL)
 
 ## Запуск
 
@@ -27,11 +27,11 @@ docker run -v example:/app/example -p 8888:8888 -it tensor_aero_space
 
 ## Примеры
 
-Все примеры по запуску и работе с библиотекой TensorAirSpace находятся в папке `./example`
+Все примеры по запуску и работе с библиотекой TensorAeroSpace находятся в папке `./example`
 
 ## Агенты
 
-**TensorAirSpace** содержит такие RL алгоритмы как:
+**TensorAeroSpace** содержит такие RL алгоритмы как:
 
 - IHDP (Incremental Heuristic Dynamic Programming)
 - DQN (Deep Q Learning)
@@ -54,7 +54,7 @@ docker run -v example:/app/example -p 8888:8888 -it tensor_aero_space
 
 **TensorAirSpace** умеет работать с системой Ml-Agents.
 
-Пример среды для запуска можно найти в репозитории [UnityAirplaneEnvironment](https://github.com/TensorAirSpace/UnityAirplaneEnvironment)
+Пример среды для запуска можно найти в репозитории [UnityAirplaneEnvironment](https://github.com/TensorAeroSpace/UnityAirplaneEnvironment)
 
 В документации присутствуют примеры по настройке сети и работе с DQN агентом
 
