@@ -1,0 +1,10 @@
+EXPORTS
+comsat_model_M_
+comsat_model_M
+comsat_model_U
+comsat_model_Y
+comsat_model_initialize
+comsat_model_step
+comsat_model_terminate
+
+

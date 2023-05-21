@@ -1,0 +1,8 @@
+../x15_model_win64.dll
+x15_model_M		x15_model_M	data
+x15_model_M_		x15_model_M_	data
+x15_model_U		x15_model_U	data
+x15_model_Y		x15_model_Y	data
+x15_model_initialize		x15_model_initialize
+x15_model_step		x15_model_step
+x15_model_terminate		x15_model_terminate
