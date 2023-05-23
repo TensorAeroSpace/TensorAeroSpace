@@ -1,3 +1,6 @@
+Пример использования SAC
+===========================================================
+
 .. code:: python
 
     import gym 
@@ -7,12 +10,10 @@
     import numpy as np
     from gym.spaces import Box
     from tqdm import tqdm
-    from torch.utils.tensorboard import SummaryWriter
     
     from tensorairspace.envs import LinearLongitudinalF16
     from tensorairspace.utils import generate_time_period, convert_tp_to_sec_tp
     from tensorairspace.signals.standart import unit_step
-    from tensorairspace.agent.ihdp.model import IHDPAgent
     from tensorairspace.agent.sac import SAC, ReplayMemory
 
 
@@ -73,20 +74,18 @@
         for i in tqdm(range(len(tp)-1)):
             action = agent.select_action(state)
             if len(memory) > batch_size:
-                # Number of updates per step in environment
                 for i in range(updates_per_step):
-                    # Update parameters of all the networks
                     critic_1_loss, critic_2_loss, policy_loss, ent_loss, alpha = agent.update_parameters(memory, batch_size, updates)
                     updates += 1
             
-            next_state, reward, done, _ = env.step(action) # Step
+            next_state, reward, done, _ = env.step(action) 
             next_state = np.array(next_state).reshape([1,-1])[0]
             episode_steps += 1
             total_numsteps += 1
             episode_reward += reward
             reward_per_step.append(reward)
             mask = 1 if episode_steps == len(tp)-1 else float(not done)
-            memory.push(state, action, reward, next_state, mask) # Append transition to memory
+            memory.push(state, action, reward, next_state, mask)
             state = next_state
         
     #     env.model.plot_transient_process('alpha', tps, reference_signals[0], to_deg=True, figsize=(15,4))
