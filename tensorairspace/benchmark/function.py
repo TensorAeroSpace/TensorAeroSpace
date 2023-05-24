@@ -8,13 +8,12 @@ def find_longest_repeating_series(numbers:list):
     """
     Находит самую длинную серию повторяющихся чисел в массиве.
     
-    Аргументы:
+    Args:
         numbers: list
             Массив чисел, в котором нужно найти самую длинную серию повторяющихся чисел.
     
-    Возвращает:
-        tuple
-            Кортеж вида (начало, конец), представляющий самую длинную серию повторяющихся чисел.
+    Returns:
+        tuple: Кортеж вида (начало, конец), представляющий самую длинную серию повторяющихся чисел.
     """
     longest_series = ()
     current_series = (numbers[0], numbers[0])  # Текущая серия начинается и заканчивается первым числом
@@ -39,7 +38,7 @@ def find_step_function(control_signal: np.ndarray, system_signal: np.ndarray, si
     """
     Находит функцию перехода системы управления на основе сигналов управления и системы.
     
-    Аргументы:
+    Args:
         control_signal: numpy.ndarray
             Сигнал управления системы.
         system_signal: numpy.ndarray
@@ -47,9 +46,8 @@ def find_step_function(control_signal: np.ndarray, system_signal: np.ndarray, si
         signal_val: float, optional (default: 0)
             Значение сигнала, с которого начинается функция перехода.
     
-    Возвращает:
-        Tuple[numpy.ndarray, numpy.ndarray]
-            Кортеж из двух массивов: обновленный сигнал управления и сигнал системы.
+    Returns:
+        Tuple[numpy.ndarray, numpy.ndarray]: Кортеж из двух массивов: обновленный сигнал управления и сигнал системы.
     """
     if len(control_signal) != len(system_signal):
         raise ValueError("Массивы control_signal и system_signal должны иметь одинаковую длину.")
@@ -64,15 +62,14 @@ def overshoot(control_signal: np.ndarray, system_signal: np.ndarray) -> float:
     """
     Рассчитывает перерегулирование системы управления на основе сигналов управления и системы.
     
-    Аргументы:
+    Args:
         control_signal: numpy.ndarray
             Сигнал управления системы.
         system_signal: numpy.ndarray
             Сигнал системы, на которую воздействует управление.
     
-    Возвращает:
-        float
-            Значение перерегулирования в процентах.
+    Returns:
+        float: Значение перерегулирования в процентах.
 
     """
     # Предполагаем, что установившееся значение - это среднее значение последних 10% отклика системы
@@ -94,7 +91,7 @@ def settling_time(control_signal: np.ndarray, system_signal: np.ndarray, thresho
     """
     Рассчитывает время установления системы управления на основе сигналов управления и системы.
     
-    Аргументы:
+    Args:
         control_signal: numpy.ndarray
             Сигнал управления системы.
         system_signal: numpy.ndarray
@@ -102,10 +99,8 @@ def settling_time(control_signal: np.ndarray, system_signal: np.ndarray, thresho
         threshold: float, optional (default: 0.05)
             Пороговое значение относительного отклонения для определения диапазона установившегося значения.
     
-    Возвращает:
-        Optional[int]
-            Время установления системы в индексах массива system_signal.
-            Если система не достигла установившегося значения в заданном пороговом диапазоне, возвращается None.
+    Returns:
+        Optional[int]: Время установления системы в индексах массива system_signal. Если система не достигла установившегося значения в заданном пороговом диапазоне, возвращается None.
     """
     # Предполагаем, что установившееся значение - это среднее значение последних 10% отклика системы
     y_final = np.mean(control_signal[int(0.9*len(control_signal)):])
@@ -124,23 +119,22 @@ def settling_time(control_signal: np.ndarray, system_signal: np.ndarray, thresho
     return find_longest_repeating_series(within_range_indices)[0]
 
 
-def damping_degree(system_signal: np.ndarray) -> np.ndarray:
+def damping_degree(system_signal: np.ndarray) -> float:
     """
     Рассчитывает степень затухания системы управления на основе сигналов управления и системы.
     
-    Аргументы:
+    Args:
         control_signal: numpy.ndarray
             Сигнал управления системы.
         system_signal: numpy.ndarray
             Сигнал системы, на которую воздействует управление.
     
-    Возвращает:
-        numpy.ndarray
-            Массив значений степени затухания между пиками сигнала системы.
+    Returns:
+        float:
+            Среднее значений степени затухания между всеми пиками сигнала системы.
 
-    Исключения:
-        ValueError:
-            Если количество пиков меньше двух, невозможно рассчитать степень затухания.
+    Raises:
+        ValueError: Если количество пиков меньше двух, невозможно рассчитать степень затухания.
     """
     # Находим пики в сигнале системы
     peaks, _ = find_peaks(system_signal)
@@ -162,15 +156,14 @@ def static_error(control_signal: np.ndarray, system_signal: np.ndarray) -> float
     """
     Рассчитывает статическую ошибку системы управления на основе сигналов управления и системы.
     
-    Аргументы:
+    Args:
         control_signal: numpy.ndarray
             Сигнал управления системы.
         system_signal: numpy.ndarray
             Сигнал системы, на которую воздействует управление.
     
-    Возвращает:
-        float
-            Значение статической ошибки.
+    Returns:
+        float: Значение статической ошибки.
     """
     # Установившееся значение - это среднее значение последних 5-10% отклика системы
     y_final = np.mean(system_signal[int(0.9 * len(system_signal)):])
@@ -186,15 +179,14 @@ def get_lower_upper_bound(control_signal: np.ndarray, epsilon: float = 0.05) -> 
     """
     Возвращает нижнюю и верхнюю границы для сигнала управления.
 
-    Аргументы:
+    Args:
         control_signal: numpy.ndarray
             Сигнал управления системы.
         epsilon: float, optional (default: 0.05)
             Значение для определения границ.
 
-    Возвращает:
-        Tuple[numpy.ndarray, numpy.ndarray]
-            Кортеж из двух массивов: нижняя и верхняя границы для сигнала управления.
+    Returns:
+        Tuple[numpy.ndarray, numpy.ndarray]: Кортеж из двух массивов: нижняя и верхняя границы для сигнала управления.
     """
     upper = control_signal[-1] + control_signal[-1] * epsilon
     lower = control_signal[-1] - control_signal[-1] * epsilon

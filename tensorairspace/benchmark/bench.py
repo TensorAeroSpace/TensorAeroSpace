@@ -7,11 +7,11 @@ class ControlBenchmark:
     """
     Класс для проведения оценки системы управления и построения графиков.
     """
-    def becnchmarking_one_step(self, control_signal, system_signal, signal_val, dt):
+    def becnchmarking_one_step(self, control_signal:np.ndarray, system_signal:np.ndarray, signal_val:float, dt)->dict:
         """
         Оценивает систему управления на одном шаге и возвращает результаты в виде словаря.
         
-        Аргументы:
+        Args:
             control_signal: numpy.ndarray
                 Сигнал управления системы.
             system_signal: numpy.ndarray
@@ -19,15 +19,16 @@ class ControlBenchmark:
             signal_val: float
                 Значение сигнала, с которого начинается функция перехода.
             dt: float
-                Шаг времени системы управления.
+                Шаг дискретизации.
         
-        Возвращает:
-            dict
+        Returns:
+            dict:
                 Словарь с результатами оценки системы управления:
                 {
                     "overshoot": перерегулирование,
                     "settling_time": время установления,
-                    "damping_degree": степень затухания
+                    "damping_degree": степень затухания,
+                    "static_error": статическая ошибка
                 }
         """
         control_signal, system_signal = find_step_function(control_signal, system_signal, signal_val=signal_val)
@@ -42,11 +43,11 @@ class ControlBenchmark:
             "static_error": static_err
         }
 
-    def plot(self, control_signal, system_signal, signal_val, dt, tps, figsize=(15,9)):
+    def plot(self, control_signal:np.ndarray, system_signal:np.ndarray, signal_val:float, dt:float, tps:np.ndarray, figsize:tuple=(15,9)):
         """
         Строит график сигналов системы управления и системы, а также границ и времени установления.
         
-        Аргументы:
+        Args:
             control_signal: numpy.ndarray
                 Сигнал управления системы.
             system_signal: numpy.ndarray
@@ -54,7 +55,7 @@ class ControlBenchmark:
             signal_val: float
                 Значение сигнала, с которого начинается функция перехода.
             dt: float
-                Шаг времени системы управления.
+                Шаг дискретизации.
             tps: numpy.ndarray
                 Массив временных меток.
             figsize: tuple, optional (default: (15, 9))

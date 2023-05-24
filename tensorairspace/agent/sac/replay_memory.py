@@ -4,11 +4,11 @@ import numpy as np
 class ReplayMemory:
     """Хранилище повторных сэмплов для алгоритмов обучения с подкреплением.
 
-    Аргументы:
+    Args:
         capacity (int): Максимальная вместимость хранилища.
         seed (int): Зерно для генерации случайных чисел.
 
-    Атрибуты:
+    Attributes:
         capacity (int): Максимальная вместимость хранилища.
         buffer (List): Буфер для хранения повторных сэмплов.
         position (int): Текущая позиция в буфере.
@@ -23,7 +23,7 @@ class ReplayMemory:
     def push(self, state, action, reward, next_state, done):
         """Добавление повторного сэмпла в хранилище.
 
-        Аргументы:
+        Args:
             state: Входное состояние.
             action: Действие.
             reward: Награда.
@@ -39,10 +39,10 @@ class ReplayMemory:
     def sample(self, batch_size):
         """Сэмплирование пакета повторных сэмплов из хранилища.
 
-        Аргументы:
+        Args:
             batch_size (int): Размер пакета.
 
-        Возвращает:
+        Returns:
             Tuple: Кортеж с состояниями, действиями, наградами, следующими состояниями и флагами окончания.
 
         """
@@ -53,7 +53,7 @@ class ReplayMemory:
     def __len__(self):
         """Возвращает текущий размер хранилища.
 
-        Возвращает:
+        Returns:
             int: Размер хранилища.
 
         """
@@ -62,7 +62,7 @@ class ReplayMemory:
     def save_buffer(self, env_name, suffix="", save_path=None):
         """Сохранение буфера на диск.
 
-        Аргументы:
+        Args:
             env_name (str): Название окружения.
             suffix (str): Суффикс для имени файла. По умолчанию "".
             save_path (str): Путь для сохранения файла. По умолчанию None.
@@ -81,7 +81,7 @@ class ReplayMemory:
     def load_buffer(self, save_path):
         """Загрузка буфера из файла.
 
-        Аргументы:
+        Args:
             save_path (str): Путь к файлу для загрузки буфера.
 
         """

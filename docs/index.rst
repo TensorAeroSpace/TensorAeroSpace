@@ -37,11 +37,8 @@ Github репозиторий: https://github.com/TensorAeroSpace/TensorAeroSpac
    agent/dqn
    agent/sac
    optimization/optuna_based.rst
-
-.. toctree::
-   :maxdepth: 2
-   :caption: Сигналы:
-
+   benchmark/metrics.rst
+   benchmark/bench.rst
    signals/signals.rst
 
 
