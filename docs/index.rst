@@ -34,11 +34,12 @@ Github репозиторий: https://github.com/TensorAirSpace/TensorAirSpace
    model/unity_env.rst
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 3
    :caption: Агенты:
 
    agent/ihdp
    agent/dqn
+   agent/a3c
    optimization/optuna_based.rst
 
 .. toctree::
