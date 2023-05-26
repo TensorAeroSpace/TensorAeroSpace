@@ -1,1 +1,1 @@
-from .model import ActorNetwork, CriticNetwork
+from .model import Agent

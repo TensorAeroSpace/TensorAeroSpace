@@ -1,259 +1,246 @@
+import sys
+IN_COLAB = "google.colab" in sys.modules
+
 import numpy as np
 import tensorflow as tf
-import tensorflow.contrib.layers as tl
+import gym
+from tensorflow.keras.layers import Input, Dense, Lambda
 
+from threading import Thread
+from multiprocessing import cpu_count
+tf.keras.backend.set_floatx('float64')
 
-GAMMA = 0.99
-ENTROPY_WEIGHT = 0.1
-ENTROPY_EPS = 1e-6
-S_INFO = 4
+GLOBAL_EP = 0
 
+class Actor(tf.keras.Model):
+    
+    def __init__(self, state_size, action_size, action_bound, std_bound):
+        super(Actor, self).__init__()
+        
+        self.state_size = state_size
+        self.action_size = action_size
+        self.action_bound = action_bound
+        self.std_bound = std_bound
+        self.model = self.create_model()
+        self.opt = tf.keras.optimizers.Adam(actor_lr)
 
-class ActorNetwork(object):
-    """
-    Input to the network is the state, output is the distribution
-    of all actions.
-    """
-    def __init__(self, sess, state_dim, action_dim, learning_rate):
-        self.sess = sess
-        self.s_dim = state_dim
-        self.a_dim = action_dim
-        self.lr_rate = learning_rate
+    def create_model(self):
+        state_input = Input((self.state_size,))
+        dense_1 = Dense(hidden_size, activation='relu')(state_input)
+        dense_2 = Dense(hidden_size, activation='relu')(dense_1)
+        out_mu = Dense(self.action_size, activation='tanh')(dense_2)
+        mu_output = Lambda(lambda x: x * self.action_bound)(out_mu)
+        std_output = Dense(self.action_size, activation='softplus')(dense_2)
+        return tf.keras.models.Model(state_input, [mu_output, std_output])
+    
+    def compute_loss(self, actions, mu, std, advantages):
+        # log_policy_pdf = self.log_pdf(mu, std, actions)
+        std = tf.clip_by_value(std, self.std_bound[0], self.std_bound[1])
+        var = std ** 2
+        log_policy_pdf = -0.5 * (actions - mu) ** 2 / \
+            var - 0.5 * tf.math.log(var * 2 * np.pi)
+        log_policy_pdf = tf.reduce_sum(log_policy_pdf, 1, keepdims=True)
+        policy_loss = log_policy_pdf * advantages
+        policy_loss = tf.reduce_sum(-policy_loss)
+        return policy_loss
 
-        # Create the actor network
-        self.inputs = tf.placeholder(tf.float32, [None, self.s_dim])
-        self.out = self.create_actor_network()
+    def train(self, states, actions, advantages):
+        
+        with tf.GradientTape() as tape:
+            mu, std = self.model(states, training=True)
+            loss = self.compute_loss(actions, mu, std, advantages)
+        grads = tape.gradient(loss, self.model.trainable_variables)
+        self.opt.apply_gradients(zip(grads, self.model.trainable_variables))
+        return loss
 
-        # Get all network parameters
-        self.network_params = \
-            tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope='actor')
+class Critic(tf.keras.Model):
 
-        # Set all network parameters
-        self.input_network_params = []
-        for param in self.network_params:
-            self.input_network_params.append(
-                tf.placeholder(tf.float32, shape=param.get_shape()))
-        self.set_network_params_op = []
-        for idx, param in enumerate(self.input_network_params):
-            self.set_network_params_op.append(self.network_params[idx].assign(param))
+    def __init__(self, state_size):
+        super(Critic, self).__init__()
+        self.state_size = state_size
+        self.model = self.create_model()
+        self.opt = tf.keras.optimizers.Adam(critic_lr)
 
-        # Selected action, 0-1 vector
-        self.acts = tf.placeholder(tf.float32, [None, self.a_dim])
+    def create_model(self):
+        return tf.keras.Sequential([
+            Input((self.state_size,)),
+            Dense(hidden_size, activation='relu'),
+            Dense(hidden_size, activation='relu'),
+            # Dense(16, activation='relu'),
+            Dense(1, activation='linear')
+        ])
 
-        # This gradient will be provided by the critic network
-        self.act_grad_weights = tf.placeholder(tf.float32, [None, 1])
+    def compute_loss(self, v_pred, td_targets):
+        mse = tf.keras.losses.MeanSquaredError()
+        return mse(td_targets, v_pred)
 
-        # Compute the objective (log action_vector and entropy)
-        self.obj = tf.reduce_sum(tf.multiply(
-                       tf.log(tf.reduce_sum(tf.multiply(self.out, self.acts),
-                                            reduction_indices=1, keep_dims=True)),
-                       -self.act_grad_weights)) \
-                   + ENTROPY_WEIGHT * tf.reduce_sum(tf.multiply(self.out,
-                                                           tf.log(self.out + ENTROPY_EPS)))
+    def train(self, states, td_targets):
+        with tf.GradientTape() as tape:
+            v_pred = self.model(states, training=True)
+            assert v_pred.shape == td_targets.shape
+            loss = self.compute_loss(v_pred, tf.stop_gradient(td_targets))
+        grads = tape.gradient(loss, self.model.trainable_variables)
+        self.opt.apply_gradients(zip(grads, self.model.trainable_variables))
+        return loss
 
-        # Combine the gradients here
-        self.actor_gradients = tf.gradients(self.obj, self.network_params)
+class Worker(Thread):
+    def __init__(self, id, env, gamma, global_actor, global_critic):
+        Thread.__init__(self)
+        self.name = "w%i" % id
+        
+        self.env = env
+        
+        self.state_size = self.env.observation_space.shape[0]
+        self.action_size = self.env.action_space.shape[0]
+        self.action_bound = self.env.action_space.high[0]
+        self.std_bound = [1e-2, 1.0]
+        self.gamma = gamma
+        self.global_actor = global_actor
+        self.global_critic = global_critic
+        
+        self.actor = Actor(self.state_size, self.action_size,
+                           self.action_bound, self.std_bound)
+        self.critic = Critic(self.state_size)
+        
+        # sync local networks with global networks
+        self.sync_with_global()
+    
+    def get_action(self, state):
+        state = np.reshape(state, [1, self.state_size])
+        mu, std = self.actor.model.predict(state)
+        mu, std = mu[0], std[0]
+        return np.random.normal(mu, std, size=self.action_size)
+    
+    def n_step_td_target(self, rewards, next_Q, done):
+        td_targets = np.zeros_like(rewards)
+        R_to_go = 0
+        
+        if not done:
+            R_to_go = next_Q
+        
+        for k in reversed(range(0, len(rewards))):
+            R_to_go = rewards[k] + self.gamma * R_to_go 
+            td_targets[k] = R_to_go
+        return td_targets
 
-        # Optimization Op
-        self.optimize = tf.train.RMSPropOptimizer(self.lr_rate).\
-            apply_gradients(zip(self.actor_gradients, self.network_params))
+    def list_to_batch(self, list):
+        batch = list[0]
+        for elem in list[1:]:
+            batch = np.append(batch, elem, axis=0)
+        return batch
+    
+    def sync_with_global(self):
+        self.actor.model.set_weights(self.global_actor.model.get_weights())
+        self.critic.model.set_weights(self.global_critic.model.get_weights())
+    
+    def run(self):
+        global GLOBAL_EP
+        while max_episodes > GLOBAL_EP:
+        # for episode in range(max_episodes):
+            episode_reward = 0
+            done = False
+            state = self.env.reset()
+            
+            states      = []
+            actions     = []
+            rewards     = []
+            
+            while not done:
+                action = self.get_action(state)
+                action = np.clip(action, -self.action_bound, self.action_bound)
+                
+                next_state, reward, done, _ = self.env.step(action)
+                
+                state      = np.reshape(state, [1, self.state_size])
+                action     = np.reshape(action, [1, self.action_size])
+                reward     = np.reshape(reward, [1, 1])
+                next_state = np.reshape(next_state, [1, self.state_size])
+                
+                states.append(state)
+                actions.append(action)
+                rewards.append(reward)
 
-    def create_actor_network(self):
-        with tf.variable_scope('actor'):
-            hid_1 = tl.fully_connected(self.inputs, 32, activation_fn=tf.nn.softplus)
-            hid_2 = tl.fully_connected(hid_1, 16, activation_fn=tf.nn.softplus)
-            hid_3 = tl.fully_connected(hid_2, 8, activation_fn=tf.nn.softplus)
-            out = tl.fully_connected(hid_3, self.a_dim, activation_fn=tf.nn.softmax)
-            return out
+                state = next_state[0]
+                episode_reward += reward[0][0]
+                
+                if len(states) >= update_interval or done:
+                    states  = self.list_to_batch(states)
+                    actions = self.list_to_batch(actions)
+                    rewards = self.list_to_batch(rewards)
+                    
+                    curr_Qs = self.critic.model.predict(states)
+                    next_Q = self.critic.model.predict(next_state)
+                    
+                    td_targets = self.n_step_td_target(
+                        (rewards+8)/8, next_Q, done)
+                    # advantages   = td_targets - self.critic.model.predict(states)
+                    advantages   = td_targets - curr_Qs
+                    
+                    actor_loss = self.global_actor.train(states, actions, advantages)
+                    critic_loss = self.global_critic.train(states, td_targets)
 
+                    self.sync_with_global()
+                    states     = []
+                    actions    = []
+                    rewards    = []
 
-    def train(self, inputs, acts, act_grad_weights):
+            print(self.name + ' | EP{} EpisodeReward={}'.format(GLOBAL_EP+1, episode_reward))
+            GLOBAL_EP += 1
 
-        self.sess.run(self.optimize, feed_dict={
-            self.inputs: inputs,
-            self.acts: acts,
-            self.act_grad_weights: act_grad_weights
-        })
+class Agent:
+    
+    def __init__(self, env_name, gamma):
+        env = get_plane_env("//tf//repos//linux_build//build.x86_64", server=True)
+        self.env_name = env_name
+        self.gamma = gamma
+        self.state_size = env.observation_space.shape[0]
+        self.action_size = env.action_space.shape[0]
+        self.action_bound = env.action_space.high[0]
+        self.std_bound = [1e-2, 1.0]
 
-    def predict(self, inputs):
-        return self.sess.run(self.out, feed_dict={
-            self.inputs: inputs
-        })
+        self.global_actor = Actor(self.state_size, self.action_size,
+                                 self.action_bound, self.std_bound)
+        self.global_critic = Critic(self.state_size)
+        
+        #self.num_workers = 4
+        self.num_workers = cpu_count()
+        env.close()
+        
+    def train(self):
+        print("Training on {} cores".format(self.num_workers))
+        input("Enter to start")
+        self.workers = []
 
-    def get_gradients(self, inputs, acts, act_grad_weights):
-        return self.sess.run(self.actor_gradients, feed_dict={
-            self.inputs: inputs,
-            self.acts: acts,
-            self.act_grad_weights: act_grad_weights
-        })
+        for i in range(self.num_workers):
+            env = get_plane_env("//tf//repos//linux_build//build.x86_64", server=True, worker=i)
+            self.workers.append(Worker(
+                i, env, self.gamma, self.global_actor, self.global_critic))
+        
+        # [worker.start() for worker in self.workers]
+        # [worker.join() for worker in self.workers]
+        
+        for worker in self.workers:
+            worker.start()
 
-    def apply_gradients(self, actor_gradients):
-        return self.sess.run(self.optimize, feed_dict={
-            i: d for i, d in zip(self.actor_gradients, actor_gradients)
-        })
+        for worker in self.workers:
+            worker.join()
+            worker.env.close()
+    
+    # def save_model(self):
+    #     self.global_critic.save("a3c_value_model.h5")
+    #     self.global_actor.save("a3c_policy_model.h5")
 
-    def get_network_params(self):
-        return self.sess.run(self.network_params)
-
-    def set_network_params(self, input_network_params):
-        self.sess.run(self.set_network_params_op, feed_dict={
-            i: d for i, d in zip(self.input_network_params, input_network_params)
-        })
-
-
-class CriticNetwork(object):
-    """
-    Input to the network is the state and action, output is V(s).
-    On policy: the action must be obtained from the output of the Actor network.
-    """
-    def __init__(self, sess, state_dim, learning_rate):
-        self.sess = sess
-        self.s_dim = state_dim
-        self.lr_rate = learning_rate
-
-        # Create the critic network
-        self.inputs = tf.placeholder(tf.float32, [None, self.s_dim])
-        self.out = self.create_critic_network()
-
-        # Get all network parameters
-        self.network_params = \
-            tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope='critic')
-
-        # Set all network parameters
-        self.input_network_params = []
-        for param in self.network_params:
-            self.input_network_params.append(
-                tf.placeholder(tf.float32, shape=param.get_shape()))
-        self.set_network_params_op = []
-        for idx, param in enumerate(self.input_network_params):
-            self.set_network_params_op.append(self.network_params[idx].assign(param))
-
-        # Network target V(s)
-        self.td_target = tf.placeholder(tf.float32, [None, 1])
-
-        # Temporal Difference, will also be weights for actor_gradients
-        self.td = tf.subtract(self.td_target, self.out)
-
-        # Mean square error
-        self.loss = tf.reduce_mean(tf.square(self.td_target - self.out))
-
-        # Compute critic gradient
-        self.critic_gradients = tf.gradients(self.loss, self.network_params)
-
-        # Optimization Op
-        self.optimize = tf.train.RMSPropOptimizer(self.lr_rate).\
-            apply_gradients(zip(self.critic_gradients, self.network_params))
-
-    def create_critic_network(self):
-        with tf.variable_scope('critic'):
-            hid_1 = tl.fully_connected(self.inputs, 32, activation_fn=tf.nn.softplus)
-            hid_2 = tl.fully_connected(hid_1, 16, activation_fn=tf.nn.softplus)
-            hid_3 = tl.fully_connected(hid_2, 8, activation_fn=tf.nn.softplus)
-            out = tl.fully_connected(hid_3, 1, activation_fn=None)
-
-            return out
-
-    def train(self, inputs, td_target):
-        return self.sess.run([self.loss, self.optimize], feed_dict={
-            self.inputs: inputs,
-            self.td_target: td_target
-        })
-
-    def predict(self, inputs):
-        return self.sess.run(self.out, feed_dict={
-            self.inputs: inputs
-        })
-
-    def get_td(self, inputs, td_target):
-        return self.sess.run(self.td, feed_dict={
-            self.inputs: inputs,
-            self.td_target: td_target
-        })
-
-    def get_gradients(self, inputs, td_target):
-        return self.sess.run(self.critic_gradients, feed_dict={
-            self.inputs: inputs,
-            self.td_target: td_target
-        })
-
-    def apply_gradients(self, critic_gradients):
-        return self.sess.run(self.optimize, feed_dict={
-            i: d for i, d in zip(self.critic_gradients, critic_gradients)
-        })
-
-    def get_network_params(self):
-        return self.sess.run(self.network_params)
-
-    def set_network_params(self, input_network_params):
-        self.sess.run(self.set_network_params_op, feed_dict={
-            i: d for i, d in zip(self.input_network_params, input_network_params)
-        })
-
-
-def compute_gradients(s_batch, a_batch, r_batch, terminal, actor, critic):
-    """
-    batch of s, a, r is from samples in a sequence
-    the format is in np.array([batch_size, s/a/r_dim])
-    terminal is True when sequence ends as a terminal state
-    """
-    assert s_batch.shape[0] == a_batch.shape[0]
-    assert s_batch.shape[0] == r_batch.shape[0]
-    ba_size = s_batch.shape[0]
-
-    v_batch = critic.predict(s_batch)
-
-    R_batch = np.zeros(r_batch.shape)
-
-    if terminal:
-        R_batch[-1, 0] = 0  # terminal state
-    else:
-        R_batch[-1, 0] = v_batch[-1, 0]  # boot strap from last state
-
-    for t in reversed(xrange(ba_size - 1)):
-        R_batch[t, 0] = r_batch[t] + GAMMA * R_batch[t + 1, 0]
-
-    td_batch = R_batch - v_batch
-
-    actor_gradients = actor.get_gradients(s_batch, a_batch, td_batch)
-    critic_gradients = critic.get_gradients(s_batch, R_batch)
-
-    return actor_gradients, critic_gradients, td_batch
-
-
-def discount(x, gamma):
-    """
-    Given vector x, computes a vector y such that
-    y[i] = x[i] + gamma * x[i+1] + gamma^2 x[i+2] + ...
-    """
-    out = np.zeros(len(x))
-    out[-1] = x[-1]
-    for i in reversed(xrange(len(x)-1)):
-        out[i] = x[i] + gamma*out[i+1]
-    assert x.ndim >= 1
-    # More efficient version:
-    # scipy.signal.lfilter([1],[1,-gamma],x[::-1], axis=0)[::-1]
-    return out
-
-
-def compute_entropy(x):
-    """
-    Given vector x, computes the entropy
-    H(x) = - sum( p * log(p))
-    """
-    H = 0.0
-    for i in xrange(len(x)):
-        if 0 < x[i] < 1:
-            H -= x[i] * np.log(x[i])
-    return H
-
-
-def build_summaries():
-    td_loss = tf.Variable(0.)
-    tf.summary.scalar("TD_loss", td_loss)
-    eps_total_reward = tf.Variable(0.)
-    tf.summary.scalar("Eps_total_reward", eps_total_reward)
-
-    summary_vars = [td_loss, eps_total_reward]
-    summary_ops = tf.summary.merge_all()
-
-    return summary_ops, summary_vars
+#if __name__ == "__main__":
+    
+#    env_name = "Pendulum-v0"
+    # set environment
+#    actor_lr = 0.0005
+#    critic_lr = 0.001
+#    gamma = 0.99
+#    hidden_size = 128
+#    update_interval = 50
+    
+#    max_episodes = 50  # Set total number of episodes to train agent on.
+#    agent = A3CAgent(env_name, gamma)
+#    agent.train()
+    # agent.save_model()
