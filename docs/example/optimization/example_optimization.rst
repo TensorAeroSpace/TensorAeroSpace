@@ -2,7 +2,7 @@
 ===========================
 
 
-.. code:: ipython3
+.. code:: python
 
     import numpy as np
     import gym
@@ -16,11 +16,11 @@
     Мы сделали обертку вокруг нее для удобства пользования, если вам неудобно пользоваться нашей оберткой вы всегда можете использовать просто `Optuna`.
 
 
-.. code:: ipython3
+.. code:: python
 
     opt = HyperParamOptimizationOptuna(direction='minimize')
 
-.. code:: ipython3
+.. code:: python
 
     dt = 0.01
     tp = generate_time_period(tn=20)
@@ -28,7 +28,7 @@
     reference_signals = np.reshape(unit_step(degree=5, tp=tp, time_step=10, output_rad=True), [1, -1])
 
 
-.. code:: ipython3
+.. code:: python
 
     def objective(trial):
     
@@ -98,12 +98,12 @@
     В дальнейшем мы планируем добавить и иные критерии оптимальности в данную библиотеку 
 
 
-.. code:: ipython3
+.. code:: python
 
     opt.run_optimization(objective, n_trials=10)
 
 
-.. code:: ipython3
+.. code:: python
 
     opt.get_best_param()
 
@@ -120,7 +120,7 @@
 
 
 
-.. code:: ipython3
+.. code:: python
 
     opt.plot_parms()
 
