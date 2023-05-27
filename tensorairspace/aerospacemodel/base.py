@@ -1,9 +1,9 @@
 import matplotlib.pyplot as plt
 import numpy as np
 
-from tensorairspace.aerospacemodel.utils.constant import state_to_latex_rus, state_to_latex_eng, \
+from .utils.constant import state_to_latex_rus, state_to_latex_eng, \
     control_to_latex_rus, control_to_latex_eng, ref_state_to_latex_rus, ref_state_to_latex_eng
-from tensorairspace.aerospacemodel.f16.nonlinear.utils import state2dict, control2dict
+from .f16.nonlinear.utils import state2dict, control2dict
 
 
 class ModelBase:

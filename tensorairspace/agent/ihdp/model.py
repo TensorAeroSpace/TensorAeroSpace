@@ -1,6 +1,6 @@
-from tensorairspace.agent.ihdp.Incremental_model import IncrementalModel
-from tensorairspace.agent.ihdp.Actor import Actor
-from tensorairspace.agent.ihdp.Critic import Critic
+from .Incremental_model import IncrementalModel
+from .Actor import Actor
+from .Critic import Critic
 import numpy as np
 
 

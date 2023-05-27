@@ -9,19 +9,20 @@ from .model import GaussianPolicy, QNetwork, DeterministicPolicy
 class SAC(object):
     """Soft Actor-Critic (SAC) алгоритм для обучения с подкреплением.
 
-    Аргументы:
+    Args:
         num_inputs (int): Размерность входного пространства состояний.
         action_space: Пространство действий агента.
         args: Параметры и настройки алгоритма.
 
-    Атрибуты:
         gamma (float): Коэффициент дисконтирования.
         tau (float): Коэффициент для мягкого обновления весов целевой сети.
         alpha (float): Коэффициент для регуляризации политики.
         policy_type (str): Тип политики ("Gaussian" или "Deterministic").
         target_update_interval (int): Интервал обновления весов целевой сети.
         automatic_entropy_tuning (bool): Флаг автоматической настройки энтропии.
-        device: Устройство для вычислений (cpu или cuda).
+        cuda: Использовать cuda или нет.
+    
+    Attributes:
 
         critic: Сеть критика.
         critic_optim: Оптимизатор для обновления весов критика.
@@ -68,11 +69,11 @@ class SAC(object):
     def select_action(self, state, evaluate=False):
         """Выбор действия на основе текущего состояния.
 
-        Аргументы:
+        Args:
             state: Текущее состояние агента.
             evaluate (bool): Флаг режима оценки.
 
-        Возвращает:
+        Returns:
             action: Выбранное действие.
 
         """
@@ -86,12 +87,12 @@ class SAC(object):
     def update_parameters(self, memory, batch_size, updates):
         """Обновление параметров сетей на основе мини-пакета из памяти.
 
-        Аргументы:
+        Args:
             memory: Память для хранения переходов.
             batch_size (int): Размер мини-пакета.
             updates (int): Количество обновлений.
 
-        Возвращает:
+        Returns:
             qf1_loss (float): Значение функции потерь для первой Q-сети.
             qf2_loss (float): Значение функции потерь для второй Q-сети.
             policy_loss (float): Значение функции потерь для политики.
@@ -156,7 +157,7 @@ class SAC(object):
     def save_checkpoint(self, env_name, suffix="", ckpt_path=None):
         """Сохранение параметров моделей в файл.
 
-        Аргументы:
+        Args:
             env_name (str): Имя среды.
             suffix (str): Суффикс для имени файла.
             ckpt_path (str): Путь для сохранения файла.
@@ -177,7 +178,7 @@ class SAC(object):
     def load_checkpoint(self, ckpt_path, evaluate=False):
         """Загрузка параметров моделей из файла.
 
-        Аргументы:
+        Args:
             ckpt_path (str): Путь к файлу.
             evaluate (bool): Флаг режима оценки.
 

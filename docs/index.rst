@@ -4,7 +4,7 @@
    contain the root `toctree` directive.
 
 Добро пожаловать в документацию TensorAeroSpace! - RL for Aerospace
-==================================================================
+===================================================================
 
 TensorAeroSpace - это набор объектов управления, сред моделирования OpenAI Gym и реализации алгоритмов Reinforcement Learning (RL)
 
@@ -37,11 +37,8 @@ Github репозиторий: https://github.com/TensorAeroSpace/TensorAeroSpac
    agent/dqn
    agent/sac
    optimization/optuna_based.rst
-
-.. toctree::
-   :maxdepth: 2
-   :caption: Сигналы:
-
+   benchmark/metrics.rst
+   benchmark/bench.rst
    signals/signals.rst
 
 

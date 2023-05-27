@@ -9,14 +9,14 @@
 
 Импорты модели и среды
 
-.. code:: ipython3
+.. code:: python
 
     from tensorairspace.agent.dqn.model import Model, PERAgent
     from tensorairspace.envs.unity_env import get_plane_env, unity_discrete_env
 
 Запуск теста DQN агента. После запуска данной ячейки необходимо запустить среду Unity
 
-.. code:: ipython3
+.. code:: python
 
     env = unity_discrete_env()
     num_actions = env.action_space.n
@@ -46,7 +46,7 @@
 
 Пример запуска взаимодействия с случайным агентом
 
-.. code:: ipython3
+.. code:: python
 
     env = get_plane_env()
 
@@ -83,7 +83,7 @@
 
 Пример запуска взаимодействия с случайным агентом
 
-.. code:: ipython3
+.. code:: python
 
     env = unity_discrete_env()
 

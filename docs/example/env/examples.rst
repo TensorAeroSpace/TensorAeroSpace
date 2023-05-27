@@ -4,7 +4,7 @@
 
 LinearLongitudinalF16-v0
 ------------------------
-.. code:: ipython3
+.. code:: python
 
     import gym 
     import numpy as np
@@ -15,7 +15,7 @@ LinearLongitudinalF16-v0
     from tensorairspace.signals.standart import unit_step
     from tensorairspace.agent.ihdp.model import IHDPAgent
 
-.. code:: ipython3
+.. code:: python
 
     dt = 0.01  # Дискретизация
     tp = generate_time_period(tn=20, dt=dt) # Временной период
@@ -23,7 +23,7 @@ LinearLongitudinalF16-v0
     number_time_steps = len(tp) # Количество временных шагов
     reference_signals = np.reshape(unit_step(degree=5, tp=tp, time_step=10, output_rad=True), [1, -1]) # Заданный сигнал
 
-.. code:: ipython3
+.. code:: python
 
     env = gym.make('LinearLongitudinalF16-v0',
                    number_time_steps=number_time_steps, 
@@ -31,11 +31,11 @@ LinearLongitudinalF16-v0
                    reference_signal = reference_signals)
     env.reset()
 
-.. code:: ipython3
+.. code:: python
 
     observation, reward, done, info = env.step(np.array([[1]]))
 
-.. code:: ipython3
+.. code:: python
 
     env.model.store_input
 
@@ -48,7 +48,7 @@ LinearLongitudinalF16-v0
 
 
 
-.. code:: ipython3
+.. code:: python
 
     env.reference_signal[0][1]
 
@@ -61,7 +61,7 @@ LinearLongitudinalF16-v0
 
 
 
-.. code:: ipython3
+.. code:: python
 
     reward
 
@@ -78,7 +78,7 @@ LinearLongitudinalB747-v0
 -------------------------
 
 
-.. code:: ipython3
+.. code:: python
 
     import gym 
     import numpy as np
@@ -89,7 +89,7 @@ LinearLongitudinalB747-v0
     from tensorairspace.signals.standart import unit_step
     from tensorairspace.agent.ihdp.model import IHDPAgent
 
-.. code:: ipython3
+.. code:: python
 
     dt = 0.01  # Дискретизация
     tp = generate_time_period(tn=20, dt=dt) # Временной период
@@ -97,7 +97,7 @@ LinearLongitudinalB747-v0
     number_time_steps = len(tp) # Количество временных шагов
     reference_signals = np.reshape(unit_step(degree=5, tp=tp, time_step=10, output_rad=True), [1, -1]) # Заданный сигнал
 
-.. code:: ipython3
+.. code:: python
 
     env = gym.make('LinearLongitudinalB747-v0',
                    number_time_steps=number_time_steps, 
@@ -105,11 +105,11 @@ LinearLongitudinalB747-v0
                    reference_signal = reference_signals)
     env.reset()
 
-.. code:: ipython3
+.. code:: python
 
     observation, reward, done, info = env.step(np.array([[1]]))
 
-.. code:: ipython3
+.. code:: python
 
     env.model.store_input
 
@@ -120,7 +120,7 @@ LinearLongitudinalB747-v0
 
 
 
-.. code:: ipython3
+.. code:: python
 
     env.reference_signal[0][1]
 
@@ -133,7 +133,7 @@ LinearLongitudinalB747-v0
 
 
 
-.. code:: ipython3
+.. code:: python
 
     reward
 
@@ -152,7 +152,7 @@ LinearLongitudinalMissileModel-v0
 
 
 
-.. code:: ipython3
+.. code:: python
 
     import gym 
     import numpy as np
@@ -164,7 +164,7 @@ LinearLongitudinalMissileModel-v0
     from tensorairspace.agent.ihdp.model import IHDPAgent
 
 
-.. code:: ipython3
+.. code:: python
 
     dt = 0.01  # Дискретизация
     tp = generate_time_period(tn=20, dt=dt) # Временной период
@@ -172,7 +172,7 @@ LinearLongitudinalMissileModel-v0
     number_time_steps = len(tp) # Количество временных шагов
     reference_signals = np.reshape(unit_step(degree=5, tp=tp, time_step=10, output_rad=True), [1, -1]) # Заданный сигнал
 
-.. code:: ipython3
+.. code:: python
 
     env = gym.make('LinearLongitudinalMissileModel-v0',
                    number_time_steps=number_time_steps, 
@@ -180,11 +180,11 @@ LinearLongitudinalMissileModel-v0
                    reference_signal = reference_signals)
     env.reset()
 
-.. code:: ipython3
+.. code:: python
 
     observation, reward, done, info = env.step(np.array([[1]]))
 
-.. code:: ipython3
+.. code:: python
 
     env.model.store_input
 
@@ -197,7 +197,7 @@ LinearLongitudinalMissileModel-v0
 
 
 
-.. code:: ipython3
+.. code:: python
 
     env.reference_signal[0][1]
 
@@ -210,7 +210,7 @@ LinearLongitudinalMissileModel-v0
 
 
 
-.. code:: ipython3
+.. code:: python
 
     reward
 
@@ -229,7 +229,7 @@ LinearLongitudinalELVRocket-v0
 
 
 
-.. code:: ipython3
+.. code:: python
 
     import gym 
     import numpy as np
@@ -243,7 +243,7 @@ LinearLongitudinalELVRocket-v0
 
 
 
-.. code:: ipython3
+.. code:: python
 
     dt = 0.01  # Дискретизация
     tp = generate_time_period(tn=20, dt=dt) # Временной период
@@ -251,7 +251,7 @@ LinearLongitudinalELVRocket-v0
     number_time_steps = len(tp) # Количество временных шагов
     reference_signals = np.reshape(unit_step(degree=5, tp=tp, time_step=10, output_rad=True), [1, -1]) # Заданный сигнал
 
-.. code:: ipython3
+.. code:: python
 
     env = gym.make('LinearLongitudinalELVRocket-v0',
                    number_time_steps=number_time_steps, 
@@ -259,11 +259,11 @@ LinearLongitudinalELVRocket-v0
                    reference_signal = reference_signals)
     env.reset()
 
-.. code:: ipython3
+.. code:: python
 
     observation, reward, done, info = env.step(np.array([[1]]))
 
-.. code:: ipython3
+.. code:: python
 
     env.model.store_input
 
@@ -276,7 +276,7 @@ LinearLongitudinalELVRocket-v0
 
 
 
-.. code:: ipython3
+.. code:: python
 
     env.reference_signal[0][1]
 
@@ -289,7 +289,7 @@ LinearLongitudinalELVRocket-v0
 
 
 
-.. code:: ipython3
+.. code:: python
 
     reward
 
