@@ -1,0 +1,8 @@
+../comsat_model_win64.dll
+comsat_model_M		comsat_model_M	data
+comsat_model_M_		comsat_model_M_	data
+comsat_model_U		comsat_model_U	data
+comsat_model_Y		comsat_model_Y	data
+comsat_model_initialize		comsat_model_initialize
+comsat_model_step		comsat_model_step
+comsat_model_terminate		comsat_model_terminate

@@ -1,0 +1,8 @@
+../f4c_model_win64.dll
+f4c_model_M		f4c_model_M	data
+f4c_model_M_		f4c_model_M_	data
+f4c_model_U		f4c_model_U	data
+f4c_model_Y		f4c_model_Y	data
+f4c_model_initialize		f4c_model_initialize
+f4c_model_step		f4c_model_step
+f4c_model_terminate		f4c_model_terminate
