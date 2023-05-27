@@ -30,11 +30,12 @@ Github репозиторий: https://github.com/TensorAeroSpace/TensorAeroSpac
    model/unity_env.rst
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 3
    :caption: Агенты:
 
    agent/ihdp
    agent/dqn
+   agent/a3c
    agent/sac
    optimization/optuna_based.rst
    benchmark/metrics.rst
