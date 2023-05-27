@@ -14,14 +14,15 @@ class SAC(object):
         action_space: Пространство действий агента.
         args: Параметры и настройки алгоритма.
 
-    Attributes:
         gamma (float): Коэффициент дисконтирования.
         tau (float): Коэффициент для мягкого обновления весов целевой сети.
         alpha (float): Коэффициент для регуляризации политики.
         policy_type (str): Тип политики ("Gaussian" или "Deterministic").
         target_update_interval (int): Интервал обновления весов целевой сети.
         automatic_entropy_tuning (bool): Флаг автоматической настройки энтропии.
-        device: Устройство для вычислений (cpu или cuda).
+        cuda: Использовать cuda или нет.
+    
+    Attributes:
 
         critic: Сеть критика.
         critic_optim: Оптимизатор для обновления весов критика.
