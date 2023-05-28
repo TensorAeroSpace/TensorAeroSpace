@@ -87,3 +87,31 @@
 ---------
 
 1. Santosh Kumar Choudhary (2015). Design and Analysis of an Optimal Orbit Control for a Communication Satellite. INTERNATIONAL JOURNAL OF COMMUNICATIONS. Volume 9, 2015
+
+
+Пример использования
+--------------------
+
+.. code:: python
+
+    import gym 
+    import numpy as np
+    from tqdm import tqdm
+
+    from tensorairspace.envs import ComSatEnv
+    from tensorairspace.utils import generate_time_period, convert_tp_to_sec_tp
+    from tensorairspace.signals.standart import unit_step
+
+    dt = 0.01  # Дискретизация
+    tp = generate_time_period(tn=20, dt=dt) # Временной периуд
+    tps = convert_tp_to_sec_tp(tp, dt=dt)
+    number_time_steps = len(tp) # Количество временных шагов
+    reference_signals = np.reshape(unit_step(degree=5, tp=tp, time_step=10, output_rad=True), [1, -1]) # Заданный сигнал
+
+    env = gym.make('ComSatEnv-v0',
+               number_time_steps=number_time_steps, 
+               initial_state=[[0],[0],[0]],
+               reference_signal = reference_signals)
+    env.reset() 
+
+    observation, reward, done, info = env.step(np.array([[1]]))
