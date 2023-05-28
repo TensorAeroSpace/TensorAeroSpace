@@ -4,14 +4,14 @@
 Ступенчатый сигнал
 ------------------
 
-.. autofunction:: tensorairspace.signals.standart.unit_step
+.. autofunction:: tensoraerospace.signals.standart.unit_step
 
 **Пример**
 
 .. code-block:: python
 
-    from tensorairspace.utils import generate_time_period
-    from tensorairspace.signals.standart import unit_step
+    from tensoraerospace.utils import generate_time_period
+    from tensoraerospace.signals.standart import unit_step
 
     dt = 0.01
     tp = generate_time_period(tn=20)
@@ -24,14 +24,14 @@
 Синусоидный сигнал
 ------------------
 
-.. autofunction:: tensorairspace.signals.standart.sinusoid
+.. autofunction:: tensoraerospace.signals.standart.sinusoid
 
 **Пример**
 
 .. code-block:: python
 
-    from tensorairspace.utils import generate_time_period
-    from tensorairspace.signals.standart import sinusoid
+    from tensoraerospace.utils import generate_time_period
+    from tensoraerospace.signals.standart import sinusoid
 
     dt = 0.01
     tp = generate_time_period(tn=20)
@@ -43,13 +43,13 @@
 Случайный сигнал по частоте и амплитуде
 ---------------------------------------
 
-.. autofunction:: tensorairspace.signals.random.full_random_signal
+.. autofunction:: tensoraerospace.signals.random.full_random_signal
 
 **Пример**
 
 .. code-block:: python
 
-    from tensorairspace.signals.random import full_random_signal
+    from tensoraerospace.signals.random import full_random_signal
 
     signal =  full_random_signal(0,0.01,20, (-0.5, 0.5), (-0.5, 0.5))
 

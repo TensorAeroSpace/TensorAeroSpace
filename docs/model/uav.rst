@@ -123,9 +123,9 @@
     import numpy as np
     from tqdm import tqdm
 
-    from tensorairspace.envs import LinearLongitudinalUAV
-    from tensorairspace.utils import generate_time_period, convert_tp_to_sec_tp
-    from tensorairspace.signals.standart import unit_step
+    from tensoraerospace.envs import LinearLongitudinalUAV
+    from tensoraerospace.utils import generate_time_period, convert_tp_to_sec_tp
+    from tensoraerospace.signals.standart import unit_step
 
     dt = 0.01  # Дискретизация
     tp = generate_time_period(tn=20, dt=dt) # Временной периуд

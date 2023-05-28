@@ -130,9 +130,9 @@ McDonnell Douglas F-4C Phantom II — американский истребит�
     import numpy as np
     from tqdm import tqdm
 
-    from tensorairspace.envs import LinearLongitudinalF4C
-    from tensorairspace.utils import generate_time_period, convert_tp_to_sec_tp
-    from tensorairspace.signals.standart import unit_step
+    from tensoraerospace.envs import LinearLongitudinalF4C
+    from tensoraerospace.utils import generate_time_period, convert_tp_to_sec_tp
+    from tensoraerospace.signals.standart import unit_step
 
     dt = 0.01  # Дискретизация
     tp = generate_time_period(tn=20, dt=dt) # Временной периуд

@@ -3,7 +3,7 @@ Unity среда
 
 Это краткое описание среды моделирования UnityAirplaneEnvironment
 
-https://github.com/TensorAirSpace/UnityAirplaneEnvironment
+https://github.com/tensoraerospace/UnityAirplaneEnvironment
 
 
 Описание элементов среды моделирования
@@ -129,10 +129,10 @@ Python взаимодействие со средой
 Для взаимодействия со средой была сделана функция получающая gym обертку нашей unity
 среды и класс обёртка для агентов с дискретным пространством действий.
 
-.. autoclass:: tensorairspace.envs.unity_env.get_plane_env
+.. autoclass:: tensoraerospace.envs.unity_env.get_plane_env
   :members:
 
-.. autoclass:: tensorairspace.envs.unity_env.unity_discrete_env
+.. autoclass:: tensoraerospace.envs.unity_env.unity_discrete_env
   :members:
 
 
@@ -187,8 +187,8 @@ Python взаимодействие со средой
 
 .. code:: python
 
-  from tensorairspace.envs.unity_env import get_plane_env, unity_discrete_env
-  from tensorairspace.agent.a3c import Agent, setup_global_params
+  from tensoraerospace.envs.unity_env import get_plane_env, unity_discrete_env
+  from tensoraerospace.agent.a3c import Agent, setup_global_params
 
   def env_function(worker_id):
       # /tf/linux_build/build.x86_64 - путь к собранному Unity окружению 
@@ -211,7 +211,7 @@ Python взаимодействие со средой
 Команда для запуска образа и пробросом библиотеки и собранной Unity среды
 
 .. code:: bash
-  docker run -v ./tensorairspace:/tf/tensorairspace -v ./linux_build:/tf/linux_build -p 8889:8889 unity_docker
+  docker run -v ./tensoraerospace:/tf/tensoraerospace -v ./linux_build:/tf/linux_build -p 8889:8889 unity_docker
 
 
 Пример запуска обучения модели

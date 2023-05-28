@@ -23,16 +23,16 @@ A3C
 Документация
 ------------
 
-.. autoclass:: tensorairspace.agent.a3c.model.Agent
+.. autoclass:: tensoraerospace.agent.a3c.model.Agent
   :members:
 
-.. autoclass:: tensorairspace.agent.a3c.model.Worker
+.. autoclass:: tensoraerospace.agent.a3c.model.Worker
   :members:
 
-.. autoclass:: tensorairspace.agent.a3c.model.Actor
+.. autoclass:: tensoraerospace.agent.a3c.model.Actor
   :members:
 
-.. autoclass:: tensorairspace.agent.a3c.model.Critic
+.. autoclass:: tensoraerospace.agent.a3c.model.Critic
   :members:
 
 

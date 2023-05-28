@@ -100,14 +100,14 @@ ELV(Expendable launch vehicle) - ракета-носитель, предназн
 Модель
 ------
 
-.. autoclass:: tensorairspace.aerospacemodel.ELVRocket
+.. autoclass:: tensoraerospace.aerospacemodel.ELVRocket
     :members:
 
 
 Среда моделирования OpenAI Gym
 ------------------------------
 
-.. autoclass:: tensorairspace.envs.LinearLongitudinalELVRocket
+.. autoclass:: tensoraerospace.envs.LinearLongitudinalELVRocket
     :members:
 
 Источники
@@ -126,9 +126,9 @@ ELV(Expendable launch vehicle) - ракета-носитель, предназн
     import numpy as np
     from tqdm import tqdm
 
-    from tensorairspace.envs import LinearLongitudinalELVRocket
-    from tensorairspace.utils import generate_time_period, convert_tp_to_sec_tp
-    from tensorairspace.signals.standart import unit_step
+    from tensoraerospace.envs import LinearLongitudinalELVRocket
+    from tensoraerospace.utils import generate_time_period, convert_tp_to_sec_tp
+    from tensoraerospace.signals.standart import unit_step
 
     dt = 0.01  # Дискретизация
     tp = generate_time_period(tn=20, dt=dt) # Временной периуд

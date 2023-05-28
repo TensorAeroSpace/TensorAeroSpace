@@ -19,7 +19,7 @@
 с неточностями в моделировании системы, ошибками в калибровке или настройке компонентов системы, нелинейностями или внешними воздействиями.
 Таким образом, статическая ошибка служит важным показателем производительности системы управления и может быть использована для анализа и улучшения ее работы.
 
-.. autofunction:: tensorairspace.benchmark.function.static_error
+.. autofunction:: tensoraerospace.benchmark.function.static_error
 
 
 
@@ -44,7 +44,7 @@
 от требований и спецификаций конкретной системы управления. Анализ и оптимизация степени затухания позволяют достичь баланса между быстрым временем установления и минимальными колебаниями.
 
 
-.. autofunction:: tensorairspace.benchmark.function.damping_degree
+.. autofunction:: tensoraerospace.benchmark.function.damping_degree
 
 
 
@@ -69,7 +69,7 @@
 Анализ и настройка времени переходного процесса позволяют достичь баланса между быстрой реакцией и стабильностью системы управления.
 
 
-.. autofunction:: tensorairspace.benchmark.function.settling_time
+.. autofunction:: tensoraerospace.benchmark.function.settling_time
 
 
 Перерегулирование
@@ -92,6 +92,6 @@
 Однако, слишком большое перерегулирование может указывать на нестабильность системы или недостаточное подавление колебаний. Поэтому оптимальное перерегулирование зависит от требований и спецификаций конкретной системы управления. Анализ и оптимизация перерегулирования позволяют достичь баланса между быстрым временем переходного процесса и минимальными колебаниями.
 
 
-.. autofunction:: tensorairspace.benchmark.function.overshoot
+.. autofunction:: tensoraerospace.benchmark.function.overshoot
 
 

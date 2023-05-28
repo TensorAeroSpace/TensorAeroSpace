@@ -23,7 +23,7 @@ Benchmark оценивает качество систем управления 
 Документация
 ~~~~~~~~~~~~
 
-.. autoclass:: tensorairspace.benchmark.ControlBenchmark
+.. autoclass:: tensoraerospace.benchmark.ControlBenchmark
   :members:
 
 Пример использования
@@ -31,7 +31,7 @@ Benchmark оценивает качество систем управления 
 
 .. code:: python
 
-    from tensorairspace.benchmark import ControlBenchmark
+    from tensoraerospace.benchmark import ControlBenchmark
     bench = ControlBenchmark()
     res = bench.becnchmarking_one_step(control_signal_orig, system_signal_orig, 1, dt)
 

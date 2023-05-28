@@ -10,10 +10,10 @@ LinearLongitudinalF16-v0
     import numpy as np
     from tqdm import tqdm
     
-    from tensorairspace.envs import LinearLongitudinalF16
-    from tensorairspace.utils import generate_time_period, convert_tp_to_sec_tp
-    from tensorairspace.signals.standart import unit_step
-    from tensorairspace.agent.ihdp.model import IHDPAgent
+    from tensoraerospace.envs import LinearLongitudinalF16
+    from tensoraerospace.utils import generate_time_period, convert_tp_to_sec_tp
+    from tensoraerospace.signals.standart import unit_step
+    from tensoraerospace.agent.ihdp.model import IHDPAgent
 
     dt = 0.01  # Дискретизация
     tp = generate_time_period(tn=20, dt=dt) # Временной период
@@ -39,10 +39,10 @@ LinearLongitudinalB747-v0
     import numpy as np
     from tqdm import tqdm
     
-    from tensorairspace.envs import LinearLongitudinalB747
-    from tensorairspace.utils import generate_time_period, convert_tp_to_sec_tp
-    from tensorairspace.signals.standart import unit_step
-    from tensorairspace.agent.ihdp.model import IHDPAgent
+    from tensoraerospace.envs import LinearLongitudinalB747
+    from tensoraerospace.utils import generate_time_period, convert_tp_to_sec_tp
+    from tensoraerospace.signals.standart import unit_step
+    from tensoraerospace.agent.ihdp.model import IHDPAgent
 
     dt = 0.01  # Дискретизация
     tp = generate_time_period(tn=20, dt=dt) # Временной период
@@ -71,10 +71,10 @@ LinearLongitudinalMissileModel-v0
     import numpy as np
     from tqdm import tqdm
     
-    from tensorairspace.envs import LinearLongitudinalMissileModel
-    from tensorairspace.utils import generate_time_period, convert_tp_to_sec_tp
-    from tensorairspace.signals.standart import unit_step
-    from tensorairspace.agent.ihdp.model import IHDPAgent
+    from tensoraerospace.envs import LinearLongitudinalMissileModel
+    from tensoraerospace.utils import generate_time_period, convert_tp_to_sec_tp
+    from tensoraerospace.signals.standart import unit_step
+    from tensoraerospace.agent.ihdp.model import IHDPAgent
 
     dt = 0.01  # Дискретизация
     tp = generate_time_period(tn=20, dt=dt) # Временной период
@@ -102,9 +102,9 @@ LinearLongitudinalELVRocket-v0
     import numpy as np
     from tqdm import tqdm
     
-    from tensorairspace.envs import LinearLongitudinalELVRocket
-    from tensorairspace.utils import generate_time_period, convert_tp_to_sec_tp
-    from tensorairspace.signals.standart import unit_step
+    from tensoraerospace.envs import LinearLongitudinalELVRocket
+    from tensoraerospace.utils import generate_time_period, convert_tp_to_sec_tp
+    from tensoraerospace.signals.standart import unit_step
 
 
     dt = 0.01  # Дискретизация
@@ -133,9 +133,9 @@ GeoSat-v0
     import numpy as np
     from tqdm import tqdm
 
-    from tensorairspace.envs import GeoSatEnv
-    from tensorairspace.utils import generate_time_period, convert_tp_to_sec_tp
-    from tensorairspace.signals.standart import unit_step
+    from tensoraerospace.envs import GeoSatEnv
+    from tensoraerospace.utils import generate_time_period, convert_tp_to_sec_tp
+    from tensoraerospace.signals.standart import unit_step
 
     dt = 0.01  # Дискретизация
     tp = generate_time_period(tn=20, dt=dt) # Временной периуд
@@ -161,9 +161,9 @@ ComSatEnv-v0
     import numpy as np
     from tqdm import tqdm
 
-    from tensorairspace.envs import ComSatEnv
-    from tensorairspace.utils import generate_time_period, convert_tp_to_sec_tp
-    from tensorairspace.signals.standart import unit_step
+    from tensoraerospace.envs import ComSatEnv
+    from tensoraerospace.utils import generate_time_period, convert_tp_to_sec_tp
+    from tensoraerospace.signals.standart import unit_step
 
     dt = 0.01  # Дискретизация
     tp = generate_time_period(tn=20, dt=dt) # Временной периуд
@@ -191,9 +191,9 @@ LinearLongitudinalX15-v0
     import numpy as np
     from tqdm import tqdm
 
-    from tensorairspace.envs import LinearLongitudinalX15
-    from tensorairspace.utils import generate_time_period, convert_tp_to_sec_tp
-    from tensorairspace.signals.standart import unit_step
+    from tensoraerospace.envs import LinearLongitudinalX15
+    from tensoraerospace.utils import generate_time_period, convert_tp_to_sec_tp
+    from tensoraerospace.signals.standart import unit_step
 
     dt = 0.01  # Дискретизация
     tp = generate_time_period(tn=20, dt=dt) # Временной периуд
@@ -220,9 +220,9 @@ LinearLongitudinalF4C-v0
     import numpy as np
     from tqdm import tqdm
 
-    from tensorairspace.envs import LinearLongitudinalF4C
-    from tensorairspace.utils import generate_time_period, convert_tp_to_sec_tp
-    from tensorairspace.signals.standart import unit_step
+    from tensoraerospace.envs import LinearLongitudinalF4C
+    from tensoraerospace.utils import generate_time_period, convert_tp_to_sec_tp
+    from tensoraerospace.signals.standart import unit_step
 
     dt = 0.01  # Дискретизация
     tp = generate_time_period(tn=20, dt=dt) # Временной периуд
@@ -249,9 +249,9 @@ LinearLongitudinalUAV-v0
     import numpy as np
     from tqdm import tqdm
 
-    from tensorairspace.envs import LinearLongitudinalUAV
-    from tensorairspace.utils import generate_time_period, convert_tp_to_sec_tp
-    from tensorairspace.signals.standart import unit_step
+    from tensoraerospace.envs import LinearLongitudinalUAV
+    from tensoraerospace.utils import generate_time_period, convert_tp_to_sec_tp
+    from tensoraerospace.signals.standart import unit_step
 
     dt = 0.01  # Дискретизация
     tp = generate_time_period(tn=20, dt=dt) # Временной периуд

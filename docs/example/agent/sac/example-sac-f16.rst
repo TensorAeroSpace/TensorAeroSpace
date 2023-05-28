@@ -11,10 +11,10 @@
     from gym.spaces import Box
     from tqdm import tqdm
     
-    from tensorairspace.envs import LinearLongitudinalF16
-    from tensorairspace.utils import generate_time_period, convert_tp_to_sec_tp
-    from tensorairspace.signals.standart import unit_step
-    from tensorairspace.agent.sac import SAC, ReplayMemory
+    from tensoraerospace.envs import LinearLongitudinalF16
+    from tensoraerospace.utils import generate_time_period, convert_tp_to_sec_tp
+    from tensoraerospace.signals.standart import unit_step
+    from tensoraerospace.agent.sac import SAC, ReplayMemory
 
 
 .. code:: python

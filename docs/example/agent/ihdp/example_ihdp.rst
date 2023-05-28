@@ -7,10 +7,10 @@
     import numpy as np
     from tqdm import tqdm
     
-    from tensorairspace.envs.f16.linear_longitudial import LinearLongitudinalF16
-    from tensorairspace.utils import generate_time_period, convert_tp_to_sec_tp
-    from tensorairspace.signals.standart import unit_step
-    from tensorairspace.agent.ihdp.model import IHDPAgent
+    from tensoraerospace.envs.f16.linear_longitudial import LinearLongitudinalF16
+    from tensoraerospace.utils import generate_time_period, convert_tp_to_sec_tp
+    from tensoraerospace.signals.standart import unit_step
+    from tensoraerospace.agent.ihdp.model import IHDPAgent
 
 .. code:: python
 

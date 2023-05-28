@@ -38,7 +38,7 @@
 
 #. Опишите интерфейс взаимодействия
 
-  Интерфейс взаимодействия описывается для входных и выходных параметров при помощи ctypes.Structure и преобразователя типов rtwtypes (tensorairspace/aerospacemodel/model/rtwtypes.py)
+  Интерфейс взаимодействия описывается для входных и выходных параметров при помощи ctypes.Structure и преобразователя типов rtwtypes (tensoraerospace/aerospacemodel/model/rtwtypes.py)
 
   .. code-block:: python
 
@@ -59,7 +59,7 @@
 
 Пример использования Simulink модели Ту с Python:
 
-Модель находится в https://github.com/TensorAirSpace/simulink-example
+Модель находится в https://github.com/tensoraerospace/simulink-example
 
 	.. image:: img/model.png
   		:width: 400

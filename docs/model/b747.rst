@@ -132,14 +132,14 @@ Boeing-747 — двухпалубный широкофюзеляжный пас�
 Модель
 ------
 
-.. autoclass:: tensorairspace.aerospacemodel.LongitudinalB747
+.. autoclass:: tensoraerospace.aerospacemodel.LongitudinalB747
     :members:
 
 
 Среда моделирования OpenAI Gym
 ------------------------------
 
-.. autoclass:: tensorairspace.envs.LinearLongitudinalB747
+.. autoclass:: tensoraerospace.envs.LinearLongitudinalB747
     :members:
 
 
@@ -159,9 +159,9 @@ Boeing-747 — двухпалубный широкофюзеляжный пас�
     import numpy as np
     from tqdm import tqdm
 
-    from tensorairspace.envs import LinearLongitudinalB747
-    from tensorairspace.utils import generate_time_period, convert_tp_to_sec_tp
-    from tensorairspace.signals.standart import unit_step
+    from tensoraerospace.envs import LinearLongitudinalB747
+    from tensoraerospace.utils import generate_time_period, convert_tp_to_sec_tp
+    from tensoraerospace.signals.standart import unit_step
 
     dt = 0.01  # Дискретизация
     tp = generate_time_period(tn=20, dt=dt) # Временной периуд

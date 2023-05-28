@@ -30,18 +30,18 @@ Incremental Heuristic Dynamic Programming
 Документация
 ------------
 
-.. autoclass:: tensorairspace.agent.IHDPAgent
+.. autoclass:: tensoraerospace.agent.IHDPAgent
   :members:
   :inherited-members:
 
-.. autoclass:: tensorairspace.agent.ihdp.Actor
+.. autoclass:: tensoraerospace.agent.ihdp.Actor
   :members:
   :inherited-members:
 
-.. autoclass:: tensorairspace.agent.ihdp.Critic
+.. autoclass:: tensoraerospace.agent.ihdp.Critic
   :members:
   :inherited-members:
 
-.. autoclass:: tensorairspace.agent.ihdp.IncrementalModel
+.. autoclass:: tensoraerospace.agent.ihdp.IncrementalModel
   :members:
   :inherited-members:

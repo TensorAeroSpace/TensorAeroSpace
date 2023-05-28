@@ -10,11 +10,11 @@ DQN
   :width: 800
   :alt: DQN
 
-.. autoclass:: tensorairspace.agent.dqn.model.Model
+.. autoclass:: tensoraerospace.agent.dqn.model.Model
   :members:
 
-.. autoclass:: tensorairspace.agent.dqn.model.SumTree
+.. autoclass:: tensoraerospace.agent.dqn.model.SumTree
   :members:
 
-.. autoclass:: tensorairspace.agent.dqn.model.PERAgent
+.. autoclass:: tensoraerospace.agent.dqn.model.PERAgent
   :members:

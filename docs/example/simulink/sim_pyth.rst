@@ -79,7 +79,7 @@
 
 Интегрирование Simulink модели в Python осуществлялось с помощью DLL библиотеки (библиотеки динамической компоновки). В результате генерации cpp кода получили код Simulink модели и Makefile с расширением .mk. После его запуска (команда `make -f MODEL_NAME.mk`) была скомпилирована DLL библиотека.
 
-Для согласования типов данных и корректной работы модели использовался модуль ctypes и был написан преобразователь типов. tensorairspace/aerospacemodel/model/rtwtypes.py
+Для согласования типов данных и корректной работы модели использовался модуль ctypes и был написан преобразователь типов. tensoraerospace/aerospacemodel/model/rtwtypes.py
 
 В dll файлу существуют 3 функции
   * MODEL_NAME_initialize - служит для инициализации модели
@@ -98,7 +98,7 @@
 
       import matplotlib.pyplot as plt
 
-      from tensorairspace.aerospacemodel.utils.rtwtypes import *
+      from tensoraerospace.aerospacemodel.utils.rtwtypes import *
 
 .. container:: cell markdown
 
@@ -109,7 +109,7 @@
 
    .. code:: python
 
-      b747_dll_path = os.path.abspath("../tensorairspace/aerospacemodel/model/simulinkModel/b747/b747_model_win64.dll")
+      b747_dll_path = os.path.abspath("../tensoraerospace/aerospacemodel/model/simulinkModel/b747/b747_model_win64.dll")
       b747_dll = ctypes.windll.LoadLibrary(b747_dll_path)
 
       b747_model_initialize = b747_dll.b747_model_initialize
@@ -240,7 +240,7 @@
 
       import matplotlib.pyplot as plt
 
-      from tensorairspace.aerospacemodel.utils.rtwtypes import *
+      from tensoraerospace.aerospacemodel.utils.rtwtypes import *
 
 .. container:: cell markdown
 
@@ -251,7 +251,7 @@
 
    .. code:: python
 
-      f16_dll_path = os.path.abspath("../tensorairspace/aerospacemodel/model/simulinkModel/f16/f16_model_win64.dll")
+      f16_dll_path = os.path.abspath("../tensoraerospace/aerospacemodel/model/simulinkModel/f16/f16_model_win64.dll")
       f16_dll = ctypes.windll.LoadLibrary(f16_dll_path)
 
       f16_model_initialize = f16_dll.f16_model_initialize
@@ -382,7 +382,7 @@
 
       import matplotlib.pyplot as plt
 
-      from tensorairspace.aerospacemodel.utils.rtwtypes import *
+      from tensoraerospace.aerospacemodel.utils.rtwtypes import *
 
 .. container:: cell markdown
 
@@ -393,7 +393,7 @@
 
    .. code:: python
 
-      elv_dll_path = os.path.abspath("../tensorairspace/aerospacemodel/model/simulinkModel/elv/elv_model_win64.dll")
+      elv_dll_path = os.path.abspath("../tensoraerospace/aerospacemodel/model/simulinkModel/elv/elv_model_win64.dll")
       elv_dll = ctypes.windll.LoadLibrary(elv_dll_path)
 
       elv_model_initialize = elv_dll.elv_model_initialize
@@ -502,7 +502,7 @@
 
       import matplotlib.pyplot as plt
 
-      from tensorairspace.aerospacemodel.utils.rtwtypes import *
+      from tensoraerospace.aerospacemodel.utils.rtwtypes import *
 
 .. container:: cell markdown
 
@@ -513,7 +513,7 @@
 
    .. code:: python
 
-      rocket_dll_path = os.path.abspath("../tensorairspace/aerospacemodel/model/simulinkModel/rocket/rocket_model_win64.dll")
+      rocket_dll_path = os.path.abspath("../tensoraerospace/aerospacemodel/model/simulinkModel/rocket/rocket_model_win64.dll")
       rocket_dll = ctypes.windll.LoadLibrary(rocket_dll_path)
 
       rocket_model_initialize = rocket_dll.rocket_model_initialize

@@ -11,8 +11,8 @@
 
 .. code:: python
 
-    from tensorairspace.agent.dqn.model import Model, PERAgent
-    from tensorairspace.envs.unity_env import get_plane_env, unity_discrete_env
+    from tensoraerospace.agent.dqn.model import Model, PERAgent
+    from tensoraerospace.envs.unity_env import get_plane_env, unity_discrete_env
 
 Запуск теста DQN агента. После запуска данной ячейки необходимо запустить среду Unity
 
@@ -127,7 +127,7 @@
 Для распределенного обучения необходимо собрать Docker образ в котором присутсвуют необходимы зависимости и собранная среда Unity
 
 .. code:: bash
-  
+
   FROM tensorflow/tensorflow:2.4.0-gpu-jupyter
 
   RUN pip install gym==0.20.0 scipy==1.5.4 gym-unity==0.28.0
@@ -141,8 +141,8 @@
 
 .. code:: python
 
-  from tensorairspace.envs.unity_env import get_plane_env, unity_discrete_env
-  from tensorairspace.agent.a3c import Agent, setup_global_params
+  from tensoraerospace.envs.unity_env import get_plane_env, unity_discrete_env
+  from tensoraerospace.agent.a3c import Agent, setup_global_params
 
   def env_function(worker_id):
       # /tf/linux_build/build.x86_64 - путь к собранному Unity окружению 
@@ -165,7 +165,7 @@
 Команда для запуска образа и пробросом библиотеки и собранной Unity среды
 
 .. code:: bash
-  docker run -v ./tensorairspace:/tf/tensorairspace -v ./linux_build:/tf/linux_build -p 8889:8889 unity_docker
+  docker run -v ./tensoraerospace:/tf/tensoraerospace -v ./linux_build:/tf/linux_build -p 8889:8889 unity_docker
 
 
 Пример запуска обучения модели

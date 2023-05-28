@@ -18,7 +18,7 @@ COPY start.sh start.sh
 COPY requirements.txt requirements.txt
 RUN pip install --upgrade pip
 
-COPY tensorairspace /app/tensorairspace
+COPY tensoraerospace /app/tensoraerospace
 COPY setup.py /app/setup.py
 
 RUN pip install -e .

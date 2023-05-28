@@ -79,7 +79,7 @@ import os
 import sys
 sys.path.insert(0, os.path.abspath('..'))
 
-import tensorairspace
+import tensoraerospace
 
 
 m2r = M2R()
