@@ -244,9 +244,7 @@ class Worker(Thread):
             states = []
             actions = []
             rewards = []
-            i1 = 0
-            while not done and i1 < 10:
-                i1 += 1
+            while not done:
                 action = self.get_action(state)
                 action = np.clip(action, -self.action_bound, self.action_bound)
                 
@@ -285,6 +283,8 @@ class Worker(Thread):
 
             with summary_writer.as_default():
                 tf.summary.scalar('reward', episode_reward, step=GLOBAL_EP)
+
+            print("episode:", GLOBAL_EP, "reward:", episode_reward)
             GLOBAL_EP += 1
 
 actor_lr = 0.0005
