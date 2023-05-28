@@ -5,7 +5,7 @@ with open('./requirements.txt') as f:
     required = f.read().splitlines()
 
 setup(name='tensoraerospace',
-        version='0.1.1',
+        version='0.2.1',
         install_requires=required,
         packages=['tensoraerospace'],
         python_requires=">=3.7",
