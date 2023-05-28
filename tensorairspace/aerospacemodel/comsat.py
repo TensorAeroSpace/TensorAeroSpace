@@ -20,7 +20,7 @@ class ComSat(ModelBase):
         dt (float, optional): Частота дискретизации. Defaults to 0.01.
             
     Пространство действий:
-        * ele: руль высоты [град]
+        * thrust: тяга двигателя
 
     Пространство состояний:
         * rho - отношение высоты полета к радиусу ЗЕмли
@@ -28,7 +28,7 @@ class ComSat(ModelBase):
         * omega - угловая скорость вращения спутника [рад/с]
 
     Пространство выхода:
-        * rho - Тангаж  [град]
+        * rho - отношение высоты полета к радиусу ЗЕмли
         * theta - позиция спутника относительно земносй системы координат [рад]
         * omega - угловая скорость вращения спутника [рад/с]
     """
@@ -42,7 +42,7 @@ class ComSat(ModelBase):
         self.selected_states = ["rho", "theta", "omega"]
         self.selected_output = ["rho", "theta", "omega"]
         self.list_state = self.selected_states
-        self.selected_input = ["ele", ]
+        self.selected_input = ["thrust", ]
         self.control_list = self.selected_input
 
         if self.selected_state_output:

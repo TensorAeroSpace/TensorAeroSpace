@@ -27,6 +27,11 @@ Github репозиторий: https://github.com/TensorAeroSpace/TensorAeroSpac
    model/b747
    model/EVL
    model/typical_rocket
+   model/comsat
+   model/f4c
+   model/geosat
+   model/uav
+   model/x15
    model/unity_env.rst
 
 .. toctree::

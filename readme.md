@@ -36,6 +36,7 @@ docker run -v example:/app/example -p 8888:8888 -it tensor_aero_space
 - IHDP (Incremental Heuristic Dynamic Programming)
 - DQN (Deep Q Learning)
 - SAC (Soft Actor Critic)
+- A3C (Asynchronous Advantage Actor-Critic)
 
 ## Объекты управления
 
@@ -43,6 +44,11 @@ docker run -v example:/app/example -p 8888:8888 -it tensor_aero_space
 - Boeing-747
 - ELV(Expendable launch vehicle)
 - Модель ракеты
+- McDonnell Douglas F-4C в продольном канале управления
+- North American X-15 в продольном канале управления
+- Геостационарный спутник
+- Спутник связи
+- БЛА в State Space
 - БЛА в Unity среде
 
 
