@@ -1,18 +1,14 @@
-.. TensorAirSpace documentation master file, created by
+.. tensoraerospace documentation master file, created by
    sphinx-quickstart on Wed Feb  9 19:09:22 2022.
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-.. note:: 
+Добро пожаловать в документацию TensorAeroSpace! - RL for Aerospace
+===================================================================
 
-   В скором времени библиотека изменит свой адрес. C TensorAirSpace на TensorAeroSpace
+TensorAeroSpace - это набор объектов управления, сред моделирования OpenAI Gym и реализации алгоритмов Reinforcement Learning (RL)
 
-Добро пожаловать в документацию TensorAirSpace! - RL for Aerospace
-==================================================================
-
-TensorAirSpace - это набор объектов управления, сред моделирования OpenAI Gym и реализации алгоритмов Reinforcement Learning (RL)
-
-Github репозиторий: https://github.com/TensorAirSpace/TensorAirSpace
+Github репозиторий: https://github.com/TensorAeroSpace/TensorAeroSpace
 
 
 .. toctree::
@@ -31,20 +27,24 @@ Github репозиторий: https://github.com/TensorAirSpace/TensorAirSpace
    model/b747
    model/EVL
    model/typical_rocket
+   model/comsat
+   model/f4c
+   model/geosat
+   model/uav
+   model/x15
    model/unity_env.rst
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 3
    :caption: Агенты:
 
    agent/ihdp
    agent/dqn
+   agent/a3c
+   agent/sac
    optimization/optuna_based.rst
-
-.. toctree::
-   :maxdepth: 2
-   :caption: Сигналы:
-
+   benchmark/metrics.rst
+   benchmark/bench.rst
    signals/signals.rst
 
 
@@ -53,7 +53,8 @@ Github репозиторий: https://github.com/TensorAirSpace/TensorAirSpace
    :caption: Примеры:
    
    example/env/examples.rst
-   example/agent/ihdp/example_ihdp.rst 
+   example/agent/ihdp/example_ihdp.rst
+   example/agent/sac/example-sac-f16.rst
    example/optimization/example_optimization.rst
    example/failure/ihdp-failure.rst
    example/simulink/sim_pyth.rst

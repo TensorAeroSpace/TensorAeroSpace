@@ -5,7 +5,7 @@
 
 .. code:: shell
 
-    git clone git@github.com:TensorAirSpace/UnityAirplaneEnvironment.git
+    git clone git@github.com:tensoraerospace/UnityAirplaneEnvironment.git
 
 Установите пакет для работы с unity ml agents
 

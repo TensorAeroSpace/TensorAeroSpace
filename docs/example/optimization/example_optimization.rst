@@ -2,25 +2,25 @@
 ===========================
 
 
-.. code:: ipython3
+.. code:: python
 
     import numpy as np
     import gym
-    from tensorairspace.optimization import HyperParamOptimizationOptuna
-    from tensorairspace.agent.ihdp.model import IHDPAgent
-    from tensorairspace.utils import generate_time_period
-    from tensorairspace.signals import unit_step
+    from tensoraerospace.optimization import HyperParamOptimizationOptuna
+    from tensoraerospace.agent.ihdp.model import IHDPAgent
+    from tensoraerospace.utils import generate_time_period
+    from tensoraerospace.signals import unit_step
 
 .. warning::
     Перед началом создаем объект класса `HyperParamOptimizationOptuna` в основе которого лежит библиотека `Optuna`.
     Мы сделали обертку вокруг нее для удобства пользования, если вам неудобно пользоваться нашей оберткой вы всегда можете использовать просто `Optuna`.
 
 
-.. code:: ipython3
+.. code:: python
 
     opt = HyperParamOptimizationOptuna(direction='minimize')
 
-.. code:: ipython3
+.. code:: python
 
     dt = 0.01
     tp = generate_time_period(tn=20)
@@ -28,7 +28,7 @@
     reference_signals = np.reshape(unit_step(degree=5, tp=tp, time_step=10, output_rad=True), [1, -1])
 
 
-.. code:: ipython3
+.. code:: python
 
     def objective(trial):
     
@@ -87,7 +87,7 @@
 
 .. warning::
 
-    Критерий который мы будем использовать для оптимизации это модуль разницы между текущим состоянием и заданным. Расчет данного критерия происходит в методе `tensorairspace.envs.LinearLongitudinalF16.reward`. 
+    Критерий который мы будем использовать для оптимизации это модуль разницы между текущим состоянием и заданным. Расчет данного критерия происходит в методе `tensoraerospace.envs.LinearLongitudinalF16.reward`. 
 
     .. code:: python
 
@@ -98,12 +98,12 @@
     В дальнейшем мы планируем добавить и иные критерии оптимальности в данную библиотеку 
 
 
-.. code:: ipython3
+.. code:: python
 
     opt.run_optimization(objective, n_trials=10)
 
 
-.. code:: ipython3
+.. code:: python
 
     opt.get_best_param()
 
@@ -120,7 +120,7 @@
 
 
 
-.. code:: ipython3
+.. code:: python
 
     opt.plot_parms()
 

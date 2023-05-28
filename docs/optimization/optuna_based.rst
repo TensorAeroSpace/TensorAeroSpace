@@ -1,8 +1,8 @@
 Поиск гиперпараметров агента
 ============================
 
-.. autoclass:: tensorairspace.optimization.HyperParamOptimizationOptuna
+.. autoclass:: tensoraerospace.optimization.HyperParamOptimizationOptuna
     :members:
 
-.. autoclass:: tensorairspace.optimization.HyperParamOptimizationRay
+.. autoclass:: tensoraerospace.optimization.HyperParamOptimizationRay
     :members:

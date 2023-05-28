@@ -1,20 +1,20 @@
 Работа IHDP с отказами системы
 ==============================
 
-.. code:: ipython3
+.. code:: python
 
     import gym 
     import numpy as np
     from tqdm import tqdm
     import pandas as pd
     
-    from tensorairspace.envs.f16.linear_longitudial import LinearLongitudinalF16
-    from tensorairspace.utils import generate_time_period, convert_tp_to_sec_tp
-    from tensorairspace.signals.standart import unit_step
-    from tensorairspace.agent.ihdp.model import IHDPAgent
+    from tensoraerospace.envs.f16.linear_longitudial import LinearLongitudinalF16
+    from tensoraerospace.utils import generate_time_period, convert_tp_to_sec_tp
+    from tensoraerospace.signals.standart import unit_step
+    from tensoraerospace.agent.ihdp.model import IHDPAgent
 
 
-.. code:: ipython3
+.. code:: python
 
     dt = 0.01  # Дискретизация
     tp = generate_time_period(tn=40, dt=dt) # Временной периуд
@@ -22,7 +22,7 @@
     number_time_steps = len(tp) # Количество временных шагов
     reference_signals = np.reshape(unit_step(degree=5, tp=tp, time_step=10, output_rad=True), [1, -1]) # Заданный сигнал
 
-.. code:: ipython3
+.. code:: python
 
     env = gym.make('LinearLongitudinalF16-v0',
                    number_time_steps=number_time_steps, 
@@ -31,7 +31,7 @@
                   tracking_states=["alpha"])
     env.reset()
 
-.. code:: ipython3
+.. code:: python
 
     pd.DataFrame(data=env.model.filt_A, columns=env.model.selected_states)
 
@@ -99,7 +99,7 @@
 
 
 
-.. code:: ipython3
+.. code:: python
 
     actor_settings = {
         "start_training": 5,
@@ -118,7 +118,7 @@
         "learning_rate_cascaded":1.2
     }
 
-.. code:: ipython3
+.. code:: python
 
     incremental_settings = {
         "number_time_steps": number_time_steps, 
@@ -127,7 +127,7 @@
         "input_rate_limits":60,
     }
 
-.. code:: ipython3
+.. code:: python
 
     critic_settings = {
         "Q_weights": [8], 
@@ -142,7 +142,7 @@
         "indices_tracking_states": env.indices_tracking_states
     }
 
-.. code:: ipython3
+.. code:: python
 
     model = IHDPAgent(actor_settings, critic_settings, incremental_settings, env.tracking_states, env.state_space, env.control_space, number_time_steps, env.indices_tracking_states)
 
@@ -152,7 +152,7 @@
     В данном примере происходит моделирование резкого изменения частной производной продольной силы по углу атаки :math:`z_{\alpha}` в матрице A пространств состояний. Таким образом моделируется изменение воздушного потока. 
     
 
-.. code:: ipython3
+.. code:: python
 
     xt = np.array([[0], [0]])
     
@@ -167,7 +167,7 @@
     100%|██████████| 4000/4000 [00:39<00:00, 100.74it/s]
 
 
-.. code:: ipython3
+.. code:: python
 
     env.model.plot_transient_process('alpha', tps, reference_signals[0], to_deg=True, figsize=(15,4))
 
@@ -180,7 +180,7 @@
  
 
 
-.. code:: ipython3
+.. code:: python
 
     env.model.plot_state('wz', tps, reference_signals[0], to_deg=True, figsize=(15,4))
 
@@ -190,7 +190,7 @@
 
  
 
-.. code:: ipython3
+.. code:: python
 
     env.model.plot_control('ele', tps, figsize=(15,4))
 

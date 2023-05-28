@@ -100,14 +100,14 @@ ELV(Expendable launch vehicle) - ракета-носитель, предназн
 Модель
 ------
 
-.. autoclass:: tensorairspace.aerospacemodel.ELVRocket
+.. autoclass:: tensoraerospace.aerospacemodel.ELVRocket
     :members:
 
 
 Среда моделирования OpenAI Gym
 ------------------------------
 
-.. autoclass:: tensorairspace.envs.LinearLongitudinalELVRocket
+.. autoclass:: tensoraerospace.envs.LinearLongitudinalELVRocket
     :members:
 
 Источники
@@ -115,3 +115,31 @@ ELV(Expendable launch vehicle) - ракета-носитель, предназн
 
 1. Aliyu, Bhar & Funmilayo, A. & Okwo, Odooh & Sholiyi, Olusegun. (2019). State-Space Modelling of a Rocket for Optimal Control System Design. Journal of Aircraft and Spacecraft Technology. 3. 128-137. 10.3844/jastsp.2019.128.137. (https://www.researchgate.net/publication/335917723_State-Space_Modelling_of_a_Rocket_for_Optimal_Control_System_Design)
 2. Aliyu, Bhar. (2011). Expendable Launch Vehicle Flight Control-Design & Simulation with Matlab/Simulink. (https://www.researchgate.net/publication/301790480_Expendable_Launch_Vehicle_Flight_Control-Design_Simulation_with_MatlabSimulink)
+
+
+Пример использования
+--------------------
+
+.. code:: python
+
+    import gym 
+    import numpy as np
+    from tqdm import tqdm
+
+    from tensoraerospace.envs import LinearLongitudinalELVRocket
+    from tensoraerospace.utils import generate_time_period, convert_tp_to_sec_tp
+    from tensoraerospace.signals.standart import unit_step
+
+    dt = 0.01  # Дискретизация
+    tp = generate_time_period(tn=20, dt=dt) # Временной периуд
+    tps = convert_tp_to_sec_tp(tp, dt=dt)
+    number_time_steps = len(tp) # Количество временных шагов
+    reference_signals = np.reshape(unit_step(degree=5, tp=tp, time_step=10, output_rad=True), [1, -1]) # Заданный сигнал
+
+    env = gym.make('LinearLongitudinalELVRocket-v0',
+               number_time_steps=number_time_steps, 
+               initial_state=[[0],[0],[0]],
+               reference_signal = reference_signals)
+    env.reset() 
+
+    observation, reward, done, info = env.step(np.array([[1]]))
