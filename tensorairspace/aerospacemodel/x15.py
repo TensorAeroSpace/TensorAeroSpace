@@ -8,7 +8,7 @@ from tensorairspace.aerospacemodel.f16.nonlinear.utils import output2dict
 
 class LongitudinalX15(ModelBase):
     """
-    North American X-1 в продольном канале управления
+    North American X-15 в продольном канале управления
     
     
     Args:
