@@ -42,10 +42,10 @@ docker run -v example:/app/example -p 8888:8888 -it tensor_aero_space
 
 - General Dynamics F-16 Fighting Falcon
 - Boeing-747
-- ELV(Expendable launch vehicle)
+- ELV (Expendable launch vehicle)
 - Модель ракеты
-- McDonnell Douglas F-4C в продольном канале управления
-- North American X-15 в продольном канале управления
+- McDonnell Douglas F-4C
+- North American X-15
 - Геостационарный спутник
 - Спутник связи
 - БЛА в State Space

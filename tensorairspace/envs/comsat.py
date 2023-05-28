@@ -6,7 +6,7 @@ from tensorairspace.aerospacemodel import ComSat
 
 
 
-class ComSat(gym.Env, EzPickle):
+class ComSatEnv(gym.Env, EzPickle):
     """Моделирование объекта управления "Спутник связи в продольном канале управления" в среде моделирования OpenAI Gym для обучения агентов с искусственным интеллектом
 
     Args:

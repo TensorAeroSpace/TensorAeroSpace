@@ -6,7 +6,7 @@ from tensorairspace.aerospacemodel import GeoSat
 
 
 
-class GeoSat(gym.Env, EzPickle):
+class GeoSatEnv(gym.Env, EzPickle):
     """Моделирование объекта управления "Спутник связи в продольном канале управления" в среде моделирования OpenAI Gym для обучения агентов с искусственным интеллектом
 
     Args:
@@ -42,7 +42,7 @@ class GeoSat(gym.Env, EzPickle):
         else:
             self.reward_func = self.reward
             
-        self.model = GeoSat(initial_state, number_time_steps=number_time_steps,
+        self.model = GeoSat(initial_state, number_time_steps=number_time_steps, 
                                      selected_state_output=output_space, t0=0)
         self.indices_tracking_states = [state_space.index(tracking_states[i]) for i in range(len(tracking_states))]
         
