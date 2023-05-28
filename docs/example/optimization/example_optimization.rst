@@ -6,10 +6,10 @@
 
     import numpy as np
     import gym
-    from tensorairspace.optimization import HyperParamOptimizationOptuna
-    from tensorairspace.agent.ihdp.model import IHDPAgent
-    from tensorairspace.utils import generate_time_period
-    from tensorairspace.signals import unit_step
+    from tensoraerospace.optimization import HyperParamOptimizationOptuna
+    from tensoraerospace.agent.ihdp.model import IHDPAgent
+    from tensoraerospace.utils import generate_time_period
+    from tensoraerospace.signals import unit_step
 
 .. warning::
     Перед началом создаем объект класса `HyperParamOptimizationOptuna` в основе которого лежит библиотека `Optuna`.
@@ -87,7 +87,7 @@
 
 .. warning::
 
-    Критерий который мы будем использовать для оптимизации это модуль разницы между текущим состоянием и заданным. Расчет данного критерия происходит в методе `tensorairspace.envs.LinearLongitudinalF16.reward`. 
+    Критерий который мы будем использовать для оптимизации это модуль разницы между текущим состоянием и заданным. Расчет данного критерия происходит в методе `tensoraerospace.envs.LinearLongitudinalF16.reward`. 
 
     .. code:: python
 

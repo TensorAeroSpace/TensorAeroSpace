@@ -1,4 +1,4 @@
-.. TensorAirSpace documentation master file, created by
+.. tensoraerospace documentation master file, created by
    sphinx-quickstart on Wed Feb  9 19:09:22 2022.
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
@@ -27,6 +27,11 @@ Github репозиторий: https://github.com/TensorAeroSpace/TensorAeroSpac
    model/b747
    model/EVL
    model/typical_rocket
+   model/comsat
+   model/f4c
+   model/geosat
+   model/uav
+   model/x15
    model/unity_env.rst
 
 .. toctree::

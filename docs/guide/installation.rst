@@ -5,8 +5,8 @@
 
 .. code:: shell
 
-    git clone https://github.com/TensorAirSpace/TensorAirSpace.git
-    cd TensorAirSpace
+    git clone https://github.com/tensoraerospace/tensoraerospace.git
+    cd tensoraerospace
     
 Создайте виртуальное окружение и активируйте его
 

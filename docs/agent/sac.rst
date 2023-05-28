@@ -26,20 +26,20 @@ SAC может быть применен для обучения системы 
 Документация
 ------------
 
-.. autoclass:: tensorairspace.agent.sac.SAC
+.. autoclass:: tensoraerospace.agent.sac.SAC
   :members:
 
-.. autoclass:: tensorairspace.agent.sac.ReplayMemory
+.. autoclass:: tensoraerospace.agent.sac.ReplayMemory
   :members:
 
-.. autoclass:: tensorairspace.agent.sac.ValueNetwork
+.. autoclass:: tensoraerospace.agent.sac.ValueNetwork
   :members:
 
-.. autoclass:: tensorairspace.agent.sac.QNetwork
+.. autoclass:: tensoraerospace.agent.sac.QNetwork
   :members:
 
-.. autoclass:: tensorairspace.agent.sac.GaussianPolicy
+.. autoclass:: tensoraerospace.agent.sac.GaussianPolicy
   :members:
 
-.. autoclass:: tensorairspace.agent.sac.DeterministicPolicy
+.. autoclass:: tensoraerospace.agent.sac.DeterministicPolicy
   :members:

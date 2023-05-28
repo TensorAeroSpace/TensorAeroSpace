@@ -1,5 +1,5 @@
-from tensorairspace.envs.f16.linear_longitudial import LinearLongitudinalF16
-from tensorairspace.aerospacemodel.f16.linear.longitudinal import set_initial_state, initial_state
+from tensoraerospace.envs.f16.linear_longitudial import LinearLongitudinalF16
+from tensoraerospace.aerospacemodel.f16.linear.longitudinal import set_initial_state, initial_state
 
 
 import numpy as np

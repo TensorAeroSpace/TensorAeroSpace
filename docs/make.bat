@@ -9,7 +9,7 @@ if "%SPHINXBUILD%" == "" (
 )
 set SOURCEDIR=.
 set BUILDDIR=build
-set SPHINXPROJ=TensorAirSpace
+set SPHINXPROJ=tensoraerospace
 
 if "%1" == "" goto help
 
