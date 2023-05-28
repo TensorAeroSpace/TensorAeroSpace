@@ -1,4 +1,4 @@
-from setuptools import setup
+from setuptools import find_packages, setup
 
 
 with open('./requirements.txt') as f:
@@ -7,7 +7,7 @@ with open('./requirements.txt') as f:
 setup(name='tensoraerospace',
         version='0.2.1',
         install_requires=required,
-        packages=['tensoraerospace'],
+        packages=[package for package in find_packages() if package.startswith("tensoraerospace")],
         python_requires=">=3.7",
         author_email="mr8bit@yandex.ru",
         description="TensorAeroSpace! - RL for Aerospace.",
