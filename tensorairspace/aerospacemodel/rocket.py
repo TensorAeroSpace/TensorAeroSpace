@@ -2,9 +2,9 @@ import matplotlib.pyplot as plt
 import numpy as np
 from scipy.signal import cont2discrete
 
-from tensorairspace.aerospacemodel.base import ModelBase
-from tensorairspace.aerospacemodel.utils.constant import state_to_latex_rus, state_to_latex_eng
-from tensorairspace.aerospacemodel.f16.nonlinear.utils import output2dict
+from .base import ModelBase
+from .utils.constant import state_to_latex_rus, state_to_latex_eng
+from .f16.nonlinear.utils import output2dict
 
 
 class MissileModel(ModelBase):
