@@ -14,7 +14,6 @@ ENV PATH=$CONDA_DIR/bin:$PATH
 
 WORKDIR /app
 
-COPY start.sh start.sh
 COPY requirements.txt requirements.txt
 RUN pip install --upgrade pip
 
@@ -27,5 +26,6 @@ RUN rm -rf $HOME/.cache/pip
 
 
 EXPOSE 8888
+COPY start.sh start.sh
 RUN chmod +x /app/start.sh
-ENTRYPOINT "/app/start.sh"
+ENTRYPOINT [ "/app/start.sh" ] 

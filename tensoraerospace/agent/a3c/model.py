@@ -187,7 +187,7 @@ class Worker(Thread):
         mu, std = mu[0], std[0]
         return np.random.normal(mu, std, size=self.action_size)
     
-    def n_step_td_target(self, rewards, next_Q, done):
+    def n_step_td_target(self, rewards, next_Qs, done):
         """Функция для подсчёта отложенной награды
 
         Args:
@@ -200,13 +200,14 @@ class Worker(Thread):
         """
         td_targets = np.zeros_like(rewards)
         R_to_go = 0
+
+        Rs = self.critic.model.predict(states)
         
-        if not done:
-            R_to_go = next_Q
+        if done:
+            td_targets[-1] = rewards[-1]
         
-        for k in reversed(range(0, len(rewards))):
-            R_to_go = rewards[k] + self.gamma * R_to_go 
-            td_targets[k] = R_to_go
+        for k in reversed(range(0, len(rewards) - 1)):
+            td_targets[k] = next_Qs[k] + rewards[k]
         return td_targets
 
     def list_to_batch(self, list):
@@ -244,6 +245,7 @@ class Worker(Thread):
             states = []
             actions = []
             rewards = []
+            next_states = []
             i1 = 0
             while not done and i1 < 10:
                 i1 += 1
@@ -259,6 +261,7 @@ class Worker(Thread):
                 states.append(state)
                 actions.append(action)
                 rewards.append(reward)
+                next_states.append(next_state)
 
                 state = next_state[0]
                 episode_reward += reward[0][0]
@@ -267,12 +270,13 @@ class Worker(Thread):
                     states = self.list_to_batch(states)
                     actions = self.list_to_batch(actions)
                     rewards = self.list_to_batch(rewards)
+                    next_states = self.list_to_batch(next_states)
                     
                     curr_Qs = self.critic.model.predict(states)
-                    next_Q = self.critic.model.predict(next_state)
+                    next_Qs = self.critic.model.predict(next_states)
                     
                     td_targets = self.n_step_td_target(
-                        (rewards+8)/8, next_Q, done)
+                        (rewards+8)/8, next_Qs, done)
                     advantages = td_targets - curr_Qs
                     
                     actor_loss = self.global_actor.train(states, actions, advantages)
@@ -282,6 +286,7 @@ class Worker(Thread):
                     states = []
                     actions = []
                     rewards = []
+                    next_states = []
 
             with summary_writer.as_default():
                 tf.summary.scalar('reward', episode_reward, step=GLOBAL_EP)
