@@ -4,7 +4,8 @@ import torch
 import numpy as np
 import torch.nn as nn
 from pytest import approx
-from tensoraerospace.agent.sac import ReplayMemory, ValueNetwork, QNetwork
+import gym
+from tensoraerospace.agent.sac import ReplayMemory, ValueNetwork, QNetwork, GaussianPolicy, DeterministicPolicy, SAC
 
 
 class TestReplayMemory:
@@ -122,3 +123,96 @@ def test_QNetwork():
 
     assert q1.size() == (1000, 1)  # Проверка размера Q1
     assert q2.size() == (1000, 1)  # Проверка размера Q2
+
+
+class TestGaussianPolicy:
+    @classmethod
+    def setup_class(cls):
+        num_inputs = 4
+        num_actions = 2
+        hidden_dim = 32
+        action_space = gym.spaces.Box(low=-1, high=1, shape=(num_actions,))
+        cls.policy = GaussianPolicy(num_inputs, num_actions, hidden_dim, action_space)
+
+    def test_forward(self):
+        state = torch.randn(1, 4)
+        mean, log_std = self.policy.forward(state)
+        assert mean.shape == (1, 2)
+        assert log_std.shape == (1, 2)
+
+    def test_sample(self):
+        state = torch.randn(1, 4)
+        action, log_prob, mean = self.policy.sample(state)
+        assert action.shape == (1, 2)
+        assert log_prob.shape == (1, 1)
+        assert mean.shape == (1, 2)
+
+    def test_to(self):
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        self.policy.to(device)
+        assert self.policy.action_scale.device == device
+        assert self.policy.action_bias.device == device
+
+
+@pytest.fixture
+def deterministic_policy():
+    num_inputs = 10
+    num_actions = 5
+    hidden_dim = 32
+    action_space = None
+    return DeterministicPolicy(num_inputs, num_actions, hidden_dim, action_space)
+
+class TestDeterministicPolicy:
+    def test_forward(self, deterministic_policy):
+        state = torch.randn(1, 10)
+        mean = deterministic_policy.forward(state)
+
+        assert mean.shape == (1, 5)
+
+    def test_sample(self, deterministic_policy):
+        state = torch.randn(1, 10)
+        action, _, mean = deterministic_policy.sample(state)
+
+        assert action.shape == (1, 5)
+        assert mean.shape == (1, 5)
+
+    # def test_to(self, deterministic_policy):
+    #     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    #     deterministic_policy = deterministic_policy.to(device)
+
+    #     assert deterministic_policy.action_scale.device == device
+    #     assert deterministic_policy.action_bias.device == device
+    #     assert deterministic_policy.noise.device == device
+    #     assert next(deterministic_policy.parameters()).device == device
+
+
+
+class TestSAC:
+    @classmethod
+    def setup_class(cls):
+        num_inputs = 4
+        action_space = gym.spaces.Box(low=-1, high=1, shape=(2,))
+        cls.sac = SAC(num_inputs, action_space, cuda=False)
+
+    def test_select_action(self):
+        state = torch.randn(4)
+        action = self.sac.select_action(state)
+        assert action.shape == (2,)
+
+    def test_save_and_load_checkpoint(self):
+        env_name = "test_env"
+        suffix = "test"
+        ckpt_path = "test_checkpoint.pth"
+        self.sac.save_checkpoint(env_name, suffix, ckpt_path)
+        assert os.path.exists(ckpt_path)
+
+        evaluate = False
+        self.sac.load_checkpoint(ckpt_path, evaluate)
+        assert self.sac.policy.training == (not evaluate)
+        assert self.sac.critic.training == (not evaluate)
+        assert self.sac.critic_target.training == (not evaluate)
+
+        os.remove(ckpt_path)
+
+
+
