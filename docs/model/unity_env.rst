@@ -211,8 +211,12 @@ Python взаимодействие со средой
 Команда для запуска образа и пробросом библиотеки и собранной Unity среды
 
 .. code:: bash
-  docker run -v ./tensoraerospace:/tf/tensoraerospace -v ./linux_build:/tf/linux_build -p 8889:8889 unity_docker
 
+  docker run -v ./tensoraerospace:/tf/tensoraerospace -v ./linux_build:/tf/linux_build -p 8889:8889 unity_docker --gpus all
+
+.. note::
+
+  В операционной системе Windows требуется указывать полный путь до директории "example" при выполнении команды docker run, то есть: docker run -v C:\Users\<USER_DIR>\TensorAeroSpace\example:/app/example -p 0.0.0.0:8888:8888 -it tensor_aero_space.
 
 Пример запуска обучения модели
 
