@@ -4,7 +4,7 @@ import torch
 import numpy as np
 import torch.nn as nn
 from pytest import approx
-import gym
+import gymnasium as gym
 from tensoraerospace.agent.sac import ReplayMemory, ValueNetwork, QNetwork, GaussianPolicy, DeterministicPolicy, SAC
 
 

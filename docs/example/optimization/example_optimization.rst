@@ -5,7 +5,7 @@
 .. code:: python
 
     import numpy as np
-    import gym
+    import gymnasium as gym
     from tensoraerospace.optimization import HyperParamOptimizationOptuna
     from tensoraerospace.agent.ihdp.model import IHDPAgent
     from tensoraerospace.utils import generate_time_period

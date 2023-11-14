@@ -1,6 +1,6 @@
 import tensorflow as tf
 
-import gym
+import gymnasium as gym
 import time
 import numpy as np
 import tensorflow.keras.layers as kl

@@ -249,7 +249,7 @@ class LongitudinalB747(ModelBase):
     def plot_output(self, output_name: str, time: np.ndarray, lang: str = 'rus', to_deg: bool = False,
                     to_rad: bool = False, figsize: tuple = (10, 10)):
         if to_rad and to_deg:
-            raise Exception(f"Неверно указано форматирование, укажите один. to_rad или to_deg.")
+            raise Exception("Неверно указано форматирование, укажите один. to_rad или to_deg.")
         if output_name not in self.list_state:
             raise Exception(f"{output_name} нет в списке сигналов управления")
         if not self.control_history:

@@ -87,7 +87,7 @@ class ModelBase:
 
         """
         if to_rad and to_deg:
-            raise Exception(f"Неверно указано форматирование, укажите один из типо. to_rad или to_deg.")
+            raise Exception("Неверно указано форматирование, укажите один из типо. to_rad или to_deg.")
         if state_name not in self.list_state:
             raise Exception(f"{state_name} нет в списке состояний")
         if not self.state_history:
@@ -115,7 +115,7 @@ class ModelBase:
         >>> state_hist = model.get_control('stab', to_deg=True)
         """
         if to_rad and to_deg:
-            raise Exception(f"Неверно указано форматирование, укажите один из типо. to_rad или to_deg.")
+            raise Exception("Неверно указано форматирование, укажите один из типо. to_rad или to_deg.")
         if control_name not in self.list_state:
             raise Exception(f"{control_name} нет в списке сигналов управления")
         if not self.control_history:

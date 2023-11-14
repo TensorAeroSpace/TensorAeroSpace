@@ -1,7 +1,6 @@
-import gym
+import gymnasium as gym
 import numpy as np
-from gym import error, spaces
-from gym.utils import seeding, EzPickle
+from gym.utils import EzPickle
 from tensoraerospace.aerospacemodel import ComSat
 
 

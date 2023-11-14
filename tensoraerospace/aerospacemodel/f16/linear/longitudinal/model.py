@@ -3,7 +3,7 @@ import os
 
 import numpy as np
 from scipy.io import loadmat
-from scipy.signal import *
+from scipy.signal import cont2discrete
 
 from tensoraerospace.aerospacemodel.base import ModelBase
 

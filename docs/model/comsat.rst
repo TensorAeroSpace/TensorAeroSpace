@@ -94,7 +94,7 @@
 
 .. code:: python
 
-    import gym 
+    import gymnasium as gym 
     import numpy as np
     from tqdm import tqdm
 
