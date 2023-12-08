@@ -41,8 +41,8 @@ class Agent():
         self.clip_pram = 0.2
         self.env = env
         tf.random.set_seed(336699)
-        self.max_steps = 100
-        self.max_episodes = 100
+        self.max_steps = 10
+        self.max_episodes = 10
         self.ep_reward = []
         self.total_avgr = []
         self.target = False 
@@ -97,7 +97,7 @@ class Agent():
             p, r = self.actor(states, return_reward=True, training=True)
             v =  self.critic(states,training=True)
             v = tf.reshape(v, (len(v),))
-            td = tf.math.subtract(discnt_rewards, v)
+            td = tf.math.subtract(discnt_rewards, tf.cast(v, np.float32))
             c_loss = 0.5 * kls.mean_squared_error(discnt_rewards, v)
             a_loss = self.actor_loss(p, actions, adv, old_probs, c_loss) + self.auxillary_task(r, rewards)
             
@@ -181,12 +181,6 @@ class Agent():
             for epocs in range(1):
                 al,cl = self.learn(self.states, self.actions, self.adv, self.probs, self.returns, self.rewards)
 
-            avg_reward = np.mean([self.test_reward(self.env) for _ in range(5)])
+            avg_reward = np.mean([self.test_reward() for _ in range(5)])
             self.avg_rewards_list.append(avg_reward)
-            if avg_reward > best_reward:
-                self.actor.save('model_actor_{}_{}'.format(s, avg_reward), save_format="tf")
-                self.critic.save('model_critic_{}_{}'.format(s, avg_reward), save_format="tf")
-                best_reward = avg_reward
-            if best_reward == 200:
-                self.target = True
             self.env.reset()
