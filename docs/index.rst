@@ -41,6 +41,7 @@ Github репозиторий: https://github.com/TensorAeroSpace/TensorAeroSpac
    agent/ihdp
    agent/dqn
    agent/a3c
+   agent/ppo
    agent/sac
    optimization/optuna_based.rst
    benchmark/metrics.rst

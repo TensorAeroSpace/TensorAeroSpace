@@ -17,7 +17,7 @@ class critic(tf.keras.Model):
     
 
 class actor(tf.keras.Model):
-    def __init__(self):
+    def __init__(self): 
         super().__init__()
         self.d1 = tf.keras.layers.Dense(128,activation='relu')
         self.a = tf.keras.layers.Dense(3 ** 7,activation='softmax')
@@ -32,6 +32,12 @@ class actor(tf.keras.Model):
         return a
 
 class Agent():
+    """ Класс агента ppo
+
+    Args:
+        env (_type_): среда
+        gamma (float): коэффициент дисконтирования
+    """
     def __init__(self, env, gamma = 0.99):
         self.gamma = gamma
         self.a_opt = tf.keras.optimizers.Adam(learning_rate=7e-3)
@@ -51,6 +57,15 @@ class Agent():
 
           
     def act(self,state):
+        
+        """ Функция которая возвращает действие агента
+
+        Args:
+            state (_type_): вектор состояния
+
+        Returns:
+            action (int): дискретное действие
+        """
         prob = self.actor(np.array([state]))
         prob = prob.numpy()
         dist = tfp.distributions.Categorical(probs=prob, dtype=tf.float32)
@@ -62,6 +77,20 @@ class Agent():
 
 
     def actor_loss(self, probs, actions, adv, old_probs, closs):
+        
+        """ Функция которая вычисляет ошибку актора
+
+        Args:
+            probs (_type_): батч вероятностей действий
+            actions (_type_): батч действий
+            adv (_type_): батч значений advantage функции
+            old_probs (_type_): батч старых вероятностей действий
+            closs (_type_): ошибка критика
+
+
+        Returns:
+            loss (float): ошибка актора
+        """
         
         probability = probs      
         entropy = tf.reduce_mean(tf.math.negative(tf.math.multiply(probability,tf.math.log(probability))))
@@ -83,10 +112,39 @@ class Agent():
         return loss
     
     def auxillary_task(self, r, rewards):
+
+        """ Функция которая вычисляет ошибку для auxillary task (предсказание награды)
+
+        Args:
+            r (_type_): батч предсказанных наград
+            rewards (_type_): батч реальных наград
+
+
+        Returns:
+            loss (float): ошибка предскзателя наград
+        """
+
         loss = tf.reduce_mean(tf.math.square(r - rewards))
         return loss
 
     def learn(self, states, actions,  adv , old_probs, discnt_rewards, rewards):
+
+        """ Функция которая вычисляет общую ошибку
+
+        Args:
+            states (_type_): батч состояний
+            actions (_type_): батч действий
+            adv (_type_): батч значений advantage функции
+            old_probs (_type_): батч старых вероятностей действий
+            discnt_rewards (_type_): батч отложенных наград
+            rewards (_type_): батч реальных наград
+
+
+        Returns:
+            a_loss (float): ошибка актора
+            с_loss (float): ошибка критика
+        """
+
         discnt_rewards = tf.reshape(discnt_rewards, (len(discnt_rewards),))
         adv = tf.reshape(adv, (len(adv),))
 
@@ -108,6 +166,10 @@ class Agent():
         return a_loss, c_loss
     
     def test_reward(self):
+
+        """ Функция которая тестирует алгоритм на одном эпизоде
+        """
+
         total_reward = 0
         state = self.env.reset()
         done = False
@@ -121,6 +183,26 @@ class Agent():
     
     
     def preprocess1(self, states, actions, rewards, done, values, gamma):
+
+        """ Функция которая обрабатывает переходы для сохранения в буффер
+
+        Args:
+            states (_type_): батч состояний
+            actions (_type_): батч действий
+            rewards (_type_): батч реальных наград
+            done (_type_): батч флагов окончания эпизода
+            values (_type_): батч значений выходов критика
+            gamma (float): коэффициент дисконтирования
+
+
+        Returns:
+            states (_type_): батч состояний
+            actions (_type_): батч действий
+            returns (_type_): батч отложенных наград
+            adv (_type_): батч значений advantage функции
+            rewards (_type_): батч реальных наград
+        """
+
         g = 0
         lmbda = 0.95
         returns = []
@@ -139,6 +221,9 @@ class Agent():
         return states, actions, returns, adv, rewards    
     
     def train(self):
+
+        """ Функция обучения агента
+        """
 
         for s in range(self.max_episodes):
             if self.target == True:
