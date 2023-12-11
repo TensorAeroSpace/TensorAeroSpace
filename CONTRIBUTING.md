@@ -6,7 +6,7 @@ Thank you for considering contributing to TensorAeroSpace! We appreciate your ti
 
 There are several ways you can contribute to this project:
 
-1. **Reporting Issues:** If you encounter a bug or have a suggestion, please [open an issue](link_to_issues) and provide as much detail as possible.
+1. **Reporting Issues:** If you encounter a bug or have a suggestion, please [open an issue](https://github.com/TensorAeroSpace/TensorAeroSpace/issues) and provide as much detail as possible.
 
 2. **Fixing Issues:** If you find an open issue and would like to fix it, feel free to submit a pull request. Make sure to follow the guidelines mentioned below.
 
@@ -52,5 +52,5 @@ Please follow the coding style and guidelines defined in the project. If none ar
 
 ## License
 
-By contributing to this project, you agree that your contributions will be licensed under the [project license](link_to_license).
+By contributing to this project, you agree that your contributions will be licensed under the [project license](https://github.com/TensorAeroSpace/TensorAeroSpace/blob/main/LICENSE).
 
