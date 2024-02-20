@@ -1,10 +1,5 @@
-.. code:: ipython3
-
-    %cd ../
-
-.. code:: ipython3
-
-    # from tensoraerospace.agent.narx.model import NARX
+Пример использования A2C с NARXCritic
+===========================================================
 
 .. code:: ipython3
 
