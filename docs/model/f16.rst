@@ -156,7 +156,7 @@ General Dynamics F-16 Fighting Falcon — американский многоф�
 
 .. code:: python
 
-    import gym 
+    import gymnasium as gym 
     import numpy as np
     from tqdm import tqdm
 

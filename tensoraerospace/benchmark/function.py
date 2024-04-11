@@ -113,9 +113,9 @@ def settling_time(control_signal: np.ndarray, system_signal: np.ndarray, thresho
     # Находим индексы, где сигнал впервые входит в этот диапазон
     within_range_indices = np.where((system_signal >= lower_bound) & (system_signal <= upper_bound))[0]
 
-    # Если сигнал никогда не входит в диапазон, возвращаем None
+    # Если сигнал никогда не входит в диапазон, возвращаем все время моделирования
     if len(within_range_indices) == 0:
-        return None
+        return len(system_signal)
     return find_longest_repeating_series(within_range_indices)[0]
 
 

@@ -39,8 +39,10 @@ Github репозиторий: https://github.com/TensorAeroSpace/TensorAeroSpac
    :caption: Агенты:
 
    agent/ihdp
+   agent/mpc
    agent/dqn
    agent/a3c
+   agent/a2c_narx
    agent/ppo
    agent/sac
    optimization/optuna_based.rst
@@ -57,6 +59,8 @@ Github репозиторий: https://github.com/TensorAeroSpace/TensorAeroSpac
    example/agent/ihdp/example_ihdp.rst
    example/agent/sac/example-sac-f16.rst
    example/optimization/example_optimization.rst
+   example/agent/a2c_narx/example-narx.rst
+   example/agent/mpc/example_mpc.rst
    example/failure/ihdp-failure.rst
    example/simulink/sim_pyth.rst
    example/simulink/your_sim.rst

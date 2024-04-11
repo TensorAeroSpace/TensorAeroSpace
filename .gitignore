@@ -21,6 +21,7 @@ backend/.env
 docs/build
 virtualenv/
 htmlcov/
+runs
 
 /build
 /dist

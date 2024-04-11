@@ -18,7 +18,7 @@ t = np.linspace(-0, len(time), len(time))
 reference_signals =  np.reshape(unit_step(t),  [1, -1])
 
 
-import gym
+import gymnasium as gym
 env = gym.make('LinearLongitudinalF16-v0', initial_state=[[0],[0],[0],[0]], reference_signal = reference_signals)
 env.reset()
 
