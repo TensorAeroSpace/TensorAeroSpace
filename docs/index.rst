@@ -32,6 +32,8 @@ Github репозиторий: https://github.com/TensorAeroSpace/TensorAeroSpac
    model/geosat
    model/uav
    model/x15
+   model/lsu
+   model/suav
    model/unity_env.rst
 
 .. toctree::
@@ -65,7 +67,7 @@ Github репозиторий: https://github.com/TensorAeroSpace/TensorAeroSpac
    example/simulink/sim_pyth.rst
    example/simulink/your_sim.rst
    example/env/unity_example.rst
-
+   example/simintech/simintech.rst
 
 
 Indices and tables

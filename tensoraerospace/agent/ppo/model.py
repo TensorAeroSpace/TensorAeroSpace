@@ -1,6 +1,5 @@
 import numpy as np
 import tensorflow as tf 
-import gym
 import tensorflow_probability as tfp
 import tensorflow.keras.losses as kls
 

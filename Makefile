@@ -7,8 +7,10 @@ docker_debug:
 docker_build_macos:
 	docker build -t tensor_aero_space .  --platform=linux/amd64
 
-build_docs:
+install_dev:
 	poetry install
+
+build_docs:
 	cd docs && poetry run make html
 
 clean_code:
