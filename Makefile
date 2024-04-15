@@ -15,3 +15,8 @@ build_docs:
 
 clean_code:
 	poetry run ruff check --fix tensoraerospace
+
+
+run_env_test:
+	@echo "Running tests..."
+	poetry run python -m unittest discover -s test/envs -p "*_test.py"
