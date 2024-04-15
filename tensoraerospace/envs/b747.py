@@ -1,6 +1,7 @@
 import gymnasium as gym
 import numpy as np
 from tensoraerospace.aerospacemodel import LongitudinalB747
+from gymnasium import spaces
 
 
 
@@ -43,10 +44,15 @@ class LinearLongitudinalB747(gym.Env):
                                      selected_state_output=output_space, t0=0)
         self.indices_tracking_states = [state_space.index(tracking_states[i]) for i in range(len(tracking_states))]
         
+        self.action_space = spaces.Box(low=-25, high=25, shape=(len(control_space),1), dtype=np.float32)
+        self.observation_space = spaces.Box(low=-np.inf, high=np.inf, shape=(len(state_space),1), dtype=np.float32)
+
         self.ref_signal = reference_signal
         self.model.initialise_system(x0=initial_state, number_time_steps=number_time_steps)
         self.number_time_steps = number_time_steps
-    
+        self.current_step = 0
+        self.done = False
+
     @staticmethod
     def reward(state, ref_signal, ts):
         """Оценка управления
@@ -85,7 +91,7 @@ class LinearLongitudinalB747(gym.Env):
         reward = self.reward_func(next_state[self.indices_tracking_states], self.ref_signal, self.current_step)
         self.done = self.current_step >= self.number_time_steps - 2
         info = self._get_info()
-        return next_state, reward, self.done, False, info
+        return next_state.reshape([1,-1])[0], reward, self.done, False, info
 
     def reset(self):
         """Восстановление среды моделирования в начальные условия
