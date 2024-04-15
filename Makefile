@@ -18,5 +18,5 @@ clean_code:
 
 
 run_env_test:
-	@echo "Running tests..."
-	poetry run python -m unittest discover -s test/envs -p "*_test.py"
+	@echo "Running enviroments tests..."
+	poetry run pytest -s tests/envs 

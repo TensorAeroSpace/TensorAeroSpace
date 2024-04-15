@@ -52,20 +52,6 @@ class MPCAgent(object):
         cost_function (callable): Функция стоимости, используемая для оценки действий.
         lr (float): Скорость обучения для оптимизатора модели.
         criterion (torch.nn.modules.loss): Критерий потерь для обучения модели.
-
-    Methods:
-        train_model(states, actions, next_states, epochs=100, batch_size=64):
-            Обучает модель динамики среды.
-        collect_data(env, num_episodes=1000):
-            Собирает данные о состояниях, действиях и следующих состояниях, исполняя политику в среде.
-        choose_action(state, rollout, horizon):
-            Выбирает оптимальное действие, используя прогнозируемое моделирование.
-        choose_action_ref(state, rollout, horizon, reference_signals, step):
-            Выбирает оптимальное действие с учетом эталонных сигналов.
-        test_model(env, num_episodes=100, rollout=10, horizon=1):
-            Тестирует модель, измеряя среднее вознаграждение в среде.
-        test_network(states, actions, next_states):
-            Тестирует точность предсказаний модели на заданном наборе данных.
     """
     def __init__(self, gamma, action_dim, observation_dim, model, cost_function, lr=1e-3, criterion=torch.nn.MSELoss()):
         self.gamma = gamma
