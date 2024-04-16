@@ -1,9 +1,7 @@
 import torch
 import torch.nn as nn
 import numpy as np
-import torch
 import torch.nn.functional as F
-import numpy as np
 
 class Critic(nn.Module):
     def __init__(self):

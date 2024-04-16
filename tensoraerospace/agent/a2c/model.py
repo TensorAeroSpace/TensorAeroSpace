@@ -3,7 +3,6 @@ import torch
 import gymnasium as gym
 from torch import nn
 from torch.nn import functional as F
-import matplotlib.pyplot as plt
 from torch.utils.tensorboard import SummaryWriter
 
 def mish(input):
