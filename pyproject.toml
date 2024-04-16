@@ -1,7 +1,7 @@
 [tool.poetry]
-name = "tensoraerospace"
+name = "TensorAeroSpace"
 version = "0.1.0"
-description = ""
+description = "Open source deep learning framework that focuses on aerospace objects (rockets, planes, UAVs)"
 authors = ["Artemiy Mazaew (mrbyte)"]
 license = "MIT"
 readme = "README.md"
