@@ -1,5 +1,4 @@
 from mlagents_envs.environment import UnityEnvironment
-from gym_unity.envs import UnityToGymWrapper
 import gymnasium as gym
 from gym.spaces.discrete import Discrete
 import numpy as np
