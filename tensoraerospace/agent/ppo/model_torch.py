@@ -15,18 +15,24 @@ class Critic(nn.Module):
         return v
 
 class Actor(nn.Module):
-    def __init__(self):
+    def __init__(self, num_actions=7):
         super(Actor, self).__init__()
         self.d1 = nn.Linear(128, activation='relu')
-        self.a = nn.Linear(3 ** 7, activation='softmax')
+        self.a = nn.Linear(3 ** num_actions, activation='softmax')
+        self.mu = nn.Linear(num_actions, activation='relu')
+        self.delta = nn.Linear(num_actions, activation='relu')
         self.r = nn.Linear(1, activation='relu')
 
-    def forward(self, input_data, return_reward=False):
+    def forward(self, input_data, return_reward=False, continuos=False):
         x = self.d1(input_data)
         a = self.a(x)
+        mu = self.mu(x)
+        delta = self.delta(x)
         if return_reward:
             r = self.r(x)
             return a, r
+        if continuos:
+            return mu, delta
         return a
 
 
