@@ -67,7 +67,7 @@ class Agent():
 
     def act(self, state):
         """ Return the action for a given state """
-        print("state",state)
+        # print("state",state)
         state = torch.from_numpy(np.array([state])).float()
         mu, delta = self.actor(state, continous_actions=True)
         # dist = torch.distributions.Categorical(probs=prob)
@@ -82,7 +82,9 @@ class Agent():
     def actor_loss(self, probs, actions, adv, old_probs, closs):
         """ Calculate actor loss """
         entropy = -probs.entropy().mean()
-        ratios = torch.exp(probs.log_prob(actions) - old_probs.log_prob(actions))
+        # print(probs.log_prob(actions).size())
+        # print(old_probs.log_prob(actions).size())
+        ratios = torch.exp(probs.log_prob(actions).mean(dim=1) - old_probs.log_prob(actions).mean(dim=1))
         surr1 = ratios * adv
         surr2 = torch.clamp(ratios, 1.0 - self.clip_pram, 1.0 + self.clip_pram) * adv
         loss = -torch.min(surr1, surr2).mean() + 0.001 * entropy + closs
@@ -96,7 +98,7 @@ class Agent():
         """ Learning step for the agent """
         actions = torch.tensor(actions)
         adv = torch.tensor(adv)
-        old_dostributions = torch.distributions.Normal(torch.Tensor(mus), torch.Tensor(deltas))
+        old_dostributions = torch.distributions.Normal(torch.Tensor(mus).reshape(10, 7), torch.Tensor(deltas).reshape(10, 7))
         #old_probs = torch.tensor(old_probs)
         discnt_rewards = torch.tensor(discnt_rewards)
         rewards = torch.tensor(rewards)
@@ -104,7 +106,12 @@ class Agent():
         self.a_opt.zero_grad()
         self.c_opt.zero_grad()
 
+        # print(torch.Tensor(mus).size())
+        # print(torch.Tensor(deltas).size())
+
         new_mus, new_deltas, r = self.actor(states, return_reward=True, continous_actions=True)
+        # print(torch.Tensor(new_mus).size())
+        # print(torch.Tensor(new_deltas).size())
         new_distributions = torch.distributions.Normal(torch.Tensor(new_mus), torch.Tensor(new_deltas))
         v = self.critic(states)
 
@@ -123,12 +130,21 @@ class Agent():
     def test_reward(self):
         """ Test the model by running one episode """
         total_reward = 0
-        state, info = self.env.reset()
+        reset_return = self.env.reset()
+        if type(reset_return) is tuple:
+            state, info = reset_return
+        else:
+            state = reset_return
         done = False
-        while not done:
+        for step in range(self.max_steps):
             action, mu, delta = self.act(state)
-            state, reward, terminated, truncated, info = self.env.step(action)
-            done = terminated or truncated
+            step_return = self.env.step(action)
+            if len(step_return) > 4:
+                next_state, reward, terminated, trunkated, info = step_return
+                done = terminated or trunkated
+            else:
+                next_state, reward, terminated, info = step_return
+                done = terminated
             total_reward += reward
         return total_reward
 
@@ -183,7 +199,7 @@ class Agent():
                 action, mu, delta = self.act(state)
                 prob = self.actor(torch.from_numpy(np.array([state], dtype=np.float32)))
                 value = self.critic(torch.from_numpy(np.array([state], dtype=np.float32)))
-                print("action_l", action)
+                # print("action_l", action)
                 step_return = self.env.step(action)
                 if len(step_return) > 4:
                     next_state, reward, terminated, trunkated, info = step_return
