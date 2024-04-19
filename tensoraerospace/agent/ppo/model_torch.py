@@ -3,38 +3,42 @@ import torch.nn as nn
 import numpy as np
 import torch.nn.functional as F
 
+
 class Critic(nn.Module):
-    def __init__(self):
+    def __init__(self, input_dim, hidden_dim=128):
         super(Critic, self).__init__()
-        self.d1 = nn.Linear(128, activation='relu')
-        self.v = nn.Linear(1, activation=None)
+        self.d1 = nn.Linear(input_dim, hidden_dim)
+        self.v = nn.Linear(hidden_dim, 1)
 
     def forward(self, input_data):
-        x = self.d1(input_data)
-        v = self.v(x)
+        x = F.relu(self.d1(input_data))
+        v = F.relu(self.v(x))
         return v
 
 class Actor(nn.Module):
-    def __init__(self, num_actions=7):
+    def __init__(self, input_dim, out_dim, hidden_dim=128):
         super(Actor, self).__init__()
-        self.d1 = nn.Linear(128, activation='relu')
-        self.a = nn.Linear(3 ** num_actions, activation='softmax')
-        self.mu = nn.Linear(num_actions, activation='relu')
-        self.delta = nn.Linear(num_actions, activation='relu')
-        self.r = nn.Linear(1, activation='relu')
+        self.d1 = nn.Linear(input_dim, hidden_dim)
+        self.a = nn.Linear(hidden_dim, out_dim)
+        self.mu = nn.Linear(hidden_dim, out_dim)
+        self.delta = nn.Linear(hidden_dim, out_dim)
+        self.r = nn.Linear(hidden_dim, 1)
 
-    def forward(self, input_data, return_reward=False, continuos=False):
-        x = self.d1(input_data)
-        a = self.a(x)
-        mu = self.mu(x)
-        delta = self.delta(x)
-        if return_reward:
-            r = self.r(x)
-            return a, r
-        if continuos:
+    def forward(self, input_data, return_reward=False, continous_actions=False):
+        x = F.relu(self.d1(input_data))
+        if continous_actions:
+            mu = F.relu(self.mu(x))
+            delta = F.tanh(self.delta(x))
+            delta = torch.exp(delta)
+            if return_reward:
+                r = torch.flatten(F.relu(self.r(x)))
+                return mu, delta, r
             return mu, delta
+        a = F.softmax(self.a(x), dim=-1)
+        if return_reward:
+            r = torch.flatten(F.relu(self.r(x)))
+            return a, r
         return a
-
 
 
 class Agent():
@@ -44,14 +48,14 @@ class Agent():
         env: Environment object
         gamma (float): Discount factor
     """
-    def __init__(self, env, actor=Actor, critic=Critic, gamma=0.99):
+    def __init__(self, env, gamma=0.99):
         self.gamma = gamma
-        self.actor = actor
-        self.critic = critic      
+        self.env = env
+        self.actor = Actor(env.observation_space.shape[0], env.action_space.shape[0])
+        self.critic = Critic(env.observation_space.shape[0])      
         self.a_opt = torch.optim.Adam(self.actor.parameters(), lr=7e-3)
         self.c_opt = torch.optim.Adam(self.critic.parameters(), lr=7e-3)
         self.clip_pram = 0.2
-        self.env = env
         torch.manual_seed(336699)
         self.max_steps = 10
         self.max_episodes = 10
@@ -65,15 +69,20 @@ class Agent():
         """ Return the action for a given state """
         print("state",state)
         state = torch.from_numpy(np.array([state])).float()
-        prob = self.actor(state)
-        dist = torch.distributions.Categorical(probs=prob)
+        mu, delta = self.actor(state, continous_actions=True)
+        # dist = torch.distributions.Categorical(probs=prob)
+        dist = torch.distributions.Normal(mu, delta)
         action = dist.sample()
-        return action.detach().numpy()
+        zeros = torch.zeros_like(action)
+        ones = torch.ones_like(action)
+        action = torch.clip(action, zeros, ones)
+        prob = dist.log_prob(action)
+        return action.detach().numpy()[0], mu.detach().numpy(), delta.detach().numpy()#, prob.detach().numpy()
 
     def actor_loss(self, probs, actions, adv, old_probs, closs):
         """ Calculate actor loss """
-        entropy = -(probs * probs.log()).mean()
-        ratios = torch.exp(torch.log(probs) - torch.log(old_probs))
+        entropy = -probs.entropy().mean()
+        ratios = torch.exp(probs.log_prob(actions) - old_probs.log_prob(actions))
         surr1 = ratios * adv
         surr2 = torch.clamp(ratios, 1.0 - self.clip_pram, 1.0 + self.clip_pram) * adv
         loss = -torch.min(surr1, surr2).mean() + 0.001 * entropy + closs
@@ -83,23 +92,25 @@ class Agent():
         """ Calculate auxiliary task loss (reward prediction) """
         return F.mse_loss(r, rewards)
 
-    def learn(self, states, actions, adv, old_probs, discnt_rewards, rewards):
+    def learn(self, states, actions, adv, mus, deltas, discnt_rewards, rewards):
         """ Learning step for the agent """
         actions = torch.tensor(actions)
         adv = torch.tensor(adv)
-        old_probs = torch.tensor(old_probs)
+        old_dostributions = torch.distributions.Normal(torch.Tensor(mus), torch.Tensor(deltas))
+        #old_probs = torch.tensor(old_probs)
         discnt_rewards = torch.tensor(discnt_rewards)
         rewards = torch.tensor(rewards)
 
         self.a_opt.zero_grad()
         self.c_opt.zero_grad()
 
-        p, r = self.actor(states, return_reward=True)
+        new_mus, new_deltas, r = self.actor(states, return_reward=True, continous_actions=True)
+        new_distributions = torch.distributions.Normal(torch.Tensor(new_mus), torch.Tensor(new_deltas))
         v = self.critic(states)
 
         td = discnt_rewards - v.squeeze()
         c_loss = 0.5 * td.pow(2).mean()
-        a_loss = self.actor_loss(p, actions, adv, old_probs, c_loss) + self.auxillary_task(r, rewards)
+        a_loss = self.actor_loss(new_distributions, actions, adv.detach(), old_dostributions, c_loss.detach()) + self.auxillary_task(r, rewards)
 
         a_loss.backward()
         c_loss.backward()
@@ -115,7 +126,7 @@ class Agent():
         state, info = self.env.reset()
         done = False
         while not done:
-            action = self.act(state)
+            action, mu, delta = self.act(state)
             state, reward, terminated, truncated, info = self.env.step(action)
             done = terminated or truncated
             total_reward += reward
@@ -151,29 +162,42 @@ class Agent():
             if self.target:
                 break
 
-            state, info = self.env.reset()
+            reset_return = self.env.reset()
+            if type(reset_return) is tuple:
+                state, info = reset_return
+            else:
+                state = reset_return
             done = False
             all_aloss = []
             all_closs = []
             rewards = []
             states = []
             actions = []
-            probs = []
+            # probs = []
+            mus = []
+            deltas = []
             dones = []
             values = []
 
             for step in range(self.max_steps):
-                action = self.act(state)
+                action, mu, delta = self.act(state)
                 prob = self.actor(torch.from_numpy(np.array([state], dtype=np.float32)))
                 value = self.critic(torch.from_numpy(np.array([state], dtype=np.float32)))
                 print("action_l", action)
-                next_state, reward, terminated, truncated, info = self.env.step(action)
-                done = terminated or truncated
+                step_return = self.env.step(action)
+                if len(step_return) > 4:
+                    next_state, reward, terminated, trunkated, info = step_return
+                    done = terminated or trunkated
+                else:
+                    next_state, reward, terminated, info = step_return
+                    done = terminated
                 dones.append(float(not done))
                 rewards.append(reward)
                 states.append(state)
                 actions.append(action)
-                probs.append(prob.detach().numpy()[0])
+                #probs.append(prob.detach().numpy()[0])
+                mus.append(mu)
+                deltas.append(delta)
                 values.append(value.item())
 
                 state = next_state
@@ -191,7 +215,7 @@ class Agent():
             # Train for a number of epochs
             for _ in range(1):  # Could be more than one epoch if needed
                 a_loss, c_loss = self.learn(
-                    states, actions, advantages, torch.tensor(probs), returns, rewards
+                    states, actions, advantages, mus, deltas, returns, rewards
                 )
                 all_aloss.append(a_loss)
                 all_closs.append(c_loss)
