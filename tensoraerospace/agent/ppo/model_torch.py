@@ -98,7 +98,6 @@ class Agent():
         """ Learning step for the agent """
         actions = torch.tensor(actions)
         adv = torch.tensor(adv)
-        old_dostributions = torch.distributions.Normal(torch.Tensor(mus).reshape(10, 7), torch.Tensor(deltas).reshape(10, 7))
         #old_probs = torch.tensor(old_probs)
         discnt_rewards = torch.tensor(discnt_rewards)
         rewards = torch.tensor(rewards)
@@ -110,6 +109,7 @@ class Agent():
         # print(torch.Tensor(deltas).size())
 
         new_mus, new_deltas, r = self.actor(states, return_reward=True, continous_actions=True)
+        old_dostributions = torch.distributions.Normal(torch.Tensor(mus).reshape(new_mus.shape), torch.Tensor(deltas).reshape(new_deltas.shape))
         # print(torch.Tensor(new_mus).size())
         # print(torch.Tensor(new_deltas).size())
         new_distributions = torch.distributions.Normal(torch.Tensor(new_mus), torch.Tensor(new_deltas))
