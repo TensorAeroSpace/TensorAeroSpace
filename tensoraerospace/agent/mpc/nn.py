@@ -307,11 +307,11 @@ class MPCAgent(BaseRLModel):
         Сохраняет модель PyTorch в указанной директории. Если путь не указан,
         создает директорию с текущей датой и временем.
         
-        Параметры:
+        Args:
             path (str, optional): Путь, где будет сохранена модель. Если None,
             создается директория с текущей датой и временем.
             
-        Возвращает:
+        Returns:
             None
         """
         if path is None:
@@ -335,8 +335,19 @@ class MPCAgent(BaseRLModel):
 
 
     def load(self, path):
+        """ 
+        Загружает модель из файла по указанному пути.
+
+        Args: 
+            path (str): Путь к файлу с моделью.
+
+        Returns: 
+            None 
+        
+        """
         path = Path(path)
         path = path / "model.pth"
         self.system_model = torch.load(path)
         self.system_model.eval()
+
 
