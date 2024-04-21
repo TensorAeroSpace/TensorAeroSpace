@@ -8,7 +8,11 @@ from torch.utils.tensorboard import SummaryWriter
 import numpy as np
 from scipy.stats import uniform
 from tqdm import tqdm
-
+from ..base import BaseRLModel
+import os
+import datetime
+from pathlib import Path
+import json
 
 class Net(nn.Module):
     """Создает нейронную сеть для моделирования динамики системы.
@@ -40,7 +44,7 @@ class Net(nn.Module):
 
 
 
-class MPCAgent(object):
+class MPCAgent(BaseRLModel):
     """
     Агент, использующий метод Модельно-Прогностического Управления (MPC) для оптимизации действий в среде.
 
@@ -53,15 +57,17 @@ class MPCAgent(object):
         lr (float): Скорость обучения для оптимизатора модели.
         criterion (torch.nn.modules.loss): Критерий потерь для обучения модели.
     """
-    def __init__(self, gamma, action_dim, observation_dim, model, cost_function, lr=1e-3, criterion=torch.nn.MSELoss()):
+    def __init__(self, gamma, action_dim, observation_dim, model, cost_function, env, lr=1e-3, criterion=torch.nn.MSELoss()):
         self.gamma = gamma
         self.action_dim = action_dim
         self.observation_dim = observation_dim
         self.system_model = model
+        self.lr = lr
         self.system_model_optimizer = optim.Adam(self.system_model.parameters(), lr=lr)
         self.cost_function = cost_function
         self.writer = SummaryWriter()
         self.criterion = criterion
+        self.env = env
     
     def train_model(self, states, actions, next_states, epochs=100, batch_size=64):
         """
@@ -94,12 +100,11 @@ class MPCAgent(object):
             self.writer.add_scalar('Loss/train', loss.item(), epoch)
             pbar.set_description(f"Loss {loss.item()}")
 
-    def collect_data(self, env, num_episodes=1000):
+    def collect_data(self, num_episodes=1000):
         """
         Собирает данные о состояниях, действиях и следующих состояниях, исполняя случайную политику в среде.
 
         Args:
-            env (gym.Env): Среда, в которой собираются данные.
             num_episodes (int): Количество эпизодов для сбора данных.
 
         Returns:
@@ -107,11 +112,11 @@ class MPCAgent(object):
         """
         states, actions, next_states = [], [], []
         for _ in tqdm(range(num_episodes)):
-            state, info = env.reset()
+            state, info = self.env.reset()
             done = False
             while not done:
-                action = env.action_space.sample()
-                next_state, reward, terminated, truncated, info = env.step(action)
+                action = self.env.action_space.sample()
+                next_state, reward, terminated, truncated, info = self.env.step(action)
                 done = terminated or truncated
                 states.append(state)
                 actions.append(action)
@@ -189,7 +194,7 @@ class MPCAgent(object):
                 best_action = first_action
         return best_action.numpy()
     
-    def test_model(self, env, num_episodes=100, rollout=10, horizon=1):
+    def test_model(self, num_episodes=100, rollout=10, horizon=1):
         """
         Тестирует модель в среде, измеряя среднее вознаграждение за серию эпизодов.
 
@@ -204,12 +209,12 @@ class MPCAgent(object):
         """
         total_rewards = []  # Список для хранения суммарных вознаграждений за каждый эпизод
         for episode in range(num_episodes):
-            state, info = env.reset()
+            state, info = self.env.reset()
             total_reward = 0
             done = False
             while not done:
                 action = self.choose_action(state, rollout, horizon)
-                state, reward, terminated, truncated, info= env.step(action[0])
+                state, reward, terminated, truncated, info= self.env.step(action[0])
                 done = terminated or truncated
                 total_reward += reward
                 if done:
@@ -251,3 +256,87 @@ class MPCAgent(object):
             self.writer.add_scalar('Test/MSE_Loss', mse_loss.item(), 0)
         
         self.system_model.train()  # Вернуть модель в режим обучения
+
+
+    def get_param_env(self):
+        env_name = self.env.unwrapped.__class__.__name__
+        agent_name = self.__class__.__name__
+        env_params = {}
+        
+        # Получение информации о сигнале справки, если она доступна
+        try:
+            ref_signal = self.env.ref_signal.__class__.__name__
+            env_params["ref_signal"] = ref_signal
+        except AttributeError:
+            pass
+
+        # Добавление информации о пространстве действий и пространстве состояний
+        try:
+            action_space = str(self.env.action_space)
+            env_params["action_space"] = action_space
+        except AttributeError:
+            pass
+        
+        try:
+            observation_space = str(self.env.observation_space)
+            env_params["observation_space"] = observation_space
+        except AttributeError:
+            pass
+        
+        policy_params = {
+            "lr": self.lr,
+            "gamma": self.gamma,
+            "cost_function": self.cost_function.__name__,
+            "model": self.system_model.__class__.__name__
+            
+        }
+        return {
+            "env":{
+                "name":env_name,
+                "params":env_params
+                } ,
+            "policy":{
+                "name":agent_name,
+                "params":policy_params
+                
+            }
+        }
+    
+    def save(self, path=None):
+        """
+        Сохраняет модель PyTorch в указанной директории. Если путь не указан,
+        создает директорию с текущей датой и временем.
+        
+        Параметры:
+            path (str, optional): Путь, где будет сохранена модель. Если None,
+            создается директория с текущей датой и временем.
+            
+        Возвращает:
+            None
+        """
+        if path is None:
+            path = Path.cwd()
+        else:
+            path = Path(path)
+        # Текущая дата и время в формате 'YYYY-MM-DD_HH-MM-SS'
+        date_str = datetime.datetime.now().strftime('%b%d_%H-%M-%S')
+        date_str =date_str+"_"+self.__class__.__name__
+        # Создание пути в текущем каталоге с датой и временем
+        config_path = path / date_str / "config.json"
+        path = path / date_str / "model.pth"
+        
+        # Создание директории, если она не существует
+        path.parent.mkdir(parents=True, exist_ok=True)
+        # Сохранение модели
+        config = self.get_param_env()
+        with open(config_path, "w") as outfile: 
+            json.dump(config, outfile)
+        torch.save(self.system_model, path)
+
+
+    def load(self, path):
+        path = Path(path)
+        path = path / "model.pth"
+        self.system_model = torch.load(path)
+        self.system_model.eval()
+

@@ -18,3 +18,12 @@ class BaseRLModel(ABC):
     
     def save():
         pass
+    
+    def load():
+        pass
+    
+    def predict():
+        pass
+    
+    def get_param_env():
+        pass
