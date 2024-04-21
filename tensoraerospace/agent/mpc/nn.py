@@ -69,6 +69,18 @@ class MPCAgent(BaseRLModel):
         self.criterion = criterion
         self.env = env
     
+    
+    def from_pretrained(self, repo_name, access_token=None, version=None):
+        folder_path = super().from_pretrained(repo_name, access_token, version)
+        self.system_model = torch.load(os.path.join(folder_path,'model.pth'))
+        config_path = Path(folder_path)
+        config_path = config_path / "config.json"
+        with open(config_path, 'r') as f:
+            config = json.load(f)
+        if config['env']['name'] != self.env.unwrapped.__class__.__name__:
+            raise ValueError("Environment name in config.json does not match the environment passed to the model.")
+                                
+         
     def train_model(self, states, actions, next_states, epochs=100, batch_size=64):
         """
         Обучает модель динамики среды, используя данные о состояниях, действиях и следующих состояниях.

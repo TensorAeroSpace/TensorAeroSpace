@@ -19,6 +19,7 @@ moviepy = "^1.0.3"
 gymnasium = "^0.29.1"
 jupyterlab = "^4.1.1"
 torch = "^2.2.0"
+huggingface-hub = "^0.22.2"
 
 
 [tool.poetry.group.dev.dependencies]
