@@ -14,11 +14,15 @@ jobs:
       with:
         python-version: '3.8'
 
-    - name: Install dependencies
+    - name: Install Poetry
       run: |
         pip install poetry
+
+    - name: Install dependencies and your package
+      run: |
+        poetry config virtualenvs.create false
         poetry install
 
     - name: Run tests
       run: |
-        poetry run pytest
+        poetry run pytest -s tests/envs 
