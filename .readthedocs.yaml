@@ -10,7 +10,7 @@ build:
 
 # Python configuration
 python:
-  version: 3.10
+  version: "3.10"
   install:
     - method: poetry
       path: .
