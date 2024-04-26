@@ -1,4 +1,4 @@
-name: GitHub Actions Demo
+name: Test and Coverage
 run-name: ${{ github.actor }} is testing out GitHub Actions 🚀
 on: [push]
 jobs:
@@ -25,10 +25,21 @@ jobs:
 
     - name: Run tests
       run: |
-        poetry run pytest --junitxml=pytest.xml --cov-report=term-missing:skip-covered --cov=./tensoraerospace tests/ | tee pytest-coverage.txt
-  
+        poetry run pytest --junitxml=pytest.xml --cov-report "xml:coverage.xml" --cov=./tensoraerospace tests/ | tee pytest-coverage.txt
+
     - name: Pytest coverage comment
       uses: MishaKav/pytest-coverage-comment@main
       with:
         pytest-coverage-path: ./pytest-coverage.txt
+        pytest-xml-coverage-path: ./coverage.xml
+        title: TensorAeroSpace Coverage Report
+        badge-title: TensorAeroSpace Coverage
+        hide-badge: false
+        hide-report: false
+        create-new-comment: false
+        hide-comment: false
+        report-only-changed-files: false
+        remove-link-from-badge: false
+        unique-id-for-comment: python3.10
         junitxml-path: ./pytest.xml
+        junitxml-title: TensorAeroSpace JUnit Xml Summary Title
