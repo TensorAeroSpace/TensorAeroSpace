@@ -6,6 +6,11 @@ authors = ["Artemiy Mazaew (mrbyte)"]
 license = "MIT"
 readme = "README.md"
 
+packages = [
+    { include = "tensoraerospace", from = "./tensoraerospace" },
+]
+
+
 [tool.poetry.dependencies]
 python = ">=3.9,<3.12"
 ray = {extras = ["tune"], version = "^2.8.0"}
@@ -20,7 +25,6 @@ jupyterlab = "^4.1.1"
 torch = "^2.2.0"
 huggingface-hub = "^0.22.2"
 tensorflow-macos = { version = "2.15.0", markers = "sys_platform == 'darwin'" }
-
 
 [tool.poetry.group.dev.dependencies]
 sphinx = "^7.2.6"
