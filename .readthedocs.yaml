@@ -1,30 +1,18 @@
 version: 2
 
-# Configuration for Read the Docs
-sphinx:
-  configuration: docs/conf.py
-
-# Define the build environment
 build:
-  image: latest
-
-# Python configuration
-python:
-  version: "3.10"
-  install:
-    - method: poetry
-      path: .
-      extra_requirements:
-        - docs
-
-# Formats of your docs
-formats: all
-
-# Build documentation in the 'docs' directory and output HTML format
-build:
-  os: "ubuntu-20.04"
+  os: ubuntu-20.04
   tools:
     python: "3.10"
-  steps:
-    - install: "poetry install"
-    - build: "sphinx-build -b html docs/ build/html"
+  jobs:
+    post_create_environment:
+      # Install poetry
+      - pip install poetry
+      # Tell poetry to not use a virtual environment
+      - poetry config virtualenvs.create false
+    post_install:
+      # Install dependencies
+      - poetry install
+
+sphinx:
+  configuration: docs/conf.py
