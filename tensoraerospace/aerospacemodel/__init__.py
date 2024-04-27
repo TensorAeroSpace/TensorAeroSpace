@@ -7,3 +7,5 @@ from .geosat import GeoSat
 from .f4c import LongitudinalF4C
 from .x15 import LongitudinalX15
 from .uav import LongitudinalUAV
+from .lapan import LAPAN
+from .ultrastick import Ultrastick

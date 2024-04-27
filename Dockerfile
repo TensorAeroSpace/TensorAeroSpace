@@ -1,29 +1,23 @@
-FROM nvidia/cuda:11.3.1-cudnn8-devel-ubuntu20.04
+FROM nvidia/cuda:12.1.0-cudnn8-devel-ubuntu22.04
 
 
 RUN apt-get update && \
-    apt-get install -y wget && \
+    apt-get install -y wget python3 python3-pip python3-dev python3-venv && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
-ENV CONDA_DIR /opt/conda 
-RUN wget --quiet https://repo.anaconda.com/miniconda/Miniconda3-py37_23.1.0-1-Linux-x86_64.sh -O ~/miniconda.sh && \
-     /bin/bash ~/miniconda.sh -b -p /opt/conda
-
-ENV PATH=$CONDA_DIR/bin:$PATH
-
+RUN pip3 install poetry
 WORKDIR /app
 
-COPY requirements.txt requirements.txt
-RUN pip install --upgrade pip
-
 COPY tensoraerospace /app/tensoraerospace
-COPY setup.py /app/setup.py
+COPY pyproject.toml /app/pyproject.toml
+COPY poetry.lock /app/poetry.lock
+COPY readme.md /app/readme.md
 
-RUN pip install -e .
-RUN pip install jupyter
+RUN poetry install
 RUN rm -rf $HOME/.cache/pip
-
+RUN poetry add ipykernel
+RUN poetry add jupyter
 
 EXPOSE 8888
 COPY start.sh start.sh

@@ -1,11 +1,11 @@
 import gymnasium as gym
 import numpy as np
-from gym.utils import EzPickle
 from tensoraerospace.aerospacemodel import ELVRocket
+from gymnasium import spaces
 
 
 
-class LinearLongitudinalELVRocket(gym.Env, EzPickle):
+class LinearLongitudinalELVRocket(gym.Env):
     """Моделирование объекта управления ELVRocket в среде моделирования OpenAI Gym для обучения агентов с искусственным интеллектом
 
     Args:
@@ -26,8 +26,8 @@ class LinearLongitudinalELVRocket(gym.Env, EzPickle):
                  control_space=['stab'],
                  output_space=['theta', 'q'],
                  reward_func=None):
-
-        EzPickle.__init__(self)
+        
+        self.max_action_value = 25.0
         self.initial_state = initial_state
         self.number_time_steps = number_time_steps
         self.selected_state_output = output_space
@@ -48,7 +48,15 @@ class LinearLongitudinalELVRocket(gym.Env, EzPickle):
         self.ref_signal = reference_signal
         self.model.initialise_system(x0=initial_state, number_time_steps=number_time_steps)
         self.number_time_steps = number_time_steps
-    
+        self.action_space = spaces.Box(low=-60, high=60, shape=(len(control_space),1), dtype=np.float32)
+        self.observation_space = spaces.Box(low=-np.inf, high=np.inf, shape=(len(state_space),1), dtype=np.float32)
+
+        self.current_step = 0
+        self.done = False
+        
+    def _get_info(self):
+        return {}
+            
     @staticmethod
     def reward(state, ref_signal, ts):
         """Оценка управления
@@ -75,20 +83,31 @@ class LinearLongitudinalELVRocket(gym.Env, EzPickle):
             done (bool): Статус моделирования, завершено или нет
             logging (any): Дополнительная информацию (не используется)
         """
+        if action[0]>self.max_action_value:
+            action[0] = self.max_action_value
+        if action[0]<self.max_action_value*-1:
+            action[0]= self.max_action_value*-1
+        self.current_step += 1
         next_state = self.model.run_step(action)
-        reward = self.reward_func(next_state[self.indices_tracking_states], self.ref_signal, self.model.time_step)
-        if self.model.time_step == self.number_time_steps:
-            return next_state, reward, True, {}
-        return next_state, reward, False, {}
+        reward = self.reward_func(next_state[self.indices_tracking_states], self.reference_signal, self.current_step)
+        self.done = self.current_step >= self.number_time_steps - 2
+        info = self._get_info()
+
+        return next_state.reshape([1,-1])[0], reward, self.done, False, info
 
     def reset(self):
         """Восстановление среды моделирования в начальные условия
         """
         self.model = None
+        self.current_step = 0
+        self.done = False
         self.model = ELVRocket(self.initial_state, number_time_steps=self.number_time_steps,
-                                     selected_state_output=self.output_space, t0=0)
-        self.ref_signal = self.reference_signal
+                                     selected_state_output=self.output_space)
         self.model.initialise_system(x0=self.initial_state, number_time_steps=self.number_time_steps)
+        info = self._get_info()
+        
+        return np.array(self.initial_state, dtype=np.float64)[self.model.selected_state_index].reshape([1,-1])[0], info
+
 
     def render(self):
         """Визуальное отображение действий в среде. В статусе WIP

@@ -7,9 +7,18 @@ docker_debug:
 docker_build_macos:
 	docker build -t tensor_aero_space .  --platform=linux/amd64
 
-build_docs:
+install_dev:
 	poetry install
+
+build_docs:
 	cd docs && poetry run make html
 
 clean_code:
 	poetry run ruff check --fix tensoraerospace
+
+check_doc_quality:
+	poetry run docstr-coverage ./tensoraerospace --skip-magic --skip-init --skip-file-doc  --fail-under=90.0
+
+run_env_test:
+	@echo "Running enviroments tests..."
+	poetry run pytest -s tests/envs 

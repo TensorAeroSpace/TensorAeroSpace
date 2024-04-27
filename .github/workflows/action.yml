@@ -1,0 +1,75 @@
+name: Test and Coverage
+run-name: ${{ github.actor }} is testing out GitHub Actions 🚀
+
+on:
+  pull_request:
+    branches:
+      - main
+      - develop
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v2
+
+    - name: Set up Python
+      uses: actions/setup-python@v2
+      with:
+        python-version: '3.10'
+
+    - name: Install Poetry
+      run: |
+        pip install poetry
+
+    - name: Install dependencies and your package
+      run: |
+        poetry config virtualenvs.create false
+        poetry install
+
+    - name: Run tests
+      run: |
+        poetry run pytest --junitxml=pytest.xml --cov-report "xml:coverage.xml" --cov=./tensoraerospace tests/ | tee pytest-coverage.txt
+
+    - name: Pytest coverage comment
+      uses: MishaKav/pytest-coverage-comment@main
+      with:
+        pytest-coverage-path: ./pytest-coverage.txt
+        pytest-xml-coverage-path: ./coverage.xml
+        title: TensorAeroSpace Coverage Report
+        badge-title: TensorAeroSpace Coverage
+        hide-badge: false
+        hide-report: false
+        create-new-comment: false
+        hide-comment: false
+        report-only-changed-files: false
+        remove-link-from-badge: false
+        unique-id-for-comment: python3.10
+        junitxml-path: ./pytest.xml
+        junitxml-title: TensorAeroSpace JUnit Xml Summary Title
+  docs-coverage:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v2
+
+    - name: Set up Python
+      uses: actions/setup-python@v2
+      with:
+        python-version: '3.10'
+
+    - name: Install Poetry
+      run: |
+        pip install poetry
+
+    - name: Install dependencies and your package
+      run: |
+        poetry config virtualenvs.create false
+        poetry install
+
+    - name: Run Docs Coverage
+      run: |
+        poetry run docstr-coverage ./tensoraerospace --skip-magic --skip-init --skip-file-doc  --fail-under=80.0

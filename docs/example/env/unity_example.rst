@@ -165,6 +165,7 @@
 Команда для запуска образа и пробросом библиотеки и собранной Unity среды
 
 .. code:: bash
+  
   docker run -v ./tensoraerospace:/tf/tensoraerospace -v ./linux_build:/tf/linux_build -p 8889:8889 unity_docker
 
 

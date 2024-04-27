@@ -1,9 +1,7 @@
 import numpy as np
 import torch
-import gymnasium as gym
 from torch import nn
 from torch.nn import functional as F
-import matplotlib.pyplot as plt
 from torch.utils.tensorboard import SummaryWriter
 
 def clip_grad_norm_(module, max_grad_norm):
