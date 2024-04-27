@@ -1,12 +1,11 @@
-import gym
+import gymnasium as gym
 import numpy as np
-from gym import error, spaces
-from gym.utils import seeding, EzPickle
 from tensoraerospace.aerospacemodel import LongitudinalB747
+from gymnasium import spaces
 
 
 
-class LinearLongitudinalB747(gym.Env, EzPickle):
+class LinearLongitudinalB747(gym.Env):
     """Моделирование объекта управления LongitudinalB747 в среде моделирования OpenAI Gym для обучения агентов с искусственным интеллектом
 
     Args:
@@ -27,8 +26,7 @@ class LinearLongitudinalB747(gym.Env, EzPickle):
                  control_space=['stab'],
                  output_space=['theta', 'q'],
                  reward_func=None):
-
-        EzPickle.__init__(self)
+        self.max_action_value = 25.0
         self.initial_state = initial_state
         self.number_time_steps = number_time_steps
         self.selected_state_output = output_space
@@ -46,10 +44,15 @@ class LinearLongitudinalB747(gym.Env, EzPickle):
                                      selected_state_output=output_space, t0=0)
         self.indices_tracking_states = [state_space.index(tracking_states[i]) for i in range(len(tracking_states))]
         
+        self.action_space = spaces.Box(low=-25, high=25, shape=(len(control_space),1), dtype=np.float32)
+        self.observation_space = spaces.Box(low=-np.inf, high=np.inf, shape=(len(state_space),1), dtype=np.float32)
+
         self.ref_signal = reference_signal
         self.model.initialise_system(x0=initial_state, number_time_steps=number_time_steps)
         self.number_time_steps = number_time_steps
-    
+        self.current_step = 0
+        self.done = False
+
     @staticmethod
     def reward(state, ref_signal, ts):
         """Оценка управления
@@ -63,7 +66,10 @@ class LinearLongitudinalB747(gym.Env, EzPickle):
             reward (float): Оценка управления
         """
         return np.abs(state[0] - ref_signal[:, ts])
-        
+    
+    def _get_info(self):
+        return {}
+    
     def step(self, action: np.ndarray):
         """Выполнения шага моделирования
 
@@ -76,21 +82,30 @@ class LinearLongitudinalB747(gym.Env, EzPickle):
             done (bool): Статус моделирования, завершено или нет
             logging (any): Дополнительная информацию (не используется)
         """
+        if action[0]>self.max_action_value:
+            action[0] = self.max_action_value
+        if action[0]<self.max_action_value*-1:
+            action[0]= self.max_action_value*-1
+        self.current_step += 1
         next_state = self.model.run_step(action)
-        reward = self.reward_func(next_state[self.indices_tracking_states], self.ref_signal, self.model.time_step)
-        if self.model.time_step == self.number_time_steps:
-            return next_state, reward, True, {}
-        return next_state, reward, False, {}
+        reward = self.reward_func(next_state[self.indices_tracking_states], self.ref_signal, self.current_step)
+        self.done = self.current_step >= self.number_time_steps - 2
+        info = self._get_info()
+        return next_state.reshape([1,-1])[0], reward, self.done, False, info
 
     def reset(self):
         """Восстановление среды моделирования в начальные условия
         """
+        self.current_step = 0
+        self.done = False
         self.model = None
         self.model = LongitudinalB747(self.initial_state, number_time_steps=self.number_time_steps,
                                      selected_state_output=self.output_space, t0=0)
         self.ref_signal = self.reference_signal
         self.model.initialise_system(x0=self.initial_state, number_time_steps=self.number_time_steps)
-
+        info = self._get_info()
+        return np.array(self.initial_state, dtype=np.float64)[self.model.selected_state_index].reshape([1,-1])[0], info
+    
     def render(self):
         """Визуальное отображение действий в среде. В статусе WIP
         Raises:

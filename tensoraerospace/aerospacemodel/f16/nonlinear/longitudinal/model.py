@@ -89,7 +89,7 @@ class LongitudinalF16(ModelBase):
             u = matlab.double(u)
         if len(list(u)) != self.action_space_length:
             raise Exception(
-                f"Размерность управляющего вектора задана неверно." +
+                "Размерность управляющего вектора задана неверно." +
                 f" Текущее значение {len(list(u))}, не соответсвует {self.action_space_length}")
         x_t = self.eng.step(self.x_history[-1], self.dt, u, self.t0, self.time_step, self.param)
         self.x_history.append(x_t)

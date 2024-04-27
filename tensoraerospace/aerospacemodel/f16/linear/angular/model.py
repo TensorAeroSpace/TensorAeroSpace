@@ -1,14 +1,11 @@
 import os
 import json
 import numpy as np
-import matplotlib.pyplot as plt
 
 from scipy.io import loadmat
-from scipy.signal import *
+from scipy.signal import cont2discrete
 
 from tensoraerospace.aerospacemodel.base import ModelBase
-from tensoraerospace.aerospacemodel.utils import state_to_latex_rus, state_to_latex_eng, control_to_latex_rus, \
-    control_to_latex_eng
 
 
 class AngularF16(ModelBase):
