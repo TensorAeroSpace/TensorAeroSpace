@@ -12,7 +12,7 @@ build:
       - poetry config virtualenvs.create false
     post_install:
       # Install dependencies
-      - poetry install
+      - poetry install --with dev
 
 sphinx:
   configuration: docs/conf.py
