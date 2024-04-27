@@ -21,7 +21,7 @@ build:
       - poetry config virtualenvs.create false
     post_install:
       # We build django with `DJANGO_ENV=production`, so no dev deps:
-      - . "$READTHEDOCS_VIRTUALENV_PATH/bin/activate" && cd 'TensorAeroSpace' && poetry install --with dev
+      - . "$READTHEDOCS_VIRTUALENV_PATH/bin/activate" && poetry install --with dev
 
 sphinx:
   configuration: docs/conf.py
