@@ -111,3 +111,32 @@
 ---------
 
 1. 2.	Lembaga, D.O., Antariksa, P.D., Septiyana, A., Hidayat, K., Rizaldi, A., Suseno, P.A., Jayanti, E.B., Atmasari, N., Ramadiansyah, M.L., Ramadhan, R.A., Suryo, V.N., Grüter, B., Diepolder, J., Holzapfel, F., Wijaya, Y.G., Dewan, S., Jurnal, P., Dirgantara, T., Wibowo, H., Panas, P., Septanto, H., Harno, A., Syah, N.A., Angkasa, R., Satelit, M.D., Irwanto, H.Y., Avionik, M.E., Hakim, A.N., Utama, A.B., Wahyudi, A.H., Kurniawati, F., Putro, I.E., & Astuti, R.A. STABILITY AND CONTROLLABILITY ANALYSIS ON LINEARIZED DYNAMIC SYSTEM EQUATION OF MOTION OF LSU 05-NG USING KALMAN RANK CONDITION METHOD. - Jurnal Teknologi Dirgantara Vol. 18 No. 2 Desember 2020 : hal 81 – 92 – 2020
+
+
+Пример использования
+--------------------
+
+.. code:: python
+
+    import gymnasium as gym 
+    import numpy as np
+    from tqdm import tqdm
+
+    from tensoraerospace.envs import LinearLongitudinalLAPAN
+    from tensoraerospace.utils import generate_time_period, convert_tp_to_sec_tp
+    from tensoraerospace.signals.standart import unit_step
+
+    dt = 0.01  # Дискретизация
+    tp = generate_time_period(tn=20, dt=dt) # Временной периуд
+    tps = convert_tp_to_sec_tp(tp, dt=dt)
+    number_time_steps = len(tp) # Количество временных шагов
+    reference_signals = np.reshape(unit_step(degree=5, tp=tp, time_step=10, output_rad=True), [1, -1]) # Заданный сигнал
+
+    env = gym.make('LinearLongitudinalLAPAN-v0',
+               number_time_steps=number_time_steps, 
+               initial_state=[[0],[0],[0],[9]],
+               reference_signal = reference_signals)
+    env.reset() 
+
+    observation, reward, done, info = env.step(np.array([1]))
+
