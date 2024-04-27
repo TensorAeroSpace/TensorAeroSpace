@@ -1,15 +1,27 @@
 version: 2
 
 
+# Set the version of Python and other tools you might need
 build:
-  os: ubuntu-20.04
+  os: ubuntu-22.04
   tools:
-    python: "3.10"
+    python: '3.11'
   jobs:
-    post_install:
-      - pip install poetry>=1.6
+    # See https://github.com/readthedocs/readthedocs.org/issues/4912
+    pre_create_environment:
+      # Select Python version (keep in sync with other versions):
+      - asdf install python 3.11.5
+      - asdf global python 3.11.5
+      - python -m pip install --upgrade --no-cache-dir virtualenv
+
+      # Install poetry:
+      - asdf plugin add poetry
+      - asdf install poetry latest
+      - asdf global poetry latest
       - poetry config virtualenvs.create false
-      - poetry install --with dev
+    post_install:
+      # We build django with `DJANGO_ENV=production`, so no dev deps:
+      - . "$READTHEDOCS_VIRTUALENV_PATH/bin/activate" && cd 'TensorAeroSpace' && poetry install --with dev
 
 sphinx:
   configuration: docs/conf.py
