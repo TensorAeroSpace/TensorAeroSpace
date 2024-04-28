@@ -1,8 +1,8 @@
 import gymnasium as gym
 import numpy as np
-from tensoraerospace.aerospacemodel import ComSat
 from gymnasium import spaces
 
+from tensoraerospace.aerospacemodel import ComSat
 
 
 class ComSatEnv(gym.Env):

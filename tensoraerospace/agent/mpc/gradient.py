@@ -1,3 +1,8 @@
+import datetime
+import json
+import os
+from pathlib import Path
+
 import numpy as np
 import torch
 import torch.nn as nn
@@ -5,11 +10,9 @@ import torch.optim as optim
 from torch.distributions import Uniform
 from torch.utils.tensorboard import SummaryWriter
 from tqdm import tqdm
+
 from ..base import BaseRLModel
-import os
-import datetime
-from pathlib import Path
-import json
+
 
 class Net(nn.Module):
     """Создает нейронную сеть для моделирования динамики системы.

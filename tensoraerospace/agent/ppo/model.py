@@ -1,7 +1,8 @@
+import numpy as np
 import torch
 import torch.nn as nn
-import numpy as np
 import torch.nn.functional as F
+
 
 def init_layer_uniform(layer: nn.Linear, init_w: float = 3e-3) -> nn.Linear:
     """

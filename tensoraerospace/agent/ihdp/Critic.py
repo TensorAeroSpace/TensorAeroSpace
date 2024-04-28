@@ -4,6 +4,7 @@ import numpy as np
 import tensorflow as tf
 from tensorflow.keras.layers import Dense, Flatten
 
+
 class Critic:
     """Предоставляет классу Critic аппроксиматор функций (NN) класса Critic.
 

@@ -1,10 +1,11 @@
 import datetime
+from multiprocessing import cpu_count
+from threading import Thread
+
 import numpy as np
 import tensorflow as tf
-from tensorflow.keras.layers import Input, Dense, Lambda
+from tensorflow.keras.layers import Dense, Input, Lambda
 
-from threading import Thread
-from multiprocessing import cpu_count
 tf.keras.backend.set_floatx('float64')
 
 GLOBAL_EP = 0

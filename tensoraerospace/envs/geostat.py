@@ -1,8 +1,8 @@
 import gymnasium as gym
-from gymnasium import spaces
 import numpy as np
-from tensoraerospace.aerospacemodel import GeoSat
+from gymnasium import spaces
 
+from tensoraerospace.aerospacemodel import GeoSat
 
 
 class GeoSatEnv(gym.Env):

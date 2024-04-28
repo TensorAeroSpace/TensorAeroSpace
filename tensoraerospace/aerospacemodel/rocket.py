@@ -3,8 +3,8 @@ import numpy as np
 from scipy.signal import cont2discrete
 
 from .base import ModelBase
-from .utils.constant import state_to_latex_rus, state_to_latex_eng
 from .f16.nonlinear.utils import output2dict
+from .utils.constant import state_to_latex_eng, state_to_latex_rus
 
 
 class MissileModel(ModelBase):

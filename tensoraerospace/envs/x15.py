@@ -1,8 +1,8 @@
 import gymnasium as gym
-from gymnasium import spaces
 import numpy as np
-from tensoraerospace.aerospacemodel import LongitudinalX15
+from gymnasium import spaces
 
+from tensoraerospace.aerospacemodel import LongitudinalX15
 
 
 class LinearLongitudinalX15(gym.Env):

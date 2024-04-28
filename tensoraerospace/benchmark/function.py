@@ -1,7 +1,7 @@
+from typing import Optional, Tuple
+
 import numpy as np
 from scipy.signal import find_peaks
-from typing import Tuple, Optional
-
 
 
 def find_longest_repeating_series(numbers:list):

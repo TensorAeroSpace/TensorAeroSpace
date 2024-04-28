@@ -1,1 +1,1 @@
-from .bench import ( ControlBenchmark as ControlBenchmark)
+from .bench import ControlBenchmark as ControlBenchmark

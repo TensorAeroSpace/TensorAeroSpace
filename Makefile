@@ -23,5 +23,10 @@ run_env_test:
 	@echo "Running enviroments tests..."
 	poetry run pytest -s tests/envs 
 
+fmt:
+	poetry run ruff check --fix tensoraerospace --select I
+
 test:
 	poetry run ruff check tensoraerospace
+
+pre_commit: fmt test

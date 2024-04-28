@@ -1,6 +1,14 @@
 import numpy as np
-from .function import find_step_function, overshoot, settling_time, damping_degree, static_error, get_lower_upper_bound
 from matplotlib import pyplot as plt
+
+from .function import (
+    damping_degree,
+    find_step_function,
+    get_lower_upper_bound,
+    overshoot,
+    settling_time,
+    static_error,
+)
 
 
 class ControlBenchmark:

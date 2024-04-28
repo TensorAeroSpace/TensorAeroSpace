@@ -3,8 +3,8 @@ import numpy as np
 from scipy.signal import cont2discrete
 
 from tensoraerospace.aerospacemodel.base import ModelBase
-from tensoraerospace.aerospacemodel.utils import state_to_latex_rus, state_to_latex_eng
 from tensoraerospace.aerospacemodel.f16.nonlinear.utils import output2dict
+from tensoraerospace.aerospacemodel.utils import state_to_latex_eng, state_to_latex_rus
 
 
 class LongitudinalSuperSonic(ModelBase):

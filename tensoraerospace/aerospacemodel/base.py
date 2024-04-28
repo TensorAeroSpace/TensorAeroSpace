@@ -1,9 +1,15 @@
 import matplotlib.pyplot as plt
 import numpy as np
 
-from .utils.constant import state_to_latex_rus, state_to_latex_eng, \
-    control_to_latex_rus, control_to_latex_eng, ref_state_to_latex_rus, ref_state_to_latex_eng
-from .f16.nonlinear.utils import state2dict, control2dict
+from .f16.nonlinear.utils import control2dict, state2dict
+from .utils.constant import (
+    control_to_latex_eng,
+    control_to_latex_rus,
+    ref_state_to_latex_eng,
+    ref_state_to_latex_rus,
+    state_to_latex_eng,
+    state_to_latex_rus,
+)
 
 
 class ModelBase:

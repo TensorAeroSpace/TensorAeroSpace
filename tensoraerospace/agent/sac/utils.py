@@ -1,6 +1,7 @@
 import numpy as np
 import torch
 
+
 def create_log_gaussian(mean, log_std, t):
     """Вычисляет логарифм плотности вероятности для нормального распределения.
 

@@ -4,6 +4,7 @@ import numpy as np
 import tensorflow as tf
 from tensorflow.keras.layers import Dense, Flatten
 
+
 class Actor:
     """Модель Актера в IHDP
         Предоставляет классу Актера функцию-аппроксиматор (NN) Актера.

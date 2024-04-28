@@ -1,7 +1,8 @@
-from .Incremental_model import IncrementalModel
+import numpy as np
+
 from .Actor import Actor
 from .Critic import Critic
-import numpy as np
+from .Incremental_model import IncrementalModel
 
 
 class IHDPAgent(object):

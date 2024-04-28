@@ -1,6 +1,6 @@
 import gymnasium as gym
-from gym.spaces.discrete import Discrete
 import numpy as np
+from gym.spaces.discrete import Discrete
 
 
 class unity_discrete_env(gym.Wrapper):

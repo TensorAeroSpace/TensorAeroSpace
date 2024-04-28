@@ -1,5 +1,6 @@
 import numpy as np
 
+
 def unit_step(tp:np.array, degree:int, time_step:int=10, dt:float=0.01, output_rad=False)-> np.array:
     """Генерация ступенчатого сигнала
 

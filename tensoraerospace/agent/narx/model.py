@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 
+
 class NARX(nn.Module):
     """Модель нейронной сети NARX (Nonlinear AutoRegressive with eXogenous inputs),
     основанная на полносвязных слоях для предсказания временных рядов.
