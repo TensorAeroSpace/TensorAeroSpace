@@ -1,5 +1,8 @@
 # TensorAeroSpace 
 
+[![en](https://img.shields.io/badge/lang-en-red.svg)](./README.md)
+[![ru](https://img.shields.io/badge/lang-ru-grean.svg)](./README.ru-ru.md)
+
 [![Documentation Status](https://readthedocs.org/projects/tensoraerospace/badge/?version=latest)](https://tensoraerospace.readthedocs.io/en/latest/?badge=latest)
 
 ![](./img/logo-no-background.png)
