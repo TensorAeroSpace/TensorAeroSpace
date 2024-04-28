@@ -1,34 +1,37 @@
 # TensorAeroSpace 
 
+[![en](https://img.shields.io/badge/lang-en-red.svg)](./README.md)
+[![ru](https://img.shields.io/badge/lang-ru-grean.svg)](./README.ru-ru.md)
+
 [![Documentation Status](https://readthedocs.org/projects/tensoraerospace/badge/?version=latest)](https://tensoraerospace.readthedocs.io/en/latest/?badge=latest)
 
 ![](./img/logo-no-background.png)
 
-**TensorAeroSpace** - это набор объектов управления, сред моделирования OpenAI Gym и реализации алгоритмов Reinforcement Learning (RL)
+**TensorAeroSpace** is a set of control objects, OpenAI Gym simulation environments, and Reinforcement Learning (RL) algorithm implementations.
 
-## Запуск
+## Launch
 
-Быстрая установка
+Quick installation
 
 ```bash
 git clone  https://github.com/tensoraerospace/tensoraerospace.git
 poetry install
 ```
 
-Запуск Docker образа
+Launching a Docker image
 
 ```bash
 docker build -t tensor_aero_space .  --platform=linux/amd64
 docker run -v example:/app/example -p 8888:8888 -it tensor_aero_space
 ```
 
-## Примеры
+## Examples
 
-Все примеры по запуску и работе с библиотекой TensorAeroSpace находятся в папке `./example`
+All examples for launching and working with the TensorAeroSpace library are located in the `./example` folder.
 
-## Агенты
+## Agents
 
-**TensorAeroSpace** содержит такие RL алгоритмы как:
+**TensorAeroSpace** contains such RL algorithms as:
 
 - IHDP (Incremental Heuristic Dynamic Programming)
 - DQN (Deep Q Learning)
@@ -38,7 +41,7 @@ docker run -v example:/app/example -p 8888:8888 -it tensor_aero_space
 - MPC (Model Predictive Control)
 - A2C (Advantage Actor-Critic) with NARX Critic
  
-## Объекты управления
+## Control Objects
 
 - General Dynamics F-16 Fighting Falcon
 - Boeing-747
@@ -54,26 +57,26 @@ docker run -v example:/app/example -p 8888:8888 -it tensor_aero_space
 - БЛА в Unity среде
 
 
-## Среды моделирования
+## Simulation Environments
 
 ### Unity Ml-Agents
 
 ![](./docs/example/env/img/img_demo_unity.gif)
 
-**tensoraerospace** умеет работать с системой Ml-Agents.
+**TensorAeroSpace** is capable of working with the ML-Agents system.
 
-Пример среды для запуска можно найти в репозитории [UnityAirplaneEnvironment](https://github.com/TensorAeroSpace/UnityAirplaneEnvironment)
+An example environment for launching can be found in the repository [UnityAirplaneEnvironment](https://github.com/TensorAeroSpace/UnityAirplaneEnvironment)
 
-В документации присутствуют примеры по настройке сети и работе с DQN агентом
+The documentation includes examples on setting up the network and working with the DQN agent.
 
 ### Matlab Simulink
 
-**tensoraerospace** содержит примеры по работе с Simulink моделями.
+**TensorAeroSpace** contains examples of working with Simulink models.
 
 ![](docs/example/simulink/img/model.png)
 
-В документации приведены примеры по сборке и компиляции модели Simulink в работоспособный код который можно имплементировать в среду моделирования [OpenAI Gym](https://github.com/openai/gym)
+The documentation provides examples on assembling and compiling the Simulink model into o perational code that can be implemented in the [OpenAI Gym](https://github.com/openai/gym) simulation environment.
 
-### Матрицы пространств состояний
+### State Space Matrices
 
-**tensoraerospace** содержит объекты управления которые реализованы в виде матриц пространств состояний.
+**TensorAeroSpace** includes control objects implemented as state space matrices.
