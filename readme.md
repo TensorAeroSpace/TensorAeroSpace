@@ -12,16 +12,15 @@
 
 Быстрая установка
 
-```
+```bash
 git clone  https://github.com/tensoraerospace/tensoraerospace.git
-cd tensoraerospace
-pip install -e .
+poetry install
 ```
 
 Запуск Docker образа
 
-```
-docker build -t tensor_aero_space .
+```bash
+docker build -t tensor_aero_space .  --platform=linux/amd64
 docker run -v example:/app/example -p 8888:8888 -it tensor_aero_space
 ```
 
@@ -37,7 +36,10 @@ docker run -v example:/app/example -p 8888:8888 -it tensor_aero_space
 - DQN (Deep Q Learning)
 - SAC (Soft Actor Critic)
 - A3C (Asynchronous Advantage Actor-Critic)
-
+- PPO (Proximal Policy Optimization )
+- MPC (Model Predictive Control)
+- A2C (Advantage Actor-Critic) with NARX Critic
+ 
 ## Объекты управления
 
 - General Dynamics F-16 Fighting Falcon
@@ -48,6 +50,8 @@ docker run -v example:/app/example -p 8888:8888 -it tensor_aero_space
 - North American X-15
 - Геостационарный спутник
 - Спутник связи
+- БПЛА LAPAN Surveillance Aircraft (LSU)-05
+- БПЛА Ultrastick-25e
 - БЛА в State Space
 - БЛА в Unity среде
 
