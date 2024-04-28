@@ -1,8 +1,6 @@
 # TensorAeroSpace 
 
 [![Documentation Status](https://readthedocs.org/projects/tensoraerospace/badge/?version=latest)](https://tensoraerospace.readthedocs.io/en/latest/?badge=latest)
----
-
 
 ![](./img/logo-no-background.png)
 
