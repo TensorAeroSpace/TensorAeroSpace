@@ -14,9 +14,9 @@ def create_log_gaussian(mean, log_std, t):
 
     """
     quadratic = -((0.5 * (t - mean) / (log_std.exp())).pow(2))
-    l = mean.shape
+    length = mean.shape
     log_z = log_std
-    z = l[-1] * torch.log(2 * np.pi)
+    z = length[-1] * torch.log(2 * np.pi)
     log_p = quadratic.sum(dim=-1) - log_z.sum(dim=-1) - 0.5 * z
     return log_p
 

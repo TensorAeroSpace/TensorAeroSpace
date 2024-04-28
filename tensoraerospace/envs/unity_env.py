@@ -1,4 +1,3 @@
-from mlagents_envs.environment import UnityEnvironment
 import gymnasium as gym
 from gym.spaces.discrete import Discrete
 import numpy as np

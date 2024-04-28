@@ -1,2 +1,2 @@
-from .base import HyperParamOptimizationOptuna
-from .ray import HyperParamOptimizationRay
+from .base import (HyperParamOptimizationOptuna as HyperParamOptimizationOptuna)
+from .ray import (HyperParamOptimizationRay as HyperParamOptimizationRay)

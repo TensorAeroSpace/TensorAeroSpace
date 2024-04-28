@@ -2,11 +2,8 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.optim as optim
-import numpy as np
 from torch.distributions import Uniform
 from torch.utils.tensorboard import SummaryWriter
-import numpy as np
-from scipy.stats import uniform
 from tqdm import tqdm
 from ..base import BaseRLModel
 import os

@@ -21,8 +21,7 @@ def unit_step(tp:np.array, degree:int, time_step:int=10, dt:float=0.01, output_r
 
 
 def sinusoid(tp: np.ndarray, frequency : float, amplitude: int) -> np.ndarray:
-    """
-    Синусоидальный сигнал
+    """Синусоидальный сигнал
 
     Args:
         tp (np.array): Временной промежуток

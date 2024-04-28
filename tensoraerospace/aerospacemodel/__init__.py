@@ -1,11 +1,11 @@
-from .f16.linear.longitudinal.model import LongitudinalF16
-from .b747 import LongitudinalB747
-from .rocket import MissileModel
-from .elv import ELVRocket
-from .comsat import ComSat
-from .geosat import GeoSat
-from .f4c import LongitudinalF4C
-from .x15 import LongitudinalX15
-from .uav import LongitudinalUAV
-from .lapan import LAPAN
-from .ultrastick import Ultrastick
+from .f16.linear.longitudinal.model import (LongitudinalF16 as LongitudinalF16)
+from .b747 import (LongitudinalB747 as LongitudinalB747)
+from .rocket import (MissileModel as MissileModel)
+from .elv import (ELVRocket as ELVRocket)
+from .comsat import (ComSat as ComSat)
+from .geosat import (GeoSat as GeoSat)
+from .f4c import (LongitudinalF4C as LongitudinalF4C)
+from .x15 import (LongitudinalX15 as LongitudinalX15)
+from .uav import (LongitudinalUAV as LongitudinalUAV)
+from .lapan import (LAPAN as LAPAN)
+from .ultrastick import (Ultrastick as Ultrastick)

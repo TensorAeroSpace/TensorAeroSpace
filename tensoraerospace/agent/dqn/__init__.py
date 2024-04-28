@@ -1,1 +1,1 @@
-from .model import Model, test_model, SumTree, PERAgent
+from .model import (Model as Model, test_model as test_model, SumTree as SumTree, PERAgent as PERAgent)

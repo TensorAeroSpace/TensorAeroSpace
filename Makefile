@@ -22,3 +22,6 @@ check_doc_quality:
 run_env_test:
 	@echo "Running enviroments tests..."
 	poetry run pytest -s tests/envs 
+
+test:
+	poetry run ruff check tensoraerospace

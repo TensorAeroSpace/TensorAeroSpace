@@ -348,7 +348,7 @@ class Actor:
             xt_ref1 (_type_): заданное состояния на следующем временном шаге
         """
         if self.cascaded_actor:
-            Ec_actor_before = 0.5 * np.square(Jt1)
+            # Ec_actor_before = 0.5 * np.square(Jt1)
             # print("ACTOR LOSS xt1 before= ", Ec_actor_before)
 
             # Train the actor
@@ -382,10 +382,10 @@ class Actor:
             ut_after = self.evaluate_actor()
             xt1_est_after = incremental_model.evaluate_incremental_model(ut_after)
             Jt1_after, _ = critic.evaluate_critic(xt1_est_after, xt_ref1)
-            Ec_actor_after = 0.5 * np.square(Jt1_after)
+            #Ec_actor_after = 0.5 * np.square(Jt1_after)
             # print("ACTOR LOSS xt1 after= ", Ec_actor_after)
         else:
-            Ec_actor_before = 0.5 * np.square(Jt1)
+            #Ec_actor_before = 0.5 * np.square(Jt1)
             # print("ACTOR LOSS xt1 before= ", Ec_actor_before)
 
             # Train the actor
@@ -403,7 +403,7 @@ class Actor:
             ut_after = self.evaluate_actor()
             xt1_est_after = incremental_model.evaluate_incremental_model(ut_after)
             Jt1_after, _ = critic.evaluate_critic(xt1_est_after, xt_ref1)
-            Ec_actor_after = 0.5 * np.square(Jt1_after)
+            # Ec_actor_after = 0.5 * np.square(Jt1_after)
             # print("ACTOR LOSS xt1 after= ", Ec_actor_after)
 
     def train_actor_online_alpha_decay(self, Jt1, dJt1_dxt1, G, incremental_model, critic, xt_ref1):
@@ -419,7 +419,7 @@ class Actor:
         """
         
         if self.cascaded_actor:
-            Ec_actor_before = 0.5 * np.square(Jt1)
+            # Ec_actor_before = 0.5 * np.square(Jt1)
             # print("ACTOR LOSS xt1 before= ", Ec_actor_before)
 
             # Train the actor
@@ -465,10 +465,10 @@ class Actor:
             # incremental_model.identify_incremental_model_LS(self.xt, ut_after)
             xt1_est_after = incremental_model.evaluate_incremental_model(ut_after)
             Jt1_after, _ = critic.evaluate_critic(xt1_est_after, xt_ref1)
-            Ec_actor_after = 0.5 * np.square(Jt1_after)
+            # Ec_actor_after = 0.5 * np.square(Jt1_after)
             # print("ACTOR LOSS xt1 after= ", Ec_actor_after)
         else:
-            Ec_actor_before = 0.5 * np.square(Jt1)
+            # Ec_actor_before = 0.5 * np.square(Jt1)
             # print("ACTOR LOSS xt1 before= ", Ec_actor_before)
 
             # Train the actor
@@ -494,7 +494,7 @@ class Actor:
             ut_after = self.evaluate_actor()
             xt1_est_after = incremental_model.evaluate_incremental_model(ut_after)
             Jt1_after, _ = critic.evaluate_critic(xt1_est_after, xt_ref1)
-            Ec_actor_after = 0.5 * np.square(Jt1_after)
+            # Ec_actor_after = 0.5 * np.square(Jt1_after)
             # print("ACTOR LOSS xt1 after= ", Ec_actor_after)
 
     def compute_Adam_update(self, count, gradient, model, learning_rate):

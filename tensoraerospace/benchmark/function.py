@@ -79,9 +79,9 @@ def overshoot(control_signal: np.ndarray, system_signal: np.ndarray) -> float:
     M = np.max(system_signal)
     
     # Расчет перерегулирования
-    O = (M - y_final) / y_final * 100
+    output = (M - y_final) / y_final * 100
     
-    return O
+    return output
 
 
 

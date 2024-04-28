@@ -1,1 +1,1 @@
-from .model import LongitudinalF16
+from .model import (LongitudinalF16 as LongitudinalF16)
