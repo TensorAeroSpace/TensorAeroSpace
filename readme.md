@@ -45,16 +45,16 @@ All examples for launching and working with the TensorAeroSpace library are loca
 
 - General Dynamics F-16 Fighting Falcon
 - Boeing-747
-- ELV (Expendable launch vehicle)
-- Модель ракеты
+- ELV (Expendable Launch Vehicle)
+- Rocket model
 - McDonnell Douglas F-4C
 - North American X-15
-- Геостационарный спутник
-- Спутник связи
-- БПЛА LAPAN Surveillance Aircraft (LSU)-05
-- БПЛА Ultrastick-25e
-- БЛА в State Space
-- БЛА в Unity среде
+- Geostationary satellite
+- Communication satellite
+- LAPAN Surveillance Aircraft (LSU)-05 UAV
+- Ultrastick-25e UAV
+- UAV in State Space
+- UAV in Unity environment
 
 
 ## Simulation Environments
