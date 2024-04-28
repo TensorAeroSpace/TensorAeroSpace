@@ -19,7 +19,6 @@ scipy = "^1.11.3"
 tensorflow = "^2.14.0"
 moviepy = "^1.0.3"
 gymnasium = "^0.29.1"
-jupyterlab = "^4.1.1"
 torch = "^2.2.0"
 huggingface-hub = "^0.22.2"
 tensorflow-macos = { version = "2.15.0", markers = "sys_platform == 'darwin'" }
@@ -36,6 +35,11 @@ docstr-coverage = "^2.3.1"
 pytest-cov = "^5.0.0"
 mypy = "^1.10.0"
 
+
+
+[tool.poetry.group.jupyter.dependencies]
+jupyter = "^1.0.0"
+ipykernel = "^6.29.4"
 
 [build-system]
 requires = ["poetry-core"]
