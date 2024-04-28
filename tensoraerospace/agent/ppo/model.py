@@ -2,7 +2,8 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-
+from torch.utils.tensorboard import SummaryWriter
+from tqdm import tqdm
 
 def init_layer_uniform(layer: nn.Linear, init_w: float = 3e-3) -> nn.Linear:
     """
@@ -174,7 +175,9 @@ class Agent():
         self.target = False
         self.best_reward = 0
         self.avg_rewards_list = []
-
+        self.writer = SummaryWriter()
+        
+        
     def act(self, state):
         """Выбирает действие для данного состояния.
 
@@ -316,8 +319,8 @@ class Agent():
         В процессе обучения агент проходит через заданное количество эпизодов, собирает данные,
         обрабатывает их и обновляет параметры модели.
         """
-        for episode in range(self.max_episodes):
-            print("Episode", episode)
+        for episode in tqdm(range(self.max_episodes)):
+            # print("Episode", episode)
             if self.target:
                 break
 
@@ -400,13 +403,10 @@ class Agent():
                 )
                 all_aloss.append(a_loss)
                 all_closs.append(c_loss)
+                
+            self.writer.add_scalar('train/Actor Loss', np.mean(all_aloss), episode)
+            self.writer.add_scalar('train/Critic Loss', np.mean(all_closs), episode)
+            self.writer.add_scalar('train/Reward', np.mean(scores), episode)
 
-            print("actor loss")
-            print(np.mean(all_aloss))
-            print("critic loss")
-            print(np.mean(all_closs))
 
-            print("reward")
-            print(np.mean(scores))
-
-        print("Training completed. Average rewards list:", self.avg_rewards_list)
+        # print("Training completed. Average rewards list:", self.avg_rewards_list)
