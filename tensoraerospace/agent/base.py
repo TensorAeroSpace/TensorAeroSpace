@@ -1,7 +1,20 @@
+import importlib
 from abc import ABC
 
 from huggingface_hub import HfApi, snapshot_download
 
+
+def get_class_from_string(class_path):
+    # Разделяем путь на имя модуля и имя класса
+    module_name, class_name = class_path.rsplit('.', 1)
+    
+    # Динамически импортируем модуль
+    module = importlib.import_module(module_name)
+    
+    # Получаем класс из модуля
+    cls = getattr(module, class_name)
+    
+    return cls
 
 class BaseRLModel(ABC):
     def __init__(self) -> None:
@@ -67,8 +80,8 @@ class BaseRLModel(ABC):
             repo_type="model",
             token=access_token,
         )
-
-    def from_pretrained(self, repo_name, access_token=None, version=None):
+    @classmethod
+    def from_pretrained(cls, repo_name, access_token=None, version=None):
         """Загружает предобученную модель из Hugging Face Hub.
         
         Args:
@@ -81,3 +94,21 @@ class BaseRLModel(ABC):
         """
         folder_path = snapshot_download(repo_id=repo_name, token=access_token, revision=version)
         return folder_path
+
+
+def serialize_env(env):
+    # Получаем начальное состояние и ссылку на сигнал из env
+    initial_state = env.initial_state
+    reference_signal = env.reference_signal.tolist()  # Преобразовываем NumPy массив в список для JSON сериализации
+    
+    # Сохраняем параметры env в словарь
+    env_data = {
+        'number_time_steps': env.number_time_steps,
+        'initial_state': initial_state,
+        'reference_signal': reference_signal
+    }
+    return env_data
+
+
+class TheEnvironmentDoesNotMatch(Exception):
+    message = "Error The environment does not match the downloaded one"
