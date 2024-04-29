@@ -24,6 +24,6 @@ fmt:
 	poetry run ruff check --fix tensoraerospace --select I
 
 test:
-	poetry run ruff check tensoraerospace
+	poetry run pytest
 
 pre_commit: fmt test
