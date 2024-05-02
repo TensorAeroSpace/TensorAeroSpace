@@ -1,22 +1,25 @@
-import os
 import datetime
 import json
+import os
 from pathlib import Path
+
+import numpy as np
 import torch
 import torch.nn.functional as F
 from torch.optim import Adam
-import numpy as np
-from .model import DeterministicPolicy, GaussianPolicy, QNetwork
-from .utils import hard_update, soft_update
-from .replay_memory import ReplayMemory
-from tqdm import tqdm 
 from torch.utils.tensorboard import SummaryWriter
+from tqdm import tqdm
+
 from ..base import (
     BaseRLModel,
     TheEnvironmentDoesNotMatch,
     get_class_from_string,
     serialize_env,
 )
+from .model import DeterministicPolicy, GaussianPolicy, QNetwork
+from .replay_memory import ReplayMemory
+from .utils import hard_update, soft_update
+
 
 class SAC(BaseRLModel):
     """Soft Actor-Critic (SAC) алгоритм для обучения с подкреплением.
@@ -44,7 +47,7 @@ class SAC(BaseRLModel):
         policy_optim: Оптимизатор для обновления весов политики.
 
     """
-    def __init__(self, env, updates_per_step=1, batch_size=32, memory_capacity=10000000, lr=0.0003, gamma=0.99, tau=0.005, alpha=0.2, policy_type="Gaussian", target_update_interval=1, automatic_entropy_tuning=False, hidden_size=256, device=True, verbose_histogram=False, seed=42):
+    def __init__(self, env, updates_per_step=1, batch_size=32, memory_capacity=10000000, lr=0.0003, gamma=0.99, tau=0.005, alpha=0.2, policy_type="Gaussian", target_update_interval=1, automatic_entropy_tuning=False, hidden_size=256, device='cpu', verbose_histogram=False, seed=42):
 
         self.gamma = gamma
         self.tau = tau
