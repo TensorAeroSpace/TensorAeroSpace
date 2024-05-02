@@ -5,3 +5,4 @@ from .dqn.model import Model as Model
 from .dqn.model import PERAgent as PERAgent
 from .ihdp.model import IHDPAgent as IHDPAgent
 from .ppo.model import PPO as PPO
+from .sac.sac import SAC as SAC
