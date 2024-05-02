@@ -6,7 +6,9 @@ from torch.optim import Adam
 
 from .model import DeterministicPolicy, GaussianPolicy, QNetwork
 from .utils import hard_update, soft_update
-
+from .replay_memory import ReplayMemory
+from tqdm import tqdm 
+from torch.utils.tensorboard import SummaryWriter
 
 class SAC(object):
     """Soft Actor-Critic (SAC) алгоритм для обучения с подкреплением.
@@ -34,18 +36,23 @@ class SAC(object):
         policy_optim: Оптимизатор для обновления весов политики.
 
     """
-    def __init__(self, num_inputs, action_space, lr=0.0003, gamma=0.99, tau=0.005, alpha=0.2, policy_type="Gaussian", target_update_interval=1, automatic_entropy_tuning=False, hidden_size=256, cuda=True):
+    def __init__(self, env, updates_per_step=1, batch_size=32, memory_capacity=10000000, lr=0.0003, gamma=0.99, tau=0.005, alpha=0.2, policy_type="Gaussian", target_update_interval=1, automatic_entropy_tuning=False, hidden_size=256, cuda=True, verbose_histogram=False):
 
         self.gamma = gamma
         self.tau = tau
         self.alpha = alpha
-
+        self.verbose_histogram = verbose_histogram
+        self.memory = ReplayMemory(memory_capacity, seed=42)
         self.policy_type = policy_type
+        self.updates_per_step = updates_per_step
         self.target_update_interval = target_update_interval
+        self.batch_size = batch_size
         self.automatic_entropy_tuning = automatic_entropy_tuning
-
+        self.env = env
+        action_space = self.env.action_space
+        num_inputs = self.env.observation_space.shape[0]
         self.device = torch.device("cuda" if cuda else "cpu")
-
+        self.writer = SummaryWriter()
         self.critic = QNetwork(num_inputs, action_space.shape[0], hidden_size).to(device=self.device)
         self.critic_optim = Adam(self.critic.parameters(), lr=lr)
 
@@ -152,6 +159,19 @@ class SAC(object):
 
         if updates % self.target_update_interval == 0:
             soft_update(self.critic_target, self.critic, self.tau)
+            
+        self.writer.add_scalar("Loss/QF1", qf1_loss.item(), updates)
+        self.writer.add_scalar("Loss/QF2", qf2_loss.item(), updates)
+        self.writer.add_scalar("Loss/Policy", policy_loss.item(), updates)
+        self.writer.add_scalar("Loss/Alpha", alpha_loss.item(), updates)
+        self.writer.add_scalar("Loss/Alpha", alpha_tlogs.item(), updates)
+        
+        if self.verbose_histogram:
+            for name, param in self.critic.named_parameters():
+                self.writer.add_histogram(f"Critic/{name}", param, updates)
+
+            for name, param in self.policy.named_parameters():
+                self.writer.add_histogram(f"Policy/{name}", param, updates)
 
         return qf1_loss.item(), qf2_loss.item(), policy_loss.item(), alpha_loss.item(), alpha_tlogs.item()
 
@@ -203,3 +223,33 @@ class SAC(object):
                 self.critic.train()
                 self.critic_target.train()
 
+    def train(self, num_episodes):
+        # Training Loop
+        total_numsteps = 0
+        updates = 0
+        for i_episode in tqdm(range(num_episodes)):
+            episode_reward = 0
+            episode_steps = 0
+            done = False
+            state, info = self.env.reset()
+            reward_per_step = []
+            done = False
+            while not done:
+                action = self.select_action(state)
+                if len(self.memory) > self.batch_size:
+                    for i in range(self.updates_per_step):
+                        # Update parameters of all the networks
+                        critic_1_loss, critic_2_loss, policy_loss, ent_loss, alpha = self.update_parameters(self.memory, self.batch_size, updates)
+                        updates += 1
+            
+
+                next_state, reward, terminated, truncated, info = self.env.step(action)
+                done = terminated or truncated
+                episode_steps += 1
+                total_numsteps += 1
+                episode_reward += reward
+                reward_per_step.append(reward)
+                mask = 1 if done else float(not done)
+                self.memory.push(state, action, reward, next_state, mask) # Append transition to memory
+                state = next_state
+            self.writer.add_scalar('Performance/Reward', episode_reward, i_episode)

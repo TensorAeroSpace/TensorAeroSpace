@@ -167,7 +167,6 @@ class ModelBase:
         plt.xlabel(label_time)
         plt.ylabel(label)
         plt.grid(True)
-        return fig
 
     def plot_error(self, state_name: str, time: np.ndarray, ref_signal: np.ndarray, lang: str = 'rus',
                    to_deg: bool = False, to_rad: bool = False, figsize: tuple = (10, 10), xlim: list = [13, 20],
@@ -213,7 +212,6 @@ class ModelBase:
         plt.xlabel(label_time)
         plt.ylabel(label)
         plt.grid(True)
-        return fig
 
     def plot_transient_process(self, state_name: str, time: np.ndarray, ref_signal: np.ndarray, lang: str = 'rus',
                                to_deg: bool = False, to_rad: bool = False, figsize: tuple = (10, 10)):
@@ -258,7 +256,6 @@ class ModelBase:
         plt.xlabel(label_time)
         plt.ylabel(label)
         plt.grid(True)
-        return fig
 
     def plot_control(self, control_name: str, time: np.ndarray, lang: str = 'rus', to_deg: bool = False,
                      to_rad: bool = False, figsize: tuple = (10, 10)):
@@ -289,9 +286,8 @@ class ModelBase:
             label_time = 't, sec.'
         fig = plt.figure(figsize=figsize)
         plt.clf()
-        plt.plot(time[:self.time_step - 1], state_hist[:self.time_step - 1], label=label, color="green")
         plt.legend()
         plt.xlabel(label_time)
         plt.ylabel(label)
         plt.grid(True)
-        return fig
+        plt.plot(time[:self.time_step - 1], state_hist[:self.time_step - 1], label=label, color="green")
