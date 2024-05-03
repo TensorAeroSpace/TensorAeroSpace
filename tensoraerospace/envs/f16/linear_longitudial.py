@@ -27,6 +27,7 @@ class LinearLongitudinalF16(gym.Env):
                  output_space: list = ['alpha', 'q'],
                  reward_func: callable = None):
         super(LinearLongitudinalF16, self).__init__()
+
         self.max_action_value = 25.0
         self.initial_state = initial_state
         self.reference_signal = reference_signal
@@ -36,7 +37,7 @@ class LinearLongitudinalF16(gym.Env):
         self.control_space = control_space
         self.output_space = output_space
         self.reward_func = reward_func if reward_func is not None else self.default_reward
-
+        self.init_args = locals()
         self.model = LongitudinalF16(initial_state, number_time_steps=number_time_steps,
                                      selected_state_output=output_space)
         self.indices_tracking_states = [state_space.index(tracking_states[i]) for i in range(len(tracking_states))]
@@ -50,6 +51,14 @@ class LinearLongitudinalF16(gym.Env):
     def _get_info(self):
         return {}
     
+    def get_init_args(self):
+        """Получаем аргументы инициализации в виде словаря."""
+        init_args = self.init_args.copy()
+        init_args.pop('self')  # Удаление ссылки на текущий объект из словаря аргументов
+        init_args.pop('__class__')  # Удаление ссылки на текущий объект из словаря аргументов
+        return init_args
+
+
     def step(self, action: np.ndarray):
         """Выполнения шага моделирования
 

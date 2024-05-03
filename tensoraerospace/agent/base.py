@@ -98,15 +98,8 @@ class BaseRLModel(ABC):
 
 def serialize_env(env):
     # Получаем начальное состояние и ссылку на сигнал из env
-    initial_state = env.initial_state
-    reference_signal = env.reference_signal.tolist()  # Преобразовываем NumPy массив в список для JSON сериализации
-    
-    # Сохраняем параметры env в словарь
-    env_data = {
-        'number_time_steps': env.number_time_steps,
-        'initial_state': initial_state,
-        'reference_signal': reference_signal
-    }
+    env_data = env.get_init_args()
+    env_data['reference_signal'] = env_data['reference_signal'].tolist()
     return env_data
 
 
