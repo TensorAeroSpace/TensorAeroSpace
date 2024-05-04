@@ -23,11 +23,11 @@ class Net(nn.Module):
     Второй и третий слои - это скрытые слои с 128 нейронами.
     Выходной слой генерирует вектор из 2 элементов, представляющих предсказание следующего состояния системы.
     """
-    def __init__(self):
+    def __init__(self, num_action, num_states):
         super(Net, self).__init__()
-        self.fc1 = nn.Linear(3, 128)  # 3 состояния + 1 действие = 4
+        self.fc1 = nn.Linear(num_action+num_states, 128)  # 3 состояния + 1 действие = 4
         self.fc2 = nn.Linear(128, 128)
-        self.fc3 = nn.Linear(128, 2)  # Предсказание следующего состояния
+        self.fc3 = nn.Linear(128, num_states)  # Предсказание следующего состояния
 
     def forward(self, x):
         """Выполняет прямое распространение входных данных через сеть.
@@ -149,7 +149,8 @@ class MPCAgent(BaseRLModel):
         Returns:
             numpy.ndarray: Возвращает массив, содержащий выбранное действие.
         """
-        initial_state = torch.tensor([state], dtype=torch.float32)
+        # state = torch.from_numpy(state, dtype=torch.float32)
+        initial_state = torch.as_tensor(np.array([state]), dtype=torch.float32)
         best_action = None
         max_trajectory_value = -float('inf')
         action_distribution = uniform(loc=-2, scale=4)  # Assuming a continuous action space for simplicity

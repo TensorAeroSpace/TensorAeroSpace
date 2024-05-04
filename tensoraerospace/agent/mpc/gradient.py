@@ -148,7 +148,7 @@ class MPCOptimzationAgent(BaseRLModel):
         Returns:
             numpy.ndarray: Возвращает массив, содержащий выбранное действие.
         """
-        initial_state = torch.tensor([state], dtype=torch.float32, requires_grad=False)
+        initial_state = torch.as_tensor(np.array([state]), dtype=torch.float32, requires_grad=False)
         best_cost = float('inf')
         best_action_sequence = None
 
