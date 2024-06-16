@@ -7,11 +7,11 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.optim as optim
-from torch.distributions import Uniform
 from torch.utils.tensorboard import SummaryWriter
 from tqdm import tqdm
 
 from ..base import BaseRLModel
+
 
 def initialize_tensor(size=torch.Size([1, 1]), min_val=None, max_val=None):
     mean = (max_val + min_val) / 2

@@ -1,6 +1,6 @@
-from torch import nn
-import torch
 import numpy as np
+import torch
+from torch import nn
 
 
 def v_wrap(np_array, dtype=np.float32):

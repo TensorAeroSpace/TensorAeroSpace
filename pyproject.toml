@@ -4,7 +4,6 @@ version = "0.3.0"
 description = "Open source deep learning framework that focuses on aerospace objects (rockets, planes, UAVs)"
 authors = ["Artemiy Mazaew (mr8bit)", "Vasily Davydov (dexfrost89)", "Yakov Li (yakovglee)"]
 license = "MIT"
-readme = "README.md"
 packages = [
     { include = "tensoraerospace" },
 ]

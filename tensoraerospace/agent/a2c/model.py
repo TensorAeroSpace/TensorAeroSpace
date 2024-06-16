@@ -2,7 +2,6 @@ import datetime
 import json
 from pathlib import Path
 
-import gymnasium as gym
 import numpy as np
 import torch
 import torch.nn as nn

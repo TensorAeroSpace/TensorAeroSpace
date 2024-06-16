@@ -1,10 +1,11 @@
+import math
+
 import torch
+import torch.multiprocessing as mp
 import torch.nn as nn
 import torch.nn.functional as F
-from .utils import v_wrap, set_init, push_and_pull, record
-import math, os
-import torch.multiprocessing as mp
 
+from .utils import push_and_pull, record, set_init, v_wrap
 
 
 class Net(nn.Module):
