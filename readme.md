@@ -31,15 +31,20 @@ All examples for launching and working with the TensorAeroSpace library are loca
 
 ## Agents
 
-**TensorAeroSpace** contains such RL algorithms as:
+**TensorAeroSpace** contains such control algorithms and RL algorithms as:
 
-- IHDP (Incremental Heuristic Dynamic Programming)
-- DQN (Deep Q Learning)
-- SAC (Soft Actor Critic)
-- A3C (Asynchronous Advantage Actor-Critic)
-- PPO (Proximal Policy Optimization )
-- MPC (Model Predictive Control)
-- A2C (Advantage Actor-Critic) with NARX Critic
+| Name  | Export to HuggingFace  |
+|---|:-------------:|
+| IHDP (Incremental Heuristic Dynamic Programming) |  ❌ |
+| DQN (Deep Q Learning)  |   ❌ |
+| SAC (Soft Actor Critic) | ✅   |
+| A3C (Asynchronous Advantage Actor-Critic) | ❌ |
+| PPO (Proximal Policy Optimization ) |  ✅  |
+| MPC (Model Predictive Control) | ✅   |
+| A2C (Advantage Actor-Critic) with NARX Critic | ❌  |
+| A2C (Advantage Actor-Critic) |  ✅  |
+| PID (proportional–integral–derivative controller)  |  ✅  |
+
  
 ## Control Objects
 

@@ -31,15 +31,20 @@ docker run -v example:/app/example -p 8888:8888 -it tensor_aero_space
 
 ## Агенты
 
-**TensorAeroSpace** содержит такие RL алгоритмы как:
+**TensorAeroSpace** содержит такие алгоритмы управления как:
 
-- IHDP (Incremental Heuristic Dynamic Programming)
-- DQN (Deep Q Learning)
-- SAC (Soft Actor Critic)
-- A3C (Asynchronous Advantage Actor-Critic)
-- PPO (Proximal Policy Optimization )
-- MPC (Model Predictive Control)
-- A2C (Advantage Actor-Critic) with NARX Critic
+
+| Название  | Экспорт в HuggingFace  |
+|---|:-------------:|
+| IHDP (Incremental Heuristic Dynamic Programming) |  ❌ |
+| DQN (Deep Q Learning)  |   ❌ |
+| SAC (Soft Actor Critic) | ✅   |
+| A3C (Asynchronous Advantage Actor-Critic) | ❌ |
+| PPO (Proximal Policy Optimization ) |  ✅  |
+| MPC (Model Predictive Control) | ✅   |
+| A2C (Advantage Actor-Critic) with NARX Critic | ❌  |
+| A2C (Advantage Actor-Critic) |  ✅  |
+| PID (proportional–integral–derivative controller)  |  ✅  |
  
 ## Объекты управления
 
