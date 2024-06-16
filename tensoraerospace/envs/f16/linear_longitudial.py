@@ -47,7 +47,7 @@ class LinearLongitudinalF16(gym.Env):
         
         self.indices_tracking_states = [state_space.index(tracking_states[i]) for i in range(len(tracking_states))]
 
-        self.action_space = spaces.Box(low=-60, high=60, shape=(len(control_space),1), dtype=np.float32)
+        self.action_space = spaces.Box(low=-0.5, high=0.5, shape=(len(control_space),1), dtype=np.float32)
         self.observation_space = spaces.Box(low=-np.inf, high=np.inf, shape=(len(state_space),1), dtype=np.float32)
 
         self.current_step = 0
@@ -82,7 +82,7 @@ class LinearLongitudinalF16(gym.Env):
             action[0]= self.max_action_value*-1
         self.current_step += 1
         next_state = self.model.run_step(action)
-        reward = self.reward_func(next_state[self.indices_tracking_states], self.reference_signal, self.current_step)
+        reward = self.reward_func(next_state, self.reference_signal, self.current_step)
         self.done = self.current_step >= self.number_time_steps - 2
         info = self._get_info()
 
@@ -143,17 +143,20 @@ class LinearLongitudinalF16(gym.Env):
         """
         
         # Параметры для настройки функции вознаграждения
-        angle_error_weight = 10.0  # Вес ошибки угла атаки
-        stability_weight = 0.5   # Вес стабильности (можно адаптировать под различные задачи)
+    
+        theta, omega_z = state
+        theta_ref = ref_signal[:, ts]
         
-        # Расчёт ошибки угла атаки
-        angle_error = abs(state[0] - ref_signal[:, ts])
+        # Расчет ошибки угла атаки
+        angle_error = abs(theta - theta_ref)
         
-        # Возможный расчёт метрики стабильности (например, изменение ошибки угла атаки)
-        # Для простоты здесь не реализовано, но может быть добавлено в зависимости от задачи
+        # Наказание за высокую угловую скорость
+        omega_penalty = abs(omega_z)
         
-        # Расчёт вознаграждения
-        reward = -(angle_error_weight * angle_error + stability_weight * (angle_error ** 2))
+        # Вознаграждение как функция ошибки угла и наказания за скорость
+        # Можно настроить веса для этих компонентов в зависимости от предпочтений в управлении
+        reward = -angle_error - 0.1 * omega_penalty
+        
         return reward
 
 
