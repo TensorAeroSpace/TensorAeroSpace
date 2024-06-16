@@ -1,5 +1,6 @@
 import numpy as np
 
+
 def generate_time_period(tn:int=20, dt:float=0.01):
     """Генерация временного промежутка с частотой дискретизации dt
 

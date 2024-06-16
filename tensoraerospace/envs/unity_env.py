@@ -1,31 +1,16 @@
-from mlagents_envs.environment import UnityEnvironment
-from gym_unity.envs import UnityToGymWrapper
-import gym
-from gym.spaces.discrete import Discrete
+import gymnasium as gym
 import numpy as np
-
-
-def get_plane_env(env_path="", server=False, worker=0):
-    """Функция которая возвращает gym обёртку для нашей юнити среды
-
-    Returns:
-         env --> wrapped unity environment
-    """
-
-    unity_env = UnityEnvironment(env_path, worker_id=worker, no_graphics=server)
-    
-    env = UnityToGymWrapper(unity_env, uint8_visual=True)
-    return env
+from gym.spaces.discrete import Discrete
 
 
 class unity_discrete_env(gym.Wrapper):
     """Дискретная обёртка для нашей юнити среды
     """
 
-    def __init__(self, env_path="", server=False):
+    def __init__(self, env):
         super().__init__(gym.Wrapper)
         self.action_space = Discrete(3 ** 7)
-        self.env = get_plane_env(env_path=env_path, server=server)
+        self.env = env
 
     def reset(self):
         """Функция которая перезагружает unity среду и возвращает первое наблюдение после перезагрузки

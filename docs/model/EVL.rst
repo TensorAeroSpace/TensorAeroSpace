@@ -122,7 +122,7 @@ ELV(Expendable launch vehicle) - ракета-носитель, предназн
 
 .. code:: python
 
-    import gym 
+    import gymnasium as gym 
     import numpy as np
     from tqdm import tqdm
 

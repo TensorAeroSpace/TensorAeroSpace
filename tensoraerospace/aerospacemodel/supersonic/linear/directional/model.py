@@ -1,12 +1,10 @@
-import os
-import json
-import numpy as np
-
-from tensoraerospace.aerospacemodel.f16.nonlinear.utils import output2dict
-from scipy.signal import *
-from tensoraerospace.aerospacemodel.base import ModelBase
-from tensoraerospace.aerospacemodel.utils import state_to_latex_rus, state_to_latex_eng
 import matplotlib.pyplot as plt
+import numpy as np
+from scipy.signal import cont2discrete
+
+from tensoraerospace.aerospacemodel.base import ModelBase
+from tensoraerospace.aerospacemodel.f16.nonlinear.utils import output2dict
+from tensoraerospace.aerospacemodel.utils import state_to_latex_eng, state_to_latex_rus
 
 
 class DirectionalSuperSonic(ModelBase):
@@ -259,7 +257,7 @@ class DirectionalSuperSonic(ModelBase):
         if output_name == 'wy':
             output_name = 'r'
         if to_rad and to_deg:
-            raise Exception(f"Неверно указано форматирование, укажите один. to_rad или to_deg.")
+            raise Exception("Неверно указано форматирование, укажите один. to_rad или to_deg.")
         if output_name not in self.list_state:
             raise Exception(f"{output_name} нет в списке сигналов управления")
         if not self.control_history:

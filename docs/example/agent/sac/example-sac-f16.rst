@@ -3,7 +3,7 @@
 
 .. code:: python
 
-    import gym 
+    import gymnasium as gym 
     import datetime
     import itertools
     import torch

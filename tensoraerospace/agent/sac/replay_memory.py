@@ -1,7 +1,9 @@
-import random
-import numpy as np
-import pickle
 import os
+import pickle
+import random
+
+import numpy as np
+
 
 class ReplayMemory:
     """Хранилище повторных сэмплов для алгоритмов обучения с подкреплением.

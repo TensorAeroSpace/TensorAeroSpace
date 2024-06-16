@@ -1,2 +1,2 @@
-from .model import DirectionalSuperSonic
-from .initial import initial_state
+from .initial import initial_state as initial_state
+from .model import DirectionalSuperSonic as DirectionalSuperSonic

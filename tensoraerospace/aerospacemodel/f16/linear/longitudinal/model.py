@@ -3,7 +3,7 @@ import os
 
 import numpy as np
 from scipy.io import loadmat
-from scipy.signal import *
+from scipy.signal import cont2discrete
 
 from tensoraerospace.aerospacemodel.base import ModelBase
 
@@ -29,16 +29,22 @@ class LongitudinalF16(ModelBase):
         dt (any): Частота дискретизации
     """
 
-    def __init__(self, x0, number_time_steps, selected_state_output=None, dt: float = 0.01):
+    def __init__(self, x0, 
+                number_time_steps,
+                selected_state_output=None,
+                selected_states = ["theta", "alpha", "q", "altitude", "velocity"],
+                selected_output = ["theta", "alpha", "q", "altitude", "velocity"],
+                selected_input = ["ele"],
+                dt: float = 0.01):
         super().__init__(x0, selected_state_output, 0, dt)
         self.discretisation_time = dt
         self.folder = os.path.join(os.path.dirname(__file__), '../data')
 
         # Selected data for the system
-        self.selected_states = ["theta", "alpha", "q", "ele"]
-        self.selected_output = ["theta", "alpha", "q", "nz"]
+        self.selected_states = selected_states
+        self.selected_output = selected_output
         self.list_state = self.selected_output
-        self.selected_input = ["ele", ]
+        self.selected_input = selected_input
         self.control_list = self.selected_input
 
         if self.selected_state_output:
@@ -102,10 +108,10 @@ class LongitudinalF16(ModelBase):
         # Create the new system and initial condition
         self.filt_A = self.A[selected_rows_states[:, None], selected_rows_states]
         self.filt_B = self.A[selected_rows_states[:, None], 12 + selected_rows_input] + \
-                      self.B[selected_rows_states[:, None], selected_rows_input]
+                    self.B[selected_rows_states[:, None], selected_rows_input]
         self.filt_C = self.C[selected_rows_output[:, None], selected_rows_states]
         self.filt_D = self.C[selected_rows_output[:, None], 12 + selected_rows_input] + \
-                      self.D[selected_rows_output[:, None], selected_rows_input]
+                    self.D[selected_rows_output[:, None], selected_rows_input]
 
     def create_dictionary(self, file_name):       
         """Создает словари из доступных состояний, входов и выходов
@@ -150,49 +156,87 @@ class LongitudinalF16(ModelBase):
         self.store_outputs = np.zeros((self.number_outputs, self.number_time_steps))
 
         self.x0 = x0
-        self.xt = x0
+        self.xt = np.array(x0)
         self.store_states[:, self.time_step] = np.reshape(self.xt, [-1, ])
 
-    def run_step(self, ut_0: np.array):
-        """Выполняет один временной шаг итерации.
+    # def run_step(self, ut_0: np.array):
+    #     """Выполняет один временной шаг итерации.
 
+    #     Args:
+    #         ut_0 (np.array): Сигнал управления для получения состояния управления
+
+    #     Returns:
+    #         xt1: Состояние объекта управлния на следующем временном интервале t+1
+    #     """
+        
+    #     if self.time_step != 0:
+    #         ut_1 = self.store_input[:, self.time_step - 1]
+    #     else:
+    #         ut_1 = ut_0
+    #     ut = [0, ]
+    #     for i in range(self.number_inputs):
+    #         ut[i] = max(min(max(min(ut_0[i],
+    #                                 np.reshape(
+    #                                     np.array([ut_1[i] + self.input_rate_limits[i] * self.discretisation_time]),
+    #                                     [-1, 1])),
+    #                             np.reshape(np.array([ut_1[i] - self.input_rate_limits[i] * self.discretisation_time]),
+    #                                        [-1, 1])),
+    #                         np.array([[self.input_magnitude_limits[i]]])),
+    #                     - np.array([[self.input_magnitude_limits[i]]]))
+    #     ut = np.array(ut)
+    #     self.xt1 = np.matmul(self.filt_A, np.reshape(self.xt, [-1, 1])) + np.matmul(self.filt_B,
+    #                                                                                 np.reshape(ut, [-1, 1]))
+    #     output = np.matmul(self.filt_C, np.reshape(self.xt, [-1, 1]))
+    #     self.store_input[:, self.time_step] = np.reshape(ut, [ut.shape[0]])
+    #     self.store_outputs[:, self.time_step] = np.reshape(output, [output.shape[0]])
+    #     self.store_states[:, self.time_step + 1] = np.reshape(self.xt1, [self.xt1.shape[0]])
+    #     self.update_system_attributes()
+    #     if self.selected_state_output:
+    #         return np.array(self.xt1[self.selected_state_index])
+    #     return np.array(self.xt1)
+
+    def run_step(self, ut_0: np.array):
+        """
+        Выполняет один временной шаг итерации.
         Args:
             ut_0 (np.array): Сигнал управления для получения состояния управления
-
         Returns:
-            xt1: Состояние объекта управлния на следующем временном интервале t+1
+            xt1: Состояние объекта управления на следующем временном интервале t+1
         """
+        
+        rate_limit_rad_s = 60 * np.pi / 180  # Скорость изменения положения руля в рад/с
+        magnitude_limit_rad = 25 * np.pi / 180  # Максимальное отклонение в рад
         
         if self.time_step != 0:
             ut_1 = self.store_input[:, self.time_step - 1]
         else:
             ut_1 = ut_0
-        ut = [0, ]
+        
+        ut = np.zeros(self.number_inputs)
         for i in range(self.number_inputs):
-            ut[i] = max(min(max(min(ut_0[i],
-                                    np.reshape(
-                                        np.array([ut_1[i] + self.input_rate_limits[i] * self.discretisation_time]),
-                                        [-1, 1])),
-                                np.reshape(np.array([ut_1[i] - self.input_rate_limits[i] * self.discretisation_time]),
-                                           [-1, 1])),
-                            np.array([[self.input_magnitude_limits[i]]])),
-                        - np.array([[self.input_magnitude_limits[i]]]))
-        ut = np.array(ut)
-        self.xt1 = np.matmul(self.filt_A, np.reshape(self.xt, [-1, 1])) + np.matmul(self.filt_B,
-                                                                                    np.reshape(ut, [-1, 1]))
+            delta_u = rate_limit_rad_s * self.discretisation_time
+            desired_ut = np.clip(ut_0[i], ut_1[i] - delta_u, ut_1[i] + delta_u)
+            ut[i] = np.clip(desired_ut, -magnitude_limit_rad, magnitude_limit_rad)
+        
+        self.xt1 = np.matmul(self.filt_A, np.reshape(self.xt, [-1, 1])) + np.matmul(self.filt_B, np.reshape(ut, [-1, 1]))
         output = np.matmul(self.filt_C, np.reshape(self.xt, [-1, 1]))
-        self.store_input[:, self.time_step] = np.reshape(ut, [ut.shape[0]])
+        
+        self.store_input[:, self.time_step] = ut
         self.store_outputs[:, self.time_step] = np.reshape(output, [output.shape[0]])
         self.store_states[:, self.time_step + 1] = np.reshape(self.xt1, [self.xt1.shape[0]])
+        
         self.update_system_attributes()
+        
         if self.selected_state_output:
             return np.array(self.xt1[self.selected_state_index])
         return np.array(self.xt1)
 
+
+
     def update_system_attributes(self):
         """Обновление атрибутов, которые меняются с каждым временным шагом, обновляются
         """
-        self.xt = self.xt1
+        self.xt = np.array(self.xt1)
         self.time_step += 1
 
     def get_state(self, state_name: str, to_deg: bool = False, to_rad: bool = False):

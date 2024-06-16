@@ -1,9 +1,15 @@
 import matplotlib.pyplot as plt
 import numpy as np
 
-from .utils.constant import state_to_latex_rus, state_to_latex_eng, \
-    control_to_latex_rus, control_to_latex_eng, ref_state_to_latex_rus, ref_state_to_latex_eng
-from .f16.nonlinear.utils import state2dict, control2dict
+from .f16.nonlinear.utils import control2dict, state2dict
+from .utils.constant import (
+    control_to_latex_eng,
+    control_to_latex_rus,
+    ref_state_to_latex_eng,
+    ref_state_to_latex_rus,
+    state_to_latex_eng,
+    state_to_latex_rus,
+)
 
 
 class ModelBase:
@@ -87,7 +93,7 @@ class ModelBase:
 
         """
         if to_rad and to_deg:
-            raise Exception(f"Неверно указано форматирование, укажите один из типо. to_rad или to_deg.")
+            raise Exception("Неверно указано форматирование, укажите один из типо. to_rad или to_deg.")
         if state_name not in self.list_state:
             raise Exception(f"{state_name} нет в списке состояний")
         if not self.state_history:
@@ -115,7 +121,7 @@ class ModelBase:
         >>> state_hist = model.get_control('stab', to_deg=True)
         """
         if to_rad and to_deg:
-            raise Exception(f"Неверно указано форматирование, укажите один из типо. to_rad или to_deg.")
+            raise Exception("Неверно указано форматирование, укажите один из типо. to_rad или to_deg.")
         if control_name not in self.list_state:
             raise Exception(f"{control_name} нет в списке сигналов управления")
         if not self.control_history:
@@ -161,7 +167,6 @@ class ModelBase:
         plt.xlabel(label_time)
         plt.ylabel(label)
         plt.grid(True)
-        return fig
 
     def plot_error(self, state_name: str, time: np.ndarray, ref_signal: np.ndarray, lang: str = 'rus',
                    to_deg: bool = False, to_rad: bool = False, figsize: tuple = (10, 10), xlim: list = [13, 20],
@@ -207,7 +212,6 @@ class ModelBase:
         plt.xlabel(label_time)
         plt.ylabel(label)
         plt.grid(True)
-        return fig
 
     def plot_transient_process(self, state_name: str, time: np.ndarray, ref_signal: np.ndarray, lang: str = 'rus',
                                to_deg: bool = False, to_rad: bool = False, figsize: tuple = (10, 10)):
@@ -252,7 +256,6 @@ class ModelBase:
         plt.xlabel(label_time)
         plt.ylabel(label)
         plt.grid(True)
-        return fig
 
     def plot_control(self, control_name: str, time: np.ndarray, lang: str = 'rus', to_deg: bool = False,
                      to_rad: bool = False, figsize: tuple = (10, 10)):
@@ -283,9 +286,8 @@ class ModelBase:
             label_time = 't, sec.'
         fig = plt.figure(figsize=figsize)
         plt.clf()
-        plt.plot(time[:self.time_step - 1], state_hist[:self.time_step - 1], label=label, color="green")
         plt.legend()
         plt.xlabel(label_time)
         plt.ylabel(label)
         plt.grid(True)
-        return fig
+        plt.plot(time[:self.time_step - 1], state_hist[:self.time_step - 1], label=label, color="green")

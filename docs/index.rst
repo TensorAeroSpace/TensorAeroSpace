@@ -32,6 +32,8 @@ Github репозиторий: https://github.com/TensorAeroSpace/TensorAeroSpac
    model/geosat
    model/uav
    model/x15
+   model/lsu
+   model/suav
    model/unity_env.rst
 
 .. toctree::
@@ -39,8 +41,11 @@ Github репозиторий: https://github.com/TensorAeroSpace/TensorAeroSpac
    :caption: Агенты:
 
    agent/ihdp
+   agent/mpc
    agent/dqn
    agent/a3c
+   agent/a2c_narx
+   agent/ppo
    agent/sac
    optimization/optuna_based.rst
    benchmark/metrics.rst
@@ -56,11 +61,13 @@ Github репозиторий: https://github.com/TensorAeroSpace/TensorAeroSpac
    example/agent/ihdp/example_ihdp.rst
    example/agent/sac/example-sac-f16.rst
    example/optimization/example_optimization.rst
+   example/agent/a2c_narx/example-narx.rst
+   example/agent/mpc/example_mpc.rst
    example/failure/ihdp-failure.rst
    example/simulink/sim_pyth.rst
    example/simulink/your_sim.rst
    example/env/unity_example.rst
-
+   example/simintech/simintech.rst
 
 
 Indices and tables

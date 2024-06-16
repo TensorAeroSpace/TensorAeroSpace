@@ -1,7 +1,9 @@
 from abc import ABC
 from typing import Callable
+
 import matplotlib.pyplot as plt
 import optuna
+
 
 class HyperParamOptimizationBase(ABC):
     """

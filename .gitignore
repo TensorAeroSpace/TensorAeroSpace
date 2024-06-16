@@ -21,7 +21,8 @@ backend/.env
 docs/build
 virtualenv/
 htmlcov/
-
+runs
+.mypy_cache
 /build
 /dist
 /aerospacemodel.egg-info

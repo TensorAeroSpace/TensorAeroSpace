@@ -3,8 +3,9 @@ import numpy as np
 from scipy.signal import cont2discrete
 
 from .base import ModelBase
-from .utils.constant import state_to_latex_rus, state_to_latex_eng
 from .f16.nonlinear.utils import output2dict
+from .utils.constant import state_to_latex_eng, state_to_latex_rus
+
 
 class LongitudinalB747(ModelBase):
     """
@@ -249,7 +250,7 @@ class LongitudinalB747(ModelBase):
     def plot_output(self, output_name: str, time: np.ndarray, lang: str = 'rus', to_deg: bool = False,
                     to_rad: bool = False, figsize: tuple = (10, 10)):
         if to_rad and to_deg:
-            raise Exception(f"Неверно указано форматирование, укажите один. to_rad или to_deg.")
+            raise Exception("Неверно указано форматирование, укажите один. to_rad или to_deg.")
         if output_name not in self.list_state:
             raise Exception(f"{output_name} нет в списке сигналов управления")
         if not self.control_history:

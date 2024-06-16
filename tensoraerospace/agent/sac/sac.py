@@ -1,12 +1,26 @@
-import os
+import datetime
+import json
+from pathlib import Path
+
+import numpy as np
 import torch
 import torch.nn.functional as F
 from torch.optim import Adam
-from .utils import soft_update, hard_update
-from .model import GaussianPolicy, QNetwork, DeterministicPolicy
+from torch.utils.tensorboard import SummaryWriter
+from tqdm import tqdm
+
+from ..base import (
+    BaseRLModel,
+    TheEnvironmentDoesNotMatch,
+    get_class_from_string,
+    serialize_env,
+)
+from .model import DeterministicPolicy, GaussianPolicy, QNetwork
+from .replay_memory import ReplayMemory
+from .utils import hard_update, soft_update
 
 
-class SAC(object):
+class SAC(BaseRLModel):
     """Soft Actor-Critic (SAC) алгоритм для обучения с подкреплением.
 
     Args:
@@ -32,18 +46,26 @@ class SAC(object):
         policy_optim: Оптимизатор для обновления весов политики.
 
     """
-    def __init__(self, num_inputs, action_space, lr=0.0003, gamma=0.99, tau=0.005, alpha=0.2, policy_type="Gaussian", target_update_interval=1, automatic_entropy_tuning=False, hidden_size=256, cuda=True):
+    def __init__(self, env, updates_per_step=1, batch_size=32, memory_capacity=10000000, lr=0.0003, gamma=0.99, tau=0.005, alpha=0.2, policy_type="Gaussian", target_update_interval=1, automatic_entropy_tuning=False, hidden_size=256, device='cpu', verbose_histogram=False, seed=42):
 
         self.gamma = gamma
         self.tau = tau
         self.alpha = alpha
-
+        self.verbose_histogram = verbose_histogram
+        self.memory = ReplayMemory(memory_capacity, seed=seed)
+        self.seed = seed
+        torch.manual_seed(seed)
+        np.random.seed(seed)
         self.policy_type = policy_type
+        self.updates_per_step = updates_per_step
         self.target_update_interval = target_update_interval
+        self.batch_size = batch_size
         self.automatic_entropy_tuning = automatic_entropy_tuning
-
-        self.device = torch.device("cuda" if cuda else "cpu")
-
+        self.env = env
+        action_space = self.env.action_space
+        num_inputs = self.env.observation_space.shape[0]
+        self.device = torch.device(device)
+        self.writer = SummaryWriter()
         self.critic = QNetwork(num_inputs, action_space.shape[0], hidden_size).to(device=self.device)
         self.critic_optim = Adam(self.critic.parameters(), lr=lr)
 
@@ -150,54 +172,182 @@ class SAC(object):
 
         if updates % self.target_update_interval == 0:
             soft_update(self.critic_target, self.critic, self.tau)
+            
+        self.writer.add_scalar("Loss/QF1", qf1_loss.item(), updates)
+        self.writer.add_scalar("Loss/QF2", qf2_loss.item(), updates)
+        self.writer.add_scalar("Loss/Policy", policy_loss.item(), updates)
+        self.writer.add_scalar("Loss/Alpha", alpha_loss.item(), updates)
+        self.writer.add_scalar("Loss/Alpha", alpha_tlogs.item(), updates)
+        
+        if self.verbose_histogram:
+            for name, param in self.critic.named_parameters():
+                self.writer.add_histogram(f"Critic/{name}", param, updates)
+
+            for name, param in self.policy.named_parameters():
+                self.writer.add_histogram(f"Policy/{name}", param, updates)
 
         return qf1_loss.item(), qf2_loss.item(), policy_loss.item(), alpha_loss.item(), alpha_tlogs.item()
 
-    # Save model parameters
-    def save_checkpoint(self, env_name, suffix="", ckpt_path=None):
-        """Сохранение параметров моделей в файл.
 
-        Args:
-            env_name (str): Имя среды.
-            suffix (str): Суффикс для имени файла.
-            ckpt_path (str): Путь для сохранения файла.
+    def train(self, num_episodes):
+        # Training Loop
+        total_numsteps = 0
+        updates = 0
+        for i_episode in tqdm(range(num_episodes)):
+            episode_reward = 0
+            episode_steps = 0
+            done = False
+            state, info = self.env.reset()
+            reward_per_step = []
+            done = False
+            while not done:
+                action = self.select_action(state)
+                if len(self.memory) > self.batch_size:
+                    for i in range(self.updates_per_step):
+                        # Update parameters of all the networks
+                        critic_1_loss, critic_2_loss, policy_loss, ent_loss, alpha = self.update_parameters(self.memory, self.batch_size, updates)
+                        updates += 1
+            
 
+                next_state, reward, terminated, truncated, info = self.env.step(action)
+                done = terminated or truncated
+                episode_steps += 1
+                total_numsteps += 1
+                episode_reward += reward
+                reward_per_step.append(reward)
+                mask = 1 if done else float(not done)
+                self.memory.push(state, action, reward, next_state, mask) # Append transition to memory
+                state = next_state
+            self.writer.add_scalar('Performance/Reward', episode_reward, i_episode)
+            
+    def get_param_env(self):
+        class_name = self.env.unwrapped.__class__.__name__
+        module_name = self.env.unwrapped.__class__.__module__
+        env_name = f"{module_name}.{class_name}"
+        if "tensoraerospace" in env_name:
+            env_params = serialize_env(self.env)
+        class_name = self.__class__.__name__
+        module_name = self.__class__.__module__
+        agent_name = f"{module_name}.{class_name}"
+        env_params = {}
+        
+        # Получение информации о сигнале справки, если она доступна
+        try:
+            ref_signal = self.env.ref_signal.__class__
+            env_params["ref_signal"] = ref_signal
+        except AttributeError:
+            pass
+
+        # Добавление информации о пространстве действий и пространстве состояний
+        try:
+            action_space = str(self.env.action_space)
+            env_params["action_space"] = action_space
+        except AttributeError:
+            pass
+        
+        try:
+            observation_space = str(self.env.observation_space)
+            env_params["observation_space"] = observation_space
+        except AttributeError:
+            pass
+        
+        policy_params = {
+            "gamma": self.gamma,
+            "tau": self.tau,
+            "alpha": self.alpha,
+            "verbose_histogram": self.verbose_histogram,
+            "memory_capacity": self.memory.capacity,  # Assuming the ReplayMemory class has a capacity attribute.
+            "policy_type": self.policy_type,
+            "updates_per_step": self.updates_per_step,
+            "target_update_interval": self.target_update_interval,
+            "batch_size": self.batch_size,
+            "automatic_entropy_tuning": self.automatic_entropy_tuning,
+            "device": self.device.type,
+            "lr": self.critic_optim.defaults['lr'],  # Or another way to get learning rate.
+        }
+        print(policy_params)
+        
+        return {
+            "env":{
+                "name":env_name,
+                "params":env_params
+                } ,
+            "policy":{
+                "name":agent_name,
+                "params":policy_params
+                
+            }
+        }
+
+    def save(self, path=None):
         """
-        if not os.path.exists('checkpoints/'):
-            os.makedirs('checkpoints/')
-        if ckpt_path is None:
-            ckpt_path = "checkpoints/sac_checkpoint_{}_{}".format(env_name, suffix)
-        print('Saving models to {}'.format(ckpt_path))
-        torch.save({'policy_state_dict': self.policy.state_dict(),
-                    'critic_state_dict': self.critic.state_dict(),
-                    'critic_target_state_dict': self.critic_target.state_dict(),
-                    'critic_optimizer_state_dict': self.critic_optim.state_dict(),
-                    'policy_optimizer_state_dict': self.policy_optim.state_dict()}, ckpt_path)
-
-    # Load model parameters
-    def load_checkpoint(self, ckpt_path, evaluate=False):
-        """Загрузка параметров моделей из файла.
-
+        Сохраняет модель PyTorch в указанной директории. Если путь не указан,
+        создает директорию с текущей датой и временем.
+        
         Args:
-            ckpt_path (str): Путь к файлу.
-            evaluate (bool): Флаг режима оценки.
-
+            path (str, optional): Путь, где будет сохранена модель. Если None,
+            создается директория с текущей датой и временем.
+            
+        Returns:
+            None
         """
-        print('Loading models from {}'.format(ckpt_path))
-        if ckpt_path is not None:
-            checkpoint = torch.load(ckpt_path)
-            self.policy.load_state_dict(checkpoint['policy_state_dict'])
-            self.critic.load_state_dict(checkpoint['critic_state_dict'])
-            self.critic_target.load_state_dict(checkpoint['critic_target_state_dict'])
-            self.critic_optim.load_state_dict(checkpoint['critic_optimizer_state_dict'])
-            self.policy_optim.load_state_dict(checkpoint['policy_optimizer_state_dict'])
-
-            if evaluate:
-                self.policy.eval()
-                self.critic.eval()
-                self.critic_target.eval()
-            else:
-                self.policy.train()
-                self.critic.train()
-                self.critic_target.train()
-
+        if path is None:
+            path = Path.cwd()
+        else:
+            path = Path(path)
+        # Текущая дата и время в формате 'YYYY-MM-DD_HH-MM-SS'
+        date_str = datetime.datetime.now().strftime('%b%d_%H-%M-%S')
+        date_str =date_str+"_"+self.__class__.__name__
+        # Создание пути в текущем каталоге с датой и временем
+        
+        config_path = path / date_str / "config.json"
+        policy_path = path / date_str / "policy.pth"
+        critic_path = path / date_str / "critic.pth"
+        critic_target_path = path / date_str / "critic_target.pth"
+        
+        # Создание директории, если она не существует
+        policy_path.parent.mkdir(parents=True, exist_ok=True)
+        # Сохранение модели
+        config = self.get_param_env()
+        with open(config_path, "w") as outfile: 
+            json.dump(config, outfile)
+        torch.save(self.policy, policy_path)
+        torch.save(self.critic, critic_path)
+        torch.save(self.critic_target, critic_target_path)
+    
+    @classmethod
+    def __load(cls, path):
+        path = Path(path)
+        config_path = path / "config.json"
+        critic_path = path / "critic.pth"
+        policy_path = path / "policy.pth"
+        critic_target_path = path / "critic_target.pth"
+        
+        with open(config_path, 'r') as f:
+            config = json.load(f)
+        class_name = cls.__name__
+        module_name = cls.__module__
+        agent_name = f"{module_name}.{class_name}"
+        
+        if config["policy"]["name"] != agent_name:
+            raise TheEnvironmentDoesNotMatch
+        if "tensoraerospace" in config["env"]["name"]:
+            env = get_class_from_string(config["env"]["name"])(**config["env"]["param"])
+        else:
+            env = get_class_from_string(config["env"]["name"])()
+        new_agent = cls(env=env, **config["policy"]["params"])
+        new_agent.critic = torch.load(critic_path)
+        new_agent.policy = torch.load(policy_path)
+        new_agent.critic_target = torch.load(critic_target_path)
+        return new_agent
+        
+    @classmethod
+    def from_pretrained(cls, repo_name, access_token=None, version=None):
+        path = Path(repo_name)
+        if path.exists():
+            new_agent = cls.__load(path)
+            return new_agent
+        else:
+            folder_path = super().from_pretrained(repo_name, access_token, version)
+            new_agent = cls.__load(folder_path)
+            return new_agent

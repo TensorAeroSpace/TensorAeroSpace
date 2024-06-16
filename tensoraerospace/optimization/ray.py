@@ -1,6 +1,8 @@
-from ray import tune
-from .base import HyperParamOptimizationBase
 from typing import Callable
+
+from ray import tune
+
+from .base import HyperParamOptimizationBase
 
 
 class HyperParamOptimizationRay(HyperParamOptimizationBase):
