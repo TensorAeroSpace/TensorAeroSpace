@@ -25,7 +25,7 @@ PPO работает, оптимизируя "суррогатную" целев
 Документация
 ------------
 
-.. autoclass:: tensoraerospace.agent.ppo.model.Agent
+.. autoclass:: tensoraerospace.agent.ppo.model.PPO
   :members:
 
 
