@@ -29,16 +29,22 @@ class LongitudinalF16(ModelBase):
         dt (any): Частота дискретизации
     """
 
-    def __init__(self, x0, number_time_steps, selected_state_output=None, dt: float = 0.01):
+    def __init__(self, x0, 
+                number_time_steps,
+                selected_state_output=None,
+                selected_states = ["theta", "alpha", "q", "altitude", "velocity"],
+                selected_output = ["theta", "alpha", "q", "altitude", "velocity"],
+                selected_input = ["ele"],
+                dt: float = 0.01):
         super().__init__(x0, selected_state_output, 0, dt)
         self.discretisation_time = dt
         self.folder = os.path.join(os.path.dirname(__file__), '../data')
 
         # Selected data for the system
-        self.selected_states = ["theta", "alpha", "q", "ele"]
-        self.selected_output = ["theta", "alpha", "q", "nz"]
+        self.selected_states = selected_states
+        self.selected_output = selected_output
         self.list_state = self.selected_output
-        self.selected_input = ["ele", ]
+        self.selected_input = selected_input
         self.control_list = self.selected_input
 
         if self.selected_state_output:
@@ -102,10 +108,10 @@ class LongitudinalF16(ModelBase):
         # Create the new system and initial condition
         self.filt_A = self.A[selected_rows_states[:, None], selected_rows_states]
         self.filt_B = self.A[selected_rows_states[:, None], 12 + selected_rows_input] + \
-                      self.B[selected_rows_states[:, None], selected_rows_input]
+                    self.B[selected_rows_states[:, None], selected_rows_input]
         self.filt_C = self.C[selected_rows_output[:, None], selected_rows_states]
         self.filt_D = self.C[selected_rows_output[:, None], 12 + selected_rows_input] + \
-                      self.D[selected_rows_output[:, None], selected_rows_input]
+                    self.D[selected_rows_output[:, None], selected_rows_input]
 
     def create_dictionary(self, file_name):       
         """Создает словари из доступных состояний, входов и выходов
@@ -198,8 +204,8 @@ class LongitudinalF16(ModelBase):
             xt1: Состояние объекта управления на следующем временном интервале t+1
         """
         
-        rate_limit_rad_s = 30 * np.pi / 180  # Скорость изменения положения руля в рад/с
-        magnitude_limit_rad = 60 * np.pi / 180  # Максимальное отклонение в рад
+        rate_limit_rad_s = 60 * np.pi / 180  # Скорость изменения положения руля в рад/с
+        magnitude_limit_rad = 25 * np.pi / 180  # Максимальное отклонение в рад
         
         if self.time_step != 0:
             ut_1 = self.store_input[:, self.time_step - 1]

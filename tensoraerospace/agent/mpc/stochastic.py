@@ -27,7 +27,9 @@ class Net(nn.Module):
         super(Net, self).__init__()
         self.fc1 = nn.Linear(num_action+num_states, 128)  # 3 состояния + 1 действие = 4
         self.fc2 = nn.Linear(128, 128)
-        self.fc3 = nn.Linear(128, num_states)  # Предсказание следующего состояния
+        self.fc3 = nn.Linear(128, 128)
+        self.fc4 = nn.Linear(128, 128)
+        self.fc5 = nn.Linear(128, num_states)  # Предсказание следующего состояния
 
     def forward(self, x):
         """Выполняет прямое распространение входных данных через сеть.
@@ -40,7 +42,9 @@ class Net(nn.Module):
         """
         x = torch.relu(self.fc1(x))
         x = torch.relu(self.fc2(x))
-        return self.fc3(x)
+        x = torch.relu(self.fc3(x))
+        x = torch.relu(self.fc4(x))
+        return self.fc5(x)
 
 
 
@@ -113,7 +117,7 @@ class MPCAgent(BaseRLModel):
             self.writer.add_scalar('Loss/train', loss.item(), epoch)
             pbar.set_description(f"Loss {loss.item()}")
 
-    def collect_data(self, num_episodes=1000):
+    def collect_data(self, num_episodes=1000, control_exploration_signal=None):
         """
         Собирает данные о состояниях, действиях и следующих состояниях, исполняя случайную политику в среде.
 
@@ -123,19 +127,37 @@ class MPCAgent(BaseRLModel):
         Returns:
             tuple: Возвращает кортеж из трех массивов (states, actions, next_states).
         """
-        states, actions, next_states = [], [], []
-        for _ in tqdm(range(num_episodes)):
-            state, info = self.env.reset()
-            done = False
-            while not done:
-                action = self.env.action_space.sample()
-                next_state, reward, terminated, truncated, info = self.env.step(action)
-                done = terminated or truncated
-                states.append(state)
-                actions.append(action)
-                next_states.append(next_state)
-                state = next_state
-        return np.array(states), np.array(actions), np.array(next_states)
+        if control_exploration_signal is not None:
+            states, actions, next_states = [], [], []
+            for _ in tqdm(range(num_episodes)):
+                state, info = self.env.reset()
+                done = False
+                index_exp_signal = 0
+                while not done:
+                    action = control_exploration_signal[index_exp_signal]
+                    # action = self.env.action_space.sample()
+                    next_state, reward, terminated, truncated, info = self.env.step([action])
+                    done = terminated or truncated
+                    states.append(state)
+                    actions.append(action)
+                    next_states.append(next_state)
+                    state = next_state
+                    index_exp_signal+=1
+            return np.array(states), np.array(actions), np.array(next_states)
+        else:
+            states, actions, next_states = [], [], []
+            for _ in tqdm(range(num_episodes)):
+                state, info = self.env.reset()
+                done = False
+                while not done:
+                    action = self.env.action_space.sample()
+                    next_state, reward, terminated, truncated, info = self.env.step(action)
+                    done = terminated or truncated
+                    states.append(state)
+                    actions.append(action)
+                    next_states.append(next_state)
+                    state = next_state
+            return np.array(states), np.array(actions), np.array(next_states)
 
     def choose_action(self, state, rollout, horizon):
         """

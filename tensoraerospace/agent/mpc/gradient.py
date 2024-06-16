@@ -13,6 +13,16 @@ from tqdm import tqdm
 
 from ..base import BaseRLModel
 
+def initialize_tensor(size=torch.Size([1, 1]), min_val=None, max_val=None):
+    mean = (max_val + min_val) / 2
+    std_dev = (max_val - min_val) / 4  # 4 стандартных отклонения для охвата ~95% значений
+    tensor = torch.normal(mean, std_dev, size, requires_grad=True)
+    if min_val is not None:
+        tensor = torch.clamp(tensor, min=min_val)
+    if max_val is not None:
+        tensor = torch.clamp(tensor, max=max_val)
+    return tensor
+
 
 class Net(nn.Module):
     """Создает нейронную сеть для моделирования динамики системы.
@@ -44,7 +54,7 @@ class Net(nn.Module):
 
 
 
-class MPCOptimzationAgent(BaseRLModel):
+class MPCOptimizationAgent(BaseRLModel):
     """
     Агент, использующий метод Модельно-Прогностического Управления (MPC) для оптимизации действий в среде.
 
@@ -112,7 +122,7 @@ class MPCOptimzationAgent(BaseRLModel):
             self.writer.add_scalar('Loss/train', loss.item(), epoch)
             pbar.set_description(f"Loss {loss.item()}")
 
-    def collect_data(self, num_episodes=1000):
+    def collect_data(self, num_episodes=1000, control_exploration_signal=None):
         """
         Собирает данные о состояниях, действиях и следующих состояниях, исполняя случайную политику в среде.
 
@@ -122,19 +132,37 @@ class MPCOptimzationAgent(BaseRLModel):
         Returns:
             tuple: Возвращает кортеж из трех массивов (states, actions, next_states).
         """
-        states, actions, next_states = [], [], []
-        for _ in tqdm(range(num_episodes)):
-            state, info = self.env.reset()
-            done = False
-            while not done:
-                action = self.env.action_space.sample()
-                next_state, reward, terminated, truncated, info = self.env.step(action)
-                done = terminated or truncated
-                states.append(state)
-                actions.append(action)
-                next_states.append(next_state)
-                state = next_state
-        return np.array(states), np.array(actions), np.array(next_states)
+        if control_exploration_signal is not None:
+            states, actions, next_states = [], [], []
+            for _ in tqdm(range(num_episodes)):
+                state, info = self.env.reset()
+                done = False
+                index_exp_signal = 0
+                while not done:
+                    action = control_exploration_signal[index_exp_signal]
+                    # action = self.env.action_space.sample()
+                    next_state, reward, terminated, truncated, info = self.env.step([action])
+                    done = terminated or truncated
+                    states.append(state)
+                    actions.append(action)
+                    next_states.append(next_state)
+                    state = next_state
+                    index_exp_signal+=1
+            return np.array(states), np.array(actions), np.array(next_states)
+        else:
+            states, actions, next_states = [], [], []
+            for _ in tqdm(range(num_episodes)):
+                state, info = self.env.reset()
+                done = False
+                while not done:
+                    action = self.env.action_space.sample()
+                    next_state, reward, terminated, truncated, info = self.env.step(action)
+                    done = terminated or truncated
+                    states.append(state)
+                    actions.append(action[0][0])
+                    next_states.append(next_state)
+                    state = next_state
+            return np.array(states), np.array(actions), np.array(next_states)
 
     def choose_action(self, state, rollout, horizon):
         """
@@ -178,7 +206,7 @@ class MPCOptimzationAgent(BaseRLModel):
 
 
 
-    def choose_action_ref(self, state, rollout, horizon, reference_signals, step):
+    def choose_action_ref(self, state, rollout, horizon, reference_signals, step, optimization_steps):
         """
         Выбирает оптимальное действие с учетом эталонных сигналов.
 
@@ -192,28 +220,37 @@ class MPCOptimzationAgent(BaseRLModel):
         Returns:
             numpy.ndarray: Возвращает массив, содержащий выбранное действие.
         """
-        initial_state = torch.tensor([state], dtype=torch.float32)
-        best_action = None
-        max_trajectory_value = -float('inf')
-        action_distribution = Uniform(-60, 60)
-        for trajectory in range(rollout):
-            state = initial_state
-            trajectory_value = 0
-            for h in range(horizon):
-                
-                action = torch.Tensor([[action_distribution.sample()]])
-                if h == 0:
-                    first_action = action
-                next_state = self.system_model(torch.cat([state, action], dim=-1))
-                costs = self.cost_function(next_state, action, reference_signals, step)
-                trajectory_value += -costs
-                
-                state = next_state
-            if trajectory_value > max_trajectory_value:
-                max_trajectory_value = trajectory_value
-                best_action = first_action
-        return best_action.numpy()
-    
+        
+        initial_state = torch.as_tensor(np.array([state]), dtype=torch.float32)
+        for _ in range(rollout):
+            best_cost = float('inf')
+            best_action_sequence = None
+            action_sequence = torch.FloatTensor(horizon, 1).uniform_(-0.43, 0.43)
+            # Создание тензора с require_grad=True
+            action_sequence = torch.tensor(action_sequence, requires_grad=True)
+            optimizer = optim.AdamW([action_sequence], lr=1)
+            # print("action_sequence",action_sequence)
+            for optimization_step in range(optimization_steps):  # Количество шагов оптимизации
+                optimizer.zero_grad()
+                state = initial_state
+                total_cost = 0
+                for h in range(horizon):
+                    action = action_sequence[h].unsqueeze(0)
+                    next_state = self.system_model(torch.cat([state, action], dim=-1))
+                    cost = self.cost_function(next_state, action, reference_signals, step)
+
+                    total_cost += cost
+                    state = next_state
+
+                if total_cost < best_cost:
+                    best_cost = total_cost
+                    best_action_sequence = action_sequence.detach().clone()
+
+                total_cost.backward()
+                optimizer.step()
+        # print("best",best_action_sequence[0].detach().numpy())
+        return best_action_sequence[0].detach().numpy(), best_cost  # Возвращаем первое действие из наилучшей последовательности
+        
     def test_model(self, num_episodes=100, rollout=10, horizon=1):
         """
         Тестирует модель в среде, измеряя среднее вознаграждение за серию эпизодов.
