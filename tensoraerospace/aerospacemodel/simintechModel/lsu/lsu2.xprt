@@ -1,0 +1,6613 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Header>
+<project>
+ <fhidemenu>'0'</fhidemenu>
+ <winstate>'0'</winstate>
+ <formstyle>'0'</formstyle>
+ <statusbar>'1'</statusbar>
+ <hscrollbar>'1'</hscrollbar>
+ <visible>'1'</visible>
+ <timer>'200'</timer>
+ <left>'0'</left>
+ <top>'146'</top>
+ <right>'1707'</right>
+ <bottom>'1027'</bottom>
+ <edit_left>'346'</edit_left>
+ <edit_top>'2'</edit_top>
+ <edit_right>'526'</edit_right>
+ <edit_bottom>'24'</edit_bottom>
+ <layer_left>'11'</layer_left>
+ <layer_top>'2'</layer_top>
+ <layer_right>'333'</layer_right>
+ <layer_bottom>'24'</layer_bottom>
+ <edit_visible>'1'</edit_visible>
+ <layer_visible>'1'</layer_visible>
+ <showmsgs>'1'</showmsgs>
+ <msgheight>'76'</msgheight>
+ <treeobjts>'9'</treeobjts>
+ <sorttree>'1'</sorttree>
+ <treetype>'0'</treetype>
+ <classfilter></classfilter>
+ <namefilter></namefilter>
+ <classfilters></classfilters>
+ <namefilters></namefilters>
+ <signalfilter>'*'</signalfilter>
+ <signalfilters>'*'</signalfilters>
+ <capfilter>'*'</capfilter>
+ <capfilters>'*'</capfilters>
+ <aacoef>'0'</aacoef>
+ <propload>'0'</propload>
+ <blkzoom>'0'</blkzoom>
+ <moverhtonrun>'0'</moverhtonrun>
+ <transcolor>'0'</transcolor>
+ <transcolorvalue>'0'</transcolorvalue>
+ <alphablendvalue>'255'</alphablendvalue>
+ <antialize>'1'</antialize>
+ <LBorderStyle>'2'</LBorderStyle>
+ <globalscaleline>'0'</globalscaleline>
+ <dragbymousemove>'0'</dragbymousemove>
+ <showhints>'1'</showhints>
+ <notbringfrontselected>'0'</notbringfrontselected>
+ <tabs>
+  <visible>'0'</visible>
+  <index>'0'</index>
+ </tabs>
+ <rststep>'1'</rststep>
+ <saverst>'0'</saverst>
+ <loadrst>'0'</loadrst>
+ <appendrst>'0'</appendrst>
+ <lastld>'0'</lastld>
+ <saverstfile></saverstfile>
+ <loadrstfile></loadrstfile>
+ <rststep_str>'1'</rststep_str>
+ <timemash_str>'1'</timemash_str>
+ <isrealtime>'0'</isrealtime>
+ <stepwrite>'0'</stepwrite>
+ <com_id></com_id>
+ <rstshift>'0'</rstshift>
+ <newrsttime>'0'</newrsttime>
+ <outstep>'0'</outstep>
+ <outstep_str>'0'</outstep_str>
+ <vlayers>'65535'</vlayers>
+ <enabled_vlayers>'65535'</enabled_vlayers>
+ <curent_vlayers>'1'</curent_vlayers>
+ <vlayersname>'Слой 1'#13#10'Слой 2'#13#10'Слой 3'#13#10'Слой 4'#13#10'Слой 5'#13#10'Слой 6'#13#10'Слой 7'#13#10'Слой 8'#13#10'Слой 9'#13#10'Слой 10'#13#10'Слой 11'#13#10'Слой 12'#13#10'Слой 13'#13#10'Слой 14'#13#10'Слой 15'#13#10'Слой 16'#13#10</vlayersname>
+ <printarea>'0'</printarea>
+ <prngridon>'0'</prngridon>
+ <lmargin>'20'</lmargin>
+ <rmargin>'5'</rmargin>
+ <tmargin>'5'</tmargin>
+ <bmargin>'5'</bmargin>
+ <wiresstartsize>'3'</wiresstartsize>
+ <printstartpoint_x>'0'</printstartpoint_x>
+ <printstartpoint_y>'0'</printstartpoint_y>
+ <printendpoint_x>'0'</printendpoint_x>
+ <printendpoint_y>'0'</printendpoint_y>
+ <dbplugin></dbplugin>
+ <dbname></dbname>
+ <pluginname>'$(Root)\common.dll@project'</pluginname>
+ <plugindata>
+  <type>'18'</type>
+  <value>'00000000'</value>
+ </plugindata>
+ <layers>
+  <layer>
+   <color>'16777215'</color>
+   <linecolor>'0'</linecolor>
+   <linestyle>'0'</linestyle>
+   <linewidth>'1'</linewidth>
+   <visible>'1'</visible>
+   <enabled>'1'</enabled>
+   <active>'1'</active>
+   <name>'Автоматика'</name>
+   <addclslib></addclslib>
+   <groups>'МВТУ'#13#10</groups>
+   <pluginname>'$(Root)\mbtylib.dll@layer'</pluginname>
+   <parameters>
+    <data>
+     <name>'hmin'</name>
+     <caption>'Минимальный шаг'</caption>
+     <type>'0'</type>
+     <mode>'1'</mode>
+     <value>'0.01'</value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script>'EXPANDED'#13#10'GROUP Основные параметры'#13#10</script>
+    </data>
+    <data>
+     <name>'hmax'</name>
+     <caption>'Максимальный шаг'</caption>
+     <type>'0'</type>
+     <mode>'1'</mode>
+     <value>'0.01'</value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script>'EXPANDED'#13#10'GROUP Основные параметры'#13#10</script>
+    </data>
+    <data>
+     <name>'startstep'</name>
+     <caption>'Начальный шаг интегрирования (если 0 - выбирается автоматически)'</caption>
+     <type>'0'</type>
+     <mode>'1'</mode>
+     <value>'0'</value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script>'EXPANDED'#13#10'GROUP Основные параметры'#13#10</script>
+    </data>
+    <data>
+     <name>'intmet'</name>
+     <caption>'Метод интегрирования'</caption>
+     <type>'4'</type>
+     <mode>'1'</mode>
+     <value>'0'</value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script>'EXPANDED'#13#10'GROUP Основные параметры'#13#10'ONITEMSSCRIPT'#13#10'include "set_methods_aliases.inc";'#13#10'ENDSCRIPT'</script>
+    </data>
+    <data>
+     <name>'starttime'</name>
+     <caption>'Начальное время расчёта'</caption>
+     <type>'0'</type>
+     <mode>'1'</mode>
+     <value>'0'</value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script>'EXPANDED'#13#10'GROUP Основные параметры'#13#10</script>
+    </data>
+    <data>
+     <name>'endtime'</name>
+     <caption>'Конечное время расчёта'</caption>
+     <type>'0'</type>
+     <mode>'1'</mode>
+     <value>'1'</value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script>'EXPANDED'#13#10'GROUP Основные параметры'#13#10</script>
+    </data>
+    <data>
+     <name>'relerr'</name>
+     <caption>'Относительная ошибка'</caption>
+     <type>'0'</type>
+     <mode>'1'</mode>
+     <value>'0.0001'</value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script>'EXPANDED'#13#10'GROUP Основные параметры'#13#10</script>
+    </data>
+    <data>
+     <name>'abserr'</name>
+     <caption>'Абсолютная ошибка'</caption>
+     <type>'0'</type>
+     <mode>'1'</mode>
+     <value>'1E-6'</value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script>'EXPANDED'#13#10'GROUP Основные параметры'#13#10</script>
+    </data>
+    <data>
+     <name>'time_rel_error'</name>
+     <caption>'Относительная ошибка сравнения времени для дискретных блоков и источников'</caption>
+     <type>'0'</type>
+     <mode>'1'</mode>
+     <value>'1E-12'</value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script>'EXPANDED'#13#10'GROUP Основные параметры'</script>
+    </data>
+    <data>
+     <name>'InitOutputsValue'</name>
+     <caption>'Начальное значение неинициализированных выходов блоков'</caption>
+     <type>'0'</type>
+     <mode>'1'</mode>
+     <value>'0'</value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script>'EXPANDED'#13#10'GROUP Основные параметры'</script>
+    </data>
+    <data>
+     <name>'comp_names'</name>
+     <caption>'Имя (имена) алгоритма'</caption>
+     <type>'8'</type>
+     <mode>'1'</mode>
+     <value>'my_diagram'</value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script>'GROUP Генерация кода'</script>
+    </data>
+    <data>
+     <name>'debug_comp_name'</name>
+     <caption>'Текущий компонент'</caption>
+     <type>'4'</type>
+     <mode>'1'</mode>
+     <value></value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script>'GROUP Генерация кода'</script>
+    </data>
+    <data>
+     <name>'alternative_sys_name'</name>
+     <caption>'Имя системы'</caption>
+     <type>'4'</type>
+     <mode>'1'</mode>
+     <value></value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script>'GROUP Генерация кода'</script>
+    </data>
+    <data>
+     <name>'description'</name>
+     <caption>'Краткое описание схемы'</caption>
+     <type>'4'</type>
+     <mode>'1'</mode>
+     <value></value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script>'GROUP Генерация кода'</script>
+    </data>
+    <data>
+     <name>'synstep'</name>
+     <caption>'Шаг синхронизации задачи'</caption>
+     <type>'0'</type>
+     <mode>'1'</mode>
+     <value>'0'</value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script>'GROUP Управление расчётом'</script>
+    </data>
+    <data>
+     <name>'scriptexchstep'</name>
+     <caption>'Шаг обмена данными скриптов и пересчёта параметров блоков'</caption>
+     <type>'0'</type>
+     <mode>'1'</mode>
+     <value>'0'</value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script>'GROUP Управление расчётом'</script>
+    </data>
+    <data>
+     <name>'write_result_each_step'</name>
+     <caption>'Шаги, на которых данные выводятся на графики'</caption>
+     <type>'15'</type>
+     <mode>'1'</mode>
+     <value>
+      <items>'Шаги синхронизации'#13#10'Все шаги'</items>
+      <index>'0'</index>
+     </value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script>'GROUP Управление расчётом'</script>
+    </data>
+    <data>
+     <name>'precise_src_step'</name>
+     <caption>'Использовать уточнение шага для периодических источников и таймеров'</caption>
+     <type>'2'</type>
+     <mode>'1'</mode>
+     <value>'1'</value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script>'GROUP Управление расчётом'</script>
+    </data>
+    <data>
+     <name>'useminsteponsteps'</name>
+     <caption>'Снижать шаг до минимального при ступенчатых переходах'</caption>
+     <type>'2'</type>
+     <mode>'1'</mode>
+     <value>'0'</value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script>'GROUP Управление расчётом'</script>
+    </data>
+    <data>
+     <name>'algstepcontrol'</name>
+     <caption>'Использовать контроль шага по алгебраическим переменным для явных и DIRK методов'</caption>
+     <type>'2'</type>
+     <mode>'1'</mode>
+     <value>'1'</value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script>'GROUP Управление расчётом'</script>
+    </data>
+    <data>
+     <name>'precition_end_time'</name>
+     <caption>'Использовать точную остановку при превышении конечного времени'</caption>
+     <type>'2'</type>
+     <mode>'1'</mode>
+     <value>'1'</value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script>'GROUP Управление расчётом'</script>
+    </data>
+    <data>
+     <name>'StopMethod'</name>
+     <caption>'Способ остановки расчёта'</caption>
+     <type>'15'</type>
+     <mode>'1'</mode>
+     <value>
+      <items>'Полная остановка'#13#10'Пауза'</items>
+      <index>'0'</index>
+     </value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script>'GROUP Управление расчётом'</script>
+    </data>
+    <data>
+     <name>'loopmet'</name>
+     <caption>'Метод итерации петель'</caption>
+     <type>'15'</type>
+     <mode>'1'</mode>
+     <value>
+      <items>'Простая итерация'#13#10'Ньютона-Рафсона'#13#10'Бройдена'#13#10'Без итераций'</items>
+      <index>'1'</index>
+     </value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script>'GROUP Настройки решения НАУ'</script>
+    </data>
+    <data>
+     <name>'maxloopit'</name>
+     <caption>'Максимальное к-во итераций'</caption>
+     <type>'1'</type>
+     <mode>'1'</mode>
+     <value>'10'</value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script>'GROUP Настройки решения НАУ'</script>
+    </data>
+    <data>
+     <name>'jacoby_mode'</name>
+     <caption>'Алгоритм расчёта Якобиана'</caption>
+     <type>'15'</type>
+     <mode>'1'</mode>
+     <value>
+      <items>'По всей модели'#13#10'По зависимостям блоков'</items>
+      <index>'0'</index>
+     </value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script>'GROUP Настройки решения НАУ'</script>
+    </data>
+    <data>
+     <name>'jacoby_linear_opt'</name>
+     <caption>'Оптимизировать пересчёт функции для линейных коэффициентов матрицы Якоби'</caption>
+     <type>'2'</type>
+     <mode>'1'</mode>
+     <value>'1'</value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script>'GROUP Настройки решения НАУ'</script>
+    </data>
+    <data>
+     <name>'PrecitionSync'</name>
+     <caption>'Использовать точную синхронизацию'</caption>
+     <type>'2'</type>
+     <mode>'1'</mode>
+     <value>'0'</value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script>'GROUP Управление расчётом'</script>
+    </data>
+    <data>
+     <name>'limit_min_step'</name>
+     <caption>'Не понижать шаг ниже минимального при точной синхронизации'</caption>
+     <type>'2'</type>
+     <mode>'1'</mode>
+     <value>'1'</value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script>'GROUP Управление расчётом'</script>
+    </data>
+    <data>
+     <name>'round_step_by_hmin'</name>
+     <caption>'Округлить шаг кратно минимальному шагу интегрирования'</caption>
+     <type>'2'</type>
+     <mode>'1'</mode>
+     <value>'0'</value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script>'GROUP Управление расчётом'</script>
+    </data>
+    <data>
+     <name>'control_name'</name>
+     <caption>'Имя контрольного модуля (для компонентов)'</caption>
+     <type>'4'</type>
+     <mode>'1'</mode>
+     <value></value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script>'GROUP Генерация кода'</script>
+    </data>
+    <data>
+     <name>'func_prefix'</name>
+     <caption>'Префикс имени подпрограммы'</caption>
+     <type>'4'</type>
+     <mode>'1'</mode>
+     <value>'s'</value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script>'GROUP Генерация кода'</script>
+    </data>
+    <data>
+     <name>'gen_name'</name>
+     <caption>'Идентификатор типа модуля'</caption>
+     <type>'4'</type>
+     <mode>'1'</mode>
+     <value></value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script>'GROUP Генерация кода'</script>
+    </data>
+    <data>
+     <name>'showvalues'</name>
+     <caption>'Показать все значения линий'</caption>
+     <type>'2'</type>
+     <mode>'1'</mode>
+     <value>'0'</value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script>'GROUP Визуализация данных'</script>
+    </data>
+    <data>
+     <name>'highlight'</name>
+     <caption>'Подсвечивать линии связи'</caption>
+     <type>'2'</type>
+     <mode>'1'</mode>
+     <value>'1'</value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script>'GROUP Визуализация данных'</script>
+    </data>
+    <data>
+     <name>'hvalue'</name>
+     <caption>'Значение перехода подсветки'</caption>
+     <type>'0'</type>
+     <mode>'1'</mode>
+     <value>'0'</value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script>'GROUP Визуализация данных'</script>
+    </data>
+    <data>
+     <name>'hcolor'</name>
+     <caption>'Цвет подсвеченной линии'</caption>
+     <type>'3'</type>
+     <mode>'1'</mode>
+     <value>'15335658'</value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script>'GROUP Визуализация данных'</script>
+    </data>
+    <data>
+     <name>'lcolor'</name>
+     <caption>'Цвет неподсвеченной линии'</caption>
+     <type>'3'</type>
+     <mode>'1'</mode>
+     <value>'0'</value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script>'GROUP Визуализация данных'</script>
+    </data>
+    <data>
+     <name>'remote_debug_mode'</name>
+     <caption>'Режим отладки'</caption>
+     <type>'15'</type>
+     <mode>'1'</mode>
+     <value>
+      <items>'Из общих настроек'#13#10'Локальный'#13#10'Удалённый'#13#10'Получать только входы'</items>
+      <index>'0'</index>
+     </value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script>'GROUP Удалённая отладка кода'</script>
+    </data>
+    <data>
+     <name>'common_remote_translate'</name>
+     <caption>'Транслировать все входы алгоритмов в исполнительную систему и все выходы из неё'</caption>
+     <type>'2'</type>
+     <mode>'1'</mode>
+     <value>'0'</value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script>'GROUP Удалённая отладка кода'</script>
+    </data>
+    <data>
+     <name>'download_all_signals_auto'</name>
+     <caption>'Получать все используемые в скриптах сигналы из исполнительной системы при отладке'</caption>
+     <type>'2'</type>
+     <mode>'1'</mode>
+     <value>'0'</value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script>'GROUP Удалённая отладка кода'</script>
+    </data>
+    <data>
+     <name>'connectstr'</name>
+     <caption>'Адрес(а) сервера(ов) при удалённой отладке (пусто-из общих настроек)'</caption>
+     <type>'8'</type>
+     <mode>'1'</mode>
+     <value></value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script>'GROUP Удалённая отладка кода'</script>
+    </data>
+    <data>
+     <name>'connectconf'</name>
+     <caption>'Другое имя конфигурации загрузки при удалённой отладке (пусто-из общих настроек)'</caption>
+     <type>'4'</type>
+     <mode>'1'</mode>
+     <value></value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script>'GROUP Удалённая отладка кода'</script>
+    </data>
+    <data>
+     <name>'usesignalsort'</name>
+     <caption>'Учитывать в сортировке использование сигналов в блоках чтения-записи сигналов'</caption>
+     <type>'2'</type>
+     <mode>'1'</mode>
+     <value>'1'</value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script>'GROUP Сортировка блоков'</script>
+    </data>
+    <data>
+     <name>'signalsortlooperror'</name>
+     <caption>'Учитывать петли для блоков чтения-записи сигналов'</caption>
+     <type>'2'</type>
+     <mode>'1'</mode>
+     <value>'0'</value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script>'GROUP Сортировка блоков'</script>
+    </data>
+    <data>
+     <name>'useconditionsort'</name>
+     <caption>'Учитывать в сортировке блоки условного выполнения субмоделей'</caption>
+     <type>'2'</type>
+     <mode>'1'</mode>
+     <value>'1'</value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script>'GROUP Сортировка блоков'</script>
+    </data>
+    <data>
+     <name>'usepropassignsort'</name>
+     <caption>'Учитывать присвоение свойств при сортировке модели'</caption>
+     <type>'2'</type>
+     <mode>'1'</mode>
+     <value>'1'</value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script>'GROUP Сортировка блоков'</script>
+    </data>
+    <data>
+     <name>'useoutreplace'</name>
+     <caption>'Использовать переподключение выходов напрямую к источнику для блоков чтения сигналов'</caption>
+     <type>'2'</type>
+     <mode>'1'</mode>
+     <value>'0'</value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script>'GROUP Сортировка блоков'</script>
+    </data>
+    <data>
+     <name>'writeonlyonsync'</name>
+     <caption>'Записывать сигналы только на шаге синхронизации в синхронизирующем потоке'</caption>
+     <type>'2'</type>
+     <mode>'1'</mode>
+     <value>'0'</value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script>'GROUP Управление расчётом'</script>
+    </data>
+    <data>
+     <name>'fsignalwritemode'</name>
+     <caption>'Режим записи сигналов при синхронном обмене'</caption>
+     <type>'15'</type>
+     <mode>'1'</mode>
+     <value>
+      <items>'Сразу после расчёта'#13#10'Отложенная на шаг синхронизации'</items>
+      <index>'0'</index>
+     </value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script>'GROUP Управление расчётом'</script>
+    </data>
+    <data>
+     <name>'writesignalsoninitstate'</name>
+     <caption>'Записывать значения всех сигналов при инициализации'</caption>
+     <type>'2'</type>
+     <mode>'1'</mode>
+     <value>'0'</value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script>'GROUP Управление расчётом'</script>
+    </data>
+    <data>
+     <name>'internal_rt_sleep'</name>
+     <caption>'Использовать задержку реального времени на внутренних шагах'</caption>
+     <type>'2'</type>
+     <mode>'1'</mode>
+     <value>'0'</value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script>'GROUP Управление расчётом'</script>
+    </data>
+    <data>
+     <name>'check_remote_consts'</name>
+     <caption>'Проверка свойств блоков при старте в удалённом режиме'</caption>
+     <type>'2'</type>
+     <mode>'1'</mode>
+     <value>'0'</value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script>'GROUP Удалённая отладка кода'</script>
+    </data>
+    <data>
+     <name>'fremote_sync_method'</name>
+     <caption>'Способ синхронизации параметров блоков при проверке свойств'</caption>
+     <type>'15'</type>
+     <mode>'1'</mode>
+     <value>
+      <items>'Не выполнять'#13#10'По модели'#13#10'По исполнительной системе'</items>
+      <index>'0'</index>
+     </value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script>'GROUP Удалённая отладка кода'</script>
+    </data>
+    <data>
+     <name>'usereconnect'</name>
+     <caption>'Использовать автоматическое пересоединение при разрыве связи'</caption>
+     <type>'2'</type>
+     <mode>'1'</mode>
+     <value>'0'</value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script>'GROUP Удалённая отладка кода'</script>
+    </data>
+    <data>
+     <name>'dbrestartfileload'</name>
+     <caption>'Имя файла чтения рестарта базы сигналов'</caption>
+     <type>'16'</type>
+     <mode>'1'</mode>
+     <value></value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script>'GROUP Управление расчётом'</script>
+    </data>
+    <data>
+     <name>'dbrestartfilewrite'</name>
+     <caption>'Имя файла записи рестарта базы сигналов'</caption>
+     <type>'16'</type>
+     <mode>'1'</mode>
+     <value></value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script>'GROUP Управление расчётом'</script>
+    </data>
+    <data>
+     <name>'show_numbers'</name>
+     <caption>'Отображать числа вместо β, k, τ, T в блоках (где применимо)'</caption>
+     <type>'2'</type>
+     <mode>'1'</mode>
+     <value>'0'</value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script>'GROUP Визуализация данных'</script>
+    </data>
+    <data>
+     <name>'ode_lsolver_name'</name>
+     <caption>'Модуль решения разреженной СЛАУ'</caption>
+     <type>'4'</type>
+     <mode>'1'</mode>
+     <value>'sparce_marc'</value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script>'GROUP Тонкие настройки решения СЛАУ'#13#10'ONITEMSSCRIPT'#13#10'include "set_splae_method.inc";'#13#10'ENDSCRIPT'#13#10</script>
+    </data>
+    <data>
+     <name>'ode_jmax'</name>
+     <caption>'Максимальное число делений шага для НАУ'</caption>
+     <type>'1'</type>
+     <mode>'1'</mode>
+     <value>'8'</value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script>'GROUP Тонкие настройки решения НАУ'</script>
+    </data>
+    <data>
+     <name>'ode_realzero'</name>
+     <caption>'Ноль для при решении НАУ'</caption>
+     <type>'0'</type>
+     <mode>'1'</mode>
+     <value>'1E-80'</value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script>'GROUP Тонкие настройки решения НАУ'</script>
+    </data>
+    <data>
+     <name>'ode_kerr_loop'</name>
+     <caption>'Максимальная допустимая ошибка при решении НАУ'</caption>
+     <type>'0'</type>
+     <mode>'1'</mode>
+     <value>'0.1'</value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script>'GROUP Тонкие настройки решения НАУ'</script>
+    </data>
+    <data>
+     <name>'ode_teta1_loop'</name>
+     <caption>'Коэффициент оценки сходимости итераций при решении НАУ'</caption>
+     <type>'0'</type>
+     <mode>'1'</mode>
+     <value>'0.1'</value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script>'GROUP Тонкие настройки решения НАУ'</script>
+    </data>
+    <data>
+     <name>'ode_teta_min'</name>
+     <caption>'Минимальное ограничение для teta при решении НАУ'</caption>
+     <type>'0'</type>
+     <mode>'1'</mode>
+     <value>'0.001'</value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script>'GROUP Тонкие настройки решения НАУ'</script>
+    </data>
+    <data>
+     <name>'ode_teta_0999'</name>
+     <caption>'Единичное teta при решении НАУ'</caption>
+     <type>'0'</type>
+     <mode>'1'</mode>
+     <value>'0.999'</value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script>'GROUP Тонкие настройки решения НАУ'</script>
+    </data>
+    <data>
+     <name>'ode_teta_max'</name>
+     <caption>'Максимальное teta при решении НАУ'</caption>
+     <type>'0'</type>
+     <mode>'1'</mode>
+     <value>'1000'</value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script>'GROUP Тонкие настройки решения НАУ'</script>
+    </data>
+    <data>
+     <name>'ode_d_min_loop'</name>
+     <caption>'Абсолютное приращение переменных при решении НАУ'</caption>
+     <type>'0'</type>
+     <mode>'1'</mode>
+     <value>'1E-16'</value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script>'GROUP Тонкие настройки решения НАУ'</script>
+    </data>
+    <data>
+     <name>'ode_d_jacoby'</name>
+     <caption>'Относительное приращение переменных при расчёте Якобиана'</caption>
+     <type>'0'</type>
+     <mode>'1'</mode>
+     <value>'1E-6'</value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script>'GROUP Тонкие настройки решения НАУ'</script>
+    </data>
+    <data>
+     <name>'ode_min_delta_step'</name>
+     <caption>'Минимальное относительное ограничение изменения шага'</caption>
+     <type>'0'</type>
+     <mode>'1'</mode>
+     <value>'1.05'</value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script>'GROUP Тонкие настройки решения НАУ'</script>
+    </data>
+    <data>
+     <name>'ode_max_delta_step'</name>
+     <caption>'Максимальное ограничение для деления шага на 2'</caption>
+     <type>'0'</type>
+     <mode>'1'</mode>
+     <value>'2.05'</value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script>'GROUP Тонкие настройки решения НАУ'</script>
+    </data>
+    <data>
+     <name>'ode_fmax'</name>
+     <caption>'Верхнее ограничение для значений алгебраических функций'</caption>
+     <type>'0'</type>
+     <mode>'1'</mode>
+     <value>'1E100'</value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script>'GROUP Тонкие настройки решения НАУ'</script>
+    </data>
+    <data>
+     <name>'ode_sp_iter_flag'</name>
+     <caption>'Флаг итерационного уточнения решения разреженной СЛАУ'</caption>
+     <type>'2'</type>
+     <mode>'1'</mode>
+     <value>'0'</value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script>'GROUP Тонкие настройки решения СЛАУ'</script>
+    </data>
+    <data>
+     <name>'ode_sp_rows'</name>
+     <caption>'Число просматриваемых строк разреженной СЛАУ'</caption>
+     <type>'1'</type>
+     <mode>'1'</mode>
+     <value>'3'</value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script>'GROUP Тонкие настройки решения СЛАУ'</script>
+    </data>
+    <data>
+     <name>'ode_sp_tb'</name>
+     <caption>'Барьер при решении разреженной СЛАУ'</caption>
+     <type>'0'</type>
+     <mode>'1'</mode>
+     <value>'0'</value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script>'GROUP Тонкие настройки решения СЛАУ'</script>
+    </data>
+    <data>
+     <name>'ode_sp_tu'</name>
+     <caption>'Коэффициент численной устойчивости решения разреженной СЛАУ'</caption>
+     <type>'0'</type>
+     <mode>'1'</mode>
+     <value>'1'</value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script>'GROUP Тонкие настройки решения СЛАУ'</script>
+    </data>
+    <data>
+     <name>'ode_sp_maxiter'</name>
+     <caption>'Максималльное к-во итераций при решении разреженной СЛАУ'</caption>
+     <type>'1'</type>
+     <mode>'1'</mode>
+     <value>'20'</value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script>'GROUP Тонкие настройки решения СЛАУ'</script>
+    </data>
+    <data>
+     <name>'ode_sp_eps'</name>
+     <caption>'Допустимая относительная ошибка итераций при решении разреженной СЛАУ'</caption>
+     <type>'0'</type>
+     <mode>'1'</mode>
+     <value>'0.0001'</value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script>'GROUP Тонкие настройки решения СЛАУ'</script>
+    </data>
+    <data>
+     <name>'ode_sp_abserr'</name>
+     <caption>'Допустимая абсолютная ошибка при решении разреженной СЛАУ'</caption>
+     <type>'0'</type>
+     <mode>'1'</mode>
+     <value>'1E-15'</value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script>'GROUP Тонкие настройки решения СЛАУ'</script>
+    </data>
+    <data>
+     <name>'ode_sp_errdxstart'</name>
+     <caption>'Максимальная начальная ошибка при решении разреженной СЛАУ'</caption>
+     <type>'0'</type>
+     <mode>'1'</mode>
+     <value>'1E30'</value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script>'GROUP Тонкие настройки решения СЛАУ'</script>
+    </data>
+    <data>
+     <name>'ode_accuracy_error'</name>
+     <caption>'Выдавать предупреждения  о недостижении точности интегрирования'</caption>
+     <type>'2'</type>
+     <mode>'1'</mode>
+     <value>'1'</value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script>'GROUP Тонкие настройки решения НАУ'</script>
+    </data>
+    <data>
+     <name>'ode_n_accuracy_errors'</name>
+     <caption>'Максимальное количество сообщений о недостижении точности интегрирования'</caption>
+     <type>'1'</type>
+     <mode>'1'</mode>
+     <value>'3'</value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script>'GROUP Тонкие настройки решения НАУ'</script>
+    </data>
+    <data>
+     <name>'ode_impl_iterate_loop_start'</name>
+     <caption>'Итерировать алгебраические петли при старте для неявных методов'</caption>
+     <type>'2'</type>
+     <mode>'1'</mode>
+     <value>'1'</value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script>'GROUP Тонкие настройки решения НАУ'</script>
+    </data>
+    <data>
+     <name>'BDF_order_LC'</name>
+     <caption>'Порядок метода BDF для дискретных моделей индуктивности и ёмкости библиотеки "ас - Электрика"'</caption>
+     <type>'15'</type>
+     <mode>'1'</mode>
+     <value>
+      <items>'1'#13#10'2'#13#10'3'</items>
+      <index>'0'</index>
+     </value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script>'GROUP Электрические схемы'</script>
+    </data>
+   </parameters>
+   <plugindata>
+    <type>'18'</type>
+    <value>'00000000'</value>
+   </plugindata>
+  </layer>
+ </layers>
+ <page>
+  <name>'C:\Users\yakov\Desktop\Новая папка\lsu2.xprt'</name>
+  <script>'initialization'#13#10#13#10'A = ['#13#10#9#9#9'[-0.00271615, 0.248462, 0, -9.81],'#13#10#9#9#9'[-0.257616, -11.3097, 68.9497, 0],'#13#10#9#9#9'[0.0576336, -7.23232, -11.3237, 0],'#13#10#9#9#9'[0, 0, 1, 0]'#13#10#9'];'#9#13#10#13#10'B = ['#13#10#9'[1.959083],'#13#10#9'[-73.99448],'#13#10#9'[-188.4752],'#13#10#9'[0]'#13#10']  ;'#13#10#13#10'C = eye(4)   ;'#13#10'D = matrix(4, 1)   ;'#13#10#13#10'x0 = [1, 0, 0.25, 0]  ;'#13#10#13#10'A = transp(A);'#13#10'B = transp(B);'#13#10'C = transp(C);'#13#10'D = transp(D);'#13#10'end;'</script>
+  <visible>'1'</visible>
+  <x>'242.547295521411'</x>
+  <y>'57.9639460524211'</y>
+  <width>'1707'</width>
+  <height>'881'</height>
+  <scalex>'4.1772481694156'</scalex>
+  <scaley>'4.1772481694156'</scaley>
+  <angle>'0'</angle>
+  <backcolor>'16777215'</backcolor>
+  <transparent>'0'</transparent>
+  <calcany>'0'</calcany>
+  <snap>'1'</snap>
+  <snapstep>'8'</snapstep>
+  <grid>'1'</grid>
+  <imagemode>'0'</imagemode>
+  <curentlayer>'0'</curentlayer>
+  <objectsnap>'0'</objectsnap>
+  <printable>'1'</printable>
+  <scalelines>'0'</scalelines>
+  <usepagelayers>'0'</usepagelayers>
+  <object>
+   <name>'States_dyn6'</name>
+   <class_name>'Переменные состояния'</class_name>
+   <obj_type>'100'</obj_type>
+   <obj_version>'0'</obj_version>
+   <point_count>'4'</point_count>
+   <visuallayer>'1'</visuallayer>
+   <points>
+    <type>'26'</type>
+    <value>'[(144 , 40),(176 , 40),(144 , 24),(144 , 60)]'</value>
+   </points>
+   <color>'16777215'</color>
+   <visual_props>
+    <data>
+     <name>'Name'</name>
+     <caption>'Имя объекта'</caption>
+     <type>'4'</type>
+     <mode>'2'</mode>
+     <value>'States_dyn6'</value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script></script>
+    </data>
+    <data>
+     <name>'ClassName'</name>
+     <caption>'Тип элемента'</caption>
+     <type>'30'</type>
+     <mode>'2'</mode>
+     <value>'Переменные состояния'</value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script></script>
+    </data>
+    <data>
+     <name>'Hint'</name>
+     <caption>'Подсказка'</caption>
+     <type>'8'</type>
+     <mode>'2'</mode>
+     <value></value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script></script>
+    </data>
+    <data>
+     <name>'HideHintOnEdit'</name>
+     <caption>'Блокировать подсказку при редактировании'</caption>
+     <type>'2'</type>
+     <mode>'2'</mode>
+     <value>'0'</value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script></script>
+    </data>
+    <data>
+     <name>'Visible'</name>
+     <caption>'Видимость при выполнении'</caption>
+     <type>'2'</type>
+     <mode>'2'</mode>
+     <value>'1'</value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script></script>
+    </data>
+    <data>
+     <name>'Color'</name>
+     <caption>'Цвет'</caption>
+     <type>'3'</type>
+     <mode>'2'</mode>
+     <value>'16777215'</value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script></script>
+    </data>
+    <data>
+     <name>'Points'</name>
+     <caption>'Координаты точек'</caption>
+     <type>'26'</type>
+     <mode>'2'</mode>
+     <value>'[(144 , 40),(176 , 40),(144 , 24),(144 , 60)]'</value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script></script>
+    </data>
+    <data>
+     <name>'Instance'</name>
+     <caption>'Ссылка'</caption>
+     <type>'29'</type>
+     <mode>'2'</mode>
+     <value></value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script></script>
+    </data>
+    <data>
+     <name>'EditInstance'</name>
+     <caption>'Ссылка при редактировании'</caption>
+     <type>'2'</type>
+     <mode>'2'</mode>
+     <value>'0'</value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script></script>
+    </data>
+    <data>
+     <name>'InstanceMode'</name>
+     <caption>'Действие для вывода ссылки'</caption>
+     <type>'15'</type>
+     <mode>'2'</mode>
+     <value>
+      <items>'Двойной щелчок левой кнопкой'#13'Щелчок левой кнопой'#13'Щелчок правой кнопкой'#13'Alt+левая кнопка мыши'#13'Alt+правая кнопка мыши'#13'Alt+двойной щелчок левой кнопкой'#13'Shift+двойной щелчок левой кнопкой'</items>
+      <index>'0'</index>
+     </value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script></script>
+    </data>
+    <data>
+     <name>'Tag'</name>
+     <caption>'Ярлык'</caption>
+     <type>'1'</type>
+     <mode>'2'</mode>
+     <value>'0'</value>
+     <textvalue>'0'</textvalue>
+     <fconstant>'0'</fconstant>
+     <script></script>
+    </data>
+    <data>
+     <name>'Template'</name>
+     <caption>'Шаблон автозаполнения'</caption>
+     <type>'8'</type>
+     <mode>'2'</mode>
+     <value></value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script></script>
+    </data>
+    <data>
+     <name>'Layer'</name>
+     <caption>'Номер решателя'</caption>
+     <type>'1'</type>
+     <mode>'2'</mode>
+     <value>'0'</value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script></script>
+    </data>
+    <data>
+     <name>'OnInitScript'</name>
+     <caption>'Скрипт инициализации объекта'</caption>
+     <type>'8'</type>
+     <mode>'2'</mode>
+     <value></value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script></script>
+    </data>
+    <data>
+     <name>'OnRunScript'</name>
+     <caption>'Скрипт исполнения объекта'</caption>
+     <type>'8'</type>
+     <mode>'2'</mode>
+     <value></value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script></script>
+    </data>
+    <data>
+     <name>'OnDestroyScript'</name>
+     <caption>'Скрипт уничтожения объекта'</caption>
+     <type>'8'</type>
+     <mode>'2'</mode>
+     <value></value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script></script>
+    </data>
+    <data>
+     <name>'LockSizes'</name>
+     <caption>'Блокировать изменение размеров'</caption>
+     <type>'2'</type>
+     <mode>'2'</mode>
+     <value>'0'</value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script></script>
+    </data>
+    <data>
+     <name>'MouseIn'</name>
+     <caption>'Указатель в пределах объекта'</caption>
+     <type>'2'</type>
+     <mode>'2'</mode>
+     <value>'0'</value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script></script>
+    </data>
+    <data>
+     <name>'Active'</name>
+     <caption>'Активность объекта'</caption>
+     <type>'2'</type>
+     <mode>'2'</mode>
+     <value>'1'</value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script></script>
+    </data>
+    <data>
+     <name>'MayLoadRestart'</name>
+     <caption>'Загружать рестарт'</caption>
+     <type>'2'</type>
+     <mode>'2'</mode>
+     <value>'1'</value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script></script>
+    </data>
+    <data>
+     <name>'BlockIndex'</name>
+     <caption>'Индекс блока'</caption>
+     <type>'4'</type>
+     <mode>'2'</mode>
+     <value>'1'</value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script></script>
+    </data>
+    <data>
+     <name>'UID'</name>
+     <caption>'UID'</caption>
+     <type>'4'</type>
+     <mode>'2'</mode>
+     <value>'1'</value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script></script>
+    </data>
+    <data>
+     <name>'Opacity'</name>
+     <caption>'Коэффициент прозрачности'</caption>
+     <type>'0'</type>
+     <mode>'2'</mode>
+     <value>'1'</value>
+     <textvalue>'1.0000000000'</textvalue>
+     <fconstant>'0'</fconstant>
+     <script></script>
+    </data>
+    <data>
+     <name>'InvisibleProps'</name>
+     <caption>'Список невидимых свойств'</caption>
+     <type>'8'</type>
+     <mode>'2'</mode>
+     <value></value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script></script>
+    </data>
+    <data>
+     <name>'ReadOnlyProps'</name>
+     <caption>'Список имён свойств для чтения'</caption>
+     <type>'8'</type>
+     <mode>'2'</mode>
+     <value></value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script></script>
+    </data>
+    <data>
+     <name>'ShowArrows'</name>
+     <caption>'Показывать стрелки портов'</caption>
+     <type>'2'</type>
+     <mode>'2'</mode>
+     <value>'1'</value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script></script>
+    </data>
+    <data>
+     <name>'Angle'</name>
+     <caption>'Угол поворота'</caption>
+     <type>'0'</type>
+     <mode>'2'</mode>
+     <value>'0'</value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script></script>
+    </data>
+    <data>
+     <name>'Width'</name>
+     <caption>'Ширина'</caption>
+     <type>'0'</type>
+     <mode>'2'</mode>
+     <value>'64'</value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script></script>
+    </data>
+    <data>
+     <name>'Height'</name>
+     <caption>'Высота'</caption>
+     <type>'0'</type>
+     <mode>'2'</mode>
+     <value>'32'</value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script></script>
+    </data>
+    <data>
+     <name>'ShowFrame'</name>
+     <caption>'Показывать рамку'</caption>
+     <type>'2'</type>
+     <mode>'2'</mode>
+     <value>'1'</value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script></script>
+    </data>
+    <data>
+     <name>'FrameColor'</name>
+     <caption>'Цвет рамки'</caption>
+     <type>'3'</type>
+     <mode>'2'</mode>
+     <value>'0'</value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script></script>
+    </data>
+    <data>
+     <name>'LabelText'</name>
+     <caption>'Подпись блока'</caption>
+     <type>'28'</type>
+     <mode>'2'</mode>
+     <value>#13#10</value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script></script>
+    </data>
+    <data>
+     <name>'LabelFont'</name>
+     <caption>'Шрифт подписи блока'</caption>
+     <type>'7'</type>
+     <mode>'2'</mode>
+     <value>
+      <name>'Cambria'</name>
+      <height>'14'</height>
+      <charset>'1'</charset>
+      <color>'2147483656'</color>
+      <style>'0'</style>
+      <angle>'0'</angle>
+     </value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script></script>
+    </data>
+    <data>
+     <name>'LabelAlign'</name>
+     <caption>'Выравнивание подписи'</caption>
+     <type>'15'</type>
+     <mode>'2'</mode>
+     <value>
+      <items>'По левому краю'#13'Посередине'#13'По правому краю'#13'По центру блока'</items>
+      <index>'1'</index>
+     </value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script></script>
+    </data>
+    <data>
+     <name>'LabelStyle'</name>
+     <caption>'Стиль подписи'</caption>
+     <type>'15'</type>
+     <mode>'2'</mode>
+     <value>
+      <items>'Подпись'#13'Имя'#13'Тип'#13'Без подписи'#13'Индекс блока'#13'UID блока'</items>
+      <index>'0'</index>
+     </value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script></script>
+    </data>
+    <data>
+     <name>'Trasparent'</name>
+     <caption>'Прозрачный фон'</caption>
+     <type>'2'</type>
+     <mode>'2'</mode>
+     <value>'0'</value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script></script>
+    </data>
+    <data>
+     <name>'Proportional'</name>
+     <caption>'Сохранять пропорции'</caption>
+     <type>'2'</type>
+     <mode>'2'</mode>
+     <value>'1'</value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script></script>
+    </data>
+    <data>
+     <name>'Mirror'</name>
+     <caption>'Зеркально отразить'</caption>
+     <type>'2'</type>
+     <mode>'2'</mode>
+     <value>'0'</value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script></script>
+    </data>
+    <data>
+     <name>'Animated'</name>
+     <caption>'Анимированный'</caption>
+     <type>'2'</type>
+     <mode>'2'</mode>
+     <value>'0'</value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script></script>
+    </data>
+    <data>
+     <name>'Sensible'</name>
+     <caption>'Чувствительность к действиям мыши в режиме индикации при расчёте'</caption>
+     <type>'2'</type>
+     <mode>'2'</mode>
+     <value>'0'</value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script></script>
+    </data>
+    <data>
+     <name>'Graphics'</name>
+     <caption>'Графическое изображение'</caption>
+     <type>'31'</type>
+     <mode>'2'</mode>
+     <value></value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script></script>
+    </data>
+    <data>
+     <name>'LayeredOpacity'</name>
+     <caption>'Послойная прозрачность'</caption>
+     <type>'2'</type>
+     <mode>'2'</mode>
+     <value>'0'</value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script></script>
+    </data>
+    <data>
+     <name>'NotChangeImageSize'</name>
+     <caption>'Не масштабировать изображение'</caption>
+     <type>'2'</type>
+     <mode>'2'</mode>
+     <value>'0'</value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script></script>
+    </data>
+    <data>
+     <name>'RecalcAlways'</name>
+     <caption>'Пересчитывать скрипт всегда'</caption>
+     <type>'2'</type>
+     <mode>'2'</mode>
+     <value>'0'</value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script></script>
+    </data>
+    <data>
+     <name>'ShowPortNamesMode'</name>
+     <caption>'Режим показа подписей портов'</caption>
+     <type>'15'</type>
+     <mode>'2'</mode>
+     <value>
+      <items>'Не показывать'#13#10'Внутри блока всегда'#13#10'Снаружи блока для неподключенных'#13#10'Снаружи блока всегда'</items>
+      <index>'0'</index>
+     </value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script></script>
+    </data>
+    <data>
+     <name>'ShowPortNamesFont'</name>
+     <caption>'Шрифт подписей портов блока'</caption>
+     <type>'7'</type>
+     <mode>'2'</mode>
+     <value>
+      <name>'Tahoma'</name>
+      <height>'10'</height>
+      <charset>'0'</charset>
+      <color>'0'</color>
+      <style>'0'</style>
+      <angle>'0'</angle>
+     </value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script></script>
+    </data>
+   </visual_props>
+   <freeze>'0'</freeze>
+   <active_element>'1'</active_element>
+   <is_child>'0'</is_child>
+   <invisibleprops></invisibleprops>
+   <readonlyprops></readonlyprops>
+   <extmodulname>'$(Root)\mbtylib.dll@block'</extmodulname>
+   <calctemplate>'mbty_std.dll'#13#10'TStates'</calctemplate>
+   <helpkeyword>'0037'</helpkeyword>
+   <helpfile></helpfile>
+   <ownerfilter></ownerfilter>
+   <paramfile></paramfile>
+   <uid>'1'</uid>
+   <indexstr>'1'</indexstr>
+   <custom_props>
+    <data>
+     <name>'xc'</name>
+     <caption>'Число переменных состояния'</caption>
+     <type>'1'</type>
+     <mode>'1'</mode>
+     <value>'4'</value>
+     <textvalue></textvalue>
+     <fconstant>'1'</fconstant>
+     <script></script>
+    </data>
+    <data>
+     <name>'uc'</name>
+     <caption>'Число входных воздействий'</caption>
+     <type>'1'</type>
+     <mode>'1'</mode>
+     <value>'1'</value>
+     <textvalue></textvalue>
+     <fconstant>'1'</fconstant>
+     <script></script>
+    </data>
+    <data>
+     <name>'yc'</name>
+     <caption>'Число выходов'</caption>
+     <type>'1'</type>
+     <mode>'1'</mode>
+     <value>'4'</value>
+     <textvalue></textvalue>
+     <fconstant>'1'</fconstant>
+     <script></script>
+    </data>
+    <data>
+     <name>'A'</name>
+     <caption>'Матрица A(Nx*Nx)'</caption>
+     <type>'13'</type>
+     <mode>'1'</mode>
+     <value>'[[-0.00271615 , -0.257616 , 0.0576336 , 0];[0.248462 , -11.3097 , -7.23232 , 0];[0 , 68.9497 , -11.3237 , 1];[-9.81 , 0 , 0 , 0]]'</value>
+     <textvalue>'A'</textvalue>
+     <fconstant>'0'</fconstant>
+     <script></script>
+    </data>
+    <data>
+     <name>'B'</name>
+     <caption>'Матрица B(Nu*Nx)'</caption>
+     <type>'13'</type>
+     <mode>'1'</mode>
+     <value>'[[0 , 0 , 0 , 0]]'</value>
+     <textvalue>'D'</textvalue>
+     <fconstant>'0'</fconstant>
+     <script></script>
+    </data>
+    <data>
+     <name>'C'</name>
+     <caption>'Матрица C(Nx*Ny)'</caption>
+     <type>'13'</type>
+     <mode>'1'</mode>
+     <value>'[[1 , 0 , 0 , 0];[0 , 1 , 0 , 0];[0 , 0 , 1 , 0];[0 , 0 , 0 , 1]]'</value>
+     <textvalue>'C'</textvalue>
+     <fconstant>'0'</fconstant>
+     <script></script>
+    </data>
+    <data>
+     <name>'D'</name>
+     <caption>'Матрица D(Nu*Ny)'</caption>
+     <type>'13'</type>
+     <mode>'1'</mode>
+     <value>'[[1.959083 , -73.99448 , -188.4752 , 0]]'</value>
+     <textvalue>'B'</textvalue>
+     <fconstant>'0'</fconstant>
+     <script></script>
+    </data>
+    <data>
+     <name>'y0'</name>
+     <caption>'Начальные условия (Nx)'</caption>
+     <type>'5'</type>
+     <mode>'1'</mode>
+     <value>'[1 , 0 , 0.25 , 0]'</value>
+     <textvalue>'x0'</textvalue>
+     <fconstant>'1'</fconstant>
+     <script></script>
+    </data>
+   </custom_props>
+   <custom_params>
+    <data>
+     <name>'xdif'</name>
+     <caption>'Динамические переменные'</caption>
+     <type>'5'</type>
+     <mode>'0'</mode>
+     <value>'[0]'</value>
+     <textvalue>'[0]'</textvalue>
+     <fconstant>'1'</fconstant>
+     <script></script>
+    </data>
+    <data>
+     <name>'fdif'</name>
+     <caption>'Производные'</caption>
+     <type>'5'</type>
+     <mode>'0'</mode>
+     <value>'[0]'</value>
+     <textvalue>'[0]'</textvalue>
+     <fconstant>'1'</fconstant>
+     <script></script>
+    </data>
+   </custom_params>
+   <plugindata>
+    <type>'18'</type>
+    <value>'00000000'</value>
+   </plugindata>
+   <ports>
+    <port>
+     <name>'inport'</name>
+     <side>'0'</side>
+     <x>'-0.5'</x>
+     <y>'0'</y>
+     <auto>'1'</auto>
+     <mode>'0'</mode>
+     <type>'0'</type>
+     <itemid>'-1'</itemid>
+     <inversebyte>'0'</inversebyte>
+     <center>'0'</center>
+     <x_glob>'112'</x_glob>
+     <y_glob>'40'</y_glob>
+     <clonable>'0'</clonable>
+     <allsurface>'0'</allsurface>
+     <portisoff>'0'</portisoff>
+     <canmove>'0'</canmove>
+     <angbyline>'0'</angbyline>
+    </port>
+    <port>
+     <name>'outport'</name>
+     <side>'2'</side>
+     <x>'0.5'</x>
+     <y>'0'</y>
+     <auto>'1'</auto>
+     <mode>'1'</mode>
+     <type>'0'</type>
+     <itemid>'-1'</itemid>
+     <inversebyte>'0'</inversebyte>
+     <center>'0'</center>
+     <x_glob>'176'</x_glob>
+     <y_glob>'40'</y_glob>
+     <clonable>'0'</clonable>
+     <allsurface>'0'</allsurface>
+     <portisoff>'0'</portisoff>
+     <canmove>'0'</canmove>
+     <angbyline>'0'</angbyline>
+    </port>
+   </ports>
+   <width>'64'</width>
+   <height>'32'</height>
+   <angle>'0'</angle>
+   <blockimage>
+    <page>
+     <name>'Container'</name>
+     <script></script>
+     <visible>'1'</visible>
+     <x>'144'</x>
+     <y>'40'</y>
+     <width>'64'</width>
+     <height>'32'</height>
+     <scalex>'6.40625'</scalex>
+     <scaley>'6.40625'</scaley>
+     <angle>'0'</angle>
+     <backcolor>'16777215'</backcolor>
+     <transparent>'0'</transparent>
+     <calcany>'0'</calcany>
+     <objectsnap>'0'</objectsnap>
+     <scalelines>'0'</scalelines>
+     <opacity>'1'</opacity>
+     <layered>'0'</layered>
+     <visiblels>'65535'</visiblels>
+     <enabledls>'65535'</enabledls>
+     <curentls>'1'</curentls>
+     <uselsonrun>'0'</uselsonrun>
+     <object>
+      <name>'Text'</name>
+      <class_name>'RotatedText'</class_name>
+      <obj_type>'29'</obj_type>
+      <obj_version>'0'</obj_version>
+      <point_count>'1'</point_count>
+      <visuallayer>'0'</visuallayer>
+      <points>
+       <type>'26'</type>
+       <value>'[(0 , -9)]'</value>
+      </points>
+      <color>'16777215'</color>
+      <visual_props>
+       <data>
+        <name>'Name'</name>
+        <caption>'Имя объекта'</caption>
+        <type>'4'</type>
+        <mode>'2'</mode>
+        <value>'Text'</value>
+        <textvalue></textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'ClassName'</name>
+        <caption>'Тип элемента'</caption>
+        <type>'30'</type>
+        <mode>'2'</mode>
+        <value>'RotatedText'</value>
+        <textvalue></textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'Hint'</name>
+        <caption>'Подсказка'</caption>
+        <type>'8'</type>
+        <mode>'2'</mode>
+        <value></value>
+        <textvalue></textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'HideHintOnEdit'</name>
+        <caption>'Блокировать подсказку при редактировании'</caption>
+        <type>'2'</type>
+        <mode>'2'</mode>
+        <value>'0'</value>
+        <textvalue></textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'Visible'</name>
+        <caption>'Видимость при выполнении'</caption>
+        <type>'2'</type>
+        <mode>'2'</mode>
+        <value>'1'</value>
+        <textvalue></textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'Color'</name>
+        <caption>'Цвет'</caption>
+        <type>'3'</type>
+        <mode>'2'</mode>
+        <value>'16777215'</value>
+        <textvalue></textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'Points'</name>
+        <caption>'Координаты точек'</caption>
+        <type>'26'</type>
+        <mode>'2'</mode>
+        <value>'[(0 , -9)]'</value>
+        <textvalue></textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'Instance'</name>
+        <caption>'Ссылка'</caption>
+        <type>'29'</type>
+        <mode>'2'</mode>
+        <value></value>
+        <textvalue></textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'EditInstance'</name>
+        <caption>'Ссылка при редактировании'</caption>
+        <type>'2'</type>
+        <mode>'2'</mode>
+        <value>'0'</value>
+        <textvalue></textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'InstanceMode'</name>
+        <caption>'Действие для вывода ссылки'</caption>
+        <type>'15'</type>
+        <mode>'2'</mode>
+        <value>
+         <items>'Двойной щелчок левой кнопкой'#13'Щелчок левой кнопой'#13'Щелчок правой кнопкой'#13'Alt+левая кнопка мыши'#13'Alt+правая кнопка мыши'#13'Alt+двойной щелчок левой кнопкой'#13'Shift+двойной щелчок левой кнопкой'</items>
+         <index>'0'</index>
+        </value>
+        <textvalue></textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'Tag'</name>
+        <caption>'Ярлык'</caption>
+        <type>'1'</type>
+        <mode>'2'</mode>
+        <value>'0'</value>
+        <textvalue>'0'</textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'Template'</name>
+        <caption>'Шаблон автозаполнения'</caption>
+        <type>'8'</type>
+        <mode>'2'</mode>
+        <value></value>
+        <textvalue></textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'Layer'</name>
+        <caption>'Номер решателя'</caption>
+        <type>'1'</type>
+        <mode>'2'</mode>
+        <value>'0'</value>
+        <textvalue></textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'OnInitScript'</name>
+        <caption>'Скрипт инициализации объекта'</caption>
+        <type>'8'</type>
+        <mode>'2'</mode>
+        <value></value>
+        <textvalue></textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'OnRunScript'</name>
+        <caption>'Скрипт исполнения объекта'</caption>
+        <type>'8'</type>
+        <mode>'2'</mode>
+        <value></value>
+        <textvalue></textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'OnDestroyScript'</name>
+        <caption>'Скрипт уничтожения объекта'</caption>
+        <type>'8'</type>
+        <mode>'2'</mode>
+        <value></value>
+        <textvalue></textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'LockSizes'</name>
+        <caption>'Блокировать изменение размеров'</caption>
+        <type>'2'</type>
+        <mode>'2'</mode>
+        <value>'0'</value>
+        <textvalue></textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'MouseIn'</name>
+        <caption>'Указатель в пределах объекта'</caption>
+        <type>'2'</type>
+        <mode>'2'</mode>
+        <value>'0'</value>
+        <textvalue></textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'Text'</name>
+        <caption>'Текст'</caption>
+        <type>'28'</type>
+        <mode>'2'</mode>
+        <value>'ẋ=Ax+Bu'#13#10</value>
+        <textvalue></textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'ShowValue'</name>
+        <caption>'Способ показа цифр'</caption>
+        <type>'15'</type>
+        <mode>'2'</mode>
+        <value>
+         <items>'Не показывать'#13'Показывать справа'#13'Показывать слева'</items>
+         <index>'0'</index>
+        </value>
+        <textvalue></textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'Values'</name>
+        <caption>'Отображаемое значение'</caption>
+        <type>'5'</type>
+        <mode>'2'</mode>
+        <value>'[0]'</value>
+        <textvalue>'[0]'</textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'Transparent'</name>
+        <caption>'Прозрачный фон'</caption>
+        <type>'2'</type>
+        <mode>'2'</mode>
+        <value>'1'</value>
+        <textvalue></textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'Font'</name>
+        <caption>'Шрифт'</caption>
+        <type>'7'</type>
+        <mode>'2'</mode>
+        <value>
+         <name>'Cambria'</name>
+         <height>'14'</height>
+         <charset>'1'</charset>
+         <color>'2147483656'</color>
+         <style>'0'</style>
+         <angle>'0'</angle>
+        </value>
+        <textvalue></textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'FloatFormat'</name>
+        <caption>'Формат числа'</caption>
+        <type>'11'</type>
+        <mode>'2'</mode>
+        <value>'0'</value>
+        <textvalue></textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'Digits'</name>
+        <caption>'Кол-во знаков после запятой'</caption>
+        <type>'1'</type>
+        <mode>'2'</mode>
+        <value>'6'</value>
+        <textvalue>'6'</textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'Precition'</name>
+        <caption>'Кол-во значащих цифр'</caption>
+        <type>'1'</type>
+        <mode>'2'</mode>
+        <value>'3'</value>
+        <textvalue>'3'</textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'Align'</name>
+        <caption>'Положение точки вставки'</caption>
+        <type>'15'</type>
+        <mode>'2'</mode>
+        <value>
+         <items>'Слева'#13'По центру'#13'Справа'</items>
+         <index>'1'</index>
+        </value>
+        <textvalue></textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'Alignment'</name>
+        <caption>'Стиль выравнивания'</caption>
+        <type>'15'</type>
+        <mode>'2'</mode>
+        <value>
+         <items>'Слева'#13'По центру'#13'Справа'</items>
+         <index>'1'</index>
+        </value>
+        <textvalue></textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'SymbolInterval'</name>
+        <caption>'Межсимвольный интервал'</caption>
+        <type>'0'</type>
+        <mode>'2'</mode>
+        <value>'0'</value>
+        <textvalue>'0'</textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'StringInterval'</name>
+        <caption>'Межстрочный интервал'</caption>
+        <type>'0'</type>
+        <mode>'2'</mode>
+        <value>'1'</value>
+        <textvalue>'1'</textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'Opacity'</name>
+        <caption>'Коэффициент прозрачности'</caption>
+        <type>'0'</type>
+        <mode>'2'</mode>
+        <value>'1'</value>
+        <textvalue>'1.0000000000'</textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'Proportional'</name>
+        <caption>'Сохранять пропорции'</caption>
+        <type>'2'</type>
+        <mode>'2'</mode>
+        <value>'1'</value>
+        <textvalue></textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'Angle'</name>
+        <caption>'Угол поворота текста'</caption>
+        <type>'0'</type>
+        <mode>'2'</mode>
+        <value>'0'</value>
+        <textvalue></textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+      </visual_props>
+     </object>
+     <object>
+      <name>'TextLabel'</name>
+      <class_name>'TextLabel'</class_name>
+      <obj_type>'20'</obj_type>
+      <obj_version>'0'</obj_version>
+      <point_count>'1'</point_count>
+      <visuallayer>'1'</visuallayer>
+      <points>
+       <type>'26'</type>
+       <value>'[(0 , 5)]'</value>
+      </points>
+      <color>'16777215'</color>
+      <visual_props>
+       <data>
+        <name>'Name'</name>
+        <caption>'Имя объекта'</caption>
+        <type>'4'</type>
+        <mode>'2'</mode>
+        <value>'TextLabel'</value>
+        <textvalue></textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'ClassName'</name>
+        <caption>'Тип элемента'</caption>
+        <type>'30'</type>
+        <mode>'2'</mode>
+        <value>'TextLabel'</value>
+        <textvalue></textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'Hint'</name>
+        <caption>'Подсказка'</caption>
+        <type>'8'</type>
+        <mode>'2'</mode>
+        <value></value>
+        <textvalue></textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'HideHintOnEdit'</name>
+        <caption>'Блокировать подсказку при редактировании'</caption>
+        <type>'2'</type>
+        <mode>'2'</mode>
+        <value>'0'</value>
+        <textvalue></textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'Visible'</name>
+        <caption>'Видимость при выполнении'</caption>
+        <type>'2'</type>
+        <mode>'2'</mode>
+        <value>'1'</value>
+        <textvalue></textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'Color'</name>
+        <caption>'Цвет'</caption>
+        <type>'3'</type>
+        <mode>'2'</mode>
+        <value>'16777215'</value>
+        <textvalue></textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'Points'</name>
+        <caption>'Координаты точек'</caption>
+        <type>'26'</type>
+        <mode>'2'</mode>
+        <value>'[(0 , 5)]'</value>
+        <textvalue></textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'Instance'</name>
+        <caption>'Ссылка'</caption>
+        <type>'29'</type>
+        <mode>'2'</mode>
+        <value></value>
+        <textvalue></textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'EditInstance'</name>
+        <caption>'Ссылка при редактировании'</caption>
+        <type>'2'</type>
+        <mode>'2'</mode>
+        <value>'0'</value>
+        <textvalue></textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'InstanceMode'</name>
+        <caption>'Действие для вывода ссылки'</caption>
+        <type>'15'</type>
+        <mode>'2'</mode>
+        <value>
+         <items>'Двойной щелчок левой кнопкой'#13'Щелчок левой кнопой'#13'Щелчок правой кнопкой'#13'Alt+левая кнопка мыши'#13'Alt+правая кнопка мыши'#13'Alt+двойной щелчок левой кнопкой'#13'Shift+двойной щелчок левой кнопкой'</items>
+         <index>'0'</index>
+        </value>
+        <textvalue></textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'Tag'</name>
+        <caption>'Ярлык'</caption>
+        <type>'1'</type>
+        <mode>'2'</mode>
+        <value>'0'</value>
+        <textvalue>'0'</textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'Template'</name>
+        <caption>'Шаблон автозаполнения'</caption>
+        <type>'8'</type>
+        <mode>'2'</mode>
+        <value></value>
+        <textvalue></textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'Layer'</name>
+        <caption>'Номер решателя'</caption>
+        <type>'1'</type>
+        <mode>'2'</mode>
+        <value>'0'</value>
+        <textvalue></textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'OnInitScript'</name>
+        <caption>'Скрипт инициализации объекта'</caption>
+        <type>'8'</type>
+        <mode>'2'</mode>
+        <value></value>
+        <textvalue></textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'OnRunScript'</name>
+        <caption>'Скрипт исполнения объекта'</caption>
+        <type>'8'</type>
+        <mode>'2'</mode>
+        <value></value>
+        <textvalue></textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'OnDestroyScript'</name>
+        <caption>'Скрипт уничтожения объекта'</caption>
+        <type>'8'</type>
+        <mode>'2'</mode>
+        <value></value>
+        <textvalue></textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'LockSizes'</name>
+        <caption>'Блокировать изменение размеров'</caption>
+        <type>'2'</type>
+        <mode>'2'</mode>
+        <value>'0'</value>
+        <textvalue></textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'MouseIn'</name>
+        <caption>'Указатель в пределах объекта'</caption>
+        <type>'2'</type>
+        <mode>'2'</mode>
+        <value>'0'</value>
+        <textvalue></textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'Text'</name>
+        <caption>'Текст'</caption>
+        <type>'28'</type>
+        <mode>'2'</mode>
+        <value>'y=Cx+Du'#13#10</value>
+        <textvalue></textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'ShowValue'</name>
+        <caption>'Способ показа цифр'</caption>
+        <type>'15'</type>
+        <mode>'2'</mode>
+        <value>
+         <items>'Не показывать'#13'Показывать справа'#13'Показывать слева'</items>
+         <index>'0'</index>
+        </value>
+        <textvalue></textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'Values'</name>
+        <caption>'Отображаемое значение'</caption>
+        <type>'5'</type>
+        <mode>'2'</mode>
+        <value>'[0]'</value>
+        <textvalue>'[0]'</textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'Transparent'</name>
+        <caption>'Прозрачный фон'</caption>
+        <type>'2'</type>
+        <mode>'2'</mode>
+        <value>'1'</value>
+        <textvalue></textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'Font'</name>
+        <caption>'Шрифт'</caption>
+        <type>'7'</type>
+        <mode>'2'</mode>
+        <value>
+         <name>'Cambria'</name>
+         <height>'14'</height>
+         <charset>'1'</charset>
+         <color>'2147483656'</color>
+         <style>'0'</style>
+         <angle>'0'</angle>
+        </value>
+        <textvalue></textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'FloatFormat'</name>
+        <caption>'Формат числа'</caption>
+        <type>'11'</type>
+        <mode>'2'</mode>
+        <value>'0'</value>
+        <textvalue></textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'Digits'</name>
+        <caption>'Кол-во знаков после запятой'</caption>
+        <type>'1'</type>
+        <mode>'2'</mode>
+        <value>'6'</value>
+        <textvalue>'6'</textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'Precition'</name>
+        <caption>'Кол-во значащих цифр'</caption>
+        <type>'1'</type>
+        <mode>'2'</mode>
+        <value>'3'</value>
+        <textvalue>'3'</textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'Align'</name>
+        <caption>'Положение точки вставки'</caption>
+        <type>'15'</type>
+        <mode>'2'</mode>
+        <value>
+         <items>'Слева'#13'По центру'#13'Справа'</items>
+         <index>'1'</index>
+        </value>
+        <textvalue></textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'Alignment'</name>
+        <caption>'Стиль выравнивания'</caption>
+        <type>'15'</type>
+        <mode>'2'</mode>
+        <value>
+         <items>'Слева'#13'По центру'#13'Справа'</items>
+         <index>'1'</index>
+        </value>
+        <textvalue></textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'SymbolInterval'</name>
+        <caption>'Межсимвольный интервал'</caption>
+        <type>'0'</type>
+        <mode>'2'</mode>
+        <value>'0'</value>
+        <textvalue>'0'</textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'StringInterval'</name>
+        <caption>'Межстрочный интервал'</caption>
+        <type>'0'</type>
+        <mode>'2'</mode>
+        <value>'1'</value>
+        <textvalue>'1'</textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'Opacity'</name>
+        <caption>'Коэффициент прозрачности'</caption>
+        <type>'0'</type>
+        <mode>'2'</mode>
+        <value>'1'</value>
+        <textvalue>'1'</textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'Proportional'</name>
+        <caption>'Сохранять пропорции'</caption>
+        <type>'2'</type>
+        <mode>'2'</mode>
+        <value>'1'</value>
+        <textvalue></textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+      </visual_props>
+     </object>
+     <signal_list>
+     </signal_list>
+     <glprops_list>
+     </glprops_list>
+     <var_list>
+     </var_list>
+     <connect_list>
+     </connect_list>
+    </page>
+   </blockimage>
+  </object>
+  <object>
+   <name>'FromFile10'</name>
+   <class_name>'Из файла'</class_name>
+   <obj_type>'100'</obj_type>
+   <obj_version>'0'</obj_version>
+   <point_count>'4'</point_count>
+   <visuallayer>'1'</visuallayer>
+   <points>
+    <type>'26'</type>
+    <value>'[(66 , 40),(82 , 40),(66 , 24),(66 , 60)]'</value>
+   </points>
+   <color>'16777215'</color>
+   <visual_props>
+    <data>
+     <name>'Name'</name>
+     <caption>'Имя объекта'</caption>
+     <type>'4'</type>
+     <mode>'2'</mode>
+     <value>'FromFile10'</value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script></script>
+    </data>
+    <data>
+     <name>'ClassName'</name>
+     <caption>'Тип элемента'</caption>
+     <type>'30'</type>
+     <mode>'2'</mode>
+     <value>'Из файла'</value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script></script>
+    </data>
+    <data>
+     <name>'Hint'</name>
+     <caption>'Подсказка'</caption>
+     <type>'8'</type>
+     <mode>'2'</mode>
+     <value></value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script></script>
+    </data>
+    <data>
+     <name>'HideHintOnEdit'</name>
+     <caption>'Блокировать подсказку при редактировании'</caption>
+     <type>'2'</type>
+     <mode>'2'</mode>
+     <value>'0'</value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script></script>
+    </data>
+    <data>
+     <name>'Visible'</name>
+     <caption>'Видимость при выполнении'</caption>
+     <type>'2'</type>
+     <mode>'2'</mode>
+     <value>'1'</value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script></script>
+    </data>
+    <data>
+     <name>'Color'</name>
+     <caption>'Цвет'</caption>
+     <type>'3'</type>
+     <mode>'2'</mode>
+     <value>'16777215'</value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script></script>
+    </data>
+    <data>
+     <name>'Points'</name>
+     <caption>'Координаты точек'</caption>
+     <type>'26'</type>
+     <mode>'2'</mode>
+     <value>'[(66 , 40),(82 , 40),(66 , 24),(66 , 60)]'</value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script></script>
+    </data>
+    <data>
+     <name>'Instance'</name>
+     <caption>'Ссылка'</caption>
+     <type>'29'</type>
+     <mode>'2'</mode>
+     <value></value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script></script>
+    </data>
+    <data>
+     <name>'EditInstance'</name>
+     <caption>'Ссылка при редактировании'</caption>
+     <type>'2'</type>
+     <mode>'2'</mode>
+     <value>'0'</value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script></script>
+    </data>
+    <data>
+     <name>'InstanceMode'</name>
+     <caption>'Действие для вывода ссылки'</caption>
+     <type>'15'</type>
+     <mode>'2'</mode>
+     <value>
+      <items>'Двойной щелчок левой кнопкой'#13'Щелчок левой кнопой'#13'Щелчок правой кнопкой'#13'Alt+левая кнопка мыши'#13'Alt+правая кнопка мыши'#13'Alt+двойной щелчок левой кнопкой'#13'Shift+двойной щелчок левой кнопкой'</items>
+      <index>'0'</index>
+     </value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script></script>
+    </data>
+    <data>
+     <name>'Tag'</name>
+     <caption>'Ярлык'</caption>
+     <type>'1'</type>
+     <mode>'2'</mode>
+     <value>'0'</value>
+     <textvalue>'0'</textvalue>
+     <fconstant>'0'</fconstant>
+     <script></script>
+    </data>
+    <data>
+     <name>'Template'</name>
+     <caption>'Шаблон автозаполнения'</caption>
+     <type>'8'</type>
+     <mode>'2'</mode>
+     <value></value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script></script>
+    </data>
+    <data>
+     <name>'Layer'</name>
+     <caption>'Номер решателя'</caption>
+     <type>'1'</type>
+     <mode>'2'</mode>
+     <value>'0'</value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script></script>
+    </data>
+    <data>
+     <name>'OnInitScript'</name>
+     <caption>'Скрипт инициализации объекта'</caption>
+     <type>'8'</type>
+     <mode>'2'</mode>
+     <value></value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script></script>
+    </data>
+    <data>
+     <name>'OnRunScript'</name>
+     <caption>'Скрипт исполнения объекта'</caption>
+     <type>'8'</type>
+     <mode>'2'</mode>
+     <value></value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script></script>
+    </data>
+    <data>
+     <name>'OnDestroyScript'</name>
+     <caption>'Скрипт уничтожения объекта'</caption>
+     <type>'8'</type>
+     <mode>'2'</mode>
+     <value></value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script></script>
+    </data>
+    <data>
+     <name>'LockSizes'</name>
+     <caption>'Блокировать изменение размеров'</caption>
+     <type>'2'</type>
+     <mode>'2'</mode>
+     <value>'0'</value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script></script>
+    </data>
+    <data>
+     <name>'MouseIn'</name>
+     <caption>'Указатель в пределах объекта'</caption>
+     <type>'2'</type>
+     <mode>'2'</mode>
+     <value>'0'</value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script></script>
+    </data>
+    <data>
+     <name>'Active'</name>
+     <caption>'Активность объекта'</caption>
+     <type>'2'</type>
+     <mode>'2'</mode>
+     <value>'1'</value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script></script>
+    </data>
+    <data>
+     <name>'MayLoadRestart'</name>
+     <caption>'Загружать рестарт'</caption>
+     <type>'2'</type>
+     <mode>'2'</mode>
+     <value>'1'</value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script></script>
+    </data>
+    <data>
+     <name>'BlockIndex'</name>
+     <caption>'Индекс блока'</caption>
+     <type>'4'</type>
+     <mode>'2'</mode>
+     <value>'0'</value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script></script>
+    </data>
+    <data>
+     <name>'UID'</name>
+     <caption>'UID'</caption>
+     <type>'4'</type>
+     <mode>'2'</mode>
+     <value>'0'</value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script></script>
+    </data>
+    <data>
+     <name>'Opacity'</name>
+     <caption>'Коэффициент прозрачности'</caption>
+     <type>'0'</type>
+     <mode>'2'</mode>
+     <value>'1'</value>
+     <textvalue>'1'</textvalue>
+     <fconstant>'0'</fconstant>
+     <script></script>
+    </data>
+    <data>
+     <name>'InvisibleProps'</name>
+     <caption>'Список невидимых свойств'</caption>
+     <type>'8'</type>
+     <mode>'2'</mode>
+     <value></value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script></script>
+    </data>
+    <data>
+     <name>'ReadOnlyProps'</name>
+     <caption>'Список имён свойств для чтения'</caption>
+     <type>'8'</type>
+     <mode>'2'</mode>
+     <value></value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script></script>
+    </data>
+    <data>
+     <name>'ShowArrows'</name>
+     <caption>'Показывать стрелки портов'</caption>
+     <type>'2'</type>
+     <mode>'2'</mode>
+     <value>'1'</value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script></script>
+    </data>
+    <data>
+     <name>'Angle'</name>
+     <caption>'Угол поворота'</caption>
+     <type>'0'</type>
+     <mode>'2'</mode>
+     <value>'0'</value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script></script>
+    </data>
+    <data>
+     <name>'Width'</name>
+     <caption>'Ширина'</caption>
+     <type>'0'</type>
+     <mode>'2'</mode>
+     <value>'32'</value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script></script>
+    </data>
+    <data>
+     <name>'Height'</name>
+     <caption>'Высота'</caption>
+     <type>'0'</type>
+     <mode>'2'</mode>
+     <value>'32'</value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script></script>
+    </data>
+    <data>
+     <name>'ShowFrame'</name>
+     <caption>'Показывать рамку'</caption>
+     <type>'2'</type>
+     <mode>'2'</mode>
+     <value>'1'</value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script></script>
+    </data>
+    <data>
+     <name>'FrameColor'</name>
+     <caption>'Цвет рамки'</caption>
+     <type>'3'</type>
+     <mode>'2'</mode>
+     <value>'0'</value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script></script>
+    </data>
+    <data>
+     <name>'LabelText'</name>
+     <caption>'Подпись блока'</caption>
+     <type>'28'</type>
+     <mode>'2'</mode>
+     <value>#13#10</value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script></script>
+    </data>
+    <data>
+     <name>'LabelFont'</name>
+     <caption>'Шрифт подписи блока'</caption>
+     <type>'7'</type>
+     <mode>'2'</mode>
+     <value>
+      <name>'Cambria'</name>
+      <height>'14'</height>
+      <charset>'1'</charset>
+      <color>'2147483656'</color>
+      <style>'0'</style>
+      <angle>'0'</angle>
+     </value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script></script>
+    </data>
+    <data>
+     <name>'LabelAlign'</name>
+     <caption>'Выравнивание подписи'</caption>
+     <type>'15'</type>
+     <mode>'2'</mode>
+     <value>
+      <items>'По левому краю'#13'Посередине'#13'По правому краю'#13'По центру блока'</items>
+      <index>'1'</index>
+     </value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script></script>
+    </data>
+    <data>
+     <name>'LabelStyle'</name>
+     <caption>'Стиль подписи'</caption>
+     <type>'15'</type>
+     <mode>'2'</mode>
+     <value>
+      <items>'Подпись'#13'Имя'#13'Тип'#13'Без подписи'#13'Индекс блока'#13'UID блока'</items>
+      <index>'0'</index>
+     </value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script></script>
+    </data>
+    <data>
+     <name>'Trasparent'</name>
+     <caption>'Прозрачный фон'</caption>
+     <type>'2'</type>
+     <mode>'2'</mode>
+     <value>'0'</value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script></script>
+    </data>
+    <data>
+     <name>'Proportional'</name>
+     <caption>'Сохранять пропорции'</caption>
+     <type>'2'</type>
+     <mode>'2'</mode>
+     <value>'1'</value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script></script>
+    </data>
+    <data>
+     <name>'Mirror'</name>
+     <caption>'Зеркально отразить'</caption>
+     <type>'2'</type>
+     <mode>'2'</mode>
+     <value>'0'</value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script></script>
+    </data>
+    <data>
+     <name>'Animated'</name>
+     <caption>'Анимированный'</caption>
+     <type>'2'</type>
+     <mode>'2'</mode>
+     <value>'0'</value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script></script>
+    </data>
+    <data>
+     <name>'Sensible'</name>
+     <caption>'Чувствительность к действиям мыши в режиме индикации при расчёте'</caption>
+     <type>'2'</type>
+     <mode>'2'</mode>
+     <value>'0'</value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script></script>
+    </data>
+    <data>
+     <name>'Graphics'</name>
+     <caption>'Графическое изображение'</caption>
+     <type>'31'</type>
+     <mode>'2'</mode>
+     <value></value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script></script>
+    </data>
+    <data>
+     <name>'LayeredOpacity'</name>
+     <caption>'Послойная прозрачность'</caption>
+     <type>'2'</type>
+     <mode>'2'</mode>
+     <value>'0'</value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script></script>
+    </data>
+    <data>
+     <name>'NotChangeImageSize'</name>
+     <caption>'Не масштабировать изображение'</caption>
+     <type>'2'</type>
+     <mode>'2'</mode>
+     <value>'0'</value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script></script>
+    </data>
+    <data>
+     <name>'RecalcAlways'</name>
+     <caption>'Пересчитывать скрипт всегда'</caption>
+     <type>'2'</type>
+     <mode>'2'</mode>
+     <value>'0'</value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script></script>
+    </data>
+    <data>
+     <name>'ShowPortNamesMode'</name>
+     <caption>'Режим показа подписей портов'</caption>
+     <type>'15'</type>
+     <mode>'2'</mode>
+     <value>
+      <items>'Не показывать'#13#10'Внутри блока всегда'#13#10'Снаружи блока для неподключенных'#13#10'Снаружи блока всегда'</items>
+      <index>'0'</index>
+     </value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script></script>
+    </data>
+    <data>
+     <name>'ShowPortNamesFont'</name>
+     <caption>'Шрифт подписей портов блока'</caption>
+     <type>'7'</type>
+     <mode>'2'</mode>
+     <value>
+      <name>'Tahoma'</name>
+      <height>'10'</height>
+      <charset>'0'</charset>
+      <color>'0'</color>
+      <style>'0'</style>
+      <angle>'0'</angle>
+     </value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script></script>
+    </data>
+   </visual_props>
+   <freeze>'0'</freeze>
+   <active_element>'1'</active_element>
+   <is_child>'0'</is_child>
+   <invisibleprops></invisibleprops>
+   <readonlyprops></readonlyprops>
+   <extmodulname>'$(Root)\mbtylib.dll@block'</extmodulname>
+   <calctemplate>'mbty_std.dll'#13#10'TFromFile'#13#10'fromfile'</calctemplate>
+   <helpkeyword>'0017'</helpkeyword>
+   <helpfile></helpfile>
+   <ownerfilter></ownerfilter>
+   <paramfile></paramfile>
+   <uid>'0'</uid>
+   <indexstr>'0'</indexstr>
+   <custom_props>
+    <data>
+     <name>'count'</name>
+     <caption>'Число функций в файле'</caption>
+     <type>'1'</type>
+     <mode>'1'</mode>
+     <value>'1'</value>
+     <textvalue></textvalue>
+     <fconstant>'1'</fconstant>
+     <script></script>
+    </data>
+    <data>
+     <name>'filename'</name>
+     <caption>'Имя файла данных'</caption>
+     <type>'16'</type>
+     <mode>'1'</mode>
+     <value>'sit_in_1.dat'</value>
+     <textvalue></textvalue>
+     <fconstant>'1'</fconstant>
+     <script></script>
+    </data>
+    <data>
+     <name>'k'</name>
+     <caption>'К-т умножения аргумента'</caption>
+     <type>'0'</type>
+     <mode>'1'</mode>
+     <value>'1'</value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script></script>
+    </data>
+   </custom_props>
+   <custom_params>
+   </custom_params>
+   <plugindata>
+    <type>'18'</type>
+    <value>'00000000'</value>
+   </plugindata>
+   <ports>
+    <port>
+     <name>'outport'</name>
+     <side>'2'</side>
+     <x>'0.5'</x>
+     <y>'0'</y>
+     <auto>'1'</auto>
+     <mode>'1'</mode>
+     <type>'0'</type>
+     <itemid>'-1'</itemid>
+     <inversebyte>'0'</inversebyte>
+     <center>'0'</center>
+     <x_glob>'82'</x_glob>
+     <y_glob>'40'</y_glob>
+     <clonable>'0'</clonable>
+     <allsurface>'0'</allsurface>
+     <portisoff>'0'</portisoff>
+     <canmove>'0'</canmove>
+     <angbyline>'0'</angbyline>
+    </port>
+   </ports>
+   <width>'32'</width>
+   <height>'32'</height>
+   <angle>'0'</angle>
+   <blockimage>
+    <page>
+     <name>'Container'</name>
+     <script></script>
+     <visible>'1'</visible>
+     <x>'66'</x>
+     <y>'40'</y>
+     <width>'32'</width>
+     <height>'32'</height>
+     <scalex>'12.8125'</scalex>
+     <scaley>'12.8125'</scaley>
+     <angle>'0'</angle>
+     <backcolor>'16777215'</backcolor>
+     <transparent>'0'</transparent>
+     <calcany>'0'</calcany>
+     <objectsnap>'0'</objectsnap>
+     <scalelines>'0'</scalelines>
+     <opacity>'1'</opacity>
+     <layered>'0'</layered>
+     <visiblels>'65535'</visiblels>
+     <enabledls>'65535'</enabledls>
+     <curentls>'1'</curentls>
+     <uselsonrun>'0'</uselsonrun>
+     <object>
+      <name>'PolyLine1'</name>
+      <class_name>'PolyLine'</class_name>
+      <obj_type>'1'</obj_type>
+      <obj_version>'7'</obj_version>
+      <point_count>'5'</point_count>
+      <visuallayer>'0'</visuallayer>
+      <points>
+       <type>'26'</type>
+       <value>'[(-12.7809485485053 , 8.94824130734278),(-12.7809485485053 , -11.0517586926572),(4.21905145149466 , -11.0517586926572),(4.21905145149466 , 8.94824130734278),(-12.7809485485053 , 8.94824130734278)]'</value>
+      </points>
+      <color>'0'</color>
+      <visual_props>
+       <data>
+        <name>'Name'</name>
+        <caption>'Имя объекта'</caption>
+        <type>'4'</type>
+        <mode>'2'</mode>
+        <value>'PolyLine1'</value>
+        <textvalue></textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'ClassName'</name>
+        <caption>'Тип элемента'</caption>
+        <type>'30'</type>
+        <mode>'2'</mode>
+        <value>'PolyLine'</value>
+        <textvalue></textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'Hint'</name>
+        <caption>'Подсказка'</caption>
+        <type>'8'</type>
+        <mode>'2'</mode>
+        <value></value>
+        <textvalue></textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'HideHintOnEdit'</name>
+        <caption>'Блокировать подсказку при редактировании'</caption>
+        <type>'2'</type>
+        <mode>'2'</mode>
+        <value>'0'</value>
+        <textvalue></textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'Visible'</name>
+        <caption>'Видимость при выполнении'</caption>
+        <type>'2'</type>
+        <mode>'2'</mode>
+        <value>'1'</value>
+        <textvalue></textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'Color'</name>
+        <caption>'Цвет'</caption>
+        <type>'3'</type>
+        <mode>'2'</mode>
+        <value>'0'</value>
+        <textvalue></textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'Points'</name>
+        <caption>'Координаты точек'</caption>
+        <type>'26'</type>
+        <mode>'2'</mode>
+        <value>'[(-12.7809485485053 , 8.94824130734278),(-12.7809485485053 , -11.0517586926572),(4.21905145149466 , -11.0517586926572),(4.21905145149466 , 8.94824130734278),(-12.7809485485053 , 8.94824130734278)]'</value>
+        <textvalue></textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'Instance'</name>
+        <caption>'Ссылка'</caption>
+        <type>'29'</type>
+        <mode>'2'</mode>
+        <value></value>
+        <textvalue></textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'EditInstance'</name>
+        <caption>'Ссылка при редактировании'</caption>
+        <type>'2'</type>
+        <mode>'2'</mode>
+        <value>'0'</value>
+        <textvalue></textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'InstanceMode'</name>
+        <caption>'Действие для вывода ссылки'</caption>
+        <type>'15'</type>
+        <mode>'2'</mode>
+        <value>
+         <items>'Двойной щелчок левой кнопкой'#13'Щелчок левой кнопой'#13'Щелчок правой кнопкой'#13'Alt+левая кнопка мыши'#13'Alt+правая кнопка мыши'#13'Alt+двойной щелчок левой кнопкой'#13'Shift+двойной щелчок левой кнопкой'</items>
+         <index>'0'</index>
+        </value>
+        <textvalue></textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'Tag'</name>
+        <caption>'Ярлык'</caption>
+        <type>'1'</type>
+        <mode>'2'</mode>
+        <value>'0'</value>
+        <textvalue>'0'</textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'Template'</name>
+        <caption>'Шаблон автозаполнения'</caption>
+        <type>'8'</type>
+        <mode>'2'</mode>
+        <value></value>
+        <textvalue></textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'Layer'</name>
+        <caption>'Номер решателя'</caption>
+        <type>'1'</type>
+        <mode>'2'</mode>
+        <value>'0'</value>
+        <textvalue></textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'OnInitScript'</name>
+        <caption>'Скрипт инициализации объекта'</caption>
+        <type>'8'</type>
+        <mode>'2'</mode>
+        <value></value>
+        <textvalue></textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'OnRunScript'</name>
+        <caption>'Скрипт исполнения объекта'</caption>
+        <type>'8'</type>
+        <mode>'2'</mode>
+        <value></value>
+        <textvalue></textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'OnDestroyScript'</name>
+        <caption>'Скрипт уничтожения объекта'</caption>
+        <type>'8'</type>
+        <mode>'2'</mode>
+        <value></value>
+        <textvalue></textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'LockSizes'</name>
+        <caption>'Блокировать изменение размеров'</caption>
+        <type>'2'</type>
+        <mode>'2'</mode>
+        <value>'0'</value>
+        <textvalue></textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'MouseIn'</name>
+        <caption>'Указатель в пределах объекта'</caption>
+        <type>'2'</type>
+        <mode>'2'</mode>
+        <value>'0'</value>
+        <textvalue></textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'Width'</name>
+        <caption>'Толщина линии'</caption>
+        <type>'0'</type>
+        <mode>'2'</mode>
+        <value>'1'</value>
+        <textvalue>'1'</textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'PenStyle'</name>
+        <caption>'Стиль линии'</caption>
+        <type>'9'</type>
+        <mode>'2'</mode>
+        <value>'0'</value>
+        <textvalue></textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'BorderWidth'</name>
+        <caption>'Толщина границы'</caption>
+        <type>'0'</type>
+        <mode>'2'</mode>
+        <value>'0'</value>
+        <textvalue>'0'</textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'BorderColor'</name>
+        <caption>'Цвет границы'</caption>
+        <type>'3'</type>
+        <mode>'2'</mode>
+        <value>'16777215'</value>
+        <textvalue></textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'Opacity'</name>
+        <caption>'Коэффициент прозрачности'</caption>
+        <type>'0'</type>
+        <mode>'2'</mode>
+        <value>'1'</value>
+        <textvalue>'1'</textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+      </visual_props>
+     </object>
+     <object>
+      <name>'PolyLine2'</name>
+      <class_name>'PolyLine'</class_name>
+      <obj_type>'1'</obj_type>
+      <obj_version>'7'</obj_version>
+      <point_count>'4'</point_count>
+      <visuallayer>'0'</visuallayer>
+      <points>
+       <type>'26'</type>
+       <value>'[(-8.78094854850534 , -11.0517586926572),(-8.78094854850534 , -6.05175869265722),(0.219051451494664 , -6.05175869265722),(0.219051451494664 , -11.0517586926572)]'</value>
+      </points>
+      <color>'0'</color>
+      <visual_props>
+       <data>
+        <name>'Name'</name>
+        <caption>'Имя объекта'</caption>
+        <type>'4'</type>
+        <mode>'2'</mode>
+        <value>'PolyLine2'</value>
+        <textvalue></textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'ClassName'</name>
+        <caption>'Тип элемента'</caption>
+        <type>'30'</type>
+        <mode>'2'</mode>
+        <value>'PolyLine'</value>
+        <textvalue></textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'Hint'</name>
+        <caption>'Подсказка'</caption>
+        <type>'8'</type>
+        <mode>'2'</mode>
+        <value></value>
+        <textvalue></textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'HideHintOnEdit'</name>
+        <caption>'Блокировать подсказку при редактировании'</caption>
+        <type>'2'</type>
+        <mode>'2'</mode>
+        <value>'0'</value>
+        <textvalue></textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'Visible'</name>
+        <caption>'Видимость при выполнении'</caption>
+        <type>'2'</type>
+        <mode>'2'</mode>
+        <value>'1'</value>
+        <textvalue></textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'Color'</name>
+        <caption>'Цвет'</caption>
+        <type>'3'</type>
+        <mode>'2'</mode>
+        <value>'0'</value>
+        <textvalue></textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'Points'</name>
+        <caption>'Координаты точек'</caption>
+        <type>'26'</type>
+        <mode>'2'</mode>
+        <value>'[(-8.78094854850534 , -11.0517586926572),(-8.78094854850534 , -6.05175869265722),(0.219051451494664 , -6.05175869265722),(0.219051451494664 , -11.0517586926572)]'</value>
+        <textvalue></textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'Instance'</name>
+        <caption>'Ссылка'</caption>
+        <type>'29'</type>
+        <mode>'2'</mode>
+        <value></value>
+        <textvalue></textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'EditInstance'</name>
+        <caption>'Ссылка при редактировании'</caption>
+        <type>'2'</type>
+        <mode>'2'</mode>
+        <value>'0'</value>
+        <textvalue></textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'InstanceMode'</name>
+        <caption>'Действие для вывода ссылки'</caption>
+        <type>'15'</type>
+        <mode>'2'</mode>
+        <value>
+         <items>'Двойной щелчок левой кнопкой'#13'Щелчок левой кнопой'#13'Щелчок правой кнопкой'#13'Alt+левая кнопка мыши'#13'Alt+правая кнопка мыши'#13'Alt+двойной щелчок левой кнопкой'#13'Shift+двойной щелчок левой кнопкой'</items>
+         <index>'0'</index>
+        </value>
+        <textvalue></textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'Tag'</name>
+        <caption>'Ярлык'</caption>
+        <type>'1'</type>
+        <mode>'2'</mode>
+        <value>'0'</value>
+        <textvalue>'0'</textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'Template'</name>
+        <caption>'Шаблон автозаполнения'</caption>
+        <type>'8'</type>
+        <mode>'2'</mode>
+        <value></value>
+        <textvalue></textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'Layer'</name>
+        <caption>'Номер решателя'</caption>
+        <type>'1'</type>
+        <mode>'2'</mode>
+        <value>'0'</value>
+        <textvalue></textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'OnInitScript'</name>
+        <caption>'Скрипт инициализации объекта'</caption>
+        <type>'8'</type>
+        <mode>'2'</mode>
+        <value></value>
+        <textvalue></textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'OnRunScript'</name>
+        <caption>'Скрипт исполнения объекта'</caption>
+        <type>'8'</type>
+        <mode>'2'</mode>
+        <value></value>
+        <textvalue></textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'OnDestroyScript'</name>
+        <caption>'Скрипт уничтожения объекта'</caption>
+        <type>'8'</type>
+        <mode>'2'</mode>
+        <value></value>
+        <textvalue></textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'LockSizes'</name>
+        <caption>'Блокировать изменение размеров'</caption>
+        <type>'2'</type>
+        <mode>'2'</mode>
+        <value>'0'</value>
+        <textvalue></textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'MouseIn'</name>
+        <caption>'Указатель в пределах объекта'</caption>
+        <type>'2'</type>
+        <mode>'2'</mode>
+        <value>'0'</value>
+        <textvalue></textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'Width'</name>
+        <caption>'Толщина линии'</caption>
+        <type>'0'</type>
+        <mode>'2'</mode>
+        <value>'1'</value>
+        <textvalue>'1'</textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'PenStyle'</name>
+        <caption>'Стиль линии'</caption>
+        <type>'9'</type>
+        <mode>'2'</mode>
+        <value>'0'</value>
+        <textvalue></textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'BorderWidth'</name>
+        <caption>'Толщина границы'</caption>
+        <type>'0'</type>
+        <mode>'2'</mode>
+        <value>'0'</value>
+        <textvalue>'0'</textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'BorderColor'</name>
+        <caption>'Цвет границы'</caption>
+        <type>'3'</type>
+        <mode>'2'</mode>
+        <value>'16777215'</value>
+        <textvalue></textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'Opacity'</name>
+        <caption>'Коэффициент прозрачности'</caption>
+        <type>'0'</type>
+        <mode>'2'</mode>
+        <value>'1'</value>
+        <textvalue>'1'</textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+      </visual_props>
+     </object>
+     <object>
+      <name>'Circle1'</name>
+      <class_name>'Circle'</class_name>
+      <obj_type>'7'</obj_type>
+      <obj_version>'7'</obj_version>
+      <point_count>'2'</point_count>
+      <visuallayer>'0'</visuallayer>
+      <points>
+       <type>'26'</type>
+       <value>'[(-4.78094854850534 , -0.0517586926572231),(-2.78094854850534 , -1.05175869265722)]'</value>
+      </points>
+      <color>'0'</color>
+      <visual_props>
+       <data>
+        <name>'Name'</name>
+        <caption>'Имя объекта'</caption>
+        <type>'4'</type>
+        <mode>'2'</mode>
+        <value>'Circle1'</value>
+        <textvalue></textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'ClassName'</name>
+        <caption>'Тип элемента'</caption>
+        <type>'30'</type>
+        <mode>'2'</mode>
+        <value>'Circle'</value>
+        <textvalue></textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'Hint'</name>
+        <caption>'Подсказка'</caption>
+        <type>'8'</type>
+        <mode>'2'</mode>
+        <value></value>
+        <textvalue></textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'HideHintOnEdit'</name>
+        <caption>'Блокировать подсказку при редактировании'</caption>
+        <type>'2'</type>
+        <mode>'2'</mode>
+        <value>'0'</value>
+        <textvalue></textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'Visible'</name>
+        <caption>'Видимость при выполнении'</caption>
+        <type>'2'</type>
+        <mode>'2'</mode>
+        <value>'1'</value>
+        <textvalue></textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'Color'</name>
+        <caption>'Цвет'</caption>
+        <type>'3'</type>
+        <mode>'2'</mode>
+        <value>'0'</value>
+        <textvalue></textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'Points'</name>
+        <caption>'Координаты точек'</caption>
+        <type>'26'</type>
+        <mode>'2'</mode>
+        <value>'[(-4.78094854850534 , -0.0517586926572231),(-2.78094854850534 , -1.05175869265722)]'</value>
+        <textvalue></textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'Instance'</name>
+        <caption>'Ссылка'</caption>
+        <type>'29'</type>
+        <mode>'2'</mode>
+        <value></value>
+        <textvalue></textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'EditInstance'</name>
+        <caption>'Ссылка при редактировании'</caption>
+        <type>'2'</type>
+        <mode>'2'</mode>
+        <value>'0'</value>
+        <textvalue></textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'InstanceMode'</name>
+        <caption>'Действие для вывода ссылки'</caption>
+        <type>'15'</type>
+        <mode>'2'</mode>
+        <value>
+         <items>'Двойной щелчок левой кнопкой'#13'Щелчок левой кнопой'#13'Щелчок правой кнопкой'#13'Alt+левая кнопка мыши'#13'Alt+правая кнопка мыши'#13'Alt+двойной щелчок левой кнопкой'#13'Shift+двойной щелчок левой кнопкой'</items>
+         <index>'0'</index>
+        </value>
+        <textvalue></textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'Tag'</name>
+        <caption>'Ярлык'</caption>
+        <type>'1'</type>
+        <mode>'2'</mode>
+        <value>'0'</value>
+        <textvalue>'0'</textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'Template'</name>
+        <caption>'Шаблон автозаполнения'</caption>
+        <type>'8'</type>
+        <mode>'2'</mode>
+        <value></value>
+        <textvalue></textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'Layer'</name>
+        <caption>'Номер решателя'</caption>
+        <type>'1'</type>
+        <mode>'2'</mode>
+        <value>'0'</value>
+        <textvalue></textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'OnInitScript'</name>
+        <caption>'Скрипт инициализации объекта'</caption>
+        <type>'8'</type>
+        <mode>'2'</mode>
+        <value></value>
+        <textvalue></textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'OnRunScript'</name>
+        <caption>'Скрипт исполнения объекта'</caption>
+        <type>'8'</type>
+        <mode>'2'</mode>
+        <value></value>
+        <textvalue></textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'OnDestroyScript'</name>
+        <caption>'Скрипт уничтожения объекта'</caption>
+        <type>'8'</type>
+        <mode>'2'</mode>
+        <value></value>
+        <textvalue></textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'LockSizes'</name>
+        <caption>'Блокировать изменение размеров'</caption>
+        <type>'2'</type>
+        <mode>'2'</mode>
+        <value>'0'</value>
+        <textvalue></textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'MouseIn'</name>
+        <caption>'Указатель в пределах объекта'</caption>
+        <type>'2'</type>
+        <mode>'2'</mode>
+        <value>'0'</value>
+        <textvalue></textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'Width'</name>
+        <caption>'Толщина линии'</caption>
+        <type>'0'</type>
+        <mode>'2'</mode>
+        <value>'1'</value>
+        <textvalue>'1'</textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'PenStyle'</name>
+        <caption>'Стиль линии'</caption>
+        <type>'9'</type>
+        <mode>'2'</mode>
+        <value>'0'</value>
+        <textvalue></textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'BorderWidth'</name>
+        <caption>'Толщина границы'</caption>
+        <type>'0'</type>
+        <mode>'2'</mode>
+        <value>'0'</value>
+        <textvalue>'0'</textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'BorderColor'</name>
+        <caption>'Цвет границы'</caption>
+        <type>'3'</type>
+        <mode>'2'</mode>
+        <value>'16777215'</value>
+        <textvalue></textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'Opacity'</name>
+        <caption>'Коэффициент прозрачности'</caption>
+        <type>'0'</type>
+        <mode>'2'</mode>
+        <value>'1'</value>
+        <textvalue>'1'</textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+      </visual_props>
+     </object>
+     <object>
+      <name>'Polygon1'</name>
+      <class_name>'Polygon'</class_name>
+      <obj_type>'2'</obj_type>
+      <obj_version>'15'</obj_version>
+      <point_count>'7'</point_count>
+      <visuallayer>'0'</visuallayer>
+      <points>
+       <type>'26'</type>
+       <value>'[(0.219051451494664 , -2.05175869265722),(7.21905145149466 , -2.05175869265722),(7.21905145149466 , -4.05175869265722),(12.2190514514947 , -0.551758692657223),(7.21905145149466 , 2.94824130734278),(7.21905145149466 , 0.948241307342777),(0.219051451494664 , 0.948241307342777)]'</value>
+      </points>
+      <color>'0'</color>
+      <visual_props>
+       <data>
+        <name>'Name'</name>
+        <caption>'Имя объекта'</caption>
+        <type>'4'</type>
+        <mode>'2'</mode>
+        <value>'Polygon1'</value>
+        <textvalue></textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'ClassName'</name>
+        <caption>'Тип элемента'</caption>
+        <type>'30'</type>
+        <mode>'2'</mode>
+        <value>'Polygon'</value>
+        <textvalue></textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'Hint'</name>
+        <caption>'Подсказка'</caption>
+        <type>'8'</type>
+        <mode>'2'</mode>
+        <value></value>
+        <textvalue></textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'HideHintOnEdit'</name>
+        <caption>'Блокировать подсказку при редактировании'</caption>
+        <type>'2'</type>
+        <mode>'2'</mode>
+        <value>'0'</value>
+        <textvalue></textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'Visible'</name>
+        <caption>'Видимость при выполнении'</caption>
+        <type>'2'</type>
+        <mode>'2'</mode>
+        <value>'1'</value>
+        <textvalue></textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'Color'</name>
+        <caption>'Цвет'</caption>
+        <type>'3'</type>
+        <mode>'2'</mode>
+        <value>'0'</value>
+        <textvalue></textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'Points'</name>
+        <caption>'Координаты точек'</caption>
+        <type>'26'</type>
+        <mode>'2'</mode>
+        <value>'[(0.219051451494664 , -2.05175869265722),(7.21905145149466 , -2.05175869265722),(7.21905145149466 , -4.05175869265722),(12.2190514514947 , -0.551758692657223),(7.21905145149466 , 2.94824130734278),(7.21905145149466 , 0.948241307342777),(0.219051451494664 , 0.948241307342777)]'</value>
+        <textvalue></textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'Instance'</name>
+        <caption>'Ссылка'</caption>
+        <type>'29'</type>
+        <mode>'2'</mode>
+        <value></value>
+        <textvalue></textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'EditInstance'</name>
+        <caption>'Ссылка при редактировании'</caption>
+        <type>'2'</type>
+        <mode>'2'</mode>
+        <value>'0'</value>
+        <textvalue></textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'InstanceMode'</name>
+        <caption>'Действие для вывода ссылки'</caption>
+        <type>'15'</type>
+        <mode>'2'</mode>
+        <value>
+         <items>'Двойной щелчок левой кнопкой'#13'Щелчок левой кнопой'#13'Щелчок правой кнопкой'#13'Alt+левая кнопка мыши'#13'Alt+правая кнопка мыши'#13'Alt+двойной щелчок левой кнопкой'#13'Shift+двойной щелчок левой кнопкой'</items>
+         <index>'0'</index>
+        </value>
+        <textvalue></textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'Tag'</name>
+        <caption>'Ярлык'</caption>
+        <type>'1'</type>
+        <mode>'2'</mode>
+        <value>'0'</value>
+        <textvalue>'0'</textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'Template'</name>
+        <caption>'Шаблон автозаполнения'</caption>
+        <type>'8'</type>
+        <mode>'2'</mode>
+        <value></value>
+        <textvalue></textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'Layer'</name>
+        <caption>'Номер решателя'</caption>
+        <type>'1'</type>
+        <mode>'2'</mode>
+        <value>'0'</value>
+        <textvalue></textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'OnInitScript'</name>
+        <caption>'Скрипт инициализации объекта'</caption>
+        <type>'8'</type>
+        <mode>'2'</mode>
+        <value></value>
+        <textvalue></textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'OnRunScript'</name>
+        <caption>'Скрипт исполнения объекта'</caption>
+        <type>'8'</type>
+        <mode>'2'</mode>
+        <value></value>
+        <textvalue></textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'OnDestroyScript'</name>
+        <caption>'Скрипт уничтожения объекта'</caption>
+        <type>'8'</type>
+        <mode>'2'</mode>
+        <value></value>
+        <textvalue></textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'LockSizes'</name>
+        <caption>'Блокировать изменение размеров'</caption>
+        <type>'2'</type>
+        <mode>'2'</mode>
+        <value>'0'</value>
+        <textvalue></textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'MouseIn'</name>
+        <caption>'Указатель в пределах объекта'</caption>
+        <type>'2'</type>
+        <mode>'2'</mode>
+        <value>'0'</value>
+        <textvalue></textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'BrushStyle'</name>
+        <caption>'Стиль заливки'</caption>
+        <type>'10'</type>
+        <mode>'2'</mode>
+        <value>'0'</value>
+        <textvalue></textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'BorderColor'</name>
+        <caption>'Цвет границы'</caption>
+        <type>'3'</type>
+        <mode>'2'</mode>
+        <value>'0'</value>
+        <textvalue></textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'BorderWidth'</name>
+        <caption>'Толщина границы'</caption>
+        <type>'0'</type>
+        <mode>'2'</mode>
+        <value>'1'</value>
+        <textvalue>'1'</textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'BorderPenStyle'</name>
+        <caption>'Стиль границы'</caption>
+        <type>'9'</type>
+        <mode>'2'</mode>
+        <value>'0'</value>
+        <textvalue></textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'GradientStyle'</name>
+        <caption>'Стиль градиента'</caption>
+        <type>'15'</type>
+        <mode>'2'</mode>
+        <value>
+         <items>'Без градиента'#13'Линейный'#13'Линейный симметричный'#13'Радиальный'</items>
+         <index>'0'</index>
+        </value>
+        <textvalue></textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'GradientColor'</name>
+        <caption>'Дополнительный цвет градиента'</caption>
+        <type>'3'</type>
+        <mode>'2'</mode>
+        <value>'0'</value>
+        <textvalue></textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'Opacity'</name>
+        <caption>'Коэффициент прозрачности'</caption>
+        <type>'0'</type>
+        <mode>'2'</mode>
+        <value>'1'</value>
+        <textvalue>'1'</textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'StartGradPtNum'</name>
+        <caption>'Номер начальной точки градиента (с нуля)'</caption>
+        <type>'1'</type>
+        <mode>'2'</mode>
+        <value>'0'</value>
+        <textvalue>'0'</textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'EndGradPointNum'</name>
+        <caption>'Номер конечной точки градиента (с нуля)'</caption>
+        <type>'1'</type>
+        <mode>'2'</mode>
+        <value>'1'</value>
+        <textvalue>'1'</textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'IsMaskObject'</name>
+        <caption>'Использовать объект как геометрическую маску слоя'</caption>
+        <type>'2'</type>
+        <mode>'2'</mode>
+        <value>'0'</value>
+        <textvalue></textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+      </visual_props>
+     </object>
+     <signal_list>
+     </signal_list>
+     <glprops_list>
+     </glprops_list>
+     <var_list>
+     </var_list>
+     <connect_list>
+     </connect_list>
+    </page>
+   </blockimage>
+  </object>
+  <object>
+   <name>'ToFile11'</name>
+   <class_name>'В файл'</class_name>
+   <obj_type>'100'</obj_type>
+   <obj_version>'0'</obj_version>
+   <point_count>'4'</point_count>
+   <visuallayer>'1'</visuallayer>
+   <points>
+    <type>'26'</type>
+    <value>'[(226 , 40),(242 , 40),(226 , 24),(226 , 60)]'</value>
+   </points>
+   <color>'16777215'</color>
+   <visual_props>
+    <data>
+     <name>'Name'</name>
+     <caption>'Имя объекта'</caption>
+     <type>'4'</type>
+     <mode>'2'</mode>
+     <value>'ToFile11'</value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script></script>
+    </data>
+    <data>
+     <name>'ClassName'</name>
+     <caption>'Тип элемента'</caption>
+     <type>'30'</type>
+     <mode>'2'</mode>
+     <value>'В файл'</value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script></script>
+    </data>
+    <data>
+     <name>'Hint'</name>
+     <caption>'Подсказка'</caption>
+     <type>'8'</type>
+     <mode>'2'</mode>
+     <value></value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script></script>
+    </data>
+    <data>
+     <name>'HideHintOnEdit'</name>
+     <caption>'Блокировать подсказку при редактировании'</caption>
+     <type>'2'</type>
+     <mode>'2'</mode>
+     <value>'0'</value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script></script>
+    </data>
+    <data>
+     <name>'Visible'</name>
+     <caption>'Видимость при выполнении'</caption>
+     <type>'2'</type>
+     <mode>'2'</mode>
+     <value>'1'</value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script></script>
+    </data>
+    <data>
+     <name>'Color'</name>
+     <caption>'Цвет'</caption>
+     <type>'3'</type>
+     <mode>'2'</mode>
+     <value>'16777215'</value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script></script>
+    </data>
+    <data>
+     <name>'Points'</name>
+     <caption>'Координаты точек'</caption>
+     <type>'26'</type>
+     <mode>'2'</mode>
+     <value>'[(226 , 40),(242 , 40),(226 , 24),(226 , 60)]'</value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script></script>
+    </data>
+    <data>
+     <name>'Instance'</name>
+     <caption>'Ссылка'</caption>
+     <type>'29'</type>
+     <mode>'2'</mode>
+     <value></value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script></script>
+    </data>
+    <data>
+     <name>'EditInstance'</name>
+     <caption>'Ссылка при редактировании'</caption>
+     <type>'2'</type>
+     <mode>'2'</mode>
+     <value>'0'</value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script></script>
+    </data>
+    <data>
+     <name>'InstanceMode'</name>
+     <caption>'Действие для вывода ссылки'</caption>
+     <type>'15'</type>
+     <mode>'2'</mode>
+     <value>
+      <items>'Двойной щелчок левой кнопкой'#13'Щелчок левой кнопой'#13'Щелчок правой кнопкой'#13'Alt+левая кнопка мыши'#13'Alt+правая кнопка мыши'#13'Alt+двойной щелчок левой кнопкой'#13'Shift+двойной щелчок левой кнопкой'</items>
+      <index>'0'</index>
+     </value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script></script>
+    </data>
+    <data>
+     <name>'Tag'</name>
+     <caption>'Ярлык'</caption>
+     <type>'1'</type>
+     <mode>'2'</mode>
+     <value>'0'</value>
+     <textvalue>'0'</textvalue>
+     <fconstant>'0'</fconstant>
+     <script></script>
+    </data>
+    <data>
+     <name>'Template'</name>
+     <caption>'Шаблон автозаполнения'</caption>
+     <type>'8'</type>
+     <mode>'2'</mode>
+     <value></value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script></script>
+    </data>
+    <data>
+     <name>'Layer'</name>
+     <caption>'Номер решателя'</caption>
+     <type>'1'</type>
+     <mode>'2'</mode>
+     <value>'0'</value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script></script>
+    </data>
+    <data>
+     <name>'OnInitScript'</name>
+     <caption>'Скрипт инициализации объекта'</caption>
+     <type>'8'</type>
+     <mode>'2'</mode>
+     <value></value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script></script>
+    </data>
+    <data>
+     <name>'OnRunScript'</name>
+     <caption>'Скрипт исполнения объекта'</caption>
+     <type>'8'</type>
+     <mode>'2'</mode>
+     <value></value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script></script>
+    </data>
+    <data>
+     <name>'OnDestroyScript'</name>
+     <caption>'Скрипт уничтожения объекта'</caption>
+     <type>'8'</type>
+     <mode>'2'</mode>
+     <value></value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script></script>
+    </data>
+    <data>
+     <name>'LockSizes'</name>
+     <caption>'Блокировать изменение размеров'</caption>
+     <type>'2'</type>
+     <mode>'2'</mode>
+     <value>'0'</value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script></script>
+    </data>
+    <data>
+     <name>'MouseIn'</name>
+     <caption>'Указатель в пределах объекта'</caption>
+     <type>'2'</type>
+     <mode>'2'</mode>
+     <value>'1'</value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script></script>
+    </data>
+    <data>
+     <name>'Active'</name>
+     <caption>'Активность объекта'</caption>
+     <type>'2'</type>
+     <mode>'2'</mode>
+     <value>'1'</value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script></script>
+    </data>
+    <data>
+     <name>'MayLoadRestart'</name>
+     <caption>'Загружать рестарт'</caption>
+     <type>'2'</type>
+     <mode>'2'</mode>
+     <value>'1'</value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script></script>
+    </data>
+    <data>
+     <name>'BlockIndex'</name>
+     <caption>'Индекс блока'</caption>
+     <type>'4'</type>
+     <mode>'2'</mode>
+     <value>'2'</value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script></script>
+    </data>
+    <data>
+     <name>'UID'</name>
+     <caption>'UID'</caption>
+     <type>'4'</type>
+     <mode>'2'</mode>
+     <value>'2'</value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script></script>
+    </data>
+    <data>
+     <name>'Opacity'</name>
+     <caption>'Коэффициент прозрачности'</caption>
+     <type>'0'</type>
+     <mode>'2'</mode>
+     <value>'1'</value>
+     <textvalue>'1'</textvalue>
+     <fconstant>'0'</fconstant>
+     <script></script>
+    </data>
+    <data>
+     <name>'InvisibleProps'</name>
+     <caption>'Список невидимых свойств'</caption>
+     <type>'8'</type>
+     <mode>'2'</mode>
+     <value>'style;digits;precition'</value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script></script>
+    </data>
+    <data>
+     <name>'ReadOnlyProps'</name>
+     <caption>'Список имён свойств для чтения'</caption>
+     <type>'8'</type>
+     <mode>'2'</mode>
+     <value></value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script></script>
+    </data>
+    <data>
+     <name>'ShowArrows'</name>
+     <caption>'Показывать стрелки портов'</caption>
+     <type>'2'</type>
+     <mode>'2'</mode>
+     <value>'1'</value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script></script>
+    </data>
+    <data>
+     <name>'Angle'</name>
+     <caption>'Угол поворота'</caption>
+     <type>'0'</type>
+     <mode>'2'</mode>
+     <value>'0'</value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script></script>
+    </data>
+    <data>
+     <name>'Width'</name>
+     <caption>'Ширина'</caption>
+     <type>'0'</type>
+     <mode>'2'</mode>
+     <value>'32'</value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script></script>
+    </data>
+    <data>
+     <name>'Height'</name>
+     <caption>'Высота'</caption>
+     <type>'0'</type>
+     <mode>'2'</mode>
+     <value>'32'</value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script></script>
+    </data>
+    <data>
+     <name>'ShowFrame'</name>
+     <caption>'Показывать рамку'</caption>
+     <type>'2'</type>
+     <mode>'2'</mode>
+     <value>'1'</value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script></script>
+    </data>
+    <data>
+     <name>'FrameColor'</name>
+     <caption>'Цвет рамки'</caption>
+     <type>'3'</type>
+     <mode>'2'</mode>
+     <value>'0'</value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script></script>
+    </data>
+    <data>
+     <name>'LabelText'</name>
+     <caption>'Подпись блока'</caption>
+     <type>'28'</type>
+     <mode>'2'</mode>
+     <value>#13#10</value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script></script>
+    </data>
+    <data>
+     <name>'LabelFont'</name>
+     <caption>'Шрифт подписи блока'</caption>
+     <type>'7'</type>
+     <mode>'2'</mode>
+     <value>
+      <name>'Cambria'</name>
+      <height>'14'</height>
+      <charset>'1'</charset>
+      <color>'2147483656'</color>
+      <style>'0'</style>
+      <angle>'0'</angle>
+     </value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script></script>
+    </data>
+    <data>
+     <name>'LabelAlign'</name>
+     <caption>'Выравнивание подписи'</caption>
+     <type>'15'</type>
+     <mode>'2'</mode>
+     <value>
+      <items>'По левому краю'#13'Посередине'#13'По правому краю'#13'По центру блока'</items>
+      <index>'1'</index>
+     </value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script></script>
+    </data>
+    <data>
+     <name>'LabelStyle'</name>
+     <caption>'Стиль подписи'</caption>
+     <type>'15'</type>
+     <mode>'2'</mode>
+     <value>
+      <items>'Подпись'#13'Имя'#13'Тип'#13'Без подписи'#13'Индекс блока'#13'UID блока'</items>
+      <index>'0'</index>
+     </value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script></script>
+    </data>
+    <data>
+     <name>'Trasparent'</name>
+     <caption>'Прозрачный фон'</caption>
+     <type>'2'</type>
+     <mode>'2'</mode>
+     <value>'0'</value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script></script>
+    </data>
+    <data>
+     <name>'Proportional'</name>
+     <caption>'Сохранять пропорции'</caption>
+     <type>'2'</type>
+     <mode>'2'</mode>
+     <value>'1'</value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script></script>
+    </data>
+    <data>
+     <name>'Mirror'</name>
+     <caption>'Зеркально отразить'</caption>
+     <type>'2'</type>
+     <mode>'2'</mode>
+     <value>'0'</value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script></script>
+    </data>
+    <data>
+     <name>'Animated'</name>
+     <caption>'Анимированный'</caption>
+     <type>'2'</type>
+     <mode>'2'</mode>
+     <value>'0'</value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script></script>
+    </data>
+    <data>
+     <name>'Sensible'</name>
+     <caption>'Чувствительность к действиям мыши в режиме индикации при расчёте'</caption>
+     <type>'2'</type>
+     <mode>'2'</mode>
+     <value>'0'</value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script></script>
+    </data>
+    <data>
+     <name>'Graphics'</name>
+     <caption>'Графическое изображение'</caption>
+     <type>'31'</type>
+     <mode>'2'</mode>
+     <value></value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script></script>
+    </data>
+    <data>
+     <name>'LayeredOpacity'</name>
+     <caption>'Послойная прозрачность'</caption>
+     <type>'2'</type>
+     <mode>'2'</mode>
+     <value>'0'</value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script></script>
+    </data>
+    <data>
+     <name>'NotChangeImageSize'</name>
+     <caption>'Не масштабировать изображение'</caption>
+     <type>'2'</type>
+     <mode>'2'</mode>
+     <value>'0'</value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script></script>
+    </data>
+    <data>
+     <name>'RecalcAlways'</name>
+     <caption>'Пересчитывать скрипт всегда'</caption>
+     <type>'2'</type>
+     <mode>'2'</mode>
+     <value>'0'</value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script></script>
+    </data>
+    <data>
+     <name>'ShowPortNamesMode'</name>
+     <caption>'Режим показа подписей портов'</caption>
+     <type>'15'</type>
+     <mode>'2'</mode>
+     <value>
+      <items>'Не показывать'#13#10'Внутри блока всегда'#13#10'Снаружи блока для неподключенных'#13#10'Снаружи блока всегда'</items>
+      <index>'0'</index>
+     </value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script></script>
+    </data>
+    <data>
+     <name>'ShowPortNamesFont'</name>
+     <caption>'Шрифт подписей портов блока'</caption>
+     <type>'7'</type>
+     <mode>'2'</mode>
+     <value>
+      <name>'Tahoma'</name>
+      <height>'10'</height>
+      <charset>'0'</charset>
+      <color>'0'</color>
+      <style>'0'</style>
+      <angle>'0'</angle>
+     </value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script></script>
+    </data>
+   </visual_props>
+   <freeze>'0'</freeze>
+   <active_element>'1'</active_element>
+   <is_child>'0'</is_child>
+   <invisibleprops>'style;digits;precition'</invisibleprops>
+   <readonlyprops></readonlyprops>
+   <extmodulname>'$(Root)\mbtylib.dll@block'</extmodulname>
+   <calctemplate>'mbty_std.dll'#13#10'TToFile'</calctemplate>
+   <helpkeyword>'0016'</helpkeyword>
+   <helpfile></helpfile>
+   <ownerfilter></ownerfilter>
+   <paramfile></paramfile>
+   <uid>'2'</uid>
+   <indexstr>'2'</indexstr>
+   <custom_props>
+    <data>
+     <name>'step'</name>
+     <caption>'Шаг записи значения'</caption>
+     <type>'5'</type>
+     <mode>'1'</mode>
+     <value>'[0.01]'</value>
+     <textvalue></textvalue>
+     <fconstant>'1'</fconstant>
+     <script></script>
+    </data>
+    <data>
+     <name>'filename'</name>
+     <caption>'Имя файла данных'</caption>
+     <type>'16'</type>
+     <mode>'1'</mode>
+     <value>'sit_out.dat'</value>
+     <textvalue></textvalue>
+     <fconstant>'1'</fconstant>
+     <script></script>
+    </data>
+    <data>
+     <name>'count'</name>
+     <caption>'Число входов'</caption>
+     <type>'1'</type>
+     <mode>'1'</mode>
+     <value>'1'</value>
+     <textvalue></textvalue>
+     <fconstant>'1'</fconstant>
+     <script>'CHECKPORTRENAME PORT inport_'#13#10'PORTCOUNT IN 0 LEFT inport_1'</script>
+    </data>
+    <data>
+     <name>'fform'</name>
+     <caption>'Формат записи'</caption>
+     <type>'15'</type>
+     <mode>'1'</mode>
+     <value>
+      <items>'0.123e00'#13#10'0.123456e00'#13#10'0.123456789e00'#13#10'0.123456789012e00'#13#10'Без ограничения точности'#13#10'Настраиваемый'</items>
+      <index>'4'</index>
+     </value>
+     <textvalue></textvalue>
+     <fconstant>'1'</fconstant>
+     <script>'ONAPPLYSCRIPT'#13#10'if self.fform = 5 then '#13#10'  self.InvisibleProps = "" '#13#10'else'#13#10' '#9'self.InvisibleProps = "style;digits;precition";'#13#10'ENDSCRIPT'#13#10'REFRESH'#13#10</script>
+    </data>
+    <data>
+     <name>'digits'</name>
+     <caption>'К-во цифр перед запятой'</caption>
+     <type>'1'</type>
+     <mode>'1'</mode>
+     <value>'8'</value>
+     <textvalue></textvalue>
+     <fconstant>'1'</fconstant>
+     <script></script>
+    </data>
+    <data>
+     <name>'precition'</name>
+     <caption>'Общее к-во цифр'</caption>
+     <type>'1'</type>
+     <mode>'1'</mode>
+     <value>'10'</value>
+     <textvalue></textvalue>
+     <fconstant>'1'</fconstant>
+     <script></script>
+    </data>
+    <data>
+     <name>'style'</name>
+     <caption>'Стиль числа'</caption>
+     <type>'15'</type>
+     <mode>'1'</mode>
+     <value>
+      <items>'Автоматический'#13#10'Научный'#13#10'Фиксированный'#13#10'Целый'#13#10'Валютный'</items>
+      <index>'0'</index>
+     </value>
+     <textvalue></textvalue>
+     <fconstant>'1'</fconstant>
+     <script></script>
+    </data>
+    <data>
+     <name>'strendformat'</name>
+     <caption>'Разделитель строк'</caption>
+     <type>'15'</type>
+     <mode>'1'</mode>
+     <value>
+      <items>'Window (CRLF)'#13#10'UNIX (LF)'#13#10'MAC (CR)'</items>
+      <index>'0'</index>
+     </value>
+     <textvalue></textvalue>
+     <fconstant>'1'</fconstant>
+     <script></script>
+    </data>
+    <data>
+     <name>'divstyle'</name>
+     <caption>'Формат разделителя чисел в строке'</caption>
+     <type>'15'</type>
+     <mode>'1'</mode>
+     <value>
+      <items>'Пробел с выравниванием'#13#10'Табуляция'#13#10'Точка с запятой'</items>
+      <index>'1'</index>
+     </value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script></script>
+    </data>
+   </custom_props>
+   <custom_params>
+   </custom_params>
+   <plugindata>
+    <type>'18'</type>
+    <value>'00000000'</value>
+   </plugindata>
+   <ports>
+    <port>
+     <name>'inport_1'</name>
+     <side>'0'</side>
+     <x>'-0.5'</x>
+     <y>'0'</y>
+     <auto>'1'</auto>
+     <mode>'0'</mode>
+     <type>'0'</type>
+     <itemid>'-1'</itemid>
+     <inversebyte>'0'</inversebyte>
+     <center>'0'</center>
+     <x_glob>'210'</x_glob>
+     <y_glob>'40'</y_glob>
+     <clonable>'0'</clonable>
+     <allsurface>'0'</allsurface>
+     <portisoff>'0'</portisoff>
+     <canmove>'0'</canmove>
+     <angbyline>'0'</angbyline>
+    </port>
+   </ports>
+   <width>'32'</width>
+   <height>'32'</height>
+   <angle>'0'</angle>
+   <blockimage>
+    <page>
+     <name>'Container'</name>
+     <script></script>
+     <visible>'1'</visible>
+     <x>'226'</x>
+     <y>'40'</y>
+     <width>'32'</width>
+     <height>'32'</height>
+     <scalex>'12.8125'</scalex>
+     <scaley>'12.8125'</scaley>
+     <angle>'0'</angle>
+     <backcolor>'16777215'</backcolor>
+     <transparent>'0'</transparent>
+     <calcany>'0'</calcany>
+     <objectsnap>'0'</objectsnap>
+     <scalelines>'0'</scalelines>
+     <opacity>'1'</opacity>
+     <layered>'0'</layered>
+     <visiblels>'65535'</visiblels>
+     <enabledls>'65535'</enabledls>
+     <curentls>'1'</curentls>
+     <uselsonrun>'0'</uselsonrun>
+     <object>
+      <name>'PolyLine1'</name>
+      <class_name>'PolyLine'</class_name>
+      <obj_type>'1'</obj_type>
+      <obj_version>'7'</obj_version>
+      <point_count>'5'</point_count>
+      <visuallayer>'0'</visuallayer>
+      <points>
+       <type>'26'</type>
+       <value>'[(-4.35891028010401 , 8.79917868312328),(-4.35891028010401 , -11.2008213168767),(12.641089719896 , -11.2008213168767),(12.641089719896 , 8.79917868312328),(-4.35891028010401 , 8.79917868312328)]'</value>
+      </points>
+      <color>'0'</color>
+      <visual_props>
+       <data>
+        <name>'Name'</name>
+        <caption>'Имя объекта'</caption>
+        <type>'4'</type>
+        <mode>'2'</mode>
+        <value>'PolyLine1'</value>
+        <textvalue></textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'ClassName'</name>
+        <caption>'Тип элемента'</caption>
+        <type>'30'</type>
+        <mode>'2'</mode>
+        <value>'PolyLine'</value>
+        <textvalue></textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'Hint'</name>
+        <caption>'Подсказка'</caption>
+        <type>'8'</type>
+        <mode>'2'</mode>
+        <value></value>
+        <textvalue></textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'HideHintOnEdit'</name>
+        <caption>'Блокировать подсказку при редактировании'</caption>
+        <type>'2'</type>
+        <mode>'2'</mode>
+        <value>'0'</value>
+        <textvalue></textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'Visible'</name>
+        <caption>'Видимость при выполнении'</caption>
+        <type>'2'</type>
+        <mode>'2'</mode>
+        <value>'1'</value>
+        <textvalue></textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'Color'</name>
+        <caption>'Цвет'</caption>
+        <type>'3'</type>
+        <mode>'2'</mode>
+        <value>'0'</value>
+        <textvalue></textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'Points'</name>
+        <caption>'Координаты точек'</caption>
+        <type>'26'</type>
+        <mode>'2'</mode>
+        <value>'[(-4.35891028010401 , 8.79917868312328),(-4.35891028010401 , -11.2008213168767),(12.641089719896 , -11.2008213168767),(12.641089719896 , 8.79917868312328),(-4.35891028010401 , 8.79917868312328)]'</value>
+        <textvalue></textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'Instance'</name>
+        <caption>'Ссылка'</caption>
+        <type>'29'</type>
+        <mode>'2'</mode>
+        <value></value>
+        <textvalue></textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'EditInstance'</name>
+        <caption>'Ссылка при редактировании'</caption>
+        <type>'2'</type>
+        <mode>'2'</mode>
+        <value>'0'</value>
+        <textvalue></textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'InstanceMode'</name>
+        <caption>'Действие для вывода ссылки'</caption>
+        <type>'15'</type>
+        <mode>'2'</mode>
+        <value>
+         <items>'Двойной щелчок левой кнопкой'#13'Щелчок левой кнопой'#13'Щелчок правой кнопкой'#13'Alt+левая кнопка мыши'#13'Alt+правая кнопка мыши'#13'Alt+двойной щелчок левой кнопкой'#13'Shift+двойной щелчок левой кнопкой'</items>
+         <index>'0'</index>
+        </value>
+        <textvalue></textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'Tag'</name>
+        <caption>'Ярлык'</caption>
+        <type>'1'</type>
+        <mode>'2'</mode>
+        <value>'0'</value>
+        <textvalue>'0'</textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'Template'</name>
+        <caption>'Шаблон автозаполнения'</caption>
+        <type>'8'</type>
+        <mode>'2'</mode>
+        <value></value>
+        <textvalue></textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'Layer'</name>
+        <caption>'Номер решателя'</caption>
+        <type>'1'</type>
+        <mode>'2'</mode>
+        <value>'0'</value>
+        <textvalue></textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'OnInitScript'</name>
+        <caption>'Скрипт инициализации объекта'</caption>
+        <type>'8'</type>
+        <mode>'2'</mode>
+        <value></value>
+        <textvalue></textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'OnRunScript'</name>
+        <caption>'Скрипт исполнения объекта'</caption>
+        <type>'8'</type>
+        <mode>'2'</mode>
+        <value></value>
+        <textvalue></textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'OnDestroyScript'</name>
+        <caption>'Скрипт уничтожения объекта'</caption>
+        <type>'8'</type>
+        <mode>'2'</mode>
+        <value></value>
+        <textvalue></textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'LockSizes'</name>
+        <caption>'Блокировать изменение размеров'</caption>
+        <type>'2'</type>
+        <mode>'2'</mode>
+        <value>'0'</value>
+        <textvalue></textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'MouseIn'</name>
+        <caption>'Указатель в пределах объекта'</caption>
+        <type>'2'</type>
+        <mode>'2'</mode>
+        <value>'0'</value>
+        <textvalue></textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'Width'</name>
+        <caption>'Толщина линии'</caption>
+        <type>'0'</type>
+        <mode>'2'</mode>
+        <value>'1'</value>
+        <textvalue>'1'</textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'PenStyle'</name>
+        <caption>'Стиль линии'</caption>
+        <type>'9'</type>
+        <mode>'2'</mode>
+        <value>'0'</value>
+        <textvalue></textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'BorderWidth'</name>
+        <caption>'Толщина границы'</caption>
+        <type>'0'</type>
+        <mode>'2'</mode>
+        <value>'0'</value>
+        <textvalue>'0'</textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'BorderColor'</name>
+        <caption>'Цвет границы'</caption>
+        <type>'3'</type>
+        <mode>'2'</mode>
+        <value>'16777215'</value>
+        <textvalue></textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'Opacity'</name>
+        <caption>'Коэффициент прозрачности'</caption>
+        <type>'0'</type>
+        <mode>'2'</mode>
+        <value>'1'</value>
+        <textvalue>'1'</textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+      </visual_props>
+     </object>
+     <object>
+      <name>'PolyLine2'</name>
+      <class_name>'PolyLine'</class_name>
+      <obj_type>'1'</obj_type>
+      <obj_version>'7'</obj_version>
+      <point_count>'4'</point_count>
+      <visuallayer>'0'</visuallayer>
+      <points>
+       <type>'26'</type>
+       <value>'[(-0.358910280104007 , -11.2008213168767),(-0.358910280104007 , -6.20082131687672),(8.64108971989599 , -6.20082131687672),(8.64108971989599 , -11.2008213168767)]'</value>
+      </points>
+      <color>'0'</color>
+      <visual_props>
+       <data>
+        <name>'Name'</name>
+        <caption>'Имя объекта'</caption>
+        <type>'4'</type>
+        <mode>'2'</mode>
+        <value>'PolyLine2'</value>
+        <textvalue></textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'ClassName'</name>
+        <caption>'Тип элемента'</caption>
+        <type>'30'</type>
+        <mode>'2'</mode>
+        <value>'PolyLine'</value>
+        <textvalue></textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'Hint'</name>
+        <caption>'Подсказка'</caption>
+        <type>'8'</type>
+        <mode>'2'</mode>
+        <value></value>
+        <textvalue></textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'HideHintOnEdit'</name>
+        <caption>'Блокировать подсказку при редактировании'</caption>
+        <type>'2'</type>
+        <mode>'2'</mode>
+        <value>'0'</value>
+        <textvalue></textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'Visible'</name>
+        <caption>'Видимость при выполнении'</caption>
+        <type>'2'</type>
+        <mode>'2'</mode>
+        <value>'1'</value>
+        <textvalue></textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'Color'</name>
+        <caption>'Цвет'</caption>
+        <type>'3'</type>
+        <mode>'2'</mode>
+        <value>'0'</value>
+        <textvalue></textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'Points'</name>
+        <caption>'Координаты точек'</caption>
+        <type>'26'</type>
+        <mode>'2'</mode>
+        <value>'[(-0.358910280104007 , -11.2008213168767),(-0.358910280104007 , -6.20082131687672),(8.64108971989599 , -6.20082131687672),(8.64108971989599 , -11.2008213168767)]'</value>
+        <textvalue></textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'Instance'</name>
+        <caption>'Ссылка'</caption>
+        <type>'29'</type>
+        <mode>'2'</mode>
+        <value></value>
+        <textvalue></textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'EditInstance'</name>
+        <caption>'Ссылка при редактировании'</caption>
+        <type>'2'</type>
+        <mode>'2'</mode>
+        <value>'0'</value>
+        <textvalue></textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'InstanceMode'</name>
+        <caption>'Действие для вывода ссылки'</caption>
+        <type>'15'</type>
+        <mode>'2'</mode>
+        <value>
+         <items>'Двойной щелчок левой кнопкой'#13'Щелчок левой кнопой'#13'Щелчок правой кнопкой'#13'Alt+левая кнопка мыши'#13'Alt+правая кнопка мыши'#13'Alt+двойной щелчок левой кнопкой'#13'Shift+двойной щелчок левой кнопкой'</items>
+         <index>'0'</index>
+        </value>
+        <textvalue></textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'Tag'</name>
+        <caption>'Ярлык'</caption>
+        <type>'1'</type>
+        <mode>'2'</mode>
+        <value>'0'</value>
+        <textvalue>'0'</textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'Template'</name>
+        <caption>'Шаблон автозаполнения'</caption>
+        <type>'8'</type>
+        <mode>'2'</mode>
+        <value></value>
+        <textvalue></textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'Layer'</name>
+        <caption>'Номер решателя'</caption>
+        <type>'1'</type>
+        <mode>'2'</mode>
+        <value>'0'</value>
+        <textvalue></textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'OnInitScript'</name>
+        <caption>'Скрипт инициализации объекта'</caption>
+        <type>'8'</type>
+        <mode>'2'</mode>
+        <value></value>
+        <textvalue></textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'OnRunScript'</name>
+        <caption>'Скрипт исполнения объекта'</caption>
+        <type>'8'</type>
+        <mode>'2'</mode>
+        <value></value>
+        <textvalue></textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'OnDestroyScript'</name>
+        <caption>'Скрипт уничтожения объекта'</caption>
+        <type>'8'</type>
+        <mode>'2'</mode>
+        <value></value>
+        <textvalue></textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'LockSizes'</name>
+        <caption>'Блокировать изменение размеров'</caption>
+        <type>'2'</type>
+        <mode>'2'</mode>
+        <value>'0'</value>
+        <textvalue></textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'MouseIn'</name>
+        <caption>'Указатель в пределах объекта'</caption>
+        <type>'2'</type>
+        <mode>'2'</mode>
+        <value>'0'</value>
+        <textvalue></textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'Width'</name>
+        <caption>'Толщина линии'</caption>
+        <type>'0'</type>
+        <mode>'2'</mode>
+        <value>'1'</value>
+        <textvalue>'1'</textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'PenStyle'</name>
+        <caption>'Стиль линии'</caption>
+        <type>'9'</type>
+        <mode>'2'</mode>
+        <value>'0'</value>
+        <textvalue></textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'BorderWidth'</name>
+        <caption>'Толщина границы'</caption>
+        <type>'0'</type>
+        <mode>'2'</mode>
+        <value>'0'</value>
+        <textvalue>'0'</textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'BorderColor'</name>
+        <caption>'Цвет границы'</caption>
+        <type>'3'</type>
+        <mode>'2'</mode>
+        <value>'16777215'</value>
+        <textvalue></textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'Opacity'</name>
+        <caption>'Коэффициент прозрачности'</caption>
+        <type>'0'</type>
+        <mode>'2'</mode>
+        <value>'1'</value>
+        <textvalue>'1'</textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+      </visual_props>
+     </object>
+     <object>
+      <name>'Circle1'</name>
+      <class_name>'Circle'</class_name>
+      <obj_type>'7'</obj_type>
+      <obj_version>'7'</obj_version>
+      <point_count>'2'</point_count>
+      <visuallayer>'0'</visuallayer>
+      <points>
+       <type>'26'</type>
+       <value>'[(3.64108971989599 , -0.200821316876716),(5.64108971989599 , -1.20082131687672)]'</value>
+      </points>
+      <color>'0'</color>
+      <visual_props>
+       <data>
+        <name>'Name'</name>
+        <caption>'Имя объекта'</caption>
+        <type>'4'</type>
+        <mode>'2'</mode>
+        <value>'Circle1'</value>
+        <textvalue></textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'ClassName'</name>
+        <caption>'Тип элемента'</caption>
+        <type>'30'</type>
+        <mode>'2'</mode>
+        <value>'Circle'</value>
+        <textvalue></textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'Hint'</name>
+        <caption>'Подсказка'</caption>
+        <type>'8'</type>
+        <mode>'2'</mode>
+        <value></value>
+        <textvalue></textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'HideHintOnEdit'</name>
+        <caption>'Блокировать подсказку при редактировании'</caption>
+        <type>'2'</type>
+        <mode>'2'</mode>
+        <value>'0'</value>
+        <textvalue></textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'Visible'</name>
+        <caption>'Видимость при выполнении'</caption>
+        <type>'2'</type>
+        <mode>'2'</mode>
+        <value>'1'</value>
+        <textvalue></textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'Color'</name>
+        <caption>'Цвет'</caption>
+        <type>'3'</type>
+        <mode>'2'</mode>
+        <value>'0'</value>
+        <textvalue></textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'Points'</name>
+        <caption>'Координаты точек'</caption>
+        <type>'26'</type>
+        <mode>'2'</mode>
+        <value>'[(3.64108971989599 , -0.200821316876716),(5.64108971989599 , -1.20082131687672)]'</value>
+        <textvalue></textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'Instance'</name>
+        <caption>'Ссылка'</caption>
+        <type>'29'</type>
+        <mode>'2'</mode>
+        <value></value>
+        <textvalue></textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'EditInstance'</name>
+        <caption>'Ссылка при редактировании'</caption>
+        <type>'2'</type>
+        <mode>'2'</mode>
+        <value>'0'</value>
+        <textvalue></textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'InstanceMode'</name>
+        <caption>'Действие для вывода ссылки'</caption>
+        <type>'15'</type>
+        <mode>'2'</mode>
+        <value>
+         <items>'Двойной щелчок левой кнопкой'#13'Щелчок левой кнопой'#13'Щелчок правой кнопкой'#13'Alt+левая кнопка мыши'#13'Alt+правая кнопка мыши'#13'Alt+двойной щелчок левой кнопкой'#13'Shift+двойной щелчок левой кнопкой'</items>
+         <index>'0'</index>
+        </value>
+        <textvalue></textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'Tag'</name>
+        <caption>'Ярлык'</caption>
+        <type>'1'</type>
+        <mode>'2'</mode>
+        <value>'0'</value>
+        <textvalue>'0'</textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'Template'</name>
+        <caption>'Шаблон автозаполнения'</caption>
+        <type>'8'</type>
+        <mode>'2'</mode>
+        <value></value>
+        <textvalue></textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'Layer'</name>
+        <caption>'Номер решателя'</caption>
+        <type>'1'</type>
+        <mode>'2'</mode>
+        <value>'0'</value>
+        <textvalue></textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'OnInitScript'</name>
+        <caption>'Скрипт инициализации объекта'</caption>
+        <type>'8'</type>
+        <mode>'2'</mode>
+        <value></value>
+        <textvalue></textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'OnRunScript'</name>
+        <caption>'Скрипт исполнения объекта'</caption>
+        <type>'8'</type>
+        <mode>'2'</mode>
+        <value></value>
+        <textvalue></textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'OnDestroyScript'</name>
+        <caption>'Скрипт уничтожения объекта'</caption>
+        <type>'8'</type>
+        <mode>'2'</mode>
+        <value></value>
+        <textvalue></textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'LockSizes'</name>
+        <caption>'Блокировать изменение размеров'</caption>
+        <type>'2'</type>
+        <mode>'2'</mode>
+        <value>'0'</value>
+        <textvalue></textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'MouseIn'</name>
+        <caption>'Указатель в пределах объекта'</caption>
+        <type>'2'</type>
+        <mode>'2'</mode>
+        <value>'0'</value>
+        <textvalue></textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'Width'</name>
+        <caption>'Толщина линии'</caption>
+        <type>'0'</type>
+        <mode>'2'</mode>
+        <value>'1'</value>
+        <textvalue>'1'</textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'PenStyle'</name>
+        <caption>'Стиль линии'</caption>
+        <type>'9'</type>
+        <mode>'2'</mode>
+        <value>'0'</value>
+        <textvalue></textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'BorderWidth'</name>
+        <caption>'Толщина границы'</caption>
+        <type>'0'</type>
+        <mode>'2'</mode>
+        <value>'0'</value>
+        <textvalue>'0'</textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'BorderColor'</name>
+        <caption>'Цвет границы'</caption>
+        <type>'3'</type>
+        <mode>'2'</mode>
+        <value>'16777215'</value>
+        <textvalue></textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'Opacity'</name>
+        <caption>'Коэффициент прозрачности'</caption>
+        <type>'0'</type>
+        <mode>'2'</mode>
+        <value>'1'</value>
+        <textvalue>'1'</textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+      </visual_props>
+     </object>
+     <object>
+      <name>'Polygon1'</name>
+      <class_name>'Polygon'</class_name>
+      <obj_type>'2'</obj_type>
+      <obj_version>'15'</obj_version>
+      <point_count>'7'</point_count>
+      <visuallayer>'0'</visuallayer>
+      <points>
+       <type>'26'</type>
+       <value>'[(-13.5779617315987 , -2.14906262421949),(-6.57796173159867 , -2.14906262421949),(-6.57796173159867 , -4.14906262421949),(-1.35891028010401 , -0.700821316876716),(-6.57796173159867 , 2.85093737578051),(-6.57796173159867 , 0.850937375780507),(-13.5779617315987 , 0.850937375780507)]'</value>
+      </points>
+      <color>'0'</color>
+      <visual_props>
+       <data>
+        <name>'Name'</name>
+        <caption>'Имя объекта'</caption>
+        <type>'4'</type>
+        <mode>'2'</mode>
+        <value>'Polygon1'</value>
+        <textvalue></textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'ClassName'</name>
+        <caption>'Тип элемента'</caption>
+        <type>'30'</type>
+        <mode>'2'</mode>
+        <value>'Polygon'</value>
+        <textvalue></textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'Hint'</name>
+        <caption>'Подсказка'</caption>
+        <type>'8'</type>
+        <mode>'2'</mode>
+        <value></value>
+        <textvalue></textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'HideHintOnEdit'</name>
+        <caption>'Блокировать подсказку при редактировании'</caption>
+        <type>'2'</type>
+        <mode>'2'</mode>
+        <value>'0'</value>
+        <textvalue></textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'Visible'</name>
+        <caption>'Видимость при выполнении'</caption>
+        <type>'2'</type>
+        <mode>'2'</mode>
+        <value>'1'</value>
+        <textvalue></textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'Color'</name>
+        <caption>'Цвет'</caption>
+        <type>'3'</type>
+        <mode>'2'</mode>
+        <value>'0'</value>
+        <textvalue></textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'Points'</name>
+        <caption>'Координаты точек'</caption>
+        <type>'26'</type>
+        <mode>'2'</mode>
+        <value>'[(-13.5779617315987 , -2.14906262421949),(-6.57796173159867 , -2.14906262421949),(-6.57796173159867 , -4.14906262421949),(-1.35891028010401 , -0.700821316876716),(-6.57796173159867 , 2.85093737578051),(-6.57796173159867 , 0.850937375780507),(-13.5779617315987 , 0.850937375780507)]'</value>
+        <textvalue></textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'Instance'</name>
+        <caption>'Ссылка'</caption>
+        <type>'29'</type>
+        <mode>'2'</mode>
+        <value></value>
+        <textvalue></textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'EditInstance'</name>
+        <caption>'Ссылка при редактировании'</caption>
+        <type>'2'</type>
+        <mode>'2'</mode>
+        <value>'0'</value>
+        <textvalue></textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'InstanceMode'</name>
+        <caption>'Действие для вывода ссылки'</caption>
+        <type>'15'</type>
+        <mode>'2'</mode>
+        <value>
+         <items>'Двойной щелчок левой кнопкой'#13'Щелчок левой кнопой'#13'Щелчок правой кнопкой'#13'Alt+левая кнопка мыши'#13'Alt+правая кнопка мыши'#13'Alt+двойной щелчок левой кнопкой'#13'Shift+двойной щелчок левой кнопкой'</items>
+         <index>'0'</index>
+        </value>
+        <textvalue></textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'Tag'</name>
+        <caption>'Ярлык'</caption>
+        <type>'1'</type>
+        <mode>'2'</mode>
+        <value>'0'</value>
+        <textvalue>'0'</textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'Template'</name>
+        <caption>'Шаблон автозаполнения'</caption>
+        <type>'8'</type>
+        <mode>'2'</mode>
+        <value></value>
+        <textvalue></textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'Layer'</name>
+        <caption>'Номер решателя'</caption>
+        <type>'1'</type>
+        <mode>'2'</mode>
+        <value>'0'</value>
+        <textvalue></textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'OnInitScript'</name>
+        <caption>'Скрипт инициализации объекта'</caption>
+        <type>'8'</type>
+        <mode>'2'</mode>
+        <value></value>
+        <textvalue></textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'OnRunScript'</name>
+        <caption>'Скрипт исполнения объекта'</caption>
+        <type>'8'</type>
+        <mode>'2'</mode>
+        <value></value>
+        <textvalue></textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'OnDestroyScript'</name>
+        <caption>'Скрипт уничтожения объекта'</caption>
+        <type>'8'</type>
+        <mode>'2'</mode>
+        <value></value>
+        <textvalue></textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'LockSizes'</name>
+        <caption>'Блокировать изменение размеров'</caption>
+        <type>'2'</type>
+        <mode>'2'</mode>
+        <value>'0'</value>
+        <textvalue></textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'MouseIn'</name>
+        <caption>'Указатель в пределах объекта'</caption>
+        <type>'2'</type>
+        <mode>'2'</mode>
+        <value>'0'</value>
+        <textvalue></textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'BrushStyle'</name>
+        <caption>'Стиль заливки'</caption>
+        <type>'10'</type>
+        <mode>'2'</mode>
+        <value>'0'</value>
+        <textvalue></textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'BorderColor'</name>
+        <caption>'Цвет границы'</caption>
+        <type>'3'</type>
+        <mode>'2'</mode>
+        <value>'0'</value>
+        <textvalue></textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'BorderWidth'</name>
+        <caption>'Толщина границы'</caption>
+        <type>'0'</type>
+        <mode>'2'</mode>
+        <value>'1'</value>
+        <textvalue>'1'</textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'BorderPenStyle'</name>
+        <caption>'Стиль границы'</caption>
+        <type>'9'</type>
+        <mode>'2'</mode>
+        <value>'0'</value>
+        <textvalue></textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'GradientStyle'</name>
+        <caption>'Стиль градиента'</caption>
+        <type>'15'</type>
+        <mode>'2'</mode>
+        <value>
+         <items>'Без градиента'#13'Линейный'#13'Линейный симметричный'#13'Радиальный'</items>
+         <index>'0'</index>
+        </value>
+        <textvalue></textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'GradientColor'</name>
+        <caption>'Дополнительный цвет градиента'</caption>
+        <type>'3'</type>
+        <mode>'2'</mode>
+        <value>'0'</value>
+        <textvalue></textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'Opacity'</name>
+        <caption>'Коэффициент прозрачности'</caption>
+        <type>'0'</type>
+        <mode>'2'</mode>
+        <value>'1'</value>
+        <textvalue>'1'</textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'StartGradPtNum'</name>
+        <caption>'Номер начальной точки градиента (с нуля)'</caption>
+        <type>'1'</type>
+        <mode>'2'</mode>
+        <value>'0'</value>
+        <textvalue>'0'</textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'EndGradPointNum'</name>
+        <caption>'Номер конечной точки градиента (с нуля)'</caption>
+        <type>'1'</type>
+        <mode>'2'</mode>
+        <value>'1'</value>
+        <textvalue>'1'</textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+       <data>
+        <name>'IsMaskObject'</name>
+        <caption>'Использовать объект как геометрическую маску слоя'</caption>
+        <type>'2'</type>
+        <mode>'2'</mode>
+        <value>'0'</value>
+        <textvalue></textvalue>
+        <fconstant>'0'</fconstant>
+        <script></script>
+       </data>
+      </visual_props>
+     </object>
+     <signal_list>
+     </signal_list>
+     <glprops_list>
+     </glprops_list>
+     <var_list>
+     </var_list>
+     <connect_list>
+     </connect_list>
+    </page>
+   </blockimage>
+  </object>
+  <object>
+   <name>'MBTYWire'</name>
+   <class_name>'Математическая связь'</class_name>
+   <obj_type>'101'</obj_type>
+   <obj_version>'0'</obj_version>
+   <point_count>'0'</point_count>
+   <visuallayer>'1'</visuallayer>
+   <points>
+    <type>'26'</type>
+    <value>'[]'</value>
+   </points>
+   <color>'0'</color>
+   <visual_props>
+    <data>
+     <name>'Name'</name>
+     <caption>'Имя объекта'</caption>
+     <type>'4'</type>
+     <mode>'2'</mode>
+     <value>'MBTYWire'</value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script></script>
+    </data>
+    <data>
+     <name>'ClassName'</name>
+     <caption>'Тип элемента'</caption>
+     <type>'30'</type>
+     <mode>'2'</mode>
+     <value>'Математическая связь'</value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script></script>
+    </data>
+    <data>
+     <name>'Hint'</name>
+     <caption>'Подсказка'</caption>
+     <type>'8'</type>
+     <mode>'2'</mode>
+     <value></value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script></script>
+    </data>
+    <data>
+     <name>'HideHintOnEdit'</name>
+     <caption>'Блокировать подсказку при редактировании'</caption>
+     <type>'2'</type>
+     <mode>'2'</mode>
+     <value>'0'</value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script></script>
+    </data>
+    <data>
+     <name>'Visible'</name>
+     <caption>'Видимость при выполнении'</caption>
+     <type>'2'</type>
+     <mode>'2'</mode>
+     <value>'1'</value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script></script>
+    </data>
+    <data>
+     <name>'Color'</name>
+     <caption>'Цвет'</caption>
+     <type>'3'</type>
+     <mode>'2'</mode>
+     <value>'0'</value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script></script>
+    </data>
+    <data>
+     <name>'Points'</name>
+     <caption>'Координаты точек'</caption>
+     <type>'26'</type>
+     <mode>'2'</mode>
+     <value>'[]'</value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script></script>
+    </data>
+    <data>
+     <name>'Instance'</name>
+     <caption>'Ссылка'</caption>
+     <type>'29'</type>
+     <mode>'2'</mode>
+     <value></value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script></script>
+    </data>
+    <data>
+     <name>'EditInstance'</name>
+     <caption>'Ссылка при редактировании'</caption>
+     <type>'2'</type>
+     <mode>'2'</mode>
+     <value>'0'</value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script></script>
+    </data>
+    <data>
+     <name>'InstanceMode'</name>
+     <caption>'Действие для вывода ссылки'</caption>
+     <type>'15'</type>
+     <mode>'2'</mode>
+     <value>
+      <items>'Двойной щелчок левой кнопкой'#13'Щелчок левой кнопой'#13'Щелчок правой кнопкой'#13'Alt+левая кнопка мыши'#13'Alt+правая кнопка мыши'#13'Alt+двойной щелчок левой кнопкой'#13'Shift+двойной щелчок левой кнопкой'</items>
+      <index>'0'</index>
+     </value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script></script>
+    </data>
+    <data>
+     <name>'Tag'</name>
+     <caption>'Ярлык'</caption>
+     <type>'1'</type>
+     <mode>'2'</mode>
+     <value>'0'</value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script></script>
+    </data>
+    <data>
+     <name>'Template'</name>
+     <caption>'Шаблон автозаполнения'</caption>
+     <type>'8'</type>
+     <mode>'2'</mode>
+     <value></value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script></script>
+    </data>
+    <data>
+     <name>'Layer'</name>
+     <caption>'Номер решателя'</caption>
+     <type>'1'</type>
+     <mode>'2'</mode>
+     <value>'0'</value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script></script>
+    </data>
+    <data>
+     <name>'OnInitScript'</name>
+     <caption>'Скрипт инициализации объекта'</caption>
+     <type>'8'</type>
+     <mode>'2'</mode>
+     <value></value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script></script>
+    </data>
+    <data>
+     <name>'OnRunScript'</name>
+     <caption>'Скрипт исполнения объекта'</caption>
+     <type>'8'</type>
+     <mode>'2'</mode>
+     <value></value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script></script>
+    </data>
+    <data>
+     <name>'OnDestroyScript'</name>
+     <caption>'Скрипт уничтожения объекта'</caption>
+     <type>'8'</type>
+     <mode>'2'</mode>
+     <value></value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script></script>
+    </data>
+    <data>
+     <name>'LockSizes'</name>
+     <caption>'Блокировать изменение размеров'</caption>
+     <type>'2'</type>
+     <mode>'2'</mode>
+     <value>'0'</value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script></script>
+    </data>
+    <data>
+     <name>'MouseIn'</name>
+     <caption>'Указатель в пределах объекта'</caption>
+     <type>'2'</type>
+     <mode>'2'</mode>
+     <value>'0'</value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script></script>
+    </data>
+    <data>
+     <name>'Active'</name>
+     <caption>'Активность объекта'</caption>
+     <type>'2'</type>
+     <mode>'2'</mode>
+     <value>'1'</value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script></script>
+    </data>
+    <data>
+     <name>'MayLoadRestart'</name>
+     <caption>'Загружать рестарт'</caption>
+     <type>'2'</type>
+     <mode>'2'</mode>
+     <value>'1'</value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script></script>
+    </data>
+    <data>
+     <name>'BlockIndex'</name>
+     <caption>'Индекс блока'</caption>
+     <type>'4'</type>
+     <mode>'2'</mode>
+     <value></value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script></script>
+    </data>
+    <data>
+     <name>'UID'</name>
+     <caption>'UID'</caption>
+     <type>'4'</type>
+     <mode>'2'</mode>
+     <value></value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script></script>
+    </data>
+    <data>
+     <name>'Opacity'</name>
+     <caption>'Коэффициент прозрачности'</caption>
+     <type>'0'</type>
+     <mode>'2'</mode>
+     <value>'1'</value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script></script>
+    </data>
+    <data>
+     <name>'InvisibleProps'</name>
+     <caption>'Список невидимых свойств'</caption>
+     <type>'8'</type>
+     <mode>'2'</mode>
+     <value></value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script></script>
+    </data>
+    <data>
+     <name>'ReadOnlyProps'</name>
+     <caption>'Список имён свойств для чтения'</caption>
+     <type>'8'</type>
+     <mode>'2'</mode>
+     <value></value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script></script>
+    </data>
+    <data>
+     <name>'LineWidth'</name>
+     <caption>'Толщина линии'</caption>
+     <type>'0'</type>
+     <mode>'2'</mode>
+     <value>'1'</value>
+     <textvalue>'1'</textvalue>
+     <fconstant>'0'</fconstant>
+     <script></script>
+    </data>
+    <data>
+     <name>'PenStyle'</name>
+     <caption>'Стиль линии'</caption>
+     <type>'9'</type>
+     <mode>'2'</mode>
+     <value>'0'</value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script></script>
+    </data>
+    <data>
+     <name>'BorderWidth'</name>
+     <caption>'Толщина границы'</caption>
+     <type>'0'</type>
+     <mode>'2'</mode>
+     <value>'0'</value>
+     <textvalue>'0'</textvalue>
+     <fconstant>'0'</fconstant>
+     <script></script>
+    </data>
+    <data>
+     <name>'BorderColor'</name>
+     <caption>'Цвет границы'</caption>
+     <type>'3'</type>
+     <mode>'2'</mode>
+     <value>'16777215'</value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script></script>
+    </data>
+    <data>
+     <name>'StartPointSize'</name>
+     <caption>'Коэффициент увеличения начальной точки линии'</caption>
+     <type>'0'</type>
+     <mode>'2'</mode>
+     <value>'-1'</value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script></script>
+    </data>
+    <data>
+     <name>'StartArrowOverride'</name>
+     <caption>'Вид начального порта линии связи'</caption>
+     <type>'15'</type>
+     <mode>'2'</mode>
+     <value>
+      <items>'По умолчанию'#13#10'Инверсия'#13#10'Круглый'#13#10'Круглый двойной'#13#10'Треугольный в блок'#13#10'Треугольный из блока'#13#10'Двойной в блок'#13#10'Двойной из блока'#13#10'Крестик'#13#10'Косая черта'#13#10'Квадратный'</items>
+      <index>'0'</index>
+     </value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script></script>
+    </data>
+    <data>
+     <name>'EndArrowOverride'</name>
+     <caption>'Вид конечного порта линии связи'</caption>
+     <type>'15'</type>
+     <mode>'2'</mode>
+     <value>
+      <items>'По умолчанию'#13#10'Инверсия'#13#10'Круглый'#13#10'Круглый двойной'#13#10'Треугольный в блок'#13#10'Треугольный из блока'#13#10'Двойной в блок'#13#10'Двойной из блока'#13#10'Крестик'#13#10'Косая черта'#13#10'Квадратный'</items>
+      <index>'0'</index>
+     </value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script></script>
+    </data>
+    <data>
+     <name>'WireDirected'</name>
+     <caption>'Направленная'</caption>
+     <type>'2'</type>
+     <mode>'2'</mode>
+     <value>'1'</value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script></script>
+    </data>
+   </visual_props>
+   <freeze>'0'</freeze>
+   <active_element>'1'</active_element>
+   <is_child>'0'</is_child>
+   <invisibleprops></invisibleprops>
+   <readonlyprops></readonlyprops>
+   <extmodulname>'$(Root)\mbtylib.dll@wire'</extmodulname>
+   <calctemplate></calctemplate>
+   <helpkeyword></helpkeyword>
+   <helpfile></helpfile>
+   <ownerfilter></ownerfilter>
+   <paramfile></paramfile>
+   <uid></uid>
+   <indexstr></indexstr>
+   <custom_props>
+   </custom_props>
+   <custom_params>
+    <data>
+     <name>'Y'</name>
+     <caption>'Значение'</caption>
+     <type>'5'</type>
+     <mode>'0'</mode>
+     <value>'[0]'</value>
+     <textvalue>'[0]'</textvalue>
+     <fconstant>'2'</fconstant>
+     <script></script>
+    </data>
+   </custom_params>
+   <plugindata>
+    <type>'18'</type>
+    <value>'00000000'</value>
+   </plugindata>
+   <directed>'1'</directed>
+   <branched>'1'</branched>
+   <commonprops>'0'</commonprops>
+   <parentwirenode>'-1'</parentwirenode>
+   <start_bl_index>'1'</start_bl_index>
+   <start_bl_name>'FromFile10'</start_bl_name>
+   <start_port_index>'0'</start_port_index>
+   <start_x>'82'</start_x>
+   <start_y>'40'</start_y>
+   <end_bl_index>'0'</end_bl_index>
+   <end_bl_name>'States_dyn6'</end_bl_name>
+   <end_port_index>'0'</end_port_index>
+   <end_x>'112'</end_x>
+   <end_y>'40'</end_y>
+   <parent_wire_index>'-1'</parent_wire_index>
+   <base_points>
+    <type>'26'</type>
+    <value>'[(82 , 40),(112 , 40)]'</value>
+   </base_points>
+  </object>
+  <object>
+   <name>'MBTYWire1'</name>
+   <class_name>'Математическая связь'</class_name>
+   <obj_type>'101'</obj_type>
+   <obj_version>'0'</obj_version>
+   <point_count>'1'</point_count>
+   <visuallayer>'1'</visuallayer>
+   <points>
+    <type>'26'</type>
+    <value>'[(188 , 40)]'</value>
+   </points>
+   <color>'0'</color>
+   <visual_props>
+    <data>
+     <name>'Name'</name>
+     <caption>'Имя объекта'</caption>
+     <type>'4'</type>
+     <mode>'2'</mode>
+     <value>'MBTYWire1'</value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script></script>
+    </data>
+    <data>
+     <name>'ClassName'</name>
+     <caption>'Тип элемента'</caption>
+     <type>'30'</type>
+     <mode>'2'</mode>
+     <value>'Математическая связь'</value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script></script>
+    </data>
+    <data>
+     <name>'Hint'</name>
+     <caption>'Подсказка'</caption>
+     <type>'8'</type>
+     <mode>'2'</mode>
+     <value></value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script></script>
+    </data>
+    <data>
+     <name>'HideHintOnEdit'</name>
+     <caption>'Блокировать подсказку при редактировании'</caption>
+     <type>'2'</type>
+     <mode>'2'</mode>
+     <value>'0'</value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script></script>
+    </data>
+    <data>
+     <name>'Visible'</name>
+     <caption>'Видимость при выполнении'</caption>
+     <type>'2'</type>
+     <mode>'2'</mode>
+     <value>'1'</value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script></script>
+    </data>
+    <data>
+     <name>'Color'</name>
+     <caption>'Цвет'</caption>
+     <type>'3'</type>
+     <mode>'2'</mode>
+     <value>'0'</value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script></script>
+    </data>
+    <data>
+     <name>'Points'</name>
+     <caption>'Координаты точек'</caption>
+     <type>'26'</type>
+     <mode>'2'</mode>
+     <value>'[(188 , 40)]'</value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script></script>
+    </data>
+    <data>
+     <name>'Instance'</name>
+     <caption>'Ссылка'</caption>
+     <type>'29'</type>
+     <mode>'2'</mode>
+     <value></value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script></script>
+    </data>
+    <data>
+     <name>'EditInstance'</name>
+     <caption>'Ссылка при редактировании'</caption>
+     <type>'2'</type>
+     <mode>'2'</mode>
+     <value>'0'</value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script></script>
+    </data>
+    <data>
+     <name>'InstanceMode'</name>
+     <caption>'Действие для вывода ссылки'</caption>
+     <type>'15'</type>
+     <mode>'2'</mode>
+     <value>
+      <items>'Двойной щелчок левой кнопкой'#13'Щелчок левой кнопой'#13'Щелчок правой кнопкой'#13'Alt+левая кнопка мыши'#13'Alt+правая кнопка мыши'#13'Alt+двойной щелчок левой кнопкой'#13'Shift+двойной щелчок левой кнопкой'</items>
+      <index>'0'</index>
+     </value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script></script>
+    </data>
+    <data>
+     <name>'Tag'</name>
+     <caption>'Ярлык'</caption>
+     <type>'1'</type>
+     <mode>'2'</mode>
+     <value>'0'</value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script></script>
+    </data>
+    <data>
+     <name>'Template'</name>
+     <caption>'Шаблон автозаполнения'</caption>
+     <type>'8'</type>
+     <mode>'2'</mode>
+     <value></value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script></script>
+    </data>
+    <data>
+     <name>'Layer'</name>
+     <caption>'Номер решателя'</caption>
+     <type>'1'</type>
+     <mode>'2'</mode>
+     <value>'0'</value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script></script>
+    </data>
+    <data>
+     <name>'OnInitScript'</name>
+     <caption>'Скрипт инициализации объекта'</caption>
+     <type>'8'</type>
+     <mode>'2'</mode>
+     <value></value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script></script>
+    </data>
+    <data>
+     <name>'OnRunScript'</name>
+     <caption>'Скрипт исполнения объекта'</caption>
+     <type>'8'</type>
+     <mode>'2'</mode>
+     <value></value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script></script>
+    </data>
+    <data>
+     <name>'OnDestroyScript'</name>
+     <caption>'Скрипт уничтожения объекта'</caption>
+     <type>'8'</type>
+     <mode>'2'</mode>
+     <value></value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script></script>
+    </data>
+    <data>
+     <name>'LockSizes'</name>
+     <caption>'Блокировать изменение размеров'</caption>
+     <type>'2'</type>
+     <mode>'2'</mode>
+     <value>'0'</value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script></script>
+    </data>
+    <data>
+     <name>'MouseIn'</name>
+     <caption>'Указатель в пределах объекта'</caption>
+     <type>'2'</type>
+     <mode>'2'</mode>
+     <value>'0'</value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script></script>
+    </data>
+    <data>
+     <name>'Active'</name>
+     <caption>'Активность объекта'</caption>
+     <type>'2'</type>
+     <mode>'2'</mode>
+     <value>'1'</value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script></script>
+    </data>
+    <data>
+     <name>'MayLoadRestart'</name>
+     <caption>'Загружать рестарт'</caption>
+     <type>'2'</type>
+     <mode>'2'</mode>
+     <value>'1'</value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script></script>
+    </data>
+    <data>
+     <name>'BlockIndex'</name>
+     <caption>'Индекс блока'</caption>
+     <type>'4'</type>
+     <mode>'2'</mode>
+     <value></value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script></script>
+    </data>
+    <data>
+     <name>'UID'</name>
+     <caption>'UID'</caption>
+     <type>'4'</type>
+     <mode>'2'</mode>
+     <value></value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script></script>
+    </data>
+    <data>
+     <name>'Opacity'</name>
+     <caption>'Коэффициент прозрачности'</caption>
+     <type>'0'</type>
+     <mode>'2'</mode>
+     <value>'1'</value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script></script>
+    </data>
+    <data>
+     <name>'InvisibleProps'</name>
+     <caption>'Список невидимых свойств'</caption>
+     <type>'8'</type>
+     <mode>'2'</mode>
+     <value></value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script></script>
+    </data>
+    <data>
+     <name>'ReadOnlyProps'</name>
+     <caption>'Список имён свойств для чтения'</caption>
+     <type>'8'</type>
+     <mode>'2'</mode>
+     <value></value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script></script>
+    </data>
+    <data>
+     <name>'LineWidth'</name>
+     <caption>'Толщина линии'</caption>
+     <type>'0'</type>
+     <mode>'2'</mode>
+     <value>'1'</value>
+     <textvalue>'1'</textvalue>
+     <fconstant>'0'</fconstant>
+     <script></script>
+    </data>
+    <data>
+     <name>'PenStyle'</name>
+     <caption>'Стиль линии'</caption>
+     <type>'9'</type>
+     <mode>'2'</mode>
+     <value>'0'</value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script></script>
+    </data>
+    <data>
+     <name>'BorderWidth'</name>
+     <caption>'Толщина границы'</caption>
+     <type>'0'</type>
+     <mode>'2'</mode>
+     <value>'0'</value>
+     <textvalue>'0'</textvalue>
+     <fconstant>'0'</fconstant>
+     <script></script>
+    </data>
+    <data>
+     <name>'BorderColor'</name>
+     <caption>'Цвет границы'</caption>
+     <type>'3'</type>
+     <mode>'2'</mode>
+     <value>'16777215'</value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script></script>
+    </data>
+    <data>
+     <name>'StartPointSize'</name>
+     <caption>'Коэффициент увеличения начальной точки линии'</caption>
+     <type>'0'</type>
+     <mode>'2'</mode>
+     <value>'-1'</value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script></script>
+    </data>
+    <data>
+     <name>'StartArrowOverride'</name>
+     <caption>'Вид начального порта линии связи'</caption>
+     <type>'15'</type>
+     <mode>'2'</mode>
+     <value>
+      <items>'По умолчанию'#13#10'Инверсия'#13#10'Круглый'#13#10'Круглый двойной'#13#10'Треугольный в блок'#13#10'Треугольный из блока'#13#10'Двойной в блок'#13#10'Двойной из блока'#13#10'Крестик'#13#10'Косая черта'#13#10'Квадратный'</items>
+      <index>'0'</index>
+     </value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script></script>
+    </data>
+    <data>
+     <name>'EndArrowOverride'</name>
+     <caption>'Вид конечного порта линии связи'</caption>
+     <type>'15'</type>
+     <mode>'2'</mode>
+     <value>
+      <items>'По умолчанию'#13#10'Инверсия'#13#10'Круглый'#13#10'Круглый двойной'#13#10'Треугольный в блок'#13#10'Треугольный из блока'#13#10'Двойной в блок'#13#10'Двойной из блока'#13#10'Крестик'#13#10'Косая черта'#13#10'Квадратный'</items>
+      <index>'0'</index>
+     </value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script></script>
+    </data>
+    <data>
+     <name>'WireDirected'</name>
+     <caption>'Направленная'</caption>
+     <type>'2'</type>
+     <mode>'2'</mode>
+     <value>'1'</value>
+     <textvalue></textvalue>
+     <fconstant>'0'</fconstant>
+     <script></script>
+    </data>
+   </visual_props>
+   <freeze>'0'</freeze>
+   <active_element>'1'</active_element>
+   <is_child>'0'</is_child>
+   <invisibleprops></invisibleprops>
+   <readonlyprops></readonlyprops>
+   <extmodulname>'$(Root)\mbtylib.dll@wire'</extmodulname>
+   <calctemplate></calctemplate>
+   <helpkeyword></helpkeyword>
+   <helpfile></helpfile>
+   <ownerfilter></ownerfilter>
+   <paramfile></paramfile>
+   <uid></uid>
+   <indexstr></indexstr>
+   <custom_props>
+   </custom_props>
+   <custom_params>
+    <data>
+     <name>'Y'</name>
+     <caption>'Значение'</caption>
+     <type>'5'</type>
+     <mode>'0'</mode>
+     <value>'[0]'</value>
+     <textvalue>'[0]'</textvalue>
+     <fconstant>'2'</fconstant>
+     <script></script>
+    </data>
+   </custom_params>
+   <plugindata>
+    <type>'18'</type>
+    <value>'00000000'</value>
+   </plugindata>
+   <directed>'1'</directed>
+   <branched>'1'</branched>
+   <commonprops>'0'</commonprops>
+   <parentwirenode>'-1'</parentwirenode>
+   <start_bl_index>'0'</start_bl_index>
+   <start_bl_name>'States_dyn6'</start_bl_name>
+   <start_port_index>'1'</start_port_index>
+   <start_x>'176'</start_x>
+   <start_y>'40'</start_y>
+   <end_bl_index>'2'</end_bl_index>
+   <end_bl_name>'ToFile11'</end_bl_name>
+   <end_port_index>'0'</end_port_index>
+   <end_x>'210'</end_x>
+   <end_y>'40'</end_y>
+   <parent_wire_index>'-1'</parent_wire_index>
+   <base_points>
+    <type>'26'</type>
+    <value>'[(176 , 40),(188 , 40),(210 , 40)]'</value>
+   </base_points>
+  </object>
+  <signal_list>
+   <data>
+    <name>'signal'</name>
+    <caption>'Сигнал1'</caption>
+    <type>'0'</type>
+    <mode>'2'</mode>
+    <value>'0'</value>
+    <textvalue></textvalue>
+    <fconstant>'0'</fconstant>
+    <script></script>
+   </data>
+  </signal_list>
+  <connect_list>
+  </connect_list>
+ </page>
+</project>
+<datamanager>
+ <cat>
+  <name>'Графики'</name>
+  <expanded>'0'</expanded>
+ </cat>
+ <visible>'0'</visible>
+ <left>'0'</left>
+ <right>'0'</right>
+ <top>'0'</top>
+ <bottom>'0'</bottom>
+ <style>'0'</style>
+</datamanager>
+</Header>
