@@ -1,10 +1,11 @@
 import datetime
+from multiprocessing import cpu_count
+from threading import Thread
+
 import numpy as np
 import tensorflow as tf
-from tensorflow.keras.layers import Input, Dense, Lambda
+from tensorflow.keras.layers import Dense, Input, Lambda
 
-from threading import Thread
-from multiprocessing import cpu_count
 tf.keras.backend.set_floatx('float64')
 
 GLOBAL_EP = 0
@@ -166,8 +167,7 @@ class Worker(Thread):
         self.global_actor = global_actor
         self.global_critic = global_critic
         
-        self.actor = Actor(self.state_size, self.action_size,
-                           self.action_bound, self.std_bound)
+        self.actor = Actor(self.state_size, self.action_size, self.action_bound, self.std_bound)
         self.critic = Critic(self.state_size)
 
         self.sync_with_global()
@@ -198,9 +198,9 @@ class Worker(Thread):
             td_targets (float): целевые Q функции
         """
         td_targets = np.zeros_like(rewards)
-        R_to_go = 0
+        #R_to_go = 0
 
-        Rs = self.critic.model.predict(states)
+        #Rs = self.critic.model.predict(states)
         
         if done:
             td_targets[-1] = rewards[-1]
@@ -271,15 +271,14 @@ class Worker(Thread):
                     rewards = self.list_to_batch(rewards)
                     next_states = self.list_to_batch(next_states)
                     
-                    curr_Qs = self.critic.model.predict(states)
-                    next_Qs = self.critic.model.predict(next_states)
+                    #curr_Qs = self.critic.model.predict(states)
+                    #next_Qs = self.critic.model.predict(next_states)
                     
-                    td_targets = self.n_step_td_target(
-                        (rewards+8)/8, next_Qs, done)
-                    advantages = td_targets - curr_Qs
+                    #td_targets = self.n_step_td_target((rewards+8)/8, next_Qs, done)
+                    #advantages = td_targets - curr_Qs
                     
-                    actor_loss = self.global_actor.train(states, actions, advantages)
-                    critic_loss = self.global_critic.train(states, td_targets)
+                    #actor_loss = self.global_actor.train(states, actions, advantages)
+                    #critic_loss = self.global_critic.train(states, td_targets)
 
                     self.sync_with_global()
                     states = []
@@ -342,8 +341,7 @@ class Agent:
         self.action_bound = env.action_space.high[0]
         self.std_bound = [1e-2, 1.0]
 
-        self.global_actor = Actor(self.state_size, self.action_size,
-                                 self.action_bound, self.std_bound)
+        self.global_actor = Actor(self.state_size, self.action_size, self.action_bound, self.std_bound)
         self.global_critic = Critic(self.state_size)
 
         self.num_workers = cpu_count()

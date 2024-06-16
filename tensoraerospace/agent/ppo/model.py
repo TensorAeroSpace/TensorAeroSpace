@@ -1,7 +1,21 @@
+import datetime
+import json
+from pathlib import Path
+
+import numpy as np
 import torch
 import torch.nn as nn
-import numpy as np
 import torch.nn.functional as F
+from torch.utils.tensorboard import SummaryWriter
+from tqdm import tqdm
+
+from ..base import (
+    BaseRLModel,
+    TheEnvironmentDoesNotMatch,
+    get_class_from_string,
+    serialize_env,
+)
+
 
 def init_layer_uniform(layer: nn.Linear, init_w: float = 3e-3) -> nn.Linear:
     """
@@ -140,15 +154,16 @@ def ppo_iter(epoch: int,mini_batch_size: int,states: torch.Tensor,actions: torch
             yield states[rand_ids, :], actions[rand_ids], \
             log_probs[rand_ids], returns[rand_ids], advantages[rand_ids], \
             rewards[rand_ids]
+            
 
-class Agent():
+class PPO(BaseRLModel):
     """ Класс, реализующий агента PPO с использованием PyTorch.
 
     Args:
         env: объект окружения.
         gamma (float): коэффициент дисконтирования.
     """
-    def __init__(self, env, gamma=0.99):
+    def __init__(self, env, gamma=0.99, max_episodes = 30, rollout_len = 2048, clip_pram = 0.2, num_epochs=64, batch_size=64, entropy_coef=0.005, actor_lr = 0.001, critic_lr = 0.005, seed= 336699):
         """Инициализация агента с заданным окружением и коэффициентом дисконтирования.
         
         Args:
@@ -158,22 +173,27 @@ class Agent():
         self.gamma = gamma
         self.env = env
         self.actor = Actor(env.observation_space.shape[0], env.action_space.shape[0])
-        self.critic = Critic(env.observation_space.shape[0])      
-        self.a_opt = torch.optim.Adam(self.actor.parameters(), lr=0.001)
-        self.c_opt = torch.optim.Adam(self.critic.parameters(), lr=0.005)
-        self.clip_pram = 0.2
-        torch.manual_seed(336699)
-        self.rollout_len = 2048
-        self.max_episodes = 30
-        self.num_epochs = 64
-        self.batch_size = 64
-        self.entropy_coef = 0.005
+        self.critic = Critic(env.observation_space.shape[0])
+        self.actor_lr = actor_lr
+        self.critic_lr = critic_lr
+        self.seed = seed
+        self.a_opt = torch.optim.Adam(self.actor.parameters(), lr=self.actor_lr)
+        self.c_opt = torch.optim.Adam(self.critic.parameters(), lr=self.critic_lr)
+        self.clip_pram = clip_pram
+        torch.manual_seed(seed)
+        self.rollout_len = rollout_len
+        self.max_episodes = max_episodes
+        self.num_epochs = num_epochs
+        self.batch_size = batch_size
+        self.entropy_coef = entropy_coef
         self.ep_reward = []
         self.total_avgr = []
         self.target = False
         self.best_reward = 0
         self.avg_rewards_list = []
-
+        self.writer = SummaryWriter()
+        
+        
     def act(self, state):
         """Выбирает действие для данного состояния.
 
@@ -315,8 +335,8 @@ class Agent():
         В процессе обучения агент проходит через заданное количество эпизодов, собирает данные,
         обрабатывает их и обновляет параметры модели.
         """
-        for episode in range(self.max_episodes):
-            print("Episode", episode)
+        for episode in tqdm(range(self.max_episodes)):
+            # print("Episode", episode)
             if self.target:
                 break
 
@@ -327,6 +347,8 @@ class Agent():
                 state = reset_return
             done = False
             all_aloss = []
+            all_entropies = []
+            episode_lengths = []
             all_closs = []
             rewards = []
             states = []
@@ -363,6 +385,7 @@ class Agent():
                 state = next_state
                 if done:
                     scores.append(score)
+                    episode_lengths.append(step)
                     score = 0
                     reset_return = self.env.reset()
                     if type(reset_return) is tuple:
@@ -399,13 +422,144 @@ class Agent():
                 )
                 all_aloss.append(a_loss)
                 all_closs.append(c_loss)
+                all_entropies.append(-adv.mean().item())  
+                
+            avg_reward = np.mean(scores)
+            avg_aloss = np.mean(all_aloss)
+            avg_closs = np.mean(all_closs)
+            avg_entropy = np.mean(all_entropies)
+            avg_episode_length = np.mean(episode_lengths)
 
-            print("actor loss")
-            print(np.mean(all_aloss))
-            print("critic loss")
-            print(np.mean(all_closs))
+            # Log to TensorBoard
+            self.writer.add_scalar('Loss/Actor', avg_aloss, episode)
+            self.writer.add_scalar('Loss/Critic', avg_closs, episode)
+            self.writer.add_scalar('Performance/Reward', avg_reward, episode)
+            self.writer.add_scalar('Performance/Entropy', avg_entropy, episode)
+            self.writer.add_scalar('Performance/Episode Length', avg_episode_length, episode)
 
-            print("reward")
-            print(np.mean(scores))
+        # print("Training completed. Average rewards list:", self.avg_rewards_list)
+        
+    def get_param_env(self):
+        class_name = self.env.unwrapped.__class__.__name__
+        module_name = self.env.unwrapped.__class__.__module__
+        env_name = f"{module_name}.{class_name}"
+        if "tensoraerospace" in env_name:
+            env_params = serialize_env(self.env)
+        class_name = self.__class__.__name__
+        module_name = self.__class__.__module__
+        agent_name = f"{module_name}.{class_name}"
+        env_params = {}
+        
+        # Получение информации о сигнале справки, если она доступна
+        try:
+            ref_signal = self.env.ref_signal.__class__
+            env_params["ref_signal"] = ref_signal
+        except AttributeError:
+            pass
 
-        print("Training completed. Average rewards list:", self.avg_rewards_list)
+        # Добавление информации о пространстве действий и пространстве состояний
+        try:
+            action_space = str(self.env.action_space)
+            env_params["action_space"] = action_space
+        except AttributeError:
+            pass
+        
+        try:
+            observation_space = str(self.env.observation_space)
+            env_params["observation_space"] = observation_space
+        except AttributeError:
+            pass
+        
+        policy_params = {
+            "gamma": self.gamma,
+            "max_episodes": self.max_episodes,
+            "rollout_len": self.rollout_len,
+            "clip_pram": self.clip_pram,
+            "num_epochs": self.num_epochs,
+            "batch_size": self.batch_size,
+            "entropy_coef": self.entropy_coef,
+            "actor_lr": self.actor_lr,
+            "critic_lr": self.critic_lr,
+            "seed": self.seed,
+
+            
+        }
+        return {
+            "env":{
+                "name":env_name,
+                "params":env_params
+                } ,
+            "policy":{
+                "name":agent_name,
+                "params":policy_params
+                
+            }
+        }
+        
+    def save(self, path=None):
+        """
+        Сохраняет модель PyTorch в указанной директории. Если путь не указан,
+        создает директорию с текущей датой и временем.
+        
+        Args:
+            path (str, optional): Путь, где будет сохранена модель. Если None,
+            создается директория с текущей датой и временем.
+            
+        Returns:
+            None
+        """
+        if path is None:
+            path = Path.cwd()
+        else:
+            path = Path(path)
+        # Текущая дата и время в формате 'YYYY-MM-DD_HH-MM-SS'
+        date_str = datetime.datetime.now().strftime('%b%d_%H-%M-%S')
+        date_str =date_str+"_"+self.__class__.__name__
+        # Создание пути в текущем каталоге с датой и временем
+        
+        config_path = path / date_str / "config.json"
+        actor_path = path / date_str / "actor.pth"
+        critic_path = path / date_str / "critic.pth"
+        
+        # Создание директории, если она не существует
+        actor_path.parent.mkdir(parents=True, exist_ok=True)
+        # Сохранение модели
+        config = self.get_param_env()
+        with open(config_path, "w") as outfile: 
+            json.dump(config, outfile)
+        torch.save(self.actor, actor_path)
+        torch.save(self.critic, critic_path)
+    
+    @classmethod
+    def __load(cls, path):
+        path = Path(path)
+        config_path = path / "config.json"
+        critic_path = path / "critic.pth"
+        actor_path = path / "actor.pth"
+        with open(config_path, 'r') as f:
+            config = json.load(f)
+        class_name = cls.__name__
+        module_name = cls.__module__
+        agent_name = f"{module_name}.{class_name}"
+        
+        if config["policy"]["name"] != agent_name:
+            raise TheEnvironmentDoesNotMatch
+        if "tensoraerospace" in config["env"]["name"]:
+            env = get_class_from_string(config["env"]["name"])(**config["env"]["param"])
+        else:
+            env = get_class_from_string(config["env"]["name"])()
+        new_agent = cls(env=env, **config["policy"]["params"])
+        new_agent.critic = torch.load(critic_path)
+        new_agent.actor = torch.load(actor_path)
+        return new_agent
+        
+    @classmethod
+    def from_pretrained(cls, repo_name, access_token=None, version=None):
+        path = Path(repo_name)
+        if path.exists():
+            new_agent = cls.__load(path)
+            return new_agent
+        else:
+            folder_path = super().from_pretrained(repo_name, access_token, version)
+            new_agent = cls.__load(folder_path)
+            return new_agent

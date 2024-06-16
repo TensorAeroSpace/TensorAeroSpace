@@ -1,2 +1,2 @@
-from .gradient import MPCOptimzationAgent
-from .stochastic import MPCAgent
+from .gradient import MPCOptimizationAgent as MPCOptimizationAgent
+from .stochastic import MPCAgent as MPCAgent

@@ -4,6 +4,7 @@ from torch import nn
 from torch.nn import functional as F
 from torch.utils.tensorboard import SummaryWriter
 
+
 def clip_grad_norm_(module, max_grad_norm):
     """
     Обрезает градиенты параметров модуля для предотвращения "взрыва градиентов".
