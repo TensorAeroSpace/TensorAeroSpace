@@ -68,6 +68,7 @@ Github репозиторий: https://github.com/TensorAeroSpace/TensorAeroSpac
    example/simulink/your_sim.rst
    example/env/unity_example.rst
    example/simintech/simintech.rst
+   example/simintech/simintechToPython.rst
 
 
 Indices and tables

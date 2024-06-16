@@ -4,6 +4,7 @@
 Интеграция осуществляется с помощью скрипта, написанным на ЯП Python
 
 .. code-block::
+    
     import subprocess
     import numpy as np
     from tensoraerospace.utils import generate_time_period, convert_tp_to_sec_tp
