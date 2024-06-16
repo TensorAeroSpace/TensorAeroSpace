@@ -1,8 +1,8 @@
 import gymnasium as gym
 import numpy as np
-from tensoraerospace.aerospacemodel import LongitudinalB747
 from gymnasium import spaces
 
+from tensoraerospace.aerospacemodel import LongitudinalB747
 
 
 class LinearLongitudinalB747(gym.Env):

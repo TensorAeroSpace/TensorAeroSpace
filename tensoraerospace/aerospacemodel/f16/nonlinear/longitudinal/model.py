@@ -1,6 +1,8 @@
 import os
-import numpy as np
+
 import matlab.engine
+import numpy as np
+
 from tensoraerospace.aerospacemodel.base import ModelBase
 
 

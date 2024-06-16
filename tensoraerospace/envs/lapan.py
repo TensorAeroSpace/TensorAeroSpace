@@ -1,8 +1,8 @@
 import gymnasium as gym
 import numpy as np
-from tensoraerospace.aerospacemodel import LAPAN
 from gymnasium import spaces
 
+from tensoraerospace.aerospacemodel import LAPAN
 
 
 class LinearLongitudinalLAPAN(gym.Env):

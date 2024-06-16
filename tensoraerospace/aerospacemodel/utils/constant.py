@@ -19,7 +19,9 @@ state_to_latex_rus = {
     'rud': r'$\delta_{Н}$' + ', град.',
     'dstab': r'$\dot{\delta_{B}}$' + ', град./с',
     'dail': r'$\dot{\delta_{Э}}$' + ', град./с',
-    'ddir': r'$\dot{\delta_{Н}}$' + ', град./с'
+    'ddir': r'$\dot{\delta_{Н}}$' + ', град./с',
+    'altitude': r'Высота' + ', м.',
+    
 }
 
 ref_state_to_latex_rus = {
@@ -28,6 +30,7 @@ ref_state_to_latex_rus = {
     'wx': r'$\omega^{ref}_x$' + ', град./с',
     'wy': r'$\omega^{ref}_y$' + ', град./с',
     'wz': r'$\omega^{ref}_z$' + ', град./с',
+    'q': r'$\omega^{ref}_z$' + ', град./с',
     'gamma': r'$\gamma^{ref}$' + ', град.',
     'phi': r'$\gamma^{ref}$' + ', град.',
     'psi': r'$\varpsi^{ref}$' + ', град.',
@@ -37,6 +40,7 @@ ref_state_to_latex_rus = {
     'ail': r'$\delta{ref}_{Э}$' + ', град.',
     'dir': r'$\delta{ref}_{Н}$' + ', град.',
     'rud': r'$\delta{ref}_{Н}$' + ', град.',
+    'altitude': r'Высота' + ', м.',
 }
 
 ref_state_to_latex_eng = {

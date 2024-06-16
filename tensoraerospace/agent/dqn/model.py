@@ -1,8 +1,8 @@
-import tensorflow as tf
+import time
 
 import gymnasium as gym
-import time
 import numpy as np
+import tensorflow as tf
 import tensorflow.keras.layers as kl
 import tensorflow.keras.optimizers as ko
 

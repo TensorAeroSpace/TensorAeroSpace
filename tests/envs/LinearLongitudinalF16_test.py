@@ -6,7 +6,7 @@ from tensoraerospace.envs.f16 import LinearLongitudinalF16  # Import the environ
 from tensoraerospace.utils import generate_time_period, convert_tp_to_sec_tp
 from tensoraerospace.signals.standart import unit_step
 
-INITIAL_STATE = [[0],[0],[0],[0]]
+INITIAL_STATE = [[0],[0]]
 dt = 0.01  # Дискретизация
 tp = generate_time_period(tn=20, dt=dt) # Временной периуд
 tps = convert_tp_to_sec_tp(tp, dt=dt)
@@ -17,13 +17,17 @@ INITIAL_STATE_ENV = np.array([0,0])
 
 @pytest.fixture
 def env_setup():
+    
     return LinearLongitudinalF16(initial_state=INITIAL_STATE, 
-                                 reference_signal=REFERENCE_SIGNAL, 
-                                 number_time_steps=NUMBER_TIME_STEPS)
+                                output_space = ["theta",  "q",],
+                                state_space = ["theta", "q",  ],
+                                tracking_states=["theta"],
+                                reference_signal=REFERENCE_SIGNAL, 
+                                number_time_steps=NUMBER_TIME_STEPS)
 
 def test_initialization(env_setup):
     env = env_setup
-    assert len(env.initial_state) == 4, "Initial state shape should match input."
+    assert len(env.initial_state) == 2, "Initial state shape should match input."
     assert isinstance(env.action_space, spaces.Box), "Action space should be a Box space."
     assert isinstance(env.observation_space, spaces.Box), "Observation space should be a Box space."
     assert env.current_step == 0, "Initial step should be zero."
@@ -57,7 +61,7 @@ def test_reset_function(env_setup):
 
 def test_default_reward(env_setup):
     env = env_setup
-    state = np.array([0.1], dtype=np.float32)
+    state = np.array([0.1, 0.3], dtype=np.float32)
     ref_signal = np.array([[0.2]], dtype=np.float32)
     reward = LinearLongitudinalF16.default_reward(state, ref_signal, 0)
     assert isinstance(reward, np.ndarray), "Reward calculation should return a float."
