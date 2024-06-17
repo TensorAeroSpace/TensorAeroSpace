@@ -63,6 +63,7 @@ Github репозиторий: https://github.com/TensorAeroSpace/TensorAeroSpac
    example/optimization/example_optimization.rst
    example/agent/a2c_narx/example-narx.rst
    example/agent/mpc/example_mpc.rst
+   example/agent/mpc/example_mpc_stochastic.rst
    example/failure/ihdp-failure.rst
    example/simulink/sim_pyth.rst
    example/simulink/your_sim.rst

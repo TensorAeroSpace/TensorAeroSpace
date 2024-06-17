@@ -62,7 +62,7 @@ class MPCAgent(BaseRLModel):
         lr (float): Скорость обучения для оптимизатора модели.
         criterion (torch.nn.modules.loss): Критерий потерь для обучения модели.
     """
-    def __init__(self, gamma, action_dim, observation_dim, model, cost_function, env, lr=1e-3, criterion=torch.nn.MSELoss()):
+    def __init__(self, gamma, action_dim, observation_dim, model, cost_function, env, min_max_action_value=(-0.5,0.5), lr=1e-3, criterion=torch.nn.MSELoss()):
         self.gamma = gamma
         self.action_dim = action_dim
         self.observation_dim = observation_dim
@@ -73,6 +73,7 @@ class MPCAgent(BaseRLModel):
         self.writer = SummaryWriter()
         self.criterion = criterion
         self.env = env
+        self.min_action, self.max_action = min_max_action_value
     
     
     def from_pretrained(self, repo_name, access_token=None, version=None):
@@ -211,7 +212,7 @@ class MPCAgent(BaseRLModel):
         initial_state = torch.tensor([state], dtype=torch.float32)
         best_action = None
         max_trajectory_value = -float('inf')
-        action_distribution = Uniform(-60, 60)
+        action_distribution = Uniform(self.min_action, self.max_action)
         for trajectory in range(rollout):
             state = initial_state
             trajectory_value = 0
@@ -228,7 +229,7 @@ class MPCAgent(BaseRLModel):
             if trajectory_value > max_trajectory_value:
                 max_trajectory_value = trajectory_value
                 best_action = first_action
-        return best_action.numpy()
+        return best_action.numpy(), max_trajectory_value
     
     def test_model(self, num_episodes=100, rollout=10, horizon=1):
         """
