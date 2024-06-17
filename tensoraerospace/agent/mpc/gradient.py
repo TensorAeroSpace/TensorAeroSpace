@@ -316,6 +316,8 @@ class MPCOptimizationAgent(BaseRLModel):
 
 
     def get_param_env(self):
+        """Получаем параметры параметров среды. Возвращает словарь с параметрами среды.
+        """
         env_name = self.env.unwrapped.__class__.__name__
         agent_name = self.__class__.__name__
         env_params = {}

@@ -211,7 +211,7 @@ class MPCAgent(BaseRLModel):
         """
         initial_state = torch.tensor([state], dtype=torch.float32)
         best_action = None
-        max_trajectory_value = -float('inf')
+        max_trajectory_value = float('inf')
         action_distribution = Uniform(self.min_action, self.max_action)
         for trajectory in range(rollout):
             state = initial_state
@@ -226,7 +226,7 @@ class MPCAgent(BaseRLModel):
                 trajectory_value += -costs
                 
                 state = next_state
-            if trajectory_value > max_trajectory_value:
+            if trajectory_value < max_trajectory_value:
                 max_trajectory_value = trajectory_value
                 best_action = first_action
         return best_action.numpy(), max_trajectory_value
@@ -296,6 +296,8 @@ class MPCAgent(BaseRLModel):
 
 
     def get_param_env(self):
+        """Получаем параметры параметров среды. Возвращает словарь с параметрами среды.
+        """
         env_name = self.env.unwrapped.__class__.__name__
         agent_name = self.__class__.__name__
         env_params = {}
