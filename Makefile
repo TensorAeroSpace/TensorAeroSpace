@@ -20,6 +20,10 @@ run_env_test:
 	@echo "Running enviroments tests..."
 	poetry run pytest -s tests/envs 
 
+run_signal_test:
+	@echo "Running signals tests..."
+	poetry run pytest -s tests/signals 
+
 fmt:
 	poetry run ruff check --fix tensoraerospace --select I
 
