@@ -71,6 +71,18 @@ Github репозиторий: https://github.com/TensorAeroSpace/TensorAeroSpac
    example/simintech/simintech.rst
    example/simintech/simintechToPython.rst
 
+.. toctree::
+   :maxdepth: 2
+   :caption: Обучающие уроки:
+   
+   lesson/0intro.rst
+   lesson/1analysis_airfoil.rst
+   lesson/2analysis_plane_aero.rst
+   lesson/3analysis_plane_static.rst
+   lesson/4matlabscript.rst
+   lesson/5simulinkmodel.rst
+   lesson/6dllgen.rst
+
 
 Indices and tables
 ==================
