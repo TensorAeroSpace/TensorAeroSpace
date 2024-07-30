@@ -16,6 +16,12 @@ device   = torch.device("cuda" if use_cuda else "cpu")
 
 
 def init_weights(m):
+    """
+    Инициализирует веса и смещения (биасы) слоя с помощью нормального распределения.
+
+    Args:
+        m (nn.Linear): Слой нейронной сети, который будет инициализирован.
+    """
     if isinstance(m, nn.Linear):
         nn.init.normal_(m.weight, mean=0., std=0.1)
         nn.init.constant_(m.bias, 0.1)
@@ -23,6 +29,15 @@ def init_weights(m):
 
 class ActorCritic(nn.Module):
     def __init__(self, num_inputs, num_outputs, hidden_size, std=0.0):
+        """
+        Инициализирует модуль актора - критика.
+
+        Args:
+            num_inputs (int): Размерность входных данных.
+            num_outputs (int): Размерность выходных данных.
+            hidden_size (int): Размер скрытого слоя.
+            std (float, optional): стандартное отклонение
+        """
         super(ActorCritic, self).__init__()
 
         self.critic = nn.Sequential(
@@ -41,6 +56,15 @@ class ActorCritic(nn.Module):
         self.apply(init_weights)
 
     def forward(self, x):
+        """
+        Производит прямой проход сети.
+
+        Args:
+            x (Tensor): Тензор входных данных.
+
+        Returns:
+            (Distribution, Tensor): распределение по действиям и значение функции критика
+        """
         value = self.critic(x)
         mu    = self.actor(x)
         std   = self.log_std.exp().expand_as(mu)
@@ -49,6 +73,20 @@ class ActorCritic(nn.Module):
 
 
 def compute_gae(next_value, rewards, masks, values, gamma=0.99, tau=0.95):
+    """
+    Вычисляет значения advantage функции
+
+    Args:
+        next_value (Tensor): Значение функции критика для последнего состояния.
+        rewards (Tensor): Значения наград.
+        masks (Tensor): Маски для терминальных состояний.
+        values (Tensor): Значение функции критика.
+        gamma (float, optional): константа гамма.
+        tau (foat, optional): константа тау.
+
+    Returns:
+        Tensor: значения advantage функции
+    """
     values = values + [next_value]
     gae = 0
     returns = []
@@ -60,6 +98,19 @@ def compute_gae(next_value, rewards, masks, values, gamma=0.99, tau=0.95):
 
 
 def ppo_iter(mini_batch_size, states, actions, log_probs, returns, advantage):
+    """
+    Итератор для алгоритма PPO
+    Args:
+        mini_batch_size (int): Размер мини-батча.
+        states (Tensor): Батч состояний.
+        actions (Tensor): Батч действий.
+        log_probs (Tensor): Батч логарифмов вероятностей действий.
+        returns (Tensor): Батч отложенных наград.
+        advantage (foat, optional): Батч значений advantage функции.
+
+    Returns:
+        Tensor: минибатч для итерации обновления PPO
+    """
     batch_size = states.size(0)
     for _ in range(batch_size // mini_batch_size):
         rand_ids = np.random.randint(0, batch_size, mini_batch_size)
@@ -68,6 +119,13 @@ def ppo_iter(mini_batch_size, states, actions, log_probs, returns, advantage):
 
 class Discriminator(nn.Module):
     def __init__(self, num_inputs, hidden_size):
+        """
+        Инициализирует модуль Дискриминатора.
+
+        Args:
+            num_inputs (int): Размерность входных данных.
+            hidden_size (int): Размер скрытого слоя.
+        """
         super(Discriminator, self).__init__()
 
         self.linear1   = nn.Linear(num_inputs, hidden_size)
@@ -83,8 +141,19 @@ class Discriminator(nn.Module):
         return prob
 
 
-class Gail:
+class GAIL:
     def __init__(self, env, learning_rate, max_steps, mini_batch_size, epochs, data):
+        """
+        Инициализация алгоритма GAIL
+        Args:
+            env: объект окружения, с которым будет взаимодействовать агент.
+            learning_rate (float): learning rate.
+            max_steps (int): максимальное количество шагов в среде.
+            mini_batch_size (int): размер мини-батча.
+            epochs (int): количество эпох обучения.
+            data (Array): экспертные данные (состояния и выбранные действия).
+
+        """
         self.env = env
         self.lr = learning_rate
         self.max_steps = max_steps
@@ -103,11 +172,24 @@ class Gail:
         self.optimizer_discrim = optim.Adam(self.discriminator.parameters(), lr=self.lr)
 
     def expert_reward(self, state, action):
+        """
+        Награда на основе экспертных данных
+        Args:
+            state (Tensor): состояние среды.
+            action (float): действие агента.
+        Returns:
+            int: награда дискриминатора.
+        """
         state = state.cpu().numpy()
         state_action = torch.FloatTensor(np.concatenate([state, action], 1)).to(device)
         return -np.log(self.discriminator(state_action).cpu().data.numpy())
     
     def test_env(self):
+        """
+        Функция для тестирования алгоритма на основе одного эпизода в среде.
+        Returns:
+            int: Награда за эпизод.
+        """
         state = self.env.reset()[0].reshape(1, -1)
         done = False
         total_reward = 0
@@ -121,6 +203,18 @@ class Gail:
         return total_reward
 
     def ppo_update(self, ppo_epochs, mini_batch_size, states, actions, log_probs, returns, advantages, clip_param=0.2):
+        """
+        Функция для обновления PPO.
+        Args:
+            ppo_epochs (int): количество эпох.
+            mini_batch_size (int): размер мини-батча.
+            states (Tensor): батч состояний.
+            actions (Tensor): батч действий.
+            log_probs (Tensor): батч логарифмов вероятностей действий.
+            returns (Tensor): батч отложенных наград.
+            advantages (Tensor): батч значений advantage функции.
+            clip_param (float, optional): константа для клиппинга.
+        """
         for _ in range(ppo_epochs):
             for state, action, old_log_probs, return_, advantage in ppo_iter(mini_batch_size, states, actions, log_probs, returns, advantages):
                 dist, value = self.model(state)
@@ -141,6 +235,12 @@ class Gail:
                 self.optimizer.step()
 
     def learn(self, max_frames, max_reward):
+        """
+        Функция обучения агента
+        Args:
+            max_frames (int): максимальное количество шагов в среде.
+            max_reward (int): награда для прекращения обучения.
+        """
         self.max_frames = max_frames
 
         test_rewards = []

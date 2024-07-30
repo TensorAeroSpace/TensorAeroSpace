@@ -13,6 +13,9 @@ use_cuda = torch.cuda.is_available()
 device   = torch.device("cuda" if use_cuda else "cpu")
 
 class ReplayBuffer:
+    """
+    Класс для ReplayBuffer.
+    """
     def __init__(self, capacity):
         self.capacity = capacity
         self.buffer = []
@@ -34,6 +37,9 @@ class ReplayBuffer:
     
 
 class OUNoise(object):
+    """
+    Класс для шума Орнштейна-Уленбека.
+    """
     def __init__(self, action_space, mu=0.0, theta=0.15, max_sigma=0.3, min_sigma=0.3, decay_period=100000):
         self.mu           = mu
         self.theta        = theta
@@ -62,6 +68,9 @@ class OUNoise(object):
     
 
 class ValueNetwork(nn.Module):
+    """
+    Класс для Q функции.
+    """
     def __init__(self, num_inputs, num_actions, hidden_size, init_w=3e-3):
         super(ValueNetwork, self).__init__()
 
@@ -81,6 +90,9 @@ class ValueNetwork(nn.Module):
 
 
 class PolicyNetwork(nn.Module):
+    """
+    Класс для функции стратегии.
+    """
     def __init__(self, num_inputs, num_actions, hidden_size, init_w=3e-3):
         super(PolicyNetwork, self).__init__()
 
@@ -106,6 +118,14 @@ class PolicyNetwork(nn.Module):
 
 class DDPG:
     def __init__(self, env, value_lr, policy_lr, replay_buffer_size):
+        """
+        Инициализация агента DDPG
+        Args:
+            env: объект окружения, с которым будет взаимодействовать агент.
+            value_lr (float): learning rate для Q функции.
+            policy_lr (float): learning rate для функции стратеги.
+            replay_buffer_size (int): размер буффера.
+        """
         self.env = env
         self.value_lr = value_lr
         self.policy_lr = policy_lr
@@ -142,7 +162,9 @@ class DDPG:
             min_value=-np.inf,
             max_value=np.inf,
             soft_tau=1e-2):
-
+        """
+        Функция обновления ddpg.
+        """
         state, action, reward, next_state, done = self.replay_buffer.sample(batch_size)
 
         state      = torch.FloatTensor(state).to(device)
@@ -183,6 +205,9 @@ class DDPG:
 
 
     def learn(self, max_frames, max_steps, batch_size):
+        """
+        Функция обучения.
+        """
         self.max_frames  = max_frames
         self.max_steps   = max_steps
         self.frame_idx   = 0
