@@ -6,3 +6,4 @@ from .dqn.model import PERAgent as PERAgent
 from .ihdp.model import IHDPAgent as IHDPAgent
 from .ppo.model import PPO as PPO
 from .sac.sac import SAC as SAC
+from .ddpg.model import DDPG as DDPG
