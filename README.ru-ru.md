@@ -21,7 +21,7 @@ poetry install
 Запуск Docker образа
 
 ```bash
-docker build -t tensor_aero_space .  --platform=linux/amd64
+docker build -t tensor_aero_space .  --platform=linux/arm64
 docker run -v example:/app/example -p 8888:8888 -it tensor_aero_space
 ```
 
