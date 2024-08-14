@@ -24,6 +24,10 @@ run_signal_test:
 	@echo "Running signals tests..."
 	poetry run pytest -s tests/signals 
 
+run_bench_test:
+	@echo "Running bench tests..."
+	poetry run pytest -s tests/bench 
+
 fmt:
 	poetry run ruff check --fix tensoraerospace --select I
 
