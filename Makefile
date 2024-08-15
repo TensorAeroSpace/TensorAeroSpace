@@ -35,3 +35,26 @@ test:
 	poetry run pytest
 
 pre_commit: fmt test
+
+
+
+
+# Makefile
+
+# Укажите файлы, которые нужно протестировать
+NOTEBOOK_FILES = example/example-env-LinearLongitudinalB747.ipynb example/example-env-LinearLongitudinalF16.ipynb
+
+# Команда для тестирования Jupyter Notebook файлов
+jupyter_example_test:
+	@echo "Starting tests for Jupyter Notebook files..."
+	@for nb_file in $(NOTEBOOK_FILES); do \
+		echo "Testing $$nb_file..."; \
+		poetry run jupyter nbconvert --to notebook --execute --inplace $$nb_file --ExecutePreprocessor.timeout=600; \
+		if [ $$? -ne 0 ]; then \
+			echo "Test failed for $$nb_file"; \
+			exit 1; \
+		fi; \
+	done
+	@echo "All tests passed successfully!"
+
+.PHONY: jupyter_example_test

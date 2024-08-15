@@ -25,7 +25,8 @@ class LinearLongitudinalF16(gym.Env):
                 state_space: list = ['alpha', 'q'],
                 control_space: list = ['ele'],
                 output_space: list = ['alpha', 'q'],
-                reward_func: callable = None):
+                reward_func: callable = None,
+                use_reward = True):
         super(LinearLongitudinalF16, self).__init__()
 
         self.max_action_value = 25.0
@@ -36,6 +37,7 @@ class LinearLongitudinalF16(gym.Env):
         self.state_space = state_space
         self.control_space = control_space
         self.output_space = output_space
+        self.use_reward = use_reward
         self.reward_func = reward_func if reward_func is not None else self.default_reward
         self.init_args = locals()
         self.model = LongitudinalF16(initial_state,
@@ -43,7 +45,7 @@ class LinearLongitudinalF16(gym.Env):
                                     selected_output = self.output_space,
                                     selected_input = self.control_space,
                                     number_time_steps=number_time_steps,
-                                    selected_state_output=output_space)
+                                    selected_state_output=self.state_space)
         
         self.indices_tracking_states = [state_space.index(tracking_states[i]) for i in range(len(tracking_states))]
 
@@ -82,7 +84,9 @@ class LinearLongitudinalF16(gym.Env):
             action[0]= self.max_action_value*-1
         self.current_step += 1
         next_state = self.model.run_step(action)
-        reward = self.reward_func(next_state, self.reference_signal, self.current_step)
+        reward = 1
+        if self.use_reward:
+            reward = self.reward_func(next_state, self.reference_signal, self.current_step)
         self.done = self.current_step >= self.number_time_steps - 2
         info = self._get_info()
 
@@ -99,7 +103,7 @@ class LinearLongitudinalF16(gym.Env):
                                     selected_output = self.output_space,
                                     selected_input = self.control_space,
                                     number_time_steps=self.number_time_steps,
-                                    selected_state_output=self.output_space)
+                                    selected_state_output=self.state_space)
         self.model.initialise_system(x0=self.initial_state, number_time_steps=self.number_time_steps)
         info = self._get_info()
         

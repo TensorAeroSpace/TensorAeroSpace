@@ -5,10 +5,10 @@ register(
     entry_point='tensoraerospace.envs:LinearLongitudinalF16',
 )
 
-# register(
-#     id='LinearLongitudinalB747-v0',
-#     entry_point='tensoraerospace.envs:LinearLongitudinalB747',
-# )
+register(
+    id='LinearLongitudinalB747-v0',
+    entry_point='tensoraerospace.envs:LinearLongitudinalB747',
+)
 
 # register(
 #     id='LinearLongitudinalMissileModel-v0',
@@ -30,10 +30,10 @@ register(
 #     entry_point='tensoraerospace.envs:LinearLongitudinalF4C',
 # )
 
-# register(
-#     id='LinearLongitudinalUAV-v0',
-#     entry_point='tensoraerospace.envs:LinearLongitudinalUAV',
-# )
+register(
+    id='LinearLongitudinalUAV-v0',
+    entry_point='tensoraerospace.envs:LinearLongitudinalUAV',
+)
 
 # register(
 #     id='GeoSat-v0',

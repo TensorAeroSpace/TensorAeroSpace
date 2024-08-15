@@ -7,6 +7,7 @@
 venv/
 ./.ipynb_checkpoints
 .ipynb_checkpoints
+/example/data
 # Random files
 *.egg-info
 *~
