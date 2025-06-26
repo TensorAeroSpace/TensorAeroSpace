@@ -1,7 +1,7 @@
 # TensorAeroSpace 
 
 [![en](https://img.shields.io/badge/lang-en-red.svg)](./README.md)
-[![ru](https://img.shields.io/badge/lang-ru-grean.svg)](./README.ru-ru.md)
+[![ru](https://img.shields.io/badge/lang-ru-green.svg)](./README.ru-ru.md)
 
 [![Documentation Status](https://readthedocs.org/projects/tensoraerospace/badge/?version=latest)](https://tensoraerospace.readthedocs.io/en/latest/?badge=latest)
 
@@ -50,7 +50,7 @@ docker run -v example:/app/example -p 8888:8888 -it tensor_aero_space
 
 - General Dynamics F-16 Fighting Falcon
 - Boeing-747
-- ELV (Expendable launch vehicle)
+- ELV (Expendable Launch Vehicle)
 - Модель ракеты
 - McDonnell Douglas F-4C
 - North American X-15

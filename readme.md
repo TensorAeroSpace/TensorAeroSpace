@@ -1,7 +1,7 @@
 # TensorAeroSpace 
 
 [![en](https://img.shields.io/badge/lang-en-red.svg)](./README.md)
-[![ru](https://img.shields.io/badge/lang-ru-grean.svg)](./README.ru-ru.md)
+[![ru](https://img.shields.io/badge/lang-ru-green.svg)](./README.ru-ru.md)
 
 [![Documentation Status](https://readthedocs.org/projects/tensoraerospace/badge/?version=latest)](https://tensoraerospace.readthedocs.io/en/latest/?badge=latest)
 
@@ -80,7 +80,7 @@ The documentation includes examples on setting up the network and working with t
 
 ![](docs/example/simulink/img/model.png)
 
-The documentation provides examples on assembling and compiling the Simulink model into o perational code that can be implemented in the [OpenAI Gym](https://github.com/openai/gym) simulation environment.
+The documentation provides examples on assembling and compiling the Simulink model into operational code that can be implemented in the [OpenAI Gym](https://github.com/openai/gym) simulation environment.
 
 ### State Space Matrices
 

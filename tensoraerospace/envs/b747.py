@@ -61,7 +61,7 @@ class LinearLongitudinalB747(gym.Env):
         Args:
             state (_type_): Текущее состояния
             ref_signal (_type_): Заданное состояние
-            ts (_type_): Временное шаг
+            ts (_type_): Временной шаг
 
         Returns:
             reward (float): Оценка управления

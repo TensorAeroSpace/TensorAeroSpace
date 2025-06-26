@@ -28,7 +28,7 @@ def sinusoid(tp: np.ndarray, frequency : float, amplitude: int) -> np.ndarray:
         frequency: Частота
 
     Returns:
-        Синусоидный сигнал
+        Синусоидальный сигнал
     """
     return np.sin(tp * amplitude) * frequency 
 
@@ -54,6 +54,6 @@ def sinusoid_vertical_shift(tp: np.ndarray, frequency: float, amplitude: float, 
         vertical_shift (float): Вертикальный сдвиг волны по умолчанию равен 0.0
 
     Returns:
-        np.ndarray: Синусоидный сигнал, колеблющийся между значениями (vertical_shift + amplitude) и (vertical_shift - amplitude)
+        np.ndarray: Синусоидальный сигнал, колеблющийся между значениями (vertical_shift + amplitude) и (vertical_shift - amplitude)
     """
     return amplitude * np.sin(2 * np.pi * frequency * tp) + vertical_shift

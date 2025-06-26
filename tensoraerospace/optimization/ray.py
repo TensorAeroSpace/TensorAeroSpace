@@ -13,7 +13,7 @@ class HyperParamOptimizationRay(HyperParamOptimizationBase):
         """Инициализация поиска гиперпараметров
 
         Args:
-            direction (str): Направление поиска. Ex. minimize|maximaze
+            direction (str): Направление поиска. Ex. minimize|maximize
         """
         super().__init__()
     
@@ -29,7 +29,7 @@ class HyperParamOptimizationRay(HyperParamOptimizationBase):
         self.results = self.tuner.fit()
 
     def get_best_param(self)->dict:
-        """Получить лучшие гиперпараметров
+        """Получить лучшие гиперпараметры
 
         Returns:
             dict: Словарь с лучшими гиперпараметрами

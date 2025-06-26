@@ -7,7 +7,7 @@ import optuna
 
 class HyperParamOptimizationBase(ABC):
     """
-        Класс интерфейс для поиск гиперпараметров
+        Класс интерфейс для поиска гиперпараметров
     """
     def __init__(self) -> None:
         """Инициализация
@@ -41,11 +41,11 @@ class HyperParamOptimizationOptuna(HyperParamOptimizationBase):
         """Инициализация поиска гиперпараметров
 
         Args:
-            direction (str): Направление поиска. Ex. minimize|maximaze
+            direction (str): Направление поиска. Ex. minimize|maximize
         """
         super().__init__()
-        if direction not in ['minimize','maximaze' ]:
-            raise ValueError("Выберите один из вариантов minimize или maximaze")
+        if direction not in ['minimize','maximize' ]:
+            raise ValueError("Выберите один из вариантов minimize или maximize")
         self.study = optuna.create_study(direction=direction)
     
     def run_optimization(self, func:Callable, n_trials:int):
@@ -58,7 +58,7 @@ class HyperParamOptimizationOptuna(HyperParamOptimizationBase):
         self.study.optimize(func, n_trials=n_trials)
     
     def get_best_param(self)->dict:
-        """Получить лучшие гиперпараметров
+        """Получить лучшие гиперпараметры
 
         Returns:
             dict: Словарь с лучшими гиперпараметрами
@@ -82,5 +82,5 @@ class HyperParamOptimizationOptuna(HyperParamOptimizationBase):
         ax.set_xticks(range(len(self.study.trials)))
         ax.set_xticklabels(x_labels, rotation=90, multialignment="left")
         ax.set_title("График поиска гиперпараметров")
-        ax.set_ylabel("Значении функции", fontsize=15)
+        ax.set_ylabel("Значение функции", fontsize=15)
         ax.set_xlabel("Итерации", fontsize=15)

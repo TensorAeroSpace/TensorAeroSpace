@@ -24,10 +24,10 @@ class ModelBase:
 
         Внутренние переменные:
             * time_step - Шаг моделирования
-            * u_history - Все сигнала управления за время моделирования
+            * u_history - Все сигналы управления за время моделирования
             * x_history - Все состояния за время моделирования
-            * state_history - Все сигнала управления за время моделирования в формате dict (Для удобной работы с графиками)
-            * control_history - Все сигнала управления за время моделирования в формате dict (Для удобной работы с графиками)
+            * state_history - Все состояния за время моделирования в формате dict (Для удобной работы с графиками)
+            * control_history - Все сигналы управления за время моделирования в формате dict (Для удобной работы с графиками)
             * list_state - Список всех состояний объекта управления
             * control_list - Список всех управляющих сигналов объекта управления
             * dt - Шаг дискретизации
@@ -93,7 +93,7 @@ class ModelBase:
 
         """
         if to_rad and to_deg:
-            raise Exception("Неверно указано форматирование, укажите один из типо. to_rad или to_deg.")
+            raise Exception("Неверно указано форматирование, укажите один из типов: to_rad или to_deg.")
         if state_name not in self.list_state:
             raise Exception(f"{state_name} нет в списке состояний")
         if not self.state_history:
@@ -121,7 +121,7 @@ class ModelBase:
         >>> state_hist = model.get_control('stab', to_deg=True)
         """
         if to_rad and to_deg:
-            raise Exception("Неверно указано форматирование, укажите один из типо. to_rad или to_deg.")
+            raise Exception("Неверно указано форматирование, укажите один из типов: to_rad или to_deg.")
         if control_name not in self.list_state:
             raise Exception(f"{control_name} нет в списке сигналов управления")
         if not self.control_history:
@@ -172,9 +172,9 @@ class ModelBase:
                    to_deg: bool = False, to_rad: bool = False, figsize: tuple = (10, 10), xlim: list = [13, 20],
                    ylim: list = [-3, 3]):
         """
-        График ошибки регулирование
+        График ошибки регулирования
 
-        .. math:
+        .. math::
             \epsilon = ref - state
 
         Args:
