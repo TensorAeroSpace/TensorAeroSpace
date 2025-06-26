@@ -14,6 +14,8 @@ from tqdm import tqdm
 
 from ..base import BaseRLModel
 
+import torch
+import torch.nn as nn
 
 class Net(nn.Module):
     """Создает нейронную сеть для моделирования динамики системы.
@@ -25,11 +27,10 @@ class Net(nn.Module):
     """
     def __init__(self, num_action, num_states):
         super(Net, self).__init__()
-        self.fc1 = nn.Linear(num_action+num_states, 128)  # 3 состояния + 1 действие = 4
-        self.fc2 = nn.Linear(128, 128)
-        self.fc3 = nn.Linear(128, 128)
-        self.fc4 = nn.Linear(128, 128)
-        self.fc5 = nn.Linear(128, num_states)  # Предсказание следующего состояния
+        self.fc1 = nn.Linear(num_action + num_states, 16)  # 3 состояния + 1 действие = 4
+        self.fc2 = nn.Linear(16, 16)
+        self.fc3 = nn.Linear(16, num_states)  # Предсказание следующего состояния
+        self.dropout = nn.Dropout(p=0.1)  # Dropout layer with a probability of 0.5
 
     def forward(self, x):
         """Выполняет прямое распространение входных данных через сеть.
@@ -41,10 +42,10 @@ class Net(nn.Module):
             torch.Tensor: Предсказание следующего состояния системы.
         """
         x = torch.relu(self.fc1(x))
+        x = self.dropout(x)
         x = torch.relu(self.fc2(x))
-        x = torch.relu(self.fc3(x))
-        x = torch.relu(self.fc4(x))
-        return self.fc5(x)
+        x = self.dropout(x)
+        return self.fc3(x)
 
 
 

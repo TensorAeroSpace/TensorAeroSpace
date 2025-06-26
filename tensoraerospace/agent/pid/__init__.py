@@ -40,7 +40,7 @@ class PID(BaseRLModel):
         >>> control_signal = pid.update(10, 7)
     """
 
-    def __init__(self,env, kp=1, ki=1, kd=0.5, dt=0.01):
+    def __init__(self,env=None, kp=1, ki=1, kd=0.5, dt=0.01):
         self.kp = kp
         self.ki = ki
         self.kd = kd

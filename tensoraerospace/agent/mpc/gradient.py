@@ -67,7 +67,7 @@ class MPCOptimizationAgent(BaseRLModel):
         lr (float): Скорость обучения для оптимизатора модели.
         criterion (torch.nn.modules.loss): Критерий потерь для обучения модели.
     """
-    def __init__(self, gamma, action_dim, observation_dim, model, cost_function, env, lr=1e-3, criterion=torch.nn.MSELoss()):
+    def __init__(self, gamma, action_dim, observation_dim, model, cost_function, env, lr=1e-3, criterion=torch.nn.MSELoss(), optimization_lr=1):
         self.gamma = gamma
         self.action_dim = action_dim
         self.observation_dim = observation_dim
@@ -78,6 +78,7 @@ class MPCOptimizationAgent(BaseRLModel):
         self.writer = SummaryWriter()
         self.criterion = criterion
         self.env = env
+        self.optimization_lr = optimization_lr
     
     
     def from_pretrained(self, repo_name, access_token=None, version=None):
@@ -89,8 +90,63 @@ class MPCOptimizationAgent(BaseRLModel):
             config = json.load(f)
         if config['env']['name'] != self.env.unwrapped.__class__.__name__:
             raise ValueError("Environment name in config.json does not match the environment passed to the model.")
+                                    
+    def train_transformers_model(self, states, actions, next_states, epochs=100, batch_size=64):
+        """
+        Обучает трансформерную модель динамики системы, используя данные о состояниях, действиях и следующих состояниях.
+
+        Args:
+            states (numpy.ndarray): Массив текущих состояний.
+            actions (numpy.ndarray): Массив действий, совершенных в этих состояниях.
+            next_states (numpy.ndarray): Массив следующих состояний после совершения действий.
+            epochs (int): Количество эпох обучения.
+            batch_size (int): Размер батча для обучения.
+
+        Returns:
+            None
+        """
+        for epoch in (pbar := tqdm(range(epochs))):
+            permutation = np.random.permutation(states.shape[0])
+            epoch_loss = 0.0
+            for i in range(0, states.shape[0], batch_size):
+                indices = permutation[i:i + batch_size]
+                batch_states, batch_actions, batch_next_states = states[indices], actions[indices], next_states[indices]
+                
+                # Объединяем состояния и действия в один тензор
+                inputs = np.hstack((batch_states, batch_actions.reshape(-1, 1)))
+                inputs = torch.tensor(inputs, dtype=torch.float32)
+                targets = torch.tensor(batch_next_states, dtype=torch.float32)
+                
+                # Преобразование входных данных в форму (batch_size, sequence_length, embedding_dim)
+                inputs = inputs.unsqueeze(1)  # (batch_size, 1, embedding_dim)
+                inputs = inputs.transpose(0, 1)  # (sequence_length, batch_size, embedding_dim)
+                
+                # Обнуляем градиенты
+                self.system_model_optimizer.zero_grad()
+                
+                # Прямое распространение через модель
+                outputs = self.system_model(inputs)
+                
+                # Преобразование выходных данных обратно
+                outputs = outputs.transpose(0, 1).squeeze(1)  # (batch_size, 2)
+                
+                # Вычисляем потерю
+                loss = self.criterion(outputs, targets)
+                
+                # Обратное распространение
+                loss.backward()
+                
+                # Обновляем параметры модели
+                self.system_model_optimizer.step()
+                
+                # Агрегируем потерю по батчам
+                epoch_loss += loss.item()
+
+            # Логгирование среднего значения потерь за эпоху
+            avg_epoch_loss = epoch_loss / (states.shape[0] // batch_size)
+            self.writer.add_scalar('Loss/train', avg_epoch_loss, epoch)
+            pbar.set_description(f"Avg Loss {avg_epoch_loss:.4f}")
                                 
-         
     def train_model(self, states, actions, next_states, epochs=100, batch_size=64):
         """
         Обучает модель динамики среды, используя данные о состояниях, действиях и следующих состояниях.
@@ -228,26 +284,27 @@ class MPCOptimizationAgent(BaseRLModel):
             action_sequence = torch.FloatTensor(horizon, 1).uniform_(-0.43, 0.43)
             # Создание тензора с require_grad=True
             action_sequence = torch.tensor(action_sequence, requires_grad=True)
-            optimizer = optim.AdamW([action_sequence], lr=1)
+            optimizer = optim.SGD([action_sequence], lr=self.optimization_lr)
             # print("action_sequence",action_sequence)
-            for optimization_step in range(optimization_steps):  # Количество шагов оптимизации
-                optimizer.zero_grad()
+            for h in range(horizon):  # Количество шагов оптимизации
+                
                 state = initial_state
                 total_cost = 0
-                for h in range(horizon):
+                for optimization_step in range(optimization_steps):
+                    optimizer.zero_grad()
                     action = action_sequence[h].unsqueeze(0)
                     next_state = self.system_model(torch.cat([state, action], dim=-1))
                     cost = self.cost_function(next_state, action, reference_signals, step)
 
-                    total_cost += cost
-                    state = next_state
+                    # total_cost += cost
+                    # state = next_state
 
-                if total_cost < best_cost:
-                    best_cost = total_cost
-                    best_action_sequence = action_sequence.detach().clone()
+                    if cost < best_cost:
+                        best_cost = cost
+                        best_action_sequence = action_sequence.detach().clone()
 
-                total_cost.backward()
-                optimizer.step()
+                    cost.backward()
+                    optimizer.step()
         # print("best",best_action_sequence[0].detach().numpy())
         return best_action_sequence[0].detach().numpy(), best_cost  # Возвращаем первое действие из наилучшей последовательности
         

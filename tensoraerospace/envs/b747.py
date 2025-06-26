@@ -25,7 +25,7 @@ class LinearLongitudinalB747(gym.Env):
                  state_space=['theta', 'q'],
                  control_space=['stab'],
                  output_space=['theta', 'q'],
-                 reward_func=None):
+                 reward_func=None, use_reward = True):
         self.max_action_value = 25.0
         self.initial_state = initial_state
         self.number_time_steps = number_time_steps
@@ -34,6 +34,7 @@ class LinearLongitudinalB747(gym.Env):
         self.state_space = state_space
         self.control_space = control_space
         self.output_space = output_space
+        self.use_reward = use_reward
         self.reference_signal = reference_signal
         if reward_func:
             self.reward_func = reward_func
@@ -70,6 +71,7 @@ class LinearLongitudinalB747(gym.Env):
     def _get_info(self):
         return {}
     
+
     def step(self, action: np.ndarray):
         """Выполнения шага моделирования
 
@@ -88,10 +90,13 @@ class LinearLongitudinalB747(gym.Env):
             action[0]= self.max_action_value*-1
         self.current_step += 1
         next_state = self.model.run_step(action)
-        reward = self.reward_func(next_state[self.indices_tracking_states], self.ref_signal, self.current_step)
+        reward = 1
+        if self.use_reward:
+            reward = self.reward_func(next_state, self.reference_signal, self.current_step)
         self.done = self.current_step >= self.number_time_steps - 2
         info = self._get_info()
-        return next_state.reshape([1,-1])[0], reward, self.done, False, info
+
+        return next_state.reshape([1,-1])[0], reward, self.done, False, {"action":action}
 
     def reset(self):
         """Восстановление среды моделирования в начальные условия
