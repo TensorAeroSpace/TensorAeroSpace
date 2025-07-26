@@ -15,9 +15,9 @@ def unit_step(tp:np.array, degree:int, time_step:int=10, dt:float=0.01, output_r
         np.array: Ступенчатый сигнал
     """
     if output_rad:
-       return np.deg2rad(degree) * (tp > time_step/dt)
+       return np.deg2rad(degree) * (tp >= time_step)
     else:
-        return degree * (tp > time_step/dt)
+        return degree * (tp >= time_step)
 
 def sinusoid(tp: np.ndarray, frequency : float, amplitude: int) -> np.ndarray:
     """Синусоидальный сигнал

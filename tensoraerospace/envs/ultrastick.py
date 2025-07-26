@@ -91,11 +91,17 @@ class LinearLongitudinalUltrastick(gym.Env):
         reward = self.reward_func(next_state[self.indices_tracking_states], self.ref_signal, self.current_step)
         self.done = self.current_step >= self.number_time_steps - 2
         info = self._get_info()
-        return next_state.reshape([1,-1])[0], reward, self.done, False, info
+        return next_state.reshape([-1,1]), reward, self.done, False, info
 
-    def reset(self):
+    def reset(self, seed=None, options=None):
         """Восстановление среды моделирования в начальные условия
+        
+        Args:
+            seed (int, optional): Seed для генератора случайных чисел
+            options (dict, optional): Дополнительные опции для инициализации
         """
+        super().reset(seed=seed)
+        
         self.current_step = 0
         self.done = False
         self.model = None
@@ -104,7 +110,8 @@ class LinearLongitudinalUltrastick(gym.Env):
         self.ref_signal = self.reference_signal
         self.model.initialise_system(x0=self.initial_state, number_time_steps=self.number_time_steps)
         info = self._get_info()
-        return np.array(self.initial_state, dtype=np.float64)[self.model.selected_state_index].reshape([1,-1])[0], info
+        observation = np.array(self.initial_state, dtype=np.float32)[self.model.selected_state_index].reshape([-1,1])
+        return observation, info
     
     def render(self):
         """Визуальное отображение действий в среде. В статусе WIP

@@ -21,6 +21,8 @@ gymnasium = "^0.29.1"
 torch = "^2.2.0"
 huggingface-hub = "^0.22.2"
 tensorflow-macos = { version = "2.15.0", markers = "sys_platform == 'darwin'" }
+seaborn = "^0.13.2"
+plotly = "^6.2.0"
 
 [tool.poetry.group.dev.dependencies]
 sphinx = "^7.2.6"

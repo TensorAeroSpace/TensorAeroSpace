@@ -382,7 +382,11 @@ class Critic:
                 self.ct_1 = self.ct
 
         # Define the input to the critic NN
-        tracked_states = np.reshape(xt[self.indices_tracking_states, :], [-1, 1])
+        # Check if xt already contains only tracked states
+        if xt.shape[0] == len(self.indices_tracking_states):
+            tracked_states = np.reshape(xt, [-1, 1])
+        else:
+            tracked_states = np.reshape(xt[self.indices_tracking_states, :], [-1, 1])
         xt_error = np.reshape(tracked_states - xt_ref, [-1, 1])
 
         nn_input = tf.constant(np.array([(xt_error)]).astype('float32'))
@@ -421,7 +425,11 @@ class Critic:
 
         # In the case that there are no inputs, obtain data from the object attributes
         if len(args) == 0:
-            tracked_states = np.reshape(self.xt_1[self.indices_tracking_states, :], [-1, 1])
+            # Check if xt_1 already contains only tracked states
+            if self.xt_1.shape[0] == len(self.indices_tracking_states):
+                tracked_states = np.reshape(self.xt_1, [-1, 1])
+            else:
+                tracked_states = np.reshape(self.xt_1[self.indices_tracking_states, :], [-1, 1])
             xt_1_error = np.reshape(tracked_states - self.xt_ref_1, [-1, 1])
             nn_input_1 = tf.constant(np.array([(xt_1_error)]).astype('float32'))
 
@@ -497,8 +505,14 @@ class Critic:
             ct: Текущий временной шаг one-step cost функции
         """
         
-        ct = np.matmul(np.matmul((np.reshape(self.xt[self.indices_tracking_states, :], [-1, 1]) - self.xt_ref).T,
-                                 self.Q), (np.reshape(self.xt[self.indices_tracking_states, :], [-1, 1]) - self.xt_ref))
+        # Check if xt already contains only tracked states
+        if self.xt.shape[0] == len(self.indices_tracking_states):
+            tracked_states = self.xt
+        else:
+            tracked_states = self.xt[self.indices_tracking_states, :]
+        
+        ct = np.matmul(np.matmul((np.reshape(tracked_states, [-1, 1]) - self.xt_ref).T,
+                                 self.Q), (np.reshape(tracked_states, [-1, 1]) - self.xt_ref))
         self.store_c[0, self.time_step] = ct[0]
         return ct
 

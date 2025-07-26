@@ -56,9 +56,7 @@ class AngularF16(ModelBase):
         self.action_space_length = len(self.control_list)
         self.param = self.eng.airplane_parameters()  # Получаем параметры объекта управления
         self.x_history = [x0]
-        if self.selected_state_output:
-            for val in self.selected_state_output:
-                self.selected_state_index = self.list_state.index(val)
+        self._initialize_selected_state_index(self.selected_state_output, self.list_state)
 
     def get_param(self):
         """

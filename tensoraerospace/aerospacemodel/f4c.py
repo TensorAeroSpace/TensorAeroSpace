@@ -51,8 +51,7 @@ class LongitudinalF4C(ModelBase):
         self.selected_input = ["ele", ]
         self.control_list = self.selected_input
 
-        if self.selected_state_output:
-            self.selected_state_index = [self.list_state.index(val) for val in self.selected_state_output]
+        self._initialize_selected_state_index(self.selected_states, self.list_state)
 
         self.state_space = self.selected_states
         self.action_space = self.selected_input
@@ -152,13 +151,14 @@ class LongitudinalF4C(ModelBase):
             ut_1 = self.store_input[:, self.time_step - 1]
         else:
             ut_1 = ut_0
-        ut = [0, ]
+        ut = [0] * self.number_inputs
         for i in range(self.number_inputs):
+            ut_1_scalar = float(ut_1[i]) if hasattr(ut_1, '__getitem__') else float(ut_1)
             ut[i] = max(min(max(min(ut_0[i],
                                     np.reshape(
-                                        np.array([ut_1[i] + self.input_rate_limits[i] * self.discretisation_time]),
+                                        np.array([ut_1_scalar + self.input_rate_limits[i] * self.discretisation_time]),
                                         [-1, 1])),
-                                np.reshape(np.array([ut_1[i] - self.input_rate_limits[i] * self.discretisation_time]),
+                                np.reshape(np.array([ut_1_scalar - self.input_rate_limits[i] * self.discretisation_time]),
                                            [-1, 1])),
                             np.array([[self.input_magnitude_limits[i]]])),
                         - np.array([[self.input_magnitude_limits[i]]]))

@@ -70,7 +70,7 @@ class AircraftMPC:
             Значение целевой функции.
         """
         cost = 0
-        # Ошибка отслеживания
+        # Ошибка отслеживания 
         cost += self.weights['theta_tracking'] * np.sum((X[:, 3] - theta_ref_np)**2)
         # Штраф за управление
         cost += self.weights['control_effort'] * np.sum(U**2)

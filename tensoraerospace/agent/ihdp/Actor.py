@@ -173,12 +173,14 @@ class Actor:
             scale=0.01, mode='fan_in', distribution='truncated_normal', seed=seed)
         model = tf.keras.Sequential()
 
-        model.add(Flatten(input_shape=(1, 1), name='Flatten_1'))
-
+        # Определяем размерность входа на основе количества отслеживаемых состояний
+        input_dim = len(self.indices_tracking_states) if hasattr(self, 'indices_tracking_states') else 1
+        
+        # Создаем модель с правильной входной размерностью
         model.add(Dense(self.layers[0], activation=self.activations[0], kernel_initializer=initializer,
-                        name='dense_1'))
+                        input_shape=(input_dim,), name='dense_1'))
 
-        store_weights['W1'] = np.zeros((1 * self.layers[0], self.number_time_steps + 1))
+        store_weights['W1'] = np.zeros((input_dim * self.layers[0], self.number_time_steps + 1))
         store_weights['W1'][:, self.time_step] = model.trainable_variables[0].numpy().flatten()
 
         for counter, layer in enumerate(self.layers[1:]):
@@ -206,7 +208,11 @@ class Actor:
             self.xt = xt
             self.xt_ref = xt_ref
 
-            tracked_states = np.reshape(xt[self.indices_tracking_states[0], :], [-1, 1])
+            # Check if xt already contains only tracked states
+            if xt.shape[0] == len(self.indices_tracking_states):
+                tracked_states = np.reshape(xt[self.indices_tracking_states[0], :], [-1, 1])
+            else:
+                tracked_states = np.reshape(xt[self.indices_tracking_states[0], :], [-1, 1])
             alphat_error = np.reshape(tracked_states - xt_ref, [-1, 1])
             nn_input_alpha = tf.constant(np.array([(alphat_error)]).astype('float32'))
 
@@ -226,7 +232,11 @@ class Actor:
 
             self.store_q[:, self.time_step] = q_ref
 
-            tracked_states_q = np.reshape(xt[self.indices_tracking_states[1], :], [-1, 1])
+            # Check if xt already contains only tracked states
+            if xt.shape[0] == len(self.indices_tracking_states):
+                tracked_states_q = np.reshape(xt[self.indices_tracking_states[1], :], [-1, 1])
+            else:
+                tracked_states_q = np.reshape(xt[self.indices_tracking_states[1], :], [-1, 1])
             qt_error = np.reshape(tracked_states_q - np.reshape(q_ref, tracked_states_q.shape), [-1, 1])
             nn_input_q = tf.constant(np.array([(qt_error)]).astype('float32'))
 
@@ -246,9 +256,14 @@ class Actor:
             self.xt = xt
             self.xt_ref = xt_ref
 
-            tracked_states = np.reshape(xt[self.indices_tracking_states, :], [-1, 1])
+            # Если xt уже содержит только отслеживаемые состояния, используем его напрямую
+            if xt.shape[0] == len(self.indices_tracking_states):
+                tracked_states = np.reshape(xt, [-1, 1])
+            else:
+                tracked_states = np.reshape(xt[self.indices_tracking_states, :], [-1, 1])
             xt_error = np.reshape(tracked_states - xt_ref, [-1, 1])
-            nn_input = tf.constant(np.array([(xt_error)]).astype('float32'))
+            # Создаем входные данные с правильной размерностью для модели
+            nn_input = tf.constant(xt_error.flatten().reshape(1, -1).astype('float32'))
 
             with tf.GradientTape() as tape:
                 tape.watch(self.model.trainable_variables)
@@ -270,6 +285,9 @@ class Actor:
                               np.reshape(self.maximum_input, ut.shape)),
                           np.reshape(-self.maximum_input, ut.shape))
 
+        # Убеждаемся, что возвращаем массив, а не скаляр
+        if np.isscalar(self.ut):
+            return np.array([self.ut])
         return self.ut
 
     def train_actor_online(self, Jt1, dJt1_dxt1, G):
@@ -623,7 +641,11 @@ class Actor:
             raise Exception("THERE SHOULD BE AN OUTPUT in the evaluate_actor function.")
 
         if self.cascaded_actor:
-            tracked_states = np.reshape(xt[self.indices_tracking_states[0], :], [-1, 1])
+            # Check if xt already contains only tracked states
+            if xt.shape[0] == len(self.indices_tracking_states):
+                tracked_states = np.reshape(xt[self.indices_tracking_states[0], :], [-1, 1])
+            else:
+                tracked_states = np.reshape(xt[self.indices_tracking_states[0], :], [-1, 1])
             xt_error = np.reshape(tracked_states - xt_ref, [-1, 1])
             nn_input = tf.constant(np.array([(xt_error)]).astype('float32'))
 
@@ -637,14 +659,22 @@ class Actor:
                                 np.reshape(self.maximum_q_rate, q_ref_0.numpy().shape)),
                             np.reshape(-self.maximum_q_rate, q_ref_0.numpy().shape))
 
-            tracked_states = np.reshape(xt[self.indices_tracking_states[1], :], [-1, 1])
+            # Check if xt already contains only tracked states
+            if xt.shape[0] == len(self.indices_tracking_states):
+                tracked_states = np.reshape(xt[self.indices_tracking_states[1], :], [-1, 1])
+            else:
+                tracked_states = np.reshape(xt[self.indices_tracking_states[1], :], [-1, 1])
             xt_error_q = np.reshape(tracked_states - np.reshape(q_ref, tracked_states.shape), [-1, 1])
             nn_input_q = tf.constant(np.array([(xt_error_q)]).astype('float32'))
 
             ut = self.model_q(nn_input_q).numpy()
 
         else:
-            tracked_states = np.reshape(xt[self.indices_tracking_states, :], [-1, 1])
+            # Check if xt already contains only tracked states
+            if xt.shape[0] == len(self.indices_tracking_states):
+                tracked_states = np.reshape(xt, [-1, 1])
+            else:
+                tracked_states = np.reshape(xt[self.indices_tracking_states, :], [-1, 1])
             xt_error = np.reshape(tracked_states - xt_ref, [-1, 1])
             nn_input = tf.constant(np.array([(xt_error)]).astype('float32'))
 

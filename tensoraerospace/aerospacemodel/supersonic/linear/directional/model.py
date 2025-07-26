@@ -44,9 +44,7 @@ class DirectionalSuperSonic(ModelBase):
         self.selected_input = ["ail", "rud"]
         self.control_list = self.selected_input
 
-        if self.selected_state_output:
-            for val in self.selected_state_output:
-                self.selected_state_index = self.list_state.index(val)
+        self._initialize_selected_state_index(self.selected_states, self.list_state)
 
         self.state_space = self.selected_states
         self.action_space = self.selected_input

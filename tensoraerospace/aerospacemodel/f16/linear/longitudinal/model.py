@@ -47,8 +47,7 @@ class LongitudinalF16(ModelBase):
         self.selected_input = selected_input
         self.control_list = self.selected_input
 
-        if self.selected_state_output:
-            self.selected_state_index = [self.list_state.index(val) for val in self.selected_state_output]
+        self._initialize_selected_state_index(self.selected_state_output, self.list_state)
 
         self.state_space = self.selected_states
         self.action_space = self.selected_input
@@ -141,6 +140,24 @@ class LongitudinalF16(ModelBase):
 
         # Simplify the system with the chosen states
         self.simplify_system()
+        
+        # Update dimensions after simplification
+        self.number_states = self.filt_A.shape[0]
+        self.number_inputs = self.filt_B.shape[1]
+        self.number_outputs = self.filt_C.shape[0]
+        
+        # Filter initial state to match simplified system
+        states_rows = self.create_dictionary('states')
+        selected_rows_states = np.array([states_rows[state] for state in self.selected_states])
+        
+        # Handle case where initial_state has fewer elements than full state space
+        x0_array = np.array(x0)
+        if x0_array.shape[0] == len(self.selected_states):
+            # If initial_state matches selected_states size, use it directly
+            filtered_x0 = x0_array
+        else:
+            # If initial_state is full size, filter it
+            filtered_x0 = x0_array[selected_rows_states]
 
         # Store the number of time steps
         self.number_time_steps = number_time_steps
@@ -155,8 +172,8 @@ class LongitudinalF16(ModelBase):
         self.store_input = np.zeros((self.number_inputs, self.number_time_steps))
         self.store_outputs = np.zeros((self.number_outputs, self.number_time_steps))
 
-        self.x0 = x0
-        self.xt = np.array(x0)
+        self.x0 = filtered_x0
+        self.xt = np.array(filtered_x0)
         self.store_states[:, self.time_step] = np.reshape(self.xt, [-1, ])
 
     # def run_step(self, ut_0: np.array):

@@ -48,6 +48,19 @@ class ModelBase:
         # Текущие состояния, управляющий сигнал и выход системы
         self.xt = None
         self.xt1 = None
+        
+    def _initialize_selected_state_index(self, selected_state_output, list_state):
+        """Инициализация selected_state_index на основе selected_state_output
+        
+        Args:
+            selected_state_output: Список выбранных выходных состояний
+            list_state: Полный список состояний модели
+        """
+        if selected_state_output:
+            self.selected_state_index = [list_state.index(val) for val in selected_state_output]
+        else:
+            # Если selected_state_output не задан, используем все состояния
+            self.selected_state_index = list(range(len(list_state)))
         self.yt = None
         self.ut = None
 

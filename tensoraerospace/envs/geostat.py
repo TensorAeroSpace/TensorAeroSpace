@@ -48,7 +48,7 @@ class GeoSatEnv(gym.Env):
         self.number_time_steps = number_time_steps
     
         self.action_space = spaces.Box(low=-60, high=60, shape=(len(control_space),1), dtype=np.float32)
-        self.observation_space = spaces.Box(low=-np.inf, high=np.inf, shape=(len(state_space),1), dtype=np.float32)
+        self.observation_space = spaces.Box(low=-1000.0, high=1000.0, shape=(len(state_space),1), dtype=np.float32)
 
         self.current_step = 0
         self.done = False
@@ -68,7 +68,7 @@ class GeoSatEnv(gym.Env):
         Returns:
             reward (float): Оценка управления
         """
-        return np.abs(state[0] - ref_signal[:, ts])
+        return float(np.abs(state[0] - ref_signal[:, ts]).item())
         
     def step(self, action: np.ndarray):
         """Выполнения шага моделирования
@@ -88,11 +88,17 @@ class GeoSatEnv(gym.Env):
         self.done = self.current_step >= self.number_time_steps - 2
         info = self._get_info()
 
-        return next_state.reshape([1,-1])[0], reward, self.done, False, info
+        return next_state.astype(np.float32).reshape([-1,1]), reward, self.done, False, info
 
-    def reset(self):
+    def reset(self, seed=None, options=None):
         """Восстановление среды моделирования в начальные условия
+        
+        Args:
+            seed (int, optional): Seed для генератора случайных чисел
+            options (dict, optional): Дополнительные опции для инициализации
         """
+        super().reset(seed=seed)
+        
         self.model = None
         self.model = GeoSat(self.initial_state, number_time_steps=self.number_time_steps,
                                      selected_state_output=self.output_space, t0=0)
@@ -100,7 +106,8 @@ class GeoSatEnv(gym.Env):
         self.model.initialise_system(x0=self.initial_state, number_time_steps=self.number_time_steps)
         info = self._get_info()
         self.current_step = 0
-        return np.array(self.initial_state, dtype=np.float64)[self.model.selected_state_index].reshape([1,-1])[0], info
+        observation = np.array(self.initial_state, dtype=np.float32)[self.model.selected_state_index].reshape([-1,1])
+        return observation, info
 
     def render(self):
         """Визуальное отображение действий в среде. В статусе WIP
