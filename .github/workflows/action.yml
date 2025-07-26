@@ -4,14 +4,10 @@ run-name: ${{ github.actor }} is testing TensorAeroSpace 🚀
 on:
   push:
     branches:
-      - main
-      - develop
-      - master
+      - '**'  # Запускать на всех ветках
   pull_request:
     branches:
-      - main
-      - develop
-      - master
+      - '**'  # Запускать для PR в любые ветки
   workflow_dispatch:  # Позволяет запускать вручную
 
 jobs:

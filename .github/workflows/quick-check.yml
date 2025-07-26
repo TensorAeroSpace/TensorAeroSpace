@@ -4,17 +4,10 @@ run-name: ${{ github.actor }} is running quick checks 🔍
 on:
   push:
     branches:
-      - main
-      - develop
-      - master
-      - feature/*
-      - bugfix/*
-      - hotfix/*
+      - '**'  # Запускать на всех ветках
   pull_request:
     branches:
-      - main
-      - develop
-      - master
+      - '**'  # Запускать для PR в любые ветки
 
 jobs:
   quick-test:

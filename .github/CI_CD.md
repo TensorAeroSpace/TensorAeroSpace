@@ -7,7 +7,7 @@
 Проект использует несколько GitHub Actions workflow для автоматизации различных процессов:
 
 ### 1. Quick Check (`quick-check.yml`)
-**Триггеры:** Push и Pull Request на ветки `main`, `develop`, `master`, `feature/*`, `bugfix/*`, `hotfix/*`
+**Триггеры:** Push на **все ветки** (`**`) и Pull Request в **любые ветки** (`**`)
 
 **Задачи:**
 - **quick-test**: Быстрые тесты на Python 3.10/Ubuntu
@@ -15,10 +15,10 @@
 - **dependency-check**: Проверка безопасности зависимостей (safety check)
 
 ### 2. Main CI/CD (`action.yml`)
-**Триггеры:** Push на `main`, `develop` и Pull Request
+**Триггеры:** Push на **все ветки** (`**`) и Pull Request в **любые ветки** (`**`)
 
 **Задачи:**
-- **test**: Полное тестирование на матрице Python версий (3.9, 3.10, 3.11) и ОС (Ubuntu, macOS, Windows)
+- **test**: Полное тестирование на матрице Python версий (3.8, 3.9, 3.10, 3.11) и ОС (Ubuntu, macOS, Windows)
 - **docs-coverage**: Проверка покрытия документации (docstr-coverage)
 - **security**: Сканирование безопасности (safety, bandit)
 - **build**: Сборка пакета и загрузка артефактов
