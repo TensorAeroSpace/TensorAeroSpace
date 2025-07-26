@@ -55,6 +55,13 @@ jobs:
         poetry config virtualenvs.create true
         poetry config virtualenvs.in-project true
 
+    - name: 🔄 Check and update lock file if needed
+      run: |
+        if ! poetry check --lock; then
+          echo "Lock file is outdated, updating..."
+          poetry lock --no-update
+        fi
+
     - name: 📚 Install dependencies
       run: |
         poetry install --with dev
