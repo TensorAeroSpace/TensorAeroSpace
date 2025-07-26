@@ -1,0 +1,151 @@
+name: 🏷️ Auto Release
+run-name: ${{ github.actor }} is creating a release 🎉
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+      - 'v*.*.*-alpha*'
+      - 'v*.*.*-beta*'
+      - 'v*.*.*-rc*'
+
+jobs:
+  create-release:
+    name: 🎉 Create GitHub Release
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: 📥 Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: 🏷️ Get tag info
+      id: tag_info
+      run: |
+        TAG=${GITHUB_REF#refs/tags/}
+        echo "tag=$TAG" >> $GITHUB_OUTPUT
+        echo "version=${TAG#v}" >> $GITHUB_OUTPUT
+        
+        # Определяем тип релиза
+        if [[ $TAG == *"alpha"* ]]; then
+          echo "prerelease=true" >> $GITHUB_OUTPUT
+          echo "release_type=Alpha" >> $GITHUB_OUTPUT
+        elif [[ $TAG == *"beta"* ]]; then
+          echo "prerelease=true" >> $GITHUB_OUTPUT
+          echo "release_type=Beta" >> $GITHUB_OUTPUT
+        elif [[ $TAG == *"rc"* ]]; then
+          echo "prerelease=true" >> $GITHUB_OUTPUT
+          echo "release_type=Release Candidate" >> $GITHUB_OUTPUT
+        else
+          echo "prerelease=false" >> $GITHUB_OUTPUT
+          echo "release_type=Stable" >> $GITHUB_OUTPUT
+        fi
+
+    - name: 📝 Generate changelog
+      id: changelog
+      run: |
+        # Получаем предыдущий тег
+        PREVIOUS_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
+        
+        if [ -z "$PREVIOUS_TAG" ]; then
+          echo "changelog=Initial release of TensorAeroSpace 🚀" >> $GITHUB_OUTPUT
+        else
+          # Генерируем changelog между тегами
+          CHANGELOG=$(git log --pretty=format:"- %s (%h)" $PREVIOUS_TAG..HEAD --no-merges)
+          
+          # Форматируем changelog
+          cat << EOF >> changelog.md
+        ## 🚀 What's New in ${{ steps.tag_info.outputs.version }}
+        
+        ### 📋 Changes
+        $CHANGELOG
+        
+        ### 🔧 Installation
+        \`\`\`bash
+        pip install tensoraerospace==${{ steps.tag_info.outputs.version }}
+        \`\`\`
+        
+        ### 📚 Documentation
+        - [📖 Full Documentation](https://tensoraerospace.readthedocs.io/)
+        - [🎯 Examples](https://github.com/tensoraerospace/tensoraerospace/tree/main/example)
+        - [🤝 Contributing Guide](https://github.com/tensoraerospace/tensoraerospace/blob/main/CONTRIBUTING.md)
+        
+        ---
+        
+        **Full Changelog**: https://github.com/tensoraerospace/tensoraerospace/compare/$PREVIOUS_TAG...${{ steps.tag_info.outputs.tag }}
+        EOF
+          
+          echo "changelog<<EOF" >> $GITHUB_OUTPUT
+          cat changelog.md >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+        fi
+
+    - name: 🐍 Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+
+    - name: 🎭 Install Poetry
+      run: |
+        python -m pip install --upgrade pip
+        pip install poetry
+
+    - name: 📚 Install dependencies
+      run: |
+        poetry install
+
+    - name: 🏗️ Build package
+      run: |
+        poetry build
+
+    - name: 🎉 Create Release
+      uses: actions/create-release@v1
+      id: create_release
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: ${{ steps.tag_info.outputs.tag }}
+        release_name: "🚀 TensorAeroSpace ${{ steps.tag_info.outputs.version }} (${{ steps.tag_info.outputs.release_type }})"
+        body: ${{ steps.changelog.outputs.changelog }}
+        draft: false
+        prerelease: ${{ steps.tag_info.outputs.prerelease }}
+
+    - name: 📦 Upload wheel to release
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: ./dist/*.whl
+        asset_name: tensoraerospace-${{ steps.tag_info.outputs.version }}-py3-none-any.whl
+        asset_content_type: application/zip
+
+    - name: 📦 Upload source distribution to release
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: ./dist/*.tar.gz
+        asset_name: tensoraerospace-${{ steps.tag_info.outputs.version }}.tar.gz
+        asset_content_type: application/gzip
+
+  notify:
+    name: 📢 Notify Release
+    runs-on: ubuntu-latest
+    needs: create-release
+    if: always()
+    
+    steps:
+    - name: 📢 Notify success
+      if: needs.create-release.result == 'success'
+      run: |
+        echo "✅ Release created successfully!"
+        echo "🎉 TensorAeroSpace ${{ needs.create-release.outputs.version }} is now available!"
+        
+    - name: ❌ Notify failure
+      if: needs.create-release.result == 'failure'
+      run: |
+        echo "❌ Release creation failed!"
+        exit 1

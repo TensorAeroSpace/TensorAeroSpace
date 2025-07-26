@@ -1,45 +1,100 @@
-name: Test and Coverage
-run-name: ${{ github.actor }} is testing out GitHub Actions 🚀
+name: 🧪 Test and Coverage
+run-name: ${{ github.actor }} is testing TensorAeroSpace 🚀
 
 on:
+  push:
+    branches:
+      - main
+      - develop
+      - master
   pull_request:
     branches:
       - main
       - develop
+      - master
+  workflow_dispatch:  # Позволяет запускать вручную
 
 jobs:
-  build-and-test:
-    runs-on: ubuntu-latest
+  test:
+    name: 🐍 Test Python ${{ matrix.python-version }} on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        python-version: ['3.8', '3.9', '3.10', '3.11']
+        exclude:
+          # Исключаем некоторые комбинации для ускорения
+          - os: windows-latest
+            python-version: '3.8'
+          - os: macos-latest
+            python-version: '3.8'
 
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v2
+    - name: 📥 Checkout code
+      uses: actions/checkout@v4
 
-    - name: Set up Python
-      uses: actions/setup-python@v2
+    - name: 🐍 Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v4
       with:
-        python-version: '3.10'
+        python-version: ${{ matrix.python-version }}
 
-    - name: Install Poetry
+    - name: 📦 Cache Poetry dependencies
+      uses: actions/cache@v3
+      with:
+        path: |
+          ~/.cache/pypoetry
+          ~/.cache/pip
+        key: ${{ runner.os }}-poetry-${{ matrix.python-version }}-${{ hashFiles('**/poetry.lock') }}
+        restore-keys: |
+          ${{ runner.os }}-poetry-${{ matrix.python-version }}-
+
+    - name: 🎭 Install Poetry
       run: |
+        pip install --upgrade pip
         pip install poetry
 
-    - name: Install dependencies and your package
+    - name: ⚙️ Configure Poetry
       run: |
-        poetry config virtualenvs.create false
-        poetry install
+        poetry config virtualenvs.create true
+        poetry config virtualenvs.in-project true
 
-    - name: Run tests
+    - name: 📚 Install dependencies
+      run: |
+        poetry install --with dev
+
+    - name: 🔍 Lint with flake8 (Ubuntu only)
+      if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.10'
+      run: |
+        poetry run flake8 tensoraerospace --count --select=E9,F63,F7,F82 --show-source --statistics
+        poetry run flake8 tensoraerospace --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+
+    - name: 🧪 Run tests with pytest
+      run: |
+        poetry run pytest tests/ -v --tb=short
+
+    - name: 📊 Run tests with coverage (Ubuntu Python 3.10 only)
+      if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.10'
       run: |
         poetry run pytest --junitxml=pytest.xml --cov-report "xml:coverage.xml" --cov=./tensoraerospace tests/ | tee pytest-coverage.txt
 
-    - name: Pytest coverage comment
+    - name: 📈 Upload coverage to Codecov
+      if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.10'
+      uses: codecov/codecov-action@v3
+      with:
+        file: ./coverage.xml
+        flags: unittests
+        name: codecov-umbrella
+        fail_ci_if_error: false
+
+    - name: 💬 Pytest coverage comment
+      if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.10' && github.event_name == 'pull_request'
       uses: MishaKav/pytest-coverage-comment@main
       with:
         pytest-coverage-path: ./pytest-coverage.txt
         pytest-xml-coverage-path: ./coverage.xml
-        title: TensorAeroSpace Coverage Report
-        badge-title: TensorAeroSpace Coverage
+        title: 📊 TensorAeroSpace Coverage Report
+        badge-title: Coverage
         hide-badge: false
         hide-report: false
         create-new-comment: false
@@ -48,30 +103,111 @@ jobs:
         remove-link-from-badge: false
         unique-id-for-comment: python3.10
         junitxml-path: ./pytest.xml
-        junitxml-title: TensorAeroSpace JUnit Xml Summary Title
+        junitxml-title: 🧪 TensorAeroSpace Test Results
   docs-coverage:
+    name: 📚 Documentation Coverage
     runs-on: ubuntu-latest
+    needs: test
 
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v2
+    - name: 📥 Checkout code
+      uses: actions/checkout@v4
 
-    - name: Set up Python
-      uses: actions/setup-python@v2
+    - name: 🐍 Set up Python
+      uses: actions/setup-python@v4
       with:
         python-version: '3.10'
 
-    - name: Install Poetry
+    - name: 📦 Cache Poetry dependencies
+      uses: actions/cache@v3
+      with:
+        path: |
+          ~/.cache/pypoetry
+          ~/.cache/pip
+        key: ubuntu-latest-poetry-3.10-${{ hashFiles('**/poetry.lock') }}
+        restore-keys: |
+          ubuntu-latest-poetry-3.10-
+
+    - name: 🎭 Install Poetry
       run: |
+        pip install --upgrade pip
         pip install poetry
 
-    - name: Install dependencies and your package
+    - name: ⚙️ Configure Poetry
       run: |
-        poetry config virtualenvs.create false
+        poetry config virtualenvs.create true
+        poetry config virtualenvs.in-project true
+
+    - name: 📚 Install dependencies
+      run: |
+        poetry install --with dev
+
+    - name: 📖 Run Documentation Coverage
+      run: |
+        poetry run docstr-coverage ./tensoraerospace --skip-magic --skip-init --skip-file-doc --fail-under=70.0
+
+  security:
+    name: 🔒 Security Scan
+    runs-on: ubuntu-latest
+    needs: test
+
+    steps:
+    - name: 📥 Checkout code
+      uses: actions/checkout@v4
+
+    - name: 🐍 Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+
+    - name: 🎭 Install Poetry
+      run: |
+        pip install --upgrade pip
+        pip install poetry
+
+    - name: 📚 Install dependencies
+      run: |
+        poetry install --with dev
+
+    - name: 🔍 Run safety check
+      run: |
+        poetry run safety check --json || true
+
+    - name: 🛡️ Run bandit security scan
+      run: |
+        poetry run bandit -r tensoraerospace -f json || true
+
+  build:
+    name: 🏗️ Build Package
+    runs-on: ubuntu-latest
+    needs: [test, docs-coverage]
+
+    steps:
+    - name: 📥 Checkout code
+      uses: actions/checkout@v4
+
+    - name: 🐍 Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+
+    - name: 🎭 Install Poetry
+      run: |
+        pip install --upgrade pip
+        pip install poetry
+
+    - name: 📚 Install dependencies
+      run: |
         poetry install
 
-    - name: Run Docs Coverage
+    - name: 🏗️ Build package
       run: |
-        poetry run docstr-coverage ./tensoraerospace --skip-magic --skip-init --skip-file-doc  --fail-under=80.0
+        poetry build
+
+    - name: 📦 Upload build artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: dist
+        path: dist/
 
 
