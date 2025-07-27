@@ -292,6 +292,20 @@ class MissileModel(ModelBase):
         return self.store_input[index][: self.number_time_steps - 1]
 
     def get_output(self, state_name: str, to_deg: bool = False, to_rad: bool = False):
+        """
+        Получить массив выходного сигнала
+
+        Args:
+            state_name (str): Название выходного сигнала
+            to_deg (bool): Конвертировать в градусы
+            to_rad (bool): Конвертировать в радианы
+
+        Returns:
+            np.ndarray: Массив истории выбранного выходного сигнала
+
+        Пример:
+            >>> output_hist = model.get_output('alpha', to_deg=True)
+        """
         self.output_history = output2dict(self.store_outputs, self.selected_output)
         if to_deg:
             return np.rad2deg(self.state_history[state_name][: self.time_step - 1])
@@ -308,6 +322,26 @@ class MissileModel(ModelBase):
         to_rad: bool = False,
         figsize: tuple = (10, 10),
     ):
+        """
+        Построить график выходного сигнала
+
+        Args:
+            output_name (str): Название выходного сигнала
+            time (np.ndarray): Массив времени
+            lang (str): Язык подписей ('rus' или 'eng')
+            to_deg (bool): Конвертировать в градусы
+            to_rad (bool): Конвертировать в радианы
+            figsize (tuple): Размер фигуры
+
+        Returns:
+            matplotlib.figure.Figure: Объект фигуры matplotlib
+
+        Raises:
+            Exception: Если указаны одновременно to_rad и to_deg или неверное имя сигнала
+
+        Пример:
+            >>> fig = model.plot_output('alpha', time_array, lang='rus', to_deg=True)
+        """
         if to_rad and to_deg:
             raise Exception(
                 "Неверно указано форматирование, укажите один. to_rad или to_deg."

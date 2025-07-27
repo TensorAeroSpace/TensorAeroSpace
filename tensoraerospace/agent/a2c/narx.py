@@ -43,6 +43,15 @@ class Mish(nn.Module):
         super().__init__()
 
     def forward(self, input):
+        """
+        Выполняет прямой проход функции активации Mish.
+
+        Args:
+            input (torch.Tensor): Входной тензор для применения функции активации.
+
+        Returns:
+            torch.Tensor: Результат применения функции активации Mish к входному тензору.
+        """
         return mish(input)
 
 
