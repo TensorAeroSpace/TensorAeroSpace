@@ -1,3 +1,11 @@
+"""
+Модуль реализации алгоритма Advantage Actor-Critic (A2C).
+
+Этот модуль содержит реализацию алгоритма A2C для обучения с подкреплением,
+включая нейронные сети актора и критика, функции обработки памяти и основной
+класс агента A2C для управления аэрокосмическими системами.
+"""
+
 import datetime
 import json
 from pathlib import Path
@@ -18,25 +26,81 @@ from ..base import (
 
 
 def mish(input):
+    """Функция активации Mish.
+    
+    Mish - это гладкая, непрерывная функция активации, определяемая как:
+    f(x) = x * tanh(softplus(x))
+    
+    Args:
+        input (torch.Tensor): Входной тензор.
+        
+    Returns:
+        torch.Tensor: Результат применения функции активации Mish.
+    """
     return input * torch.tanh(F.softplus(input))
 
 
 class Mish(nn.Module):
+    """Модуль PyTorch для функции активации Mish.
+    
+    Этот класс оборачивает функцию активации Mish в модуль PyTorch,
+    что позволяет использовать её в нейронных сетях.
+    """
     def __init__(self):
+        """Инициализирует модуль Mish."""
         super().__init__()
 
     def forward(self, input):
+        """Прямой проход через функцию активации Mish.
+        
+        Args:
+            input (torch.Tensor): Входной тензор.
+            
+        Returns:
+            torch.Tensor: Результат применения функции активации Mish.
+        """
         return mish(input)
 
 
 # Helper function to convert numpy arrays to tensors
 def t(x):
+    """Преобразует numpy массив в PyTorch тензор.
+    
+    Args:
+        x: Входные данные (numpy массив или другой тип).
+        
+    Returns:
+        torch.Tensor: Тензор PyTorch с типом float.
+    """
     x = np.array(x) if not isinstance(x, np.ndarray) else x
     return torch.from_numpy(x).float()
 
 
 class Actor(nn.Module):
+    """Нейронная сеть актора для алгоритма A2C.
+    
+    Актор генерирует политику - распределение вероятностей действий
+    для каждого состояния. Использует нормальное распределение для
+    непрерывных действий.
+    
+    Args:
+        state_dim (int): Размерность пространства состояний.
+        n_actions (int): Количество действий.
+        activation: Функция активации для скрытых слоев. По умолчанию nn.Tanh.
+        
+    Attributes:
+        n_actions (int): Количество действий.
+        model (nn.Sequential): Основная нейронная сеть.
+        logstds (nn.Parameter): Логарифмы стандартных отклонений для действий.
+    """
     def __init__(self, state_dim, n_actions, activation=nn.Tanh):
+        """Инициализирует актора.
+        
+        Args:
+            state_dim (int): Размерность пространства состояний.
+            n_actions (int): Количество действий.
+            activation: Функция активации для скрытых слоев.
+        """
         super().__init__()
         self.n_actions = n_actions
         self.model = nn.Sequential(
@@ -51,13 +115,39 @@ class Actor(nn.Module):
         self.register_parameter("logstds", logstds_param)
 
     def forward(self, X):
+        """Прямой проход через сеть актора.
+        
+        Args:
+            X (torch.Tensor): Входные состояния.
+            
+        Returns:
+            torch.distributions.Normal: Нормальное распределение действий.
+        """
         means = self.model(X)
         stds = torch.clamp(self.logstds.exp(), 1e-3, 50)
         return torch.distributions.Normal(means, stds)
 
 
 class Critic(nn.Module):
+    """Нейронная сеть критика для алгоритма A2C.
+    
+    Критик оценивает ценность состояний, предсказывая ожидаемую
+    суммарную награду из данного состояния.
+    
+    Args:
+        state_dim (int): Размерность пространства состояний.
+        activation: Функция активации для скрытых слоев. По умолчанию nn.Tanh.
+        
+    Attributes:
+        model (nn.Sequential): Основная нейронная сеть.
+    """
     def __init__(self, state_dim, activation=nn.Tanh):
+        """Инициализирует критика.
+        
+        Args:
+            state_dim (int): Размерность пространства состояний.
+            activation: Функция активации для скрытых слоев.
+        """
         super().__init__()
         self.model = nn.Sequential(
             nn.Linear(state_dim, 64),
@@ -68,10 +158,28 @@ class Critic(nn.Module):
         )
 
     def forward(self, X):
+        """Прямой проход через сеть критика.
+        
+        Args:
+            X (torch.Tensor): Входные состояния.
+            
+        Returns:
+            torch.Tensor: Оценки ценности состояний.
+        """
         return self.model(X)
 
 
 def discounted_rewards(rewards, dones, gamma):
+    """Вычисляет дисконтированные награды для эпизода.
+    
+    Args:
+        rewards (list): Список наград за каждый шаг.
+        dones (list): Список флагов завершения эпизода.
+        gamma (float): Коэффициент дисконтирования.
+        
+    Returns:
+        list: Список дисконтированных наград.
+    """
     ret = 0
     discounted = []
     for reward, done in zip(rewards[::-1], dones[::-1]):
@@ -82,6 +190,16 @@ def discounted_rewards(rewards, dones, gamma):
 
 
 def process_memory(memory, gamma=0.99, discount_rewards=True):
+    """Обрабатывает память опыта для обучения.
+    
+    Args:
+        memory (list): Список кортежей (action, reward, state, next_state, done).
+        gamma (float): Коэффициент дисконтирования. По умолчанию 0.99.
+        discount_rewards (bool): Применять ли дисконтирование наград. По умолчанию True.
+        
+    Returns:
+        tuple: Кортеж тензоров (actions, rewards, states, next_states, dones).
+    """
     actions, states, next_states, rewards, dones = [], [], [], [], []
 
     for action, reward, state, next_state, done in memory:
@@ -104,12 +222,50 @@ def process_memory(memory, gamma=0.99, discount_rewards=True):
 
 
 def clip_grad_norm_(module, max_grad_norm):
+    """Обрезает градиенты по норме для стабилизации обучения.
+    
+    Args:
+        module: Оптимизатор PyTorch.
+        max_grad_norm (float): Максимальная норма градиентов.
+    """
     nn.utils.clip_grad_norm_(
         [p for g in module.param_groups for p in g["params"]], max_grad_norm
     )
 
 
 class A2C(BaseRLModel):
+    """Реализация алгоритма Advantage Actor-Critic (A2C).
+    
+    A2C - это алгоритм обучения с подкреплением, который использует
+    актора для выбора действий и критика для оценки состояний.
+    Алгоритм минимизирует потери актора и критика одновременно.
+    
+    Args:
+        env: Среда для обучения.
+        actor: Нейронная сеть актора.
+        critic: Нейронная сеть критика.
+        gamma (float): Коэффициент дисконтирования. По умолчанию 0.9.
+        entropy_beta (float): Коэффициент энтропийного бонуса. По умолчанию 0.01.
+        actor_lr (float): Скорость обучения актора. По умолчанию 4e-4.
+        critic_lr (float): Скорость обучения критика. По умолчанию 4e-3.
+        max_grad_norm (float): Максимальная норма градиентов. По умолчанию 0.5.
+        seed (int, optional): Семя для воспроизводимости результатов.
+        
+    Attributes:
+        env: Среда для обучения.
+        state: Текущее состояние среды.
+        done (bool): Флаг завершения эпизода.
+        steps (int): Общее количество шагов.
+        episode_reward (float): Награда за текущий эпизод.
+        episode_rewards (list): История наград по эпизодам.
+        actor: Нейронная сеть актора.
+        critic: Нейронная сеть критика.
+        gamma (float): Коэффициент дисконтирования.
+        entropy_beta (float): Коэффициент энтропийного бонуса.
+        actor_optim: Оптимизатор для актора.
+        critic_optim: Оптимизатор для критика.
+        writer: TensorBoard writer для логирования.
+    """
     def __init__(
         self,
         env,
@@ -122,6 +278,19 @@ class A2C(BaseRLModel):
         max_grad_norm=0.5,
         seed=None,
     ):
+        """Инициализирует агента A2C.
+        
+        Args:
+            env: Среда для обучения.
+            actor: Нейронная сеть актора.
+            critic: Нейронная сеть критика.
+            gamma (float): Коэффициент дисконтирования.
+            entropy_beta (float): Коэффициент энтропийного бонуса.
+            actor_lr (float): Скорость обучения актора.
+            critic_lr (float): Скорость обучения критика.
+            max_grad_norm (float): Максимальная норма градиентов.
+            seed (int, optional): Семя для воспроизводимости результатов.
+        """
         self.env = env
         self.state = None
         self.done = True
@@ -150,11 +319,21 @@ class A2C(BaseRLModel):
         self.writer = SummaryWriter()
 
     def reset(self):
+        """Сбрасывает состояние агента и среды для нового эпизода."""
         self.episode_reward = 0
         self.done = False
         self.state, info = self.env.reset()
 
     def run_episode(self, max_steps):
+        """Выполняет один эпизод взаимодействия со средой.
+        
+        Args:
+            max_steps (int): Максимальное количество шагов в эпизоде.
+            
+        Returns:
+            list: Список кортежей (action, reward, state, next_state, done)
+                  представляющих опыт взаимодействия со средой.
+        """
         memory = []
 
         for i in range(max_steps):
@@ -190,6 +369,17 @@ class A2C(BaseRLModel):
         return memory
 
     def learn(self, memory, steps, discount_rewards=True):
+        """Обучает агента на основе собранного опыта.
+        
+        Выполняет один шаг обучения актора и критика, используя
+        алгоритм Advantage Actor-Critic.
+        
+        Args:
+            memory (list): Список опыта взаимодействия со средой.
+            steps (int): Текущий номер шага для логирования.
+            discount_rewards (bool): Применять ли дисконтирование наград.
+                                   По умолчанию True.
+        """
         actions, rewards, states, next_states, dones = process_memory(
             memory, self.gamma, discount_rewards
         )
@@ -239,6 +429,14 @@ class A2C(BaseRLModel):
         self.writer.add_scalar("Loss/Critic", critic_loss, global_step=steps)
 
     def train(self, steps_on_memory=32, episodes=2000, episode_length=300):
+        """Запускает процесс обучения агента.
+        
+        Args:
+            steps_on_memory (int): Количество шагов для накопления опыта
+                                 перед обучением. По умолчанию 32.
+            episodes (int): Общее количество эпизодов обучения. По умолчанию 2000.
+            episode_length (int): Максимальная длина эпизода. По умолчанию 300.
+        """
         total_steps = (episodes * episode_length) // steps_on_memory
 
         for i in tqdm(range(total_steps)):
@@ -246,6 +444,11 @@ class A2C(BaseRLModel):
             self.learn(memory, self.steps, discount_rewards=False)
 
     def get_param_env(self):
+        """Получает параметры среды и агента для сохранения.
+        
+        Returns:
+            dict: Словарь с параметрами среды и политики агента.
+        """
         class_name = self.env.unwrapped.__class__.__name__
         module_name = self.env.unwrapped.__class__.__module__
         env_name = f"{module_name}.{class_name}"
@@ -325,6 +528,17 @@ class A2C(BaseRLModel):
 
     @classmethod
     def __load(cls, path):
+        """Загружает модель A2C из указанной директории.
+        
+        Args:
+            path (str or Path): Путь к директории с сохраненной моделью.
+            
+        Returns:
+            A2C: Загруженный экземпляр модели A2C.
+            
+        Raises:
+            TheEnvironmentDoesNotMatch: Если тип агента не соответствует ожидаемому.
+        """
         path = Path(path)
         config_path = path / "config.json"
         critic_path = path / "critic.pth"
@@ -351,6 +565,16 @@ class A2C(BaseRLModel):
 
     @classmethod
     def from_pretrained(cls, repo_name, access_token=None, version=None):
+        """Загружает предобученную модель из локального пути или Hugging Face Hub.
+        
+        Args:
+            repo_name (str): Имя репозитория или локальный путь к модели.
+            access_token (str, optional): Токен доступа для Hugging Face Hub.
+            version (str, optional): Версия модели для загрузки.
+            
+        Returns:
+            A2C: Загруженный экземпляр модели A2C.
+        """
         path = Path(repo_name)
         if path.exists():
             new_agent = cls.__load(path)

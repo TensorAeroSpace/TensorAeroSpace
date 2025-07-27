@@ -1,3 +1,11 @@
+"""
+Модуль реализации алгоритма Proximal Policy Optimization (PPO).
+
+Этот модуль содержит реализацию алгоритма PPO для обучения с подкреплением,
+включая нейронные сети актора и критика, функции для итерации по батчам
+и основной класс агента PPO для управления аэрокосмическими системами.
+"""
+
 import datetime
 import json
 from pathlib import Path
@@ -478,6 +486,11 @@ class PPO(BaseRLModel):
         # print("Training completed. Average rewards list:", self.avg_rewards_list)
 
     def get_param_env(self):
+        """Получает параметры среды и агента для сохранения.
+        
+        Returns:
+            dict: Словарь с параметрами среды и политики агента.
+        """
         class_name = self.env.unwrapped.__class__.__name__
         module_name = self.env.unwrapped.__class__.__module__
         env_name = f"{module_name}.{class_name}"
@@ -526,16 +539,13 @@ class PPO(BaseRLModel):
         }
 
     def save(self, path=None):
-        """
-        Сохраняет модель PyTorch в указанной директории. Если путь не указан,
-        создает директорию с текущей датой и временем.
+        """Сохраняет модель PPO в указанной директории.
+        
+        Если путь не указан, создает директорию с текущей датой и временем.
 
         Args:
             path (str, optional): Путь, где будет сохранена модель. Если None,
-            создается директория с текущей датой и временем.
-
-        Returns:
-            None
+                                создается директория с текущей датой и временем.
         """
         if path is None:
             path = Path.cwd()
@@ -561,6 +571,17 @@ class PPO(BaseRLModel):
 
     @classmethod
     def __load(cls, path):
+        """Загружает модель PPO из указанной директории.
+        
+        Args:
+            path (str or Path): Путь к директории с сохраненной моделью.
+            
+        Returns:
+            PPO: Загруженный экземпляр модели PPO.
+            
+        Raises:
+            TheEnvironmentDoesNotMatch: Если тип агента не соответствует ожидаемому.
+        """
         path = Path(path)
         config_path = path / "config.json"
         critic_path = path / "critic.pth"
@@ -584,6 +605,16 @@ class PPO(BaseRLModel):
 
     @classmethod
     def from_pretrained(cls, repo_name, access_token=None, version=None):
+        """Загружает предобученную модель из локального пути или Hugging Face Hub.
+        
+        Args:
+            repo_name (str): Имя репозитория или локальный путь к модели.
+            access_token (str, optional): Токен доступа для Hugging Face Hub.
+            version (str, optional): Версия модели для загрузки.
+            
+        Returns:
+            PPO: Загруженный экземпляр модели PPO.
+        """
         path = Path(repo_name)
         if path.exists():
             new_agent = cls.__load(path)

@@ -1,3 +1,18 @@
+"""
+Базовые классы и утилиты для агентов обучения с подкреплением.
+
+Этот модуль содержит базовый абстрактный класс BaseRLModel, который определяет
+общий интерфейс для всех алгоритмов обучения с подкреплением в библиотеке
+TensorAeroSpace. Также включает утилиты для работы с моделями, их сериализации
+и интеграции с Hugging Face Hub.
+
+Основные компоненты:
+- BaseRLModel: Базовый класс для всех RL-алгоритмов
+- get_class_from_string: Утилита для динамического импорта классов
+- serialize_env: Функция для сериализации сред
+- TheEnvironmentDoesNotMatch: Исключение для несоответствия сред
+"""
+
 import importlib
 from abc import ABC
 
@@ -5,6 +20,18 @@ from huggingface_hub import HfApi, snapshot_download
 
 
 def get_class_from_string(class_path):
+    """Динамически импортирует и возвращает класс по строковому пути.
+
+    Args:
+        class_path (str): Полный путь к классу в формате 'module.submodule.ClassName'.
+
+    Returns:
+        type: Класс, соответствующий указанному пути.
+
+    Raises:
+        ImportError: Если модуль не может быть импортирован.
+        AttributeError: Если класс не найден в модуле.
+    """
     # Разделяем путь на имя модуля и имя класса
     module_name, class_name = class_path.rsplit(".", 1)
 
@@ -18,6 +45,15 @@ def get_class_from_string(class_path):
 
 
 class BaseRLModel(ABC):
+    """Базовый абстрактный класс для моделей обучения с подкреплением.
+    
+    Этот класс определяет общий интерфейс для всех алгоритмов обучения с подкреплением
+    в библиотеке TensorAeroSpace. Все конкретные реализации алгоритмов должны наследоваться
+    от этого класса и реализовывать его абстрактные методы.
+    
+    Attributes:
+        Базовый класс не содержит специфических атрибутов.
+    """
     def __init__(self) -> None:
         """Инициализирует объект класса BaseRLModel."""
         super().__init__()
@@ -101,6 +137,14 @@ class BaseRLModel(ABC):
 
 
 def serialize_env(env):
+    """Сериализует объект среды в словарь для сохранения.
+
+    Args:
+        env: Объект среды, который нужно сериализовать.
+
+    Returns:
+        dict: Словарь с параметрами среды, включая reference_signal в виде списка.
+    """
     # Получаем начальное состояние и ссылку на сигнал из env
     env_data = env.get_init_args()
     env_data["reference_signal"] = env_data["reference_signal"].tolist()
@@ -108,4 +152,12 @@ def serialize_env(env):
 
 
 class TheEnvironmentDoesNotMatch(Exception):
+    """Исключение, возникающее при несоответствии загруженной среды ожидаемой.
+    
+    Это исключение выбрасывается, когда загруженная из файла среда не соответствует
+    той, которая ожидается для работы с моделью.
+    
+    Attributes:
+        message (str): Сообщение об ошибке.
+    """
     message = "Error The environment does not match the downloaded one"

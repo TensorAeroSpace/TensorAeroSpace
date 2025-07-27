@@ -88,6 +88,11 @@ class LinearLongitudinalB747(gym.Env):
         return float(error)
 
     def _get_info(self):
+        """Возвращает дополнительную информацию о состоянии среды.
+        
+        Returns:
+            dict: Пустой словарь с дополнительной информацией.
+        """
         return {}
 
     def step(self, action: np.ndarray):

@@ -76,6 +76,11 @@ class PID(BaseRLModel):
         return output
 
     def get_param_env(self):
+        """Получает параметры среды и агента для сохранения.
+        
+        Returns:
+            dict: Словарь с параметрами среды и политики агента.
+        """
         class_name = self.env.unwrapped.__class__.__name__
         module_name = self.env.unwrapped.__class__.__module__
         env_name = f"{module_name}.{class_name}"
@@ -113,16 +118,13 @@ class PID(BaseRLModel):
         }
 
     def save(self, path=None):
-        """
-        Сохраняет модель PyTorch в указанной директории. Если путь не указан,
-        создает директорию с текущей датой и временем.
+        """Сохраняет модель PID в указанной директории.
+        
+        Если путь не указан, создает директорию с текущей датой и временем.
 
         Args:
             path (str, optional): Путь, где будет сохранена модель. Если None,
-            создается директория с текущей датой и временем.
-
-        Returns:
-            None
+                                создается директория с текущей датой и временем.
         """
         if path is None:
             path = Path.cwd()
@@ -144,6 +146,17 @@ class PID(BaseRLModel):
 
     @classmethod
     def __load(cls, path):
+        """Загружает модель PID из указанной директории.
+        
+        Args:
+            path (str or Path): Путь к директории с сохраненной моделью.
+            
+        Returns:
+            PID: Загруженный экземпляр модели PID.
+            
+        Raises:
+            TheEnvironmentDoesNotMatch: Если тип агента не соответствует ожидаемому.
+        """
         path = Path(path)
         config_path = path / "config.json"
         with open(config_path, "r") as f:
@@ -166,6 +179,16 @@ class PID(BaseRLModel):
 
     @classmethod
     def from_pretrained(cls, repo_name, access_token=None, version=None):
+        """Загружает предобученную модель из локального пути или Hugging Face Hub.
+        
+        Args:
+            repo_name (str): Имя репозитория или локальный путь к модели.
+            access_token (str, optional): Токен доступа для Hugging Face Hub.
+            version (str, optional): Версия модели для загрузки.
+            
+        Returns:
+            PID: Загруженный экземпляр модели PID.
+        """
         path = Path(repo_name)
         if path.exists():
             new_agent = cls.__load(path)

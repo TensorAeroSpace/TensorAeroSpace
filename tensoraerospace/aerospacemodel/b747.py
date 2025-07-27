@@ -1,3 +1,17 @@
+"""
+Модель Boeing 747 для продольного канала управления.
+
+Этот модуль содержит линеаризованную модель самолета Boeing 747 для анализа
+и управления в продольном канале. Модель включает четыре состояния:
+продольную скорость, нормальную скорость, угловую скорость тангажа и угол тангажа.
+
+Основные компоненты:
+- LongitudinalB747: Класс модели Boeing 747 в продольном канале
+- Линеаризованные матрицы состояния A, B, C, D
+- Ограничения на управляющие воздействия (руль высоты)
+- Методы для симуляции и анализа динамики полета
+"""
+
 import matplotlib.pyplot as plt
 import numpy as np
 from scipy.signal import cont2discrete
@@ -85,7 +99,11 @@ class LongitudinalB747(ModelBase):
         self.initialise_system(x0, number_time_steps)
 
     def import_linear_system(self):
-        """Сохраненные линеаризованные матрицы"""
+        """Импортирует сохраненные линеаризованные матрицы системы.
+        
+        Устанавливает матрицы A, B, C, D для линейной модели Boeing 747
+        в продольном канале управления.
+        """
         self.A = np.array(
             [
                 [-0.0212, 0.0466, 0, 0.1153],
@@ -216,7 +234,10 @@ class LongitudinalB747(ModelBase):
         return np.array(self.xt1)
 
     def update_system_attributes(self):
-        """Атрибуты, которые меняются с каждым временным шагом, обновляются"""
+        """Обновляет атрибуты системы после каждого временного шага.
+        
+        Обновляет текущее состояние и увеличивает счетчик временных шагов.
+        """
         self.xt = self.xt1
         self.time_step += 1
 
@@ -291,6 +312,16 @@ class LongitudinalB747(ModelBase):
         return self.store_input[index][: self.number_time_steps - 1]
 
     def get_output(self, state_name: str, to_deg: bool = False, to_rad: bool = False):
+        """Получает выходные данные системы для указанного состояния.
+        
+        Args:
+            state_name (str): Название состояния.
+            to_deg (bool): Конвертировать в градусы.
+            to_rad (bool): Конвертировать в радианы.
+            
+        Returns:
+            np.ndarray: Массив выходных данных для указанного состояния.
+        """
         self.output_history = output2dict(self.store_outputs, self.selected_output)
         if to_deg:
             return np.rad2deg(self.state_history[state_name][: self.time_step - 1])
@@ -307,6 +338,22 @@ class LongitudinalB747(ModelBase):
         to_rad: bool = False,
         figsize: tuple = (10, 10),
     ):
+        """Строит график выходных данных системы.
+        
+        Args:
+            output_name (str): Название выходного сигнала.
+            time (np.ndarray): Временной массив.
+            lang (str): Язык обозначений на осях ('rus' или 'eng').
+            to_deg (bool): Конвертировать в градусы.
+            to_rad (bool): Конвертировать в радианы.
+            figsize (tuple): Размер графика.
+            
+        Returns:
+            matplotlib.figure.Figure: Объект графика.
+            
+        Raises:
+            Exception: Если неверно указано форматирование или состояние не найдено.
+        """
         if to_rad and to_deg:
             raise Exception(
                 "Неверно указано форматирование, укажите один из типов: to_rad или to_deg."
