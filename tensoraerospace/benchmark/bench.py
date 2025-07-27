@@ -1,25 +1,26 @@
+from typing import Dict, Optional, Tuple
+
 import numpy as np
+import plotly.express as px
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
-import plotly.express as px
-from typing import Dict, Tuple, Optional
 
 from .function import (
     damping_degree,
     find_step_function,
     get_lower_upper_bound,
-    overshoot,
-    settling_time,
-    static_error,
-    rise_time,
-    peak_time,
-    maximum_deviation,
     integral_absolute_error,
     integral_squared_error,
     integral_time_absolute_error,
+    maximum_deviation,
     oscillation_count,
-    steady_state_value,
+    overshoot,
+    peak_time,
     performance_index,
+    rise_time,
+    settling_time,
+    static_error,
+    steady_state_value,
 )
 
 # Цветовая палитра для графиков

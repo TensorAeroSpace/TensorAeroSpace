@@ -14,9 +14,6 @@ from tqdm import tqdm
 
 from ..base import BaseRLModel
 
-import torch
-import torch.nn as nn
-
 
 class Net(nn.Module):
     """Создает нейронную сеть для моделирования динамики системы.

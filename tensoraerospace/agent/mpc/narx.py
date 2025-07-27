@@ -1,7 +1,7 @@
-from tqdm import tqdm
-import torch
 import numpy as np
+import torch
 import torch.nn as nn
+from tqdm import tqdm
 
 
 class NARX(nn.Module):

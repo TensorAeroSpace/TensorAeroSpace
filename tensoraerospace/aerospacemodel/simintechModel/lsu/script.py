@@ -1,7 +1,9 @@
 import subprocess
+
 import numpy as np
-from tensoraerospace.utils import generate_time_period, convert_tp_to_sec_tp
+
 from tensoraerospace.signals.standart import unit_step
+from tensoraerospace.utils import convert_tp_to_sec_tp, generate_time_period
 
 
 ## Запускает SimInTech с указанными параметрами
