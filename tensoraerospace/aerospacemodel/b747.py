@@ -100,7 +100,7 @@ class LongitudinalB747(ModelBase):
 
     def import_linear_system(self):
         """Импортирует сохраненные линеаризованные матрицы системы.
-        
+
         Устанавливает матрицы A, B, C, D для линейной модели Boeing 747
         в продольном канале управления.
         """
@@ -235,7 +235,7 @@ class LongitudinalB747(ModelBase):
 
     def update_system_attributes(self):
         """Обновляет атрибуты системы после каждого временного шага.
-        
+
         Обновляет текущее состояние и увеличивает счетчик временных шагов.
         """
         self.xt = self.xt1
@@ -313,12 +313,12 @@ class LongitudinalB747(ModelBase):
 
     def get_output(self, state_name: str, to_deg: bool = False, to_rad: bool = False):
         """Получает выходные данные системы для указанного состояния.
-        
+
         Args:
             state_name (str): Название состояния.
             to_deg (bool): Конвертировать в градусы.
             to_rad (bool): Конвертировать в радианы.
-            
+
         Returns:
             np.ndarray: Массив выходных данных для указанного состояния.
         """
@@ -339,7 +339,7 @@ class LongitudinalB747(ModelBase):
         figsize: tuple = (10, 10),
     ):
         """Строит график выходных данных системы.
-        
+
         Args:
             output_name (str): Название выходного сигнала.
             time (np.ndarray): Временной массив.
@@ -347,10 +347,10 @@ class LongitudinalB747(ModelBase):
             to_deg (bool): Конвертировать в градусы.
             to_rad (bool): Конвертировать в радианы.
             figsize (tuple): Размер графика.
-            
+
         Returns:
             matplotlib.figure.Figure: Объект графика.
-            
+
         Raises:
             Exception: Если неверно указано форматирование или состояние не найдено.
         """

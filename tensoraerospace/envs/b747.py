@@ -89,7 +89,7 @@ class LinearLongitudinalB747(gym.Env):
 
     def _get_info(self):
         """Возвращает дополнительную информацию о состоянии среды.
-        
+
         Returns:
             dict: Пустой словарь с дополнительной информацией.
         """

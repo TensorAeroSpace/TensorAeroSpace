@@ -487,7 +487,7 @@ class PPO(BaseRLModel):
 
     def get_param_env(self):
         """Получает параметры среды и агента для сохранения.
-        
+
         Returns:
             dict: Словарь с параметрами среды и политики агента.
         """
@@ -540,7 +540,7 @@ class PPO(BaseRLModel):
 
     def save(self, path=None):
         """Сохраняет модель PPO в указанной директории.
-        
+
         Если путь не указан, создает директорию с текущей датой и временем.
 
         Args:
@@ -572,13 +572,13 @@ class PPO(BaseRLModel):
     @classmethod
     def __load(cls, path):
         """Загружает модель PPO из указанной директории.
-        
+
         Args:
             path (str or Path): Путь к директории с сохраненной моделью.
-            
+
         Returns:
             PPO: Загруженный экземпляр модели PPO.
-            
+
         Raises:
             TheEnvironmentDoesNotMatch: Если тип агента не соответствует ожидаемому.
         """
@@ -606,12 +606,12 @@ class PPO(BaseRLModel):
     @classmethod
     def from_pretrained(cls, repo_name, access_token=None, version=None):
         """Загружает предобученную модель из локального пути или Hugging Face Hub.
-        
+
         Args:
             repo_name (str): Имя репозитория или локальный путь к модели.
             access_token (str, optional): Токен доступа для Hugging Face Hub.
             version (str, optional): Версия модели для загрузки.
-            
+
         Returns:
             PPO: Загруженный экземпляр модели PPO.
         """
