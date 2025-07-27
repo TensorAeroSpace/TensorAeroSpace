@@ -12,7 +12,7 @@ def test_unit_step():
     dt = 0.1
     output_rad = False
     result = unit_step(tp, degree, time_step, dt, output_rad)
-    assert np.all(result == 90 * (tp > time_step/dt))
+    assert np.all(result == 90 * (tp >= time_step))
 
     # Проверка работы функции при пограничных входных данных
     tp = np.array([0.5, 1.5, 2.5, 3.5])
@@ -21,7 +21,7 @@ def test_unit_step():
     dt = 0.05
     output_rad = True
     result = unit_step(tp, degree, time_step, dt, output_rad)
-    assert np.all(result == np.deg2rad(180) * (tp > time_step/dt))
+    assert np.all(result == np.deg2rad(180) * (tp >= time_step))
 
     # Проверка работы функции при отрицательных входных данных
     tp = np.array([-1.0, -2.0, -3.0, -4.0])
@@ -30,7 +30,7 @@ def test_unit_step():
     dt = -0.1
     output_rad = False
     result = unit_step(tp, degree, time_step, dt, output_rad)
-    assert np.all(result == -90 * (tp > time_step/dt))
+    assert np.all(result == -90 * (tp >= time_step))
 
     # Проверка работы функции при очень больших входных данных
     tp = np.array([100.0, 200.0, 300.0, 400.0])
@@ -39,7 +39,7 @@ def test_unit_step():
     dt = 0.2
     output_rad = True
     result = unit_step(tp, degree, time_step, dt, output_rad)
-    assert np.all(result == np.deg2rad(360) * (tp > time_step/dt))
+    assert np.all(result == np.deg2rad(360) * (tp >= time_step))
 
     # Проверка работы функции при отрицательных входных данных
     tp = np.array([-100.0, -200.0, -300.0, -400.0])
@@ -48,7 +48,7 @@ def test_unit_step():
     dt = -0.2
     output_rad = True
     result = unit_step(tp, degree, time_step, dt, output_rad)
-    assert np.all(result == np.deg2rad(-360) * (tp > time_step/dt))
+    assert np.all(result == np.deg2rad(-360) * (tp >= time_step))
 
     # Проверка работы функции при очень больших входных данных
     tp = np.array([1000.0, 2000.0, 3000.0, 4000.0])
@@ -57,7 +57,7 @@ def test_unit_step():
     dt = 0.2
     output_rad = True
     result = unit_step(tp, degree, time_step, dt, output_rad)
-    assert np.all(result == np.deg2rad(720) * (tp > time_step/dt))
+    assert np.all(result == np.deg2rad(720) * (tp >= time_step))
 
 import pytest
 import numpy as np

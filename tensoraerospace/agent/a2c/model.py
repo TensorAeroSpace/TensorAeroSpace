@@ -202,12 +202,12 @@ class A2C(BaseRLModel):
         class_name = self.env.unwrapped.__class__.__name__
         module_name = self.env.unwrapped.__class__.__module__
         env_name = f"{module_name}.{class_name}"
+        env_params = {}
         if "tensoraerospace" in env_name:
             env_params = serialize_env(self.env)
         class_name = self.__class__.__name__
         module_name = self.__class__.__module__
         agent_name = f"{module_name}.{class_name}"
-        env_params = {}
         
         # Получение информации о сигнале справки, если она доступна
         try:

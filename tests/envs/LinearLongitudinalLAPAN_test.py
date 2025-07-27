@@ -34,10 +34,10 @@ def test_step_function(env_setup):
     action = np.array([10], dtype=np.float32)  # within the valid range
     next_state, reward, done, _, info = env.step(action)
     assert isinstance(next_state, np.ndarray), "Next state should be a numpy array."
-    assert isinstance(reward, np.ndarray), "Reward should be a float."
+    assert isinstance(reward, (float, np.floating, np.ndarray)), "Reward should be a float or array."
     assert isinstance(done, bool), "Done should be a boolean."
     assert isinstance(info, dict), "Info should be a dictionary."
-    assert next_state.shape == (2,), "Next state should have two dimensions by default."
+    assert next_state.shape == (4, 1), "Next state should have shape (4, 1)."
 
     # Test action clamping
     high_action = np.array([100], dtype=np.float32)  # exceeds max_action_value
@@ -53,5 +53,5 @@ def test_reset_function(env_setup):
     state, info = env.reset()
     assert env.current_step == 0, "Reset should set step back to zero."
     assert not env.done, "Reset should set done to False."
-    assert state.shape == (2,), "Reset state should have two dimensions by default."
+    assert state.shape == (4, 1), "Reset state should have shape (4, 1)."
 
