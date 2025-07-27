@@ -18,14 +18,18 @@ class GeoSatEnv(gym.Env):
         output_space (any): Пространство полного выхода (с учетом помех)
         reward_func (any): Функция вознаграждения (статус WIP)
     """
-    def __init__(self, initial_state: any,
-                 reference_signal,
-                 number_time_steps,
-                 tracking_states=['theta', "omega"],
-                 state_space=["rho", "theta", "omega"],
-                 control_space=['thrust'],
-                 output_space=["rho", "theta", "omega"],
-                 reward_func=None):
+
+    def __init__(
+        self,
+        initial_state: any,
+        reference_signal,
+        number_time_steps,
+        tracking_states=["theta", "omega"],
+        state_space=["rho", "theta", "omega"],
+        control_space=["thrust"],
+        output_space=["rho", "theta", "omega"],
+        reward_func=None,
+    ):
         self.initial_state = initial_state
         self.number_time_steps = number_time_steps
         self.selected_state_output = output_space
@@ -38,17 +42,29 @@ class GeoSatEnv(gym.Env):
             self.reward_func = reward_func
         else:
             self.reward_func = self.reward
-            
-        self.model = GeoSat(initial_state, number_time_steps=number_time_steps, 
-                                     selected_state_output=output_space, t0=0)
-        self.indices_tracking_states = [state_space.index(tracking_states[i]) for i in range(len(tracking_states))]
-        
+
+        self.model = GeoSat(
+            initial_state,
+            number_time_steps=number_time_steps,
+            selected_state_output=output_space,
+            t0=0,
+        )
+        self.indices_tracking_states = [
+            state_space.index(tracking_states[i]) for i in range(len(tracking_states))
+        ]
+
         self.ref_signal = reference_signal
-        self.model.initialise_system(x0=initial_state, number_time_steps=number_time_steps)
+        self.model.initialise_system(
+            x0=initial_state, number_time_steps=number_time_steps
+        )
         self.number_time_steps = number_time_steps
-    
-        self.action_space = spaces.Box(low=-60, high=60, shape=(len(control_space),1), dtype=np.float32)
-        self.observation_space = spaces.Box(low=-1000.0, high=1000.0, shape=(len(state_space),1), dtype=np.float32)
+
+        self.action_space = spaces.Box(
+            low=-60, high=60, shape=(len(control_space), 1), dtype=np.float32
+        )
+        self.observation_space = spaces.Box(
+            low=-1000.0, high=1000.0, shape=(len(state_space), 1), dtype=np.float32
+        )
 
         self.current_step = 0
         self.done = False
@@ -69,7 +85,7 @@ class GeoSatEnv(gym.Env):
             reward (float): Оценка управления
         """
         return float(np.abs(state[0] - ref_signal[:, ts]).item())
-        
+
     def step(self, action: np.ndarray):
         """Выполнения шага моделирования
 
@@ -84,29 +100,47 @@ class GeoSatEnv(gym.Env):
         """
         self.current_step += 1
         next_state = self.model.run_step(action)
-        reward = self.reward_func(next_state[self.indices_tracking_states], self.reference_signal, self.current_step)
+        reward = self.reward_func(
+            next_state[self.indices_tracking_states],
+            self.reference_signal,
+            self.current_step,
+        )
         self.done = self.current_step >= self.number_time_steps - 2
         info = self._get_info()
 
-        return next_state.astype(np.float32).reshape([-1,1]), reward, self.done, False, info
+        return (
+            next_state.astype(np.float32).reshape([-1, 1]),
+            reward,
+            self.done,
+            False,
+            info,
+        )
 
     def reset(self, seed=None, options=None):
         """Восстановление среды моделирования в начальные условия
-        
+
         Args:
             seed (int, optional): Seed для генератора случайных чисел
             options (dict, optional): Дополнительные опции для инициализации
         """
         super().reset(seed=seed)
-        
+
         self.model = None
-        self.model = GeoSat(self.initial_state, number_time_steps=self.number_time_steps,
-                                     selected_state_output=self.output_space, t0=0)
+        self.model = GeoSat(
+            self.initial_state,
+            number_time_steps=self.number_time_steps,
+            selected_state_output=self.output_space,
+            t0=0,
+        )
         self.ref_signal = self.reference_signal
-        self.model.initialise_system(x0=self.initial_state, number_time_steps=self.number_time_steps)
+        self.model.initialise_system(
+            x0=self.initial_state, number_time_steps=self.number_time_steps
+        )
         info = self._get_info()
         self.current_step = 0
-        observation = np.array(self.initial_state, dtype=np.float32)[self.model.selected_state_index].reshape([-1,1])
+        observation = np.array(self.initial_state, dtype=np.float32)[
+            self.model.selected_state_index
+        ].reshape([-1, 1])
         return observation, info
 
     def render(self):

@@ -14,23 +14,23 @@ from .utils.constant import (
 
 class ModelBase:
     """
-        Базовый класс для моделей
+    Базовый класс для моделей
 
-        Args:
-            dt: Шаг дискретизации
-            selected_state_output: выбранные состояния для работы с системой
-            t0: Начальное время
-            x0: Начальное состояние
+    Args:
+        dt: Шаг дискретизации
+        selected_state_output: выбранные состояния для работы с системой
+        t0: Начальное время
+        x0: Начальное состояние
 
-        Внутренние переменные:
-            * time_step - Шаг моделирования
-            * u_history - Все сигналы управления за время моделирования
-            * x_history - Все состояния за время моделирования
-            * state_history - Все состояния за время моделирования в формате dict (Для удобной работы с графиками)
-            * control_history - Все сигналы управления за время моделирования в формате dict (Для удобной работы с графиками)
-            * list_state - Список всех состояний объекта управления
-            * control_list - Список всех управляющих сигналов объекта управления
-            * dt - Шаг дискретизации
+    Внутренние переменные:
+        * time_step - Шаг моделирования
+        * u_history - Все сигналы управления за время моделирования
+        * x_history - Все состояния за время моделирования
+        * state_history - Все состояния за время моделирования в формате dict (Для удобной работы с графиками)
+        * control_history - Все сигналы управления за время моделирования в формате dict (Для удобной работы с графиками)
+        * list_state - Список всех состояний объекта управления
+        * control_list - Список всех управляющих сигналов объекта управления
+        * dt - Шаг дискретизации
     """
 
     def __init__(self, x0, selected_state_output=None, t0=0, dt: float = 0.01):
@@ -48,16 +48,18 @@ class ModelBase:
         # Текущие состояния, управляющий сигнал и выход системы
         self.xt = None
         self.xt1 = None
-        
+
     def _initialize_selected_state_index(self, selected_state_output, list_state):
         """Инициализация selected_state_index на основе selected_state_output
-        
+
         Args:
             selected_state_output: Список выбранных выходных состояний
             list_state: Полный список состояний модели
         """
         if selected_state_output:
-            self.selected_state_index = [list_state.index(val) for val in selected_state_output]
+            self.selected_state_index = [
+                list_state.index(val) for val in selected_state_output
+            ]
         else:
             # Если selected_state_output не задан, используем все состояния
             self.selected_state_index = list(range(len(list_state)))
@@ -106,18 +108,22 @@ class ModelBase:
 
         """
         if to_rad and to_deg:
-            raise Exception("Неверно указано форматирование, укажите один из типов: to_rad или to_deg.")
+            raise Exception(
+                "Неверно указано форматирование, укажите один из типов: to_rad или to_deg."
+            )
         if state_name not in self.list_state:
             raise Exception(f"{state_name} нет в списке состояний")
         if not self.state_history:
             self.state_history = state2dict(self.x_history, self.list_state)
         if to_deg:
-            return np.rad2deg(self.state_history[state_name][:self.time_step - 1])
+            return np.rad2deg(self.state_history[state_name][: self.time_step - 1])
         if to_rad:
-            return np.deg2rad(self.state_history[state_name][:self.time_step - 1])
-        return self.state_history[state_name][:self.time_step - 1]
+            return np.deg2rad(self.state_history[state_name][: self.time_step - 1])
+        return self.state_history[state_name][: self.time_step - 1]
 
-    def get_control(self, control_name: str, to_deg: bool = False, to_rad: bool = False):
+    def get_control(
+        self, control_name: str, to_deg: bool = False, to_rad: bool = False
+    ):
         """
         Получить массив сигнала управления
 
@@ -134,19 +140,28 @@ class ModelBase:
         >>> state_hist = model.get_control('stab', to_deg=True)
         """
         if to_rad and to_deg:
-            raise Exception("Неверно указано форматирование, укажите один из типов: to_rad или to_deg.")
+            raise Exception(
+                "Неверно указано форматирование, укажите один из типов: to_rad или to_deg."
+            )
         if control_name not in self.list_state:
             raise Exception(f"{control_name} нет в списке сигналов управления")
         if not self.control_history:
             self.control_history = control2dict(self.u_history, self.control_list)
         if to_deg:
-            return np.rad2deg(self.control_history[control_name][:self.time_step - 1])
+            return np.rad2deg(self.control_history[control_name][: self.time_step - 1])
         if to_rad:
-            return np.deg2rad(self.control_history[control_name][:self.time_step - 1])
-        return self.control_history[control_name][:self.time_step - 1]
+            return np.deg2rad(self.control_history[control_name][: self.time_step - 1])
+        return self.control_history[control_name][: self.time_step - 1]
 
-    def plot_state(self, state_name: str, time: np.ndarray, lang: str = 'rus', to_deg: bool = False,
-                   to_rad: bool = False, figsize: tuple = (10, 10)):
+    def plot_state(
+        self,
+        state_name: str,
+        time: np.ndarray,
+        lang: str = "rus",
+        to_deg: bool = False,
+        to_rad: bool = False,
+        figsize: tuple = (10, 10),
+    ):
         """
         Графики состояний ОУ
 
@@ -167,23 +182,34 @@ class ModelBase:
 
         """
         state_hist = self.get_state(state_name, to_deg, to_rad)
-        if lang == 'rus':
+        if lang == "rus":
             label = state_to_latex_rus[state_name]
-            label_time = 't, c'
+            label_time = "t, c"
         else:
             label = state_to_latex_eng[state_name]
-            label_time = 't, sec.'
+            label_time = "t, sec."
         fig = plt.figure(figsize=figsize)
         plt.clf()
-        plt.plot(time[:self.time_step - 1], state_hist[:self.time_step - 1], label=label)
+        plt.plot(
+            time[: self.time_step - 1], state_hist[: self.time_step - 1], label=label
+        )
         plt.legend()
         plt.xlabel(label_time)
         plt.ylabel(label)
         plt.grid(True)
 
-    def plot_error(self, state_name: str, time: np.ndarray, ref_signal: np.ndarray, lang: str = 'rus',
-                   to_deg: bool = False, to_rad: bool = False, figsize: tuple = (10, 10), xlim: list = [13, 20],
-                   ylim: list = [-3, 3]):
+    def plot_error(
+        self,
+        state_name: str,
+        time: np.ndarray,
+        ref_signal: np.ndarray,
+        lang: str = "rus",
+        to_deg: bool = False,
+        to_rad: bool = False,
+        figsize: tuple = (10, 10),
+        xlim: list = [13, 20],
+        ylim: list = [-3, 3],
+    ):
         """
         График ошибки регулирования
 
@@ -209,25 +235,38 @@ class ModelBase:
 
         """
         state_hist = self.get_state(state_name, to_deg, to_rad)
-        error = ref_signal[:self.time_step - 1] - state_hist[:self.time_step - 1]
-        if lang == 'rus':
+        error = ref_signal[: self.time_step - 1] - state_hist[: self.time_step - 1]
+        if lang == "rus":
             label = r"$\varepsilon$, град."
-            label_time = 't, c'
+            label_time = "t, c"
         else:
             label = r"$\varepsilon$, deg"
-            label_time = 't, sec.'
+            label_time = "t, sec."
         fig = plt.figure(figsize=figsize)
         plt.clf()
         plt.xlim(xlim)
         plt.ylim(ylim)
-        plt.plot(time[:self.time_step - 1], error[:self.time_step - 1], label=label, color='red')
+        plt.plot(
+            time[: self.time_step - 1],
+            error[: self.time_step - 1],
+            label=label,
+            color="red",
+        )
         plt.legend()
         plt.xlabel(label_time)
         plt.ylabel(label)
         plt.grid(True)
 
-    def plot_transient_process(self, state_name: str, time: np.ndarray, ref_signal: np.ndarray, lang: str = 'rus',
-                               to_deg: bool = False, to_rad: bool = False, figsize: tuple = (10, 10)):
+    def plot_transient_process(
+        self,
+        state_name: str,
+        time: np.ndarray,
+        ref_signal: np.ndarray,
+        lang: str = "rus",
+        to_deg: bool = False,
+        to_rad: bool = False,
+        figsize: tuple = (10, 10),
+    ):
         """
         Графики переходного процесса
 
@@ -249,29 +288,47 @@ class ModelBase:
 
         """
         state_hist = self.get_state(state_name, to_deg, to_rad)
-        if lang == 'rus':
+        if lang == "rus":
             label = state_to_latex_rus[state_name]
             label_ref = ref_state_to_latex_rus[state_name]
-            label_time = 't, c'
+            label_time = "t, c"
         else:
             label = state_to_latex_eng[state_name]
             label_ref = ref_state_to_latex_eng[state_name]
-            label_time = 't, sec.'
+            label_time = "t, sec."
         fig = plt.figure(figsize=figsize)
         plt.clf()
         if to_deg:
-            plt.plot(time[:self.time_step - 1], np.rad2deg(ref_signal[:self.time_step - 1]), label=label_ref,
-                     color='red')
+            plt.plot(
+                time[: self.time_step - 1],
+                np.rad2deg(ref_signal[: self.time_step - 1]),
+                label=label_ref,
+                color="red",
+            )
         else:
-            plt.plot(time[:self.time_step - 1], ref_signal[:self.time_step - 1], label=label_ref, color='red')
-        plt.plot(time[:self.time_step - 1], state_hist[:self.time_step - 1], label=label)
+            plt.plot(
+                time[: self.time_step - 1],
+                ref_signal[: self.time_step - 1],
+                label=label_ref,
+                color="red",
+            )
+        plt.plot(
+            time[: self.time_step - 1], state_hist[: self.time_step - 1], label=label
+        )
         plt.legend()
         plt.xlabel(label_time)
         plt.ylabel(label)
         plt.grid(True)
 
-    def plot_control(self, control_name: str, time: np.ndarray, lang: str = 'rus', to_deg: bool = False,
-                     to_rad: bool = False, figsize: tuple = (10, 10)):
+    def plot_control(
+        self,
+        control_name: str,
+        time: np.ndarray,
+        lang: str = "rus",
+        to_deg: bool = False,
+        to_rad: bool = False,
+        figsize: tuple = (10, 10),
+    ):
         """
         Графики управляющих сигналов
 
@@ -291,16 +348,21 @@ class ModelBase:
         >>> plot = model.plot_by_control('stab', time, to_deg=True, figsize=(15,4))
         """
         state_hist = self.get_control(control_name, to_deg, to_rad)
-        if lang == 'rus':
+        if lang == "rus":
             label = control_to_latex_rus[control_name]
-            label_time = 't, c'
+            label_time = "t, c"
         else:
             label = control_to_latex_eng[control_name]
-            label_time = 't, sec.'
+            label_time = "t, sec."
         fig = plt.figure(figsize=figsize)
         plt.clf()
         plt.legend()
         plt.xlabel(label_time)
         plt.ylabel(label)
         plt.grid(True)
-        plt.plot(time[:self.time_step - 1], state_hist[:self.time_step - 1], label=label, color="green")
+        plt.plot(
+            time[: self.time_step - 1],
+            state_hist[: self.time_step - 1],
+            label=label,
+            color="green",
+        )

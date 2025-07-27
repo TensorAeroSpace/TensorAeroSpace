@@ -1,7 +1,9 @@
 import numpy as np
 
 
-def unit_step(tp:np.array, degree:int, time_step:int=10, dt:float=0.01, output_rad=False)-> np.array:
+def unit_step(
+    tp: np.array, degree: int, time_step: int = 10, dt: float = 0.01, output_rad=False
+) -> np.array:
     """Генерация ступенчатого сигнала
 
     Args:
@@ -15,11 +17,12 @@ def unit_step(tp:np.array, degree:int, time_step:int=10, dt:float=0.01, output_r
         np.array: Ступенчатый сигнал
     """
     if output_rad:
-       return np.deg2rad(degree) * (tp >= time_step)
+        return np.deg2rad(degree) * (tp >= time_step)
     else:
         return degree * (tp >= time_step)
 
-def sinusoid(tp: np.ndarray, frequency : float, amplitude: int) -> np.ndarray:
+
+def sinusoid(tp: np.ndarray, frequency: float, amplitude: int) -> np.ndarray:
     """Синусоидальный сигнал
 
     Args:
@@ -30,9 +33,10 @@ def sinusoid(tp: np.ndarray, frequency : float, amplitude: int) -> np.ndarray:
     Returns:
         Синусоидальный сигнал
     """
-    return np.sin(tp * amplitude) * frequency 
+    return np.sin(tp * amplitude) * frequency
 
-def constant_line(tp: np.ndarray, value_state:float = 2) -> np.ndarray:
+
+def constant_line(tp: np.ndarray, value_state: float = 2) -> np.ndarray:
     """Прямая линия
 
     Args:
@@ -44,7 +48,10 @@ def constant_line(tp: np.ndarray, value_state:float = 2) -> np.ndarray:
     """
     return np.full_like(tp, value_state)
 
-def sinusoid_vertical_shift(tp: np.ndarray, frequency: float, amplitude: float, vertical_shift: float= 0.0) -> np.ndarray:
+
+def sinusoid_vertical_shift(
+    tp: np.ndarray, frequency: float, amplitude: float, vertical_shift: float = 0.0
+) -> np.ndarray:
     """Синусоидальный сигнал с вертикальным сдвигом
 
     Args:

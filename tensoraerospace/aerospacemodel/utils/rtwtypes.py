@@ -40,6 +40,7 @@ char_T = ctypes.c_byte
         cuint8_T, cuint16_T, cuint32_T, cuint64_T - 8, 16, 32, 64 bit 
 """
 
+
 class creal32_T(ctypes.Structure):
     _fields_ = [
         ("re", real32_T),
@@ -119,9 +120,10 @@ class cuint64_T(ctypes.Structure):
 
 class ExtY_T(ctypes.Structure):
     """
-        Output parameters Simulink model
-        (name, type)
+    Output parameters Simulink model
+    (name, type)
     """
+
     _fields_ = [
         ("u", real_T),
         ("w", real_T),
@@ -133,9 +135,10 @@ class ExtY_T(ctypes.Structure):
 
 class ExtY_T_r(ctypes.Structure):
     """
-        Output parameters Simulink model short
-        (name, type)
+    Output parameters Simulink model short
+    (name, type)
     """
+
     _fields_ = [
         ("w", real_T),
         ("q", real_T),

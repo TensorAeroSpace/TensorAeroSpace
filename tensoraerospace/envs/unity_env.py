@@ -4,12 +4,11 @@ from gym.spaces.discrete import Discrete
 
 
 class unity_discrete_env(gym.Wrapper):
-    """Дискретная обёртка для нашей юнити среды
-    """
+    """Дискретная обёртка для нашей юнити среды"""
 
     def __init__(self, env):
         super().__init__(gym.Wrapper)
-        self.action_space = Discrete(3 ** 7)
+        self.action_space = Discrete(3**7)
         self.env = env
 
     def reset(self):
@@ -30,10 +29,9 @@ class unity_discrete_env(gym.Wrapper):
         """
         actions = np.array([0.0] * 7, dtype=np.float32)
         for i in range(7):
-            actions[i] = (action // 3 ** i) % 3 - 1.0
+            actions[i] = (action // 3**i) % 3 - 1.0
         return self.env.step(actions)
 
     def close(self):
-        """Функция которая закрывает unity среду
-        """
+        """Функция которая закрывает unity среду"""
         self.env.close()

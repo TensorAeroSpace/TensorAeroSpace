@@ -1,7 +1,9 @@
 import numpy as np
 
 
-def full_random_signal(t0: float, dt: float, tn: float, sd: tuple, sv: tuple) -> np.ndarray:
+def full_random_signal(
+    t0: float, dt: float, tn: float, sd: tuple, sv: tuple
+) -> np.ndarray:
     """
     Случайный сигнал по частоте и амплитуде
 

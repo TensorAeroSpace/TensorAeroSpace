@@ -7,19 +7,18 @@ import optuna
 
 class HyperParamOptimizationBase(ABC):
     """
-        Класс интерфейс для поиска гиперпараметров
+    Класс интерфейс для поиска гиперпараметров
     """
+
     def __init__(self) -> None:
-        """Инициализация
-        """
+        """Инициализация"""
         pass
-    
+
     def run_optimization(self):
-        """Запуск оптимизации
-        """
+        """Запуск оптимизации"""
         pass
-    
-    def get_best_param(self)->dict:
+
+    def get_best_param(self) -> dict:
         """Получить лучшие найденные параметры
 
         Returns:
@@ -28,27 +27,27 @@ class HyperParamOptimizationBase(ABC):
         pass
 
     def plot_parms(self, fig_size):
-        """Построить график шагов оптимизации
-        """
+        """Построить график шагов оптимизации"""
         pass
-    
+
 
 class HyperParamOptimizationOptuna(HyperParamOptimizationBase):
     """
-        Поиск гиперпараметров модели
+    Поиск гиперпараметров модели
     """
-    def __init__(self, direction:str) -> None:
+
+    def __init__(self, direction: str) -> None:
         """Инициализация поиска гиперпараметров
 
         Args:
             direction (str): Направление поиска. Ex. minimize|maximize
         """
         super().__init__()
-        if direction not in ['minimize','maximize' ]:
+        if direction not in ["minimize", "maximize"]:
             raise ValueError("Выберите один из вариантов minimize или maximize")
         self.study = optuna.create_study(direction=direction)
-    
-    def run_optimization(self, func:Callable, n_trials:int):
+
+    def run_optimization(self, func: Callable, n_trials: int):
         """Запуск поиска гиперпараметров
 
         Args:
@@ -56,15 +55,15 @@ class HyperParamOptimizationOptuna(HyperParamOptimizationBase):
             n_trials (int): Количество попыток для поиска
         """
         self.study.optimize(func, n_trials=n_trials)
-    
-    def get_best_param(self)->dict:
+
+    def get_best_param(self) -> dict:
         """Получить лучшие гиперпараметры
 
         Returns:
             dict: Словарь с лучшими гиперпараметрами
         """
         return self.study.best_trial.params
-    
+
     def plot_parms(self, figsize=(15, 5)):
         """Построить график поиска гиперпараметров
 
@@ -75,8 +74,10 @@ class HyperParamOptimizationOptuna(HyperParamOptimizationBase):
         x_labels = []
         for trial in self.study.trials:
             x.append(trial.value)
-            x_labels.append("".join([f"{key}={trial.params[key]}\n" for key in trial.params.keys()]))
-    
+            x_labels.append(
+                "".join([f"{key}={trial.params[key]}\n" for key in trial.params.keys()])
+            )
+
         fig, ax = plt.subplots(figsize=figsize)
         ax.plot(range(len(self.study.trials)), x)
         ax.set_xticks(range(len(self.study.trials)))

@@ -18,14 +18,18 @@ class ComSatEnv(gym.Env):
         output_space (any): Пространство полного выхода (с учетом помех)
         reward_func (any): Функция вознаграждения (статус WIP)
     """
-    def __init__(self, initial_state: any,
-                 reference_signal,
-                 number_time_steps,
-                 tracking_states=['theta', "omega"],
-                 state_space=["rho", "theta", "omega"],
-                 control_space=['thrust'],
-                 output_space=["rho", "theta", "omega"],
-                 reward_func=None):
+
+    def __init__(
+        self,
+        initial_state: any,
+        reference_signal,
+        number_time_steps,
+        tracking_states=["theta", "omega"],
+        state_space=["rho", "theta", "omega"],
+        control_space=["thrust"],
+        output_space=["rho", "theta", "omega"],
+        reward_func=None,
+    ):
         self.max_action_value = 25.0
         self.initial_state = initial_state
         self.number_time_steps = number_time_steps
@@ -39,24 +43,36 @@ class ComSatEnv(gym.Env):
             self.reward_func = reward_func
         else:
             self.reward_func = self.reward
-            
-        self.model = ComSat(initial_state, number_time_steps=number_time_steps,
-                                     selected_state_output=output_space, t0=0)
-        self.indices_tracking_states = [state_space.index(tracking_states[i]) for i in range(len(tracking_states))]
-        
+
+        self.model = ComSat(
+            initial_state,
+            number_time_steps=number_time_steps,
+            selected_state_output=output_space,
+            t0=0,
+        )
+        self.indices_tracking_states = [
+            state_space.index(tracking_states[i]) for i in range(len(tracking_states))
+        ]
+
         self.ref_signal = reference_signal
-        self.model.initialise_system(x0=initial_state, number_time_steps=number_time_steps)
+        self.model.initialise_system(
+            x0=initial_state, number_time_steps=number_time_steps
+        )
         self.number_time_steps = number_time_steps
 
-        self.action_space = spaces.Box(low=-60, high=60, shape=(len(control_space),1), dtype=np.float32)
-        self.observation_space = spaces.Box(low=-np.inf, high=np.inf, shape=(len(state_space),1), dtype=np.float32)
+        self.action_space = spaces.Box(
+            low=-60, high=60, shape=(len(control_space), 1), dtype=np.float32
+        )
+        self.observation_space = spaces.Box(
+            low=-np.inf, high=np.inf, shape=(len(state_space), 1), dtype=np.float32
+        )
 
         self.current_step = 0
         self.done = False
-        
+
     def _get_info(self):
         return {}
-    
+
     @staticmethod
     def reward(state, ref_signal, ts):
         """Оценка управления
@@ -70,7 +86,7 @@ class ComSatEnv(gym.Env):
             reward (float): Оценка управления
         """
         return np.abs(state[0] - ref_signal[:, ts])
-        
+
     def step(self, action: np.ndarray):
         """Выполнения шага моделирования
 
@@ -85,31 +101,43 @@ class ComSatEnv(gym.Env):
         """
         self.current_step += 1
         next_state = self.model.run_step(action)
-        reward = self.reward_func(next_state[self.indices_tracking_states], self.reference_signal, self.current_step)
+        reward = self.reward_func(
+            next_state[self.indices_tracking_states],
+            self.reference_signal,
+            self.current_step,
+        )
         self.done = self.current_step >= self.number_time_steps - 2
         info = self._get_info()
 
-        return next_state.reshape([-1,1]), reward, self.done, False, info
+        return next_state.reshape([-1, 1]), reward, self.done, False, info
 
     def reset(self, seed=None, options=None):
         """Восстановление среды моделирования в начальные условия
-        
+
         Args:
             seed (int, optional): Seed для генератора случайных чисел
             options (dict, optional): Дополнительные опции для инициализации
-        """       
+        """
         super().reset(seed=seed)
-        
+
         self.current_step = 0
         self.done = False
 
         self.model = None
-        self.model = ComSat(self.initial_state, number_time_steps=self.number_time_steps,
-                                     selected_state_output=self.output_space, t0=0)
+        self.model = ComSat(
+            self.initial_state,
+            number_time_steps=self.number_time_steps,
+            selected_state_output=self.output_space,
+            t0=0,
+        )
         self.ref_signal = self.reference_signal
-        self.model.initialise_system(x0=self.initial_state, number_time_steps=self.number_time_steps)
+        self.model.initialise_system(
+            x0=self.initial_state, number_time_steps=self.number_time_steps
+        )
         info = self._get_info()
-        observation = np.array(self.initial_state, dtype=np.float32)[self.model.selected_state_index].reshape([-1,1])
+        observation = np.array(self.initial_state, dtype=np.float32)[
+            self.model.selected_state_index
+        ].reshape([-1, 1])
         return observation, info
 
     def render(self):

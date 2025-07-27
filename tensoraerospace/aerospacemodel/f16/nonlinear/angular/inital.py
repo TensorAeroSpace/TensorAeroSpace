@@ -17,24 +17,39 @@ dail0 = deg2rad(0)
 ddir0 = deg2rad(0)
 
 initial_state = matlab.double(
-    [[alpha0], [beta0], [wx0], [wy0], [wz0], [gamma0], [psi0], [theta0], [stab0], [dstab0], [ail0], [dail0], [dir0],
-     [ddir0]])
+    [
+        [alpha0],
+        [beta0],
+        [wx0],
+        [wy0],
+        [wz0],
+        [gamma0],
+        [psi0],
+        [theta0],
+        [stab0],
+        [dstab0],
+        [ail0],
+        [dail0],
+        [dir0],
+        [ddir0],
+    ]
+)
 
 initial_state_dict = {
-    'alpha': [alpha0],
-    'beta': [beta0],
-    'wx': [wx0],
-    'wy': [wy0],
-    'wz': [wz0],
-    'gamma': [gamma0],
-    'psi': [psi0],
-    'theta': [theta0],
-    'stab': [stab0],
-    'ail': [ail0],
-    'dir': [dir0],
-    'dstab': [dstab0],
-    'dail': [dail0],
-    'ddir': [ddir0],
+    "alpha": [alpha0],
+    "beta": [beta0],
+    "wx": [wx0],
+    "wy": [wy0],
+    "wz": [wz0],
+    "gamma": [gamma0],
+    "psi": [psi0],
+    "theta": [theta0],
+    "stab": [stab0],
+    "ail": [ail0],
+    "dir": [dir0],
+    "dstab": [dstab0],
+    "dail": [dail0],
+    "ddir": [ddir0],
 }
 
 
@@ -54,7 +69,9 @@ def set_initial_state(new_initial: dict):
     >>> set_initial_state({'alpha':np.deg2rad(10), 'beta':np.deg2rad(1)})
     """
     if not set(list(new_initial.keys())).issubset(list(initial_state_dict.keys())):
-        raise Exception(f"Состояния заданы неверно, проверьте. Доступные состояния {list(initial_state_dict.keys())}")
+        raise Exception(
+            f"Состояния заданы неверно, проверьте. Доступные состояния {list(initial_state_dict.keys())}"
+        )
 
     for key, value in new_initial.items():
         initial_state_dict[key] = [value]
