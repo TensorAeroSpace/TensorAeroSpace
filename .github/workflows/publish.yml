@@ -31,6 +31,7 @@ jobs:
 
     - name: 🎭 Install Poetry
       run: |
+        python -m ensurepip --upgrade || true
         python -m pip install --upgrade pip
         python -m pip install poetry
 
@@ -68,6 +69,7 @@ jobs:
 
     - name: 🎭 Install Poetry
       run: |
+        python -m ensurepip --upgrade || true
         python -m pip install --upgrade pip
         python -m pip install poetry
 
@@ -104,6 +106,7 @@ jobs:
 
     - name: 🎭 Install Poetry
       run: |
+        python -m ensurepip --upgrade || true
         python -m pip install --upgrade pip
         python -m pip install poetry
 
