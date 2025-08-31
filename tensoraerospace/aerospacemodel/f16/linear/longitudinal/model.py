@@ -172,6 +172,7 @@ class LongitudinalF16(ModelBase):
 
         # Handle case where initial_state has fewer elements than full state space
         x0_array = np.array(x0)
+        print(x0_array, states_rows, self.selected_states, selected_rows_states)
         if x0_array.shape[0] == len(self.selected_states):
             # If initial_state matches selected_states size, use it directly
             filtered_x0 = x0_array
