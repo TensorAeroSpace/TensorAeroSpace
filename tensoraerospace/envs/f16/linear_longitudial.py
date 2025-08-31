@@ -105,10 +105,9 @@ class LinearLongitudinalF16(gym.Env):
     def get_init_args(self):
         """Получаем аргументы инициализации в виде словаря."""
         init_args = self.init_args.copy()
-        init_args.pop("self")  # Удаление ссылки на текущий объект из словаря аргументов
-        init_args.pop(
-            "__class__"
-        )  # Удаление ссылки на текущий объект из словаря аргументов
+        init_args.pop("self", None)  # Удаление ссылки на текущий объект из словаря аргументов
+        init_args.pop("__class__", None)  # Удаление ссылки на класс из словаря аргументов
+        init_args.pop("model_x0", None)  # Удаление внутренней переменной model_x0
         return init_args
 
     def step(self, action: np.ndarray):

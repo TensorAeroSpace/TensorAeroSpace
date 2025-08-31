@@ -7,6 +7,7 @@ from ..base import (
     TheEnvironmentDoesNotMatch,
     get_class_from_string,
     serialize_env,
+    deserialize_env_params,
 )
 
 
@@ -168,9 +169,9 @@ class PID(BaseRLModel):
         if config["policy"]["name"] != agent_name:
             raise TheEnvironmentDoesNotMatch
         if "tensoraerospace" in config["env"]["name"]:
-            env = get_class_from_string(config["env"]["name"])(
-                **config["env"]["params"]
-            )
+            # Десериализуем параметры среды, преобразуя списки в numpy массивы
+            env_params = deserialize_env_params(config["env"]["params"])
+            env = get_class_from_string(config["env"]["name"])(**env_params)
         else:
             env = get_class_from_string(config["env"]["name"])()
         new_agent = cls(env=env, **config["policy"]["params"])
@@ -190,10 +191,16 @@ class PID(BaseRLModel):
             PID: Загруженный экземпляр модели PID.
         """
         path = Path(repo_name)
-        if path.exists():
+        # Проверяем существование пути (включая относительные пути)
+        if path.exists() and path.is_dir():
             new_agent = cls.__load(path)
             return new_agent
+        # Проверяем, является ли это локальным путем (начинается с ./ или ../)
+        elif repo_name.startswith(('./', '../')) or '/' in repo_name or '\\' in repo_name:
+            # Это локальный путь, но директория не существует
+            raise FileNotFoundError(f"Локальная директория не найдена: {repo_name}")
         else:
+            # Это имя репозитория для Hugging Face Hub
             folder_path = super().from_pretrained(repo_name, access_token, version)
             new_agent = cls.__load(folder_path)
             return new_agent

@@ -144,12 +144,50 @@ def serialize_env(env):
         env: Объект среды, который нужно сериализовать.
 
     Returns:
-        dict: Словарь с параметрами среды, включая reference_signal в виде списка.
+        dict: Словарь с параметрами среды, включая все numpy массивы в виде списков.
     """
+    import numpy as np
+    
     # Получаем начальное состояние и ссылку на сигнал из env
     env_data = env.get_init_args()
-    env_data["reference_signal"] = env_data["reference_signal"].tolist()
-    return env_data
+    
+    # Рекурсивно преобразуем все numpy массивы в списки
+    def convert_numpy_to_list(obj):
+        if isinstance(obj, np.ndarray):
+            return obj.tolist()
+        elif isinstance(obj, dict):
+            return {key: convert_numpy_to_list(value) for key, value in obj.items()}
+        elif isinstance(obj, (list, tuple)):
+            return [convert_numpy_to_list(item) for item in obj]
+        else:
+            return obj
+    
+    return convert_numpy_to_list(env_data)
+
+
+def deserialize_env_params(env_params):
+    """Десериализует параметры среды, преобразуя списки обратно в numpy массивы.
+
+    Args:
+        env_params (dict): Словарь с параметрами среды.
+
+    Returns:
+        dict: Словарь с параметрами среды, где списки преобразованы в numpy массивы.
+    """
+    import numpy as np
+    
+    # Рекурсивно преобразуем списки в numpy массивы для известных параметров
+    def convert_list_to_numpy(obj, key=None):
+        if isinstance(obj, list) and key in ['reference_signal', 'initial_state', 'alpha_states']:
+            return np.array(obj)
+        elif isinstance(obj, dict):
+            return {k: convert_list_to_numpy(v, k) for k, v in obj.items()}
+        elif isinstance(obj, list):
+            return [convert_list_to_numpy(item) for item in obj]
+        else:
+            return obj
+    
+    return convert_list_to_numpy(env_params)
 
 
 class TheEnvironmentDoesNotMatch(Exception):
