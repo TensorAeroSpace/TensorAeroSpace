@@ -36,8 +36,8 @@ jobs:
 
     - name: 🎭 Install Poetry
       run: |
-        pip install --upgrade pip
-        pip install poetry
+        python -m pip install --upgrade pip
+        python -m pip install poetry
 
     - name: ⚙️ Configure Poetry
       run: |
@@ -122,8 +122,8 @@ jobs:
 
     - name: 🎭 Install Poetry
       run: |
-        pip install --upgrade pip
-        pip install poetry
+        python -m pip install --upgrade pip
+        python -m pip install poetry
 
     - name: ⚙️ Configure Poetry
       run: |
@@ -154,8 +154,8 @@ jobs:
 
     - name: 🎭 Install Poetry
       run: |
-        pip install --upgrade pip
-        pip install poetry
+        python -m pip install --upgrade pip
+        python -m pip install poetry
 
     - name: 📚 Install dependencies
       run: |
@@ -185,8 +185,8 @@ jobs:
 
     - name: 🎭 Install Poetry
       run: |
-        pip install --upgrade pip
-        pip install poetry
+        python -m pip install --upgrade pip
+        python -m pip install poetry
 
     - name: 📚 Install dependencies
       run: |
