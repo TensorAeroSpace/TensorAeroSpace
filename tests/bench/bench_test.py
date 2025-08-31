@@ -1,13 +1,11 @@
-import pytest
-import numpy as np
-from unittest.mock import patch
 from io import StringIO
+from unittest.mock import patch
+
+import numpy as np
+import pytest
+
 from tensoraerospace.benchmark.function import find_longest_repeating_series
 
-import pytest
-import numpy as np
-from unittest.mock import patch
-from io import StringIO
 
 def test_find_longest_repeating_series():
     # Проверка работы функции при нормальных входных данных
@@ -19,4 +17,3 @@ def test_find_longest_repeating_series():
     numbers = [0, 0, 0, 1, 1, 1, 2, 2, 2, 3, 3, 3, 4, 4, 4]
     result = find_longest_repeating_series(numbers)
     assert result == (0, 1)
-

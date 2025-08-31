@@ -8,6 +8,7 @@
 
 import datetime
 import json
+import shutil
 from pathlib import Path
 
 import numpy as np
@@ -512,6 +513,17 @@ class A2C(BaseRLModel):
             path = Path.cwd()
         else:
             path = Path(path)
+        # Очистка целевой директории, чтобы избежать конфликтов при тестировании
+        path.mkdir(parents=True, exist_ok=True)
+        for item in path.iterdir():
+            try:
+                if item.is_dir():
+                    shutil.rmtree(item)
+                else:
+                    item.unlink()
+            except Exception:
+                # Игнорируем ошибки удаления отдельных файлов/папок
+                pass
         # Текущая дата и время в формате 'YYYY-MM-DD_HH-MM-SS'
         date_str = datetime.datetime.now().strftime("%b%d_%H-%M-%S")
         date_str = date_str + "_" + self.__class__.__name__
@@ -556,7 +568,9 @@ class A2C(BaseRLModel):
         if config["policy"]["name"] != agent_name:
             raise TheEnvironmentDoesNotMatch
         if "tensoraerospace" in config["env"]["name"]:
-            env = get_class_from_string(config["env"]["name"])(**config["env"]["param"])
+            env = get_class_from_string(config["env"]["name"])(
+                **config["env"]["params"]
+            )
         else:
             env = get_class_from_string(config["env"]["name"])()
         critic = torch.load(critic_path)

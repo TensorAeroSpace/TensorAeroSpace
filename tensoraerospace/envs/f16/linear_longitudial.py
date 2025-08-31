@@ -13,6 +13,9 @@ from gymnasium import spaces
 
 from tensoraerospace.aerospacemodel.f16.linear.longitudinal.model import LongitudinalF16
 
+# Порядок состояний в модели LongitudinalF16
+MODEL_STATE_ORDER = ["theta", "alpha", "q", "ele"]
+
 
 class LinearLongitudinalF16(gym.Env):
     """Моделирование объекта управления LongitudinalF16 в среде моделирования OpenAI Gym для обучения агентов с исскуственным интелектом
@@ -54,12 +57,13 @@ class LinearLongitudinalF16(gym.Env):
         self.reward_func = (
             reward_func if reward_func is not None else self.default_reward
         )
+
+        # Построим начальный вектор состояния модели согласно порядку состояний модели
+        model_x0 = self._build_model_initial_state(self.initial_state, self.state_space)
+
         self.init_args = locals()
         self.model = LongitudinalF16(
-            initial_state,
-            selected_states=self.state_space,
-            selected_output=self.output_space,
-            selected_input=self.control_space,
+            model_x0,
             number_time_steps=number_time_steps,
             selected_state_output=self.state_space,
         )
@@ -77,6 +81,23 @@ class LinearLongitudinalF16(gym.Env):
 
         self.current_step = 0
         self.done = False
+
+    def _build_model_initial_state(
+        self, init_state: np.ndarray, state_names: list
+    ) -> np.ndarray:
+        """Собирает начальный вектор состояния под порядок состояний модели MODEL_STATE_ORDER.
+
+        Если init_state имеет меньшую размерность (например, только для выбранных state_names),
+        недостающие компоненты заполняются нулями.
+        """
+        # Плоский массив значений начального состояния
+        vals = np.array(init_state, dtype=float).reshape(-1)
+        x0 = np.zeros(len(MODEL_STATE_ORDER), dtype=float)
+        # Сопоставляем значения из state_names в соответствующие позиции модели
+        for i, name in enumerate(state_names):
+            if name in MODEL_STATE_ORDER:
+                x0[MODEL_STATE_ORDER.index(name)] = vals[i] if i < len(vals) else 0.0
+        return x0
 
     def _get_info(self):
         return {}
@@ -123,21 +144,22 @@ class LinearLongitudinalF16(gym.Env):
         super().reset(seed=seed)
         self.current_step = 0
         self.done = False
+
+        # Пересобираем начальное состояние под модель
+        model_x0 = self._build_model_initial_state(self.initial_state, self.state_space)
+
         self.model = LongitudinalF16(
-            self.initial_state,
-            selected_states=self.state_space,
-            selected_output=self.output_space,
-            selected_input=self.control_space,
+            model_x0,
             number_time_steps=self.number_time_steps,
             selected_state_output=self.state_space,
         )
         self.model.initialise_system(
-            x0=self.initial_state, number_time_steps=self.number_time_steps
+            x0=model_x0, number_time_steps=self.number_time_steps
         )
         info = self._get_info()
 
         return (
-            np.array(self.initial_state, dtype=np.float32)[
+            np.array(model_x0, dtype=np.float32)[
                 self.model.selected_state_index
             ].reshape([-1, 1]),
             info,
@@ -154,7 +176,7 @@ class LinearLongitudinalF16(gym.Env):
     #     Args:
     #         state (_type_): Текущее состояния
     #         ref_signal (_type_): Заданное состояние
-    #         ts (_type_): Временное шаг
+    #         ts (_type_): Временной шаг
 
     #     Returns:
     #         reward (float): Оценка упавления
@@ -194,7 +216,8 @@ class LinearLongitudinalF16(gym.Env):
         # Можно настроить веса для этих компонентов в зависимости от предпочтений в управлении
         reward = -angle_error - 0.1 * omega_penalty
 
-        return reward
+        # Возвращаем как np.ndarray для совместимости с тестами
+        return np.array(reward)
 
     # @staticmethod
     # def default_reward(state, ref_signal, ts):
@@ -203,7 +226,7 @@ class LinearLongitudinalF16(gym.Env):
     #     Args:
     #         state (_type_): Текущее состояния
     #         ref_signal (_type_): Заданное состояние
-    #         ts (_type_): Временное шаг
+    #         ts (_type_): Временной шаг
 
     #     Returns:
     #         reward (float): Оценка упавления

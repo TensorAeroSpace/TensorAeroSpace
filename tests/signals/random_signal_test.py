@@ -1,8 +1,11 @@
-import pytest
-import numpy as np
-from unittest.mock import patch
 from io import StringIO
+from unittest.mock import patch
+
+import numpy as np
+import pytest
+
 from tensoraerospace.signals.random import full_random_signal
+
 
 def test_full_random_signal():
     # Проверка работы функции при нормальных входных данных

@@ -89,8 +89,8 @@ lint: ## Проверить код линтерами
 
 format: ## Форматировать код
 	@echo "$(BLUE)Форматирование кода...$(RESET)"
-	poetry run black tensoraerospace tests examples
-	poetry run isort tensoraerospace tests examples --profile=black
+	poetry run black tensoraerospace tests example
+	poetry run isort tensoraerospace tests example --profile=black
 
 fmt: ## Форматировать код (legacy)
 	poetry run ruff check --fix tensoraerospace --select I
