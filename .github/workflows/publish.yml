@@ -87,6 +87,7 @@ jobs:
       run: |
         poetry config repositories.testpypi https://test.pypi.org/legacy/
         poetry publish -r testpypi
+      continue-on-error: true
 
   publish-pypi:
     name: 🚀 Publish to PyPI
@@ -123,6 +124,7 @@ jobs:
         POETRY_PYPI_TOKEN_PYPI: ${{ secrets.PYPI_API_TOKEN }}
       run: |
         poetry publish
+      continue-on-error: true
 
     - name: 📢 Create GitHub Release Comment
       if: github.event_name == 'release'

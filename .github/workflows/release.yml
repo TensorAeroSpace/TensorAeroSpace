@@ -120,6 +120,7 @@ jobs:
         asset_path: ./dist/*.whl
         asset_name: tensoraerospace-${{ steps.tag_info.outputs.version }}-py3-none-any.whl
         asset_content_type: application/zip
+      continue-on-error: true
 
     - name: 📦 Upload source distribution to release
       uses: actions/upload-release-asset@v1
@@ -130,6 +131,7 @@ jobs:
         asset_path: ./dist/*.tar.gz
         asset_name: tensoraerospace-${{ steps.tag_info.outputs.version }}.tar.gz
         asset_content_type: application/gzip
+      continue-on-error: true
 
   notify:
     name: 📢 Notify Release
