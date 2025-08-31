@@ -107,7 +107,7 @@ jobs:
         junitxml-title: 🧪 TensorAeroSpace Test Results
   docs-coverage:
     name: 📚 Documentation Coverage
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     needs: test
 
     steps:
@@ -149,7 +149,7 @@ jobs:
 
   security:
     name: 🔒 Security Scan
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     needs: test
 
     steps:
@@ -180,7 +180,7 @@ jobs:
 
   build:
     name: 🏗️ Build Package
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     needs: [test, docs-coverage]
 
     steps:

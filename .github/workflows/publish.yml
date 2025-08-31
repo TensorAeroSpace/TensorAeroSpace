@@ -18,7 +18,7 @@ on:
 jobs:
   test-before-publish:
     name: 🧪 Test Before Publishing
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     
     steps:
     - name: 📥 Checkout code
@@ -52,7 +52,7 @@ jobs:
 
   publish-testpypi:
     name: 🧪 Publish to TestPyPI
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     needs: test-before-publish
     if: github.event.inputs.environment == 'testpypi' || (github.event_name == 'release' && github.event.action == 'published' && contains(github.ref, 'alpha'))
     environment: testpypi
@@ -88,7 +88,7 @@ jobs:
 
   publish-pypi:
     name: 🚀 Publish to PyPI
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     needs: test-before-publish
     if: github.event.inputs.environment == 'pypi' || (github.event_name == 'release' && github.event.action == 'published' && !contains(github.ref, 'alpha'))
     environment: pypi

@@ -12,7 +12,7 @@ on:
 jobs:
   create-release:
     name: 🎉 Create GitHub Release
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     
     steps:
     - name: 📥 Checkout code
@@ -133,7 +133,7 @@ jobs:
 
   notify:
     name: 📢 Notify Release
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     needs: create-release
     if: always()
     
