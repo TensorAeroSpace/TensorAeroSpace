@@ -5,9 +5,9 @@ from pathlib import Path
 from ..base import (
     BaseRLModel,
     TheEnvironmentDoesNotMatch,
+    deserialize_env_params,
     get_class_from_string,
     serialize_env,
-    deserialize_env_params,
 )
 
 
@@ -196,7 +196,9 @@ class PID(BaseRLModel):
             new_agent = cls.__load(path)
             return new_agent
         # Проверяем, является ли это локальным путем (начинается с ./ или ../)
-        elif repo_name.startswith(('./', '../')) or '/' in repo_name or '\\' in repo_name:
+        elif (
+            repo_name.startswith(("./", "../")) or "/" in repo_name or "\\" in repo_name
+        ):
             # Это локальный путь, но директория не существует
             raise FileNotFoundError(f"Локальная директория не найдена: {repo_name}")
         else:

@@ -25,7 +25,6 @@ def test_a3c_agent_train_smoke(monkeypatch):
     import types
 
     import tensoraerospace.agent.a3c.model as a3c
-    import tensoraerospace.agent.a3c.model as a3c
 
     class _NoOpWorker:
         def __init__(self, env, gamma, global_actor, global_critic):

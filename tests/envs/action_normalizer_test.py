@@ -3,7 +3,6 @@ from typing import cast
 import gymnasium as gym
 import numpy as np
 from gymnasium import spaces
-from gymnasium import spaces
 
 from tensoraerospace.envs.utils import ActionNormalizer
 

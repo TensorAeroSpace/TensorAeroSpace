@@ -147,10 +147,10 @@ def serialize_env(env):
         dict: Словарь с параметрами среды, включая все numpy массивы в виде списков.
     """
     import numpy as np
-    
+
     # Получаем начальное состояние и ссылку на сигнал из env
     env_data = env.get_init_args()
-    
+
     # Рекурсивно преобразуем все numpy массивы в списки
     def convert_numpy_to_list(obj):
         if isinstance(obj, np.ndarray):
@@ -161,7 +161,7 @@ def serialize_env(env):
             return [convert_numpy_to_list(item) for item in obj]
         else:
             return obj
-    
+
     return convert_numpy_to_list(env_data)
 
 
@@ -175,10 +175,14 @@ def deserialize_env_params(env_params):
         dict: Словарь с параметрами среды, где списки преобразованы в numpy массивы.
     """
     import numpy as np
-    
+
     # Рекурсивно преобразуем списки в numpy массивы для известных параметров
     def convert_list_to_numpy(obj, key=None):
-        if isinstance(obj, list) and key in ['reference_signal', 'initial_state', 'alpha_states']:
+        if isinstance(obj, list) and key in [
+            "reference_signal",
+            "initial_state",
+            "alpha_states",
+        ]:
             return np.array(obj)
         elif isinstance(obj, dict):
             return {k: convert_list_to_numpy(v, k) for k, v in obj.items()}
@@ -186,7 +190,7 @@ def deserialize_env_params(env_params):
             return [convert_list_to_numpy(item) for item in obj]
         else:
             return obj
-    
+
     return convert_list_to_numpy(env_params)
 
 
