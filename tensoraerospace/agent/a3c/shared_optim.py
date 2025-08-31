@@ -24,7 +24,8 @@ class SharedAdam(torch.optim.Adam):
         for group in self.param_groups:
             for p in group["params"]:
                 state = self.state[p]
-                state["step"] = 0
+                # PyTorch Adam functional API requires step as a singleton tensor
+                state["step"] = torch.zeros((), dtype=torch.long)
                 state["exp_avg"] = torch.zeros_like(p.data)
                 state["exp_avg_sq"] = torch.zeros_like(p.data)
 

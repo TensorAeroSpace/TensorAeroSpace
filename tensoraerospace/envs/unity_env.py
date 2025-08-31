@@ -8,14 +8,14 @@
 
 import gymnasium as gym
 import numpy as np
-from gym.spaces.discrete import Discrete
+from gymnasium.spaces import Discrete
 
 
 class unity_discrete_env(gym.Wrapper):
     """Дискретная обёртка для нашей юнити среды"""
 
     def __init__(self, env):
-        super().__init__(gym.Wrapper)
+        super().__init__(env)
         self.action_space = Discrete(3**7)
         self.env = env
 
