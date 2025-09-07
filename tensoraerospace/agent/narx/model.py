@@ -19,6 +19,7 @@ class NARX(nn.Module):
         criterion (nn.MSELoss): Функция потерь среднеквадратичной ошибки.
         optimizer (torch.optim.Adam): Оптимизатор Adam.
     """
+
     def __init__(self, input_size, hidden_size, output_size):
         super(NARX, self).__init__()
         self.hidden_size = hidden_size
@@ -26,7 +27,6 @@ class NARX(nn.Module):
         self.output_layer = nn.Linear(hidden_size, output_size)
         self.criterion = nn.MSELoss()
         self.optimizer = torch.optim.Adam(self.parameters(), lr=0.01)
-
 
     def forward(self, input_tensor, last_output):
         """Выполняет один шаг прямого распространения сигнала.
@@ -42,7 +42,7 @@ class NARX(nn.Module):
         hidden = torch.tanh(self.input_layer(combined))
         output = self.output_layer(hidden)
         return output
-    
+
     def train(self, predcit_tensor, target_tensor):
         """Обучает модель, минимизируя функцию потерь между предсказанным и целевым тензором.
 

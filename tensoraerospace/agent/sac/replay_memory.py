@@ -18,6 +18,7 @@ class ReplayMemory:
         position (int): Текущая позиция в буфере.
 
     """
+
     def __init__(self, capacity, seed):
         random.seed(seed)
         self.capacity = capacity
@@ -72,14 +73,14 @@ class ReplayMemory:
             save_path (str): Путь для сохранения файла. По умолчанию None.
 
         """
-        if not os.path.exists('checkpoints/'):
-            os.makedirs('checkpoints/')
+        if not os.path.exists("checkpoints/"):
+            os.makedirs("checkpoints/")
 
         if save_path is None:
             save_path = "checkpoints/sac_buffer_{}_{}".format(env_name, suffix)
-        print('Saving buffer to {}'.format(save_path))
+        print("Saving buffer to {}".format(save_path))
 
-        with open(save_path, 'wb') as f:
+        with open(save_path, "wb") as f:
             pickle.dump(self.buffer, f)
 
     def load_buffer(self, save_path):
@@ -89,7 +90,7 @@ class ReplayMemory:
             save_path (str): Путь к файлу для загрузки буфера.
 
         """
-        print('Loading buffer from {}'.format(save_path))
+        print("Loading buffer from {}".format(save_path))
 
         with open(save_path, "rb") as f:
             self.buffer = pickle.load(f)

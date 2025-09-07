@@ -19,6 +19,11 @@ Model Predictive Control
 Документация
 ------------
 
-.. autoclass:: tensoraerospace.agent.mpc.nn.MPCAgent
+.. autoclass:: tensoraerospace.agent.mpc.base.AircraftMPC
+  :members:
+  :inherited-members:
+
+
+.. autoclass:: tensoraerospace.agent.mpc.dynamics.DynamicsNN
   :members:
   :inherited-members:

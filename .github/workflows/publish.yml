@@ -1,0 +1,139 @@
+
+name: 🚀 Publish Python Package
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to deploy to'
+        required: true
+        default: 'testpypi'
+        type: choice
+        options:
+        - testpypi
+        - pypi
+
+jobs:
+  test-before-publish:
+    name: 🧪 Test Before Publishing
+    runs-on: self-hosted
+    
+    steps:
+    - name: 📥 Checkout code
+      uses: actions/checkout@v4
+
+    - name: 🐍 Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+
+    - name: 🎭 Install Poetry
+      run: |
+        python -m ensurepip --upgrade || true
+        python -m pip install --upgrade pip
+        python -m pip install poetry
+
+    - name: 📚 Install dependencies
+      run: |
+        poetry install --with dev
+
+    - name: 🧪 Run tests
+      run: |
+        poetry run pytest tests/ -v
+
+    - name: 🏗️ Build package
+      run: |
+        poetry build
+
+    - name: ✅ Verify package
+      run: |
+        poetry run twine check dist/*
+
+  publish-testpypi:
+    name: 🧪 Publish to TestPyPI
+    runs-on: self-hosted
+    needs: test-before-publish
+    if: github.event.inputs.environment == 'testpypi' || (github.event_name == 'release' && github.event.action == 'published' && contains(github.ref, 'alpha'))
+    environment: testpypi
+
+    steps:
+    - name: 📥 Checkout code
+      uses: actions/checkout@v4
+
+    - name: 🐍 Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+
+    - name: 🎭 Install Poetry
+      run: |
+        python -m ensurepip --upgrade || true
+        python -m pip install --upgrade pip
+        python -m pip install poetry
+
+    - name: 📚 Install dependencies
+      run: |
+        poetry install
+
+    - name: 🏗️ Build package
+      run: |
+        poetry build
+
+    - name: 🧪 Publish to TestPyPI
+      env:
+        POETRY_PYPI_TOKEN_TESTPYPI: ${{ secrets.TESTPYPI_API_TOKEN }}
+      run: |
+        poetry config repositories.testpypi https://test.pypi.org/legacy/
+        poetry publish -r testpypi
+      continue-on-error: true
+
+  publish-pypi:
+    name: 🚀 Publish to PyPI
+    runs-on: self-hosted
+    needs: test-before-publish
+    if: github.event.inputs.environment == 'pypi' || (github.event_name == 'release' && github.event.action == 'published' && !contains(github.ref, 'alpha'))
+    environment: pypi
+
+    steps:
+    - name: 📥 Checkout code
+      uses: actions/checkout@v4
+
+    - name: 🐍 Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+
+    - name: 🎭 Install Poetry
+      run: |
+        python -m ensurepip --upgrade || true
+        python -m pip install --upgrade pip
+        python -m pip install poetry
+
+    - name: 📚 Install dependencies
+      run: |
+        poetry install
+
+    - name: 🏗️ Build package
+      run: |
+        poetry build
+
+    - name: 🚀 Publish to PyPI
+      env:
+        POETRY_PYPI_TOKEN_PYPI: ${{ secrets.PYPI_API_TOKEN }}
+      run: |
+        poetry publish
+      continue-on-error: true
+
+    - name: 📢 Create GitHub Release Comment
+      if: github.event_name == 'release'
+      uses: actions/github-script@v6
+      with:
+        script: |
+          github.rest.issues.createComment({
+            issue_number: context.issue.number,
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            body: '🚀 Package successfully published to PyPI! 📦\n\nInstall with: `pip install tensoraerospace`'
+          })

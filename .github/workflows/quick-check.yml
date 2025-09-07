@@ -1,0 +1,151 @@
+name: ⚡ Quick Check
+run-name: ${{ github.actor }} is running quick checks 🔍
+
+on:
+  push:
+    branches:
+      - '**'  # Запускать на всех ветках
+  pull_request:
+    branches:
+      - '**'  # Запускать для PR в любые ветки
+
+jobs:
+  quick-test:
+    name: ⚡ Quick Test (Python 3.10, Ubuntu)
+    runs-on: self-hosted
+    timeout-minutes: 10
+
+    steps:
+    - name: 📥 Checkout code
+      uses: actions/checkout@v4
+
+    - name: 🐍 Set up Python 3.10
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+
+    - name: 📦 Cache Poetry dependencies
+      uses: actions/cache@v3
+      with:
+        path: |
+          ~/.cache/pypoetry
+          ~/.cache/pip
+        key: ubuntu-latest-poetry-3.10-${{ hashFiles('**/poetry.lock') }}
+        restore-keys: |
+          ubuntu-latest-poetry-3.10-
+
+    - name: 🎭 Install Poetry
+      run: |
+        python -m ensurepip --upgrade || true
+        python -m pip install --upgrade pip
+        python -m pip install poetry
+
+    - name: ⚙️ Configure Poetry
+      run: |
+        poetry config virtualenvs.create true
+        poetry config virtualenvs.in-project true
+
+    - name: 🔄 Check and update lock file if needed
+      run: |
+        if ! poetry check --lock; then
+          echo "Lock file is outdated, updating..."
+          poetry lock --no-update
+        fi
+
+    - name: 📚 Install dependencies
+      run: |
+        poetry install --only main,test
+
+    - name: 🔍 Quick lint check
+      run: |
+        poetry run python -m py_compile tensoraerospace/**/*.py
+
+    - name: 🧪 Run core tests only
+      run: |
+        poetry run pytest tests/envs/ -v --tb=short -x --maxfail=3
+
+    - name: ✅ Quick import test
+      run: |
+        poetry run python -c "import tensoraerospace; print('✅ Import successful')"
+
+  code-quality:
+    name: 📝 Code Quality Check
+    runs-on: self-hosted
+    timeout-minutes: 5
+
+    steps:
+    - name: 📥 Checkout code
+      uses: actions/checkout@v4
+
+    - name: 🐍 Set up Python 3.10
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+
+    - name: 🎭 Install Poetry
+      run: |
+        python -m ensurepip --upgrade || true
+        python -m pip install --upgrade pip
+        python -m pip install poetry
+
+    - name: 🔄 Check and update lock file if needed
+      run: |
+        if ! poetry check --lock; then
+          echo "Lock file is outdated, updating..."
+          poetry lock --no-update
+        fi
+
+    - name: 📚 Install dependencies
+      run: |
+        poetry install --with dev
+
+    - name: 🔍 Check code formatting with black
+      run: |
+        poetry run black --check --diff tensoraerospace/
+
+    - name: 📏 Check import sorting with isort
+      run: |
+        poetry run isort --check-only --diff tensoraerospace/
+
+    - name: 🔍 Basic flake8 check
+      run: |
+        poetry run flake8 tensoraerospace --count --select=E9,F63,F7,F82 --show-source --statistics
+
+  dependency-check:
+    name: 🔒 Dependency Security Check
+    runs-on: self-hosted
+    timeout-minutes: 5
+
+    steps:
+    - name: 📥 Checkout code
+      uses: actions/checkout@v4
+
+    - name: 🐍 Set up Python 3.10
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+
+    - name: 🎭 Install Poetry
+      run: |
+        python -m ensurepip --upgrade || true
+        python -m pip install --upgrade pip
+        python -m pip install poetry
+
+    - name: 🔄 Check and update lock file if needed
+      run: |
+        if ! poetry check --lock; then
+          echo "Lock file is outdated, updating..."
+          poetry lock --no-update
+        fi
+
+    - name: 📚 Install dependencies
+      run: |
+        poetry install --with dev
+
+    - name: 🔍 Check for known security vulnerabilities
+      run: |
+        poetry run safety check || echo "⚠️ Security vulnerabilities found, but not failing the build"
+
+    - name: 📋 Show dependency tree
+      run: |
+        poetry show --tree
