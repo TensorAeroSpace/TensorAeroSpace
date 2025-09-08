@@ -1,18 +1,20 @@
-import pytest
-import numpy as np
-import torch
-from tensoraerospace.agent import PPO
 import gymnasium as gym
+import numpy as np
+import pytest
+import torch
 import torch.nn as nn
 import torch.nn.functional as F
+
+from tensoraerospace.agent import PPO
 from tensoraerospace.envs.utils import ActionNormalizer
-    
+
+
 @pytest.fixture
 def setup_ppo_agent():
-    env = gym.make('Pendulum-v1')
+    env = gym.make("Pendulum-v1")
     env = ActionNormalizer(env)
     env.reset()
-    agent = PPO(env, gamma=0.9, max_episodes = 100)
+    agent = PPO(env, gamma=0.9, max_episodes=100)
     return agent, env
 
 
@@ -24,6 +26,7 @@ def test_collect_data(setup_ppo_agent):
     assert mean_action.shape == torch.Size([1, 1])
     assert log_prob.shape == torch.Size([1, 1])
 
+
 # Тестирование функции learn
 def test_learn(setup_ppo_agent):
     agent, env = setup_ppo_agent
@@ -34,6 +37,7 @@ def test_learn(setup_ppo_agent):
     discnt_rewards = torch.randn(10, 1)
     rewards = torch.randn(10, 1)
     agent.learn(states, actions, adv, old_probs, discnt_rewards, rewards)
+
 
 # Тестирование функции train
 def test_train(setup_ppo_agent):

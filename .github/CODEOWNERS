@@ -1,0 +1,35 @@
+# Автоматическое назначение ревьюеров для Pull Requests
+# https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
+
+# Глобальные владельцы кода
+* @asmazaev
+
+# Основной код библиотеки
+/tensoraerospace/ @asmazaev
+
+# Тесты
+/tests/ @asmazaev
+
+# Документация
+/docs/ @asmazaev
+*.md @asmazaev
+
+# CI/CD конфигурация
+/.github/ @asmazaev
+/Makefile @asmazaev
+/.pre-commit-config.yaml @asmazaev
+
+# Конфигурация проекта
+/pyproject.toml @asmazaev
+/poetry.lock @asmazaev
+/Dockerfile @asmazaev
+/.dockerignore @asmazaev
+
+# Примеры
+/example/ @asmazaev
+/examples/ @asmazaev
+
+# Специфичные компоненты
+/tensoraerospace/agents/ @asmazaev
+/tensoraerospace/envs/ @asmazaev
+/tensoraerospace/signals/ @asmazaev

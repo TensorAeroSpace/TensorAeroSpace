@@ -21,6 +21,8 @@ gymnasium = "^0.29.1"
 torch = "^2.2.0"
 huggingface-hub = "^0.22.2"
 tensorflow-macos = { version = "2.15.0", markers = "sys_platform == 'darwin'" }
+seaborn = "^0.13.2"
+plotly = "^6.2.0"
 
 [tool.poetry.group.dev.dependencies]
 sphinx = "^7.2.6"
@@ -33,6 +35,19 @@ ipykernel = "^6.26.0"
 docstr-coverage = "^2.3.1"
 pytest-cov = "^5.0.0"
 mypy = "^1.10.0"
+black = "^23.0.0"
+isort = "^5.12.0"
+flake8 = "^6.0.0"
+safety = "^3.0.0"
+bandit = "^1.7.5"
+twine = "^4.0.0"
+pre-commit = "^3.0.0"
+
+[tool.poetry.group.test.dependencies]
+pytest = "^7.4.3"
+pytest-cov = "^5.0.0"
+pytest-xdist = "^3.0.0"
+pytest-mock = "^3.12.0"
 
 
 
@@ -43,3 +58,105 @@ ipykernel = "^6.29.4"
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
+
+# Конфигурация для black
+[tool.black]
+line-length = 88
+target-version = ['py39', 'py310', 'py311']
+include = '\.pyi?$'
+extend-exclude = '''
+/(
+  # directories
+  \.eggs
+  | \.git
+  | \.hg
+  | \.mypy_cache
+  | \.tox
+  | \.venv
+  | build
+  | dist
+)/
+'''
+
+# Конфигурация для isort
+[tool.isort]
+profile = "black"
+multi_line_output = 3
+line_length = 88
+known_first_party = ["tensoraerospace"]
+known_third_party = ["numpy", "pandas", "matplotlib", "tensorflow", "torch", "ray", "optuna"]
+
+# Конфигурация для pytest
+[tool.pytest.ini_options]
+minversion = "6.0"
+addopts = "-ra -q --strict-markers --strict-config"
+testpaths = ["tests"]
+python_files = ["test_*.py", "*_test.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+markers = [
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+    "integration: marks tests as integration tests",
+    "unit: marks tests as unit tests",
+]
+
+# Конфигурация для coverage
+[tool.coverage.run]
+source = ["tensoraerospace"]
+omit = [
+    "*/tests/*",
+    "*/test_*",
+    "*/__init__.py",
+    "*/setup.py",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "if self.debug:",
+    "if settings.DEBUG",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if 0:",
+    "if __name__ == .__main__.:",
+    "class .*\\bProtocol\\):",
+    "@(abc\\.)?abstractmethod",
+]
+
+# Конфигурация для mypy
+[tool.mypy]
+python_version = "3.9"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = false
+disallow_incomplete_defs = false
+check_untyped_defs = true
+disallow_untyped_decorators = false
+no_implicit_optional = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_no_return = true
+warn_unreachable = true
+strict_equality = true
+
+[[tool.mypy.overrides]]
+module = [
+    "matplotlib.*",
+    "pandas.*",
+    "scipy.*",
+    "tensorflow.*",
+    "torch.*",
+    "ray.*",
+    "optuna.*",
+    "gymnasium.*",
+    "moviepy.*",
+    "seaborn.*",
+    "plotly.*",
+]
+ignore_missing_imports = true
+
+# Конфигурация для bandit
+[tool.bandit]
+exclude_dirs = ["tests", "docs"]
+skips = ["B101", "B601"]

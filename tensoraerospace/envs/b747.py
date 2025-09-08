@@ -18,14 +18,19 @@ class LinearLongitudinalB747(gym.Env):
         output_space (any): Пространство полного выхода (с учетом помех)
         reward_func (any): Функция вознаграждения (статус WIP)
     """
-    def __init__(self, initial_state: any,
-                 reference_signal,
-                 number_time_steps,
-                 tracking_states=['theta', 'q'],
-                 state_space=['theta', 'q'],
-                 control_space=['stab'],
-                 output_space=['theta', 'q'],
-                 reward_func=None):
+
+    def __init__(
+        self,
+        initial_state: any,
+        reference_signal,
+        number_time_steps,
+        tracking_states=["theta", "q"],
+        state_space=["theta", "q"],
+        control_space=["stab"],
+        output_space=["theta", "q"],
+        reward_func=None,
+        use_reward=True,
+    ):
         self.max_action_value = 25.0
         self.initial_state = initial_state
         self.number_time_steps = number_time_steps
@@ -34,21 +39,34 @@ class LinearLongitudinalB747(gym.Env):
         self.state_space = state_space
         self.control_space = control_space
         self.output_space = output_space
+        self.use_reward = use_reward
         self.reference_signal = reference_signal
         if reward_func:
             self.reward_func = reward_func
         else:
             self.reward_func = self.reward
-            
-        self.model = LongitudinalB747(initial_state, number_time_steps=number_time_steps,
-                                     selected_state_output=output_space, t0=0)
-        self.indices_tracking_states = [state_space.index(tracking_states[i]) for i in range(len(tracking_states))]
-        
-        self.action_space = spaces.Box(low=-25, high=25, shape=(len(control_space),1), dtype=np.float32)
-        self.observation_space = spaces.Box(low=-np.inf, high=np.inf, shape=(len(state_space),1), dtype=np.float32)
+
+        self.model = LongitudinalB747(
+            initial_state,
+            number_time_steps=number_time_steps,
+            selected_state_output=output_space,
+            t0=0,
+        )
+        self.indices_tracking_states = [
+            state_space.index(tracking_states[i]) for i in range(len(tracking_states))
+        ]
+
+        self.action_space = spaces.Box(
+            low=-25, high=25, shape=(len(control_space), 1), dtype=np.float32
+        )
+        self.observation_space = spaces.Box(
+            low=-1000.0, high=1000.0, shape=(len(state_space), 1), dtype=np.float32
+        )
 
         self.ref_signal = reference_signal
-        self.model.initialise_system(x0=initial_state, number_time_steps=number_time_steps)
+        self.model.initialise_system(
+            x0=initial_state, number_time_steps=number_time_steps
+        )
         self.number_time_steps = number_time_steps
         self.current_step = 0
         self.done = False
@@ -60,16 +78,23 @@ class LinearLongitudinalB747(gym.Env):
         Args:
             state (_type_): Текущее состояния
             ref_signal (_type_): Заданное состояние
-            ts (_type_): Временное шаг
+            ts (_type_): Временной шаг
 
         Returns:
             reward (float): Оценка управления
         """
-        return np.abs(state[0] - ref_signal[:, ts])
-    
+        # Вычисляем среднеквадратичную ошибку по всем состояниям
+        error = np.mean((state.flatten() - ref_signal[:, ts]) ** 2)
+        return float(error)
+
     def _get_info(self):
+        """Возвращает дополнительную информацию о состоянии среды.
+
+        Returns:
+            dict: Пустой словарь с дополнительной информацией.
+        """
         return {}
-    
+
     def step(self, action: np.ndarray):
         """Выполнения шага моделирования
 
@@ -82,30 +107,56 @@ class LinearLongitudinalB747(gym.Env):
             done (bool): Статус моделирования, завершено или нет
             logging (any): Дополнительная информацию (не используется)
         """
-        if action[0]>self.max_action_value:
+        if action[0] > self.max_action_value:
             action[0] = self.max_action_value
-        if action[0]<self.max_action_value*-1:
-            action[0]= self.max_action_value*-1
+        if action[0] < self.max_action_value * -1:
+            action[0] = self.max_action_value * -1
         self.current_step += 1
         next_state = self.model.run_step(action)
-        reward = self.reward_func(next_state[self.indices_tracking_states], self.ref_signal, self.current_step)
+        reward = 1
+        if self.use_reward:
+            reward = self.reward_func(
+                next_state, self.reference_signal, self.current_step
+            )
         self.done = self.current_step >= self.number_time_steps - 2
         info = self._get_info()
-        return next_state.reshape([1,-1])[0], reward, self.done, False, info
 
-    def reset(self):
+        return (
+            np.array(next_state, dtype=np.float32).reshape([-1, 1]),
+            reward,
+            self.done,
+            False,
+            {"action": action},
+        )
+
+    def reset(self, seed=None, options=None):
         """Восстановление среды моделирования в начальные условия
+
+        Args:
+            seed (int, optional): Seed для генератора случайных чисел
+            options (dict, optional): Дополнительные опции для инициализации
         """
+        super().reset(seed=seed)
+
         self.current_step = 0
         self.done = False
         self.model = None
-        self.model = LongitudinalB747(self.initial_state, number_time_steps=self.number_time_steps,
-                                     selected_state_output=self.output_space, t0=0)
+        self.model = LongitudinalB747(
+            self.initial_state,
+            number_time_steps=self.number_time_steps,
+            selected_state_output=self.output_space,
+            t0=0,
+        )
         self.ref_signal = self.reference_signal
-        self.model.initialise_system(x0=self.initial_state, number_time_steps=self.number_time_steps)
+        self.model.initialise_system(
+            x0=self.initial_state, number_time_steps=self.number_time_steps
+        )
         info = self._get_info()
-        return np.array(self.initial_state, dtype=np.float64)[self.model.selected_state_index].reshape([1,-1])[0], info
-    
+        observation = np.array(self.initial_state, dtype=np.float32)[
+            self.model.selected_state_index
+        ].reshape([-1, 1])
+        return observation, info
+
     def render(self):
         """Визуальное отображение действий в среде. В статусе WIP
         Raises:

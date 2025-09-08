@@ -27,6 +27,7 @@ class Critic:
         NN_initial (_type_, optional): Начальные значения в весах. Defaults to None.
         model_path (_type_, optional): Путь к модели. Defaults to None.
     """
+
     # Class attributes
     # Attributes related to RMSprop
     beta_rmsprop = 0.999
@@ -35,14 +36,28 @@ class Critic:
     # Attributes related to the momentum
     beta_momentum = 0.9
 
-    def __init__(self, Q_weights, selected_states, tracking_states, indices_tracking_states, number_time_steps,
-                 start_training, gamma=0.8, learning_rate=2, learning_rate_exponent_limit=10, layers=(10, 6, 1),
-                 activations=("sigmoid", "sigmoid", "linear"), WB_limits=30, NN_initial=None, model_path=None):
+    def __init__(
+        self,
+        Q_weights,
+        selected_states,
+        tracking_states,
+        indices_tracking_states,
+        number_time_steps,
+        start_training,
+        gamma=0.8,
+        learning_rate=2,
+        learning_rate_exponent_limit=10,
+        layers=(10, 6, 1),
+        activations=("sigmoid", "sigmoid", "linear"),
+        WB_limits=30,
+        NN_initial=None,
+        model_path=None,
+    ):
         # Declaration of attributes regarding the states and rewards
         self.number_states = len(selected_states)
         self.number_tracking_states = len(tracking_states)
         self.indices_tracking_states = indices_tracking_states
-        #print(self.indices_tracking_states)
+        # print(self.indices_tracking_states)
         self.xt = None
         self.xt_1 = np.zeros((self.number_states, 1))
         self.xt_ref = None
@@ -67,7 +82,9 @@ class Critic:
         if layers[-1] != 1:
             raise Exception("The last layer should have a single neuron.")
         elif len(layers) != len(activations):
-            raise Exception("The number of layers needs to be equal to the number of activations.")
+            raise Exception(
+                "The number of layers needs to be equal to the number of activations."
+            )
         self.layers = layers
         self.activations = activations
         self.model = None
@@ -99,28 +116,19 @@ class Critic:
         self.replay = []
 
     def save_model(self):
-        """Сохранение модели
-        """
+        """Сохранение модели"""
         self.model.save_weights("./critic_weight.h5")
 
     def load_model(self):
-        """Загрузка весов
-        """
+        """Загрузка весов"""
         self.model.load_weights(self.model_path)
 
     def save_Jt_ct(self):
-        """Сохранение оценки состояния критиком
-        """
-        np.save("./critic_jt", [
-            self.Jt_1,
-            self.Jt,
-            self.ct_1,
-            self.ct
-        ])
+        """Сохранение оценки состояния критиком"""
+        np.save("./critic_jt", [self.Jt_1, self.Jt, self.ct_1, self.ct])
 
     def load_Jt_ct(self):
-        """Загрузка оценки состоянгия критиком
-        """
+        """Загрузка оценки состоянгия критиком"""
         data = np.load("./critic_jt.npy", allow_pickle=True)
         self.Jt_1 = data[0]
         self.Jt = data[1]
@@ -128,30 +136,57 @@ class Critic:
         self.ct = data[3]
 
     def build_critic_model(self):
-        """Функция, создающая нейронную сеть. На данный момент это плотно связанная нейронная сеть. Пользователь может 
+        """Функция, создающая нейронную сеть. На данный момент это плотно связанная нейронная сеть. Пользователь может
         определять количество слоев, количество нейронов, а также функцию активации.
         """
         # initializer = tf.keras.initializers.GlorotNormal()
         initializer = tf.keras.initializers.VarianceScaling(
-            scale=1, mode='fan_in', distribution='truncated_normal', seed=self.NN_initial)
+            scale=1,
+            mode="fan_in",
+            distribution="truncated_normal",
+            seed=self.NN_initial,
+        )
         # initializer = tf.keras.initializers.VarianceScaling(
         #     scale=1, mode='fan_in', distribution='truncated_normal', seed=None)
         self.model = tf.keras.Sequential()
 
-        self.model.add(Flatten(input_shape=(self.number_tracking_states, 1), name='Flatten_1'))
-        self.model.add(Dense(self.layers[0], activation=self.activations[0], kernel_initializer=initializer,
-                             name='dense_0'))
+        self.model.add(
+            Flatten(input_shape=(self.number_tracking_states, 1), name="Flatten_1")
+        )
+        self.model.add(
+            Dense(
+                self.layers[0],
+                activation=self.activations[0],
+                kernel_initializer=initializer,
+                name="dense_0",
+            )
+        )
 
-        self.store_weights['W1'] = np.zeros((self.number_tracking_states * self.layers[0], self.number_time_steps + 1))
-        self.store_weights['W1'][:, self.time_step] = self.model.trainable_variables[0].numpy().flatten()
+        self.store_weights["W1"] = np.zeros(
+            (self.number_tracking_states * self.layers[0], self.number_time_steps + 1)
+        )
+        self.store_weights["W1"][:, self.time_step] = (
+            self.model.trainable_variables[0].numpy().flatten()
+        )
 
         for counter, layer in enumerate(self.layers[1:]):
-            self.model.add(Dense(self.layers[counter + 1], activation=self.activations[counter + 1],
-                                 kernel_initializer=initializer, name='dense_' + str(counter + 1)))
-            self.store_weights['W' + str(counter + 2)] = np.zeros(
-                (self.layers[counter] * self.layers[counter + 1], self.number_time_steps + 1))
-            self.store_weights['W' + str(counter + 2)][:, self.time_step] = self.model.trainable_variables[
-                (counter + 1) * 2].numpy().flatten()
+            self.model.add(
+                Dense(
+                    self.layers[counter + 1],
+                    activation=self.activations[counter + 1],
+                    kernel_initializer=initializer,
+                    name="dense_" + str(counter + 1),
+                )
+            )
+            self.store_weights["W" + str(counter + 2)] = np.zeros(
+                (
+                    self.layers[counter] * self.layers[counter + 1],
+                    self.number_time_steps + 1,
+                )
+            )
+            self.store_weights["W" + str(counter + 2)][:, self.time_step] = (
+                self.model.trainable_variables[(counter + 1) * 2].numpy().flatten()
+            )
 
         for count in range(len(self.model.trainable_variables)):
             self.momentum_dict[count] = 0
@@ -168,25 +203,33 @@ class Critic:
         Returns:
             Jt (_type_): оценка критика на текущем временном шаге
         """
-        
+
         nn_input, dJt_dW = self.compute_forward_pass(xt, xt_ref)
         dE_dJ, ec_critic_before, EC_critic_before = self.compute_loss_derivative()
-        weight_cache = [tf.Variable(self.model.trainable_variables[i].numpy())
-                        for i in range(len(self.model.trainable_variables))]
+        weight_cache = [
+            tf.Variable(self.model.trainable_variables[i].numpy())
+            for i in range(len(self.model.trainable_variables))
+        ]
 
         network_improvement = False
         n_reductions = 0
         while not network_improvement and self.time_step > self.start_training:
             for count in range(len(dJt_dW)):
                 update = dE_dJ * dJt_dW[count]
-                self.model.trainable_variables[count].assign_sub(np.reshape(self.learning_rate * update,
-                                                                            self.model.trainable_variables[
-                                                                                count].shape))
+                self.model.trainable_variables[count].assign_sub(
+                    np.reshape(
+                        self.learning_rate * update,
+                        self.model.trainable_variables[count].shape,
+                    )
+                )
 
                 # Implement WB_limits: the weights and biases can not have values whose absolute value exceeds WB_limits
                 self.check_WB_limits(count)
             updated_Jt = self.model(nn_input)
-            ec_critic_after = np.reshape(-self.ct_1 - self.gamma * updated_Jt.numpy(), [-1, 1]) + self.Jt_1
+            ec_critic_after = (
+                np.reshape(-self.ct_1 - self.gamma * updated_Jt.numpy(), [-1, 1])
+                + self.Jt_1
+            )
             Ec_critic_after = 0.5 * np.square(ec_critic_after)
             # print("CRITIC LOSS xt after= ", Ec_critic_after)
 
@@ -195,14 +238,20 @@ class Critic:
                 network_improvement = True
                 # The learning rate is doubled if the network errors have the same signs
                 if np.sign(ec_critic_before) == np.sign(ec_critic_after):
-                    self.learning_rate = min(2 * self.learning_rate,
-                                             self.learning_rate_0 * 2 ** self.learning_rate_exponent_limit)
+                    self.learning_rate = min(
+                        2 * self.learning_rate,
+                        self.learning_rate_0 * 2**self.learning_rate_exponent_limit,
+                    )
             else:
                 n_reductions += 1
-                self.learning_rate = max(self.learning_rate / 2,
-                                         self.learning_rate_0 / 2 ** self.learning_rate_exponent_limit)
+                self.learning_rate = max(
+                    self.learning_rate / 2,
+                    self.learning_rate_0 / 2**self.learning_rate_exponent_limit,
+                )
                 for WB_count in range(len(self.model.trainable_variables)):
-                    self.model.trainable_variables[WB_count].assign(weight_cache[WB_count].numpy())
+                    self.model.trainable_variables[WB_count].assign(
+                        weight_cache[WB_count].numpy()
+                    )
 
         return self.Jt
 
@@ -250,25 +299,41 @@ class Critic:
         if self.time_step > self.start_training:
             for count in range(len(dJt_dW)):
                 gradient = dE_dJ * dJt_dW[count]
-                momentum = self.beta_momentum * self.momentum_dict[count] + (1 - self.beta_momentum) * gradient
+                momentum = (
+                    self.beta_momentum * self.momentum_dict[count]
+                    + (1 - self.beta_momentum) * gradient
+                )
                 self.momentum_dict[count] = momentum
-                momentum_corrected = momentum / (1 - self.beta_momentum ** (self.time_step + 1))
+                momentum_corrected = momentum / (
+                    1 - self.beta_momentum ** (self.time_step + 1)
+                )
 
-                rmsprop = self.beta_rmsprop * self.rmsprop_dict[count] + \
-                          (1 - self.beta_rmsprop) * np.multiply(gradient, gradient)
+                rmsprop = self.beta_rmsprop * self.rmsprop_dict[count] + (
+                    1 - self.beta_rmsprop
+                ) * np.multiply(gradient, gradient)
                 self.rmsprop_dict[count] = rmsprop
-                rmsprop_corrected = rmsprop / (1 - self.beta_rmsprop ** (self.time_step + 1))
+                rmsprop_corrected = rmsprop / (
+                    1 - self.beta_rmsprop ** (self.time_step + 1)
+                )
 
-                update = momentum_corrected / (np.sqrt(rmsprop_corrected) + self.epsilon)
+                update = momentum_corrected / (
+                    np.sqrt(rmsprop_corrected) + self.epsilon
+                )
 
                 self.model.trainable_variables[count].assign_sub(
-                    np.reshape(self.learning_rate * update, self.model.trainable_variables[count].shape))
+                    np.reshape(
+                        self.learning_rate * update,
+                        self.model.trainable_variables[count].shape,
+                    )
+                )
 
                 # Implement WB_limits: the weights and biases can not have values whose absolute value exceeds WB_limits
                 self.check_WB_limits(count)
 
                 if count % 2 == 1:
-                    self.model.trainable_variables[count].assign(np.zeros(self.model.trainable_variables[count].shape))
+                    self.model.trainable_variables[count].assign(
+                        np.zeros(self.model.trainable_variables[count].shape)
+                    )
 
             # Update the learning rate
             self.learning_rate = max(self.learning_rate * 0.995, 0.000001)
@@ -291,7 +356,9 @@ class Critic:
 
         # Obtain the forward pass of the critic and the derivatives of the output with respect to the weights and biases
         nn_input, dJt_dW = self.compute_forward_pass(xt, xt_ref)
-        nn_input_1, dJt_dW_1, _ = self.compute_forward_pass(self.xt_1, self.xt_ref_1, replay=True)
+        nn_input_1, dJt_dW_1, _ = self.compute_forward_pass(
+            self.xt_1, self.xt_ref_1, replay=True
+        )
 
         # Obtain the derivative of the loss with respect to the critic NN output (Jt)
         dE_dJ, ec_critic_before, _ = self.compute_loss_derivative()
@@ -301,12 +368,18 @@ class Critic:
             for count in range(len(dJt_dW_1)):
                 gradient = dE_dJ * dJt_dW_1[count]
                 self.model.trainable_variables[count].assign_sub(
-                    np.reshape(self.learning_rate * gradient, self.model.trainable_variables[count].shape))
+                    np.reshape(
+                        self.learning_rate * gradient,
+                        self.model.trainable_variables[count].shape,
+                    )
+                )
                 # Implement WB_limits: the weights and biases can not have values whose absolute value exceeds WB_limits
                 self.check_WB_limits(count)
 
                 if count % 2 == 1:
-                    self.model.trainable_variables[count].assign(np.zeros(self.model.trainable_variables[count].shape))
+                    self.model.trainable_variables[count].assign(
+                        np.zeros(self.model.trainable_variables[count].shape)
+                    )
 
             # Update the learning rate
             self.learning_rate = max(self.learning_rate * 0.995, 0.000001)
@@ -342,7 +415,7 @@ class Critic:
             xt_1, xt_ref_1, xt, xt_ref, ct_1 = replay
             tracked_states = np.reshape(xt_1[self.indices_tracking_states, :], [-1, 1])
             xt_error = np.reshape(tracked_states - xt_ref_1, [-1, 1])
-            nn_input_1 = tf.constant(np.array([(xt_error)]).astype('float32'))
+            nn_input_1 = tf.constant(np.array([(xt_error)]).astype("float32"))
 
             # Obtain the forward pass of xt and the derivative of the output with respect to weights and biases
             nn_input, dJt_dW, Jt = self.compute_forward_pass(xt, xt_ref, replay=True)
@@ -382,10 +455,14 @@ class Critic:
                 self.ct_1 = self.ct
 
         # Define the input to the critic NN
-        tracked_states = np.reshape(xt[self.indices_tracking_states, :], [-1, 1])
+        # Check if xt already contains only tracked states
+        if xt.shape[0] == len(self.indices_tracking_states):
+            tracked_states = np.reshape(xt, [-1, 1])
+        else:
+            tracked_states = np.reshape(xt[self.indices_tracking_states, :], [-1, 1])
         xt_error = np.reshape(tracked_states - xt_ref, [-1, 1])
 
-        nn_input = tf.constant(np.array([(xt_error)]).astype('float32'))
+        nn_input = tf.constant(np.array([(xt_error)]).astype("float32"))
 
         # Run the input through the network watching the weights and biases for later derivatives
         with tf.GradientTape() as tape:
@@ -421,9 +498,15 @@ class Critic:
 
         # In the case that there are no inputs, obtain data from the object attributes
         if len(args) == 0:
-            tracked_states = np.reshape(self.xt_1[self.indices_tracking_states, :], [-1, 1])
+            # Check if xt_1 already contains only tracked states
+            if self.xt_1.shape[0] == len(self.indices_tracking_states):
+                tracked_states = np.reshape(self.xt_1, [-1, 1])
+            else:
+                tracked_states = np.reshape(
+                    self.xt_1[self.indices_tracking_states, :], [-1, 1]
+                )
             xt_1_error = np.reshape(tracked_states - self.xt_ref_1, [-1, 1])
-            nn_input_1 = tf.constant(np.array([(xt_1_error)]).astype('float32'))
+            nn_input_1 = tf.constant(np.array([(xt_1_error)]).astype("float32"))
 
             self.Jt_1 = self.model(nn_input_1).numpy()
             Jt = self.Jt
@@ -479,7 +562,7 @@ class Critic:
 
         tracked_states = np.reshape(xt[self.indices_tracking_states, :], [-1, 1])
         xt_error = np.reshape(tracked_states - xt_ref, [-1, 1])
-        nn_input = tf.constant(np.array([(xt_error)]).astype('float32'))
+        nn_input = tf.constant(np.array([(xt_error)]).astype("float32"))
 
         with tf.GradientTape() as tape:
             tape.watch(nn_input)
@@ -496,9 +579,17 @@ class Critic:
         Returns:
             ct: Текущий временной шаг one-step cost функции
         """
-        
-        ct = np.matmul(np.matmul((np.reshape(self.xt[self.indices_tracking_states, :], [-1, 1]) - self.xt_ref).T,
-                                 self.Q), (np.reshape(self.xt[self.indices_tracking_states, :], [-1, 1]) - self.xt_ref))
+
+        # Check if xt already contains only tracked states
+        if self.xt.shape[0] == len(self.indices_tracking_states):
+            tracked_states = self.xt
+        else:
+            tracked_states = self.xt[self.indices_tracking_states, :]
+
+        ct = np.matmul(
+            np.matmul((np.reshape(tracked_states, [-1, 1]) - self.xt_ref).T, self.Q),
+            (np.reshape(tracked_states, [-1, 1]) - self.xt_ref),
+        )
         self.store_c[0, self.time_step] = ct[0]
         return ct
 
@@ -509,7 +600,7 @@ class Critic:
         Returns:
             target: цель предыдущего временного шага.
         """
-        
+
         if len(args) == 0:
             target = np.reshape(-self.ct_1 - self.gamma * self.Jt, [-1, 1])
         elif len(args) == 2:
@@ -522,8 +613,7 @@ class Critic:
         return target
 
     def update_critic_attributes(self):
-        """Атрибуты, которые меняются с каждым временным шагом, обновляются
-        """
+        """Атрибуты, которые меняются с каждым временным шагом, обновляются"""
         self.time_step += 1
         self.ct_1 = self.ct
         self.xt_1 = self.xt
@@ -531,17 +621,16 @@ class Critic:
 
         # Store the weights
         for counter in range(len(self.layers)):
-            self.store_weights['W' + str(counter + 1)][:, self.time_step] = self.model.trainable_variables[
-                counter * 2].numpy().flatten()
-    
+            self.store_weights["W" + str(counter + 1)][:, self.time_step] = (
+                self.model.trainable_variables[counter * 2].numpy().flatten()
+            )
+
     def restart_time_step(self):
-        """Обнуление врменного шага
-        """
+        """Обнуление врменного шага"""
         self.time_step = 0
-        
+
     def restart_critic(self):
-        """Рестарт Критика.
-        """
+        """Рестарт Критика."""
         # Declaration of attributes regarding the states and rewards
         self.time_step = 0
         self.xt = None

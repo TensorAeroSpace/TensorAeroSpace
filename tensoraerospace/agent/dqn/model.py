@@ -9,6 +9,7 @@ import tensorflow.keras.optimizers as ko
 np.random.seed(1)
 tf.random.set_seed(1)
 
+
 class Model(tf.keras.Model):
     """Нейросеть для глубокой Q нейросети. Принимает на вход количество действий. Содержит методы для инициализации,
     forward и выбора действия.
@@ -18,10 +19,10 @@ class Model(tf.keras.Model):
     """
 
     def __init__(self, num_actions):
-        super().__init__(name='basic_prddqn')
-        self.fc1 = kl.Dense(32, activation='relu', kernel_initializer='he_uniform')
-        self.fc2 = kl.Dense(32, activation='relu', kernel_initializer='he_uniform')
-        self.logits = kl.Dense(num_actions, name='q_values')
+        super().__init__(name="basic_prddqn")
+        self.fc1 = kl.Dense(32, activation="relu", kernel_initializer="he_uniform")
+        self.fc2 = kl.Dense(32, activation="relu", kernel_initializer="he_uniform")
+        self.logits = kl.Dense(num_actions, name="q_values")
 
     def predict(self, inputs):
         """Функция forward. Возвращает q функции для действий.
@@ -59,19 +60,18 @@ class Model(tf.keras.Model):
 
 
 def test_model():
-    """функция для проверки работоспособности модели
-    """
+    """функция для проверки работоспособности модели"""
 
-    env = gym.make('CartPole-v0')
-    print('num_actions: ', env.action_space.n)
+    env = gym.make("CartPole-v0")
+    print("num_actions: ", env.action_space.n)
     model = Model(env.action_space.n)
 
     obs = env.reset()
-    print('obs_shape: ', obs.shape)
+    print("obs_shape: ", obs.shape)
 
     # tensorflow 2.0 eager mode: no feed_dict or tf.Session() needed at all
     best_action, q_values = model.action_value(obs[None])
-    print('res of test model: ', best_action, q_values)  # 0 [ 0.00896799 -0.02111824]
+    print("res of test model: ", best_action, q_values)  # 0 [ 0.00896799 -0.02111824]
 
 
 class SumTree:
@@ -82,8 +82,10 @@ class SumTree:
     """
 
     def __init__(self, capacity):
-        self.capacity = capacity    # N, the size of replay buffer, so as to the number of sum tree's leaves
-        self.tree = np.zeros(2 * capacity - 1)  # equation, to calculate the number of nodes in a sum tree
+        self.capacity = capacity  # N, the size of replay buffer, so as to the number of sum tree's leaves
+        self.tree = np.zeros(
+            2 * capacity - 1
+        )  # equation, to calculate the number of nodes in a sum tree
         self.transitions = np.empty(capacity, dtype=object)
         self.next_idx = 0
 
@@ -120,7 +122,7 @@ class SumTree:
 
         change = priority - self.tree[idx]
         self.tree[idx] = priority
-        self._propagate(idx, change)    # O(logn)
+        self._propagate(idx, change)  # O(logn)
 
     def _propagate(self, idx, change):
         """Функция для обратного обновления приоритетов в дереве
@@ -147,7 +149,7 @@ class SumTree:
             transitions (_type_): необходимый переход
         """
 
-        idx = self._retrieve(0, s)   # from root
+        idx = self._retrieve(0, s)  # from root
         trans_idx = idx - self.capacity + 1
         return idx, self.tree[idx], self.transitions[trans_idx]
 
@@ -194,9 +196,25 @@ class PERAgent:
         beta_increment_per_sample (float, optional)
     """
 
-    def __init__(self, model, target_model, env, learning_rate=.0012, epsilon=.1, epsilon_dacay=0.995, min_epsilon=.01,
-                 gamma=.9, batch_size=8, target_update_iter=400, train_nums=5000, buffer_size=200, replay_period=20,
-                 alpha=0.4, beta=0.4, beta_increment_per_sample=0.001):
+    def __init__(
+        self,
+        model,
+        target_model,
+        env,
+        learning_rate=0.0012,
+        epsilon=0.1,
+        epsilon_dacay=0.995,
+        min_epsilon=0.01,
+        gamma=0.9,
+        batch_size=8,
+        target_update_iter=400,
+        train_nums=5000,
+        buffer_size=200,
+        replay_period=20,
+        alpha=0.4,
+        beta=0.4,
+        beta_increment_per_sample=0.001,
+    ):
         self.model = model
         self.target_model = target_model
         # gradient clip
@@ -204,32 +222,34 @@ class PERAgent:
         self.model.compile(optimizer=opt, loss=self._per_loss)  # loss=self._per_loss
 
         # parameters
-        self.env = env                              # gym environment
-        self.lr = learning_rate                     # learning step
-        self.epsilon = epsilon                      # e-greedy when exploring
-        self.epsilon_decay = epsilon_dacay          # epsilon decay rate
-        self.min_epsilon = min_epsilon              # minimum epsilon
-        self.gamma = gamma                          # discount rate
-        self.batch_size = batch_size                # minibatch k
-        self.target_update_iter = target_update_iter    # target network update period
-        self.train_nums = train_nums                # total training steps
+        self.env = env  # gym environment
+        self.lr = learning_rate  # learning step
+        self.epsilon = epsilon  # e-greedy when exploring
+        self.epsilon_decay = epsilon_dacay  # epsilon decay rate
+        self.min_epsilon = min_epsilon  # minimum epsilon
+        self.gamma = gamma  # discount rate
+        self.batch_size = batch_size  # minibatch k
+        self.target_update_iter = target_update_iter  # target network update period
+        self.train_nums = train_nums  # total training steps
 
         # replay buffer params [(s, a, r, ns, done), ...]
         self.b_obs = np.empty((self.batch_size,) + self.env.observation_space.shape)
         self.b_actions = np.empty(self.batch_size, dtype=np.int8)
         self.b_rewards = np.empty(self.batch_size, dtype=np.float32)
-        self.b_next_states = np.empty((self.batch_size,) + self.env.observation_space.shape)
+        self.b_next_states = np.empty(
+            (self.batch_size,) + self.env.observation_space.shape
+        )
         self.b_dones = np.empty(self.batch_size, dtype=np.bool_)
 
-        self.replay_buffer = SumTree(buffer_size)   # sum-tree data structure
-        self.buffer_size = buffer_size              # replay buffer size N
-        self.replay_period = replay_period          # replay period K
-        self.alpha = alpha                          # priority parameter, alpha=[0, 0.4, 0.5, 0.6, 0.7, 0.8]
-        self.beta = beta                            # importance sampling parameter, beta=[0, 0.4, 0.5, 0.6, 1]
+        self.replay_buffer = SumTree(buffer_size)  # sum-tree data structure
+        self.buffer_size = buffer_size  # replay buffer size N
+        self.replay_period = replay_period  # replay period K
+        self.alpha = alpha  # priority parameter, alpha=[0, 0.4, 0.5, 0.6, 0.7, 0.8]
+        self.beta = beta  # importance sampling parameter, beta=[0, 0.4, 0.5, 0.6, 1]
         self.beta_increment_per_sample = beta_increment_per_sample
-        self.num_in_buffer = 0                      # total number of transitions stored in buffer
-        self.margin = 0.01                          # pi = |td_error| + margin
-        self.p1 = 1                                 # initialize priority for the first transition
+        self.num_in_buffer = 0  # total number of transitions stored in buffer
+        self.margin = 0.01  # pi = |td_error| + margin
+        self.p1 = 1  # initialize priority for the first transition
         # self.is_weight = np.empty((None, 1))
         self.is_weight = np.power(self.buffer_size, -self.beta)  # because p1 == 1
         self.abs_error_upper = 1
@@ -245,35 +265,42 @@ class PERAgent:
             loss (float): ошибка
         """
 
-        return tf.reduce_mean(self.is_weight * tf.math.squared_difference(y_target, y_pred))
+        return tf.reduce_mean(
+            self.is_weight * tf.math.squared_difference(y_target, y_pred)
+        )
 
     def train(self):
-        """Функция для обучения
-        """
+        """Функция для обучения"""
 
-        obs, info  = self.env.reset()
+        obs, info = self.env.reset()
         for t in range(1, self.train_nums):
-            input_obs = obs.reshape([1,-1])
-            best_action, q_values = self.model.action_value(input_obs)  # input the obs to the network model
-            action = self.get_action(best_action)   # get the real action
-            next_obs, reward, done, info, termenated = self.env.step(action)    # take the action in the env to return s', r, done
+            input_obs = obs.reshape([1, -1])
+            best_action, q_values = self.model.action_value(
+                input_obs
+            )  # input the obs to the network model
+            action = self.get_action(best_action)  # get the real action
+            next_obs, reward, done, info, termenated = self.env.step(
+                action
+            )  # take the action in the env to return s', r, done
             if t == 1:
                 p = self.p1
             else:
-                p = np.max(self.replay_buffer.tree[-self.replay_buffer.capacity:])
-            self.store_transition(p, obs, action, reward, next_obs.reshape([1,-1]), done)  # store that transition into replay butter
+                p = np.max(self.replay_buffer.tree[-self.replay_buffer.capacity :])
+            self.store_transition(
+                p, obs, action, reward, next_obs.reshape([1, -1]), done
+            )  # store that transition into replay butter
             self.num_in_buffer = min(self.num_in_buffer + 1, self.buffer_size)
 
             if t > self.buffer_size:
                 # if t % self.replay_period == 0:  # transition sampling and update
                 losses = self.train_step()
                 if t % 1000 == 0:
-                    print('losses each 1000 steps: ', losses)
+                    print("losses each 1000 steps: ", losses)
 
             if t % self.target_update_iter == 0:
                 self.update_target_model()
             if done:
-                obs, info  = self.env.reset()
+                obs, info = self.env.reset()
             else:
                 obs = next_obs
 
@@ -286,15 +313,22 @@ class PERAgent:
 
         idxes, self.is_weight = self.sum_tree_sample(self.batch_size)
         # Double Q-Learning
-        best_action_idxes, _ = self.model.action_value(self.b_next_states)  # get actions through the current network
-        target_q = self.get_target_value(self.b_next_states)    # get target q-value through the target network
+        best_action_idxes, _ = self.model.action_value(
+            self.b_next_states
+        )  # get actions through the current network
+        target_q = self.get_target_value(
+            self.b_next_states
+        )  # get target q-value through the target network
         # get td_targets of batch states
-        td_target = self.b_rewards + \
-            self.gamma * target_q[np.arange(target_q.shape[0]), best_action_idxes] * (1 - self.b_dones)
+        td_target = self.b_rewards + self.gamma * target_q[
+            np.arange(target_q.shape[0]), best_action_idxes
+        ] * (1 - self.b_dones)
         predict_q = self.model.predict(self.b_obs)
         td_predict = predict_q[np.arange(predict_q.shape[0]), self.b_actions]
         abs_td_error = np.abs(td_target - td_predict) + self.margin
-        clipped_error = np.where(abs_td_error < self.abs_error_upper, abs_td_error, self.abs_error_upper)
+        clipped_error = np.where(
+            abs_td_error < self.abs_error_upper, abs_td_error, self.abs_error_upper
+        )
         ps = np.power(clipped_error, self.alpha)
         # priorities update
         for idx, p in zip(idxes, ps):
@@ -321,19 +355,33 @@ class PERAgent:
 
         idxes = []
         is_weights = np.empty((k, 1))
-        self.beta = min(1., self.beta + self.beta_increment_per_sample)
+        self.beta = min(1.0, self.beta + self.beta_increment_per_sample)
         # calculate max_weight
-        min_prob = np.min(self.replay_buffer.tree[-self.replay_buffer.capacity:]) / self.replay_buffer.total_p
+        min_prob = (
+            np.min(self.replay_buffer.tree[-self.replay_buffer.capacity :])
+            / self.replay_buffer.total_p
+        )
         max_weight = np.power(self.buffer_size * min_prob, -self.beta)
         segment = self.replay_buffer.total_p / k
         for i in range(k):
             s = np.random.uniform(segment * i, segment * (i + 1))
             idx, p, t = self.replay_buffer.get_leaf(s)
             idxes.append(idx)
-            self.b_obs[i], self.b_actions[i], self.b_rewards[i], self.b_next_states[i], self.b_dones[i] = t
+            (
+                self.b_obs[i],
+                self.b_actions[i],
+                self.b_rewards[i],
+                self.b_next_states[i],
+                self.b_dones[i],
+            ) = t
             # P(j)
-            sampling_probabilities = p / self.replay_buffer.total_p     # where p = p ** self.alpha
-            is_weights[i, 0] = np.power(self.buffer_size * sampling_probabilities, -self.beta) / max_weight
+            sampling_probabilities = (
+                p / self.replay_buffer.total_p
+            )  # where p = p ** self.alpha
+            is_weights[i, 0] = (
+                np.power(self.buffer_size * sampling_probabilities, -self.beta)
+                / max_weight
+            )
         return idxes, is_weights
 
     def evaluation(self, wrapped_env, render=False):
@@ -347,14 +395,16 @@ class PERAgent:
             ep_reward (float): суммарная награда за эпизод
         """
 
-        obs, info  = wrapped_env.env.reset()
+        obs, info = wrapped_env.env.reset()
         done = False
         # one episode until done
         ep_reward = 0
         while not done:
-            input_obs = obs.reshape([1,-1])
-            action, q_values = self.model.action_value(input_obs)  # Using [None] to extend its dimension (4,) -> (1, 4)
-            obs, reward, done, info, termenated = wrapped_env.env.step(action) 
+            input_obs = obs.reshape([1, -1])
+            action, q_values = self.model.action_value(
+                input_obs
+            )  # Using [None] to extend its dimension (4,) -> (1, 4)
+            obs, reward, done, info, termenated = wrapped_env.env.step(action)
             ep_reward += reward
             if render:  # visually show
                 wrapped_env.env.render()
@@ -400,8 +450,7 @@ class PERAgent:
 
     # assign the current network parameters to target network
     def update_target_model(self):
-        """Функция обновления целевой нейросети
-        """
+        """Функция обновления целевой нейросети"""
 
         self.target_model.set_weights(self.model.get_weights())
 
@@ -414,12 +463,10 @@ class PERAgent:
         return self.target_model.predict(obs)
 
     def e_decay(self):
-        """Функция для уменьшения вероятности исследования сети
-        """
+        """Функция для уменьшения вероятности исследования сети"""
 
         self.epsilon *= self.epsilon_decay
-        
-        
+
 
 class PERNARXAgent:
     """Агент DQN с NARX моделью обучения.
@@ -443,9 +490,25 @@ class PERNARXAgent:
         beta_increment_per_sample (float, optional)
     """
 
-    def __init__(self, model, target_model, env, learning_rate=.0012, epsilon=.1, epsilon_dacay=0.995, min_epsilon=.01,
-                 gamma=.9, batch_size=8, target_update_iter=400, train_nums=5000, buffer_size=200, replay_period=20,
-                 alpha=0.4, beta=0.4, beta_increment_per_sample=0.001):
+    def __init__(
+        self,
+        model,
+        target_model,
+        env,
+        learning_rate=0.0012,
+        epsilon=0.1,
+        epsilon_dacay=0.995,
+        min_epsilon=0.01,
+        gamma=0.9,
+        batch_size=8,
+        target_update_iter=400,
+        train_nums=5000,
+        buffer_size=200,
+        replay_period=20,
+        alpha=0.4,
+        beta=0.4,
+        beta_increment_per_sample=0.001,
+    ):
         self.model = model
         self.target_model = target_model
         # gradient clip
@@ -453,15 +516,15 @@ class PERNARXAgent:
         self.model.compile(optimizer=opt, loss=self._per_loss)  # loss=self._per_loss
 
         # parameters
-        self.env = env                              # gym environment
-        self.lr = learning_rate                     # learning step
-        self.epsilon = epsilon                      # e-greedy when exploring
-        self.epsilon_decay = epsilon_dacay          # epsilon decay rate
-        self.min_epsilon = min_epsilon              # minimum epsilon
-        self.gamma = gamma                          # discount rate
-        self.batch_size = batch_size                # minibatch k
-        self.target_update_iter = target_update_iter    # target network update period
-        self.train_nums = train_nums                # total training steps
+        self.env = env  # gym environment
+        self.lr = learning_rate  # learning step
+        self.epsilon = epsilon  # e-greedy when exploring
+        self.epsilon_decay = epsilon_dacay  # epsilon decay rate
+        self.min_epsilon = min_epsilon  # minimum epsilon
+        self.gamma = gamma  # discount rate
+        self.batch_size = batch_size  # minibatch k
+        self.target_update_iter = target_update_iter  # target network update period
+        self.train_nums = train_nums  # total training steps
 
         # replay buffer params [(s, a, r, ns, done), ...]
         self.b_obs = np.empty((self.batch_size,) + self.env.observation_space.shape)
@@ -470,15 +533,15 @@ class PERNARXAgent:
         self.b_next_states = np.empty((self.batch_size,) + env.observation_space.shape)
         self.b_dones = np.empty(self.batch_size, dtype=np.bool_)
 
-        self.replay_buffer = SumTree(buffer_size)   # sum-tree data structure
-        self.buffer_size = buffer_size              # replay buffer size N
-        self.replay_period = replay_period          # replay period K
-        self.alpha = alpha                          # priority parameter, alpha=[0, 0.4, 0.5, 0.6, 0.7, 0.8]
-        self.beta = beta                            # importance sampling parameter, beta=[0, 0.4, 0.5, 0.6, 1]
+        self.replay_buffer = SumTree(buffer_size)  # sum-tree data structure
+        self.buffer_size = buffer_size  # replay buffer size N
+        self.replay_period = replay_period  # replay period K
+        self.alpha = alpha  # priority parameter, alpha=[0, 0.4, 0.5, 0.6, 0.7, 0.8]
+        self.beta = beta  # importance sampling parameter, beta=[0, 0.4, 0.5, 0.6, 1]
         self.beta_increment_per_sample = beta_increment_per_sample
-        self.num_in_buffer = 0                      # total number of transitions stored in buffer
-        self.margin = 0.01                          # pi = |td_error| + margin
-        self.p1 = 1                                 # initialize priority for the first transition
+        self.num_in_buffer = 0  # total number of transitions stored in buffer
+        self.margin = 0.01  # pi = |td_error| + margin
+        self.p1 = 1  # initialize priority for the first transition
         # self.is_weight = np.empty((None, 1))
         self.is_weight = np.power(self.buffer_size, -self.beta)  # because p1 == 1
         self.abs_error_upper = 1
@@ -494,38 +557,44 @@ class PERNARXAgent:
             loss (float): ошибка
         """
 
-        return tf.reduce_mean(self.is_weight * tf.math.squared_difference(y_target, y_pred))
+        return tf.reduce_mean(
+            self.is_weight * tf.math.squared_difference(y_target, y_pred)
+        )
 
     def train(self):
-        """Функция для обучения
-        """
+        """Функция для обучения"""
 
         obs = self.env.reset()
         prev_action = [0]
         for t in range(1, self.train_nums):
-            
             print(obs, prev_action)
-            best_action, q_values = self.model.action_value([obs[0]])  # input the obs to the network model
-            
-            action = self.get_action(best_action)   # get the real action
-            next_obs, reward, done, info = self.env.step(action)    # take the action in the env to return s', r, done
+            best_action, q_values = self.model.action_value(
+                [obs[0]]
+            )  # input the obs to the network model
+
+            action = self.get_action(best_action)  # get the real action
+            next_obs, reward, done, info = self.env.step(
+                action
+            )  # take the action in the env to return s', r, done
             if t == 1:
                 p = self.p1
             else:
-                p = np.max(self.replay_buffer.tree[-self.replay_buffer.capacity:])
-            self.store_transition(p, obs, action, reward, next_obs, done)  # store that transition into replay butter
+                p = np.max(self.replay_buffer.tree[-self.replay_buffer.capacity :])
+            self.store_transition(
+                p, obs, action, reward, next_obs, done
+            )  # store that transition into replay butter
             self.num_in_buffer = min(self.num_in_buffer + 1, self.buffer_size)
             prev_action = best_action
             if t > self.buffer_size:
                 # if t % self.replay_period == 0:  # transition sampling and update
                 losses = self.train_step()
                 if t % 1000 == 0:
-                    print('losses each 1000 steps: ', losses)
+                    print("losses each 1000 steps: ", losses)
 
             if t % self.target_update_iter == 0:
                 self.update_target_model()
             if done:
-                obs = self.env.reset()   # one episode end
+                obs = self.env.reset()  # one episode end
             else:
                 obs = next_obs
 
@@ -538,15 +607,22 @@ class PERNARXAgent:
 
         idxes, self.is_weight = self.sum_tree_sample(self.batch_size)
         # Double Q-Learning
-        best_action_idxes, _ = self.model.action_value(self.b_next_states)  # get actions through the current network
-        target_q = self.get_target_value(self.b_next_states)    # get target q-value through the target network
+        best_action_idxes, _ = self.model.action_value(
+            self.b_next_states
+        )  # get actions through the current network
+        target_q = self.get_target_value(
+            self.b_next_states
+        )  # get target q-value through the target network
         # get td_targets of batch states
-        td_target = self.b_rewards + \
-            self.gamma * target_q[np.arange(target_q.shape[0]), best_action_idxes] * (1 - self.b_dones)
+        td_target = self.b_rewards + self.gamma * target_q[
+            np.arange(target_q.shape[0]), best_action_idxes
+        ] * (1 - self.b_dones)
         predict_q = self.model.predict(self.b_obs)
         td_predict = predict_q[np.arange(predict_q.shape[0]), self.b_actions]
         abs_td_error = np.abs(td_target - td_predict) + self.margin
-        clipped_error = np.where(abs_td_error < self.abs_error_upper, abs_td_error, self.abs_error_upper)
+        clipped_error = np.where(
+            abs_td_error < self.abs_error_upper, abs_td_error, self.abs_error_upper
+        )
         ps = np.power(clipped_error, self.alpha)
         # priorities update
         for idx, p in zip(idxes, ps):
@@ -573,19 +649,33 @@ class PERNARXAgent:
 
         idxes = []
         is_weights = np.empty((k, 1))
-        self.beta = min(1., self.beta + self.beta_increment_per_sample)
+        self.beta = min(1.0, self.beta + self.beta_increment_per_sample)
         # calculate max_weight
-        min_prob = np.min(self.replay_buffer.tree[-self.replay_buffer.capacity:]) / self.replay_buffer.total_p
+        min_prob = (
+            np.min(self.replay_buffer.tree[-self.replay_buffer.capacity :])
+            / self.replay_buffer.total_p
+        )
         max_weight = np.power(self.buffer_size * min_prob, -self.beta)
         segment = self.replay_buffer.total_p / k
         for i in range(k):
             s = np.random.uniform(segment * i, segment * (i + 1))
             idx, p, t = self.replay_buffer.get_leaf(s)
             idxes.append(idx)
-            self.b_obs[i], self.b_actions[i], self.b_rewards[i], self.b_next_states[i], self.b_dones[i] = t
+            (
+                self.b_obs[i],
+                self.b_actions[i],
+                self.b_rewards[i],
+                self.b_next_states[i],
+                self.b_dones[i],
+            ) = t
             # P(j)
-            sampling_probabilities = p / self.replay_buffer.total_p     # where p = p ** self.alpha
-            is_weights[i, 0] = np.power(self.buffer_size * sampling_probabilities, -self.beta) / max_weight
+            sampling_probabilities = (
+                p / self.replay_buffer.total_p
+            )  # where p = p ** self.alpha
+            is_weights[i, 0] = (
+                np.power(self.buffer_size * sampling_probabilities, -self.beta)
+                / max_weight
+            )
         return idxes, is_weights
 
     def evaluation(self, env, render=False):
@@ -602,7 +692,9 @@ class PERNARXAgent:
         obs, done, ep_reward = env.reset(), False, 0
         # one episode until done
         while not done:
-            action, q_values = self.model.action_value(obs[None])  # Using [None] to extend its dimension (4,) -> (1, 4)
+            action, q_values = self.model.action_value(
+                obs[None]
+            )  # Using [None] to extend its dimension (4,) -> (1, 4)
             obs, reward, done, info = env.step(action)
             ep_reward += reward
             if render:  # visually show
@@ -648,8 +740,7 @@ class PERNARXAgent:
 
     # assign the current network parameters to target network
     def update_target_model(self):
-        """Функция обновления целевой нейросети
-        """
+        """Функция обновления целевой нейросети"""
 
         self.target_model.set_weights(self.model.get_weights())
 
@@ -662,7 +753,6 @@ class PERNARXAgent:
         return self.target_model.predict(obs)
 
     def e_decay(self):
-        """Функция для уменьшения вероятности исследования сети
-        """
+        """Функция для уменьшения вероятности исследования сети"""
 
         self.epsilon *= self.epsilon_decay

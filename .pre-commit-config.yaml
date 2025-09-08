@@ -1,0 +1,98 @@
+# Pre-commit hooks для TensorAeroSpace
+# Установка: pip install pre-commit && pre-commit install
+
+repos:
+  # Базовые проверки
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.5.0
+    hooks:
+      - id: trailing-whitespace
+        args: [--markdown-linebreak-ext=md]
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-toml
+      - id: check-json
+      - id: check-added-large-files
+        args: ['--maxkb=1000']
+      - id: check-merge-conflict
+      - id: debug-statements
+      - id: check-docstring-first
+
+  # Форматирование кода с black
+  - repo: https://github.com/psf/black
+    rev: 23.12.1
+    hooks:
+      - id: black
+        language_version: python3
+        args: [--line-length=88]
+
+  # Сортировка импортов с isort
+  - repo: https://github.com/pycqa/isort
+    rev: 5.13.2
+    hooks:
+      - id: isort
+        args: [--profile=black, --line-length=88]
+
+  # Линтинг с flake8
+  - repo: https://github.com/pycqa/flake8
+    rev: 7.0.0
+    hooks:
+      - id: flake8
+        args: [--max-line-length=88, --extend-ignore=E203,W503]
+        additional_dependencies: [flake8-docstrings]
+
+  # Проверка безопасности с bandit
+  - repo: https://github.com/pycqa/bandit
+    rev: 1.7.5
+    hooks:
+      - id: bandit
+        args: [-r, tensoraerospace, -f, json]
+        exclude: tests/
+
+  # Проверка типов с mypy
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v1.8.0
+    hooks:
+      - id: mypy
+        additional_dependencies: [types-all]
+        args: [--ignore-missing-imports]
+
+  # Проверка зависимостей на уязвимости
+  - repo: https://github.com/Lucas-C/pre-commit-hooks-safety
+    rev: v1.3.2
+    hooks:
+      - id: python-safety-dependencies-check
+
+  # Проверка документации
+  - repo: local
+    hooks:
+      - id: docstr-coverage
+        name: docstr-coverage
+        entry: poetry run docstr-coverage
+        language: system
+        args: [tensoraerospace, --skip-magic, --skip-init, --skip-file-doc, --fail-under=70]
+        pass_filenames: false
+
+  # Быстрые тесты
+  - repo: local
+    hooks:
+      - id: pytest-quick
+        name: pytest-quick
+        entry: poetry run pytest
+        language: system
+        args: [tests/envs/, -x, --maxfail=3, -q]
+        pass_filenames: false
+        stages: [commit]
+
+# Конфигурация для CI
+ci:
+  autofix_commit_msg: |
+    [pre-commit.ci] auto fixes from pre-commit.com hooks
+
+    for more information, see https://pre-commit.ci
+  autofix_prs: true
+  autoupdate_branch: ''
+  autoupdate_commit_msg: '[pre-commit.ci] pre-commit autoupdate'
+  autoupdate_schedule: weekly
+  skip: []
+  submodules: false
