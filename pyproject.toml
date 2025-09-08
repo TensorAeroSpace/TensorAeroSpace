@@ -41,7 +41,7 @@ flake8 = "^6.0.0"
 safety = "^3.0.0"
 bandit = "^1.7.5"
 twine = "^4.0.0"
-pre-commit = "^3.0.0"
+pre-commit = ">=3,<5"
 
 [tool.poetry.group.test.dependencies]
 pytest = "^7.4.3"
