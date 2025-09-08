@@ -70,7 +70,7 @@ jobs:
         poetry run pytest --junitxml=pytest.xml --cov-report "xml:coverage.xml" --cov=./tensoraerospace tests/ | tee pytest-coverage.txt
 
     - name: 📈 Upload coverage to Codecov
-      uses: codecov/codecov-action@v3
+      uses: codecov/codecov-action@v5
       with:
         file: ./coverage.xml
         flags: unittests
