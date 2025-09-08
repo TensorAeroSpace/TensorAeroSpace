@@ -43,7 +43,7 @@ gast==0.5.4
 google-auth==2.23.4
 google-auth-oauthlib==1.0.0
 google-pasta==0.2.0
-graphviz==0.8.4
+graphviz==0.21
 grpcio==1.59.2
 gymnasium==0.29.1
 h11==0.14.0
