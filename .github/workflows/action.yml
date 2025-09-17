@@ -94,6 +94,7 @@ jobs:
         unique-id-for-comment: python3.10
         junitxml-path: ./pytest.xml
         junitxml-title: 🧪 TensorAeroSpace Test Results
+
   docs-coverage:
     name: 📚 Documentation Coverage
     runs-on: self-hosted
@@ -135,7 +136,62 @@ jobs:
 
     - name: 📖 Run Documentation Coverage
       run: |
-        poetry run docstr-coverage ./tensoraerospace --skip-magic --skip-init --skip-file-doc --fail-under=70.0
+        # Не падаем по порогу, чтобы всё равно опубликовать комментарий
+        poetry run docstr-coverage ./tensoraerospace \
+          --skip-magic --skip-init --skip-file-doc \
+          --fail-under=70.0 | tee docstr-coverage.txt || true
+
+    - name: 🔢 Extract docstring coverage percent
+      id: docstr
+      shell: bash
+      run: |
+        PCT=$(python - <<'PY'
+        import re, sys
+        txt=open('docstr-coverage.txt', encoding='utf-8').read()
+        # Ищем число процентов в последней строке или фразе "Overall documentation coverage is XX%"
+        m=re.search(r"overall\s+documentation\s+coverage\s+is\s+([0-9]+(?:\.[0-9]+)?)%", txt, re.I)
+        if not m:
+            # Фоллбек: любое число процентов, берём последнее встретившееся
+            ms=re.findall(r"([0-9]+(?:\.[0-9]+)?)%", txt)
+            val=ms[-1] if ms else '0'
+            print(val)
+        else:
+            print(m.group(1))
+        PY
+        )
+        echo "pct=$PCT" >> $GITHUB_OUTPUT
+        PCT_INT=${PCT%.*}
+        COLOR=red
+        if [ "$PCT_INT" -ge 90 ]; then COLOR=brightgreen; elif [ "$PCT_INT" -ge 80 ]; then COLOR=green; elif [ "$PCT_INT" -ge 70 ]; then COLOR=yellowgreen; elif [ "$PCT_INT" -ge 60 ]; then COLOR=yellow; else COLOR=orange; fi
+        echo "color=$COLOR" >> $GITHUB_OUTPUT
+
+    - name: 📝 Build PR comment (docstring coverage)
+      if: github.event_name == 'pull_request'
+      run: |
+        cat > docstr-comment.md <<MD
+        ### 📚 Docstring coverage
+
+        ![Docstring coverage](https://img.shields.io/badge/docstring--coverage-${{ steps.docstr.outputs.pct }}%25-${{ steps.docstr.outputs.color }})
+
+        Детальный вывод:
+        
+        <details>
+        <summary>Показать лог</summary>
+        
+        \n\n
+        
+        
+        
+        MD
+        # Вкладываем лог как цитату для компактности
+        sed 's/^/> /' docstr-coverage.txt >> docstr-comment.md
+
+    - name: 💬 Post sticky PR comment (docstring coverage)
+      if: github.event_name == 'pull_request'
+      uses: marocchino/sticky-pull-request-comment@v2
+      with:
+        recreate: true
+        path: docstr-comment.md
 
   security:
     name: 🔒 Security Scan
