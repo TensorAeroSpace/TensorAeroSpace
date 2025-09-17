@@ -65,17 +65,17 @@ jobs:
       run: |
         poetry run pytest tests/ -v --tb=short
 
-    - name: 📊 Run tests with coverage (Ubuntu Python 3.10 only)
+    - name: Run tests with coverage
       run: |
-        poetry run pytest --junitxml=pytest.xml --cov-report "xml:coverage.xml" --cov=./tensoraerospace tests/ | tee pytest-coverage.txt
+        pytest --maxfail=1 --disable-warnings \
+              --cov=tensoraerospace --cov-report=xml:coverage.xml
 
-    - name: 📈 Upload coverage to Codecov
-      uses: codecov/codecov-action@v3
+    - name: Upload coverage to Coveralls
+      uses: coverallsapp/github-action@v2
       with:
+        github-token: ${{ secrets.GITHUB_TOKEN }}
         file: ./coverage.xml
-        flags: unittests
-        name: codecov-umbrella
-        fail_ci_if_error: false
+        format: cobertura
 
     - name: 💬 Pytest coverage comment
       if: github.event_name == 'pull_request'
