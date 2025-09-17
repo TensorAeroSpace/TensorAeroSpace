@@ -67,7 +67,7 @@ jobs:
 
     - name: Run tests with coverage
       run: |
-        pytest --maxfail=1 --disable-warnings \
+        poetry run pytest --maxfail=1 --disable-warnings \
               --cov=tensoraerospace --cov-report=xml:coverage.xml
 
     - name: Upload coverage to Coveralls
