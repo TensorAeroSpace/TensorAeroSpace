@@ -102,9 +102,19 @@ jobs:
     - name: 🔗 Add Coveralls link comment
       if: github.event_name == 'pull_request'
       run: |
+        PCT=$(python - <<'PY'
+        import xml.etree.ElementTree as ET
+        try:
+            root=ET.parse('coverage.xml').getroot()
+            pct=float(root.attrib.get('line-rate','0'))*100
+            print(f"{pct:.1f}")
+        except Exception:
+            print("0")
+        PY
+        )
         cat > coverage-link.md <<MD
         ### 🔗 Coverage Links
-        - [Coveralls report](https://coveralls.io/github/${{ github.repository }}?branch=${{ github.head_ref }})
+        - Coverage: ${PCT}% — [Coveralls report](https://coveralls.io/github/${{ github.repository }}?branch=${{ github.head_ref }})
         MD
     - name: 💬 Post sticky PR comment (Coveralls link)
       if: github.event_name == 'pull_request'
@@ -212,15 +222,6 @@ jobs:
 
         Coverage: ${{ steps.docstr.outputs.pct }}%${{ steps.docstr.outputs.grade && format(' — Grade: {0}', steps.docstr.outputs.grade) || '' }}
 
-        Детальный вывод:
-        
-        <details>
-        <summary>Показать лог</summary>
-        MD
-        # Вкладываем лог как цитату для компактности
-        sed 's/^/> /' docstr-coverage.txt >> docstr-comment.md
-        echo "" >> docstr-comment.md
-        echo "</details>" >> docstr-comment.md
 
     - name: 💬 Post sticky PR comment (docstring coverage)
       if: github.event_name == 'pull_request'
