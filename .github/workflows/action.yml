@@ -63,12 +63,14 @@ jobs:
 
     - name: 🧪 Run tests with pytest
       run: |
-        poetry run pytest tests/ -v --tb=short
+        poetry run pytest tests/ -v --tb=short --junitxml=pytest.xml
 
     - name: Run tests with coverage
       run: |
         poetry run pytest --maxfail=1 --disable-warnings \
-              --cov=tensoraerospace --cov-report=xml:coverage.xml
+              --cov=tensoraerospace \
+              --cov-report=xml:coverage.xml \
+              --cov-report=term-missing:skip-covered | tee pytest-coverage.txt
 
     - name: Upload coverage to Coveralls
       uses: coverallsapp/github-action@v2
@@ -86,10 +88,14 @@ jobs:
         title: 📊 TensorAeroSpace Coverage Report
         badge-title: Coverage
         hide-badge: false
-        hide-report: false
+        hide-report: true
         create-new-comment: false
         hide-comment: false
-        report-only-changed-files: false
+        report-only-changed-files: true
+        xml-skip-covered: true
+        multiple-files: true
+        remove-links-to-files: true
+        remove-links-to-lines: true
         remove-link-from-badge: false
         unique-id-for-comment: python3.10
         junitxml-path: ./pytest.xml
@@ -249,6 +255,19 @@ jobs:
       run: |
         poetry install
 
+    - name: 🏷️ Set version suffix (branch + short SHA)
+      shell: bash
+      run: |
+        BRANCH_NAME="${GITHUB_REF_NAME}"
+        # sanitize: lower-case, replace non-alnum with dots, trim leading/trailing dots, collapse repeats
+        SANITIZED_BRANCH=$(echo "$BRANCH_NAME" | tr '[:upper:]' '[:lower:]' | sed -E 's/[^a-z0-9]+/./g; s/^\.+|\.+$//g; s/\.+/./g')
+        if [ -z "$SANITIZED_BRANCH" ]; then SANITIZED_BRANCH="build"; fi
+        SHORT_SHA="${GITHUB_SHA::7}"
+        BASE_VERSION=$(poetry version -s)
+        NEW_VERSION="${BASE_VERSION}+${SANITIZED_BRANCH}.${SHORT_SHA}"
+        echo "Setting dynamic version: $NEW_VERSION"
+        poetry version "$NEW_VERSION"
+
     - name: 🏗️ Build package
       run: |
         poetry build
@@ -264,7 +283,7 @@ jobs:
     name: 📦 Publish to GitHub Packages (Python)
     runs-on: ubuntu-latest
     needs: build
-    if: startsWith(github.ref, 'refs/tags/')
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/heads/')
     permissions:
       contents: read
       packages: write
