@@ -6,6 +6,7 @@ on:
     branches:
       - main
       - develop
+    types: [opened, synchronize, reopened, ready_for_review]
   workflow_dispatch:  # Позволяет запускать вручную
 
 jobs:
@@ -91,13 +92,37 @@ jobs:
         hide-comment: false
         report-only-changed-files: true
         xml-skip-covered: true
-        multiple-files: true
         remove-links-to-files: true
         remove-links-to-lines: true
-        remove-link-from-badge: false
+        remove-link-from-badge: true
         unique-id-for-comment: python3.10
         junitxml-path: ./pytest.xml
         junitxml-title: 🧪 TensorAeroSpace Test Results
+
+    - name: 🔗 Add Coveralls link comment
+      if: github.event_name == 'pull_request'
+      run: |
+        PCT=$(python - <<'PY'
+        import xml.etree.ElementTree as ET
+        try:
+            root=ET.parse('coverage.xml').getroot()
+            pct=float(root.attrib.get('line-rate','0'))*100
+            print(f"{pct:.1f}")
+        except Exception:
+            print("0")
+        PY
+        )
+        cat > coverage-link.md <<MD
+        ### 🔗 Coverage Links
+        - Coverage: ${PCT}% — [Coveralls report](https://coveralls.io/github/${{ github.repository }}?branch=${{ github.head_ref }})
+        MD
+    - name: 💬 Post sticky PR comment (Coveralls link)
+      if: github.event_name == 'pull_request'
+      uses: marocchino/sticky-pull-request-comment@v2
+      with:
+        recreate: true
+        header: coverage-links
+        path: coverage-link.md
 
   docs-coverage:
     name: 📚 Documentation Coverage
@@ -143,27 +168,45 @@ jobs:
         # Не падаем по порогу, чтобы всё равно опубликовать комментарий
         poetry run docstr-coverage ./tensoraerospace \
           --skip-magic --skip-init --skip-file-doc \
-          --fail-under=70.0 | tee docstr-coverage.txt || true
+          --fail-under=70.0 2>&1 | tee docstr-coverage.txt || true
 
     - name: 🔢 Extract docstring coverage percent
       id: docstr
       shell: bash
       run: |
-        PCT=$(python - <<'PY'
-        import re, sys
-        txt=open('docstr-coverage.txt', encoding='utf-8').read()
-        # Ищем число процентов в последней строке или фразе "Overall documentation coverage is XX%"
-        m=re.search(r"overall\s+documentation\s+coverage\s+is\s+([0-9]+(?:\.[0-9]+)?)%", txt, re.I)
-        if not m:
-            # Фоллбек: любое число процентов, берём последнее встретившееся
+        PY_OUTPUT=$(python - <<'PY'
+        import re
+        with open('docstr-coverage.txt', encoding='utf-8', errors='ignore') as f:
+            txt=f.read()
+        pct=None
+        # 1) Самый надёжный способ: посчитать из Needed/Found
+        m=re.search(r"Needed:\s*(\d+)\s*[-|].*?Found:\s*(\d+)", txt, re.I|re.S)
+        if m:
+            needed=int(m.group(1)) or 1
+            found=int(m.group(2))
+            pct=f"{found*100.0/needed:.1f}"
+        # 2) Пытаться вытащить из итоговой строки
+        if pct is None:
+            for p in (
+                r"Total\s+coverage:\s*([0-9]+(?:\.[0-9]+)?)%",
+                r"overall\s+documentation\s+coverage\s+is\s+([0-9]+(?:\.[0-9]+)?)%",
+            ):
+                m=re.search(p, txt, re.I)
+                if m:
+                    pct=m.group(1)
+                    break
+        # 3) Фоллбек: любое адекватное последнее число процентов
+        if pct is None:
             ms=re.findall(r"([0-9]+(?:\.[0-9]+)?)%", txt)
-            val=ms[-1] if ms else '0'
-            print(val)
-        else:
-            print(m.group(1))
+            pct=ms[-1] if ms else '0'
+        grade_match=re.search(r"Grade:\s*([A-Za-z]+)", txt)
+        grade=grade_match.group(1) if grade_match else ''
+        print(f"{pct} {grade}")
         PY
         )
+        read -r PCT GRADE <<< "$PY_OUTPUT"
         echo "pct=$PCT" >> $GITHUB_OUTPUT
+        echo "grade=$GRADE" >> $GITHUB_OUTPUT
         PCT_INT=${PCT%.*}
         COLOR=red
         if [ "$PCT_INT" -ge 90 ]; then COLOR=brightgreen; elif [ "$PCT_INT" -ge 80 ]; then COLOR=green; elif [ "$PCT_INT" -ge 70 ]; then COLOR=yellowgreen; elif [ "$PCT_INT" -ge 60 ]; then COLOR=yellow; else COLOR=orange; fi
@@ -177,15 +220,8 @@ jobs:
 
         ![Docstring coverage](https://img.shields.io/badge/docstring--coverage-${{ steps.docstr.outputs.pct }}%25-${{ steps.docstr.outputs.color }})
 
-        Детальный вывод:
-        
-        <details>
-        <summary>Показать лог</summary>
-        MD
-        # Вкладываем лог как цитату для компактности
-        sed 's/^/> /' docstr-coverage.txt >> docstr-comment.md
-        echo "" >> docstr-comment.md
-        echo "</details>" >> docstr-comment.md
+        Coverage: ${{ steps.docstr.outputs.pct }}%${{ steps.docstr.outputs.grade && format(' — Grade: {0}', steps.docstr.outputs.grade) || '' }}
+
 
     - name: 💬 Post sticky PR comment (docstring coverage)
       if: github.event_name == 'pull_request'

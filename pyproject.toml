@@ -2,6 +2,7 @@
 name = "tensoraerospace"
 version = "0.3.0"
 description = "Open source deep learning framework that focuses on aerospace objects (rockets, planes, UAVs)"
+readme = "readme.md"
 authors = ["Artemiy Mazaew (mr8bit)", "Vasily Davydov (dexfrost89)", "Yakov Li (yakovglee)"]
 license = "MIT"
 packages = [
