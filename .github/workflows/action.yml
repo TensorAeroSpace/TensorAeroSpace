@@ -4,7 +4,7 @@ run-name: ${{ github.actor }} is testing TensorAeroSpace 🚀
 on:
   pull_request:
     branches:
-      - main
+      # - main
       - develop
   workflow_dispatch:  # Позволяет запускать вручную
 
