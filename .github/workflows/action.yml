@@ -280,7 +280,7 @@ jobs:
         path: dist/
 
   publish-github-packages:
-    name: 📦 Publish to GitHub Packages (Python)
+    name: 📦 Publish to TestPyPI
     runs-on: ubuntu-latest
     needs: build
     if: (github.event_name == 'push' && startsWith(github.ref, 'refs/heads/')) || (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository)
@@ -305,13 +305,13 @@ jobs:
         python -m pip install --upgrade pip
         pip install twine
 
-    - name: 🚀 Publish to GitHub Packages
+    - name: 🚀 Publish to TestPyPI
       env:
-        TWINE_USERNAME: ${{ github.actor }}
-        TWINE_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
+        TWINE_USERNAME: __token__
+        TWINE_PASSWORD: ${{ secrets.PYPI_TEST }}
       run: |
         twine upload \
-          --repository-url https://pypi.pkg.github.com/${{ github.repository_owner }} \
+          --repository-url https://test.pypi.org/legacy/ \
           dist/*
 
 
