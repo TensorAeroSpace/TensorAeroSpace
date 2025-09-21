@@ -164,8 +164,7 @@ jobs:
       id: docstr
       shell: bash
       run: |
-        read -r PCT GRADE <<EOF
-        $(python - <<'PY'
+        PY_OUTPUT=$(python - <<'PY'
         import re
         txt=open('docstr-coverage.txt', encoding='utf-8', errors='ignore').read()
         pct=None
@@ -184,9 +183,10 @@ jobs:
             pct=ms[-1] if ms else '0'
         grade_match=re.search(r"Grade:\s*([A-Za-z]+)", txt)
         grade=grade_match.group(1) if grade_match else ''
-        print(pct, grade)
-        PY)
-        EOF
+        print(f"{pct} {grade}")
+        PY
+        )
+        read -r PCT GRADE <<< "$PY_OUTPUT"
         echo "pct=$PCT" >> $GITHUB_OUTPUT
         echo "grade=$GRADE" >> $GITHUB_OUTPUT
         PCT_INT=${PCT%.*}
