@@ -2,12 +2,10 @@ name: 🧪 Test and Coverage
 run-name: ${{ github.actor }} is testing TensorAeroSpace 🚀
 
 on:
-  push:
-    branches:
-      - '**'  # Запускать на всех ветках
   pull_request:
     branches:
-      - '**'  # Запускать для PR в любые ветки
+      - main
+      - develop
   workflow_dispatch:  # Позволяет запускать вручную
 
 jobs:

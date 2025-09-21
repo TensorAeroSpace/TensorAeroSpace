@@ -5,9 +5,6 @@ on:
   push:
     branches:
       - '**'  # Запускать на всех ветках
-  pull_request:
-    branches:
-      - '**'  # Запускать для PR в любые ветки
 
 jobs:
   quick-test:
