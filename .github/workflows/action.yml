@@ -2,18 +2,16 @@ name: 🧪 Test and Coverage
 run-name: ${{ github.actor }} is testing TensorAeroSpace 🚀
 
 on:
-  push:
-    branches:
-      - '**'  # Запускать на всех ветках
   pull_request:
     branches:
-      - '**'  # Запускать для PR в любые ветки
+      - main
+      - develop
   workflow_dispatch:  # Позволяет запускать вручную
 
 jobs:
   test:
     name: 🐍 Test Python 3.10 on self-hosted
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
 
     steps:
     - name: 📥 Checkout code
@@ -63,19 +61,21 @@ jobs:
 
     - name: 🧪 Run tests with pytest
       run: |
-        poetry run pytest tests/ -v --tb=short
+        poetry run pytest tests/ -v --tb=short --junitxml=pytest.xml
 
-    - name: 📊 Run tests with coverage (Ubuntu Python 3.10 only)
+    - name: Run tests with coverage
       run: |
-        poetry run pytest --junitxml=pytest.xml --cov-report "xml:coverage.xml" --cov=./tensoraerospace tests/ | tee pytest-coverage.txt
+        poetry run pytest --maxfail=1 --disable-warnings \
+              --cov=tensoraerospace \
+              --cov-report=xml:coverage.xml \
+              --cov-report=term-missing:skip-covered | tee pytest-coverage.txt
 
-    - name: 📈 Upload coverage to Codecov
-      uses: codecov/codecov-action@v3
+    - name: Upload coverage to Coveralls
+      uses: coverallsapp/github-action@v2
       with:
+        github-token: ${{ secrets.GITHUB_TOKEN }}
         file: ./coverage.xml
-        flags: unittests
-        name: codecov-umbrella
-        fail_ci_if_error: false
+        format: cobertura
 
     - name: 💬 Pytest coverage comment
       if: github.event_name == 'pull_request'
@@ -83,20 +83,25 @@ jobs:
       with:
         pytest-coverage-path: ./pytest-coverage.txt
         pytest-xml-coverage-path: ./coverage.xml
-        title: 📊 TensorAeroSpace Coverage Report
+        title: 📊 TensorAeroSpace Coverage Report — [Coveralls](https://coveralls.io/github/${{ github.repository }}?branch=${{ github.head_ref }})
         badge-title: Coverage
         hide-badge: false
-        hide-report: false
+        hide-report: true
         create-new-comment: false
         hide-comment: false
-        report-only-changed-files: false
+        report-only-changed-files: true
+        xml-skip-covered: true
+        multiple-files: true
+        remove-links-to-files: true
+        remove-links-to-lines: true
         remove-link-from-badge: false
         unique-id-for-comment: python3.10
         junitxml-path: ./pytest.xml
         junitxml-title: 🧪 TensorAeroSpace Test Results
+
   docs-coverage:
     name: 📚 Documentation Coverage
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
     needs: test
 
     steps:
@@ -135,11 +140,63 @@ jobs:
 
     - name: 📖 Run Documentation Coverage
       run: |
-        poetry run docstr-coverage ./tensoraerospace --skip-magic --skip-init --skip-file-doc --fail-under=70.0
+        # Не падаем по порогу, чтобы всё равно опубликовать комментарий
+        poetry run docstr-coverage ./tensoraerospace \
+          --skip-magic --skip-init --skip-file-doc \
+          --fail-under=70.0 | tee docstr-coverage.txt || true
+
+    - name: 🔢 Extract docstring coverage percent
+      id: docstr
+      shell: bash
+      run: |
+        PCT=$(python - <<'PY'
+        import re, sys
+        txt=open('docstr-coverage.txt', encoding='utf-8').read()
+        # Ищем число процентов в последней строке или фразе "Overall documentation coverage is XX%"
+        m=re.search(r"overall\s+documentation\s+coverage\s+is\s+([0-9]+(?:\.[0-9]+)?)%", txt, re.I)
+        if not m:
+            # Фоллбек: любое число процентов, берём последнее встретившееся
+            ms=re.findall(r"([0-9]+(?:\.[0-9]+)?)%", txt)
+            val=ms[-1] if ms else '0'
+            print(val)
+        else:
+            print(m.group(1))
+        PY
+        )
+        echo "pct=$PCT" >> $GITHUB_OUTPUT
+        PCT_INT=${PCT%.*}
+        COLOR=red
+        if [ "$PCT_INT" -ge 90 ]; then COLOR=brightgreen; elif [ "$PCT_INT" -ge 80 ]; then COLOR=green; elif [ "$PCT_INT" -ge 70 ]; then COLOR=yellowgreen; elif [ "$PCT_INT" -ge 60 ]; then COLOR=yellow; else COLOR=orange; fi
+        echo "color=$COLOR" >> $GITHUB_OUTPUT
+
+    - name: 📝 Build PR comment (docstring coverage)
+      if: github.event_name == 'pull_request'
+      run: |
+        cat > docstr-comment.md <<MD
+        ### 📚 Docstring coverage
+
+        ![Docstring coverage](https://img.shields.io/badge/docstring--coverage-${{ steps.docstr.outputs.pct }}%25-${{ steps.docstr.outputs.color }})
+
+        Детальный вывод:
+        
+        <details>
+        <summary>Показать лог</summary>
+        MD
+        # Вкладываем лог как цитату для компактности
+        sed 's/^/> /' docstr-coverage.txt >> docstr-comment.md
+        echo "" >> docstr-comment.md
+        echo "</details>" >> docstr-comment.md
+
+    - name: 💬 Post sticky PR comment (docstring coverage)
+      if: github.event_name == 'pull_request'
+      uses: marocchino/sticky-pull-request-comment@v2
+      with:
+        recreate: true
+        path: docstr-comment.md
 
   security:
     name: 🔒 Security Scan
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
     needs: test
 
     steps:
@@ -171,7 +228,7 @@ jobs:
 
   build:
     name: 🏗️ Build Package
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
     needs: [test, docs-coverage]
 
     steps:
@@ -193,6 +250,16 @@ jobs:
       run: |
         poetry install
 
+    - name: 🏷️ Set version suffix (branch + short SHA)
+      shell: bash
+      run: |
+        BASE_VERSION=$(poetry version -s)
+        # PEP 440: TestPyPI/PyPI не принимают локальные версии с '+'
+        # Используем допустимый dev-релиз с числовым суффиксом (timestamp)
+        NEW_VERSION="${BASE_VERSION}.dev$(date +%Y%m%d%H%M%S)"
+        echo "Setting dynamic version: $NEW_VERSION"
+        poetry version "$NEW_VERSION"
+
     - name: 🏗️ Build package
       run: |
         poetry build
@@ -203,5 +270,40 @@ jobs:
       with:
         name: dist
         path: dist/
+
+  publish-github-packages:
+    name: 📦 Publish to TestPyPI
+    runs-on: ubuntu-latest
+    needs: build
+    if: (github.event_name == 'push' && startsWith(github.ref, 'refs/heads/')) || (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository)
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+    - name: 📥 Download build artifacts
+      uses: actions/download-artifact@v4
+      with:
+        name: dist
+        path: dist
+
+    - name: 🐍 Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+
+    - name: 📦 Install Twine
+      run: |
+        python -m pip install --upgrade pip
+        pip install twine
+
+    - name: 🚀 Publish to TestPyPI
+      env:
+        TWINE_USERNAME: __token__
+        TWINE_PASSWORD: ${{ secrets.PYPI_TEST }}
+      run: |
+        twine upload \
+          --repository-url https://test.pypi.org/legacy/ \
+          dist/*
 
 

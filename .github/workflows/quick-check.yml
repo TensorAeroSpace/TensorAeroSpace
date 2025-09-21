@@ -5,14 +5,11 @@ on:
   push:
     branches:
       - '**'  # Запускать на всех ветках
-  pull_request:
-    branches:
-      - '**'  # Запускать для PR в любые ветки
 
 jobs:
   quick-test:
     name: ⚡ Quick Test (Python 3.10, Ubuntu)
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
     timeout-minutes: 10
 
     steps:
@@ -70,7 +67,7 @@ jobs:
 
   code-quality:
     name: 📝 Code Quality Check
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
     timeout-minutes: 5
 
     steps:
@@ -113,7 +110,7 @@ jobs:
 
   dependency-check:
     name: 🔒 Dependency Security Check
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
     timeout-minutes: 5
 
     steps:

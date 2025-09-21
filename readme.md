@@ -8,7 +8,7 @@
 [![Python](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![GitHub stars](https://img.shields.io/github/stars/tensoraerospace/tensoraerospace.svg)](https://github.com/tensoraerospace/tensoraerospace/stargazers)
-
+[![Coverage Status](https://coveralls.io/repos/github/TensorAeroSpace/TensorAeroSpace/badge.svg?branch=develop)](https://coveralls.io/github/TensorAeroSpace/TensorAeroSpace?branch=develop)
 ![TensorAeroSpace Logo](./img/logo-no-background.png)
 
 **Advanced Aerospace Control Systems & Reinforcement Learning Framework**
