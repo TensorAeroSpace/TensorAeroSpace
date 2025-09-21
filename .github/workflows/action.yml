@@ -6,6 +6,7 @@ on:
     branches:
       - main
       - develop
+    types: [opened, synchronize, reopened, ready_for_review]
   workflow_dispatch:  # Позволяет запускать вручную
 
 jobs:
@@ -91,13 +92,27 @@ jobs:
         hide-comment: false
         report-only-changed-files: true
         xml-skip-covered: true
-        multiple-files: true
         remove-links-to-files: true
         remove-links-to-lines: true
-        remove-link-from-badge: false
+        remove-link-from-badge: true
         unique-id-for-comment: python3.10
         junitxml-path: ./pytest.xml
         junitxml-title: 🧪 TensorAeroSpace Test Results
+
+    - name: 🔗 Add Coveralls link comment
+      if: github.event_name == 'pull_request'
+      run: |
+        cat > coverage-link.md <<MD
+        ### 🔗 Coverage Links
+        - [Coveralls report](https://coveralls.io/github/${{ github.repository }}?branch=${{ github.head_ref }})
+        MD
+    - name: 💬 Post sticky PR comment (Coveralls link)
+      if: github.event_name == 'pull_request'
+      uses: marocchino/sticky-pull-request-comment@v2
+      with:
+        recreate: true
+        header: coverage-links
+        path: coverage-link.md
 
   docs-coverage:
     name: 📚 Documentation Coverage
@@ -149,21 +164,31 @@ jobs:
       id: docstr
       shell: bash
       run: |
-        PCT=$(python - <<'PY'
-        import re, sys
-        txt=open('docstr-coverage.txt', encoding='utf-8').read()
-        # Ищем число процентов в последней строке или фразе "Overall documentation coverage is XX%"
-        m=re.search(r"overall\s+documentation\s+coverage\s+is\s+([0-9]+(?:\.[0-9]+)?)%", txt, re.I)
-        if not m:
-            # Фоллбек: любое число процентов, берём последнее встретившееся
-            ms=re.findall(r"([0-9]+(?:\.[0-9]+)?)%", txt)
-            val=ms[-1] if ms else '0'
-            print(val)
+        read -r PCT GRADE <<EOF
+        $(python - <<'PY'
+        import re
+        txt=open('docstr-coverage.txt', encoding='utf-8', errors='ignore').read()
+        pct=None
+        # Пробуем искать по "Total coverage: XX%"
+        m=re.search(r"Total\s+coverage:\s*([0-9]+(?:\.[0-9]+)?)%", txt, re.I)
+        if m:
+            pct=m.group(1)
         else:
-            print(m.group(1))
-        PY
-        )
+            # Альтернатива: "Overall documentation coverage is XX%"
+            m=re.search(r"overall\s+documentation\s+coverage\s+is\s+([0-9]+(?:\.[0-9]+)?)%", txt, re.I)
+            if m:
+                pct=m.group(1)
+        if not pct:
+            # Фоллбек: берём последнее встретившееся число процентов
+            ms=re.findall(r"([0-9]+(?:\.[0-9]+)?)%", txt)
+            pct=ms[-1] if ms else '0'
+        grade_match=re.search(r"Grade:\s*([A-Za-z]+)", txt)
+        grade=grade_match.group(1) if grade_match else ''
+        print(pct, grade)
+        PY)
+        EOF
         echo "pct=$PCT" >> $GITHUB_OUTPUT
+        echo "grade=$GRADE" >> $GITHUB_OUTPUT
         PCT_INT=${PCT%.*}
         COLOR=red
         if [ "$PCT_INT" -ge 90 ]; then COLOR=brightgreen; elif [ "$PCT_INT" -ge 80 ]; then COLOR=green; elif [ "$PCT_INT" -ge 70 ]; then COLOR=yellowgreen; elif [ "$PCT_INT" -ge 60 ]; then COLOR=yellow; else COLOR=orange; fi
@@ -176,6 +201,8 @@ jobs:
         ### 📚 Docstring coverage
 
         ![Docstring coverage](https://img.shields.io/badge/docstring--coverage-${{ steps.docstr.outputs.pct }}%25-${{ steps.docstr.outputs.color }})
+
+        Coverage: ${{ steps.docstr.outputs.pct }}%${{ steps.docstr.outputs.grade && format(' — Grade: {0}', steps.docstr.outputs.grade) || '' }}
 
         Детальный вывод:
         
