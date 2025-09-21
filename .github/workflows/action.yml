@@ -158,7 +158,7 @@ jobs:
         # Не падаем по порогу, чтобы всё равно опубликовать комментарий
         poetry run docstr-coverage ./tensoraerospace \
           --skip-magic --skip-init --skip-file-doc \
-          --fail-under=70.0 | tee docstr-coverage.txt || true
+          --fail-under=70.0 2>&1 | tee docstr-coverage.txt || true
 
     - name: 🔢 Extract docstring coverage percent
       id: docstr
@@ -166,19 +166,27 @@ jobs:
       run: |
         PY_OUTPUT=$(python - <<'PY'
         import re
-        txt=open('docstr-coverage.txt', encoding='utf-8', errors='ignore').read()
+        with open('docstr-coverage.txt', encoding='utf-8', errors='ignore') as f:
+            txt=f.read()
         pct=None
-        # Пробуем искать по "Total coverage: XX%"
-        m=re.search(r"Total\s+coverage:\s*([0-9]+(?:\.[0-9]+)?)%", txt, re.I)
+        # 1) Самый надёжный способ: посчитать из Needed/Found
+        m=re.search(r"Needed:\s*(\d+)\s*[-|].*?Found:\s*(\d+)", txt, re.I|re.S)
         if m:
-            pct=m.group(1)
-        else:
-            # Альтернатива: "Overall documentation coverage is XX%"
-            m=re.search(r"overall\s+documentation\s+coverage\s+is\s+([0-9]+(?:\.[0-9]+)?)%", txt, re.I)
-            if m:
-                pct=m.group(1)
-        if not pct:
-            # Фоллбек: берём последнее встретившееся число процентов
+            needed=int(m.group(1)) or 1
+            found=int(m.group(2))
+            pct=f"{found*100.0/needed:.1f}"
+        # 2) Пытаться вытащить из итоговой строки
+        if pct is None:
+            for p in (
+                r"Total\s+coverage:\s*([0-9]+(?:\.[0-9]+)?)%",
+                r"overall\s+documentation\s+coverage\s+is\s+([0-9]+(?:\.[0-9]+)?)%",
+            ):
+                m=re.search(p, txt, re.I)
+                if m:
+                    pct=m.group(1)
+                    break
+        # 3) Фоллбек: любое адекватное последнее число процентов
+        if pct is None:
             ms=re.findall(r"([0-9]+(?:\.[0-9]+)?)%", txt)
             pct=ms[-1] if ms else '0'
         grade_match=re.search(r"Grade:\s*([A-Za-z]+)", txt)
