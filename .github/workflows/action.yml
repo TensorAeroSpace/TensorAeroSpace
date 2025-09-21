@@ -83,7 +83,7 @@ jobs:
       with:
         pytest-coverage-path: ./pytest-coverage.txt
         pytest-xml-coverage-path: ./coverage.xml
-        title: 📊 TensorAeroSpace Coverage Report
+        title: 📊 TensorAeroSpace Coverage Report — [Coveralls](https://coveralls.io/github/${{ github.repository }}?branch=${{ github.head_ref }})
         badge-title: Coverage
         hide-badge: false
         hide-report: true
@@ -181,14 +181,11 @@ jobs:
         
         <details>
         <summary>Показать лог</summary>
-        
-        \n\n
-        
-        
-        
         MD
         # Вкладываем лог как цитату для компактности
         sed 's/^/> /' docstr-coverage.txt >> docstr-comment.md
+        echo "" >> docstr-comment.md
+        echo "</details>" >> docstr-comment.md
 
     - name: 💬 Post sticky PR comment (docstring coverage)
       if: github.event_name == 'pull_request'
