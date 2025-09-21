@@ -79,9 +79,11 @@ for episode in range(1000):
 |-----------|------|:------------------:|:------:|
 | **IHDP** | Incremental Heuristic Dynamic Programming | ❌ | ✅ |
 | **DQN** | Deep Q-Learning | ❌ | ✅ |
+| **DDPG** | Deep Deterministic Policy Gradient | ❌ | ✅ |
 | **SAC** | Soft Actor-Critic | ✅ | ✅ |
 | **A3C** | Asynchronous Advantage Actor-Critic | ❌ | ✅ |
 | **PPO** | Proximal Policy Optimization | ✅ | ✅ |
+| **GAIL** | Imitation Learning (Adversarial) | ❌ | ✅ |
 | **MPC** | Model Predictive Control | ✅ | ✅ |
 | **A2C** | Advantage Actor-Critic | ✅ | ✅ |
 | **A2C-NARX** | A2C with NARX Critic | ❌ | ✅ |
