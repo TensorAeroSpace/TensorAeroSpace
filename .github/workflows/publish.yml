@@ -96,15 +96,3 @@ jobs:
       run: |
         poetry publish
       continue-on-error: true
-
-    - name: 📢 Create GitHub Release Comment
-      if: github.event_name == 'release'
-      uses: actions/github-script@v6
-      with:
-        script: |
-          github.rest.issues.createComment({
-            issue_number: context.issue.number,
-            owner: context.repo.owner,
-            repo: context.repo.repo,
-            body: '🚀 Package successfully published to PyPI! 📦\n\nInstall with: `pip install tensoraerospace`'
-          })
