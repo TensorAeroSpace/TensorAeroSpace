@@ -343,3 +343,32 @@ jobs:
           dist/*
 
 
+  readthedocs-build:
+    name: 📚 Trigger Read the Docs (develop)
+    runs-on: ubuntu-latest
+    needs: docs-coverage
+    if: github.event_name == 'pull_request' && (github.base_ref == 'develop' || (github.base_ref == 'main' && github.head_ref == 'develop'))
+
+    steps:
+    - name: 🔔 Trigger RTD webhook for develop
+      env:
+        RTD_WEBHOOK_URL: ${{ secrets.READTHEDOCS_WEBHOOK_URL }}
+        RTD_WEBHOOK_SECRET: ${{ secrets.READTHEDOCS_WEBHOOK_SECRET }}
+      run: |
+        if [ -z "$RTD_WEBHOOK_URL" ] || [ -z "$RTD_WEBHOOK_SECRET" ]; then
+          echo "READTHEDOCS_WEBHOOK_URL/SECRET not set. Skipping RTD trigger." && exit 0
+        fi
+        # Send the original PR event payload so RTD can build the correct external version
+        # Compute HMAC signatures over the exact body
+        SIG_SHA1=$(openssl dgst -sha1 -hmac "$RTD_WEBHOOK_SECRET" "$GITHUB_EVENT_PATH" | awk '{print $2}')
+        SIG_SHA256=$(openssl dgst -sha256 -hmac "$RTD_WEBHOOK_SECRET" "$GITHUB_EVENT_PATH" | awk '{print $2}')
+        curl -sS -X POST \
+          -H "Content-Type: application/json" \
+          -H "X-GitHub-Event: pull_request" \
+          -H "X-Hub-Signature: sha1=${SIG_SHA1}" \
+          -H "X-Hub-Signature-256: sha256=${SIG_SHA256}" \
+          "$RTD_WEBHOOK_URL" \
+          --data-binary @"$GITHUB_EVENT_PATH" \
+          | tee rtd_response.json
+        echo "RTD response:" && cat rtd_response.json
+

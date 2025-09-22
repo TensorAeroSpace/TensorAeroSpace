@@ -96,3 +96,50 @@ jobs:
       run: |
         poetry publish
       continue-on-error: true
+
+  readthedocs-release:
+    name: 📚 Trigger Read the Docs (release tag + latest)
+    runs-on: ubuntu-latest
+    needs: publish-pypi
+    if: github.event_name == 'release' && github.event.action == 'published'
+
+    steps:
+    - name: 🔔 Trigger RTD webhook for tag and latest
+      env:
+        RTD_WEBHOOK_URL: ${{ secrets.READTHEDOCS_WEBHOOK_URL }}
+        RTD_WEBHOOK_SECRET: ${{ secrets.READTHEDOCS_WEBHOOK_SECRET }}
+        DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+      run: |
+        if [ -z "$RTD_WEBHOOK_URL" ] || [ -z "$RTD_WEBHOOK_SECRET" ]; then
+          echo "READTHEDOCS_WEBHOOK_URL/SECRET not set. Skipping RTD trigger." && exit 0
+        fi
+        REPO="$GITHUB_REPOSITORY"
+        TAG_NAME="${{ github.event.release.tag_name }}"
+        # 1) Trigger build for the released tag
+        REF_TAG="refs/tags/${TAG_NAME}"
+        DATA_TAG="{\"ref\":\"$REF_TAG\",\"repository\":{\"full_name\":\"$REPO\"}}"
+        SIG_SHA1=$(printf '%s' "$DATA_TAG" | openssl dgst -sha1 -hmac "$RTD_WEBHOOK_SECRET" | awk '{print $2}')
+        SIG_SHA256=$(printf '%s' "$DATA_TAG" | openssl dgst -sha256 -hmac "$RTD_WEBHOOK_SECRET" | awk '{print $2}')
+        echo "Triggering RTD for tag $REF_TAG"
+        curl -sS -X POST \
+          -H "Content-Type: application/json" \
+          -H "X-GitHub-Event: push" \
+          -H "X-Hub-Signature: sha1=${SIG_SHA1}" \
+          -H "X-Hub-Signature-256: sha256=${SIG_SHA256}" \
+          "$RTD_WEBHOOK_URL" \
+          -d "$DATA_TAG" \
+          | tee rtd_response_tag.json
+        # 2) Trigger build for latest (default branch)
+        REF_LATEST="refs/heads/${DEFAULT_BRANCH:-main}"
+        DATA_LATEST="{\"ref\":\"$REF_LATEST\",\"repository\":{\"full_name\":\"$REPO\"}}"
+        SIG_SHA1_L=$(printf '%s' "$DATA_LATEST" | openssl dgst -sha1 -hmac "$RTD_WEBHOOK_SECRET" | awk '{print $2}')
+        SIG_SHA256_L=$(printf '%s' "$DATA_LATEST" | openssl dgst -sha256 -hmac "$RTD_WEBHOOK_SECRET" | awk '{print $2}')
+        echo "Triggering RTD for latest $REF_LATEST"
+        curl -sS -X POST \
+          -H "Content-Type: application/json" \
+          -H "X-GitHub-Event: push" \
+          -H "X-Hub-Signature: sha1=${SIG_SHA1_L}" \
+          -H "X-Hub-Signature-256: sha256=${SIG_SHA256_L}" \
+          "$RTD_WEBHOOK_URL" \
+          -d "$DATA_LATEST" \
+          | tee rtd_response_latest.json
