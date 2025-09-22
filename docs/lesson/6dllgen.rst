@@ -4,13 +4,18 @@
 Генерация C++ кода
 ------------------
 
+.. admonition:: Требования
+   :class: note
+
+   Понадобятся: Embedded Coder, корректно настроенный компилятор (GCC/Visual Studio), доступ к сгенерированным заголовкам ``MODEL_NAME.h``.
+
 Для поддержки ОУ из ПО Simulink необходима надстройка для Simulink – Embedded Coder.
 
 Для преобразования Simulink модели в С код:
 
 #. При помощи блоков In1/Out1 опишите входные и выходные параметры
 
-#. 	В настройках Simulink выберите: Code Generation/System target file ert_shrlib.tlc.
+#. В настройках Simulink выберите: ``Code Generation / System target file = ert_shrlib.tlc``.
 	
 	.. image:: img/image019.png
   		:width: 400
@@ -20,16 +25,16 @@
 
 
 
-Интегрирование Simulink модели в Python 
+Интеграция Simulink-модели в Python 
 ---------------------------------------
 
 #. Создайте so файл
 
-   Интегрирование Simulink модели в Python осуществляется с помощью DLL библиотеки (библиотеки динамической компоновки). Для ее генерации необходим gcc compiler.
+   Интеграция осуществляется через DLL/so библиотеку (динамическая компоновка). Для её генерации необходим GCC.
 
    Введите команду
 
-   .. code-block:: 
+   .. code-block:: bash
 
       gcc -shared -o model.so -fPIC *.c
 
@@ -38,13 +43,13 @@
    В папке появится so файл.
 
    Для Windows
-    .. code-block:: 
+    .. code-block:: bash
 
         make -f MODEL_NAME.mk
 
 #. Опишите интерфейс взаимодействия
 
-  Интерфейс взаимодействия описывается для входных и выходных параметров при помощи ctypes.Structure и преобразователя типов rtwtypes (tensoraerospace/aerospacemodel/model/rtwtypes.py)
+  Интерфейс описывается для входных/выходных параметров через ``ctypes.Structure`` и преобразователи типов из ``tensoraerospace/aerospacemodel/model/rtwtypes.py``
 
   .. code-block:: python
 
@@ -57,15 +62,15 @@
 
     Имя и тип можно посмотреть в сгенерированном С файле. Файл должен называться MODEL_NAME.h. В данном файле найдите описание External inputs, External outputs
 
-  В dll файле существуют 3 функции
+  В библиотеке как правило доступны 3 функции
     * MODEL_NAME_initialize - служит для инициализации модели
     * MODEL_NAME_step - служит для расчета модели на следующем шаге модели
       шаг модели равен dt, определенном в параметрах Simulink модели
     * MODEL_NAME_terminate - служит для освобождении ресурсов модели
 
-Пример использования Simulink модели  с Python:
+Пример использования Simulink-модели с Python:
 
-  .. code-block:: 
+  .. code-block:: python
         import os
         import ctypes
 
@@ -127,7 +132,7 @@
 
 
 
-        plt.plot(wz)
+        plt.plot(w)
 
         plt.ylabel('$u$, [м/с]')
 

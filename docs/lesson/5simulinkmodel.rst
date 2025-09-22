@@ -4,6 +4,10 @@
 Создание объекта управления в симулинке
 ---------------------------------------
 
+.. contents:: На этой странице
+   :local:
+   :depth: 1
+
 .. image:: img/image017.png
   :width: 400
   :alt: ОУ в ПО Simulink
@@ -11,7 +15,7 @@
 
 Для создания ОУ в ПО Simulink:
 
-#. В рабочее поле были добавлены элементы из библиотеки Simulink:
+#. В рабочее поле добавьте элементы из библиотеки Simulink:
 
         * Simulink/Continuous/State-Space
 
@@ -21,10 +25,10 @@
 
         * Simulink/Comonly Used Block/Out1
 
-#. Блоки In1/Out1 были переименованы в соответствующие названия.
+#. Переименуйте блоки In1/Out1 в осмысленные имена сигналов.
 
-#. В State-Space были заданы следующие параметры (для удобства работы использовали MATLAB Scripts)
+#. В блоке State-Space задайте параметры (удобно через MATLAB scripts)
 
 	.. image:: img/image018.png
   		:width: 400
-  		:alt: Блок Stae-Space
+  :alt: Блок State-Space
