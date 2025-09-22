@@ -1,15 +1,16 @@
-import os
 import ctypes
+import os
 
 import matplotlib.pyplot as plt
-
 from rtwtypes import *
+
 
 class ExtY(ctypes.Structure):
     """
-        Output parameters Simulink model
-        (name, type)
+    Output parameters Simulink model
+    (name, type)
     """
+
     _fields_ = [
         ("u", real_T),
         ("w", real_T),
@@ -18,12 +19,13 @@ class ExtY(ctypes.Structure):
         ("sim_time", real_T),
     ]
 
-    
+
 class ExtU(ctypes.Structure):
     """
-        INput parameters Simulink model
-        (name, type)
+    INput parameters Simulink model
+    (name, type)
     """
+
     _fields_ = [
         ("ref_signal", real_T),
     ]
@@ -32,8 +34,8 @@ class ExtU(ctypes.Structure):
 dll_path = os.path.abspath("model.dll")
 dll = ctypes.cdll.LoadLibrary(dll_path)
 
-X = ExtU.in_dll(dll, 'uav2_model_U')
-Y = ExtY.in_dll(dll, 'uav2_model_Y')
+X = ExtU.in_dll(dll, "uav2_model_U")
+Y = ExtY.in_dll(dll, "uav2_model_Y")
 
 model_initialize = dll.model_initialize
 model_step = dll.model_step
@@ -57,9 +59,8 @@ for step in range(int(2100)):
 model_terminate()
 
 
-
 plt.plot(u)
 
-plt.ylabel('$u$, [м/с]')
+plt.ylabel("$u$, [м/с]")
 
-plt.savefig('u.png')
+plt.savefig("u.png")
