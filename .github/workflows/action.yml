@@ -343,3 +343,27 @@ jobs:
           dist/*
 
 
+  readthedocs-build:
+    name: 📚 Trigger Read the Docs (develop)
+    runs-on: ubuntu-latest
+    needs: docs-coverage
+    if: github.event_name == 'pull_request' && github.base_ref == 'develop'
+
+    steps:
+    - name: 🔔 Trigger RTD webhook for develop
+      env:
+        RTD_WEBHOOK_URL: ${{ secrets.READTHEDOCS_WEBHOOK_URL }}
+        RTD_WEBHOOK_SECRET: ${{ secrets.READTHEDOCS_WEBHOOK_SECRET }}
+      run: |
+        if [ -z "$RTD_WEBHOOK_URL" ] || [ -z "$RTD_WEBHOOK_SECRET" ]; then
+          echo "READTHEDOCS_WEBHOOK_URL/SECRET not set. Skipping RTD trigger." && exit 0
+        fi
+        # Try both header token and query parameter token for compatibility
+        curl -sS -X POST \
+          -H "Content-Type: application/json" \
+          -H "X-RTD-Token: ${RTD_WEBHOOK_SECRET}" \
+          "${RTD_WEBHOOK_URL}?token=${RTD_WEBHOOK_SECRET}" \
+          -d '{"branch":"develop"}' \
+          | tee rtd_response.json
+        echo "RTD response:" && cat rtd_response.json
+
