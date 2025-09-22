@@ -347,7 +347,7 @@ jobs:
     name: 📚 Trigger Read the Docs (develop)
     runs-on: ubuntu-latest
     needs: docs-coverage
-    if: github.event_name == 'pull_request' && github.base_ref == 'develop'
+    if: github.event_name == 'pull_request' && (github.base_ref == 'develop' || (github.base_ref == 'main' && github.head_ref == 'develop'))
 
     steps:
     - name: 🔔 Trigger RTD webhook for develop
@@ -359,7 +359,13 @@ jobs:
           echo "READTHEDOCS_WEBHOOK_URL/SECRET not set. Skipping RTD trigger." && exit 0
         fi
         # Build a GitHub-like payload with required ref
-        REF="refs/heads/${GITHUB_BASE_REF:-develop}"
+        # Case 1: PR into develop -> build head branch of PR
+        # Case 2: PR develop -> main -> build develop
+        if [ "$GITHUB_BASE_REF" = "develop" ]; then
+          REF="refs/heads/${GITHUB_HEAD_REF}"
+        else
+          REF="refs/heads/develop"
+        fi
         REPO="$GITHUB_REPOSITORY"
         DATA="{\"ref\":\"$REF\",\"repository\":{\"full_name\":\"$REPO\"}}"
         SIG_SHA1=$(printf '%s' "$DATA" | openssl dgst -sha1 -hmac "$RTD_WEBHOOK_SECRET" | awk '{print $2}')
