@@ -84,6 +84,8 @@ Github репозиторий: https://github.com/TensorAeroSpace/TensorAeroSpac
    lesson/4matlabscript.rst
    lesson/5simulinkmodel.rst
    lesson/6dllgen.rst
+   lesson/7control_basics.rst
+   lesson/8flight_dynamics_intro.rst
 
 
 * :ref:`genindex`
