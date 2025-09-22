@@ -16,18 +16,17 @@ rud = [0]
 initial_state = [phi, theta, psi, alpha, beta, p, q, r, ele, ail, rud]
 
 initial_state_dict = {
-    'phi': phi,
-    'theta': theta,
-    'psi': psi,
-    'alpha': alpha,
-    'beta': beta,
-    'p': p,
-    'q': q,
-    'r': r,
-    'ele': ele,
-    'ail': ail,
-    'rud': rud,
-
+    "phi": phi,
+    "theta": theta,
+    "psi": psi,
+    "alpha": alpha,
+    "beta": beta,
+    "p": p,
+    "q": q,
+    "r": r,
+    "ele": ele,
+    "ail": ail,
+    "rud": rud,
 }
 
 
@@ -47,7 +46,9 @@ def set_initial_state(new_initial: dict):
     >>> set_initial_state({'alpha':np.deg2rad(10)})
     """
     if not set(list(new_initial.keys())).issubset(list(initial_state_dict.keys())):
-        raise Exception(f"Состояния заданы неверно, проверьте. Доступные состояния {list(initial_state_dict.keys())}")
+        raise Exception(
+            f"Состояния заданы неверно, проверьте. Доступные состояния {list(initial_state_dict.keys())}"
+        )
 
     for key, value in new_initial.items():
         initial_state_dict[key] = [value]

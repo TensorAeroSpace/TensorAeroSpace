@@ -1,0 +1,188 @@
+# GitHub Configuration
+
+# Repository settings
+repository:
+  name: TensorAeroSpace
+  description: "🚀 Библиотека для обучения с подкреплением в аэрокосмической области"
+  homepage: https://tensoraerospace.readthedocs.io/
+  topics:
+    - reinforcement-learning
+    - aerospace
+    - machine-learning
+    - python
+    - tensorflow
+    - pytorch
+    - control-systems
+    - simulation
+
+# Branch protection rules
+branches:
+  main:
+    protection:
+      required_status_checks:
+        strict: true
+        contexts:
+          - "🧪 Test and Coverage"
+          - "🚀 Quick Check"
+      enforce_admins: false
+      required_pull_request_reviews:
+        required_approving_review_count: 1
+        dismiss_stale_reviews: true
+        require_code_owner_reviews: true
+      restrictions: null
+
+  develop:
+    protection:
+      required_status_checks:
+        strict: true
+        contexts:
+          - "🚀 Quick Check"
+      enforce_admins: false
+      required_pull_request_reviews:
+        required_approving_review_count: 1
+        dismiss_stale_reviews: false
+      restrictions: null
+
+# Labels for issues and PRs
+labels:
+  # Type labels
+  - name: "bug"
+    color: "d73a4a"
+    description: "Something isn't working"
+  
+  - name: "enhancement"
+    color: "a2eeef"
+    description: "New feature or request"
+  
+  - name: "documentation"
+    color: "0075ca"
+    description: "Improvements or additions to documentation"
+  
+  - name: "question"
+    color: "d876e3"
+    description: "Further information is requested"
+  
+  # Priority labels
+  - name: "priority: high"
+    color: "ff0000"
+    description: "High priority issue"
+  
+  - name: "priority: medium"
+    color: "ff9500"
+    description: "Medium priority issue"
+  
+  - name: "priority: low"
+    color: "ffff00"
+    description: "Low priority issue"
+  
+  # Component labels
+  - name: "agents"
+    color: "1d76db"
+    description: "Related to RL agents"
+  
+  - name: "environments"
+    color: "0e8a16"
+    description: "Related to simulation environments"
+  
+  - name: "models"
+    color: "5319e7"
+    description: "Related to aerospace models"
+  
+  - name: "optimization"
+    color: "f9d0c4"
+    description: "Related to optimization algorithms"
+  
+  - name: "ci/cd"
+    color: "c2e0c6"
+    description: "Related to CI/CD pipeline"
+  
+  # Status labels
+  - name: "good first issue"
+    color: "7057ff"
+    description: "Good for newcomers"
+  
+  - name: "help wanted"
+    color: "008672"
+    description: "Extra attention is needed"
+  
+  - name: "wontfix"
+    color: "ffffff"
+    description: "This will not be worked on"
+  
+  - name: "duplicate"
+    color: "cfd3d7"
+    description: "This issue or pull request already exists"
+
+# Milestones
+milestones:
+  - title: "v1.0.0 - Stable Release"
+    description: "First stable release with core functionality"
+    state: open
+  
+  - title: "v1.1.0 - Enhanced Agents"
+    description: "Improved RL agents and new algorithms"
+    state: open
+  
+  - title: "v1.2.0 - Unity Integration"
+    description: "Better Unity ML-Agents integration"
+    state: open
+
+# Security settings
+security:
+  advisories:
+    enabled: true
+  
+  dependency_scanning:
+    enabled: true
+  
+  secret_scanning:
+    enabled: true
+  
+  code_scanning:
+    enabled: true
+
+# Pages settings
+pages:
+  source:
+    branch: gh-pages
+    path: /
+  
+  custom_domain: null
+  
+  https_enforced: true
+
+# Discussions
+discussions:
+  enabled: true
+  categories:
+    - name: "General"
+      emoji: "💬"
+      description: "General discussions about TensorAeroSpace"
+    
+    - name: "Ideas"
+      emoji: "💡"
+      description: "Share ideas for new features"
+    
+    - name: "Q&A"
+      emoji: "❓"
+      description: "Ask questions and get help"
+    
+    - name: "Show and tell"
+      emoji: "🙌"
+      description: "Show off your projects using TensorAeroSpace"
+
+# Wiki
+wiki:
+  enabled: true
+
+# Projects
+projects:
+  enabled: true
+
+# Issues
+issues:
+  enabled: true
+  
+# Pull requests
+pull_requests:
+  enabled: true

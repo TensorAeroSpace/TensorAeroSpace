@@ -10,10 +10,7 @@ def state2dict(state: list, list_state: list) -> dict:
     :return: Словарь состояний
     """
     state = np.array(state).reshape([len(state), -1])
-    return {
-        st: state[:, list_state.index(st)]
-        for i, st in enumerate(list_state)
-    }
+    return {st: state[:, list_state.index(st)] for i, st in enumerate(list_state)}
 
 
 def control2dict(control: list, control_list: list) -> dict:
@@ -27,10 +24,7 @@ def control2dict(control: list, control_list: list) -> dict:
         Словарь управления
     """
     control = np.array(control).reshape([len(control), -1])
-    return {
-        st: control[:, control_list.index(st)]
-        for i, st in enumerate(control_list)
-    }
+    return {st: control[:, control_list.index(st)] for i, st in enumerate(control_list)}
 
 
 def output2dict(output: np.ndarray, output_list: list) -> dict:

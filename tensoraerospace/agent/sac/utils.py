@@ -17,9 +17,11 @@ def create_log_gaussian(mean, log_std, t):
     quadratic = -((0.5 * (t - mean) / (log_std.exp())).pow(2))
     length = mean.shape
     log_z = log_std
-    z = length[-1] * torch.log(2 * np.pi)
+    two_pi = torch.tensor(2 * np.pi, dtype=log_std.dtype, device=log_std.device)
+    z = length[-1] * torch.log(two_pi)
     log_p = quadratic.sum(dim=-1) - log_z.sum(dim=-1) - 0.5 * z
     return log_p
+
 
 def logsumexp(inputs, dim=None, keepdim=False):
     """Вычисляет логарифм от суммы экспонент.
@@ -42,6 +44,7 @@ def logsumexp(inputs, dim=None, keepdim=False):
         outputs = outputs.squeeze(dim)
     return outputs
 
+
 def soft_update(target, source, tau):
     """Мягкое обновление параметров модели target по параметрам модели source.
 
@@ -53,6 +56,7 @@ def soft_update(target, source, tau):
     """
     for target_param, param in zip(target.parameters(), source.parameters()):
         target_param.data.copy_(target_param.data * (1.0 - tau) + param.data * tau)
+
 
 def hard_update(target, source):
     """Жесткое обновление параметров модели target по параметрам модели source.

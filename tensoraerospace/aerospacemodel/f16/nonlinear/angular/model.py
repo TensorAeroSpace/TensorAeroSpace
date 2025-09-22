@@ -47,18 +47,34 @@ class AngularF16(ModelBase):
 
     def __init__(self, x0, selected_state_output=None, t0=0, dt: float = 0.01):
         super(AngularF16, self).__init__(x0, selected_state_output, t0, dt)
-        self.matlab_files_path = os.path.join(os.path.dirname(__file__), 'matlab_code')
+        self.matlab_files_path = os.path.join(os.path.dirname(__file__), "matlab_code")
         self.eng = matlab.engine.start_matlab()  # Запуск экземпляр Matlab
         self.eng.addpath(self.matlab_files_path)
-        self.list_state = ['alpha', 'beta', 'wx', 'wy', 'wz', 'gamma', 'psi', 'theta', 'stab', 'dstab', 'ail', 'dail',
-                           'dir', 'ddir']
-        self.control_list = ['stab', 'ail', 'dir']
+        self.list_state = [
+            "alpha",
+            "beta",
+            "wx",
+            "wy",
+            "wz",
+            "gamma",
+            "psi",
+            "theta",
+            "stab",
+            "dstab",
+            "ail",
+            "dail",
+            "dir",
+            "ddir",
+        ]
+        self.control_list = ["stab", "ail", "dir"]
         self.action_space_length = len(self.control_list)
-        self.param = self.eng.airplane_parameters()  # Получаем параметры объекта управления
+        self.param = (
+            self.eng.airplane_parameters()
+        )  # Получаем параметры объекта управления
         self.x_history = [x0]
-        if self.selected_state_output:
-            for val in self.selected_state_output:
-                self.selected_state_index = self.list_state.index(val)
+        self._initialize_selected_state_index(
+            self.selected_state_output, self.list_state
+        )
 
     def get_param(self):
         """
@@ -71,10 +87,10 @@ class AngularF16(ModelBase):
 
     def set_param(self, new_param):
         """
-            Установка новых параметров объекта управления
+           Установка новых параметров объекта управления
 
-         Args:
-            new_param: параметры объекта управления
+        Args:
+           new_param: параметры объекта управления
         """
         self.param = new_param
 
@@ -106,9 +122,12 @@ class AngularF16(ModelBase):
             u = matlab.double(u)
         if len(list(u)) != self.action_space_length:
             raise Exception(
-                "Размерность управляющего вектора задана неверно." +
-                f" Текущее значение {len(list(u))}, не соответсвует {self.action_space_length}")
-        x_t = self.eng.step(self.x_history[-1], self.dt, u, self.t0, self.time_step, self.param)
+                "Размерность управляющего вектора задана неверно."
+                + f" Текущее значение {len(list(u))}, не соответсвует {self.action_space_length}"
+            )
+        x_t = self.eng.step(
+            self.x_history[-1], self.dt, u, self.t0, self.time_step, self.param
+        )
         self.x_history.append(x_t)
         self.u_history.append(u)
         self.time_step += 1

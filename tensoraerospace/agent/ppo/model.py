@@ -1,3 +1,11 @@
+"""
+Модуль реализации алгоритма Proximal Policy Optimization (PPO).
+
+Этот модуль содержит реализацию алгоритма PPO для обучения с подкреплением,
+включая нейронные сети актора и критика, функции для итерации по батчам
+и основной класс агента PPO для управления аэрокосмическими системами.
+"""
+
 import datetime
 import json
 from pathlib import Path
@@ -37,6 +45,7 @@ def init_layer_uniform(layer: nn.Linear, init_w: float = 3e-3) -> nn.Linear:
     layer.bias.data.uniform_(-init_w, init_w)
     return layer
 
+
 class Critic(nn.Module):
     def __init__(self, input_dim, hidden_dim=64):
         """
@@ -73,6 +82,7 @@ class Critic(nn.Module):
         x = F.relu(self.d1(input_data))
         v = self.v(x)
         return v
+
 
 class Actor(nn.Module):
     def __init__(self, input_dim, out_dim, hidden_dim=32):
@@ -117,9 +127,9 @@ class Actor(nn.Module):
         if continous_actions:
             mu = torch.tanh(self.mu(x))
             log_std = torch.tanh(self.delta(x))
-            log_std = self.log_std_min + 0.5 * (
-                self.log_std_max - self.log_std_min
-            ) * (log_std + 1)
+            log_std = self.log_std_min + 0.5 * (self.log_std_max - self.log_std_min) * (
+                log_std + 1
+            )
             std = torch.exp(log_std)
             dist = torch.distributions.Normal(mu, std)
             action = dist.sample()
@@ -133,8 +143,17 @@ class Actor(nn.Module):
             return a, r
         return a
 
-def ppo_iter(epoch: int,mini_batch_size: int,states: torch.Tensor,actions: torch.Tensor,
-            log_probs: torch.Tensor,returns: torch.Tensor,advantages: torch.Tensor,rewards: torch.Tensor):
+
+def ppo_iter(
+    epoch: int,
+    mini_batch_size: int,
+    states: torch.Tensor,
+    actions: torch.Tensor,
+    log_probs: torch.Tensor,
+    returns: torch.Tensor,
+    advantages: torch.Tensor,
+    rewards: torch.Tensor,
+):
     """Инициализирует итератор для PPO.
 
     Args:
@@ -151,21 +170,35 @@ def ppo_iter(epoch: int,mini_batch_size: int,states: torch.Tensor,actions: torch
     for _ in range(epoch):
         for _ in range(batch_size // mini_batch_size):
             rand_ids = np.random.choice(batch_size, mini_batch_size)
-            yield states[rand_ids, :], actions[rand_ids], \
-            log_probs[rand_ids], returns[rand_ids], advantages[rand_ids], \
-            rewards[rand_ids]
-            
+            yield states[rand_ids, :], actions[rand_ids], log_probs[rand_ids], returns[
+                rand_ids
+            ], advantages[rand_ids], rewards[rand_ids]
+
 
 class PPO(BaseRLModel):
-    """ Класс, реализующий агента PPO с использованием PyTorch.
+    """Класс, реализующий агента PPO с использованием PyTorch.
 
     Args:
         env: объект окружения.
         gamma (float): коэффициент дисконтирования.
     """
-    def __init__(self, env, gamma=0.99, max_episodes = 30, rollout_len = 2048, clip_pram = 0.2, num_epochs=64, batch_size=64, entropy_coef=0.005, actor_lr = 0.001, critic_lr = 0.005, seed= 336699):
+
+    def __init__(
+        self,
+        env,
+        gamma=0.99,
+        max_episodes=30,
+        rollout_len=2048,
+        clip_pram=0.2,
+        num_epochs=64,
+        batch_size=64,
+        entropy_coef=0.005,
+        actor_lr=0.001,
+        critic_lr=0.005,
+        seed=336699,
+    ):
         """Инициализация агента с заданным окружением и коэффициентом дисконтирования.
-        
+
         Args:
             env: объект окружения, с которым будет взаимодействовать агент.
             gamma (float, optional): коэффициент дисконтирования, используемый в расчетах. По умолчанию 0.99.
@@ -192,8 +225,7 @@ class PPO(BaseRLModel):
         self.best_reward = 0
         self.avg_rewards_list = []
         self.writer = SummaryWriter()
-        
-        
+
     def act(self, state):
         """Выбирает действие для данного состояния.
 
@@ -205,7 +237,11 @@ class PPO(BaseRLModel):
         """
         state = torch.FloatTensor(np.array([state]))
         action, dist = self.actor(state, continous_actions=True)
-        return action.detach(), dist.mean.detach().numpy(), dist.log_prob(action)#, prob.detach().numpy()
+        return (
+            action.detach(),
+            dist.mean.detach().numpy(),
+            dist.log_prob(action),
+        )  # , prob.detach().numpy()
 
     def actor_loss(self, probs, entropy, actions, adv, old_probs):
         """Вычисляет потери актора.
@@ -254,12 +290,16 @@ class PPO(BaseRLModel):
         """
         self.a_opt.zero_grad()
         self.c_opt.zero_grad()
-        new_actions, new_distr, r = self.actor(states, return_reward=True, continous_actions=True)
+        new_actions, new_distr, r = self.actor(
+            states, return_reward=True, continous_actions=True
+        )
         new_probs = new_distr.log_prob(actions)
         v = self.critic(states)
         td = discnt_rewards.squeeze() - v.squeeze()
         c_loss = td.pow(2).mean()
-        a_loss = self.actor_loss(new_probs, -new_distr.entropy().mean(), actions, adv.detach(), old_probs)
+        a_loss = self.actor_loss(
+            new_probs, -new_distr.entropy().mean(), actions, adv.detach(), old_probs
+        )
         a_loss.backward()
         c_loss.backward(retain_graph=True)
         self.a_opt.step()
@@ -290,7 +330,6 @@ class PPO(BaseRLModel):
                 done = terminated
             total_reward += reward
         return total_reward
-
 
     def preprocess1(self, states, actions, rewards, dones, values, probs, gamma):
         """Предобработка переходов для буфера.
@@ -366,7 +405,7 @@ class PPO(BaseRLModel):
                 # prob = self.actor(torch.from_numpy(np.array([state], dtype=np.float32)))
                 value = self.critic(torch.FloatTensor(np.array([state])))
                 # print("action_l", action)
-                #print(action)
+                # print(action)
                 step_return = self.env.step(action.detach().numpy()[0])
                 if len(step_return) > 4:
                     next_state, reward, terminated, trunkated, info = step_return
@@ -375,8 +414,12 @@ class PPO(BaseRLModel):
                     next_state, reward, terminated, info = step_return
                     done = terminated
                 score += reward
-                dones.append(torch.FloatTensor(np.reshape(done, (1, -1)).astype(np.float64)))
-                rewards.append(torch.FloatTensor(np.reshape(reward, (1, -1)).astype(np.float64)))
+                dones.append(
+                    torch.FloatTensor(np.reshape(done, (1, -1)).astype(np.float64))
+                )
+                rewards.append(
+                    torch.FloatTensor(np.reshape(reward, (1, -1)).astype(np.float64))
+                )
                 states.append(torch.FloatTensor(state))
                 actions.append(action[0])
                 probs.append(prob)
@@ -416,14 +459,15 @@ class PPO(BaseRLModel):
                 log_probs=probs,
                 returns=returns,
                 advantages=advantages,
-                rewards=rewards):
+                rewards=rewards,
+            ):
                 a_loss, c_loss = self.learn(
                     state, action, adv, old_log_prob, return_, reward
                 )
                 all_aloss.append(a_loss)
                 all_closs.append(c_loss)
-                all_entropies.append(-adv.mean().item())  
-                
+                all_entropies.append(-adv.mean().item())
+
             avg_reward = np.mean(scores)
             avg_aloss = np.mean(all_aloss)
             avg_closs = np.mean(all_closs)
@@ -431,15 +475,22 @@ class PPO(BaseRLModel):
             avg_episode_length = np.mean(episode_lengths)
 
             # Log to TensorBoard
-            self.writer.add_scalar('Loss/Actor', avg_aloss, episode)
-            self.writer.add_scalar('Loss/Critic', avg_closs, episode)
-            self.writer.add_scalar('Performance/Reward', avg_reward, episode)
-            self.writer.add_scalar('Performance/Entropy', avg_entropy, episode)
-            self.writer.add_scalar('Performance/Episode Length', avg_episode_length, episode)
+            self.writer.add_scalar("Loss/Actor", avg_aloss, episode)
+            self.writer.add_scalar("Loss/Critic", avg_closs, episode)
+            self.writer.add_scalar("Performance/Reward", avg_reward, episode)
+            self.writer.add_scalar("Performance/Entropy", avg_entropy, episode)
+            self.writer.add_scalar(
+                "Performance/Episode Length", avg_episode_length, episode
+            )
 
         # print("Training completed. Average rewards list:", self.avg_rewards_list)
-        
+
     def get_param_env(self):
+        """Получает параметры среды и агента для сохранения.
+
+        Returns:
+            dict: Словарь с параметрами среды и политики агента.
+        """
         class_name = self.env.unwrapped.__class__.__name__
         module_name = self.env.unwrapped.__class__.__module__
         env_name = f"{module_name}.{class_name}"
@@ -449,7 +500,7 @@ class PPO(BaseRLModel):
         module_name = self.__class__.__module__
         agent_name = f"{module_name}.{class_name}"
         env_params = {}
-        
+
         # Получение информации о сигнале справки, если она доступна
         try:
             ref_signal = self.env.ref_signal.__class__
@@ -463,13 +514,13 @@ class PPO(BaseRLModel):
             env_params["action_space"] = action_space
         except AttributeError:
             pass
-        
+
         try:
             observation_space = str(self.env.observation_space)
             env_params["observation_space"] = observation_space
         except AttributeError:
             pass
-        
+
         policy_params = {
             "gamma": self.gamma,
             "max_episodes": self.max_episodes,
@@ -481,67 +532,66 @@ class PPO(BaseRLModel):
             "actor_lr": self.actor_lr,
             "critic_lr": self.critic_lr,
             "seed": self.seed,
-
-            
         }
         return {
-            "env":{
-                "name":env_name,
-                "params":env_params
-                } ,
-            "policy":{
-                "name":agent_name,
-                "params":policy_params
-                
-            }
+            "env": {"name": env_name, "params": env_params},
+            "policy": {"name": agent_name, "params": policy_params},
         }
-        
+
     def save(self, path=None):
-        """
-        Сохраняет модель PyTorch в указанной директории. Если путь не указан,
-        создает директорию с текущей датой и временем.
-        
+        """Сохраняет модель PPO в указанной директории.
+
+        Если путь не указан, создает директорию с текущей датой и временем.
+
         Args:
             path (str, optional): Путь, где будет сохранена модель. Если None,
-            создается директория с текущей датой и временем.
-            
-        Returns:
-            None
+                                создается директория с текущей датой и временем.
         """
         if path is None:
             path = Path.cwd()
         else:
             path = Path(path)
         # Текущая дата и время в формате 'YYYY-MM-DD_HH-MM-SS'
-        date_str = datetime.datetime.now().strftime('%b%d_%H-%M-%S')
-        date_str =date_str+"_"+self.__class__.__name__
+        date_str = datetime.datetime.now().strftime("%b%d_%H-%M-%S")
+        date_str = date_str + "_" + self.__class__.__name__
         # Создание пути в текущем каталоге с датой и временем
-        
+
         config_path = path / date_str / "config.json"
         actor_path = path / date_str / "actor.pth"
         critic_path = path / date_str / "critic.pth"
-        
+
         # Создание директории, если она не существует
         actor_path.parent.mkdir(parents=True, exist_ok=True)
         # Сохранение модели
         config = self.get_param_env()
-        with open(config_path, "w") as outfile: 
+        with open(config_path, "w") as outfile:
             json.dump(config, outfile)
         torch.save(self.actor, actor_path)
         torch.save(self.critic, critic_path)
-    
+
     @classmethod
     def __load(cls, path):
+        """Загружает модель PPO из указанной директории.
+
+        Args:
+            path (str or Path): Путь к директории с сохраненной моделью.
+
+        Returns:
+            PPO: Загруженный экземпляр модели PPO.
+
+        Raises:
+            TheEnvironmentDoesNotMatch: Если тип агента не соответствует ожидаемому.
+        """
         path = Path(path)
         config_path = path / "config.json"
         critic_path = path / "critic.pth"
         actor_path = path / "actor.pth"
-        with open(config_path, 'r') as f:
+        with open(config_path, "r") as f:
             config = json.load(f)
         class_name = cls.__name__
         module_name = cls.__module__
         agent_name = f"{module_name}.{class_name}"
-        
+
         if config["policy"]["name"] != agent_name:
             raise TheEnvironmentDoesNotMatch
         if "tensoraerospace" in config["env"]["name"]:
@@ -552,9 +602,19 @@ class PPO(BaseRLModel):
         new_agent.critic = torch.load(critic_path)
         new_agent.actor = torch.load(actor_path)
         return new_agent
-        
+
     @classmethod
     def from_pretrained(cls, repo_name, access_token=None, version=None):
+        """Загружает предобученную модель из локального пути или Hugging Face Hub.
+
+        Args:
+            repo_name (str): Имя репозитория или локальный путь к модели.
+            access_token (str, optional): Токен доступа для Hugging Face Hub.
+            version (str, optional): Версия модели для загрузки.
+
+        Returns:
+            PPO: Загруженный экземпляр модели PPO.
+        """
         path = Path(repo_name)
         if path.exists():
             new_agent = cls.__load(path)

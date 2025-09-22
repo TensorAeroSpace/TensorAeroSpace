@@ -1,319 +1,236 @@
 Пример использования MPC
 ===========================================================
-.. container:: cell code
 
-   .. code:: python
+В этом примере мы рассмотрим, как использовать нейросетевую модель для управления динамической системой. Мы создадим модель, сгенерируем данные, обучим модель и применим её для управления с использованием метода Model Predictive Control (MPC).
 
-      import numpy as np
-      import gymnasium as gym
-      import torch
-      from tensoraerospace.envs.f16.linear_longitudial import LinearLongitudinalF16
-      from tensoraerospace.utils import generate_time_period, convert_tp_to_sec_tp
-      from tensoraerospace.signals.standart import unit_step, sinusoid
-      from tensoraerospace.benchmark.function import static_error
-      from tensoraerospace.agent.mpc.stochastic import Net
-      from tensoraerospace.agent.mpc.gradient import MPCOptimizationAgent
-      from tensoraerospace.signals.random import full_random_signal
 
-.. container:: cell code
+Подготовка окружения
+--------------------
 
-   .. code:: python
-
-      # Инициализация списка для хранения исторических данных
-      hist = []
-      dt = 0.1  # Интервал дискретизации времени
-
-      # Генерация временного периода с заданным интервалом дискретизации
-      tp = generate_time_period(tn=180, dt=dt) 
-
-      # Конвертация временного периода в секунды
-      tps = convert_tp_to_sec_tp(tp, dt=dt)
-
-      # Вычисление общего количества временных шагов
-      number_time_steps = len(tp) 
-
-      # Создание заданного сигнала с использованием единичного шага
-      # reference_signals = np.reshape(unit_step(degree=0, tp=tp, time_step=20, output_rad=True), [1, -1])
-      reference_signals = np.reshape(np.deg2rad(sinusoid(amplitude=0.004, tp=tp, frequency=1)), [1, -1])
-
-      # Создание среды симуляции, задание временных шагов, начального состояния, заданного сигнала и отслеживаемых состояний
-      env = gym.make('LinearLongitudinalF16-v0',
-                      number_time_steps=number_time_steps, 
-                      initial_state=[[0],[0]],
-                      reference_signal=reference_signals,
-                      state_space = [ "theta", "q",],
-                      output_space = ["theta",  "q",],
-                      tracking_states=["theta"])
-
-      # Сброс среды к начальному состоянию
-      state, info = env.reset()
-
-   .. container:: output stream stderr
-
-      ::
-
-         /Users/asmazaev/Projects/TensorAeroSpace/.venv/lib/python3.11/site-packages/gymnasium/utils/passive_env_checker.py:159: UserWarning: WARN: The obs returned by the `reset()` method is not within the observation space.
-           logger.warn(f"{pre} is not within the observation space.")
-
-.. container:: cell code
-
-   .. code:: python
-
-      model = Net(env.action_space.shape[0], env.observation_space.shape[0])
-
-.. container:: cell code
-
-   .. code:: python
+Сначала импортируем необходимые библиотеки:
 
-      def cost(next_state, action, reference_signals, step):
-          # Извлечение состояния системы
-          theta, omega_z = np.rad2deg(next_state[0].detach().numpy())
-          
-          # Получение эталонного сигнала на данном шаге
-          theta_ref = np.rad2deg(reference_signals[0][step])
-          
-          # Расчёт ошибки тангажа
-          pitch_error = (theta - theta_ref) ** 2
-              
-          return (pitch_error ** 2 + 0.1 * omega_z ** 2 + 0.0001 * (action ** 2))
+.. code:: ipython3
 
-.. container:: cell code
+    import numpy as np
+    import gymnasium as gym
+    import torch
+    from tqdm import tqdm
 
-   .. code:: python
+    from tensoraerospace.envs.f16.linear_longitudial import LinearLongitudinalF16
+    from tensoraerospace.utils import generate_time_period, convert_tp_to_sec_tp
+    from tensoraerospace.signals.standart import unit_step, sinusoid
+    from tensoraerospace.benchmark.function import static_error
+    from tensoraerospace.agent.mpc.gradient import MPCOptimizationAgent
+    from tensoraerospace.signals.random import full_random_signal
+    from tensoraerospace.agent.pid import PID
 
-      agent = MPCOptimizationAgent(gamma=0.99, action_dim=1, observation_dim=2, model=model, cost_function=cost, env=env, lr=1e-5, criterion=torch.nn.MSELoss())
+    dt = 0.01  # Дискретизация
+   tp = generate_time_period(tn=20, dt=dt)
+   tps = convert_tp_to_sec_tp(tp, dt=dt)
+   number_time_steps = len(tp) # Количество временных шагов
+   reference_signals = np.reshape(unit_step(degree=5, tp=tp, time_step=10, output_rad=True), [1, -1]) # Заданный сигнал
 
-.. container:: cell code
+   env = gym.make('LinearLongitudinalB747-v0',
+                  number_time_steps=number_time_steps, 
+                  initial_state=[[0],[0],[0],[0]],
+                  reference_signal = reference_signals)
+   state, info = env.reset()
 
-   .. code:: python
 
-      from tqdm import tqdm
+Создание модели динамики
+------------------------
 
-      # Создаем исследовательские сигналы для обучения модели
+Для моделирования системы создадим нейросетевую модель:
 
-      exploration_signals = [
-          np.reshape(np.deg2rad(sinusoid(amplitude=0.01, tp=tp, frequency=5)), [1, -1]), 
-          np.reshape(np.deg2rad(sinusoid(amplitude=0.03, tp=tp, frequency=5)), [1, -1]), 
-          np.reshape(np.deg2rad(sinusoid(amplitude=-0.03, tp=tp, frequency=5)), [1, -1]),
-          np.reshape(np.deg2rad(sinusoid(amplitude=0.03, tp=tp, frequency=10)), [1, -1]), 
-          np.reshape(np.deg2rad(sinusoid(amplitude=-0.03, tp=tp, frequency=10)), [1, -1]), 
-          np.reshape(np.deg2rad(sinusoid(amplitude=0.01, tp=tp, frequency=10)), [1, -1]), 
-          np.reshape(np.deg2rad(sinusoid(amplitude=-0.01, tp=tp, frequency=10)), [1, -1]), 
-          np.reshape(np.deg2rad(sinusoid(amplitude=0.01, tp=tp, frequency=1)), [1, -1]), 
-          np.reshape(np.deg2rad(sinusoid(amplitude=-0.01, tp=tp, frequency=1)), [1, -1]), 
-          np.reshape(np.deg2rad(sinusoid(amplitude=-0.01, tp=tp, frequency=25)), [1, -1]), 
-          np.reshape(np.deg2rad(sinusoid(amplitude=0.01, tp=tp, frequency=25)), [1, -1]), 
-          np.reshape(np.deg2rad(sinusoid(amplitude=0.02, tp=tp, frequency=5)), [1, -1]), 
 
-          np.reshape(np.deg2rad(sinusoid(amplitude=0.004, tp=tp, frequency=1)), [1, -1]), 
-          np.reshape(np.deg2rad(sinusoid(amplitude=-0.004, tp=tp, frequency=1)), [1, -1]), 
-          np.reshape(np.deg2rad(sinusoid(amplitude=-0.008, tp=tp, frequency=1)), [1, -1]),
-          np.reshape(np.deg2rad(sinusoid(amplitude=0.008, tp=tp, frequency=1)), [1, -1]),
-          np.reshape(np.deg2rad(sinusoid(amplitude=-0.009, tp=tp, frequency=1)), [1, -1]),
-          np.reshape(np.deg2rad(sinusoid(amplitude=0.009, tp=tp, frequency=1)), [1, -1]),
-          np.reshape(np.deg2rad(sinusoid(amplitude=0.005, tp=tp, frequency=1)), [1, -1]),
-          np.reshape(np.deg2rad(sinusoid(amplitude=-0.005, tp=tp, frequency=1)), [1, -1]),
-          np.reshape(np.deg2rad(sinusoid(amplitude=0.01, tp=tp, frequency=1)), [1, -1]), 
-          np.reshape(np.deg2rad(sinusoid(amplitude=-0.01, tp=tp, frequency=1)), [1, -1]), 
-          
-          np.reshape(np.deg2rad(sinusoid(amplitude=0.0089, tp=tp, frequency=25)), [1, -1]), 
-          np.reshape(np.deg2rad(sinusoid(amplitude=-0.0089, tp=tp, frequency=25)), [1, -1]),
-          np.reshape(np.deg2rad(sinusoid(amplitude=0.008, tp=tp, frequency=25)), [1, -1]),
-          np.reshape(np.deg2rad(sinusoid(amplitude=-0.008, tp=tp, frequency=25)), [1, -1]),
-          np.reshape(np.deg2rad(sinusoid(amplitude=-0.004, tp=tp, frequency=25)), [1, -1]),
-          np.reshape(np.deg2rad(sinusoid(amplitude=0.004, tp=tp, frequency=25)), [1, -1]),
-          np.reshape(np.deg2rad(sinusoid(amplitude=0.009, tp=tp, frequency=25)), [1, -1]),
-          np.reshape(np.deg2rad(sinusoid(amplitude=-0.009, tp=tp, frequency=25)), [1, -1]),
-          
-          np.reshape(np.deg2rad(sinusoid(amplitude=0.0085, tp=tp, frequency=25)), [1, -1]),
-          np.reshape(np.deg2rad(sinusoid(amplitude=-0.0085, tp=tp, frequency=25)), [1, -1]),
+.. code:: ipython3
 
+    import torch
+    import torch.nn as nn
 
-          np.reshape(np.deg2rad(sinusoid(amplitude=0.04, tp=tp, frequency=1)), [1, -1]), 
+    class DynamicsModel(nn.Module):
+        def __init__(self, state_dim=4, control_dim=1, hidden_dim=64):
+            super().__init__()
+            self.network = nn.Sequential(
+                nn.Linear(state_dim + control_dim, hidden_dim),
+                nn.ReLU(),
+                nn.Linear(hidden_dim, hidden_dim),
+                nn.ReLU(),
+                nn.Linear(hidden_dim, hidden_dim),
+                nn.ReLU(),
+                nn.Linear(hidden_dim, state_dim)
+            )
 
-          np.reshape(np.deg2rad(sinusoid(amplitude=0, tp=tp, frequency=0)), [1, -1]),
-          np.reshape(np.deg2rad(sinusoid(amplitude=0, tp=tp, frequency=0)), [1, -1]),
-          np.reshape(np.deg2rad(sinusoid(amplitude=0.004, tp=tp, frequency=25)), [1, -1]),
-          np.reshape(np.deg2rad(sinusoid(amplitude=0.005, tp=tp, frequency=25)), [1, -1]),
-          np.reshape(np.deg2rad(unit_step(degree=12, tp=tp, time_step=12)), [1, -1]),
-          [None],[None],[None],
-      ]
-      states = np.array([[0.,    0.]])
-      actions = np.array([0])
-      next_states = np.array([[0.,   0.]])
-      np.random.shuffle(exploration_signals)
+        def forward(self, x):
+            return self.network(x)
 
-      for ref_signal in tqdm(exploration_signals):
-          sin_states, sin_actions, sin_next_states = agent.collect_data(num_episodes=40, control_exploration_signal=ref_signal[0])
-          states = np.append(states, sin_states, 0)
-          actions = np.append(actions, sin_actions, 0)
-          next_states = np.append(next_states, sin_next_states, 0)
+Инициализация модели и данных
+-----------------------------
 
-   .. container:: output stream stderr
+Инициализируем модель и зададим параметры системы:
 
-      ::
+.. code:: ipython3
 
-         100%|██████████| 41/41 [01:09<00:00,  1.69s/it]
+    from tensoraerospace.agent.mpc.dynamics import DynamicsNN
 
-.. container:: cell code
+    state_ranges = [(-10.0, 10.0), (-4.5, 4.5), (-2.3, 2.3), (-15.0, 15.0)]
+    
+    A = torch.tensor(env.unwrapped.model.A, dtype=torch.float32)
+    B = torch.tensor(env.unwrapped.model.B, dtype=torch.float32)
 
-   .. code:: python
+    
+    dynamics_nn = DynamicsNN(DynamicsModel(hidden_dim=128))
 
-      agent.train_model(states, actions, next_states, epochs=1, batch_size=64)
+Генерация тренировочных данных:
 
-   .. container:: output stream stderr
+.. code:: ipython3
 
-      ::
+    states, controls, next_states = dynamics_nn.generate_training_data(
+        num_samples=300_000,
+        state_dim=4,
+        control_dim=1,
+        state_ranges=state_ranges,
+        control_ranges=None,
+        control_signals=["sine", "step", "sine_09", "sine_07", 
+                         "sine_05_low_freq", "gaussian_noise",
+                         "linear_up", "linear_down"],
+        A=A,
+        B=B)
 
-         Loss 2.2726531767602864e-07: 100%|██████████| 1/1 [00:38<00:00, 38.23s/it]
+Обучение модели
+---------------
 
-.. container:: cell code
+Обучим модель на сгенерированных данных:
 
-   .. code:: python
 
-      states, actions, next_states = agent.collect_data(num_episodes=10,
-                  control_exploration_signal=np.reshape(full_random_signal(0,0.1,180, (-0.5, 0.5), (-5, 5)), [1, -1])[0])
+.. code:: ipython3
 
-   .. container:: output stream stderr
+    dynamics_nn.train_and_validate(
+        torch.tensor(states, dtype=torch.float32),
+        torch.tensor(controls, dtype=torch.float32),
+        torch.tensor(next_states, dtype=torch.float32),
+        epochs=400,
+        batch_size=1024,
+        verbose_epoch=20)
 
-      ::
+.. parsed-literal::
 
-         100%|██████████| 10/10 [00:00<00:00, 26.99it/s]
+    Подготовка данных
+    Загрузка данных
+    Начало обучения
 
-.. container:: cell code
+.. parsed-literal::
 
-   .. code:: python
+    100%|██████████| 400/400 [16:05<00:00, 2.41s/it]
 
-      agent.test_network(states, actions, next_states)
+Применение MPC для управления
+-----------------------------
 
-   .. container:: output stream stdout
+Теперь применим обученную модель для управления системой с помощью MPC:
 
-      ::
+.. code:: ipython3
 
-         Test MSE Loss: 2.5835663109319285e-05
+    import matplotlib.pyplot as plt
+    from tensoraerospace.agent.mpc.base import AircraftMPC
 
-.. container:: cell code
+    mpc = AircraftMPC(dynamics_nn.model, horizon=2, dt=0.1)
 
-   .. code:: python
 
-      # Инициализация списка для хранения исторических данных
-      hist = []
-      dt = 0.1  # Интервал дискретизации времени
 
-      # Генерация временного периода с заданным интервалом дискретизации
-      tp = generate_time_period(tn=60, dt=dt) 
+Параметры симуляции:
 
-      # Конвертация временного периода в секунды
-      tps = convert_tp_to_sec_tp(tp, dt=dt)
+.. code:: ipython3
 
-      # Вычисление общего количества временных шагов
-      number_time_steps = len(tp) 
+    simulation_time = 20  # Время симуляции (в секундах)
+    dt = 0.1
+    steps = int(simulation_time / dt)
+    
+    x0 = np.array([0, 0, 0, 0])
+    states = [x0]
+    controls = []
 
-      # Создание заданного сигнала с использованием единичного шага
-      # reference_signals = np.reshape(unit_step(degree=0, tp=tp, time_step=20, output_rad=True), [1, -1])
-      reference_signals = np.reshape(np.deg2rad(sinusoid(amplitude=0.0005, tp=tp, frequency=1)), [1, -1])
+Генерация опорной траектории:
 
-      # Создание среды симуляции, задание временных шагов, начального состояния, заданного сигнала и отслеживаемых состояний
-      env = gym.make('LinearLongitudinalF16-v0',
-                      number_time_steps=number_time_steps, 
-                      initial_state=[[0],[0]],
-                      reference_signal=reference_signals,
-                      state_space = [ "theta", "q",],
-                      output_space = [  "theta",  "q",],
-                      tracking_states=["theta"])
+.. code:: ipython3
 
-      # Сброс среды к начальному состоянию
-      state, info = env.reset()
+    time = np.arange(steps + mpc.horizon + 1) * dt
+    theta_ref = unit_step(degree=2, tp=time, time_step=dt)
 
+Цикл управления:
 
-      rollout, horizon = 1,1
-      for episode in range(1):
-          state, info = env.reset()
-          episode_reward = 0
-          for step in tqdm(range(number_time_steps-2)):
-              action, cost = agent.choose_action_ref(state, rollout, horizon, reference_signals, step, optimization_steps=100)
-              state, reward, terminated, truncated, info= env.step(action)
-              state = state.reshape([1, -1])[0]
-              done = terminated or truncated
-              episode_reward += reward
-              if done:
-                  break
-          print('rollout: %d, horizon: %d, episode: %d, reward: %d' % (rollout, horizon, episode, episode_reward))
+.. code:: ipython3
 
-   .. container:: output stream stderr
+    for i in tqdm(range(steps)):
+        current_ref = theta_ref[i:i + mpc.horizon + 1]
+        u_opt, predicted_states = mpc.optimize_control(states[-1], current_ref)
+        next_states = A @ torch.tensor(states[-1], dtype=torch.float32) + B @ torch.tensor(u_opt)
+        
+        controls.append(u_opt)
+        states.append(next_states.numpy())
 
-      ::
+Визуализация результатов симуляции
+----------------------------------
 
-         100%|█████████▉| 598/599 [00:12<00:00, 49.60it/s]
+.. code:: ipython3
 
-   .. container:: output stream stdout
+    time_array = np.arange(0, simulation_time, dt)
+    
+    plt.figure(figsize=(10, 6))
+    
+    plt.subplot(2, 1, 1)
+    plt.plot(time_array, [s[3] for s in states[:-1]], label="Actual Theta")
+    plt.plot(time_array, theta_ref[:steps], label="Reference Theta")
+    plt.ylabel("Theta")
+    plt.legend()
+    
+    plt.subplot(2, 1, 2)
+    plt.plot(time_array, controls)
+    plt.xlabel("Time (s)")
+    plt.ylabel("Control (u)")
+    
+    plt.tight_layout()
+    plt.show()
 
-      ::
+Оценка качества управления
+---------------------------
 
-         rollout: 1, horizon: 1, episode: 0, reward: -1
+.. code:: ipython3
 
-.. container:: cell code
+    from tensoraerospace.benchmark import ControlBenchmark
+    
+    bench = ControlBenchmark()
+    
+    res = bench.becnchmarking_one_step(
+        theta_ref[:-3],
+        np.array([float(s[3]) for s in states[:-1]]),
+        settling_threshold=1.9,
+        dt=dt)
 
-   .. code:: python
+.. code:: ipython3
 
-      env.unwrapped.model.plot_transient_process('theta', tps, reference_signals[0], to_deg=True, figsize=(15,4))
+    print("Статическая ошибка: ", res['static_error'])
+    print("Время переходного процесса: ", res['settling_time'], "сек")
+    print("Степень затухания: ", res['damping_degree'])
+    print("Перерегулирование: ", res['overshoot'])
 
-   .. container:: output display_data
+.. parsed-literal::
 
-      .. image:: ./e97b501f4cfa1738d94afd2db40f737178489052.png
+   Статическая ошибка:  0.03220049142837533
+   Время переходного процесса:  0.30000000000000004 сек
+   Степень затухания:  0.0014316554503416693
+   Перерегулирование:  5.013108253479004
 
-.. container:: cell code
+Визуализация результатов оценки качества управления:
 
-   .. code:: python
+.. code:: ipython3
 
-      env.model.plot_control('ele', tps, to_deg=True, figsize=(15,4))
+   bench.plot(
+       theta_ref[:-3],
+       np.array([float(s[3]) for s in states[:-1]]),
+       settling_threshold=1.9,
+       dt=dt,
+       time=time,
+       figsize=(15,5))
 
-   .. container:: output stream stderr
-
-      ::
-
-         No artists with labels found to put in legend.  Note that artists whose label start with an underscore are ignored when legend() is called with no argument.
-
-   .. container:: output display_data
-
-      .. image:: ./b848f5ee308503f2187ee01927d01166fe3e3dcd.png
-
-.. container:: cell code
-
-   .. code:: python
-
-      env.unwrapped.model.plot_state('theta', tps, figsize=(15,4), to_deg=True)
-
-   .. container:: output display_data
-
-      .. image:: ./94fa6641e66ac11f94f4dfb0d9f27889f4018d59.png
-
-.. container:: cell code
-
-   .. code:: python
-
-      env.unwrapped.model.plot_state('q', tps, figsize=(15,4), to_deg=True)
-
-   .. container:: output display_data
-
-      .. image:: ./b76a9a0c720ecd57ad1cfd5b4dcc4e60f3ae38ae.png
-
-.. container:: cell code
-
-   .. code:: python
-
-      st_e = static_error(reference_signals[0],env.unwrapped.model.get_state("theta", to_deg=True))
-      print("Статическая ошибка", st_e, "градуса")
-
-   .. container:: output stream stdout
-
-      ::
-
-         Статическая ошибка -0.26992092291357217 градуса
-
-.. container:: cell code
-
-   .. code:: python
-
-      # Сохраняем агента
-      agent.save()
+.. image:: output_10_0.png
+```

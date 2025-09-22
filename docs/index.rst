@@ -47,6 +47,8 @@ Github репозиторий: https://github.com/TensorAeroSpace/TensorAeroSpac
    agent/a2c_narx
    agent/ppo
    agent/sac
+   agent/ddpg
+   agent/gail
    optimization/optuna_based.rst
    benchmark/metrics.rst
    benchmark/bench.rst
@@ -63,7 +65,7 @@ Github репозиторий: https://github.com/TensorAeroSpace/TensorAeroSpac
    example/optimization/example_optimization.rst
    example/agent/a2c_narx/example-narx.rst
    example/agent/mpc/example_mpc.rst
-   example/agent/mpc/example_mpc_stochastic.rst
+   example/agent/mpc/example_transformers.rst
    example/failure/ihdp-failure.rst
    example/simulink/sim_pyth.rst
    example/simulink/your_sim.rst
@@ -83,9 +85,6 @@ Github репозиторий: https://github.com/TensorAeroSpace/TensorAeroSpac
    lesson/5simulinkmodel.rst
    lesson/6dllgen.rst
 
-
-Indices and tables
-==================
 
 * :ref:`genindex`
 * :ref:`modindex`

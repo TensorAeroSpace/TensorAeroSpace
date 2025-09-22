@@ -7,8 +7,17 @@ LOG_SIG_MAX = 2
 LOG_SIG_MIN = -20
 epsilon = 1e-6
 
+
 # Initialize Policy weights
 def weights_init_(m):
+    """Инициализирует веса политики.
+
+    Применяет инициализацию Xavier для весов и константную инициализацию для смещений
+    линейных слоев.
+
+    Args:
+        m (nn.Module): Модуль нейронной сети для инициализации.
+    """
     if isinstance(m, nn.Linear):
         torch.nn.init.xavier_uniform_(m.weight, gain=1)
         torch.nn.init.constant_(m.bias, 0)
@@ -27,6 +36,7 @@ class ValueNetwork(nn.Module):
         linear3 (nn.Linear): Третий линейный слой.
 
     """
+
     def __init__(self, num_inputs, hidden_dim):
         super(ValueNetwork, self).__init__()
 
@@ -69,6 +79,7 @@ class QNetwork(nn.Module):
         linear6 (nn.Linear): Третий линейный слой для Q2.
 
     """
+
     def __init__(self, num_inputs, num_actions, hidden_dim):
         super(QNetwork, self).__init__()
 
@@ -96,7 +107,7 @@ class QNetwork(nn.Module):
 
         """
         xu = torch.cat([state, action], 1)
-        
+
         x1 = F.relu(self.linear1(xu))
         x1 = F.relu(self.linear2(x1))
         x1 = self.linear3(x1)
@@ -126,9 +137,10 @@ class GaussianPolicy(nn.Module):
         action_bias (torch.Tensor): Смещение действий.
 
     """
+
     def __init__(self, num_inputs, num_actions, hidden_dim, action_space=None):
         super(GaussianPolicy, self).__init__()
-        
+
         self.linear1 = nn.Linear(num_inputs, hidden_dim)
         self.linear2 = nn.Linear(hidden_dim, hidden_dim)
 
@@ -138,13 +150,15 @@ class GaussianPolicy(nn.Module):
         self.apply(weights_init_)
 
         if action_space is None:
-            self.action_scale = torch.tensor(1.)
-            self.action_bias = torch.tensor(0.)
+            self.action_scale = torch.tensor(1.0)
+            self.action_bias = torch.tensor(0.0)
         else:
             self.action_scale = torch.FloatTensor(
-                (action_space.high - action_space.low) / 2.)
+                (action_space.high - action_space.low) / 2.0
+            )
             self.action_bias = torch.FloatTensor(
-                (action_space.high + action_space.low) / 2.)
+                (action_space.high + action_space.low) / 2.0
+            )
 
     def forward(self, state):
         """Прямой проход нейронной сети для генерации среднего значения и логарифма стандартного отклонения.
@@ -219,6 +233,7 @@ class DeterministicPolicy(nn.Module):
         action_bias (torch.Tensor): Смещение действий.
 
     """
+
     def __init__(self, num_inputs, num_actions, hidden_dim, action_space=None):
         super(DeterministicPolicy, self).__init__()
         self.linear1 = nn.Linear(num_inputs, hidden_dim)
@@ -231,13 +246,15 @@ class DeterministicPolicy(nn.Module):
 
         # Масштабирование действий
         if action_space is None:
-            self.action_scale = 1.
-            self.action_bias = 0.
+            self.action_scale = 1.0
+            self.action_bias = 0.0
         else:
             self.action_scale = torch.FloatTensor(
-                (action_space.high - action_space.low) / 2.)
+                (action_space.high - action_space.low) / 2.0
+            )
             self.action_bias = torch.FloatTensor(
-                (action_space.high + action_space.low) / 2.)
+                (action_space.high + action_space.low) / 2.0
+            )
 
     def forward(self, state):
         """Прямой проход нейронной сети для генерации среднего значения.
@@ -265,10 +282,10 @@ class DeterministicPolicy(nn.Module):
 
         """
         mean = self.forward(state)
-        noise = self.noise.normal_(0., std=0.1)
+        noise = self.noise.normal_(0.0, std=0.1)
         noise = noise.clamp(-0.25, 0.25)
         action = mean + noise
-        return action, torch.tensor(0.), mean
+        return action, torch.tensor(0.0), mean
 
     def to(self, device):
         """Перемещение модели на указанное устройство.

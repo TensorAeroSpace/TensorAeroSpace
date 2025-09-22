@@ -1,3 +1,12 @@
+"""
+Модуль для моделирования самолета Ultrastick-25e.
+
+Этот модуль содержит реализацию среды Gymnasium для обучения агентов управления
+продольным движением самолета Ultrastick-25e. Среда предоставляет интерфейс для
+взаимодействия с моделью самолета, включая управление углом тангажа и угловой
+скоростью тангажа через стабилизаторы.
+"""
+
 import gymnasium as gym
 import numpy as np
 from gymnasium import spaces
@@ -18,14 +27,18 @@ class LinearLongitudinalUltrastick(gym.Env):
         output_space (any): Пространство полного выхода (с учетом помех)
         reward_func (any): Функция вознаграждения (статус WIP)
     """
-    def __init__(self, initial_state: any,
-                 reference_signal,
-                 number_time_steps,
-                 tracking_states=['theta', 'q'],
-                 state_space=['theta', 'q'],
-                 control_space=['stab'],
-                 output_space=['theta', 'q'],
-                 reward_func=None):
+
+    def __init__(
+        self,
+        initial_state: any,
+        reference_signal,
+        number_time_steps,
+        tracking_states=["theta", "q"],
+        state_space=["theta", "q"],
+        control_space=["stab"],
+        output_space=["theta", "q"],
+        reward_func=None,
+    ):
         self.max_action_value = 25.0
         self.initial_state = initial_state
         self.number_time_steps = number_time_steps
@@ -39,16 +52,28 @@ class LinearLongitudinalUltrastick(gym.Env):
             self.reward_func = reward_func
         else:
             self.reward_func = self.reward
-            
-        self.model = Ultrastick(initial_state, number_time_steps=number_time_steps,
-                                     selected_state_output=output_space, t0=0)
-        self.indices_tracking_states = [state_space.index(tracking_states[i]) for i in range(len(tracking_states))]
-        
-        self.action_space = spaces.Box(low=-25, high=25, shape=(len(control_space),1), dtype=np.float32)
-        self.observation_space = spaces.Box(low=-np.inf, high=np.inf, shape=(len(state_space),1), dtype=np.float32)
+
+        self.model = Ultrastick(
+            initial_state,
+            number_time_steps=number_time_steps,
+            selected_state_output=output_space,
+            t0=0,
+        )
+        self.indices_tracking_states = [
+            state_space.index(tracking_states[i]) for i in range(len(tracking_states))
+        ]
+
+        self.action_space = spaces.Box(
+            low=-25, high=25, shape=(len(control_space), 1), dtype=np.float32
+        )
+        self.observation_space = spaces.Box(
+            low=-np.inf, high=np.inf, shape=(len(state_space), 1), dtype=np.float32
+        )
 
         self.ref_signal = reference_signal
-        self.model.initialise_system(x0=initial_state, number_time_steps=number_time_steps)
+        self.model.initialise_system(
+            x0=initial_state, number_time_steps=number_time_steps
+        )
         self.number_time_steps = number_time_steps
         self.current_step = 0
         self.done = False
@@ -66,10 +91,10 @@ class LinearLongitudinalUltrastick(gym.Env):
             reward (float): Оценка управления
         """
         return np.abs(state[0] - ref_signal[:, ts])
-    
+
     def _get_info(self):
         return {}
-    
+
     def step(self, action: np.ndarray):
         """Выполнения шага моделирования
 
@@ -82,30 +107,47 @@ class LinearLongitudinalUltrastick(gym.Env):
             done (bool): Статус моделирования, завершено или нет
             logging (any): Дополнительная информацию (не используется)
         """
-        if action[0]>self.max_action_value:
+        if action[0] > self.max_action_value:
             action[0] = self.max_action_value
-        if action[0]<self.max_action_value*-1:
-            action[0]= self.max_action_value*-1
+        if action[0] < self.max_action_value * -1:
+            action[0] = self.max_action_value * -1
         self.current_step += 1
         next_state = self.model.run_step(action)
-        reward = self.reward_func(next_state[self.indices_tracking_states], self.ref_signal, self.current_step)
+        reward = self.reward_func(
+            next_state[self.indices_tracking_states], self.ref_signal, self.current_step
+        )
         self.done = self.current_step >= self.number_time_steps - 2
         info = self._get_info()
-        return next_state.reshape([1,-1])[0], reward, self.done, False, info
+        return next_state.reshape([-1, 1]), reward, self.done, False, info
 
-    def reset(self):
+    def reset(self, seed=None, options=None):
         """Восстановление среды моделирования в начальные условия
+
+        Args:
+            seed (int, optional): Seed для генератора случайных чисел
+            options (dict, optional): Дополнительные опции для инициализации
         """
+        super().reset(seed=seed)
+
         self.current_step = 0
         self.done = False
         self.model = None
-        self.model = Ultrastick(self.initial_state, number_time_steps=self.number_time_steps,
-                                     selected_state_output=self.output_space, t0=0)
+        self.model = Ultrastick(
+            self.initial_state,
+            number_time_steps=self.number_time_steps,
+            selected_state_output=self.output_space,
+            t0=0,
+        )
         self.ref_signal = self.reference_signal
-        self.model.initialise_system(x0=self.initial_state, number_time_steps=self.number_time_steps)
+        self.model.initialise_system(
+            x0=self.initial_state, number_time_steps=self.number_time_steps
+        )
         info = self._get_info()
-        return np.array(self.initial_state, dtype=np.float64)[self.model.selected_state_index].reshape([1,-1])[0], info
-    
+        observation = np.array(self.initial_state, dtype=np.float32)[
+            self.model.selected_state_index
+        ].reshape([-1, 1])
+        return observation, info
+
     def render(self):
         """Визуальное отображение действий в среде. В статусе WIP
         Raises:

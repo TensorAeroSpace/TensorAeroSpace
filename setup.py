@@ -1,3 +1,10 @@
+"""
+Конфигурация установки пакета TensorAeroSpace.
+
+Этот файл содержит настройки для установки пакета TensorAeroSpace,
+включая зависимости, метаданные и параметры сборки.
+"""
+
 from setuptools import find_packages, setup
 
 
