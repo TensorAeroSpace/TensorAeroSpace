@@ -1,120 +1,213 @@
-# Ракета-Носитель ELV
+# Ракета‑носитель ELV — продольная динамика
 
-ELV(Expendable launch vehicle) - ракета-носитель, предназначенная для выведения полезной нагрузки в космос.
+ELV (Expendable Launch Vehicle) — ракета‑носитель для выведения полезной нагрузки на орбиту. Реализован продольный канал полёта как линейная модель в пространстве состояний и совместимая среда Gymnasium.
 
-![Expendable launch vehicle](img/evl.png){ width=400 }
+![Expendable launch vehicle](img/evl.png){ width=800 }
 
-## Математическая модель
+<div class="grid cards" markdown>
 
-Объект управления построен в пространстве состояний как и большинство объектов управления в данной библиотеке. Значения матрицы пространства состояний взяты из статьи ниже.
+-   :material-rocket-launch-outline: **Быстрый старт**
 
-$$\dot{x} = Ax + Bu$$
+    Запустите среду или модель за минуты.
 
-$$y = Cx + Du$$
+    [:octicons-arrow-right-24: К примеру](#быстрый-старт)
 
-Так как объект управления представляет собой объект без внутренних возмущающих процессов выход системы $y$ не учитывается в процессе моделирования поскольку матрицы $C$ и $D$ представляют собой диагональную матрицу и нулевой вектор.
+-   :material-cog-outline: **API модели**
 
-$$\begin{bmatrix}
+    Документация Python‑класса модели ELV.
+
+    [:octicons-arrow-right-24: К API](#python-api)
+
+-   :material-gamepad-variant-outline: **Среда Gymnasium**
+
+    Готовая среда для RL‑агентов.
+
+    [:octicons-arrow-right-24: К среде](#python-api)
+
+-   :material-book-open-variant: **Теория**
+
+    Уравнения состояния и численные параметры.
+
+    [:octicons-arrow-right-24: К модели](#математическая-модель)
+
+</div>
+
+## Как устроен объект управления
+
+Модель задана в пространстве состояний:
+
+\[\dot{x} = A x + B u, \quad y = C x + D u\]
+
+Где:
+
+\[
+ x = \begin{bmatrix} w & q & \theta \end{bmatrix}^{\top}, \quad
+ u_{in} = \eta
+\]
+
+Типовая структура матриц:
+
+\[
+\begin{bmatrix}
 \dot{w} \\
 \dot{q} \\
-\dot{\theta} \\
+\dot{\theta}
 \end{bmatrix}
 =
 \begin{bmatrix}
 z_w & z_q & z_{\theta} \\
 m_w & m_q & m_{\theta} \\
-0 & 0 & 1 \\
+0 & 0 & 1
 \end{bmatrix}
-\begin{bmatrix}
-w \\
-q \\
-\theta \\
-\end{bmatrix}
-+
-\begin{bmatrix}
-z_{\eta} \\
-m_{\eta} \\
-0
-\end{bmatrix}
-\eta$$
+\begin{bmatrix} w \\ q \\ \theta \end{bmatrix}
+ +
+\begin{bmatrix} z_{\eta} \\ m_{\eta} \\ 0 \end{bmatrix} \eta
+\]
 
-Поэтому объект управления представлен в следующем виде
+=== "Переменные"
 
-$$\begin{bmatrix}
+    - **w**: нормальная скорость, м/с
+    - **q**: угловая скорость тангажа, рад/с
+    - **θ**: тангаж, рад
+    - **η**: управляющее воздействие (орган тангажа), рад
+
+=== "Коэффициенты"
+
+    - **z_w, z_q, z_θ** — частные производные нормальной силы \(Z\) по \(w, q, \theta\)
+    - **m_w, m_q, m_θ** — частные производные момента тангажа \(M\) по \(w, q, \theta\)
+    - **z_η, m_η** — частные производные по управляющему воздействию \(\eta\)
+
+!!! note "О единицах измерения"
+    Углы и угловые скорости — в радианах. Методы API позволяют работать в градусах.
+
+## Математическая модель
+
+$$
+\dot{x} = A x + B u, \qquad y = C x + D u
+$$
+
+Численные матрицы (пример линеаризации):
+
+\[
+\begin{bmatrix}
 \dot{w} \\
 \dot{q} \\
-\dot{\theta} \\
+\dot{\theta}
 \end{bmatrix}
 =
 \begin{bmatrix}
--100.85 & 1 & -0.1256 \\
-4.7805 & 0 & 0.01958 \\
-0 & 0 & 1 \\
+-100.858 & 1 & -0.1256 \\
+14.7805 & 0 & 0.01958 \\
+0 & 1 & 0 
 \end{bmatrix}
 \begin{bmatrix}
 w \\
 q \\
-\theta \\
+\theta 
 \end{bmatrix}
-+
+ +
 \begin{bmatrix}
 0 \\
-3.4858 \\
+3.4558 \\
 20.42
 \end{bmatrix}
-\eta$$
+\eta
+\]
 
-где
+### Производные (численные значения)
 
-- $w$ — Нормальная скорость ЛА [м/с]
-- $q$ — Угловая скорость Тангажа [град/с]
-- $\theta$ — Тангаж [град]
-- $\eta$ — Угол отклонения стабилизатора [град]
-- $x_w$ — частная производная продольной силы по нормальной скорости
-- $x_q$ — частная производная продольной силы по угловой скорости
-- $x_{\theta}$ — частная производная продольной силы по углу тангажа
-- $z_w$ — частная производная вертикальной силы по нормальной скорости
-- $z_q$ — частная производная вертикальной силы по угловой скорости
-- $z_{\theta}$ — частная производная вертикальной силы по углу тангажа
-- $m_w$ — частная производная момента тангажа по нормальной скорости
-- $m_q$ — частная производная момента тангажа по угловой скорости
-- $m_{\theta}$ — частная производная момента тангажа по углу тангажа
+- **Матрица A (производные):**
 
-## Модель
+  | Коэффициент | Значение |
+  |-------------|----------|
+  | z_w | -100.858 |
+  | z_q | 1.0 |
+  | z_θ | -0.1256 |
+  | m_w | 14.7805 |
+  | m_q | 0.0 |
+  | m_θ | 0.01958 |
 
-- [`ELVRocket`](../api/tensoraerospace.aerospacemodel.ELVRocket.md)
+- **Вход η (столбец B):**
 
-## Среда моделирования OpenAI Gym
+  | Коэффициент | Значение |
+  |-------------|----------|
+  | z_η | 0.0 |
+  | m_η | 3.4558 |
 
-- [`LinearLongitudinalELVRocket`](../api/tensoraerospace.envs.LinearLongitudinalELVRocket.md)
+!!! tip "Ограничения привода"
+    По умолчанию применяются предельные значения управления:
+
+    - Максимальная величина: \(\pm 25^\circ\)
+    - Максимальная скорость изменения: \(60^\circ/\text{s}\)
+
+    Внутренние вычисления — в радианах; ограничения переводятся эквивалентно.
 
 ## Источники
 
-1. Aliyu, Bhar & Funmilayo, A. & Okwo, Odooh & Sholiyi, Olusegun. (2019). State-Space Modelling of a Rocket for Optimal Control System Design. Journal of Aircraft and Spacecraft Technology. 3. 128-137. 10.3844/jastsp.2019.128.137. (https://www.researchgate.net/publication/335917723_State-Space_Modelling_of_a_Rocket_for_Optimal_Control_System_Design)
-2. Aliyu, Bhar. (2011). Expendable Launch Vehicle Flight Control-Design & Simulation with Matlab/Simulink. (https://www.researchgate.net/publication/301790480_Expendable_Launch_Vehicle_Flight_Control-Design_Simulation_with_MatlabSimulink)
+1. Aliyu, Bhar & Funmilayo, A. & Okwo, Odooh & Sholiyi, Olusegun. (2019). State‑Space Modelling of a Rocket for Optimal Control System Design. Journal of Aircraft and Spacecraft Technology. 3. 128‑137. 10.3844/jastsp.2019.128.137. [Ссылка](https://www.researchgate.net/publication/335917723_State-Space_Modelling_of_a_Rocket_for_Optimal_Control_System_Design)
+2. Aliyu, Bhar. (2011). Expendable Launch Vehicle Flight Control — Design & Simulation with Matlab/Simulink. [Ссылка](https://www.researchgate.net/publication/301790480_Expendable_Launch_Vehicle_Flight_Control-Design_Simulation_with_MatlabSimulink)
 
-## Пример использования
+## Быстрый старт
 
-```python
-import gymnasium as gym
-import numpy as np
-from tqdm import tqdm
+=== "Gymnasium"
 
-from tensoraerospace.envs import LinearLongitudinalELVRocket
-from tensoraerospace.utils import generate_time_period, convert_tp_to_sec_tp
-from tensoraerospace.signals.standart import unit_step
+    ```python
+    import gymnasium as gym
+    import numpy as np
 
-dt = 0.01  # Дискретизация
-tp = generate_time_period(tn=20, dt=dt) # Временной период
-tps = convert_tp_to_sec_tp(tp, dt=dt)
-number_time_steps = len(tp) # Количество временных шагов
-reference_signals = np.reshape(unit_step(degree=5, tp=tp, time_step=10, output_rad=True), [1, -1]) # Заданный сигнал
+    from tensoraerospace.envs import LinearLongitudinalELVRocket
+    from tensoraerospace.utils import generate_time_period
+    from tensoraerospace.signals.standart import unit_step
 
-env = gym.make('LinearLongitudinalELVRocket-v0',
-           number_time_steps=number_time_steps,
-           initial_state=[[0],[0],[0]],
-           reference_signal = reference_signals)
-env.reset()
+    dt = 0.01
+    tp = generate_time_period(tn=20, dt=dt)
+    number_time_steps = len(tp)
+    reference_signals = unit_step(degree=5, tp=tp, time_step=10, output_rad=True).reshape(1, -1)
 
-observation, reward, done, info = env.step(np.array([[1]]))
-```
+    env = gym.make(
+        'LinearLongitudinalELVRocket-v0',
+        number_time_steps=number_time_steps,
+        initial_state=[[0],[0],[0]],
+        reference_signal=reference_signals,
+    )
+
+    state, info = env.reset()
+    for _ in range(200):
+        action = np.array([[0.1]])
+        state, reward, terminated, truncated, info = env.step(action)
+        if terminated or truncated:
+            break
+    ```
+
+=== "Только модель"
+
+    ```python
+    import numpy as np
+    from tensoraerospace.aerospacemodel import ELVRocket
+
+    dt = 0.01
+    number_time_steps = 200
+
+    x0 = np.array([0.0, 0.0, 0.0])  # [w, q, theta]
+
+    model = ELVRocket(
+        x0=x0,
+        number_time_steps=number_time_steps,
+        selected_state_output=["w", "q", "theta"],
+        dt=dt,
+    )
+
+    for t in range(number_time_steps - 1):
+        u = np.array([[0.05]])  # управление (рад)
+        x_next = model.run_step(u)
+    ```
+
+## Python API
+
+=== "Модель"
+
+    ::: tensoraerospace.aerospacemodel.elv.ELVRocket
+
+=== "Среда Gymnasium"
+
+    ::: tensoraerospace.envs.elv.LinearLongitudinalELVRocket

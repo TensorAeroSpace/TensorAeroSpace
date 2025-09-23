@@ -1,211 +1,195 @@
-Unity среда
-========================================
+# Unity среда
 
-Это краткое описание среды моделирования UnityAirplaneEnvironment
+UnityAirplaneEnvironment — учебная Unity‑среда для задач обучения с подкреплением на самолёте: готовые сцены с усложнениями, настраиваемая физика и удобная Python‑обёртка под `gym`.
 
-https://github.com/tensoraerospace/UnityAirplaneEnvironment
+- **Готовые сцены**: базовая, птицы, обледенение, дождь, ветер
+- **Управление и физика**: `AircraftManager`, аэро‑модули, конфиги экспериментов
+- **Python API**: `get_plane_env` и `unity_discrete_env` (дискретизация 3^7 действий)
+- **Масштабирование**: Docker, GPU, параллельные воркеры
 
-Описание элементов среды моделирования
---------------------------------------
+## Быстрый старт
 
-Для моделирования движения самолёта было использовано несколько компонентов:
+1. Соберите Unity build → [Сборка среды в Unity](#сборка-среды-в-unity)
+2. Запустите и проверьте Python‑обёртку → [Взаимодействие с Python](#взаимодействие-с-python)
+3. Запустите обучение A3C в контейнере → [Запуск в Docker (GPU/CPU, распределённо)](#запуск-в-docker-gpucpu-распределённо)
 
-1. Rigidbody
+Исходники: [tensoraerospace/UnityAirplaneEnvironment](https://github.com/tensoraerospace/UnityAirplaneEnvironment)
 
-Данный компонент используется на центре масс летательного аппарата. В нём указывается
-масса объекта.
+## Компоненты среды
 
-2. СentreOfGravity
+Для моделирования движения самолёта используются следующие компоненты:
 
-Данный компонент используется на центре масс летательного аппарата для обозначения центра
-масс летательного объекта.
+| Компонент | Назначение | Где используется/параметры |
+| --- | --- | --- |
+| Rigidbody | Физический компонент в центре масс. Определяет массу и динамику. | Применяется к объекту центра масс ЛА |
+| CentreOfGravity | Маркер центра масс летательного аппарата. | Ставится на центр масс ЛА |
+| AeroBody | Расчёт аэродинамики для частей ЛА. Указывает группу и ссылку на `Rigidbody`. | На каждом элементе (крылья, фюзеляж и т. п.) |
+| AeroGroup | Коллекция ссылок на все `AeroBody` самолёта. | На управляющем объекте ЛА |
+| Thruster | Прикладывает тягу в корректной точке. | На пропеллер/двигатель |
+| Elevator | Управляемые поверхности: рули, закрылки и т. д. | На подвижных частях крыла/оперения |
+| AircraftManager | Физика и управление самолётом. Обрабатывает каналы управления. | Отдельный объект сцены |
+| FlightDynamicsFlightManager | Ссылки на самолёт, центр масс, `AircraftManager` и конфигурацию эксперимента (ветер, стартовая поза и др.). | Отдельный объект сцены |
 
-3. AeroBody
+### Каналы управления (AircraftManager)
 
-Данный компонент используется на каждом примитивном объекте для которого необходимо
-рассчитывать аэродинамику. В этих компонентах указывается группа объектов к которым они
-относятся. Также указывается ссылка на физический компонент unity rigidbody.
+| Канал | Описание | Диапазон |
+| --- | --- | --- |
+| Thrust | Тяга двигателя | Нормализованный: [-1, 1]; в дискретной обёртке: {-1, 0, 1} |
+| Aileron | Элероны | [-1, 1] / {-1, 0, 1} |
+| Elevator | Руль высоты | [-1, 1] / {-1, 0, 1} |
+| ElevatorTrim | Триммер руля высоты | [-1, 1] / {-1, 0, 1} |
+| Rudder | Руль направления | [-1, 1] / {-1, 0, 1} |
+| FlapUp | Поднять закрылки | Тоггл/импульс |
+| FlapDown | Опустить закрылки | Тоггл/импульс |
 
-4. AeroGroup
+!!! note
+    В дискретной обёртке `unity_discrete_env` семимерное действие кодируется как одно целое число: 3 значения на канал ⇒ всего 3^7 действий.
 
-Данный компонент хранит ссылки на все отдельные объекты летательного аппарата с
-компонентами AeroBody.
+## Сцены Unity
 
-5. Thruster
+Для обучения подготовлено 5 сцен (1 базовая и 4 с усложнениями). Сцены находятся по пути `UnityAirplaneEnvironment/Assets/AlbLab3/Scenes`.
 
-К пропеллеру применяется компонент Thruster который прикладывает силу к самолёту в
-правильной точке
+???+ info "MLAgentsScene — базовая"
+    Базовая сцена со стандартными настройками самолёта.
 
-6. Elevator
+???+ info "MLAgentsSceneBirds — птицы"
+    Периодически к самолёту прикладывается случайная сила.
 
-К подвижным частям крыльев самолёта применяется компонент Elevator.
+    Настройка: компонент `Birds` на объекте `AircraftManager` (`Impact` и интервал). Точки приложения — случайно крылья или нос. Величина — в диапазоне `(Impact, 2 × Impact)`.
 
-7. AircraftManager
+    ![Сцена Birds](img/bird.gif)
 
-На отдельный объект на сцене применяется компонент AircraftManager. Данный компонент
-обрабатывает физические взаимодействия связанные аэродинамикой. Также в данном компоненте
-содержатся функции которые обрабатывают управление самолётом. Из возможных параметров
-управления доступно 7 типов:
+???+ info "MLAgentsSceneCold — обледенение"
+    Двигатель ограничен по мощности, возможна «остановка» тяги; органы управления могут замерзать.
 
-    - 7.1 Thrust - тяга двигателя
-    - 7.2 Aileron - Элероны
-    - 7.3 Elevator - Руль высоты
-    - 7.4 ElevatorTrim - Триммер руля высоты
-    - 7.5 Rudder - Руль направления
-    - 7.6 FlapUp - Поднять закрылки
-    - 7.7 FlapDown - Опустить закрылки
+    Настройка: поле `MaxThrust` в `AircraftManager`; компонент `Cold` задаёт интервалы «заморозки» (на экране — надпись «controls frozen»).
 
-8. FlightDynamicsFlightManager
+    ![Сцена Cold](img/frozen.gif)
 
-На отдельный объект на сцене применяется данные компонент. В данном компоненте
-указываются ссылки на самолёт, центр его гравитации и AircraftManager. Также указывается
-ссылка на конфиг файл для эксперимента. В данном файле можно настроить условия для среды.
-Например: начальное положение самолёта, скорость ветра итд. Этот компонент отвечает за
-настройку и усложнение среды.
+???+ info "MLAgentsSceneRain — дождь"
+    Постоянный вертикальный вектор силы, направленный вниз.
 
-Описание сцен unity среды
---------------------------------------
+    Настройка: компонент `Rain` (поле `Impact`).
 
-Для unity среды были созданы 5 сцен для обучения агента - 1 обычная и 4 с некоторыми
-усложнениями. Сцены находятся по пути UnityAirplaneEnvironment\\Assets\\AlbLab3\\Scenes
+    ![Сцена Rain](img/rain.gif)
 
-1. MLAgentsScene
+???+ info "MLAgentsSceneWind — ветер"
+    Параметры задаются в `UnityAirplaneEnvironment/Assets/AlbLab3/Experiment Settings/ml_agent_wind.asset` (скорость `Wind speed`, направления `Wind Azimuth` и `Wind Elevator`). В примере: скорость 10, `Wind Elevator` = 30.
 
-.. image:: ../example/env/img/img_demo_unity.gif
+    ![Сцена Wind](img/wind.gif)
 
-Сцена с стандартными настройками самолёта без усложнений
-
-2. MLAgentsSceneBirds
-
-.. image:: img/bird.gif
-
-Сцена с птицами. Усложнение заключается в том, что в агента через некоторое количество
-секунд врезаются птицы, что добавляет к нему вектор силы.
-Для настройки вектора данной силы на объекте AircraftManager находится компонент
-Birds. В нём в поле Impact можно настроить величину силы прикладываемой к самолёту, а
-также интервал через который она прикладывается. Сила прикладывается случайно к крыльям
-или к носу самолёта. Величина силы выбирается случайно в диапазоне (Impact, 2 * Impact)
-
-3. MLAgentsSceneCold
-
-.. image:: img/frozen.gif
-
-Сцена с обледенением. Усложнение заключается в том что двигатель агента работает не в
-полную мощность.
-Для настройки ограничения работы двигателя на объекте AircraftManager находится
-компонент AircraftManager. Ограничение на работу двигателя в нём указывается в поле
-MaxThrust. Также есть возможность "глушить" двигатель из-за холода, то есть сбрасывать
-текущий Thrust в 0. Для этого на объекте AircraftManager находится
-компонент Cold. В нём можно настроить интервал через который двигатель будет глушиться
-и после этого заводиться обратно. Также в течение интервала органы управления замерзают.
-В это время на экране появляется надпись controls frozen.
-
-4. MLAgentsSceneRain
-
-.. image:: img/rain.gif
-
-Сцена с дождём. Усложнение заключается в постоянном векторе силы который направлен вниз
-и применяется к агенту.
-Для настройки вектора данной силы на объекте AircraftManager находится компонент
-Rain. В нём в поле Impact можно настроить величину силы прикладываемой к самолёту.
-
-5. MLAgentsSceneWind
-
-.. image:: img/wind.gif
-
-Сцена с ветром. В данной сцене для усложнения создаётся ветер в файле конфига
-UnityAirplaneEnvironment\\Assets\\AlbLab3\\Experiment Settings\\ml_agent_wind.asset
-В нём в поле Wind speed установлена скорость ветра. Также в полях Wind Azimuth и
-Wind Elevator можно настроить угол под которым дует ветер. В сцене скорость ветра
-установлена в 10, Wind Elevator установлен в 30.
-
+!!! note
 К самолёту применяется ускорение свободного падения g = 9.81.
 
-Python взаимодействие со средой
--------------------------------
+## Взаимодействие с Python
 
-Для взаимодействия со средой была сделана функция получающая gym обертку нашей unity
-среды и класс обёртка для агентов с дискретным пространством действий.
+Ниже — минимальный пример получения `gym`-обёртки Unity-среды и опциональной дискретизации действий:
 
-.. autoclass:: tensoraerospace.envs.unity_env.get_plane_env
-  :members:
+    from tensoraerospace.envs.unity_env import get_plane_env, unity_discrete_env
 
-.. autoclass:: tensoraerospace.envs.unity_env.unity_discrete_env
-  :members:
+    # Путь к собранной Unity-сцене (пример для Linux)
+    UNITY_BUILD_PATH = "/path/to/linux_build/build.x86_64"
 
-Пример сборки среды
---------------------------------------------
-Для сборки среды необходимо в меню редактора unity File выбрать пункт Build Settings
+    # Если среда запускается как отдельный процесс/сервер, задайте server=True и уникальный worker
+    env = get_plane_env(UNITY_BUILD_PATH, server=True, worker=0)
 
-!\[b\](img/build1.png){ width=800 }uild1
+    # Для дискретного пространства действий используйте обёртку
+    env = unity_discrete_env(env)
 
-Затем необходимо выбрать сцену для сборки, выбрать платформу и нажать на кнопку Build
+    obs = env.reset()
+    done = False
+    total_reward = 0.0
+    while not done:
+        action = env.action_space.sample()
+        obs, reward, done, info = env.step(action)
+        total_reward += reward
 
-!\[b\](img/build2.png){ width=800 }uild2
+    env.close()
 
-После необходимо выбрать папку для сборки
+!!! tip
+    Если вы запускаете несколько копий среды параллельно, задавайте уникальный `worker` для каждого процесса и используйте `server=True`.
 
-Запуск в Docker на множестве GPU/CPU
-------------------------------------
+## Сборка среды в Unity
 
-Обучение RL агента на множестве GPU имеет множество приемуществ: 
+1. В Unity откройте меню File → Build Settings.
 
-**Большая вычислительная мощность:** GPU обычно обеспечивают значительно большую вычислительную мощность, чем CPU. Это особенно важно для RL, где требуется большое количество вычислений для обработки больших массивов данных и применения сложных алгоритмов, таких как A3C (Asynchronous Advantage Actor-Critic).
+   ![Окно Build Settings](img/build1.png)
 
-**Параллелизм:** Алгоритм A3C уже изначально предназначен для асинхронного обучения с использованием множества потоков. Каждый поток работает с собственной копией среды и агента, и все они обновляют общий глобальный агент. Применение множества GPU улучшает этот процесс, позволяя большему количеству потоков работать параллельно и эффективнее выполнять обучение.
+2. Выберите сцену, целевую платформу и нажмите Build.
 
-**Скорость обучения:** Запуск на множестве GPU может значительно увеличить скорость обучения. Обучение RL обычно требует много времени из-за сложности и неопределенности среды. Использование множества GPU может помочь ускорить процесс.
+   ![Выбор сцены и платформы](img/build2.png)
 
-**Большие модели и более сложные среды:** Наконец, использование множества GPU позволяет работать с более большими нейронными сетями и более сложными средами. Это может быть особенно полезно в случае сложных задач RL, где одна модель или одна среда не могут адекватно представить все аспекты задачи.
+3. Укажите папку для сборки исполняемого файла.
 
-Важно отметить, что для эффективного использования множества GPU требуются специальные техники программирования и управления ресурсами, такие как распределенное обучение и синхронизация между различными GPU.
+## Запуск в Docker (GPU/CPU, распределённо)
 
-Для распределенного обучения необходимо собрать Docker образ в котором присутсвуют необходимы зависимости и собранная среда Unity
+Преимущества распределённого обучения на GPU: высокая производительность, естественный параллелизм (например, в A3C), ускорение обучения и возможность более крупных моделей. Для эффективной работы потребуется организация обмена и синхронизации между процессами/устройствами.
 
-.. code:: bash
-  
-  FROM tensorflow/tensorflow:2.4.0-gpu-jupyter
+Пример Dockerfile c установленными зависимостями и запуском TensorBoard:
 
-  RUN pip install gym==0.20.0 scipy==1.5.4 gym-unity==0.28.0
-  RUN mkdir /tf/logs
-  COPY a3c_example.py /tf
+<!-- markdownlint-disable MD046 -->
+```dockerfile
+FROM tensorflow/tensorflow:2.4.0-gpu-jupyter
 
-  ENTRYPOINT tensorboard --logdir /tf/logs --port 8889 --host 0.0.0.0 & python a3c_example.py
+RUN pip install gym==0.20.0 scipy==1.5.4 gym-unity==0.28.0
+RUN mkdir /tf/logs
+COPY a3c_example.py /tf
 
-Скрипт для запуска обучения: 
+ENTRYPOINT tensorboard --logdir /tf/logs --port 8889 --host 0.0.0.0 & python a3c_example.py
+```
+<!-- markdownlint-enable MD046 -->
 
+Скрипт обучения (A3C, несколько воркеров через `worker_id`):
+
+<!-- markdownlint-disable MD046 -->
 ```python
+from tensoraerospace.envs.unity_env import get_plane_env, unity_discrete_env
+from tensoraerospace.agent.a3c import Agent, setup_global_params
 
-  from tensoraerospace.envs.unity_env import get_plane_env, unity_discrete_env
-  from tensoraerospace.agent.a3c import Agent, setup_global_params
+def env_function(worker_id):
+    # /tf/linux_build/build.x86_64 — путь к собранному Unity-окружению внутри контейнера
+    return get_plane_env("/tf/linux_build/build.x86_64", server=True, worker=worker_id)
 
-  def env_function(worker_id):
-      # /tf/linux_build/build.x86_64 - путь к собранному Unity окружению 
-      return get_plane_env("/tf/linux_build/build.x86_64", server=True, worker=worker_id)
+actor_lr = 0.0005
+critic_lr = 0.001
+gamma = 0.99
+hidden_size = 128
+update_interval = 1
 
-  actor_lr = 0.0005
-  critic_lr = 0.001
-  gamma = 0.99
-  hidden_size = 128
-  update_interval = 1
+max_episodes = 100
 
-  max_episodes = 100
+setup_global_params(actor_lr, critic_lr, gamma, hidden_size, update_interval, max_episodes)
 
-  setup_global_params(actor_lr, critic_lr, gamma, hidden_size, update_interval, max_episodes)
+agent = Agent(env_function, gamma)
+agent.train()
+```
+<!-- markdownlint-enable MD046 -->
 
-  agent = Agent(env_function, gamma)
-  agent.train()
+Запуск контейнера с пробросом библиотеки и сборки Unity:
 
-Команда для запуска образа и пробросом библиотеки и собранной Unity среды
+=== "Linux / macOS"
 
-.. code:: bash
+    ```bash
+    docker run --gpus all \
+      -v "$PWD/tensoraerospace:/tf/tensoraerospace" \
+      -v "$PWD/linux_build:/tf/linux_build" \
+      -p 8889:8889 \
+      unity_docker
+    ```
 
-  docker run -v ./tensoraerospace:/tf/tensoraerospace -v ./linux_build:/tf/linux_build -p 8889:8889 unity_docker --gpus all
+=== "Windows"
 
-.. note::
+    ```bash
+    docker run --gpus all \
+      -v C:\\Users\\<USER>\\Projects\\TensorAeroSpace\\tensoraerospace:/tf/tensoraerospace \
+      -v C:\\Users\\<USER>\\Projects\\TensorAeroSpace\\linux_build:/tf/linux_build \
+      -p 8889:8889 \
+      unity_docker
+    ```
 
-  В операционной системе Windows требуется указывать полный путь до директории "example" при выполнении команды docker run, то есть: docker run -v C:\Users\<USER_DIR>\TensorAeroSpace\example:/app/example -p 0.0.0.0:8888:8888 -it tensor_aero_space.
+!!! warning
+    Для GPU внутри контейнера необходим `nvidia-container-toolkit`. На Windows используйте абсолютные пути в `-v`.
 
-Пример запуска обучения модели
+## Пример запуска обучения
 
-!\[g\](img/example_run.jpg){ width=800 }uide6
+![Пример запуска обучения](img/example_run.jpg)

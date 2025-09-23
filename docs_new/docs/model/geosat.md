@@ -1,110 +1,199 @@
-Модель геостационарного спутника
-========================================
+# Геостационарный спутник (GeoSat) — продольная динамика
 
-Геостационарные спутники – это искусственные спутники Земли, которые находятся на геостационарной орбите и остаются неподвижными относительно поверхности Земли
+Геостационарные спутники — ИСЗ на геостационарной орбите, неподвижные относительно поверхности Земли. Страница оформлена по аналогии с ELV: быстрый старт, математика, таблицы производных и API.
 
-Математическая модель 
----------------------
+<div class="grid cards" markdown>
 
-Объект управления построен в Пространстве состояний как и большинство объектов управления в данной библиотеке. Значения матрицы простанство состояний взяты из стать ниже.
+-   :material-rocket-launch-outline: **Быстрый старт**
 
-.. math::
-  
-  \dot{x}=Ax+Bu
+    Запустите среду или модель за минуты.
 
-  y=Cx+Du
+    [:octicons-arrow-right-24: К примеру](#быстрый-старт)
 
-Так как объект управления предстовляет собой объект без внутренне возмущаю процессов выход системы  :math:`y` не учитывается в процессе моделирования по скольку матрицы  :math:`C` и  :math:`D`` представляют собой диагональную матрицу и нулевой вектор.
+-   :material-cog-outline: **API модели**
 
-.. math::
+    Документация Python‑класса GeoSat.
 
-  \begin{bmatrix}
-  \dot{\rho} \\
-  \dot{\theta} \\
-  \dot{\omega}
-  \end{bmatrix}
-  = 
-  \begin{bmatrix}
-  0 & 1 & 0  \\
-  {\omega}^2 + \frac{2}{{\rho}^3} & 0 & 2\rho \omega \\
-  0 & \frac{-2\omega}{r} & 0 \\
-  \end{bmatrix}
-  \begin{bmatrix}
-  \rho \\
-  \theta \\
-  \omega \\
-  \end{bmatrix}
-  +
-  \begin{bmatrix}
-  0 \\
-  0 \\
-  \frac{1}{r} \\
-  \end{bmatrix}
-  \eta
+    [:octicons-arrow-right-24: К API](#python-api)
 
-Поэтому объект управления представлен в следующем виде
+-   :material-gamepad-variant-outline: **Среда Gymnasium**
 
-.. math::
+    Готовая среда для RL‑агентов.
 
-  \begin{bmatrix}
-  \dot{\rho} \\
-  \dot{\theta} \\
-  \dot{\omega}
-  \end{bmatrix}
-  = 
-  \begin{bmatrix}
-    0 & 1 & 0 \\
-    0.01036 & 0 & 0.7757 \\
-    0 & -0.1775 & 0 \\
-  \end{bmatrix}
-  \begin{bmatrix}
-  \rho \\
-  \theta \\
-  \omega \\
-  \end{bmatrix}
-  +
-  \begin{bmatrix}
-  0 \\
-  0  \\
-  0.1513\\
-  \end{bmatrix}
-  \eta
+    [:octicons-arrow-right-24: К среде](#python-api)
 
-где
+-   :material-book-open-variant: **Теория**
 
--  :math:`\rho` отношение высота полета спутника к радиусу Земли [-]
--  :math:`\theta` позиция спутника относительно земносй системы координат [рад] 
--  :math:`\omega` угловая скорость вращения спутника [рад/с]
--  :math:`r` - высота полета спутника [км]
+    Уравнения состояния и численные параметры.
 
-Источники
----------
+    [:octicons-arrow-right-24: К модели](#математическая-модель)
 
-1. Tun, Hla & Mon, Lae & Lwin, Kyaw & Naing, Zaw. (2012). Implementation of Communication Satellite Orbit Controller Design Using State Space Techniques. ASEAN Journal on Science and Technology for Development. 29. 29-49. 10.29037/ajstd.48. 
+</div>
 
-Пример использования
---------------------
+## Как устроен объект управления
 
-```python
+Модель задана в пространстве состояний:
 
+\[\dot{x} = A x + B u, \quad y = C x + D u\]
+
+Где:
+
+\[
+ x = \begin{bmatrix} \rho & \theta & \omega \end{bmatrix}^{\top}, \quad
+ u_{in} = \eta
+\]
+
+Типовая структура матриц:
+
+\[
+\begin{bmatrix}
+\dot{\rho} \\
+\dot{\theta} \\
+\dot{\omega}
+\end{bmatrix}
+=
+\begin{bmatrix}
+0 & 1 & 0 \\
+ f_1(\rho, \omega) & 0 & f_2(\rho, \omega) \\
+0 & f_3(\omega, r) & 0
+\end{bmatrix}
+\begin{bmatrix} \rho \\ \theta \\ \omega \end{bmatrix}
+ +
+\begin{bmatrix} 0 \\ 0 \\ g(r) \end{bmatrix} \eta
+\]
+
+=== "Переменные"
+
+    - **ρ**: отношение высоты полёта к радиусу Земли, [-]
+    - **θ**: позиция спутника относительно земной СК, рад
+    - **ω**: угловая скорость вращения, рад/с
+    - **η**: управляющее воздействие (тяга)
+
+=== "Коэффициенты"
+
+    - **f1(ρ, ω) ≈ 0.01036** — производная по ρ
+    - **f2(ρ, ω) ≈ 0.7757** — производная по ω в уравнении θ̇
+    - **f3(ω, r) ≈ -0.1775** — производная по θ в уравнении ω̇
+    - **g(r) ≈ 0.1513** — влияние тяги на ω̇
+
+!!! note "О единицах измерения"
+    Углы и угловые скорости — в радианах. Методы API поддерживают выдачу в градусах.
+
+## Математическая модель
+
+$$
+\dot{x} = A x + B u, \qquad y = C x + D u
+$$
+
+Численные матрицы (пример линеаризации):
+
+\[
+\begin{bmatrix}
+\dot{\rho} \\
+\dot{\theta} \\
+\dot{\omega}
+\end{bmatrix}
+=
+\begin{bmatrix}
+0 & 1 & 0 \\
+0.01036 & 0 & 0.7757 \\
+0 & -0.1775 & 0 
+\end{bmatrix}
+\begin{bmatrix}
+\rho \\
+\theta \\
+\omega 
+\end{bmatrix}
+ +
+\begin{bmatrix}
+0 \\
+0 \\
+0.1513
+\end{bmatrix}
+\eta
+\]
+
+### Производные (численные значения)
+
+- **Матрица A (производные):**
+
+  | Коэффициент | Значение |
+  |-------------|----------|
+  | a_ρθ (∂ρ̇/∂θ) | 1.0 |
+  | a_θρ (∂θ̇/∂ρ) | 0.01036 |
+  | a_θω (∂θ̇/∂ω) | 0.7757 |
+  | a_ωθ (∂ω̇/∂θ) | -0.1775 |
+
+- **Вход η (столбец B):**
+
+  | Коэффициент | Значение |
+  |-------------|----------|
+  | b_η→ω (∂ω̇/∂η) | 0.1513 |
+
+## Источники
+
+1. Tun, Hla & Mon, Lae & Lwin, Kyaw & Naing, Zaw. (2012). Implementation of Communication Satellite Orbit Controller Design Using State Space Techniques. ASEAN Journal on Science and Technology for Development. 29. 29‑49. 10.29037/ajstd.48.
+
+## Быстрый старт
+
+=== "Gymnasium"
+
+    ```python
     import gymnasium as gym 
     import numpy as np
-    from tqdm import tqdm
 
     from tensoraerospace.envs import GeoSatEnv
-    from tensoraerospace.utils import generate_time_period, convert_tp_to_sec_tp
+    from tensoraerospace.utils import generate_time_period
     from tensoraerospace.signals.standart import unit_step
 
-    dt = 0.01  # Дискретизация
-    tp = generate_time_period(tn=20, dt=dt) # Временной периуд
-    tps = convert_tp_to_sec_tp(tp, dt=dt)
-    number_time_steps = len(tp) # Количество временных шагов
-    reference_signals = np.reshape(unit_step(degree=5, tp=tp, time_step=10, output_rad=True), [1, -1]) # Заданный сигнал
+    dt = 0.01
+    tp = generate_time_period(tn=20, dt=dt)
+    number_time_steps = len(tp)
+    reference_signals = unit_step(degree=5, tp=tp, time_step=10, output_rad=True).reshape(1, -1)
 
-    env = gym.make('GeoSat-v0',
-               number_time_steps=number_time_steps, 
-               initial_state=[[0],[0],[0]],
-               reference_signal = reference_signals)
-    env.reset() 
+    env = gym.make(
+        'GeoSat-v0',
+        number_time_steps=number_time_steps, 
+        initial_state=[[0],[0],[0]],
+        reference_signal=reference_signals,
+    )
+    state, info = env.reset()
+    for _ in range(200):
+        action = np.array([[0.1]])
+        state, reward, terminated, truncated, info = env.step(action)
+        if terminated or truncated:
+            break
+    ```
 
-    observation, reward, done, info = env.step(np.array([[1]]))
+=== "Только модель"
+
+    ```python
+    import numpy as np
+    from tensoraerospace.aerospacemodel import GeoSat
+
+    dt = 0.01
+    number_time_steps = 200
+
+    x0 = np.array([0.0, 0.0, 0.0])  # [rho, theta, omega]
+
+    model = GeoSat(
+        x0=x0,
+        number_time_steps=number_time_steps,
+        selected_state_output=["rho", "theta", "omega"],
+        dt=dt,
+    )
+
+    for t in range(number_time_steps - 1):
+        u = np.array([[0.05]])
+        x_next = model.run_step(u)
+    ```
+
+## Python API
+
+=== "Модель"
+
+    ::: tensoraerospace.aerospacemodel.geosat.GeoSat
+
+=== "Среда Gymnasium"
+
+    ::: tensoraerospace.envs.geostat.GeoSatEnv

@@ -1,18 +1,52 @@
-# Модель спутника связи
+# Спутник связи (ComSat) — продольная динамика
 
-Искусственный спутник связи - космический аппарат, выведенный на орбиту в интересах обеспечения ретрансляции и обработки радиосигнала
+Искусственный спутник связи — аппарат на орбите для ретрансляции и обработки радиосигналов. Страница оформлена по аналогии с ELV: быстрый старт, математика, таблицы производных и API.
 
-## Математическая модель
+<div class="grid cards" markdown>
 
-Объект управления построен в Пространстве состояний как и большинство объектов управления в данной библиотеке. Значения матрицы простанство состояний взяты из стать ниже.
+-   :material-rocket-launch-outline: **Быстрый старт**
 
-$$\dot{x} = Ax + Bu$$
+    Запустите среду или модель за минуты.
 
-$$y = Cx + Du$$
+    [:octicons-arrow-right-24: К примеру](#быстрый-старт)
 
-Так как объект управления предстовляет собой объект без внутренне возмущаю процессов выход системы $y$ не учитывается в процессе моделирования по скольку матрицы $C$ и $D$ представляют собой диагональную матрицу и нулевой вектор.
+-   :material-cog-outline: **API модели**
 
-$$\begin{bmatrix}
+    Документация Python‑класса ComSat.
+
+    [:octicons-arrow-right-24: К API](#python-api)
+
+-   :material-gamepad-variant-outline: **Среда Gymnasium**
+
+    Готовая среда для RL‑агентов.
+
+    [:octicons-arrow-right-24: К среде](#python-api)
+
+-   :material-book-open-variant: **Теория**
+
+    Уравнения состояния и численные параметры.
+
+    [:octicons-arrow-right-24: К модели](#математическая-модель)
+
+</div>
+
+## Как устроен объект управления
+
+Модель задана в пространстве состояний:
+
+\[\dot{x} = A x + B u, \quad y = C x + D u\]
+
+Где:
+
+\[
+ x = \begin{bmatrix} \rho & \theta & \omega \end{bmatrix}^{\top}, \quad
+ u_{in} = \eta
+\]
+
+Типовая структура матриц:
+
+\[
+\begin{bmatrix}
 \dot{\rho} \\
 \dot{\theta} \\
 \dot{\omega}
@@ -20,25 +54,41 @@ $$\begin{bmatrix}
 =
 \begin{bmatrix}
 0 & 1 & 0 \\
-{\omega}^2 + \frac{2}{{\rho}^3} & 0 & 2\rho \omega \\
-0 & \frac{-2\omega}{r} & 0 \\
+f_1(\rho, \omega) & 0 & f_2(\rho, \omega) \\
+0 & f_3(\omega, r) & 0
 \end{bmatrix}
-\begin{bmatrix}
-\rho \\
-\theta \\
-\omega \\
-\end{bmatrix}
-+
-\begin{bmatrix}
-0 \\
-0 \\
-\frac{1}{r} \\
-\end{bmatrix}
-\eta$$
+\begin{bmatrix} \rho \\ \theta \\ \omega \end{bmatrix}
+ +
+\begin{bmatrix} 0 \\ 0 \\ g(r) \end{bmatrix} \eta
+\]
 
-Поэтому объект управления представлен в следующем виде
+=== "Переменные"
 
-$$\begin{bmatrix}
+    - **ρ**: отношение высоты полёта к радиусу Земли, [-]
+    - **θ**: позиция спутника относительно земной СК, рад
+    - **ω**: угловая скорость вращения, рад/с
+    - **η**: управляющее воздействие (тяга), Н (в пересчёте на нормализованный вход)
+
+=== "Коэффициенты"
+
+    - **f1(ρ, ω) ≈ 0.01036** — производная по ρ (линеаризованный член)
+    - **f2(ρ, ω) ≈ 0.7753** — производная по ω в уравнении θ̇
+    - **f3(ω, r) ≈ -0.1774** — производная по θ в уравнении ω̇
+    - **g(r) ≈ 0.1512** — влияние тяги на ω̇
+
+!!! note "О единицах измерения"
+    Углы и угловые скорости — в радианах. Методы API поддерживают выдачу в градусах.
+
+## Математическая модель
+
+$$
+\dot{x} = A x + B u, \qquad y = C x + D u
+$$
+
+Численные матрицы (пример линеаризации):
+
+\[
+\begin{bmatrix}
 \dot{\rho} \\
 \dot{\theta} \\
 \dot{\omega}
@@ -47,54 +97,111 @@ $$\begin{bmatrix}
 \begin{bmatrix}
 0 & 1 & 0 \\
 0.01036 & 0 & 0.7753 \\
-0 & -0.1774 & 0 \\
+0 & -0.1774 & 0 
 \end{bmatrix}
 \begin{bmatrix}
 \rho \\
 \theta \\
-\omega \\
+\omega 
 \end{bmatrix}
-+
+ +
 \begin{bmatrix}
 0 \\
 0 \\
-0.1512\\
+0.1512
 \end{bmatrix}
-\eta$$
+\eta
+\]
 
-где
+### Производные (численные значения)
 
-- $\rho$ — отношение высота полета спутника к радиусу Земли [-]
-- $\theta$ — позиция спутника относительно земносй системы координат [рад]
-- $\omega$ — угловая скорость вращения спутника [рад/с]
-- $r$ — высота полета спутника [км]
+- **Матрица A (производные):**
+
+  | Коэффициент | Значение |
+  |-------------|----------|
+  | a_ρθ (∂ρ̇/∂θ) | 1.0 |
+  | a_θρ (∂θ̇/∂ρ) | 0.01036 |
+  | a_θω (∂θ̇/∂ω) | 0.7753 |
+  | a_ωθ (∂ω̇/∂θ) | -0.1774 |
+
+- **Вход η (столбец B):**
+
+  | Коэффициент | Значение |
+  |-------------|----------|
+  | b_η→ω (∂ω̇/∂η) | 0.1512 |
+
+!!! tip "Ограничения привода"
+    По умолчанию применяются предельные значения управления (внутри модели нормализованы):
+
+    - Максимальная величина: \(\pm 25^\circ\)
+    - Максимальная скорость изменения: \(60^\circ/\text{s}\)
+
+    Внутренние вычисления — в радианах; ограничения переводятся эквивалентно.
 
 ## Источники
 
 1. Santosh Kumar Choudhary (2015). Design and Analysis of an Optimal Orbit Control for a Communication Satellite. INTERNATIONAL JOURNAL OF COMMUNICATIONS. Volume 9, 2015
 
-## Пример использования
+## Быстрый старт
 
-```python
-import gymnasium as gym
-import numpy as np
-from tqdm import tqdm
+=== "Gymnasium"
 
-from tensoraerospace.envs import ComSatEnv
-from tensoraerospace.utils import generate_time_period, convert_tp_to_sec_tp
-from tensoraerospace.signals.standart import unit_step
+    ```python
+    import gymnasium as gym
+    import numpy as np
 
-dt = 0.01  # Дискретизация
-tp = generate_time_period(tn=20, dt=dt) # Временной периуд
-tps = convert_tp_to_sec_tp(tp, dt=dt)
-number_time_steps = len(tp) # Количество временных шагов
-reference_signals = np.reshape(unit_step(degree=5, tp=tp, time_step=10, output_rad=True), [1, -1]) # Заданный сигнал
+    from tensoraerospace.envs import ComSatEnv
+    from tensoraerospace.utils import generate_time_period
+    from tensoraerospace.signals.standart import unit_step
 
-env = gym.make('ComSatEnv-v0',
-           number_time_steps=number_time_steps,
-           initial_state=[[0],[0],[0]],
-           reference_signal = reference_signals)
-env.reset()
+    dt = 0.01
+    tp = generate_time_period(tn=20, dt=dt)
+    number_time_steps = len(tp)
+    reference_signals = unit_step(degree=5, tp=tp, time_step=10, output_rad=True).reshape(1, -1)
 
-observation, reward, done, info = env.step(np.array([[1]]))
-```
+    env = gym.make(
+        'ComSatEnv-v0',
+        number_time_steps=number_time_steps,
+        initial_state=[[0],[0],[0]],
+        reference_signal=reference_signals,
+    )
+    state, info = env.reset()
+    for _ in range(200):
+        action = np.array([[0.1]])
+        state, reward, terminated, truncated, info = env.step(action)
+        if terminated or truncated:
+            break
+    ```
+
+=== "Только модель"
+
+    ```python
+    import numpy as np
+    from tensoraerospace.aerospacemodel import ComSat
+
+    dt = 0.01
+    number_time_steps = 200
+
+    x0 = np.array([0.0, 0.0, 0.0])  # [rho, theta, omega]
+
+    model = ComSat(
+        x0=x0,
+        number_time_steps=number_time_steps,
+        selected_state_output=["rho", "theta", "omega"],
+        dt=dt,
+    )
+
+    for t in range(number_time_steps - 1):
+        u = np.array([[0.05]])
+        x_next = model.run_step(u)
+    ```
+
+## Python API
+
+=== "Модель"
+
+    ::: tensoraerospace.aerospacemodel.comsat.ComSat
+
+=== "Среда Gymnasium"
+
+    ::: tensoraerospace.envs.comsat.ComSatEnv

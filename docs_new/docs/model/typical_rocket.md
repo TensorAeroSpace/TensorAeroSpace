@@ -1,143 +1,227 @@
-Модель ракеты
-========================================
+# Типичная ракета — продольная динамика
 
-Ракета - летательный аппарат, двигающийся в пространстве за счёт действия реактивной тяги
+Типовая модель ракеты в продольном канале. Страница оформлена по аналогии с ELV: быстрый старт, математика, таблицы производных и API.
 
-!\[E\](img/typical_rocket.png){ width=400 }xpendable launch vehicle
+![typical-rocket](img/typical_rocket.png){ width=800 }
 
-Математическая модель 
----------------------
+<div class="grid cards" markdown>
 
-Объект управления построен в пространстве состояний как и большинство объектов управления в данной библиотеке. Значения матрицы пространства состояний взяты из статьи ниже.
+-   :material-rocket-launch-outline: **Быстрый старт**
 
-.. math::
-  
-  \dot{x}=Ax+Bu
+    Запустите среду или модель за минуты.
 
-  y=Cx+Du
+    [:octicons-arrow-right-24: К примеру](#быстрый-старт)
 
-Так как объект управления представляет собой объект без внутренних возмущающих процессов выход системы  :math:`y` не учитывается в процессе моделирования поскольку матрицы  :math:`C` и  :math:`D` представляют собой диагональную матрицу и нулевой вектор.
+-   :material-cog-outline: **API модели**
 
-.. math::
+    Документация Python‑класса типовой ракеты.
 
-  \begin{bmatrix}
-  \dot{u} \\
-  \dot{w} \\
-  \dot{q} \\
-  \dot{\theta} \\
-  \end{bmatrix}
-  = 
-  \begin{bmatrix}
-  x_u & x_w & x_q & x_{\theta} \\
-  z_u & z_w & z_q & z_{\theta} \\
-  m_u & m_w & m_q & m_{\theta} \\
-  0 & 0 & 1 & 0 \\
-  \end{bmatrix}
-  \begin{bmatrix}
-  u \\
-  w \\
-  q \\
-  \theta \\
-  \end{bmatrix}
-  +
-  \begin{bmatrix}
-  x_{\eta} \\
-  z_{\eta} \\
-  m_{\eta} \\
-  0
-  \end{bmatrix}
-  \eta
+    [:octicons-arrow-right-24: К API](#python-api)
 
-Поэтому объект управления представлен в следующем виде
+-   :material-gamepad-variant-outline: **Среда Gymnasium**
 
-.. math::
+    Готовая среда для RL‑агентов.
 
-  \begin{bmatrix}
-  \dot{u} \\
-  \dot{w} \\
-  \dot{q} \\
-  \dot{\theta} \\
-  \end{bmatrix}
-  = 
-  \begin{bmatrix}
-  -0.0089 & -0.1474 & 0 & -9.75 \\
-  -0.0216 & -0.3601 & 5.9470 & -0.151 \\
-  0 & -0.0015 & -0.0224 & 0.0006 \\
-  0 & 0 & 1 & 0 \\
-  \end{bmatrix}
-  \begin{bmatrix}
-  u \\
-  w \\
-  q \\
-  \theta \\
-  \end{bmatrix}
-  +
-  \begin{bmatrix}
-  9.748 \\
-  3.77 \\
-  -0.034 \\
-  0.01
-  \end{bmatrix}
-  \eta
+    [:octicons-arrow-right-24: К среде](#python-api)
 
-где
+-   :material-book-open-variant: **Теория**
 
--  :math:`u` Продольная скорость ЛА [м/с]
--  :math:`w` Нормальная скорость ЛА [м/с] 
--  :math:`q` Угловая скорость Тангажа [град/с]
--  :math:`\theta` - Тангаж [град]
--  :math:`\eta` - Угол отклонения стабилизатора [град]
--  :math:`x_u` - частная производная продольной силы по продольной скорости
--  :math:`x_w` - частная производная продольной силы по нормальной скорости
--  :math:`x_q` - частная производная продольной силы по угловой скорости
--  :math:`x_{\theta}` - частная производная продольной силы по углу тангажа
--  :math:`z_u` - частная производная вертикальной силы по продольной скорости
--  :math:`z_w` - частная производная вертикальной силы по нормальной скорости
--  :math:`z_q` - частная производная вертикальной силы по угловой скорости
--  :math:`z_{\theta}` - частная производная вертикальной силы по углу тангажа
--  :math:`m_u` - частная производная момента тангажа по продольной скорости
--  :math:`m_w` - частная производная момента тангажа по нормальной скорости
--  :math:`m_q` - частная производная момента тангажа по угловой скорости
--  :math:`m_{\theta}` - частная производная момента тангажа по углу тангажа
+    Уравнения состояния и численные параметры.
 
-Модель
-------
+    [:octicons-arrow-right-24: К модели](#математическая-модель)
 
-- [`tensoraerospace.aerospacemodel.MissileModel`](../api/tensoraerospace.aerospacemodel.MissileModel.md)
+</div>
 
-Среда моделирования OpenAI Gym
-------------------------------
+## Как устроен объект управления
 
-- [`tensoraerospace.envs.LinearLongitudinalMissileModel`](../api/tensoraerospace.envs.LinearLongitudinalMissileModel.md)
+Модель задана в пространстве состояний:
 
-Источники
----------
+\[\dot{x} = A x + B u, \quad y = C x + D u\]
 
-1. Arikapalli V. S. N. et al. Missile Longitudinal Dynamics Control Design using Pole Placement and LQR Methods--A Critical Analysis //Defence Science Journal. – 2021. – Т. 71. – №. 5. (https://www.strategicfront.org/forums/attachments/16232-article-text-62198-1-10-20210902-pdf.20806/)
+Где:
 
-Пример использования
---------------------
+\[
+ x = \begin{bmatrix} u & w & q & \theta \end{bmatrix}^{\top}, \quad
+ u_{in} = \eta
+\]
 
-```python
+Типовая структура матриц:
 
+\[
+\begin{bmatrix}
+\dot{u} \\
+\dot{w} \\
+\dot{q} \\
+\dot{\theta}
+\end{bmatrix}
+=
+\begin{bmatrix}
+x_u & x_w & x_q & x_{\theta} \\
+z_u & z_w & z_q & z_{\theta} \\
+m_u & m_w & m_q & m_{\theta} \\
+0 & 0 & 1 & 0
+\end{bmatrix}
+\begin{bmatrix} u \\ w \\ q \\ \theta \end{bmatrix}
+ +
+\begin{bmatrix} x_{\eta} \\ z_{\eta} \\ m_{\eta} \\ 0 \end{bmatrix} \eta
+\]
+
+=== "Переменные"
+
+    - **u**: продольная скорость, м/с
+    - **w**: нормальная скорость, м/с
+    - **q**: угловая скорость тангажа, рад/с
+    - **θ**: тангаж, рад
+    - **η**: управляющее отклонение стабилизатора, рад
+
+=== "Коэффициенты"
+
+    - **x_u, x_w, x_q, x_θ** — частные производные продольной силы \(X\) по \(u, w, q, \theta\)
+    - **z_u, z_w, z_q, z_θ** — частные производные нормальной силы \(Z\)
+    - **m_u, m_w, m_q, m_θ** — частные производные момента тангажа \(M\)
+    - **x_η, z_η, m_η** — производные по управляющему \(\eta\)
+
+!!! note "О единицах измерения"
+    Углы и угловые скорости — в радианах. Методы API позволяют получить значения в градусах.
+
+## Математическая модель
+
+$$
+\dot{x} = A x + B u, \qquad y = C x + D u
+$$
+
+Численные матрицы (пример линеаризации):
+
+\[
+\begin{bmatrix}
+\dot{u} \\
+\dot{w} \\
+\dot{q} \\
+\dot{\theta}
+\end{bmatrix}
+=
+\begin{bmatrix}
+-0.0089 & -0.1474 & 0 & -9.75 \\
+-0.0216 & -0.3601 & 5.9470 & 0.01958 \\
+0 & -0.0015 & -0.0224 & 0.0006 \\
+0 & 0 & 1 & 0 
+\end{bmatrix}
+\begin{bmatrix}
+u \\
+w \\
+q \\
+\theta 
+\end{bmatrix}
+ +
+\begin{bmatrix}
+9.748 \\
+3.77 \\
+-0.034 \\
+0.01
+\end{bmatrix}
+\eta
+\]
+
+### Производные (численные значения)
+
+- **Матрица A (производные):**
+
+  | Коэффициент | Значение |
+  |-------------|----------|
+  | x_u | -0.0089 |
+  | x_w | -0.1474 |
+  | x_q | 0 |
+  | x_θ | -9.75 |
+  | z_u | -0.0216 |
+  | z_w | -0.3601 |
+  | z_q | 5.9470 |
+  | z_θ | 0.01958 |
+  | m_u | 0.0 |
+  | m_w | -0.0015 |
+  | m_q | -0.0224 |
+  | m_θ | 0.0006 |
+
+- **Вход η (столбец B):**
+
+  | Коэффициент | Значение |
+  |-------------|----------|
+  | x_η | 9.748 |
+  | z_η | 3.77 |
+  | m_η | -0.034 |
+  | θ_η | 0.01 |
+
+!!! tip "Ограничения привода"
+    По умолчанию применяются предельные значения управления:
+
+    - Максимальная величина: \(\pm 25^\circ\)
+    - Максимальная скорость изменения: \(60^\circ/\text{s}\)
+
+    Внутренние вычисления — в радианах; ограничения переводятся эквивалентно.
+
+## Источники
+
+1. Arikapalli V. S. N. et al. Missile Longitudinal Dynamics Control Design using Pole Placement and LQR Methods — A Critical Analysis // Defence Science Journal. 2021. 71(5). [Ссылка](https://www.strategicfront.org/forums/attachments/16232-article-text-62198-1-10-20210902-pdf.20806/)
+
+## Быстрый старт
+
+=== "Gymnasium"
+
+    ```python
     import gymnasium as gym 
     import numpy as np
-    from tqdm import tqdm
 
     from tensoraerospace.envs import LinearLongitudinalMissileModel
-    from tensoraerospace.utils import generate_time_period, convert_tp_to_sec_tp
+    from tensoraerospace.utils import generate_time_period
     from tensoraerospace.signals.standart import unit_step
 
-    dt = 0.01  # Дискретизация
-    tp = generate_time_period(tn=20, dt=dt) # Временной период
-    tps = convert_tp_to_sec_tp(tp, dt=dt)
-    number_time_steps = len(tp) # Количество временных шагов
-    reference_signals = np.reshape(unit_step(degree=5, tp=tp, time_step=10, output_rad=True), [1, -1]) # Заданный сигнал
+    dt = 0.01
+    tp = generate_time_period(tn=20, dt=dt)
+    number_time_steps = len(tp)
+    reference_signals = unit_step(degree=5, tp=tp, time_step=10, output_rad=True).reshape(1, -1)
 
-    env = gym.make('LinearLongitudinalMissileModel-v0',
-               number_time_steps=number_time_steps, 
-               initial_state=[[0],[0],[0]],
-               reference_signal = reference_signals)
-    env.reset() 
+    env = gym.make(
+        'LinearLongitudinalMissileModel-v0',
+        number_time_steps=number_time_steps, 
+        initial_state=[[0],[0],[0],[0]],  # u, w, q, theta
+        reference_signal=reference_signals,
+    )
+    state, info = env.reset()
+    for _ in range(200):
+        action = np.array([[0.1]])
+        state, reward, terminated, truncated, info = env.step(action)
+        if terminated or truncated:
+            break
+    ```
 
-    observation, reward, done, info = env.step(np.array([[1]]))
+=== "Только модель"
+
+    ```python
+    import numpy as np
+    from tensoraerospace.aerospacemodel import MissileModel
+
+    dt = 0.01
+    number_time_steps = 200
+
+    x0 = np.array([0.0, 0.0, 0.0, 0.0])
+
+    model = MissileModel(
+        x0=x0,
+        number_time_steps=number_time_steps,
+        selected_state_output=["u", "w", "q", "theta"],
+        dt=dt,
+    )
+
+    for t in range(number_time_steps - 1):
+        u = np.array([[0.05]])
+        x_next = model.run_step(u)
+    ```
+
+## Python API
+
+=== "Модель"
+
+    ::: tensoraerospace.aerospacemodel.rocket.MissileModel
+
+=== "Среда Gymnasium"
+
+    ::: tensoraerospace.envs.rocket.LinearLongitudinalMissileModel

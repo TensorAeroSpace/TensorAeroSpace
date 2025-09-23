@@ -40,7 +40,9 @@ nav:
     - SUAV: model/suav.md
     - Unity Environment: model/unity_env.md
   - Agents:
-    - IHDP: agent/ihdp.md
+    - IHDP: 
+      - Описание: agent/ihdp.md
+      - Пример LinearLongitudinalF16‑v0: agent/ihdp/example.md
     - MPC: agent/mpc.md
     - DQN: agent/dqn.md
     - A3C: agent/a3c.md
@@ -54,7 +56,7 @@ nav:
     - Signals: signals/signals.md
   - Examples:
     - Environments: example/env/examples.md
-    - IHDP: example/agent/ihdp/example_ihdp.md
+    - IHDP: example/agent/ihdp/example.md
     - SAC F16: example/agent/sac/example-sac-f16.md
     - Optimization: example/optimization/example_optimization.md
     - A2C-NARX: example/agent/a2c_narx/example-narx.md
