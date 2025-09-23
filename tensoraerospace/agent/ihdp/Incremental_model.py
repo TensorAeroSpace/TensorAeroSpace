@@ -1,7 +1,6 @@
 from typing import Tuple
 
 import numpy as np
-import numpy as np
 
 
 class IncrementalModel:

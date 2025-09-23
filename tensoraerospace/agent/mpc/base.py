@@ -2,7 +2,6 @@ from typing import Callable, Dict, Tuple
 
 import numpy as np
 import torch
-import torch
 
 
 class AircraftMPC:
