@@ -1,0 +1,16 @@
+/* Center content on homepage and style hero image/buttons */
+.md-content__inner {
+  text-align: center;
+}
+
+.hero-image {
+  width: 100%;
+  max-width: 920px;
+  margin: 0 auto 1.2rem auto;
+  border-radius: 12px;
+  box-shadow: 0 6px 24px rgba(0,0,0,0.12);
+}
+
+.hero-actions a.md-button {
+  margin: 0 .3rem;
+}

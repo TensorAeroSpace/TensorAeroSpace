@@ -1,3 +1,5 @@
+from typing import Tuple, Union
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -9,7 +11,7 @@ epsilon = 1e-6
 
 
 # Initialize Policy weights
-def weights_init_(m):
+def weights_init_(m: torch.nn.Module) -> None:
     """Инициализирует веса политики.
 
     Применяет инициализацию Xavier для весов и константную инициализацию для смещений
@@ -37,7 +39,7 @@ class ValueNetwork(nn.Module):
 
     """
 
-    def __init__(self, num_inputs, hidden_dim):
+    def __init__(self, num_inputs: int, hidden_dim: int):
         super(ValueNetwork, self).__init__()
 
         self.linear1 = nn.Linear(num_inputs, hidden_dim)
@@ -46,7 +48,7 @@ class ValueNetwork(nn.Module):
 
         self.apply(weights_init_)
 
-    def forward(self, state):
+    def forward(self, state: torch.Tensor) -> torch.Tensor:
         """Прямой проход нейронной сети.
 
         Args:
@@ -80,7 +82,7 @@ class QNetwork(nn.Module):
 
     """
 
-    def __init__(self, num_inputs, num_actions, hidden_dim):
+    def __init__(self, num_inputs: int, num_actions: int, hidden_dim: int):
         super(QNetwork, self).__init__()
 
         # Q1 арха
@@ -95,7 +97,9 @@ class QNetwork(nn.Module):
 
         self.apply(weights_init_)
 
-    def forward(self, state, action):
+    def forward(
+        self, state: torch.Tensor, action: torch.Tensor
+    ) -> Tuple[torch.Tensor, torch.Tensor]:
         """Прямой проход нейронной сети для оценки функции Q.
 
         Args:
@@ -138,7 +142,9 @@ class GaussianPolicy(nn.Module):
 
     """
 
-    def __init__(self, num_inputs, num_actions, hidden_dim, action_space=None):
+    def __init__(
+        self, num_inputs: int, num_actions: int, hidden_dim: int, action_space=None
+    ):
         super(GaussianPolicy, self).__init__()
 
         self.linear1 = nn.Linear(num_inputs, hidden_dim)
@@ -160,7 +166,7 @@ class GaussianPolicy(nn.Module):
                 (action_space.high + action_space.low) / 2.0
             )
 
-    def forward(self, state):
+    def forward(self, state: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
         """Прямой проход нейронной сети для генерации среднего значения и логарифма стандартного отклонения.
 
         Args:
@@ -177,7 +183,9 @@ class GaussianPolicy(nn.Module):
         log_std = torch.clamp(log_std, min=LOG_SIG_MIN, max=LOG_SIG_MAX)
         return mean, log_std
 
-    def sample(self, state):
+    def sample(
+        self, state: torch.Tensor
+    ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         """Сэмплирование действия из гауссовой политики.
 
         Args:
@@ -200,7 +208,7 @@ class GaussianPolicy(nn.Module):
         mean = torch.tanh(mean) * self.action_scale + self.action_bias
         return action, log_prob, mean
 
-    def to(self, device):
+    def to(self, device: Union[str, torch.device]) -> "GaussianPolicy":
         """Перемещение модели на указанное устройство.
 
         Args:
@@ -234,7 +242,9 @@ class DeterministicPolicy(nn.Module):
 
     """
 
-    def __init__(self, num_inputs, num_actions, hidden_dim, action_space=None):
+    def __init__(
+        self, num_inputs: int, num_actions: int, hidden_dim: int, action_space=None
+    ):
         super(DeterministicPolicy, self).__init__()
         self.linear1 = nn.Linear(num_inputs, hidden_dim)
         self.linear2 = nn.Linear(hidden_dim, hidden_dim)
@@ -256,7 +266,7 @@ class DeterministicPolicy(nn.Module):
                 (action_space.high + action_space.low) / 2.0
             )
 
-    def forward(self, state):
+    def forward(self, state: torch.Tensor) -> torch.Tensor:
         """Прямой проход нейронной сети для генерации среднего значения.
 
         Args:
@@ -271,7 +281,9 @@ class DeterministicPolicy(nn.Module):
         mean = torch.tanh(self.mean(x)) * self.action_scale + self.action_bias
         return mean
 
-    def sample(self, state):
+    def sample(
+        self, state: torch.Tensor
+    ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         """Сэмплирование действия из детерминированной политики.
 
         Args:
@@ -287,7 +299,7 @@ class DeterministicPolicy(nn.Module):
         action = mean + noise
         return action, torch.tensor(0.0), mean
 
-    def to(self, device):
+    def to(self, device: Union[str, torch.device]) -> "DeterministicPolicy":
         """Перемещение модели на указанное устройство.
 
         Args:

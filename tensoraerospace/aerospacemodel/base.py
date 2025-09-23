@@ -237,8 +237,7 @@ class ModelBase:
         """
         График ошибки регулирования
 
-        .. math::
-            \epsilon = ref - state
+        .. math:: \\epsilon = ref - state
 
         Args:
             state_name: Название состояния

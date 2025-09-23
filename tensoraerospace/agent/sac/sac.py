@@ -9,6 +9,7 @@
 import datetime
 import json
 from pathlib import Path
+from typing import Any, Dict, Tuple, Union
 
 import numpy as np
 import torch
@@ -32,17 +33,21 @@ class SAC(BaseRLModel):
     """Soft Actor-Critic (SAC) алгоритм для обучения с подкреплением.
 
     Args:
-        num_inputs (int): Размерность входного пространства состояний.
-        action_space: Пространство действий агента.
-        args: Параметры и настройки алгоритма.
-
+        env: Окружение (совместимое с Gym API).
+        updates_per_step (int): Обновлений на шаг взаимодействия.
+        batch_size (int): Размер мини-пакета.
+        memory_capacity (int): Вместимость буфера повторов.
+        lr (float): Скорость обучения.
         gamma (float): Коэффициент дисконтирования.
-        tau (float): Коэффициент для мягкого обновления весов целевой сети.
-        alpha (float): Коэффициент для регуляризации политики.
+        tau (float): Коэффициент мягкого обновления целевой сети.
+        alpha (float): Коэффициент энтропии (для политики).
         policy_type (str): Тип политики ("Gaussian" или "Deterministic").
-        target_update_interval (int): Интервал обновления весов целевой сети.
-        automatic_entropy_tuning (bool): Флаг автоматической настройки энтропии.
-        cuda: Использовать cuda или нет.
+        target_update_interval (int): Интервал обновления целевой сети.
+        automatic_entropy_tuning (bool): Автонастройка энтропии.
+        hidden_size (int): Размер скрытого слоя сетей.
+        device (str | torch.device): Устройство для вычислений.
+        verbose_histogram (bool): Логирование гистограмм в TensorBoard.
+        seed (int): Сид генератора случайных чисел.
 
     Attributes:
 
@@ -57,22 +62,22 @@ class SAC(BaseRLModel):
 
     def __init__(
         self,
-        env,
-        updates_per_step=1,
-        batch_size=32,
-        memory_capacity=10000000,
-        lr=0.0003,
-        gamma=0.99,
-        tau=0.005,
-        alpha=0.2,
-        policy_type="Gaussian",
-        target_update_interval=1,
-        automatic_entropy_tuning=False,
-        hidden_size=256,
-        device="cpu",
-        verbose_histogram=False,
-        seed=42,
-    ):
+        env: Any,
+        updates_per_step: int = 1,
+        batch_size: int = 32,
+        memory_capacity: int = 10000000,
+        lr: float = 0.0003,
+        gamma: float = 0.99,
+        tau: float = 0.005,
+        alpha: float = 0.2,
+        policy_type: str = "Gaussian",
+        target_update_interval: int = 1,
+        automatic_entropy_tuning: bool = False,
+        hidden_size: int = 256,
+        device: Union[str, torch.device] = "cpu",
+        verbose_histogram: bool = False,
+        seed: int = 42,
+    ) -> None:
         self.gamma = gamma
         self.tau = tau
         self.alpha = alpha
@@ -123,7 +128,7 @@ class SAC(BaseRLModel):
             ).to(self.device)
             self.policy_optim = Adam(self.policy.parameters(), lr=lr)
 
-    def select_action(self, state, evaluate=False):
+    def select_action(self, state: np.ndarray, evaluate: bool = False) -> np.ndarray:
         """Выбор действия на основе текущего состояния.
 
         Args:
@@ -141,7 +146,9 @@ class SAC(BaseRLModel):
             _, _, action = self.policy.sample(state)
         return action.detach().cpu().numpy()[0]
 
-    def update_parameters(self, memory, batch_size, updates):
+    def update_parameters(
+        self, memory: ReplayMemory, batch_size: int, updates: int
+    ) -> Tuple[float, float, float, float, float]:
         """Обновление параметров сетей на основе мини-пакета из памяти.
 
         Args:
@@ -251,7 +258,7 @@ class SAC(BaseRLModel):
             alpha_tlogs.item(),
         )
 
-    def train(self, num_episodes):
+    def train(self, num_episodes: int) -> None:
         # Training Loop
         total_numsteps = 0
         updates = 0
@@ -291,7 +298,7 @@ class SAC(BaseRLModel):
                 state = next_state
             self.writer.add_scalar("Performance/Reward", episode_reward, i_episode)
 
-    def get_param_env(self):
+    def get_param_env(self) -> Dict[str, Dict[str, Any]]:
         class_name = self.env.unwrapped.__class__.__name__
         module_name = self.env.unwrapped.__class__.__module__
         env_name = f"{module_name}.{class_name}"
@@ -345,14 +352,13 @@ class SAC(BaseRLModel):
             "policy": {"name": agent_name, "params": policy_params},
         }
 
-    def save(self, path=None):
+    def save(self, path: Union[str, Path, None] = None) -> None:
         """
-        Сохраняет модель PyTorch в указанной директории. Если путь не указан,
-        создает директорию с текущей датой и временем.
+        Сохраняет модель PyTorch в указанной директории.
 
         Args:
-            path (str, optional): Путь, где будет сохранена модель. Если None,
-            создается директория с текущей датой и временем.
+            path (str | Path | None): Путь сохранения. Если None — создается папка
+                с текущей датой и временем в рабочем каталоге.
 
         Returns:
             None
@@ -382,7 +388,7 @@ class SAC(BaseRLModel):
         torch.save(self.critic_target, critic_target_path)
 
     @classmethod
-    def __load(cls, path):
+    def __load(cls, path: Union[str, Path]):
         path = Path(path)
         config_path = path / "config.json"
         critic_path = path / "critic.pth"
@@ -408,7 +414,9 @@ class SAC(BaseRLModel):
         return new_agent
 
     @classmethod
-    def from_pretrained(cls, repo_name, access_token=None, version=None):
+    def from_pretrained(
+        cls, repo_name: str, access_token: str | None = None, version: str | None = None
+    ) -> "SAC":
         path = Path(repo_name)
         if path.exists():
             new_agent = cls.__load(path)

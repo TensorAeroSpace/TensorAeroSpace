@@ -9,6 +9,7 @@
 import datetime
 import json
 from pathlib import Path
+from typing import Any, Dict, Tuple, Union
 
 import numpy as np
 import torch
@@ -185,18 +186,18 @@ class PPO(BaseRLModel):
 
     def __init__(
         self,
-        env,
-        gamma=0.99,
-        max_episodes=30,
-        rollout_len=2048,
-        clip_pram=0.2,
-        num_epochs=64,
-        batch_size=64,
-        entropy_coef=0.005,
-        actor_lr=0.001,
-        critic_lr=0.005,
-        seed=336699,
-    ):
+        env: Any,
+        gamma: float = 0.99,
+        max_episodes: int = 30,
+        rollout_len: int = 2048,
+        clip_pram: float = 0.2,
+        num_epochs: int = 64,
+        batch_size: int = 64,
+        entropy_coef: float = 0.005,
+        actor_lr: float = 0.001,
+        critic_lr: float = 0.005,
+        seed: int = 336699,
+    ) -> None:
         """Инициализация агента с заданным окружением и коэффициентом дисконтирования.
 
         Args:
@@ -226,7 +227,7 @@ class PPO(BaseRLModel):
         self.avg_rewards_list = []
         self.writer = SummaryWriter()
 
-    def act(self, state):
+    def act(self, state: np.ndarray) -> Tuple[torch.Tensor, np.ndarray, torch.Tensor]:
         """Выбирает действие для данного состояния.
 
         Args:
@@ -243,7 +244,14 @@ class PPO(BaseRLModel):
             dist.log_prob(action),
         )  # , prob.detach().numpy()
 
-    def actor_loss(self, probs, entropy, actions, adv, old_probs):
+    def actor_loss(
+        self,
+        probs: torch.Tensor,
+        entropy: torch.Tensor,
+        actions: torch.Tensor,
+        adv: torch.Tensor,
+        old_probs: torch.Tensor,
+    ) -> torch.Tensor:
         """Вычисляет потери актора.
 
         Args:
@@ -262,7 +270,7 @@ class PPO(BaseRLModel):
         loss = -torch.min(surr1, surr2).mean() + self.entropy_coef * entropy
         return loss
 
-    def auxillary_task(self, r, rewards):
+    def auxillary_task(self, r: torch.Tensor, rewards: torch.Tensor) -> torch.Tensor:
         """Вычисляет потери вспомогательной задачи (прогнозирование наград).
 
         Args:
@@ -274,7 +282,15 @@ class PPO(BaseRLModel):
         """
         return F.mse_loss(r, rewards)
 
-    def learn(self, states, actions, adv, old_probs, discnt_rewards, rewards):
+    def learn(
+        self,
+        states: torch.Tensor,
+        actions: torch.Tensor,
+        adv: torch.Tensor,
+        old_probs: torch.Tensor,
+        discnt_rewards: torch.Tensor,
+        rewards: torch.Tensor,
+    ) -> Tuple[float, float]:
         """Процедура обучения агента.
 
         Args:
@@ -306,7 +322,7 @@ class PPO(BaseRLModel):
         self.c_opt.step()
         return a_loss.item(), c_loss.item()
 
-    def test_reward(self):
+    def test_reward(self) -> float:
         """Тестирование модели путем выполнения одного эпизода.
 
         Returns:
@@ -331,7 +347,23 @@ class PPO(BaseRLModel):
             total_reward += reward
         return total_reward
 
-    def preprocess1(self, states, actions, rewards, dones, values, probs, gamma):
+    def preprocess1(
+        self,
+        states: list[torch.Tensor],
+        actions: list[torch.Tensor],
+        rewards: list[torch.Tensor],
+        dones: list[torch.Tensor],
+        values: list[torch.Tensor],
+        probs: list[torch.Tensor],
+        gamma: float,
+    ) -> Tuple[
+        torch.Tensor,
+        torch.Tensor,
+        list[torch.Tensor],
+        torch.Tensor,
+        torch.Tensor,
+        torch.Tensor,
+    ]:
         """Предобработка переходов для буфера.
 
         Args:
@@ -368,7 +400,7 @@ class PPO(BaseRLModel):
 
         return states2, actions2, returns2, adv2, rewards2, probs2
 
-    def train(self):
+    def train(self) -> None:
         """Функция обучения агента.
 
         В процессе обучения агент проходит через заданное количество эпизодов, собирает данные,
@@ -485,7 +517,7 @@ class PPO(BaseRLModel):
 
         # print("Training completed. Average rewards list:", self.avg_rewards_list)
 
-    def get_param_env(self):
+    def get_param_env(self) -> Dict[str, Dict[str, Any]]:
         """Получает параметры среды и агента для сохранения.
 
         Returns:
@@ -538,7 +570,7 @@ class PPO(BaseRLModel):
             "policy": {"name": agent_name, "params": policy_params},
         }
 
-    def save(self, path=None):
+    def save(self, path: Union[str, Path, None] = None) -> None:
         """Сохраняет модель PPO в указанной директории.
 
         Если путь не указан, создает директорию с текущей датой и временем.
@@ -570,7 +602,7 @@ class PPO(BaseRLModel):
         torch.save(self.critic, critic_path)
 
     @classmethod
-    def __load(cls, path):
+    def __load(cls, path: Union[str, Path]) -> "PPO":
         """Загружает модель PPO из указанной директории.
 
         Args:
@@ -604,7 +636,9 @@ class PPO(BaseRLModel):
         return new_agent
 
     @classmethod
-    def from_pretrained(cls, repo_name, access_token=None, version=None):
+    def from_pretrained(
+        cls, repo_name: str, access_token: str | None = None, version: str | None = None
+    ) -> "PPO":
         """Загружает предобученную модель из локального пути или Hugging Face Hub.
 
         Args:

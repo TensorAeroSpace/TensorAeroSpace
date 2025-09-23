@@ -1,8 +1,10 @@
 import glob
+from typing import Any, Tuple
 
 import numpy as np
 import tensorflow as tf
 from tensorflow.keras.layers import Dense, Flatten
+from tensorflow.keras.models import Model as KModel
 
 
 class Actor:
@@ -175,7 +177,7 @@ class Actor:
         """Загрузка весов модели"""
         self.model.load_weights(self.model_path)
 
-    def create_NN(self, store_weights, seed):
+    def create_NN(self, store_weights, seed: int) -> Tuple[KModel, dict]:
         """Создает NN с учетом пользовательского ввода
 
         Args:
@@ -240,7 +242,7 @@ class Actor:
 
         return model, store_weights
 
-    def run_actor_online(self, xt, xt_ref):
+    def run_actor_online(self, xt: np.ndarray, xt_ref: np.ndarray) -> np.ndarray:
         """Сгенерируйте ввод в систему с заданным и реальным состояниями.
 
         Args:
@@ -265,7 +267,7 @@ class Actor:
                     xt[self.indices_tracking_states[0], :], [-1, 1]
                 )
             alphat_error = np.reshape(tracked_states - xt_ref, [-1, 1])
-            nn_input_alpha = tf.constant(np.array([(alphat_error)]).astype("float32"))
+            nn_input_alpha = tf.constant(np.array([alphat_error]).astype("float32"))
 
             with tf.GradientTape() as tape:
                 tape.watch(self.model.trainable_variables)
@@ -303,7 +305,7 @@ class Actor:
             qt_error = np.reshape(
                 tracked_states_q - np.reshape(q_ref, tracked_states_q.shape), [-1, 1]
             )
-            nn_input_q = tf.constant(np.array([(qt_error)]).astype("float32"))
+            nn_input_q = tf.constant(np.array([qt_error]).astype("float32"))
 
             with tf.GradientTape() as tape:
                 tape.watch(nn_input_q)
@@ -366,7 +368,9 @@ class Actor:
             return np.array([self.ut])
         return self.ut
 
-    def train_actor_online(self, Jt1, dJt1_dxt1, G):
+    def train_actor_online(
+        self, Jt1: np.ndarray, dJt1_dxt1: np.ndarray, G: np.ndarray
+    ) -> None:
         """Получает элементы цепного правила, вычисляет градиент и применяет его к соответствующим весам и смещениям.
 
         Args:
@@ -395,8 +399,14 @@ class Actor:
             self.model = self.check_WB_limits(count, self.model)
 
     def train_actor_online_adaptive_alpha(
-        self, Jt1, dJt1_dxt1, G, incremental_model, critic, xt_ref1
-    ):
+        self,
+        Jt1: np.ndarray,
+        dJt1_dxt1: np.ndarray,
+        G: np.ndarray,
+        incremental_model: Any,
+        critic: Any,
+        xt_ref1: np.ndarray,
+    ) -> None:
         """Обучение Actor (актера). с помощью адаптивной альфы в зависимости от знака и величины сетевых ошибок
 
         Args:
@@ -448,8 +458,14 @@ class Actor:
                 # print("ACTOR LEARNING_RATE = ", self.learning_rate)
 
     def train_actor_online_adam(
-        self, Jt1, dJt1_dxt1, G, incremental_model, critic, xt_ref1
-    ):
+        self,
+        Jt1: np.ndarray,
+        dJt1_dxt1: np.ndarray,
+        G: np.ndarray,
+        incremental_model: Any,
+        critic: Any,
+        xt_ref1: np.ndarray,
+    ) -> None:
         """Обучение Actor (актера) с помощью оптимизатора Adam.
 
         Args:
@@ -668,7 +684,9 @@ class Actor:
             # Ec_actor_after = 0.5 * np.square(Jt1_after)
             # print("ACTOR LOSS xt1 after= ", Ec_actor_after)
 
-    def compute_Adam_update(self, count, gradient, model, learning_rate):
+    def compute_Adam_update(
+        self, count: int, gradient: np.ndarray, model: KModel, learning_rate: float
+    ) -> Tuple[KModel, float]:
         """Вычисляет обновление Adam и применяет его к обновлениям веса.
 
         Args:
@@ -716,7 +734,7 @@ class Actor:
 
         return model, learning_rate
 
-    def check_WB_limits(self, count, model):
+    def check_WB_limits(self, count: int, model: KModel) -> KModel:
         """Проверка, не превышают ли какие-либо веса и смещения установленный предел (WB_limits), и насыщайте значения.
 
         Args:
@@ -733,7 +751,7 @@ class Actor:
         model.trainable_variables[count].assign(WB_variable)
         return model
 
-    def compute_persistent_excitation(self, *args):
+    def compute_persistent_excitation(self, *args: int) -> float:
         """Расчет постоянного возбуждения на каждом временном шаге.
 
         Returns:
@@ -766,9 +784,9 @@ class Actor:
 
         e0 = e0_1 + e0_2
 
-        return e0
+        return float(e0)
 
-    def update_actor_attributes(self):
+    def update_actor_attributes(self) -> None:
         """Атрибуты, которые меняются с каждым временным шагом, обновляются"""
         self.time_step += 1
         self.dut_dWb_1 = self.dut_dWb
@@ -784,7 +802,7 @@ class Actor:
                     self.model_q.trainable_variables[counter * 2].numpy().flatten()
                 )
 
-    def evaluate_actor(self, *args):
+    def evaluate_actor(self, *args: Any) -> np.ndarray:
         """Оценка актора с учетом входных данных или атрибутов, хранящихся в объекте
 
         Args:
@@ -820,7 +838,7 @@ class Actor:
                     xt[self.indices_tracking_states[0], :], [-1, 1]
                 )
             xt_error = np.reshape(tracked_states - xt_ref, [-1, 1])
-            nn_input = tf.constant(np.array([(xt_error)]).astype("float32"))
+            nn_input = tf.constant(np.array([xt_error]).astype("float32"))
 
             q_ref_0 = self.model(nn_input)
             if self.activations[-1] == "sigmoid":
@@ -853,7 +871,7 @@ class Actor:
             xt_error_q = np.reshape(
                 tracked_states - np.reshape(q_ref, tracked_states.shape), [-1, 1]
             )
-            nn_input_q = tf.constant(np.array([(xt_error_q)]).astype("float32"))
+            nn_input_q = tf.constant(np.array([xt_error_q]).astype("float32"))
 
             ut = self.model_q(nn_input_q).numpy()
 
@@ -866,7 +884,7 @@ class Actor:
                     xt[self.indices_tracking_states, :], [-1, 1]
                 )
             xt_error = np.reshape(tracked_states - xt_ref, [-1, 1])
-            nn_input = tf.constant(np.array([(xt_error)]).astype("float32"))
+            nn_input = tf.constant(np.array([xt_error]).astype("float32"))
 
             ut = self.model(nn_input).numpy()
 

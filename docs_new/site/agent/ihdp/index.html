@@ -1,0 +1,6587 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Open source deep learning framework for aerospace objects">
+      
+      
+      
+        <link rel="canonical" href="https://tensoraerospace.github.io/TensorAeroSpace/agent/ihdp/">
+      
+      
+        <link rel="prev" href="../../model/unity_env/">
+      
+      
+        <link rel="next" href="../mpc/">
+      
+      
+      <link rel="icon" href="../../logo.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.6.15">
+    
+    
+      
+        <title>IHDP - TensorAeroSpace</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.342714a4.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/_mkdocstrings.css">
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+    
+  </head>
+  
+  
+    <body dir="ltr">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#incremental-heuristic-dynamic-programming" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="TensorAeroSpace" class="md-header__button md-logo" aria-label="TensorAeroSpace" data-md-component="logo">
+      
+  <img src="../../logo.png" alt="logo">
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            TensorAeroSpace
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              IHDP
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/TensorAeroSpace/TensorAeroSpace" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.7.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc.--><path d="M439.55 236.05 244 40.45a28.87 28.87 0 0 0-40.81 0l-40.66 40.63 51.52 51.52c27.06-9.14 52.68 16.77 43.39 43.68l49.66 49.66c34.23-11.8 61.18 31 35.47 56.69-26.49 26.49-70.21-2.87-56-37.34L240.22 199v121.85c25.3 12.54 22.26 41.85 9.08 55a34.34 34.34 0 0 1-48.55 0c-17.57-17.6-11.07-46.91 11.25-56v-123c-20.8-8.51-24.6-30.74-18.64-45L142.57 101 8.45 235.14a28.86 28.86 0 0 0 0 40.81l195.61 195.6a28.86 28.86 0 0 0 40.8 0l194.69-194.69a28.86 28.86 0 0 0 0-40.81"/></svg>
+  </div>
+  <div class="md-source__repository">
+    TensorAeroSpace/TensorAeroSpace
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../.." class="md-tabs__link">
+        
+  
+  
+    
+  
+  Home
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../guide/installation/" class="md-tabs__link">
+          
+  
+  
+  User Guide
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../model/f16/" class="md-tabs__link">
+          
+  
+  
+  Aerospace Models
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    
+    
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="./" class="md-tabs__link">
+          
+  
+  
+  Agents
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../example/env/examples/" class="md-tabs__link">
+          
+  
+  
+  Examples
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../lesson/0intro/" class="md-tabs__link">
+          
+  
+  
+  Lessons
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="TensorAeroSpace" class="md-nav__button md-logo" aria-label="TensorAeroSpace" data-md-component="logo">
+      
+  <img src="../../logo.png" alt="logo">
+
+    </a>
+    TensorAeroSpace
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/TensorAeroSpace/TensorAeroSpace" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.7.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc.--><path d="M439.55 236.05 244 40.45a28.87 28.87 0 0 0-40.81 0l-40.66 40.63 51.52 51.52c27.06-9.14 52.68 16.77 43.39 43.68l49.66 49.66c34.23-11.8 61.18 31 35.47 56.69-26.49 26.49-70.21-2.87-56-37.34L240.22 199v121.85c25.3 12.54 22.26 41.85 9.08 55a34.34 34.34 0 0 1-48.55 0c-17.57-17.6-11.07-46.91 11.25-56v-123c-20.8-8.51-24.6-30.74-18.64-45L142.57 101 8.45 235.14a28.86 28.86 0 0 0 0 40.81l195.61 195.6a28.86 28.86 0 0 0 40.8 0l194.69-194.69a28.86 28.86 0 0 0 0-40.81"/></svg>
+  </div>
+  <div class="md-source__repository">
+    TensorAeroSpace/TensorAeroSpace
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Home
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    User Guide
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            User Guide
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/installation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Installation
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/unity_env/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Unity Environment
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Aerospace Models
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            Aerospace Models
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../model/f16/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    F16
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../model/b747/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    B747
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../model/evl/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    EVL
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../model/typical_rocket/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Typical Rocket
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../model/comsat/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    ComSat
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../model/f4c/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    F4C
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../model/geosat/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    GeoSat
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../model/uav/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    UAV
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../model/x15/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    X15
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../model/lsu/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    LSU
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../model/suav/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    SUAV
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../model/unity_env/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Unity Environment
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    Agents
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            Agents
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    IHDP
+    
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    IHDP
+    
+  </span>
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      Источники
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#gym" class="md-nav__link">
+    <span class="md-ellipsis">
+      С какими окружениями gym можно использовать?
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#api" class="md-nav__link">
+    <span class="md-ellipsis">
+      Документация API
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#tensoraerospace.agent.ihdp.model.IHDPAgent" class="md-nav__link">
+    <span class="md-ellipsis">
+      IHDPAgent
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="IHDPAgent">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#tensoraerospace.agent.ihdp.model.IHDPAgent.predict" class="md-nav__link">
+    <span class="md-ellipsis">
+      predict
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#tensoraerospace.agent.ihdp.Actor" class="md-nav__link">
+    <span class="md-ellipsis">
+      Actor
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Actor">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#tensoraerospace.agent.ihdp.Actor.Actor" class="md-nav__link">
+    <span class="md-ellipsis">
+      Actor
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Actor">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#tensoraerospace.agent.ihdp.Actor.Actor.build_actor_model" class="md-nav__link">
+    <span class="md-ellipsis">
+      build_actor_model
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#tensoraerospace.agent.ihdp.Actor.Actor.save_model" class="md-nav__link">
+    <span class="md-ellipsis">
+      save_model
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#tensoraerospace.agent.ihdp.Actor.Actor.save_dut_dWb" class="md-nav__link">
+    <span class="md-ellipsis">
+      save_dut_dWb
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#tensoraerospace.agent.ihdp.Actor.Actor.load_dut_dWb" class="md-nav__link">
+    <span class="md-ellipsis">
+      load_dut_dWb
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#tensoraerospace.agent.ihdp.Actor.Actor.load_model" class="md-nav__link">
+    <span class="md-ellipsis">
+      load_model
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#tensoraerospace.agent.ihdp.Actor.Actor.create_NN" class="md-nav__link">
+    <span class="md-ellipsis">
+      create_NN
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#tensoraerospace.agent.ihdp.Actor.Actor.run_actor_online" class="md-nav__link">
+    <span class="md-ellipsis">
+      run_actor_online
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#tensoraerospace.agent.ihdp.Actor.Actor.train_actor_online" class="md-nav__link">
+    <span class="md-ellipsis">
+      train_actor_online
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#tensoraerospace.agent.ihdp.Actor.Actor.train_actor_online_adaptive_alpha" class="md-nav__link">
+    <span class="md-ellipsis">
+      train_actor_online_adaptive_alpha
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#tensoraerospace.agent.ihdp.Actor.Actor.train_actor_online_adam" class="md-nav__link">
+    <span class="md-ellipsis">
+      train_actor_online_adam
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#tensoraerospace.agent.ihdp.Actor.Actor.train_actor_online_alpha_decay" class="md-nav__link">
+    <span class="md-ellipsis">
+      train_actor_online_alpha_decay
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#tensoraerospace.agent.ihdp.Actor.Actor.compute_Adam_update" class="md-nav__link">
+    <span class="md-ellipsis">
+      compute_Adam_update
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#tensoraerospace.agent.ihdp.Actor.Actor.check_WB_limits" class="md-nav__link">
+    <span class="md-ellipsis">
+      check_WB_limits
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#tensoraerospace.agent.ihdp.Actor.Actor.compute_persistent_excitation" class="md-nav__link">
+    <span class="md-ellipsis">
+      compute_persistent_excitation
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#tensoraerospace.agent.ihdp.Actor.Actor.update_actor_attributes" class="md-nav__link">
+    <span class="md-ellipsis">
+      update_actor_attributes
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#tensoraerospace.agent.ihdp.Actor.Actor.evaluate_actor" class="md-nav__link">
+    <span class="md-ellipsis">
+      evaluate_actor
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#tensoraerospace.agent.ihdp.Actor.Actor.restart_time_step" class="md-nav__link">
+    <span class="md-ellipsis">
+      restart_time_step
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#tensoraerospace.agent.ihdp.Actor.Actor.restart_actor" class="md-nav__link">
+    <span class="md-ellipsis">
+      restart_actor
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#tensoraerospace.agent.ihdp.Critic" class="md-nav__link">
+    <span class="md-ellipsis">
+      Critic
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Critic">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#tensoraerospace.agent.ihdp.Critic.Critic" class="md-nav__link">
+    <span class="md-ellipsis">
+      Critic
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Critic">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#tensoraerospace.agent.ihdp.Critic.Critic.save_model" class="md-nav__link">
+    <span class="md-ellipsis">
+      save_model
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#tensoraerospace.agent.ihdp.Critic.Critic.load_model" class="md-nav__link">
+    <span class="md-ellipsis">
+      load_model
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#tensoraerospace.agent.ihdp.Critic.Critic.save_Jt_ct" class="md-nav__link">
+    <span class="md-ellipsis">
+      save_Jt_ct
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#tensoraerospace.agent.ihdp.Critic.Critic.load_Jt_ct" class="md-nav__link">
+    <span class="md-ellipsis">
+      load_Jt_ct
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#tensoraerospace.agent.ihdp.Critic.Critic.build_critic_model" class="md-nav__link">
+    <span class="md-ellipsis">
+      build_critic_model
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#tensoraerospace.agent.ihdp.Critic.Critic.run_train_critic_online_adaptive_alpha" class="md-nav__link">
+    <span class="md-ellipsis">
+      run_train_critic_online_adaptive_alpha
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#tensoraerospace.agent.ihdp.Critic.Critic.run_train_critic_online_adam" class="md-nav__link">
+    <span class="md-ellipsis">
+      run_train_critic_online_adam
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#tensoraerospace.agent.ihdp.Critic.Critic.adam_iteration" class="md-nav__link">
+    <span class="md-ellipsis">
+      adam_iteration
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#tensoraerospace.agent.ihdp.Critic.Critic.run_train_critic_online_alpha_decay" class="md-nav__link">
+    <span class="md-ellipsis">
+      run_train_critic_online_alpha_decay
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#tensoraerospace.agent.ihdp.Critic.Critic.train_critic_replay_adam" class="md-nav__link">
+    <span class="md-ellipsis">
+      train_critic_replay_adam
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#tensoraerospace.agent.ihdp.Critic.Critic.compute_forward_pass" class="md-nav__link">
+    <span class="md-ellipsis">
+      compute_forward_pass
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#tensoraerospace.agent.ihdp.Critic.Critic.compute_loss_derivative" class="md-nav__link">
+    <span class="md-ellipsis">
+      compute_loss_derivative
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#tensoraerospace.agent.ihdp.Critic.Critic.check_WB_limits" class="md-nav__link">
+    <span class="md-ellipsis">
+      check_WB_limits
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#tensoraerospace.agent.ihdp.Critic.Critic.evaluate_critic" class="md-nav__link">
+    <span class="md-ellipsis">
+      evaluate_critic
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#tensoraerospace.agent.ihdp.Critic.Critic.c_computation" class="md-nav__link">
+    <span class="md-ellipsis">
+      c_computation
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#tensoraerospace.agent.ihdp.Critic.Critic.targets_computation_online" class="md-nav__link">
+    <span class="md-ellipsis">
+      targets_computation_online
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#tensoraerospace.agent.ihdp.Critic.Critic.update_critic_attributes" class="md-nav__link">
+    <span class="md-ellipsis">
+      update_critic_attributes
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#tensoraerospace.agent.ihdp.Critic.Critic.restart_time_step" class="md-nav__link">
+    <span class="md-ellipsis">
+      restart_time_step
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#tensoraerospace.agent.ihdp.Critic.Critic.restart_critic" class="md-nav__link">
+    <span class="md-ellipsis">
+      restart_critic
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#tensoraerospace.agent.ihdp.Incremental_model.IncrementalModel" class="md-nav__link">
+    <span class="md-ellipsis">
+      IncrementalModel
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="IncrementalModel">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#tensoraerospace.agent.ihdp.Incremental_model.IncrementalModel.save_matrix" class="md-nav__link">
+    <span class="md-ellipsis">
+      save_matrix
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#tensoraerospace.agent.ihdp.Incremental_model.IncrementalModel.load_matrix" class="md-nav__link">
+    <span class="md-ellipsis">
+      load_matrix
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#tensoraerospace.agent.ihdp.Incremental_model.IncrementalModel.build_A_LS_matrix" class="md-nav__link">
+    <span class="md-ellipsis">
+      build_A_LS_matrix
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#tensoraerospace.agent.ihdp.Incremental_model.IncrementalModel.build_x_LS_vector" class="md-nav__link">
+    <span class="md-ellipsis">
+      build_x_LS_vector
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#tensoraerospace.agent.ihdp.Incremental_model.IncrementalModel.identify_incremental_model_LS" class="md-nav__link">
+    <span class="md-ellipsis">
+      identify_incremental_model_LS
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#tensoraerospace.agent.ihdp.Incremental_model.IncrementalModel.evaluate_incremental_model" class="md-nav__link">
+    <span class="md-ellipsis">
+      evaluate_incremental_model
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#tensoraerospace.agent.ihdp.Incremental_model.IncrementalModel.update_incremental_model_attributes" class="md-nav__link">
+    <span class="md-ellipsis">
+      update_incremental_model_attributes
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#tensoraerospace.agent.ihdp.Incremental_model.IncrementalModel.restart_time_step" class="md-nav__link">
+    <span class="md-ellipsis">
+      restart_time_step
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#tensoraerospace.agent.ihdp.Incremental_model.IncrementalModel.restart_incremental_model" class="md-nav__link">
+    <span class="md-ellipsis">
+      restart_incremental_model
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../mpc/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    MPC
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../dqn/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    DQN
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../a3c/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    A3C
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../a2c_narx/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    A2C-NARX
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ppo/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    PPO
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../sac/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    SAC
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ddpg/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    DDPG
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../gail/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    GAIL
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../optimization/optuna_based/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Optimization
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../benchmark/metrics/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Benchmark
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../signals/signals/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Signals
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Examples
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            Examples
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../example/env/examples/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Environments
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../example/agent/ihdp/example_ihdp/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    IHDP
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../example/agent/sac/example-sac-f16/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    SAC F16
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../example/optimization/example_optimization/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Optimization
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../example/agent/a2c_narx/example-narx/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    A2C-NARX
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../example/agent/mpc/example_mpc/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    MPC
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../example/agent/mpc/example_transformers/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    MPC Transformers
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../example/failure/ihdp-failure/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    IHDP Failure
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../example/simulink/sim_pyth/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Simulink to Python
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../example/simulink/your_sim/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Your Simulink
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../example/env/unity_example/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Unity Example
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../example/simintech/simintech/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Simintech
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../example/simintech/simintechToPython/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Simintech to Python
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Lessons
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            Lessons
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../lesson/0intro/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Introduction
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../lesson/1analysis_airfoil/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Airfoil Analysis
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../lesson/2analysis_plane_aero/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Plane Aero Analysis
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../lesson/3analysis_plane_static/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Plane Static Analysis
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../lesson/4matlabscript/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    MATLAB Script
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../lesson/5simulinkmodel/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Simulink Model
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../lesson/6dllgen/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    DLL Generation
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../lesson/7control_basics/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Control Theory Basics
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../lesson/8flight_dynamics_intro/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Flight Dynamics Intro
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      Источники
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#gym" class="md-nav__link">
+    <span class="md-ellipsis">
+      С какими окружениями gym можно использовать?
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#api" class="md-nav__link">
+    <span class="md-ellipsis">
+      Документация API
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#tensoraerospace.agent.ihdp.model.IHDPAgent" class="md-nav__link">
+    <span class="md-ellipsis">
+      IHDPAgent
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="IHDPAgent">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#tensoraerospace.agent.ihdp.model.IHDPAgent.predict" class="md-nav__link">
+    <span class="md-ellipsis">
+      predict
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#tensoraerospace.agent.ihdp.Actor" class="md-nav__link">
+    <span class="md-ellipsis">
+      Actor
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Actor">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#tensoraerospace.agent.ihdp.Actor.Actor" class="md-nav__link">
+    <span class="md-ellipsis">
+      Actor
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Actor">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#tensoraerospace.agent.ihdp.Actor.Actor.build_actor_model" class="md-nav__link">
+    <span class="md-ellipsis">
+      build_actor_model
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#tensoraerospace.agent.ihdp.Actor.Actor.save_model" class="md-nav__link">
+    <span class="md-ellipsis">
+      save_model
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#tensoraerospace.agent.ihdp.Actor.Actor.save_dut_dWb" class="md-nav__link">
+    <span class="md-ellipsis">
+      save_dut_dWb
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#tensoraerospace.agent.ihdp.Actor.Actor.load_dut_dWb" class="md-nav__link">
+    <span class="md-ellipsis">
+      load_dut_dWb
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#tensoraerospace.agent.ihdp.Actor.Actor.load_model" class="md-nav__link">
+    <span class="md-ellipsis">
+      load_model
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#tensoraerospace.agent.ihdp.Actor.Actor.create_NN" class="md-nav__link">
+    <span class="md-ellipsis">
+      create_NN
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#tensoraerospace.agent.ihdp.Actor.Actor.run_actor_online" class="md-nav__link">
+    <span class="md-ellipsis">
+      run_actor_online
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#tensoraerospace.agent.ihdp.Actor.Actor.train_actor_online" class="md-nav__link">
+    <span class="md-ellipsis">
+      train_actor_online
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#tensoraerospace.agent.ihdp.Actor.Actor.train_actor_online_adaptive_alpha" class="md-nav__link">
+    <span class="md-ellipsis">
+      train_actor_online_adaptive_alpha
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#tensoraerospace.agent.ihdp.Actor.Actor.train_actor_online_adam" class="md-nav__link">
+    <span class="md-ellipsis">
+      train_actor_online_adam
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#tensoraerospace.agent.ihdp.Actor.Actor.train_actor_online_alpha_decay" class="md-nav__link">
+    <span class="md-ellipsis">
+      train_actor_online_alpha_decay
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#tensoraerospace.agent.ihdp.Actor.Actor.compute_Adam_update" class="md-nav__link">
+    <span class="md-ellipsis">
+      compute_Adam_update
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#tensoraerospace.agent.ihdp.Actor.Actor.check_WB_limits" class="md-nav__link">
+    <span class="md-ellipsis">
+      check_WB_limits
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#tensoraerospace.agent.ihdp.Actor.Actor.compute_persistent_excitation" class="md-nav__link">
+    <span class="md-ellipsis">
+      compute_persistent_excitation
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#tensoraerospace.agent.ihdp.Actor.Actor.update_actor_attributes" class="md-nav__link">
+    <span class="md-ellipsis">
+      update_actor_attributes
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#tensoraerospace.agent.ihdp.Actor.Actor.evaluate_actor" class="md-nav__link">
+    <span class="md-ellipsis">
+      evaluate_actor
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#tensoraerospace.agent.ihdp.Actor.Actor.restart_time_step" class="md-nav__link">
+    <span class="md-ellipsis">
+      restart_time_step
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#tensoraerospace.agent.ihdp.Actor.Actor.restart_actor" class="md-nav__link">
+    <span class="md-ellipsis">
+      restart_actor
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#tensoraerospace.agent.ihdp.Critic" class="md-nav__link">
+    <span class="md-ellipsis">
+      Critic
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Critic">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#tensoraerospace.agent.ihdp.Critic.Critic" class="md-nav__link">
+    <span class="md-ellipsis">
+      Critic
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Critic">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#tensoraerospace.agent.ihdp.Critic.Critic.save_model" class="md-nav__link">
+    <span class="md-ellipsis">
+      save_model
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#tensoraerospace.agent.ihdp.Critic.Critic.load_model" class="md-nav__link">
+    <span class="md-ellipsis">
+      load_model
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#tensoraerospace.agent.ihdp.Critic.Critic.save_Jt_ct" class="md-nav__link">
+    <span class="md-ellipsis">
+      save_Jt_ct
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#tensoraerospace.agent.ihdp.Critic.Critic.load_Jt_ct" class="md-nav__link">
+    <span class="md-ellipsis">
+      load_Jt_ct
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#tensoraerospace.agent.ihdp.Critic.Critic.build_critic_model" class="md-nav__link">
+    <span class="md-ellipsis">
+      build_critic_model
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#tensoraerospace.agent.ihdp.Critic.Critic.run_train_critic_online_adaptive_alpha" class="md-nav__link">
+    <span class="md-ellipsis">
+      run_train_critic_online_adaptive_alpha
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#tensoraerospace.agent.ihdp.Critic.Critic.run_train_critic_online_adam" class="md-nav__link">
+    <span class="md-ellipsis">
+      run_train_critic_online_adam
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#tensoraerospace.agent.ihdp.Critic.Critic.adam_iteration" class="md-nav__link">
+    <span class="md-ellipsis">
+      adam_iteration
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#tensoraerospace.agent.ihdp.Critic.Critic.run_train_critic_online_alpha_decay" class="md-nav__link">
+    <span class="md-ellipsis">
+      run_train_critic_online_alpha_decay
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#tensoraerospace.agent.ihdp.Critic.Critic.train_critic_replay_adam" class="md-nav__link">
+    <span class="md-ellipsis">
+      train_critic_replay_adam
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#tensoraerospace.agent.ihdp.Critic.Critic.compute_forward_pass" class="md-nav__link">
+    <span class="md-ellipsis">
+      compute_forward_pass
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#tensoraerospace.agent.ihdp.Critic.Critic.compute_loss_derivative" class="md-nav__link">
+    <span class="md-ellipsis">
+      compute_loss_derivative
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#tensoraerospace.agent.ihdp.Critic.Critic.check_WB_limits" class="md-nav__link">
+    <span class="md-ellipsis">
+      check_WB_limits
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#tensoraerospace.agent.ihdp.Critic.Critic.evaluate_critic" class="md-nav__link">
+    <span class="md-ellipsis">
+      evaluate_critic
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#tensoraerospace.agent.ihdp.Critic.Critic.c_computation" class="md-nav__link">
+    <span class="md-ellipsis">
+      c_computation
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#tensoraerospace.agent.ihdp.Critic.Critic.targets_computation_online" class="md-nav__link">
+    <span class="md-ellipsis">
+      targets_computation_online
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#tensoraerospace.agent.ihdp.Critic.Critic.update_critic_attributes" class="md-nav__link">
+    <span class="md-ellipsis">
+      update_critic_attributes
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#tensoraerospace.agent.ihdp.Critic.Critic.restart_time_step" class="md-nav__link">
+    <span class="md-ellipsis">
+      restart_time_step
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#tensoraerospace.agent.ihdp.Critic.Critic.restart_critic" class="md-nav__link">
+    <span class="md-ellipsis">
+      restart_critic
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#tensoraerospace.agent.ihdp.Incremental_model.IncrementalModel" class="md-nav__link">
+    <span class="md-ellipsis">
+      IncrementalModel
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="IncrementalModel">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#tensoraerospace.agent.ihdp.Incremental_model.IncrementalModel.save_matrix" class="md-nav__link">
+    <span class="md-ellipsis">
+      save_matrix
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#tensoraerospace.agent.ihdp.Incremental_model.IncrementalModel.load_matrix" class="md-nav__link">
+    <span class="md-ellipsis">
+      load_matrix
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#tensoraerospace.agent.ihdp.Incremental_model.IncrementalModel.build_A_LS_matrix" class="md-nav__link">
+    <span class="md-ellipsis">
+      build_A_LS_matrix
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#tensoraerospace.agent.ihdp.Incremental_model.IncrementalModel.build_x_LS_vector" class="md-nav__link">
+    <span class="md-ellipsis">
+      build_x_LS_vector
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#tensoraerospace.agent.ihdp.Incremental_model.IncrementalModel.identify_incremental_model_LS" class="md-nav__link">
+    <span class="md-ellipsis">
+      identify_incremental_model_LS
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#tensoraerospace.agent.ihdp.Incremental_model.IncrementalModel.evaluate_incremental_model" class="md-nav__link">
+    <span class="md-ellipsis">
+      evaluate_incremental_model
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#tensoraerospace.agent.ihdp.Incremental_model.IncrementalModel.update_incremental_model_attributes" class="md-nav__link">
+    <span class="md-ellipsis">
+      update_incremental_model_attributes
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#tensoraerospace.agent.ihdp.Incremental_model.IncrementalModel.restart_time_step" class="md-nav__link">
+    <span class="md-ellipsis">
+      restart_time_step
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#tensoraerospace.agent.ihdp.Incremental_model.IncrementalModel.restart_incremental_model" class="md-nav__link">
+    <span class="md-ellipsis">
+      restart_incremental_model
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="incremental-heuristic-dynamic-programming">Incremental Heuristic Dynamic Programming</h1>
+<p>Для синтеза закона управления продольным движением СПС используется алгоритм IHDP, то есть инкрементный вариант алгоритма HDP, входящего в семейство методов на основе понятия адаптивного критика (ACD). Как уже отмечалось выше, метод HDP относится к числу наиболее широко используемых методов семейства ACD. Он, однако, малоэффективен в случае неполного и неточного знания объекта управления. Схема IHDP включает такие три основных элемента, как:</p>
+<ol>
+<li>Инкрементная модель предназначенная для определения линеаризованной динамики системы для выбранного состояния.</li>
+<li>Исполнитель (Актер) предназначен для создания управляющего сигнала.</li>
+<li>Критик предназначен для оценки действий исполнителя</li>
+</ol>
+<p><img alt="IHDP схема" src="../img/ihdp/ihdp.png" width="800" /></p>
+<h2 id="_1">Источники</h2>
+<ul>
+<li><a href="https://www.researchgate.net/publication/313696777_Incremental_Model_Based_Heuristic_Dynamic_Programming_for_Nonlinear_Adaptive_Flight_Control">Incremental Model Based Heuristic Dynamic Programming for Nonlinear Adaptive Flight Control</a></li>
+<li>https://github.com/joigalcar3/IHDP</li>
+</ul>
+<h2 id="gym">С какими окружениями gym можно использовать?</h2>
+<ul>
+<li>LinearLongitudinalF16-v0</li>
+</ul>
+<h2 id="api">Документация API</h2>
+
+
+<div class="doc doc-object doc-class">
+
+
+
+<h2 id="tensoraerospace.agent.ihdp.model.IHDPAgent" class="doc doc-heading">
+              <code class="highlight language-python"><span class="n">IHDPAgent</span><span class="p">(</span><span class="n">actor_settings</span><span class="p">,</span> <span class="n">critic_settings</span><span class="p">,</span> <span class="n">incremental_settings</span><span class="p">,</span> <span class="n">tracking_states</span><span class="p">,</span> <span class="n">selected_states</span><span class="p">,</span> <span class="n">selected_input</span><span class="p">,</span> <span class="n">number_time_steps</span><span class="p">,</span> <span class="n">indices_tracking_states</span><span class="p">)</span></code>
+
+</h2>
+
+
+    <div class="doc doc-contents first">
+            <p class="doc doc-class-bases">
+              Bases: <code><span title="object">object</span></code></p>
+
+
+        <p>IHDP Агент управления</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>actor_settings</code>
+            </td>
+            <td>
+                  <code><span title="dict">dict</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Настройки Actor</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>critic_settings</code>
+            </td>
+            <td>
+                  <code><span title="dict">dict</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Настройки Critic</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>incremental_settings</code>
+            </td>
+            <td>
+                  <code><span title="dict">dict</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Настройки инкрементальной модели</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>tracking_states</code>
+            </td>
+            <td>
+                  <code><span title="_type_">_type_</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Отслеживаемые состояния</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>selected_states</code>
+            </td>
+            <td>
+                  <code><span title="_type_">_type_</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Выбранные состояния</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>selected_input</code>
+            </td>
+            <td>
+                  <code><span title="_type_">_type_</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Выбранные входные сигналы</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>number_time_steps</code>
+            </td>
+            <td>
+                  <code><span title="_type_">_type_</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Количество временных шагов</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>indices_tracking_states</code>
+            </td>
+            <td>
+                  <code><span title="_type_">_type_</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Индекс отслеживаемых состояний</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+
+
+
+
+
+
+
+
+  <div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="tensoraerospace.agent.ihdp.model.IHDPAgent.predict" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">predict</span><span class="p">(</span><span class="n">xt</span><span class="p">,</span> <span class="n">reference_signals</span><span class="p">,</span> <span class="n">time_step</span><span class="p">)</span></code>
+
+</h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Сделать предикт и получить следующи сигналы управления</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>xt</code>
+            </td>
+            <td>
+                  <code><span title="_type_">_type_</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Текущее состояния объекта управления на шаге t</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>reference_signals</code>
+            </td>
+            <td>
+                  <code><span title="_type_">_type_</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Заданный сигнал управления</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>time_step</code>
+            </td>
+            <td>
+                  <code><span title="_type_">_type_</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Текущий сигнал управления</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
+        <tr>
+<th>Name</th>          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+<td><code>ut</code></td>            <td>
+                  <code><span title="_type_">_type_</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Сигнал управления на шаге t+1</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    </div>
+
+</div>
+
+
+
+  </div>
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-module">
+
+
+
+<h2 id="tensoraerospace.agent.ihdp.Actor" class="doc doc-heading">
+            <code>Actor</code>
+
+
+</h2>
+
+    <div class="doc doc-contents first">
+
+
+
+
+
+
+
+
+
+  <div class="doc doc-children">
+
+
+
+
+
+
+
+
+<div class="doc doc-object doc-class">
+
+
+
+<h3 id="tensoraerospace.agent.ihdp.Actor.Actor" class="doc doc-heading">
+              <code class="highlight language-python"><span class="n">Actor</span><span class="p">(</span><span class="n">selected_inputs</span><span class="p">,</span> <span class="n">selected_states</span><span class="p">,</span> <span class="n">tracking_states</span><span class="p">,</span> <span class="n">indices_tracking_states</span><span class="p">,</span> <span class="n">number_time_steps</span><span class="p">,</span> <span class="n">start_training</span><span class="p">,</span> <span class="n">layers</span><span class="o">=</span><span class="p">(</span><span class="mi">6</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="n">activations</span><span class="o">=</span><span class="p">(</span><span class="s1">&#39;sigmoid&#39;</span><span class="p">,</span> <span class="s1">&#39;sigmoid&#39;</span><span class="p">),</span> <span class="n">learning_rate</span><span class="o">=</span><span class="mf">0.9</span><span class="p">,</span> <span class="n">learning_rate_cascaded</span><span class="o">=</span><span class="mf">0.9</span><span class="p">,</span> <span class="n">learning_rate_exponent_limit</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span> <span class="n">type_PE</span><span class="o">=</span><span class="s1">&#39;3211&#39;</span><span class="p">,</span> <span class="n">amplitude_3211</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">pulse_length_3211</span><span class="o">=</span><span class="mi">15</span><span class="p">,</span> <span class="n">WB_limits</span><span class="o">=</span><span class="mi">30</span><span class="p">,</span> <span class="n">maximum_input</span><span class="o">=</span><span class="mi">25</span><span class="p">,</span> <span class="n">maximum_q_rate</span><span class="o">=</span><span class="mi">20</span><span class="p">,</span> <span class="n">cascaded_actor</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">NN_initial</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">cascade_tracking_state</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;alpha&#39;</span><span class="p">,</span> <span class="s1">&#39;wz&#39;</span><span class="p">],</span> <span class="n">model_path</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span></code>
+
+</h3>
+
+
+    <div class="doc doc-contents ">
+
+
+        <p>Модель Актера в IHDP
+    Предоставляет классу Актера функцию-аппроксиматор (NN) Актера.
+    Актер создает модель нейронной сети с помощью Tensorflow и может обучать сеть онлайн.
+    Пользователь может выбрать количество слоев, количество нейронов, размер партии и количество эпох и активационных функций.</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>selected_inputs</code>
+            </td>
+            <td>
+                  <code><span title="_type_">_type_</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Выбранные сигналы управления</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>selected_states</code>
+            </td>
+            <td>
+                  <code><span title="_type_">_type_</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Выбранные сигналы состояния</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>tracking_states</code>
+            </td>
+            <td>
+                  <code><span title="_type_">_type_</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Отслеживаемые состояния</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>indices_tracking_states</code>
+            </td>
+            <td>
+                  <code><span title="_type_">_type_</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Индексы отслеживаемых состояний</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>number_time_steps</code>
+            </td>
+            <td>
+                  <code><span title="_type_">_type_</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Количество временных шагов</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>start_training</code>
+            </td>
+            <td>
+                  <code><span title="_type_">_type_</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Шаг с которого начинается обучение</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>layers</code>
+            </td>
+            <td>
+                  <code><span title="tuple">tuple</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p><em>description</em>. Слои модели Defaults to (6, 1).</p>
+              </div>
+            </td>
+            <td>
+                  <code>(6, 1)</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>activations</code>
+            </td>
+            <td>
+                  <code><span title="tuple">tuple</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p><em>description</em>. Слои активации ('sigmoid', 'sigmoid').</p>
+              </div>
+            </td>
+            <td>
+                  <code>(&#39;sigmoid&#39;, &#39;sigmoid&#39;)</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>learning_rate</code>
+            </td>
+            <td>
+                  <code><span title="float">float</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>скорость_обучения. Defaults to 0.9.</p>
+              </div>
+            </td>
+            <td>
+                  <code>0.9</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>learning_rate_cascaded</code>
+            </td>
+            <td>
+                  <code><span title="float">float</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Скорость обучения в каскадном режиме. Defaults to 0.9.</p>
+              </div>
+            </td>
+            <td>
+                  <code>0.9</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>learning_rate_exponent_limit</code>
+            </td>
+            <td>
+                  <code><span title="int">int</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>предел экспоненты скорости обучения. Defaults to 10.</p>
+              </div>
+            </td>
+            <td>
+                  <code>10</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>type_PE</code>
+            </td>
+            <td>
+                  <code><span title="str">str</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Тип PE. Defaults to '3211'.</p>
+              </div>
+            </td>
+            <td>
+                  <code>&#39;3211&#39;</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>amplitude_3211</code>
+            </td>
+            <td>
+                  <code><span title="int">int</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Амплитуда 3211. Defaults to 1.</p>
+              </div>
+            </td>
+            <td>
+                  <code>1</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>pulse_length_3211</code>
+            </td>
+            <td>
+                  <code><span title="int">int</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Длина пульса 3211. Defaults to 15.</p>
+              </div>
+            </td>
+            <td>
+                  <code>15</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>WB_limits</code>
+            </td>
+            <td>
+                  <code><span title="int">int</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Лимит весов. Defaults to 30.</p>
+              </div>
+            </td>
+            <td>
+                  <code>30</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>maximum_input</code>
+            </td>
+            <td>
+                  <code><span title="int">int</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Максимальное значение. Defaults to 25.</p>
+              </div>
+            </td>
+            <td>
+                  <code>25</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>maximum_q_rate</code>
+            </td>
+            <td>
+                  <code><span title="int">int</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Максимальная скорость. Defaults to 20.</p>
+              </div>
+            </td>
+            <td>
+                  <code>20</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>cascaded_actor</code>
+            </td>
+            <td>
+                  <code><span title="bool">bool</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Включить каскадный режим сети. Defaults to False.</p>
+              </div>
+            </td>
+            <td>
+                  <code>False</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>NN_initial</code>
+            </td>
+            <td>
+                  <code><span title="_type_">_type_</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Инициализации весов. Defaults to None.</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>cascade_tracking_state</code>
+            </td>
+            <td>
+                  <code><span title="list">list</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Трекинг в каскадном режиме. Defaults to ['alpha', 'wz'].</p>
+              </div>
+            </td>
+            <td>
+                  <code>[&#39;alpha&#39;, &#39;wz&#39;]</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>model_path</code>
+            </td>
+            <td>
+                  <code><span title="str">str</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Путь к модели для загрузки весов. Defaults to None.</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+
+
+
+
+
+
+
+
+  <div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="tensoraerospace.agent.ihdp.Actor.Actor.build_actor_model" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">build_actor_model</span><span class="p">()</span></code>
+
+</h4>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Функция, создающая сеть Actor (актера). Это полносвязная сеть.
+Можно определить количество слоев, количество нейронов в слою, а так же функции активации</p>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="tensoraerospace.agent.ihdp.Actor.Actor.save_model" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">save_model</span><span class="p">()</span></code>
+
+</h4>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Сохранение модели</p>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="tensoraerospace.agent.ihdp.Actor.Actor.save_dut_dWb" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">save_dut_dWb</span><span class="p">()</span></code>
+
+</h4>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Сохранение градиента</p>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="tensoraerospace.agent.ihdp.Actor.Actor.load_dut_dWb" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">load_dut_dWb</span><span class="p">()</span></code>
+
+</h4>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Загрузка градиента</p>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="tensoraerospace.agent.ihdp.Actor.Actor.load_model" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">load_model</span><span class="p">()</span></code>
+
+</h4>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Загрузка весов модели</p>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="tensoraerospace.agent.ihdp.Actor.Actor.create_NN" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">create_NN</span><span class="p">(</span><span class="n">store_weights</span><span class="p">,</span> <span class="n">seed</span><span class="p">)</span></code>
+
+</h4>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Создает NN с учетом пользовательского ввода</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>store_weights</code>
+            </td>
+            <td>
+                  <code><span title="_type_">_type_</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>словарь, содержащий веса и смещения</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>seed</code>
+            </td>
+            <td>
+                  <code><span title="_type_">_type_</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Сид, для сохранения рандомных переменных</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
+        <tr>
+<th>Name</th>          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+<td><code>model</code></td>            <td>
+                  <code><span title="_type_">_type_</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>созданная модель NN</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+<td><code>store_weights</code></td>            <td>
+                  <code><span title="_type_">_type_</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>словарь, содержащий обновленные веса и смещения.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="tensoraerospace.agent.ihdp.Actor.Actor.run_actor_online" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">run_actor_online</span><span class="p">(</span><span class="n">xt</span><span class="p">,</span> <span class="n">xt_ref</span><span class="p">)</span></code>
+
+</h4>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Сгенерируйте ввод в систему с заданным и реальным состояниями.</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>xt</code>
+            </td>
+            <td>
+                  <code><span title="_type_">_type_</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>текущее состояние временного шага</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>xt_ref</code>
+            </td>
+            <td>
+                  <code><span title="_type_">_type_</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>заданное состояния текущего временного шага</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
+        <tr>
+<th>Name</th>          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+<td><code>ut</code></td>            <td>
+                  <code><span title="_type_">_type_</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>ввод в систему и инкрементную модель</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="tensoraerospace.agent.ihdp.Actor.Actor.train_actor_online" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">train_actor_online</span><span class="p">(</span><span class="n">Jt1</span><span class="p">,</span> <span class="n">dJt1_dxt1</span><span class="p">,</span> <span class="n">G</span><span class="p">)</span></code>
+
+</h4>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Получает элементы цепного правила, вычисляет градиент и применяет его к соответствующим весам и смещениям.</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>Jt1</code>
+            </td>
+            <td>
+                  <code><span title="_type_">_type_</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>dEa/dJ</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>dJt1_dxt1</code>
+            </td>
+            <td>
+                  <code><span title="_type_">_type_</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>dJ/dx</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>G</code>
+            </td>
+            <td>
+                  <code><span title="_type_">_type_</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>dx/du, полученное из инкрементной модели</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="tensoraerospace.agent.ihdp.Actor.Actor.train_actor_online_adaptive_alpha" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">train_actor_online_adaptive_alpha</span><span class="p">(</span><span class="n">Jt1</span><span class="p">,</span> <span class="n">dJt1_dxt1</span><span class="p">,</span> <span class="n">G</span><span class="p">,</span> <span class="n">incremental_model</span><span class="p">,</span> <span class="n">critic</span><span class="p">,</span> <span class="n">xt_ref1</span><span class="p">)</span></code>
+
+</h4>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Обучение Actor (актера). с помощью адаптивной альфы в зависимости от знака и величины сетевых ошибок</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>Jt1</code>
+            </td>
+            <td>
+                  <code><span title="_type_">_type_</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>оценка критика с предсказанием следующего временного шага инкрементной модели</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>dJt1_dxt1</code>
+            </td>
+            <td>
+                  <code><span title="_type_">_type_</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>градиент критической сети по отношению к следующему прогнозу времени инкрементной модели</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>G</code>
+            </td>
+            <td>
+                  <code><span title="_type_">_type_</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>матрица распределения входных данных</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>incremental_model</code>
+            </td>
+            <td>
+                  <code><span title="_type_">_type_</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>инкрементная модель</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>critic</code>
+            </td>
+            <td>
+                  <code><span title="_type_">_type_</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Критик</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>xt_ref1</code>
+            </td>
+            <td>
+                  <code><span title="_type_">_type_</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>заданное состояния на следующем временном шаге</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="tensoraerospace.agent.ihdp.Actor.Actor.train_actor_online_adam" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">train_actor_online_adam</span><span class="p">(</span><span class="n">Jt1</span><span class="p">,</span> <span class="n">dJt1_dxt1</span><span class="p">,</span> <span class="n">G</span><span class="p">,</span> <span class="n">incremental_model</span><span class="p">,</span> <span class="n">critic</span><span class="p">,</span> <span class="n">xt_ref1</span><span class="p">)</span></code>
+
+</h4>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Обучение Actor (актера) с помощью оптимизатора Adam.</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>Jt1</code>
+            </td>
+            <td>
+                  <code><span title="_type_">_type_</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>оценка критика с предсказанием следующего временного шага инкрементной модели</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>dJt1_dxt1</code>
+            </td>
+            <td>
+                  <code><span title="_type_">_type_</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>градиент критической сети по отношению к следующему прогнозу времени инкрементной модели</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>G</code>
+            </td>
+            <td>
+                  <code><span title="_type_">_type_</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>матрица распределения входных данных</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>incremental_model</code>
+            </td>
+            <td>
+                  <code><span title="_type_">_type_</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>инкрементная модель</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>critic</code>
+            </td>
+            <td>
+                  <code><span title="_type_">_type_</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Критик</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>xt_ref1</code>
+            </td>
+            <td>
+                  <code><span title="_type_">_type_</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>заданное состояния на следующем временном шаге</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="tensoraerospace.agent.ihdp.Actor.Actor.train_actor_online_alpha_decay" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">train_actor_online_alpha_decay</span><span class="p">(</span><span class="n">Jt1</span><span class="p">,</span> <span class="n">dJt1_dxt1</span><span class="p">,</span> <span class="n">G</span><span class="p">,</span> <span class="n">incremental_model</span><span class="p">,</span> <span class="n">critic</span><span class="p">,</span> <span class="n">xt_ref1</span><span class="p">)</span></code>
+
+</h4>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Обучите актера со скоростью обучения, которая уменьшается с количеством временных шагов</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>Jt1</code>
+            </td>
+            <td>
+                  <code><span title="_type_">_type_</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>оценка критика с предсказанием следующего временного шага инкрементной модели</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>dJt1_dxt1</code>
+            </td>
+            <td>
+                  <code><span title="_type_">_type_</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>градиент критической сети по отношению к следующему прогнозу времени инкрементной модели</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>G</code>
+            </td>
+            <td>
+                  <code><span title="_type_">_type_</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>матрица распределения входных данных</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>incremental_model</code>
+            </td>
+            <td>
+                  <code><span title="_type_">_type_</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>инкрементная модель</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>critic</code>
+            </td>
+            <td>
+                  <code><span title="_type_">_type_</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Критик</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>xt_ref1</code>
+            </td>
+            <td>
+                  <code><span title="_type_">_type_</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>заданное состояния на следующем временном шаге</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="tensoraerospace.agent.ihdp.Actor.Actor.compute_Adam_update" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">compute_Adam_update</span><span class="p">(</span><span class="n">count</span><span class="p">,</span> <span class="n">gradient</span><span class="p">,</span> <span class="n">model</span><span class="p">,</span> <span class="n">learning_rate</span><span class="p">)</span></code>
+
+</h4>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Вычисляет обновление Adam и применяет его к обновлениям веса.</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>count</code>
+            </td>
+            <td>
+                  <code><span title="_type_">_type_</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>индекс анализируемой весовой матрицы</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>gradient</code>
+            </td>
+            <td>
+                  <code><span title="_type_">_type_</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>вычисленный градиент для каждого из весов</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>model</code>
+            </td>
+            <td>
+                  <code><span title="_type_">_type_</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>модель где обновляем веса</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>learning_rate</code>
+            </td>
+            <td>
+                  <code><span title="_type_">_type_</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>скорость обучения анализируемой модели</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
+        <tr>
+<th>Name</th>          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+<td><code>model</code></td>            <td>
+                  <code><span title="_type_">_type_</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>обновленная модель</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+<td><code>learning_rate</code></td>            <td>
+                  <code><span title="_type_">_type_</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>обновленная скорость обучения</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="tensoraerospace.agent.ihdp.Actor.Actor.check_WB_limits" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">check_WB_limits</span><span class="p">(</span><span class="n">count</span><span class="p">,</span> <span class="n">model</span><span class="p">)</span></code>
+
+</h4>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Проверка, не превышают ли какие-либо веса и смещения установленный предел (WB_limits), и насыщайте значения.</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>count</code>
+            </td>
+            <td>
+                  <code><span title="_type_">_type_</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>индекс в анализируемой модели model.trainable_variables</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>model</code>
+            </td>
+            <td>
+                  <code><span title="_type_">_type_</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>модель актера</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
+        <tr>
+<th>Name</th>          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+<td><code>_type_</code></td>            <td>
+                  <code><span title="tensorflow.keras.models.Model">Model</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>модель актера</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="tensoraerospace.agent.ihdp.Actor.Actor.compute_persistent_excitation" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">compute_persistent_excitation</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">)</span></code>
+
+</h4>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Расчет постоянного возбуждения на каждом временном шаге.</p>
+
+
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
+        <tr>
+<th>Name</th>          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+<td><code>e0</code></td>            <td>
+                  <code><span title="_type_">_type_</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>отклонение PE</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="tensoraerospace.agent.ihdp.Actor.Actor.update_actor_attributes" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">update_actor_attributes</span><span class="p">()</span></code>
+
+</h4>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Атрибуты, которые меняются с каждым временным шагом, обновляются</p>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="tensoraerospace.agent.ihdp.Actor.Actor.evaluate_actor" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">evaluate_actor</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">)</span></code>
+
+</h4>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Оценка актора с учетом входных данных или атрибутов, хранящихся в объекте</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>args</code>
+            </td>
+            <td>
+                  <code><span title="typing.Any">Any</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>реальное и эталонное состояния могут быть предоставлены в качестве входных данных для оценки или нет, если они уже сохранены</p>
+              </div>
+            </td>
+            <td>
+                  <code>()</code>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+<p><span class="doc-section-title">Raises:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                  <code><span title="Exception">Exception</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p><em>description</em></p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                  <code><span title="numpy.ndarray">ndarray</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>ut <em>type</em>: ввод в систему и инкрементную модель</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="tensoraerospace.agent.ihdp.Actor.Actor.restart_time_step" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">restart_time_step</span><span class="p">()</span></code>
+
+</h4>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Перезапуск временного шага</p>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="tensoraerospace.agent.ihdp.Actor.Actor.restart_actor" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">restart_actor</span><span class="p">()</span></code>
+
+</h4>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Перезапустите атрибуты актера</p>
+
+
+    </div>
+
+</div>
+
+
+
+  </div>
+
+    </div>
+
+</div>
+
+
+
+
+  </div>
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-module">
+
+
+
+<h2 id="tensoraerospace.agent.ihdp.Critic" class="doc doc-heading">
+            <code>Critic</code>
+
+
+</h2>
+
+    <div class="doc doc-contents first">
+
+
+
+
+
+
+
+
+
+  <div class="doc doc-children">
+
+
+
+
+
+
+
+
+<div class="doc doc-object doc-class">
+
+
+
+<h3 id="tensoraerospace.agent.ihdp.Critic.Critic" class="doc doc-heading">
+              <code class="highlight language-python"><span class="n">Critic</span><span class="p">(</span><span class="n">Q_weights</span><span class="p">,</span> <span class="n">selected_states</span><span class="p">,</span> <span class="n">tracking_states</span><span class="p">,</span> <span class="n">indices_tracking_states</span><span class="p">,</span> <span class="n">number_time_steps</span><span class="p">,</span> <span class="n">start_training</span><span class="p">,</span> <span class="n">gamma</span><span class="o">=</span><span class="mf">0.8</span><span class="p">,</span> <span class="n">learning_rate</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">learning_rate_exponent_limit</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span> <span class="n">layers</span><span class="o">=</span><span class="p">(</span><span class="mi">10</span><span class="p">,</span> <span class="mi">6</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="n">activations</span><span class="o">=</span><span class="p">(</span><span class="s1">&#39;sigmoid&#39;</span><span class="p">,</span> <span class="s1">&#39;sigmoid&#39;</span><span class="p">,</span> <span class="s1">&#39;linear&#39;</span><span class="p">),</span> <span class="n">WB_limits</span><span class="o">=</span><span class="mi">30</span><span class="p">,</span> <span class="n">NN_initial</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">model_path</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span></code>
+
+</h3>
+
+
+    <div class="doc doc-contents ">
+
+
+        <p>Предоставляет классу Critic аппроксиматор функций (NN) класса Critic.</p>
+<p>Critic создает модель нейронной сети с помощью Tensorflow и может обучать сеть онлайн.
+Пользователь может выбрать количество слоев, количество нейронов, размер партии и количество эпох и активационных функций.</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>Q_weights</code>
+            </td>
+            <td>
+                  <code><span title="_type_">_type_</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p><em>description</em></p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>selected_states</code>
+            </td>
+            <td>
+                  <code><span title="_type_">_type_</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Выбранные состояния</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>tracking_states</code>
+            </td>
+            <td>
+                  <code><span title="_type_">_type_</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Отслеживаемые состояния</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>indices_tracking_states</code>
+            </td>
+            <td>
+                  <code><span title="_type_">_type_</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Индекс отслеживаемых состояний</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>number_time_steps</code>
+            </td>
+            <td>
+                  <code><span title="_type_">_type_</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Количесво врменных шагов</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>start_training</code>
+            </td>
+            <td>
+                  <code><span title="_type_">_type_</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Начало обучения</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>gamma</code>
+            </td>
+            <td>
+                  <code><span title="float">float</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Gamma. Defaults to 0.8.</p>
+              </div>
+            </td>
+            <td>
+                  <code>0.8</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>learning_rate</code>
+            </td>
+            <td>
+                  <code><span title="int">int</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Скорость обучения. Defaults to 2.</p>
+              </div>
+            </td>
+            <td>
+                  <code>2</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>learning_rate_exponent_limit</code>
+            </td>
+            <td>
+                  <code><span title="int">int</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>предел экспоненты скорости обучения. Defaults to 10.</p>
+              </div>
+            </td>
+            <td>
+                  <code>10</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>layers</code>
+            </td>
+            <td>
+                  <code><span title="tuple">tuple</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Количество слоев и нейронов в слоях. Defaults to (10, 6, 1).</p>
+              </div>
+            </td>
+            <td>
+                  <code>(10, 6, 1)</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>activations</code>
+            </td>
+            <td>
+                  <code><span title="tuple">tuple</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Функции активации в слоях. Defaults to ("sigmoid", "sigmoid", "linear").</p>
+              </div>
+            </td>
+            <td>
+                  <code>(&#39;sigmoid&#39;, &#39;sigmoid&#39;, &#39;linear&#39;)</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>WB_limits</code>
+            </td>
+            <td>
+                  <code><span title="int">int</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Ограничения значения в весах. Defaults to 30.</p>
+              </div>
+            </td>
+            <td>
+                  <code>30</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>NN_initial</code>
+            </td>
+            <td>
+                  <code><span title="_type_">_type_</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Начальные значения в весах. Defaults to None.</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>model_path</code>
+            </td>
+            <td>
+                  <code><span title="_type_">_type_</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Путь к модели. Defaults to None.</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+
+
+
+
+
+
+
+
+  <div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="tensoraerospace.agent.ihdp.Critic.Critic.save_model" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">save_model</span><span class="p">()</span></code>
+
+</h4>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Сохранение модели</p>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="tensoraerospace.agent.ihdp.Critic.Critic.load_model" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">load_model</span><span class="p">()</span></code>
+
+</h4>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Загрузка весов</p>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="tensoraerospace.agent.ihdp.Critic.Critic.save_Jt_ct" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">save_Jt_ct</span><span class="p">()</span></code>
+
+</h4>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Сохранение оценки состояния критиком</p>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="tensoraerospace.agent.ihdp.Critic.Critic.load_Jt_ct" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">load_Jt_ct</span><span class="p">()</span></code>
+
+</h4>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Загрузка оценки состоянгия критиком</p>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="tensoraerospace.agent.ihdp.Critic.Critic.build_critic_model" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">build_critic_model</span><span class="p">()</span></code>
+
+</h4>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Функция, создающая нейронную сеть. На данный момент это плотно связанная нейронная сеть. Пользователь может
+определять количество слоев, количество нейронов, а также функцию активации.</p>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="tensoraerospace.agent.ihdp.Critic.Critic.run_train_critic_online_adaptive_alpha" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">run_train_critic_online_adaptive_alpha</span><span class="p">(</span><span class="n">xt</span><span class="p">,</span> <span class="n">xt_ref</span><span class="p">)</span></code>
+
+</h4>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Функция, которая оценивает один раз критическую нейронную сеть и возвращает значение J(xt). В то же
+время он обучает аппроксиматор функции с адаптивной схемой скорости обучения.</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>xt</code>
+            </td>
+            <td>
+                  <code><span title="_type_">_type_</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>текущее состояние временного шага</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>xt_ref</code>
+            </td>
+            <td>
+                  <code><span title="_type_">_type_</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Заданное состояния текущего временного шага для вычисления одношаговой функции стоимости</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
+        <tr>
+<th>Name</th>          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+<td><code>Jt</code></td>            <td>
+                  <code><span title="_type_">_type_</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>оценка критика на текущем временном шаге</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="tensoraerospace.agent.ihdp.Critic.Critic.run_train_critic_online_adam" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">run_train_critic_online_adam</span><span class="p">(</span><span class="n">xt</span><span class="p">,</span> <span class="n">xt_ref</span><span class="p">)</span></code>
+
+</h4>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Функция, которая оценивает один раз критическую нейронную сеть и возвращает значение J(xt). В то же
+время, он обучает аппроксиматор функции с помощью оптимизатора Adam.</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>xt</code>
+            </td>
+            <td>
+                  <code><span title="_type_">_type_</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>текущее состояние временного шага</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>xt_ref</code>
+            </td>
+            <td>
+                  <code><span title="_type_">_type_</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Заданное состояния текущего временного шага для вычисления одношаговой функции стоимости</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
+        <tr>
+<th>Name</th>          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+<td><code>Jt</code></td>            <td>
+                  <code><span title="_type_">_type_</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>оценка критика на текущем временном шаге</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="tensoraerospace.agent.ihdp.Critic.Critic.adam_iteration" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">adam_iteration</span><span class="p">(</span><span class="n">dJt_dW</span><span class="p">,</span> <span class="n">dE_dJ</span><span class="p">)</span></code>
+
+</h4>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Адам обновляет все веса и смещения, учитывая производную функции потерь по отношению к NN.
+выход и производная выхода нейронной сети относительно весов и смещений.</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>dJt_dW</code>
+            </td>
+            <td>
+                  <code><span title="_type_">_type_</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>производная выхода NN по весам и смещениям</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>dE_dJ</code>
+            </td>
+            <td>
+                  <code><span title="_type_">_type_</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>производная функции потерь по выходу NN</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="tensoraerospace.agent.ihdp.Critic.Critic.run_train_critic_online_alpha_decay" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">run_train_critic_online_alpha_decay</span><span class="p">(</span><span class="n">xt</span><span class="p">,</span> <span class="n">xt_ref</span><span class="p">)</span></code>
+
+</h4>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Функция, которая оценивает один раз критическую нейронную сеть и возвращает значение J(xt). В то же
+время обучает аппроксиматор функции градиентным спуском. Скорость обучения падает с увеличением количества
+временные шаги.</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>xt</code>
+            </td>
+            <td>
+                  <code><span title="_type_">_type_</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>текущее состояние временного шага</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>xt_ref</code>
+            </td>
+            <td>
+                  <code><span title="_type_">_type_</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Заданное состояния текущего временного шага для вычисления одношаговой функции стоимости</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
+        <tr>
+<th>Name</th>          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+<td><code>Jt</code></td>            <td>
+                  <code><span title="_type_">_type_</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>оценка критика на текущем временном шаге</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="tensoraerospace.agent.ihdp.Critic.Critic.train_critic_replay_adam" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">train_critic_replay_adam</span><span class="p">(</span><span class="n">replay_size</span><span class="p">,</span> <span class="n">iteration</span><span class="p">)</span></code>
+
+</h4>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Обучает критика по данным из буфера повторов (replay).</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>replay_size</code>
+            </td>
+            <td>
+                  <code><span title="int">int</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Количество элементов из буфера, используемых для обучения.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>iteration</code>
+            </td>
+            <td>
+                  <code><span title="int">int</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Номер итерации обучения (используется в оптимизаторе Adam).</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                  <code>None</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>None</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="tensoraerospace.agent.ihdp.Critic.Critic.compute_forward_pass" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">compute_forward_pass</span><span class="p">(</span><span class="n">xt</span><span class="p">,</span> <span class="n">xt_ref</span><span class="p">,</span> <span class="n">replay</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span></code>
+
+</h4>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Вычислите результат критика, а также производную от Jt по весам и смещениям сети.</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>xt</code>
+            </td>
+            <td>
+                  <code><span title="_type_">_type_</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Состояние</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>xt_ref</code>
+            </td>
+            <td>
+                  <code><span title="_type_">_type_</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Заданное состояние</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
+        <tr>
+<th>Name</th>          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+<td><code>nn_input</code></td>            <td>
+                  <code><span title="_type_">_type_</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>форматированный ввод в нейронную сеть</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+<td><code>dJt_dW</code></td>            <td>
+                  <code><span title="_type_">_type_</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>производная функции потерь по весам и смещениям</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="tensoraerospace.agent.ihdp.Critic.Critic.compute_loss_derivative" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">compute_loss_derivative</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">)</span></code>
+
+</h4>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Вычисляет производную функции потерь по Jt</p>
+
+
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
+        <tr>
+<th>Name</th>          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+<td><code>dE_dJ</code></td>            <td>
+                  <code><span title="_type_">_type_</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>производная функции потерь по Jt</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+<td><code>ec_critic_before</code></td>            <td>
+                  <code><span title="_type_">_type_</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>ошибка сети перед тренировкой</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+<td><code>EC_critic_before</code></td>            <td>
+                  <code><span title="_type_">_type_</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>функция потерь сети до обучения</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="tensoraerospace.agent.ihdp.Critic.Critic.check_WB_limits" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">check_WB_limits</span><span class="p">(</span><span class="n">count</span><span class="p">)</span></code>
+
+</h4>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Проверка, не превышают ли какие-либо веса и смещения установленный предел (WB_limits), и насыщайте значения.</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>count</code>
+            </td>
+            <td>
+                  <code><span title="_type_">_type_</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>индекс в анализируемой модели model.trainable_variables</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="tensoraerospace.agent.ihdp.Critic.Critic.evaluate_critic" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">evaluate_critic</span><span class="p">(</span><span class="n">xt</span><span class="p">,</span> <span class="n">xt_ref</span><span class="p">)</span></code>
+
+</h4>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Функция, которая оценивает один раз критическую нейронную сеть и возвращает значение J(xt).</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>xt</code>
+            </td>
+            <td>
+                  <code><span title="_type_">_type_</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Состояние</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>xt_ref</code>
+            </td>
+            <td>
+                  <code><span title="_type_">_type_</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Заданное состояние</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
+        <tr>
+<th>Name</th>          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+<td><code>Jt</code></td>            <td>
+                  <code><span title="_type_">_type_</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>оценка критика на текущем временном шаге</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+<td><code>dJt_dxt</code></td>            <td>
+                  <code><span title="_type_">_type_</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>градиент функции стоимости по отношению к входу (xt)</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="tensoraerospace.agent.ihdp.Critic.Critic.c_computation" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">c_computation</span><span class="p">()</span></code>
+
+</h4>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Вычисление одношаговой функции стоимости с полученными реальным и эталонным состояниями.</p>
+
+
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
+        <tr>
+<th>Name</th>          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+<td><code>ct</code></td>            <td>
+                  <code><span title="numpy.ndarray">ndarray</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Текущий временной шаг one-step cost функции</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="tensoraerospace.agent.ihdp.Critic.Critic.targets_computation_online" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">targets_computation_online</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">)</span></code>
+
+</h4>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Вычисляет цель на текущем временном шаге с одношаговой функцией стоимости предыдущего
+временной шаг и текущая функция стоимости.</p>
+
+
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
+        <tr>
+<th>Name</th>          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+<td><code>target</code></td>            <td>
+                  <code><span title="numpy.ndarray">ndarray</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>цель предыдущего временного шага.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="tensoraerospace.agent.ihdp.Critic.Critic.update_critic_attributes" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">update_critic_attributes</span><span class="p">()</span></code>
+
+</h4>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Атрибуты, которые меняются с каждым временным шагом, обновляются</p>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="tensoraerospace.agent.ihdp.Critic.Critic.restart_time_step" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">restart_time_step</span><span class="p">()</span></code>
+
+</h4>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Обнуление врменного шага</p>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="tensoraerospace.agent.ihdp.Critic.Critic.restart_critic" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">restart_critic</span><span class="p">()</span></code>
+
+</h4>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Рестарт Критика.</p>
+
+
+    </div>
+
+</div>
+
+
+
+  </div>
+
+    </div>
+
+</div>
+
+
+
+
+  </div>
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-class">
+
+
+
+<h2 id="tensoraerospace.agent.ihdp.Incremental_model.IncrementalModel" class="doc doc-heading">
+              <code class="highlight language-python"><span class="n">IncrementalModel</span><span class="p">(</span><span class="n">selected_states</span><span class="p">,</span> <span class="n">selected_input</span><span class="p">,</span> <span class="n">number_time_steps</span><span class="p">,</span> <span class="n">discretisation_time</span><span class="o">=</span><span class="mf">0.5</span><span class="p">,</span> <span class="n">input_magnitude_limits</span><span class="o">=</span><span class="mi">25</span><span class="p">,</span> <span class="n">input_rate_limits</span><span class="o">=</span><span class="mi">60</span><span class="p">)</span></code>
+
+</h2>
+
+
+    <div class="doc doc-contents first">
+
+
+        <p>Предоставляет класс IncrementalModel для идентификации системы</p>
+<p>IncrementalModel вычисляет матрицы A и x, необходимые для идентификации системы,
+вычисляет матрицы F и G, необходимые для инкрементной модели, и оценивает идентифицированной модели, чтобы обеспечить оценки состояний на следующем временном шаге.</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>selected_states</code>
+            </td>
+            <td>
+                  <code><span title="_type_">_type_</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Выбранные состояния</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>selected_input</code>
+            </td>
+            <td>
+                  <code><span title="_type_">_type_</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Выбранные управляющие сигналы</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>number_time_steps</code>
+            </td>
+            <td>
+                  <code><span title="_type_">_type_</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Количество временных шагов</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>discretisation_time</code>
+            </td>
+            <td>
+                  <code><span title="float">float</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Время дискретизации. Defaults to 0.5.</p>
+              </div>
+            </td>
+            <td>
+                  <code>0.5</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>input_magnitude_limits</code>
+            </td>
+            <td>
+                  <code><span title="int">int</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Пределы входных управляющих сигнгалов. Defaults to 25.</p>
+              </div>
+            </td>
+            <td>
+                  <code>25</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>input_rate_limits</code>
+            </td>
+            <td>
+                  <code><span title="int">int</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Ограничения скорости управляющих сигнгалов. Defaults to 60.</p>
+              </div>
+            </td>
+            <td>
+                  <code>60</code>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+
+
+
+
+
+
+
+
+  <div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="tensoraerospace.agent.ihdp.Incremental_model.IncrementalModel.save_matrix" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">save_matrix</span><span class="p">()</span></code>
+
+</h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Сохранить матрицы</p>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="tensoraerospace.agent.ihdp.Incremental_model.IncrementalModel.load_matrix" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">load_matrix</span><span class="p">()</span></code>
+
+</h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Загрузить матрицы</p>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="tensoraerospace.agent.ihdp.Incremental_model.IncrementalModel.build_A_LS_matrix" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">build_A_LS_matrix</span><span class="p">()</span></code>
+
+</h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Строит матрицу А, необходимую для онлайн-метода идентификации методом наименьших квадратов.</p>
+
+
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
+        <tr>
+<th>Name</th>          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+<td><code>A_LS_matrix</code></td>            <td>
+                  <code><span title="numpy.ndarray">ndarray</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Матрица наименьших квадратов</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="tensoraerospace.agent.ihdp.Incremental_model.IncrementalModel.build_x_LS_vector" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">build_x_LS_vector</span><span class="p">()</span></code>
+
+</h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Строит вектор x, требуемый в методе наименьших квадратов онлайн-идентификации системы.</p>
+
+
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
+        <tr>
+<th>Name</th>          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+<td><code>x_LS_vector</code></td>            <td>
+                  <code><span title="numpy.ndarray">ndarray</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>x вектор который в требуется в наименьших квадратах</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="tensoraerospace.agent.ihdp.Incremental_model.IncrementalModel.identify_incremental_model_LS" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">identify_incremental_model_LS</span><span class="p">(</span><span class="n">xt</span><span class="p">,</span> <span class="n">ut_0</span><span class="p">)</span></code>
+
+</h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Вычисляет матрицы F и G идентификации системы</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>xt</code>
+            </td>
+            <td>
+                  <code><span title="_type_">_type_</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>текущее состояние на временном шаге t</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>ut_0</code>
+            </td>
+            <td>
+                  <code><span title="_type_">_type_</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>входной сигнал на текущем временном шаге</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
+        <tr>
+<th>Name</th>          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+<td><code>G</code></td>            <td>
+                  <code><span title="_type_">_type_</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>матрица распределения входных данных</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="tensoraerospace.agent.ihdp.Incremental_model.IncrementalModel.evaluate_incremental_model" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">evaluate_incremental_model</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">)</span></code>
+
+</h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Оценивает состояния следующего временного шага</p>
+
+
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
+        <tr>
+<th>Name</th>          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+<td><code>xt1_est</code></td>            <td>
+                  <code><span title="_type_">_type_</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>оценка состояния следующего временного шага</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="tensoraerospace.agent.ihdp.Incremental_model.IncrementalModel.update_incremental_model_attributes" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">update_incremental_model_attributes</span><span class="p">()</span></code>
+
+</h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Атрибуты, которые меняются с каждым временным шагом, обновляются</p>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="tensoraerospace.agent.ihdp.Incremental_model.IncrementalModel.restart_time_step" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">restart_time_step</span><span class="p">()</span></code>
+
+</h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Обнуление временного шага</p>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="tensoraerospace.agent.ihdp.Incremental_model.IncrementalModel.restart_incremental_model" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">restart_incremental_model</span><span class="p">()</span></code>
+
+</h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Перезапускает инкрементную модель.</p>
+
+
+    </div>
+
+</div>
+
+
+
+  </div>
+
+    </div>
+
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      <script id="__config" type="application/json">{"base": "../..", "features": ["navigation.tabs", "navigation.sections", "search.suggest", "search.highlight", "content.tabs", "content.code.copy"], "search": "../../assets/javascripts/workers/search.d50fe291.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.56ea9cef.min.js"></script>
+      
+        <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+      
+        <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+      
+    
+  </body>
+</html>
