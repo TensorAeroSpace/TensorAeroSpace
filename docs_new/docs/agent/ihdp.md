@@ -129,7 +129,7 @@ ut = agent.predict(xt, reference, time_step=0)
 
 ## Примеры
 
-- Подробный пример для F‑16: [IHDP ↔ LinearLongitudinalF16](example/ihdp/example.md)
+- Подробный пример для F‑16: [IHDP ↔ LinearLongitudinalF16](../example/agent/ihdp/example_ihdp.md)
 
 ## Документация API
 

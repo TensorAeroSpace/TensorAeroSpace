@@ -80,7 +80,7 @@ m_w & m_q & m_{\theta} \\
 !!! note "О единицах измерения"
     Углы и угловые скорости — в радианах. Методы API позволяют работать в градусах.
 
-## Математическая модель
+## Математическая модель {#математическая-модель}
 
 $$
 \dot{x} = A x + B u, \qquad y = C x + D u
@@ -147,7 +147,7 @@ q \\
 1. Aliyu, Bhar & Funmilayo, A. & Okwo, Odooh & Sholiyi, Olusegun. (2019). State‑Space Modelling of a Rocket for Optimal Control System Design. Journal of Aircraft and Spacecraft Technology. 3. 128‑137. 10.3844/jastsp.2019.128.137. [Ссылка](https://www.researchgate.net/publication/335917723_State-Space_Modelling_of_a_Rocket_for_Optimal_Control_System_Design)
 2. Aliyu, Bhar. (2011). Expendable Launch Vehicle Flight Control — Design & Simulation with Matlab/Simulink. [Ссылка](https://www.researchgate.net/publication/301790480_Expendable_Launch_Vehicle_Flight_Control-Design_Simulation_with_MatlabSimulink)
 
-## Быстрый старт
+## Быстрый старт {#быстрый-старт}
 
 === "Gymnasium"
 

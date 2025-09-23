@@ -79,7 +79,7 @@
 !!! note "О единицах измерения"
     Углы и угловые скорости — в радианах. Методы API поддерживают выдачу в градусах.
 
-## Математическая модель
+## Математическая модель {#математическая-модель}
 
 $$
 \dot{x} = A x + B u, \qquad y = C x + D u
@@ -134,7 +134,7 @@ $$
 
 1. Tun, Hla & Mon, Lae & Lwin, Kyaw & Naing, Zaw. (2012). Implementation of Communication Satellite Orbit Controller Design Using State Space Techniques. ASEAN Journal on Science and Technology for Development. 29. 29‑49. 10.29037/ajstd.48.
 
-## Быстрый старт
+## Быстрый старт {#быстрый-старт}
 
 === "Gymnasium"
 

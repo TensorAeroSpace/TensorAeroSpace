@@ -48,7 +48,7 @@ def init_layer_uniform(layer: nn.Linear, init_w: float = 3e-3) -> nn.Linear:
 
 
 class Critic(nn.Module):
-    def __init__(self, input_dim, hidden_dim=64):
+    def __init__(self, input_dim: int, hidden_dim: int = 64):
         """
         Инициализирует модуль критика.
 
@@ -66,7 +66,7 @@ class Critic(nn.Module):
         self.v = nn.Linear(hidden_dim, 1)
         self.v = init_layer_uniform(self.v)
 
-    def forward(self, input_data):
+    def forward(self, input_data: torch.Tensor) -> torch.Tensor:
         """
         Производит прямой проход сети.
 
@@ -86,7 +86,7 @@ class Critic(nn.Module):
 
 
 class Actor(nn.Module):
-    def __init__(self, input_dim, out_dim, hidden_dim=32):
+    def __init__(self, input_dim: int, out_dim: int, hidden_dim: int = 32):
         """
         Инициализирует класс Actor, который является подклассом nn.Module.
 
@@ -109,7 +109,12 @@ class Actor(nn.Module):
         self.log_std_max = 0
         self.r = nn.Linear(hidden_dim, 1)
 
-    def forward(self, input_data, return_reward=False, continous_actions=False):
+    def forward(
+        self,
+        input_data: torch.Tensor,
+        return_reward: bool = False,
+        continous_actions: bool = False,
+    ) -> Any:
         """
         Производит прямой проход через модель, вычисляя действия агента на основе входных данных.
 
@@ -119,7 +124,8 @@ class Actor(nn.Module):
             continous_actions (bool, optional): Флаг, указывающий, должны ли действия быть непрерывными. По умолчанию False.
 
         Returns:
-            tuple или Tensor: В зависимости от флагов возвращает действие, распределение (и вознаграждение, если запрошено).
+            Union[Tuple[torch.Tensor, torch.distributions.Normal], Tuple[torch.Tensor, torch.distributions.Normal, torch.Tensor], torch.Tensor, Tuple[torch.Tensor, torch.Tensor]]:
+            В зависимости от флагов возвращает действие, распределение (и вознаграждение, если запрошено).
             Если continous_actions True, возвращает либо пару (action, dist), либо тройку (action, dist, r).
             В противном случае возвращает либо действие, либо пару (action, r).
         """

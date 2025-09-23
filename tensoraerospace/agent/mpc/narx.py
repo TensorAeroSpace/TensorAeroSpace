@@ -54,7 +54,7 @@ class NARX(nn.Module):
         # Activation function
         self.activation = nn.Tanh()
 
-    def forward(self, state, control):
+    def forward(self, state: torch.Tensor, control: torch.Tensor) -> torch.Tensor:
         """
         Прямое распространение через NARX сеть.
 

@@ -1,37 +1,54 @@
 # Generative Adversarial Imitation Learning (GAIL)
 
-Generative Adversarial Imitation Learning (GAIL) — алгоритм имитационного обучения, который восстанавливает стратегию эксперта по наблюдаемым траекториям, используя состязательное обучение актор–дискриминатор.
+GAIL — имитационное обучение через состязание актор–дискриминатор: политика учится генерировать траектории, неотличимые от экспертных, без явной функции вознаграждения.
 
-## Обзор
+## Компоненты
 
-Цель: обучить политику, воспроизводящую поведение эксперта, без явной функции вознаграждения.
+- Actor‑Critic: `ActorCritic` генерирует действие и оценивает \(V(s)\)
+- Discriminator: `Discriminator` отличает пары \((s,a)\) эксперта от агента
+- Оптимизатор политики: обновление актёра по PPO (клиппированный суррогат)
 
-Архитектура:
-- Policy (Actor): генерирует действие по состоянию.
-- Discriminator: отличает пары (состояние, действие) эксперта от сгенерированных агентом.
-- Обучение: актор максимизирует «обман» дискриминатора; дискриминатор минимизирует ошибку классификации. Для стабильности актор обычно обновляется PPO/TRPO.
+## Теория
 
-## Как работает GAIL
+- Минмакс‑задача (формально):
 
-GAIL на каждом шаге порождает батч траекторий агента и сравнивает их с экспертными данными:
+$$
+\min_{\pi} \max_{D} \; \mathbb{E}_{(s,a)\sim \pi_E}[\log D(s,a)] + \mathbb{E}_{(s,a)\sim \pi}[\log (1 - D(s,a))]
+$$
 
-1. Дискриминатор обучается классифицировать `(s, a)` как «эксперт/агент».
-2. Актор получает псевдо‑награду от дискриминатора и обновляется (в TensorAeroSpace — PPO).
-3. Повторяем до сходимости: действия агента становятся неотличимыми от экспертных.
+- Псевдо‑награда от дискриминатора (для актёра):
 
-## Зачем применять в авиации
+$$
+ r_D(s,a) = -\log D(s,a)
+$$
 
-- Когда функция вознаграждения неоднозначна (комфорт/стиль пилотирования, мягкость касания и т.п.).
-- Для переноса человеческой экспертизы (демонстрации пилотов/автопилотов) в обучаемую политику.
-- Для инициализации RL‑агента перед последующим дообучением с подкреплением.
+- PPO‑обновление актёра (в нашей реализации):
 
-## Формат данных эксперта
+$$
+\mathcal{L}_\text{actor} = -\,\mathbb{E}\Big[ \min\big(r_t A_t,\ \mathrm{clip}(r_t,1-\varepsilon,1+\varepsilon) A_t\big) \Big],\quad
+r_t = \exp(\log \pi_\theta - \log \pi_{\theta_{\text{old}}})
+$$
 
-Ожидается массив `expert_data` формы `[N, obs_dim + act_dim]`: для каждой строки конкатенация текущего состояния и выбранного действия эксперта.
+- Advantage через GAE:
+
+$$
+\delta_t = r_D(s_t,a_t) + \gamma V(s_{t+1}) - V(s_t),\quad
+\hat{A}_t = \sum_{l\ge 0} (\gamma\lambda)^l\, \delta_{t+l}
+$$
+
+## Данные эксперта
+
+Ожидается массив `expert_data` формы `[N, obs_dim + act_dim]` — конкатенация состояния и действия.
+
+## Обучение (контур по реализации)
+
+1. Генерируем роллаут агента: \(s_t, a_t \sim \pi\), запоминаем `log_prob`, `V(s)`
+2. Считаем псевдо‑награды `r_D = -log D([s,a])`, GAE‑returns/advantages
+3. PPO‑обновление актёра/критика по мини‑батчам
+4. Обучаем дискриминатор: `D(fake)=1`, `D(real)=0` с BCE‑лоссом
+5. Периодически тестируем политику и применяем early‑stopping по `max_reward`
 
 ## Пример (LinearLongitudinalF16‑v0)
-
-Полный пример — в ноутбуке `example/reinforcement_learning/example_gail.ipynb`. Ниже краткая схема:
 
 ```python
 import gymnasium as gym
@@ -43,32 +60,25 @@ from tensoraerospace.signals.standart import unit_step
 dt = 0.01
 tp = generate_time_period(tn=20, dt=dt)
 number_time_steps = len(tp)
-reference_signals = np.reshape(
-    unit_step(degree=5, tp=tp, time_step=1000, output_rad=True), [1, -1]
-)
+reference_signals = unit_step(degree=5, tp=tp, time_step=1000, output_rad=True).reshape(1, -1)
 
-env = gym.make(
-    'LinearLongitudinalF16-v0',
-    number_time_steps=number_time_steps,
-    initial_state=[[0], [0], [0]],
-    reference_signal=reference_signals,
-    use_reward=False,
-    state_space=["theta", "alpha", "q"],
-    output_space=["theta", "alpha", "q"],
-    control_space=["ele"],
-    tracking_states=["alpha"],
-)
+env = gym.make('LinearLongitudinalF16-v0',
+               number_time_steps=number_time_steps,
+               initial_state=[[0],[0],[0]],
+               reference_signal=reference_signals,
+               use_reward=False,
+               state_space=["theta","alpha","q"],
+               output_space=["theta","alpha","q"],
+               control_space=["ele"],
+               tracking_states=["alpha"],)
 
 expert_data = np.load('expert_f16.npy')
 agent = GAIL(env, learning_rate=3e-3, max_steps=20, mini_batch_size=16, epochs=4, data=expert_data)
 agent.learn(max_frames=5000, max_reward=-1)
 ```
 
-## Практические замечания
-
-- Нормируйте состояния/действия; проверяйте размеры входов дискриминатора.
-- Качество и разнообразие демонстраций критично для обобщающей способности политики.
-- Для стабильности применяйте более крупные мини‑батчи и меньшие скорости обучения.
+!!! tip
+    Качество `expert_data` критично: добавьте демо с разными начальными условиями и манёврами.
 
 ## Документация API
 
@@ -78,7 +88,7 @@ agent.learn(max_frames=5000, max_reward=-1)
 
 - [Generative Adversarial Imitation Learning](https://arxiv.org/pdf/1606.03476)
 
-## На каких средах протестили:
+## Где тестировалось
 
-- Unity среда
+- Unity‑среда
 - LinearLongitudinalF16‑v0 (пример в репозитории)

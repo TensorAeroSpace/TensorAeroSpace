@@ -56,7 +56,7 @@ nav:
     - Signals: signals/signals.md
   - Examples:
     - Environments: example/env/examples.md
-    - IHDP: example/agent/ihdp/example.md
+    - IHDP: example/agent/ihdp/example_ihdp.md
     - SAC F16: example/agent/sac/example-sac-f16.md
     - Optimization: example/optimization/example_optimization.md
     - A2C-NARX: example/agent/a2c_narx/example-narx.md

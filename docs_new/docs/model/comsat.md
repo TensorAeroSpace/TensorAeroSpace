@@ -79,7 +79,7 @@ f_1(\rho, \omega) & 0 & f_2(\rho, \omega) \\
 !!! note "О единицах измерения"
     Углы и угловые скорости — в радианах. Методы API поддерживают выдачу в градусах.
 
-## Математическая модель
+## Математическая модель {#математическая-модель}
 
 $$
 \dot{x} = A x + B u, \qquad y = C x + D u
@@ -142,7 +142,7 @@ $$
 
 1. Santosh Kumar Choudhary (2015). Design and Analysis of an Optimal Orbit Control for a Communication Satellite. INTERNATIONAL JOURNAL OF COMMUNICATIONS. Volume 9, 2015
 
-## Быстрый старт
+## Быстрый старт {#быстрый-старт}
 
 === "Gymnasium"
 

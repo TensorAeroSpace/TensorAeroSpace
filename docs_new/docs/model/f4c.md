@@ -84,7 +84,7 @@ m_u & m_w & m_q & m_{\theta} \\
 !!! note "О единицах измерения"
     Углы и угловые скорости — в радианах. Методы API позволяют получить значения в градусах.
 
-## Математическая модель
+## Математическая модель {#математическая-модель}
 
 $$
 \dot{x} = A x + B u, \qquad y = C x + D u
@@ -162,7 +162,7 @@ q \\
 1. Heffley R. K., Jewell W. F. Aircraft handling qualities data. – NASA, 1972. № AD‑A277031.
 2. Etkin B., Reid L. D. Dynamics of flight. – New York : Wiley, 1959. – Т. 2
 
-## Быстрый старт
+## Быстрый старт {#быстрый-старт}
 
 === "Gymnasium"
 

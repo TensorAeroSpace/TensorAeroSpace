@@ -56,7 +56,7 @@
 !!! note "О единицах измерения"
     Углы и угловые скорости — в радианах. Методы API позволяют работать в градусах.
 
-## Математическая модель
+## Математическая модель {#математическая-модель}
 
 $$
 \dot{x} = A x + B u, \qquad y = C x + D u
@@ -111,7 +111,7 @@ q \\
 
 1. Ahmed EA, Hafez A, Ouda AN, Ahmed HEH, Abd‑Elkader HM. Modelling of a Small Unmanned Aerial Vehicle. Adv Robot Autom 4:126, 2015.
 
-## Быстрый старт
+## Быстрый старт {#быстрый-старт}
 
 === "Gymnasium"
 

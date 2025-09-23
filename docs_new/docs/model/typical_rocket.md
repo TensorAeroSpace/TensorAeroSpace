@@ -84,7 +84,7 @@ m_u & m_w & m_q & m_{\theta} \\
 !!! note "О единицах измерения"
     Углы и угловые скорости — в радианах. Методы API позволяют получить значения в градусах.
 
-## Математическая модель
+## Математическая модель {#математическая-модель}
 
 $$
 \dot{x} = A x + B u, \qquad y = C x + D u
@@ -162,7 +162,7 @@ q \\
 
 1. Arikapalli V. S. N. et al. Missile Longitudinal Dynamics Control Design using Pole Placement and LQR Methods — A Critical Analysis // Defence Science Journal. 2021. 71(5). [Ссылка](https://www.strategicfront.org/forums/attachments/16232-article-text-62198-1-10-20210902-pdf.20806/)
 
-## Быстрый старт
+## Быстрый старт {#быстрый-старт}
 
 === "Gymnasium"
 
