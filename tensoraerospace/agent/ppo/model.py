@@ -329,6 +329,7 @@ class PPO(BaseRLModel):
                 next_state, reward, terminated, info = step_return
                 done = terminated
             total_reward += reward
+            state = next_state
         return total_reward
 
     def preprocess1(self, states, actions, rewards, dones, values, probs, gamma):
