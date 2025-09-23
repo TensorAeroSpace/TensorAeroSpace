@@ -5,19 +5,19 @@
 
 .. code:: shell
 
-    git clone git@github.com:tensoraerospace/UnityAirplaneEnvironment.git
+    git clone https://github.com/TensorAeroSpace/UnityAirplaneEnvironment.git
 
 Установите пакет для работы с unity ml agents
 
 .. code:: shell
 
-    pip install gym==0.20.0 gym-unity==0.28.0
+    python -m pip install mlagents==1.1.0
 
 Установите Unity hub по ссылке
 
 - https://unity.com/download
 
-Скачайте и установите версию Unity 2021.3.5f1 по ссылке
+Скачайте и установите версию Unity 2023.20.f1 по ссылке
 
 - https://unity.com/releases/editor/archive
 
