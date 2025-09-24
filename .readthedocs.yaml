@@ -10,7 +10,7 @@ build:
       - python -m pip install --upgrade pip
       - pip install poetry
       - poetry config virtualenvs.create false
-      - poetry install --with dev --no-root
+      - poetry install --only dev --no-root
 
     post_build:
       - mkdocs build --site-dir "$READTHEDOCS_OUTPUT/html"
