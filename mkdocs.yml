@@ -1,6 +1,5 @@
 site_name: TensorAeroSpace 
 site_description: Open source deep learning framework for aerospace objects
-site_url: https://tensoraerospace.github.io/TensorAeroSpace/docs/
 repo_url: https://github.com/TensorAeroSpace/TensorAeroSpace
 repo_name: TensorAeroSpace/TensorAeroSpace
 docs_dir: docs
