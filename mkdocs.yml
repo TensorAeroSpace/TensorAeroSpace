@@ -102,11 +102,11 @@ plugins:
           name: Русский
           build: true
           nav:
-            - Home: index.md
-            - User Guide:
-              - Installation: guide/installation.md
-              - Unity Environment: guide/unity_env.md
-            - Aerospace Models:
+            - Главная: index.md
+            - Инструкции:
+              - Установка: guide/installation.md
+              - Unity-окружение: guide/unity_env.md
+            - Объекты управления:
               - F16: model/f16.md
               - B747: model/b747.md
               - EVL: model/evl.md
@@ -118,8 +118,8 @@ plugins:
               - X15: model/x15.md
               - LSU: model/lsu.md
               - SUAV: model/suav.md
-              - Unity Environment: model/unity_env.md
-            - Agents:
+              - Unity окружение: model/unity_env.md
+            - Алгоритмы управления:
               - IHDP:
                 - Описание: agent/ihdp.md
                 - Пример LinearLongitudinalF16‑v0: agent/ihdp/example.md
@@ -131,30 +131,30 @@ plugins:
               - SAC: agent/sac.md
               - DDPG: agent/ddpg.md
               - GAIL: agent/gail.md
-              - Optimization: optimization/optuna_based.md
-              - Benchmark:
-                - Overview: benchmark/bench.md
-                - Metrics: benchmark/metrics.md
-              - Signals: signals/signals.md
-            - Examples:
-              - Environments: example/env/examples.md
+              - Оптимизация: optimization/optuna_based.md
+              - Бенчмаркинг:
+                - Обзор: benchmark/bench.md
+                - Метрики: benchmark/metrics.md
+              - Сигналы: signals/signals.md
+            - Примеры:
+              - Окружения: example/env/examples.md
               - IHDP: example/agent/ihdp/example_ihdp.md
               - SAC F16: example/agent/sac/example-sac-f16.md
-              - Optimization: example/optimization/example_optimization.md
+              - Оптимизация: example/optimization/example_optimization.md
               - A2C-NARX: example/agent/a2c_narx/example-narx.md
               - MPC: example/agent/mpc/example_mpc.md
               - MPC Transformers: example/agent/mpc/example_transformers.md
-              - IHDP Failure: example/failure/ihdp-failure.md
+              - IHDP отказы: example/failure/ihdp-failure.md
               - Simulink:
-                - Simulink to Python: example/simulink/sim_pyth.md
-                - Your Simulink: example/simulink/your_sim.md
+                - Simulink в Python: example/simulink/sim_pyth.md
+                - Ваш Simulink: example/simulink/your_sim.md
               - Unity:
-                - Unity with DQN: example/env/unity_example.md
+                - Unity с DQN: example/env/unity_example.md
               - Simintech:
                 - Simintech: example/simintech/simintech.md
-                - Simintech to Python: example/simintech/simintechToPython.md
-            - Lessons:
-              - Theory:
+                - Simintech в Python: example/simintech/simintechToPython.md
+            - Уроки:
+              - Теория:
                 - "Урок 1 — Введение и пространство состояний": lesson/base/tutor_1.md
                 - "Урок 2 — Управляемость и наблюдаемость": lesson/base/tutor_2.md
                 - "Урок 3 — Устойчивость систем управления": lesson/base/tutor_3.md
@@ -163,13 +163,13 @@ plugins:
                 - "Урок 6 — Наблюдатели и принцип разделения": lesson/base/tutor_6.md
                 - "Урок 7 — Практика: стабилизация продольного движения": lesson/base/tutor_7.md
               - XFLR5:
-                - Introduction: lesson/0intro.md
-                - Airfoil Analysis: lesson/1analysis_airfoil.md
-                - Plane Aero Analysis: lesson/2analysis_plane_aero.md
-                - Plane Static Analysis: lesson/3analysis_plane_static.md
-                - MATLAB Script: lesson/4matlabscript.md
-                - Simulink Model: lesson/5simulinkmodel.md
-                - DLL Generation: lesson/6dllgen.md
+                - Введение: lesson/0intro.md
+                - Анализ профиля крыла: lesson/1analysis_airfoil.md
+                - Аэродинамический анализ самолёта: lesson/2analysis_plane_aero.md
+                - Статический анализ самолёта: lesson/3analysis_plane_static.md
+                - Скрипт MATLAB: lesson/4matlabscript.md
+                - Модель Simulink: lesson/5simulinkmodel.md
+                - Генерация DLL: lesson/6dllgen.md
       reconfigure_material: true
 
 

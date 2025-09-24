@@ -1,73 +1,73 @@
-# Урок 3 — Анализ устойчивости систем управления
+# Lesson 3 — Stability Analysis of Control Systems
 
-## 1. Понятие устойчивости
+## 1. Concept of Stability
 
-**Устойчивость** – это одно из важнейших свойств любой динамической системы, включая летательные аппараты. Говоря простыми словами, устойчивость – это способность системы возвращаться в исходное состояние равновесия после прекращения действия возмущающих сил.
+**Stability** is one of the most important properties of any dynamical system, including aircraft. Simply put, stability is the ability of a system to return to its original equilibrium state after a disturbing influence ceases.
 
-Представьте себе шарик в разных положениях:
+Imagine a ball in different positions:
 
-*   **Устойчивое равновесие:** Шарик на дне ямы. Если его толкнуть, он покачается и вернется обратно на дно.
-*   **Неустойчивое равновесие:** Шарик на вершине холма. Малейший толчок – и он скатится вниз, уже не возвращаясь.
-*   **Безразличное равновесие:** Шарик на ровной горизонтальной поверхности. Если его толкнуть, он остановится в новом положении и останется там.
+* **Stable equilibrium:** A ball at the bottom of a bowl. If pushed, it oscillates and returns to the bottom.
+* **Unstable equilibrium:** A ball on top of a hill. The slightest push and it rolls off, not returning.
+* **Neutral equilibrium:** A ball on a flat horizontal surface. If pushed, it comes to rest at a new position and stays there.
 
-Для летательного аппарата устойчивость означает, что после воздействия порыва ветра или кратковременного отклонения рулей он самостоятельно вернется к исходному режиму полета (например, к прямолинейному горизонтальному полету).
+For an aircraft, stability means that after a gust of wind or a brief control deflection, it will autonomously return to the initial flight condition (e.g., straight-and-level flight).
 
-## 2. Виды устойчивости
+## 2. Types of Stability
 
-Различают два основных вида устойчивости:
+There are two primary types of stability:
 
-1.  **Статическая устойчивость:** Способность системы создавать моменты и силы, стремящиеся вернуть ее в исходное положение равновесия, *сразу после* возникновения возмущения. Это начальная тенденция к возврату.
-2.  **Динамическая устойчивость:** Характер переходного процесса возврата системы в равновесие. Динамически устойчивая система не просто стремится вернуться, но и делает это без нарастающих колебаний. Процесс затухает со временем.
+1. **Static stability:** The ability of a system to generate restoring forces and moments that tend to return it to the equilibrium state immediately after a disturbance. This is the initial tendency to return.
+2. **Dynamic stability:** The nature of the transient response as the system returns to equilibrium. A dynamically stable system not only tends to return but does so without growing oscillations; the response decays over time.
 
-Система может быть статически устойчивой, но динамически неустойчивой (когда возникают незатухающие или нарастающие колебания вокруг положения равновесия).
+A system may be statically stable but dynamically unstable (when undamped or growing oscillations occur about the equilibrium state).
 
-## 3. Устойчивость летательного аппарата
+## 3. Aircraft Stability
 
-Движение летательного аппарата для удобства анализа разделяют на два вида:
+For analysis convenience, aircraft motion is split into two types:
 
-1.  **Продольное движение:** Движение в вертикальной плоскости (изменение высоты, угла тангажа, скорости).
-2.  **Боковое движение:** Движение в горизонтальной плоскости (изменение курса, угла крена, угла скольжения).
+1. **Longitudinal motion:** Motion in the vertical plane (changes in altitude, pitch angle, speed).
+2. **Lateral-directional motion:** Motion in the horizontal plane (changes in heading, roll angle, sideslip angle).
 
-Соответственно, и устойчивость рассматривают отдельно для каждого вида движения [1]:
+Accordingly, stability is considered separately for each motion type [1]:
 
-*   **Продольная устойчивость:** Способность ЛА сохранять заданный угол атаки и скорость полета.
-*   **Путевая (курсовая) устойчивость:** Способность ЛА сохранять заданное направление полета (курс).
-*   **Поперечная устойчивость:** Способность ЛА восстанавливать исходный угол крена.
+* **Longitudinal stability:** The ability to maintain a commanded angle of attack and airspeed.
+* **Directional (yaw) stability:** The ability to maintain a commanded flight direction (heading).
+* **Lateral (roll) stability:** The ability to restore the original bank angle.
 
-Эти три вида устойчивости взаимосвязаны и в совокупности определяют **боковую устойчивость**.
+These three combine to determine the overall **lateral-directional stability**.
 
-## 4. Критерии устойчивости линейных систем
+## 4. Stability Criteria for Linear Systems
 
-Для анализа устойчивости линейных систем, описанных в пространстве состояний, ключевую роль играют **собственные числа (eigenvalues)** матрицы системы `A`.
+For linear systems described in state-space, the key is the **eigenvalues** of the system matrix `A`.
 
-Система `ẋ = Ax` является устойчивой, если **все действительные части всех собственных чисел матрицы A отрицательны**.
+The system `ẋ = Ax` is stable if and only if **all eigenvalues of `A` have strictly negative real parts**.
 
 ```
-Re(λᵢ) < 0 для всех i = 1, ..., n
+Re(λᵢ) < 0 for all i = 1, ..., n
 ```
 
-где `λᵢ` – собственные числа матрицы `A`.
+where `λᵢ` are the eigenvalues of matrix `A`.
 
-Если хотя бы одно собственное число имеет положительную действительную часть, система будет неустойчивой. Если есть собственные числа с нулевой действительной частью (и нет с положительной), система находится на границе устойчивости.
+If at least one eigenvalue has a positive real part, the system is unstable. If some eigenvalues have zero real parts (and none are positive), the system is marginally stable.
 
-### 4.1. Алгебраические критерии (Рауса-Гурвица)
+### 4.1. Algebraic criteria (Routh–Hurwitz)
 
-Эти критерии позволяют определить, есть ли у характеристического уравнения системы (которое находится как `det(A - λI) = 0`) корни с положительной действительной частью, не вычисляя сами корни. Это удобно для аналитического исследования.
+These criteria allow us to determine whether the characteristic equation (obtained from `det(A − λI) = 0`) has roots with positive real parts without computing the roots themselves. This is convenient for analytical studies.
 
-### 4.2. Частотные критерии (Найквиста, Михайлова)
+### 4.2. Frequency-domain criteria (Nyquist, Mikhailov)
 
-Эти критерии основаны на анализе частотных характеристик системы и позволяют судить об устойчивости замкнутой системы по характеристикам разомкнутой. Они особенно удобны при экспериментальном определении характеристик системы.
+These are based on frequency-response analysis and allow us to infer closed-loop stability from open-loop characteristics. They are especially handy when characteristics are obtained experimentally.
 
-## 5. Ссылки на материалы
+## 5. References
 
-1.  Алексеенков В. Устойчивость летательных аппаратов (презентация). – Авиационный колледж. – [URL: http://taviak.ru/distance/wp-content/uploads/2013/PLA/Ustoi_chivost_letatel_nykh_apparatov(Alekseenkov).pdf](http://taviak.ru/distance/wp-content/uploads/2013/PLA/Ustoi_chivost_letatel_nykh_apparatov(Alekseenkov).pdf)
-2.  Продольная устойчивость летательного аппарата // Большая российская энциклопедия. – [URL: https://bigenc.ru/c/prodol-naia-ustoichivost-letatel-nogo-apparata-5e7446](https://bigenc.ru/c/prodol-naia-ustoichivost-letatel-nogo-apparata-5e7446)
-3.  Устойчивость и управляемость самолета // Vzletim.ru. – [URL: https://vzletim.ru/upload/iblock/133/aerodynamics09.pdf](https://vzletim.ru/upload/iblock/133/aerodynamics09.pdf)
+1. Alekseenkov V. Stability of Aircraft (slides). — Aviation College. — [URL: http://taviak.ru/distance/wp-content/uploads/2013/PLA/Ustoi_chivost_letatel_nykh_apparatov(Alekseenkov).pdf](http://taviak.ru/distance/wp-content/uploads/2013/PLA/Ustoi_chivost_letatel_nykh_apparatov(Alekseenkov).pdf)
+2. Longitudinal stability of aircraft — Great Russian Encyclopedia. — [URL: https://bigenc.ru/c/prodol-naia-ustoichivost-letatel-nogo-apparata-5e7446](https://bigenc.ru/c/prodol-naia-ustoichivost-letatel-nogo-apparata-5e7446)
+3. Stability and controllability of an airplane — Vzletim.ru. — [URL: https://vzletim.ru/upload/iblock/133/aerodynamics09.pdf](https://vzletim.ru/upload/iblock/133/aerodynamics09.pdf)
 
 
-## 6. Практический пример на Python
+## 6. Practical Python Example
 
-Проанализируем устойчивость различных систем и продемонстрируем критерии устойчивости.
+We will analyze the stability of several systems and demonstrate stability criteria.
 
 ```python
 import numpy as np
@@ -76,26 +76,26 @@ import control as ctrl
 from scipy.linalg import eigvals
 import sympy as sp
 
-def analyze_stability(A, system_name="Система"):
-    """Анализ устойчивости системы по собственным числам матрицы A"""
+def analyze_stability(A, system_name="System"):
+    """Stability analysis by the eigenvalues of matrix A"""
     
     print(f"\n{'='*50}")
-    print(f"АНАЛИЗ УСТОЙЧИВОСТИ: {system_name}")
+    print(f"STABILITY ANALYSIS: {system_name}")
     print(f"{'='*50}")
     
-    print(f"Матрица A:")
+    print("Matrix A:")
     print(A)
     
-    # Вычисление собственных чисел
+    # Compute eigenvalues
     eigenvalues = eigvals(A)
-    print(f"\nСобственные числа (полюсы):")
+    print("\nEigenvalues (poles):")
     
     stable = True
     for i, lam in enumerate(eigenvalues):
         real_part = np.real(lam)
         imag_part = np.imag(lam)
         
-        if abs(imag_part) < 1e-10:  # действительное число
+        if abs(imag_part) < 1e-10:  # real number
             print(f"λ_{i+1} = {real_part:.4f}")
         else:
             print(f"λ_{i+1} = {real_part:.4f} + {imag_part:.4f}j")
@@ -103,66 +103,66 @@ def analyze_stability(A, system_name="Система"):
         if real_part >= 0:
             stable = False
     
-    print(f"\nВсе действительные части отрицательны: {stable}")
+    print(f"\nAll real parts negative: {stable}")
     
     if stable:
-        print("✓ СИСТЕМА УСТОЙЧИВА")
+        print("✓ SYSTEM IS STABLE")
     else:
-        print("✗ СИСТЕМА НЕУСТОЙЧИВА")
+        print("✗ SYSTEM IS UNSTABLE")
     
     return eigenvalues, stable
 
-def plot_poles(eigenvalues, title="Расположение полюсов"):
-    """Построение карты полюсов на комплексной плоскости"""
+def plot_poles(eigenvalues, title="Pole locations"):
+    """Plot pole map on the complex plane"""
     
     plt.figure(figsize=(8, 6))
     
     for lam in eigenvalues:
         plt.plot(np.real(lam), np.imag(lam), 'rx', markersize=10, markeredgewidth=2)
     
-    # Добавляем ось мнимых чисел (граница устойчивости)
+    # Imaginary axis (stability boundary)
     y_max = max(abs(np.imag(eigenvalues))) * 1.2 if len(eigenvalues) > 0 else 1
-    plt.axvline(x=0, color='k', linestyle='--', alpha=0.5, label='Граница устойчивости')
+    plt.axvline(x=0, color='k', linestyle='--', alpha=0.5, label='Stability boundary')
     
-    # Заштриховываем область устойчивости
+    # Shade stable half-plane
     x_min = min(np.real(eigenvalues)) * 1.2 if len(eigenvalues) > 0 else -1
-    plt.axvspan(x_min, 0, alpha=0.2, color='green', label='Область устойчивости')
+    plt.axvspan(x_min, 0, alpha=0.2, color='green', label='Stable region')
     
     plt.grid(True, alpha=0.3)
-    plt.xlabel('Действительная часть')
-    plt.ylabel('Мнимая часть')
+    plt.xlabel('Real part')
+    plt.ylabel('Imag part')
     plt.title(title)
     plt.legend()
     plt.axis('equal')
     
     return plt.gcf()
 
-# Пример 1: Устойчивая система (масса-пружина-демпфер)
+# Example 1: Stable system (mass–spring–damper)
 A1 = np.array([[0, 1],
                [-4, -1]])
 
-eigenvals1, stable1 = analyze_stability(A1, "Масса-пружина-демпфер")
+eigenvals1, stable1 = analyze_stability(A1, "Mass–spring–damper")
 
-# Пример 2: Неустойчивая система (обращенный маятник)
+# Example 2: Unstable system (inverted pendulum, linearized)
 A2 = np.array([[0, 1],
-               [1, 0]])  # без демпфирования и с "отрицательной пружиной"
+               [1, 0]])  # no damping and an "effective negative spring"
 
-eigenvals2, stable2 = analyze_stability(A2, "Обращенный маятник")
+eigenvals2, stable2 = analyze_stability(A2, "Inverted pendulum")
 
-# Пример 3: Система на границе устойчивости
+# Example 3: Marginally stable system
 A3 = np.array([[0, 1],
-               [-1, 0]])  # консервативный осциллятор
+               [-1, 0]])  # conservative oscillator
 
-eigenvals3, stable3 = analyze_stability(A3, "Консервативный осциллятор")
+eigenvals3, stable3 = analyze_stability(A3, "Conservative oscillator")
 
-# Пример 4: Система с комплексными полюсами
+# Example 4: System with complex poles
 A4 = np.array([[0, 1, 0],
                [-2, -0.5, 0],
                [0, 0, -3]])
 
-eigenvals4, stable4 = analyze_stability(A4, "Система третьего порядка")
+eigenvals4, stable4 = analyze_stability(A4, "Third-order system")
 
-# Построение карт полюсов
+# Pole maps
 plt.figure(figsize=(15, 10))
 
 plt.subplot(2, 2, 1)
@@ -171,7 +171,7 @@ for lam in eigenvals1:
 plt.axvline(x=0, color='k', linestyle='--', alpha=0.5)
 plt.axvspan(-5, 0, alpha=0.2, color='green')
 plt.grid(True, alpha=0.3)
-plt.title('Устойчивая система')
+plt.title('Stable system')
 plt.xlabel('Re(λ)')
 plt.ylabel('Im(λ)')
 
@@ -182,7 +182,7 @@ plt.axvline(x=0, color='k', linestyle='--', alpha=0.5)
 plt.axvspan(-2, 0, alpha=0.2, color='green')
 plt.axvspan(0, 2, alpha=0.2, color='red')
 plt.grid(True, alpha=0.3)
-plt.title('Неустойчивая система')
+plt.title('Unstable system')
 plt.xlabel('Re(λ)')
 plt.ylabel('Im(λ)')
 
@@ -192,7 +192,7 @@ for lam in eigenvals3:
 plt.axvline(x=0, color='k', linestyle='--', alpha=0.5)
 plt.axvspan(-2, 0, alpha=0.2, color='green')
 plt.grid(True, alpha=0.3)
-plt.title('Граница устойчивости')
+plt.title('Stability boundary')
 plt.xlabel('Re(λ)')
 plt.ylabel('Im(λ)')
 
@@ -202,116 +202,116 @@ for lam in eigenvals4:
 plt.axvline(x=0, color='k', linestyle='--', alpha=0.5)
 plt.axvspan(-4, 0, alpha=0.2, color='green')
 plt.grid(True, alpha=0.3)
-plt.title('Система 3-го порядка')
+plt.title('3rd-order system')
 plt.xlabel('Re(λ)')
 plt.ylabel('Im(λ)')
 
 plt.tight_layout()
 plt.show()
 
-# Демонстрация переходных процессов
+# Step-response comparison
 print(f"\n{'='*60}")
-print("СРАВНЕНИЕ ПЕРЕХОДНЫХ ПРОЦЕССОВ")
+print("STEP RESPONSE COMPARISON")
 print(f"{'='*60}")
 
-# Создание систем
+# Build systems
 sys1 = ctrl.ss(A1, np.array([[0], [1]]), np.array([[1, 0]]), 0)
 sys2 = ctrl.ss(A2, np.array([[0], [1]]), np.array([[1, 0]]), 0)
 sys3 = ctrl.ss(A3, np.array([[0], [1]]), np.array([[1, 0]]), 0)
 
-# Переходные характеристики
+# Time axis
 t = np.linspace(0, 10, 1000)
 
 plt.figure(figsize=(15, 5))
 
-# Устойчивая система
+# Stable system
 plt.subplot(1, 3, 1)
 try:
     t1, y1 = ctrl.step_response(sys1, t)
     plt.plot(t1, y1)
-    plt.title('Устойчивая система\n(затухающий процесс)')
-    plt.xlabel('Время (с)')
-    plt.ylabel('Выход')
+    plt.title('Stable system\n(decaying response)')
+    plt.xlabel('Time (s)')
+    plt.ylabel('Output')
     plt.grid(True)
 except:
-    plt.text(0.5, 0.5, 'Ошибка моделирования', ha='center', va='center')
+    plt.text(0.5, 0.5, 'Simulation error', ha='center', va='center')
 
-# Неустойчивая система
+# Unstable system
 plt.subplot(1, 3, 2)
 try:
     t2, y2 = ctrl.step_response(sys2, t)
     plt.plot(t2, y2)
-    plt.title('Неустойчивая система\n(расходящийся процесс)')
-    plt.xlabel('Время (с)')
-    plt.ylabel('Выход')
+    plt.title('Unstable system\n(diverging response)')
+    plt.xlabel('Time (s)')
+    plt.ylabel('Output')
     plt.grid(True)
-    plt.ylim([-10, 10])  # ограничиваем масштаб для наглядности
+    plt.ylim([-10, 10])  # limit scale for clarity
 except:
-    plt.text(0.5, 0.5, 'Система неустойчива\n(расходящийся процесс)', ha='center', va='center')
+    plt.text(0.5, 0.5, 'System unstable\n(diverging response)', ha='center', va='center')
 
-# Система на границе устойчивости
+# Marginally stable system
 plt.subplot(1, 3, 3)
 try:
     t3, y3 = ctrl.step_response(sys3, t)
     plt.plot(t3, y3)
-    plt.title('Граница устойчивости\n(незатухающие колебания)')
-    plt.xlabel('Время (с)')
-    plt.ylabel('Выход')
+    plt.title('Stability boundary\n(persistent oscillations)')
+    plt.xlabel('Time (s)')
+    plt.ylabel('Output')
     plt.grid(True)
 except:
-    plt.text(0.5, 0.5, 'Ошибка моделирования', ha='center', va='center')
+    plt.text(0.5, 0.5, 'Simulation error', ha='center', va='center')
 
 plt.tight_layout()
 plt.show()
 
-# Критерий Рауса-Гурвица (символьный анализ)
+# Routh–Hurwitz criterion (symbolic-like procedure)
 print(f"\n{'='*60}")
-print("КРИТЕРИЙ РАУСА-ГУРВИЦА (символьный анализ)")
+print("ROUTH–HURWITZ CRITERION")
 print(f"{'='*60}")
 
 def routh_hurwitz_table(coeffs):
-    """Построение таблицы Рауса-Гурвица"""
+    """Build the Routh–Hurwitz table for a real polynomial"""
     n = len(coeffs)
     table = np.zeros((n, (n+1)//2))
     
-    # Заполнение первых двух строк
-    table[0, :] = coeffs[::2]  # четные коэффициенты
+    # First two rows
+    table[0, :] = coeffs[::2]  # even-indexed coefficients
     if n > 1:
-        table[1, :len(coeffs[1::2])] = coeffs[1::2]  # нечетные коэффициенты
+        table[1, :len(coeffs[1::2])] = coeffs[1::2]  # odd-indexed coefficients
     
-    # Заполнение остальных строк
+    # Remaining rows
     for i in range(2, n):
         for j in range(table.shape[1]-1):
             if table[i-1, 0] != 0:
                 table[i, j] = (table[i-1, 0] * table[i-2, j+1] - 
-                              table[i-2, 0] * table[i-1, j+1]) / table[i-1, 0]
+                               table[i-2, 0] * table[i-1, j+1]) / table[i-1, 0]
     
     return table
 
-# Пример: характеристический полином s³ + 2s² + 3s + 4
-coeffs = [1, 2, 3, 4]  # коэффициенты от старшей степени к младшей
-print("Характеристический полином: s³ + 2s² + 3s + 4")
-print("Таблица Рауса-Гурвица:")
+# Example: characteristic polynomial s^3 + 2 s^2 + 3 s + 4
+coeffs = [1, 2, 3, 4]  # coefficients from highest to lowest degree
+print("Characteristic polynomial: s^3 + 2 s^2 + 3 s + 4")
+print("Routh–Hurwitz table:")
 routh_table = routh_hurwitz_table(coeffs)
 print(routh_table)
 
-# Проверка знаков в первом столбце
+# Sign changes in the first column
 first_column = routh_table[:, 0]
 sign_changes = sum(1 for i in range(len(first_column)-1) 
-                  if first_column[i] * first_column[i+1] < 0)
-print(f"\nКоличество перемен знака в первом столбце: {sign_changes}")
-print(f"Количество полюсов в правой полуплоскости: {sign_changes}")
+                   if first_column[i] * first_column[i+1] < 0)
+print(f"\nNumber of sign changes in the first column: {sign_changes}")
+print(f"Number of right-half-plane poles: {sign_changes}")
 
 if sign_changes == 0:
-    print("✓ Система устойчива по критерию Рауса-Гурвица")
+    print("✓ System is stable by the Routh–Hurwitz criterion")
 else:
-    print("✗ Система неустойчива по критерию Рауса-Гурвица")
+    print("✗ System is unstable by the Routh–Hurwitz criterion")
 ```
 
-Этот пример демонстрирует:
+This example demonstrates:
 
-1. **Анализ устойчивости** через вычисление собственных чисел матрицы системы
-2. **Визуализацию полюсов** на комплексной плоскости с выделением областей устойчивости
-3. **Сравнение переходных процессов** для устойчивых, неустойчивых систем и систем на границе устойчивости
-4. **Применение критерия Рауса-Гурвица** для символьного анализа устойчивости
-5. **Практические примеры** различных типов динамических систем
+1. **Stability analysis** via eigenvalues of the system matrix
+2. **Pole visualization** on the complex plane with the stable region highlighted
+3. **Comparison of step responses** for stable, unstable, and marginally stable systems
+4. **Use of the Routh–Hurwitz criterion** for analytical stability assessment
+5. **Practical examples** of different types of dynamical systems

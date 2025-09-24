@@ -1,19 +1,19 @@
-# Урок 7 — Практика: стабилизация продольного движения самолета
+# Lesson 7 — Practice: Stabilizing Aircraft Longitudinal Motion
 
-## 1. Цель
+## 1. Goal
 
-На этом заключительном семинаре мы применим все полученные знания на практике. Наша цель – разработать систему автоматической стабилизации (автопилот) для упрощенной модели продольного движения легкого самолета. Мы пройдем все этапы: от получения модели до синтеза полной системы управления с наблюдателем.
+In this final workshop, we apply everything learned in practice. Our goal is to design an automatic stabilization system (autopilot) for a simplified longitudinal model of a light aircraft. We’ll go from modeling to a full controller-plus-observer synthesis.
 
-## 2. Модель объекта управления
+## 2. Plant Model
 
-Рассмотрим линеаризованную модель короткопериодического продольного движения самолета. Переменными состояния являются:
+Consider a linearized short-period longitudinal model. State variables are:
 
-*   `α` (alpha) – угол атаки
-*   `q` – угловая скорость тангажа
+* `α` — angle of attack
+* `q` — pitch rate
 
-Управляющим воздействием является отклонение руля высоты `δₑ` (delta_e). Выходной переменной, которую мы можем измерить, будем считать угол тангажа `θ` (theta), который в данном случае равен интегралу от угловой скорости `q`.
+The control input is elevator deflection `δₑ` (delta_e). The measurable output is the pitch angle `θ` (theta), here equal to the integral of `q`.
 
-Матрицы системы (для конкретного самолета и режима полета) могут выглядеть следующим образом:
+System matrices (for a particular aircraft and flight condition) can be:
 
 ```
 A = [[-0.313, 1.0], [-0.0139, -0.426]]
@@ -22,88 +22,88 @@ C = [[0, 1]]
 D = [0]
 ```
 
-## 3. Этап 1: Анализ исходной системы
+## 3. Step 1: Analyze the Open-Loop System
 
-### 3.1. Устойчивость
+### 3.1. Stability
 
-Первым делом проверим устойчивость "голого" самолета, то есть без системы управления. Для этого найдем собственные числа матрицы `A`.
+First, check the “bare” aircraft (no control) by computing eigenvalues of `A`.
 
 `λ₁,₂ = -0.3695 ± 0.1627j`
 
-Действительные части обоих полюсов отрицательны, значит, самолет **статически и динамически устойчив**. Однако, посмотрим на характеристики этой устойчивости. Демпфирование (`σ = 0.3695`) относительно небольшое, что может приводить к нежелательным колебаниям.
+Both real parts are negative, so the aircraft is **statically and dynamically stable**. However, the damping (`σ = 0.3695`) is relatively small, which may cause undesirable oscillations.
 
-### 3.2. Управляемость и наблюдаемость
+### 3.2. Controllability and Observability
 
-Проверим, можем ли мы в принципе управлять этой системой и наблюдать за ней.
+Check whether the system is controllable and observable.
 
-*   **Матрица управляемости:** `P = [B, AB]`. `rank(P) = 2`. Система **полностью управляема**.
-*   **Матрица наблюдаемости:** `Q = [C; CA]`. `rank(Q) = 2`. Система **полностью наблюдаема**.
+* **Controllability matrix:** `P = [B, AB]`, `rank(P) = 2` — fully controllable.
+* **Observability matrix:** `Q = [C; CA]`, `rank(Q) = 2` — fully observable.
 
-Отлично, мы можем приступать к синтезу.
+We can proceed with synthesis.
 
-## 4. Этап 2: Синтез регулятора (размещение полюсов)
+## 4. Step 2: Controller Synthesis (Pole Placement)
 
-Допустим, мы хотим сделать систему более "отзывчивой" и лучше задемпфированной. Поставим цель разместить полюсы замкнутой системы в точках:
+We want the system to be more responsive with better damping. Target closed-loop poles:
 
 `p₁,₂ = -1.0 ± 1.0j`
 
-Это соответствует более быстрому затуханию (`σ = 1.0` вместо `0.3695`) и более высокой частоте колебаний.
+This yields faster decay (`σ = 1.0` vs `0.3695`) and higher oscillation frequency.
 
-1.  **Желаемый характеристический полином:** `α(s) = (s - p₁)(s - p₂) = s² + 2s + 2`.
-2.  **Применяем формулу Аккермана** (или другой метод) для нахождения матрицы `K`.
+1. **Desired characteristic polynomial:** `α(s) = (s - p₁)(s - p₂) = s² + 2s + 2`.
+2. **Use Ackermann’s formula** (or equivalent) to find `K`.
 
-В результате вычислений получаем:
+Result:
 
 `K = [-26.4, -15.7]`
 
-Закон управления: `δₑ = -([-26.4, -15.7]) * [α; q] = 26.4α + 15.7q`
+Control law: `δₑ = -([-26.4, -15.7]) · [α; q] = 26.4 α + 15.7 q`
 
-## 5. Этап 3: Синтез наблюдателя
+## 5. Step 3: Observer Synthesis
 
-Теперь предположим, что мы не можем измерять угол атаки `α` напрямую. У нас есть только датчик угловой скорости тангажа `q`. Нам нужно построить наблюдатель, чтобы оценить `α`.
+Assume `α` is not directly measurable; only `q` is measured. We need an observer to estimate `α`.
 
-Динамика наблюдателя должна быть быстрее динамики регулятора. Выберем полюсы для наблюдателя, например, в 5 раз левее полюсов регулятора:
+Make the observer faster than the controller, e.g., 5× faster:
 
 `l₁,₂ = -5.0 ± 5.0j`
 
-1.  **Желаемый характеристический полином наблюдателя:** `α_obs(s) = s² + 10s + 50`.
-2.  **Используем дуальную формулу Аккермана** для нахождения матрицы `L`.
+1. **Desired observer polynomial:** `α_obs(s) = s² + 10s + 50`.
+2. **Use the dual of Ackermann’s formula** to find `L`.
 
-Получаем матрицу усиления наблюдателя `L`.
+This yields the observer gain `L`.
 
-## 6. Этап 4: Сборка полной системы
+## 6. Step 4: Assemble the Full System
 
-Теперь мы собираем все вместе. Полная система управления состоит из:
+Full control system consists of:
 
-1.  **Наблюдателя состояния:**
-    `✰̇ = A✰ + Bδₑ + L(q - q̂)`
-2.  **Закона управления (регулятора):**
-    `δₑ = -K✰`
+1. **State observer:**
+    `x̂̇ = A x̂ + B δₑ + L (q - q̂)`
+2. **Controller:**
+    `δₑ = -K x̂`
 
-Эта система (автопилот) принимает на вход измеренную угловую скорость `q` и выдает управляющий сигнал `δₑ` на руль высоты, стабилизируя самолет в соответствии с желаемой динамикой, заданной полюсами `p₁,₂`.
+This autopilot uses measured `q` and commands `δₑ` to stabilize the aircraft with the desired dynamics set by `p₁,₂`.
 
-## 7. Задание для самостоятельной работы
+## 7. Homework
 
-1.  Используя MATLAB, Python (с библиотекой `control`) или другой пакет, проведите все вычисления, представленные в этом семинаре:
-    *   Проверьте устойчивость, управляемость и наблюдаемость исходной системы.
-    *   Вычислите матрицу `K` для заданных желаемых полюсов регулятора.
-    *   Вычислите матрицу `L` для заданных желаемых полюсов наблюдателя.
-2.  Постройте Simulink-модель или напишите скрипт, который моделирует поведение:
-    *   Исходной (неуправляемой) системы.
-    *   Системы с регулятором (с обратной связью по истинному состоянию).
-    *   Полной системы (регулятор + наблюдатель).
-3.  Сравните переходные процессы для всех трех случаев при задании начального отклонения (например, начального угла атаки). Убедитесь, что система с регулятором работает лучше исходной, а полная система очень близка по поведению к системе с идеальной обратной связью.
+1. Using MATLAB, Python (`control` library), or similar tools, reproduce the computations:
+    * Verify stability, controllability, and observability of the open-loop system.
+    * Compute `K` for the specified controller poles.
+    * Compute `L` for the specified observer poles.
+2. Build a Simulink model or write a script to simulate:
+    * The open-loop system.
+    * The system with controller (true-state feedback).
+    * The full system (controller + observer).
+3. Compare transients for all three cases under initial perturbation (e.g., initial `α`). Confirm the controller improves behavior vs open-loop, and the full system closely approximates ideal state feedback.
 
-## 8. Ссылки на материалы
+## 8. References
 
-1.  Aircraft Pitch: State-Space Methods for Controller Design // University of Michigan. – [URL: https://ctms.engin.umich.edu/CTMS/index.php?example=AircraftPitch&section=ControlStateSpace](https://ctms.engin.umich.edu/CTMS/index.php?example=AircraftPitch&section=ControlStateSpace)
-2.  Python Control Systems Library. – [URL: https://python-control.readthedocs.io/en/latest/](https://python-control.readthedocs.io/en/latest/)
-3.  MATLAB Control System Toolbox. – [URL: https://www.mathworks.com/products/control.html](https://www.mathworks.com/products/control.html)
+1. Aircraft Pitch: State-Space Methods for Controller Design — University of Michigan. – [URL: https://ctms.engin.umich.edu/CTMS/index.php?example=AircraftPitch&section=ControlStateSpace](https://ctms.engin.umich.edu/CTMS/index.php?example=AircraftPitch&section=ControlStateSpace)
+2. Python Control Systems Library. – [URL: https://python-control.readthedocs.io/en/latest/](https://python-control.readthedocs.io/en/latest/)
+3. MATLAB Control System Toolbox. – [URL: https://www.mathworks.com/products/control.html](https://www.mathworks.com/products/control.html)
 
 
-## 9. Полная реализация на Python
+## 9. Full Python Implementation
 
-Реализуем полный пример стабилизации продольного движения самолета с детальным анализом.
+We implement a complete longitudinal stabilization example with detailed analysis.
 
 ```python
 import numpy as np
@@ -114,12 +114,12 @@ from scipy.integrate import solve_ivp
 
 class AircraftLongitudinalControl:
     """
-    Класс для моделирования и управления продольным движением самолета
+    Class for modeling and control of longitudinal aircraft motion
     """
     
     def __init__(self):
-        # Модель короткопериодического продольного движения
-        # Состояния: [alpha, q] - угол атаки и угловая скорость тангажа
+        # Short-period longitudinal model
+        # States: [alpha, q] - angle of attack and pitch rate
         self.A = np.array([[-0.313, 1.0],
                           [-0.0139, -0.426]])
         
@@ -130,37 +130,37 @@ class AircraftLongitudinalControl:
         
         self.D = np.array([[0]])
         
-        # Параметры для анализа
+        # Analysis parameters
         self.n = self.A.shape[0]
         
-        print("МОДЕЛЬ ПРОДОЛЬНОГО ДВИЖЕНИЯ САМОЛЕТА")
+        print("AIRCRAFT LONGITUDINAL MODEL")
         print("="*50)
-        print("Состояния: [α, q]")
-        print("α - угол атаки (рад)")
-        print("q - угловая скорость тангажа (рад/с)")
-        print("Управление: δe - отклонение руля высоты (рад)")
-        print("Измерение: q - угловая скорость тангажа")
+        print("States: [α, q]")
+        print("α - angle of attack (rad)")
+        print("q - pitch rate (rad/s)")
+        print("Control: δe - elevator deflection (rad)")
+        print("Measurement: q - pitch rate")
         print()
         print(f"A = \n{self.A}")
         print(f"B = \n{self.B}")
         print(f"C = \n{self.C}")
     
     def analyze_open_loop(self):
-        """Анализ исходной (разомкнутой) системы"""
+        """Open-loop analysis"""
         
         print(f"\n{'='*60}")
-        print("АНАЛИЗ ИСХОДНОЙ СИСТЕМЫ")
+        print("OPEN-LOOP ANALYSIS")
         print(f"{'='*60}")
         
-        # Собственные числа
+        # Eigenvalues
         poles = eigvals(self.A)
-        print(f"Полюсы исходной системы: {poles}")
+        print(f"Open-loop poles: {poles}")
         
-        # Анализ устойчивости
+        # Stability
         stable = all(np.real(pole) < 0 for pole in poles)
-        print(f"Устойчивость: {'✓ Устойчива' if stable else '✗ Неустойчива'}")
+        print(f"Stability: {'✓ Stable' if stable else '✗ Unstable'}")
         
-        # Характеристики колебаний
+        # Oscillation characteristics
         for i, pole in enumerate(poles):
             real_part = np.real(pole)
             imag_part = np.imag(pole)
@@ -170,146 +170,146 @@ class AircraftLongitudinalControl:
                 damping_ratio = -real_part / abs(pole)
                 period = 2 * np.pi / freq
                 
-                print(f"\nПолюс {i+1}: {pole:.4f}")
-                print(f"  Частота: {freq:.4f} рад/с")
-                print(f"  Период: {period:.2f} с")
-                print(f"  Коэффициент демпфирования: {damping_ratio:.4f}")
+                print(f"\nPole {i+1}: {pole:.4f}")
+                print(f"  Frequency: {freq:.4f} rad/s")
+                print(f"  Period: {period:.2f} s")
+                print(f"  Damping ratio: {damping_ratio:.4f}")
                 
                 if period < 5:
-                    print("  Тип: Короткопериодическая мода")
+                    print("  Type: Short-period mode")
                 else:
-                    print("  Тип: Длиннопериодическая мода")
+                    print("  Type: Long-period mode")
         
-        # Проверка управляемости и наблюдаемости
+        # Controllability and observability
         P = ctrl.ctrb(self.A, self.B)
         O = ctrl.obsv(self.A, self.C)
         
         controllable = np.linalg.matrix_rank(P) == self.n
         observable = np.linalg.matrix_rank(O) == self.n
         
-        print(f"\nУправляемость: {'✓' if controllable else '✗'}")
-        print(f"Наблюдаемость: {'✓' if observable else '✗'}")
+        print(f"\nControllability: {'✓' if controllable else '✗'}")
+        print(f"Observability: {'✓' if observable else '✗'}")
         
         if not controllable:
-            print("⚠️  Система не управляема! Синтез невозможен.")
+            print("⚠️  System is uncontrollable! Synthesis impossible.")
         if not observable:
-            print("⚠️  Система не наблюдаема! Наблюдатель невозможен.")
+            print("⚠️  System is unobservable! Observer impossible.")
         
         return poles, controllable, observable
     
     def design_controller(self, desired_poles=None):
-        """Синтез регулятора методом размещения полюсов"""
+        """Controller synthesis via pole placement"""
         
         if desired_poles is None:
             desired_poles = [-1.0 + 1.0j, -1.0 - 1.0j]  # более быстрые и лучше задемпфированные
         
         print(f"\n{'='*60}")
-        print("СИНТЕЗ РЕГУЛЯТОРА")
+        print("CONTROLLER SYNTHESIS")
         print(f"{'='*60}")
         
-        print(f"Желаемые полюсы: {desired_poles}")
+        print(f"Desired poles: {desired_poles}")
         
-        # Размещение полюсов
+        # Place poles
         self.K = ctrl.place(self.A, self.B, desired_poles)
         
-        # Проверка результата
+        # Verify result
         A_cl = self.A - self.B @ self.K
         actual_poles = eigvals(A_cl)
         
-        print(f"Матрица обратной связи K: {self.K}")
-        print(f"Фактические полюсы: {actual_poles}")
+        print(f"Feedback gain K: {self.K}")
+        print(f"Actual poles: {actual_poles}")
         
-        # Закон управления
-        print(f"\nЗакон управления:")
+        # Control law
+        print(f"\nControl law:")
         print(f"δe = -K * [α; q] = -{self.K[0,0]:.3f}*α - {self.K[0,1]:.3f}*q")
         
         return self.K, actual_poles
     
     def design_observer(self, observer_poles=None):
-        """Синтез наблюдателя состояния"""
+        """State observer synthesis"""
         
         if observer_poles is None:
             # Полюсы наблюдателя в 5 раз быстрее полюсов регулятора
             observer_poles = [-5.0 + 5.0j, -5.0 - 5.0j]
         
         print(f"\n{'='*60}")
-        print("СИНТЕЗ НАБЛЮДАТЕЛЯ")
+        print("OBSERVER SYNTHESIS")
         print(f"{'='*60}")
         
-        print(f"Желаемые полюсы наблюдателя: {observer_poles}")
+        print(f"Desired observer poles: {observer_poles}")
         
-        # Синтез наблюдателя (используем дуальность)
+        # Observer synthesis (duality)
         L_T = ctrl.place(self.A.T, self.C.T, observer_poles)
         self.L = L_T.T
         
-        # Проверка результата
+        # Verify result
         A_obs = self.A - self.L @ self.C
         actual_observer_poles = eigvals(A_obs)
         
-        print(f"Матрица усиления наблюдателя L: {self.L}")
-        print(f"Фактические полюсы наблюдателя: {actual_observer_poles}")
+        print(f"Observer gain L: {self.L}")
+        print(f"Actual observer poles: {actual_observer_poles}")
         
-        # Уравнение наблюдателя
-        print(f"\nУравнение наблюдателя:")
+        # Observer equation
+        print(f"\nObserver equation:")
         print(f"α̂' = {self.A[0,0]:.3f}*α̂ + {self.A[0,1]:.3f}*q̂ + {self.B[0,0]:.3f}*δe + {self.L[0,0]:.3f}*(q - q̂)")
         print(f"q̂' = {self.A[1,0]:.3f}*α̂ + {self.A[1,1]:.3f}*q̂ + {self.B[1,0]:.3f}*δe + {self.L[1,0]:.3f}*(q - q̂)")
         
         return self.L, actual_observer_poles
     
     def simulate_scenarios(self, t_sim=15, disturbance_time=2):
-        """Моделирование различных сценариев управления"""
+        """Simulate different control scenarios"""
         
         print(f"\n{'='*60}")
-        print("МОДЕЛИРОВАНИЕ СИСТЕМЫ")
+        print("SYSTEM SIMULATION")
         print(f"{'='*60}")
         
         t = np.linspace(0, t_sim, 1000)
         
-        # Начальные условия
-        alpha0 = 0.1  # начальный угол атаки (рад) ≈ 5.7°
-        q0 = 0.0      # начальная угловая скорость
+        # Initial conditions
+        alpha0 = 0.1  # initial AoA (rad) ≈ 5.7°
+        q0 = 0.0      # initial pitch rate
         x0_true = np.array([alpha0, q0])
         
         # Начальная оценка (неточная)
         x0_est = np.array([0.0, 0.0])
         
-        print(f"Начальные условия:")
-        print(f"  Истинное состояние: α₀ = {alpha0:.3f} рад ({np.degrees(alpha0):.1f}°), q₀ = {q0:.3f} рад/с")
-        print(f"  Начальная оценка: α̂₀ = {x0_est[0]:.3f} рад, q̂₀ = {x0_est[1]:.3f} рад/с")
+        print(f"Initial conditions:")
+        print(f"  True state: α₀ = {alpha0:.3f} rad ({np.degrees(alpha0):.1f}°), q₀ = {q0:.3f} rad/s")
+        print(f"  Initial estimate: α̂₀ = {x0_est[0]:.3f} rad, q̂₀ = {x0_est[1]:.3f} rad/s")
         
         # Сценарий 1: Без управления
-        print("\nМоделирование: Система без управления...")
+        print("\nSimulating: Open-loop system...")
         sys_open = ctrl.ss(self.A, np.zeros((2, 1)), np.eye(2), np.zeros((2, 1)))
         t1, x1 = ctrl.initial_response(sys_open, t, X0=x0_true, return_x=True)
         
         # Сценарий 2: Идеальная обратная связь
-        print("Моделирование: Идеальная обратная связь...")
+        print("Simulating: Ideal feedback...")
         A_ideal = self.A - self.B @ self.K
         sys_ideal = ctrl.ss(A_ideal, np.zeros((2, 1)), np.eye(2), np.zeros((2, 1)))
         t2, x2 = ctrl.initial_response(sys_ideal, t, X0=x0_true, return_x=True)
-        u2 = -self.K @ x2  # управляющий сигнал
+        u2 = -self.K @ x2  # control signal
         
         # Сценарий 3: Полная система (регулятор + наблюдатель)
-        print("Моделирование: Полная система с наблюдателем...")
+        print("Simulating: Full system with observer...")
         
         def full_system_dynamics(t, state):
-            """Динамика полной системы"""
-            x = state[:2]      # истинное состояние [α, q]
-            x_hat = state[2:]  # оценка состояния [α̂, q̂]
+            """Full system dynamics"""
+            x = state[:2]      # true state [α, q]
+            x_hat = state[2:]  # estimated state [α̂, q̂]
             
-            # Измерение (только угловая скорость q)
+            # Measurement (pitch rate only)
             y = self.C @ x
             
-            # Управление на основе оценки
+            # Control based on estimate
             u = -self.K @ x_hat
             
-            # Возмущение (порыв ветра в момент disturbance_time)
+            # Disturbance (wind gust at disturbance_time)
             disturbance = 0.05 if abs(t - disturbance_time) < 0.1 else 0.0
             
-            # Динамика истинной системы
+            # True system dynamics
             dx_dt = self.A @ x + self.B @ u + np.array([disturbance, 0])
             
-            # Динамика наблюдателя
+            # Observer dynamics
             dx_hat_dt = self.A @ x_hat + self.B @ u + self.L @ (y - self.C @ x_hat)
             
             return np.concatenate([dx_dt, dx_hat_dt])
@@ -318,10 +318,10 @@ class AircraftLongitudinalControl:
         x0_full = np.concatenate([x0_true, x0_est])
         sol = solve_ivp(full_system_dynamics, [0, t_sim], x0_full, t_eval=t, rtol=1e-8)
         
-        x3 = sol.y[:2, :]      # истинное состояние
-        x_hat3 = sol.y[2:, :]  # оценка состояния
-        u3 = -self.K @ x_hat3  # управляющий сигнал
-        error3 = x3 - x_hat3   # ошибка наблюдения
+        x3 = sol.y[:2, :]
+        x_hat3 = sol.y[2:, :]
+        u3 = -self.K @ x_hat3
+        error3 = x3 - x_hat3
         
         return {
             't': t,
@@ -331,7 +331,7 @@ class AircraftLongitudinalControl:
         }
     
     def plot_results(self, results):
-        """Построение графиков результатов моделирования"""
+        """Plot simulation results"""
         
         fig, axes = plt.subplots(3, 3, figsize=(18, 12))
         
@@ -340,103 +340,103 @@ class AircraftLongitudinalControl:
         ideal = results['ideal_feedback']
         full = results['full_system']
         
-        # 1. Угол атаки
+        # 1. Angle of attack
         axes[0, 0].plot(open_loop['t'], np.degrees(open_loop['x'][0, :]), 'k--', 
-                       linewidth=2, label='Без управления')
+                       linewidth=2, label='Open loop')
         axes[0, 0].plot(ideal['t'], np.degrees(ideal['x'][0, :]), 'b-', 
-                       linewidth=2, label='Идеальная ОС')
+                       linewidth=2, label='Ideal FB')
         axes[0, 0].plot(t, np.degrees(full['x'][0, :]), 'r-', 
-                       linewidth=2, label='С наблюдателем')
-        axes[0, 0].set_title('Угол атаки α')
-        axes[0, 0].set_xlabel('Время (с)')
-        axes[0, 0].set_ylabel('α (градусы)')
+                       linewidth=2, label='With observer')
+        axes[0, 0].set_title('Angle of attack α')
+        axes[0, 0].set_xlabel('Time (s)')
+        axes[0, 0].set_ylabel('α (deg)')
         axes[0, 0].legend()
         axes[0, 0].grid(True)
         
-        # 2. Угловая скорость тангажа
+        # 2. Pitch rate
         axes[0, 1].plot(open_loop['t'], np.degrees(open_loop['x'][1, :]), 'k--', 
-                       linewidth=2, label='Без управления')
+                       linewidth=2, label='Open loop')
         axes[0, 1].plot(ideal['t'], np.degrees(ideal['x'][1, :]), 'b-', 
-                       linewidth=2, label='Идеальная ОС')
+                       linewidth=2, label='Ideal FB')
         axes[0, 1].plot(t, np.degrees(full['x'][1, :]), 'r-', 
-                       linewidth=2, label='С наблюдателем')
-        axes[0, 1].set_title('Угловая скорость тангажа q')
-        axes[0, 1].set_xlabel('Время (с)')
-        axes[0, 1].set_ylabel('q (град/с)')
+                       linewidth=2, label='With observer')
+        axes[0, 1].set_title('Pitch rate q')
+        axes[0, 1].set_xlabel('Time (s)')
+        axes[0, 1].set_ylabel('q (deg/s)')
         axes[0, 1].legend()
         axes[0, 1].grid(True)
         
-        # 3. Управляющий сигнал
+        # 3. Control input
         axes[0, 2].plot(ideal['t'], np.degrees(ideal['u'][0, :]), 'b-', 
-                       linewidth=2, label='Идеальная ОС')
+                       linewidth=2, label='Ideal FB')
         axes[0, 2].plot(t, np.degrees(full['u'][0, :]), 'r-', 
-                       linewidth=2, label='С наблюдателем')
-        axes[0, 2].set_title('Отклонение руля высоты δe')
-        axes[0, 2].set_xlabel('Время (с)')
-        axes[0, 2].set_ylabel('δe (градусы)')
+                       linewidth=2, label='With observer')
+        axes[0, 2].set_title('Elevator deflection δe')
+        axes[0, 2].set_xlabel('Time (s)')
+        axes[0, 2].set_ylabel('δe (deg)')
         axes[0, 2].legend()
         axes[0, 2].grid(True)
         
-        # 4. Ошибка наблюдения - угол атаки
+        # 4. Estimation error — angle of attack
         axes[1, 0].plot(t, np.degrees(full['error'][0, :]), 'g-', linewidth=2)
-        axes[1, 0].set_title('Ошибка наблюдения угла атаки')
-        axes[1, 0].set_xlabel('Время (с)')
-        axes[1, 0].set_ylabel('α - α̂ (градусы)')
+        axes[1, 0].set_title('Estimation error of α')
+        axes[1, 0].set_xlabel('Time (s)')
+        axes[1, 0].set_ylabel('α - α̂ (deg)')
         axes[1, 0].grid(True)
         
-        # 5. Ошибка наблюдения - угловая скорость
+        # 5. Estimation error — pitch rate
         axes[1, 1].plot(t, np.degrees(full['error'][1, :]), 'g-', linewidth=2)
-        axes[1, 1].set_title('Ошибка наблюдения угловой скорости')
-        axes[1, 1].set_xlabel('Время (с)')
-        axes[1, 1].set_ylabel('q - q̂ (град/с)')
+        axes[1, 1].set_title('Estimation error of pitch rate')
+        axes[1, 1].set_xlabel('Time (s)')
+        axes[1, 1].set_ylabel('q - q̂ (deg/s)')
         axes[1, 1].grid(True)
         
-        # 6. Сравнение истинного состояния и оценки
+        # 6. True state vs estimate
         axes[1, 2].plot(t, np.degrees(full['x'][0, :]), 'b-', linewidth=2, label='Истинный α')
         axes[1, 2].plot(t, np.degrees(full['x_hat'][0, :]), 'r--', linewidth=2, label='Оценка α̂')
-        axes[1, 2].set_title('Сравнение: истинное vs оценка (α)')
-        axes[1, 2].set_xlabel('Время (с)')
-        axes[1, 2].set_ylabel('α (градусы)')
+        axes[1, 2].set_title('Comparison: true vs estimate (α)')
+        axes[1, 2].set_xlabel('Time (s)')
+        axes[1, 2].set_ylabel('α (deg)')
         axes[1, 2].legend()
         axes[1, 2].grid(True)
         
-        # 7. Фазовый портрет
+        # 7. Phase portrait
         axes[2, 0].plot(np.degrees(open_loop['x'][0, :]), np.degrees(open_loop['x'][1, :]), 
-                       'k--', linewidth=2, label='Без управления')
+                       'k--', linewidth=2, label='Open loop')
         axes[2, 0].plot(np.degrees(ideal['x'][0, :]), np.degrees(ideal['x'][1, :]), 
-                       'b-', linewidth=2, label='Идеальная ОС')
+                       'b-', linewidth=2, label='Ideal FB')
         axes[2, 0].plot(np.degrees(full['x'][0, :]), np.degrees(full['x'][1, :]), 
-                       'r-', linewidth=2, label='С наблюдателем')
+                       'r-', linewidth=2, label='With observer')
         axes[2, 0].plot(np.degrees(full['x'][0, 0]), np.degrees(full['x'][1, 0]), 
                        'ko', markersize=8, label='Начальная точка')
-        axes[2, 0].set_title('Фазовый портрет')
-        axes[2, 0].set_xlabel('α (градусы)')
-        axes[2, 0].set_ylabel('q (град/с)')
+        axes[2, 0].set_title('Phase portrait')
+        axes[2, 0].set_xlabel('α (deg)')
+        axes[2, 0].set_ylabel('q (deg/s)')
         axes[2, 0].legend()
         axes[2, 0].grid(True)
         
-        # 8. Карта полюсов
+        # 8. Pole map
         poles_open = eigvals(self.A)
         poles_controller = eigvals(self.A - self.B @ self.K)
         poles_observer = eigvals(self.A - self.L @ self.C)
         
         axes[2, 1].plot(np.real(poles_open), np.imag(poles_open), 'ko', 
-                       markersize=10, label='Исходная система')
+                       markersize=10, label='Open loop')
         axes[2, 1].plot(np.real(poles_controller), np.imag(poles_controller), 'bs', 
-                       markersize=8, label='Регулятор')
+                       markersize=8, label='Controller')
         axes[2, 1].plot(np.real(poles_observer), np.imag(poles_observer), 'r^', 
-                       markersize=8, label='Наблюдатель')
+                       markersize=8, label='Observer')
         
         axes[2, 1].axvline(x=0, color='k', linestyle='--', alpha=0.5)
-        axes[2, 1].axvspan(-8, 0, alpha=0.2, color='green', label='Область устойчивости')
-        axes[2, 1].set_title('Карта полюсов')
-        axes[2, 1].set_xlabel('Действительная часть')
-        axes[2, 1].set_ylabel('Мнимая часть')
+        axes[2, 1].axvspan(-8, 0, alpha=0.2, color='green', label='Stable region')
+        axes[2, 1].set_title('Pole map')
+        axes[2, 1].set_xlabel('Real part')
+        axes[2, 1].set_ylabel('Imag part')
         axes[2, 1].legend()
         axes[2, 1].grid(True)
         
-        # 9. Анализ качества
-        # Время регулирования (2% критерий)
+        # 9. Quality analysis
+        # Settling time (2% criterion)
         final_alpha_ideal = ideal['x'][0, -1]
         final_alpha_full = full['x'][0, -1]
         
@@ -452,104 +452,104 @@ class AircraftLongitudinalControl:
         settling_times = [settling_time_ideal, settling_time_full]
         
         axes[2, 2].bar(systems, settling_times, alpha=0.7, color=['blue', 'red'])
-        axes[2, 2].set_title('Время регулирования')
-        axes[2, 2].set_ylabel('Время (с)')
+        axes[2, 2].set_title('Settling time')
+        axes[2, 2].set_ylabel('Time (s)')
         axes[2, 2].grid(True, alpha=0.3)
         
         plt.tight_layout()
         plt.show()
         
-        # Вывод численных результатов
+        # Print numerical results
         print(f"\n{'='*60}")
-        print("РЕЗУЛЬТАТЫ АНАЛИЗА")
+        print("RESULTS ANALYSIS")
         print(f"{'='*60}")
-        print(f"Время регулирования (идеальная ОС): {settling_time_ideal:.2f} с")
-        print(f"Время регулирования (с наблюдателем): {settling_time_full:.2f} с")
-        print(f"Разница: {abs(settling_time_full - settling_time_ideal):.2f} с")
+        print(f"Settling time (ideal): {settling_time_ideal:.2f} s")
+        print(f"Settling time (observer): {settling_time_full:.2f} s")
+        print(f"Difference: {abs(settling_time_full - settling_time_ideal):.2f} s")
         
         max_error_alpha = np.max(np.abs(full['error'][0, :]))
         max_error_q = np.max(np.abs(full['error'][1, :]))
-        print(f"Максимальная ошибка наблюдения α: {np.degrees(max_error_alpha):.3f}°")
-        print(f"Максимальная ошибка наблюдения q: {np.degrees(max_error_q):.3f}°/с")
+        print(f"Max estimation error α: {np.degrees(max_error_alpha):.3f}°")
+        print(f"Max estimation error q: {np.degrees(max_error_q):.3f}°/s")
         
         max_control_ideal = np.max(np.abs(ideal['u'][0, :]))
         max_control_full = np.max(np.abs(full['u'][0, :]))
-        print(f"Максимальное отклонение руля (идеальная ОС): {np.degrees(max_control_ideal):.1f}°")
-        print(f"Максимальное отклонение руля (с наблюдателем): {np.degrees(max_control_full):.1f}°")
+        print(f"Max elevator deflection (ideal): {np.degrees(max_control_ideal):.1f}°")
+        print(f"Max elevator deflection (observer): {np.degrees(max_control_full):.1f}°")
 
 def main():
-    """Основная функция - полный пример"""
+    """Main function — full example"""
     
-    # Создание объекта системы управления
+    # Create control system object
     aircraft = AircraftLongitudinalControl()
     
-    # Анализ исходной системы
+    # Analyze open-loop system
     poles, controllable, observable = aircraft.analyze_open_loop()
     
     if not (controllable and observable):
         print("Система не подходит для синтеза!")
         return
     
-    # Синтез регулятора
+    # Controller synthesis
     K, controller_poles = aircraft.design_controller()
     
-    # Синтез наблюдателя
+    # Observer synthesis
     L, observer_poles = aircraft.design_observer()
     
-    # Моделирование
+    # Simulation
     results = aircraft.simulate_scenarios()
     
-    # Построение графиков
+    # Plot results
     aircraft.plot_results(results)
     
     print(f"\n{'='*60}")
-    print("ЗАКЛЮЧЕНИЕ")
+    print("CONCLUSION")
     print(f"{'='*60}")
-    print("✓ Успешно синтезирована система автоматического управления")
-    print("✓ Система устойчива и имеет хорошие динамические характеристики")
-    print("✓ Наблюдатель обеспечивает точную оценку недоступных для измерения состояний")
-    print("✓ Качество управления с наблюдателем близко к идеальной обратной связи")
+    print("✓ Successfully synthesized an automatic control system")
+    print("✓ System is stable with good dynamic performance")
+    print("✓ Observer provides accurate estimates of unmeasured states")
+    print("✓ Observer-based control approaches ideal state feedback")
 
 if __name__ == "__main__":
     main()
 ```
 
-### Задание для самостоятельной работы
+### Homework
 
 ```python
-# Дополнительные эксперименты для самостоятельного выполнения
+# Additional self-study experiments
 
 def extended_experiments():
-    """Дополнительные эксперименты"""
+    """Additional experiments"""
     
     aircraft = AircraftLongitudinalControl()
     
-    # 1. Эксперимент с различными желаемыми полюсами
+    # 1. Experiment with different desired poles
     pole_variants = [
-        [-0.5 + 0.5j, -0.5 - 0.5j],  # медленные
-        [-2 + 2j, -2 - 2j],          # быстрые
-        [-1, -2],                     # апериодические
-        [-0.7 + 1.4j, -0.7 - 1.4j]   # слабо задемпфированные
+        [-0.5 + 0.5j, -0.5 - 0.5j],  # slow
+        [-2 + 2j, -2 - 2j],          # fast
+        [-1, -2],                     # aperiodic
+        [-0.7 + 1.4j, -0.7 - 1.4j]   # lightly damped
     ]
     
-    print("Задание 1: Исследуйте влияние различных полюсов регулятора")
+    print("Task 1: Study the effect of different controller poles")
     for i, poles in enumerate(pole_variants):
         print(f"Вариант {i+1}: {poles}")
         # TODO: Реализуйте синтез и сравнение
     
-    # 2. Эксперимент с шумом измерений
-    print("\nЗадание 2: Добавьте шум в измерения и оцените робастность")
-    # TODO: Добавьте белый шум в измерения q
+    # 2. Measurement noise experiment
+    print("\nTask 2: Add measurement noise and assess robustness")
+    # TODO: Add white noise to q measurements
     
-    # 3. Эксперимент с неопределенностью параметров
-    print("\nЗадание 3: Исследуйте влияние неточности модели")
-    # TODO: Варьируйте элементы матрицы A в пределах ±20%
+    # 3. Parameter uncertainty experiment
+    print("\nTask 3: Study the effect of model uncertainty")
+    # TODO: Vary A elements within ±20%
     
-    # 4. Сравнение с ПИД-регулятором
-    print("\nЗадание 4: Сравните с классическим ПИД-регулятором")
-    # TODO: Реализуйте ПИД-регулятор и сравните результаты
+    # 4. Compare with a PID controller
+    print("\nTask 4: Compare with a classical PID controller")
+    # TODO: Implement PID and compare results
 
-# Запустите эти эксперименты для углубленного изучения!
+# Run these experiments for deeper exploration!
 ```
 
 Этот полный пример демонстрирует:
