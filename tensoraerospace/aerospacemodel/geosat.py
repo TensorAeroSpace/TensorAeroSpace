@@ -217,7 +217,9 @@ class GeoSat(ModelBase):
         self.xt = self.xt1
         self.time_step += 1
 
-    def get_state(self, state_name: str, to_deg: bool = False, to_rad: bool = False):
+    def get_state(
+        self, state_name: str, to_deg: bool = False, to_rad: bool = False
+    ) -> np.ndarray:
         """
         Получить массив состояния
 
@@ -227,7 +229,7 @@ class GeoSat(ModelBase):
             to_rad: Конвертировать в радианы
 
         Returns:
-            Массив истории выбранного состояния
+            np.ndarray: Массив истории выбранного состояния
 
         Пример:
 
@@ -253,7 +255,7 @@ class GeoSat(ModelBase):
 
     def get_control(
         self, control_name: str, to_deg: bool = False, to_rad: bool = False
-    ):
+    ) -> np.ndarray:
         """
         Получить массив сигнала управления
 
@@ -262,7 +264,7 @@ class GeoSat(ModelBase):
             to_deg: Конвертировать в градусы
 
         Returns:
-            Массив истории выбранного сигнала управления
+            np.ndarray: Массив истории выбранного сигнала управления
 
         Пример:
 
@@ -284,10 +286,12 @@ class GeoSat(ModelBase):
         if to_deg:
             return np.rad2deg(self.store_input[index])[: self.number_time_steps - 1]
         if to_rad:
-            return np.deg2rad(self.store_states[index][: self.number_time_steps - 1])
+            return np.deg2rad(self.store_input[index][: self.number_time_steps - 1])
         return self.store_input[index][: self.number_time_steps - 1]
 
-    def get_output(self, state_name: str, to_deg: bool = False, to_rad: bool = False):
+    def get_output(
+        self, state_name: str, to_deg: bool = False, to_rad: bool = False
+    ) -> np.ndarray:
         """
         Получить массив выходного сигнала
 
@@ -304,9 +308,9 @@ class GeoSat(ModelBase):
         """
         self.output_history = output2dict(self.store_outputs, self.selected_output)
         if to_deg:
-            return np.rad2deg(self.state_history[state_name][: self.time_step - 1])
+            return np.rad2deg(self.output_history[state_name][: self.time_step - 1])
         if to_rad:
-            return np.deg2rad(self.state_history[state_name][: self.time_step - 1])
+            return np.deg2rad(self.output_history[state_name][: self.time_step - 1])
         return self.output_history[state_name][: self.time_step - 1]
 
     def plot_output(
@@ -317,7 +321,7 @@ class GeoSat(ModelBase):
         to_deg: bool = False,
         to_rad: bool = False,
         figsize: tuple = (10, 10),
-    ):
+    ) -> plt.Figure:
         """
         Построить график выходного сигнала
 
@@ -345,8 +349,8 @@ class GeoSat(ModelBase):
             )
         if output_name not in self.list_state:
             raise Exception(f"{output_name} нет в списке сигналов управления")
-        if not self.control_history:
-            self.control_history = output2dict(self.store_outputs, self.selected_output)
+        if not self.output_history:
+            self.output_history = output2dict(self.store_outputs, self.selected_output)
         state_hist = self.get_output(output_name, to_deg, to_rad)
         if output_name == "u":
             state_hist *= 1.94384

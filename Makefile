@@ -1,7 +1,7 @@
 # Makefile для TensorAeroSpace
 # Использование: make <команда>
 
-.PHONY: help install test lint format security docs clean build publish
+.PHONY: help install test lint format security docs clean build publish mkdocs-serve mkdocs-build mkdocs-clean
 
 # Цвета для вывода
 BLUE := \033[36m
@@ -124,6 +124,18 @@ check_doc_quality: ## Проверить качество документаци
 docs-serve: ## Запустить сервер документации
 	@echo "$(BLUE)Запуск сервера документации...$(RESET)"
 	cd docs/_build/html && python -m http.server 8000
+
+mkdocs-serve: ## Запустить MkDocs сервер (docs_new)
+	@echo "$(BLUE)MkDocs: serve http://127.0.0.1:8000$(RESET)"
+	mkdocs serve
+
+mkdocs-build: ## Собрать MkDocs сайт (docs_new/site)
+	@echo "$(BLUE)MkDocs: build$(RESET)"
+	mkdocs build
+
+mkdocs-clean: ## Очистить MkDocs сборку
+	@echo "$(BLUE)MkDocs: clean$(RESET)"
+	rm -rf site
 
 # === СБОРКА И ПУБЛИКАЦИЯ ===
 clean: ## Очистить временные файлы

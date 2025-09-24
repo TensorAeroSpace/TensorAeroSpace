@@ -10,6 +10,9 @@ np.random.seed(1)
 tf.random.set_seed(1)
 
 
+from typing import Any, Tuple, Union
+
+
 class Model(tf.keras.Model):
     """Нейросеть для глубокой Q нейросети. Принимает на вход количество действий. Содержит методы для инициализации,
     forward и выбора действия.
@@ -18,13 +21,13 @@ class Model(tf.keras.Model):
         num_actions (int): количество действий
     """
 
-    def __init__(self, num_actions):
+    def __init__(self, num_actions: int) -> None:
         super().__init__(name="basic_prddqn")
         self.fc1 = kl.Dense(32, activation="relu", kernel_initializer="he_uniform")
         self.fc2 = kl.Dense(32, activation="relu", kernel_initializer="he_uniform")
         self.logits = kl.Dense(num_actions, name="q_values")
 
-    def predict(self, inputs):
+    def predict(self, inputs: np.ndarray) -> np.ndarray:
         """Функция forward. Возвращает q функции для действий.
 
         Args:
@@ -39,7 +42,9 @@ class Model(tf.keras.Model):
         x = self.logits(x)
         return x
 
-    def action_value(self, obs):
+    def action_value(
+        self, obs: np.ndarray
+    ) -> Tuple[Union[np.ndarray, int], np.ndarray]:
         """Функция стратегии. Возвращает действие.
 
         Args:
@@ -178,22 +183,22 @@ class PERAgent:
     """Агент DQN.
 
     Args:
-        model (_type_): нейросетевая модель глубокой Q сети
-        target_model (_type_): нейросетевая модель для целевой глубокой Q сети
-        env (_type_): gym среда
-        learning_rate (float, optional)
-        epsilon (float, optional): вероятность исследования среды
-        epsilon_dacay (float, optional): уменьшение вероятности исследования среды за эпизод
-        min_epsilon (float, optional): минимальная вероятность исследования среды
-        gamma (float, optional)
-        batch_size (float, optional)
-        target_update_iter (int, optional): количество эпизодов для обновления целевой сети
-        train_nums (int, optional): количество эпизодов обучения
-        buffer_size (int, optional)
-        replay_period (int, optional)
-        alpha (float, optional)
-        beta (float, optional)
-        beta_increment_per_sample (float, optional)
+        model (tf.keras.Model): модель глубокой Q-сети.
+        target_model (tf.keras.Model): целевая модель глубокой Q-сети.
+        env (gym.Env): среда Gym/Gymnasium.
+        learning_rate (float, optional): скорость обучения.
+        epsilon (float, optional): вероятность исследования среды.
+        epsilon_dacay (float, optional): коэффициент уменьшения epsilon по эпизодам.
+        min_epsilon (float, optional): минимальное значение epsilon.
+        gamma (float, optional): коэффициент дисконтирования.
+        batch_size (int, optional): размер мини-батча.
+        target_update_iter (int, optional): период обновления целевой сети (шаги).
+        train_nums (int, optional): количество шагов обучения.
+        buffer_size (int, optional): размер буфера повторов.
+        replay_period (int, optional): период выборки из буфера.
+        alpha (float, optional): степень приоритезации.
+        beta (float, optional): коэффициент importance sampling.
+        beta_increment_per_sample (float, optional): приращение beta за выборку.
     """
 
     def __init__(
@@ -254,7 +259,7 @@ class PERAgent:
         self.is_weight = np.power(self.buffer_size, -self.beta)  # because p1 == 1
         self.abs_error_upper = 1
 
-    def _per_loss(self, y_target, y_pred):
+    def _per_loss(self, y_target: tf.Tensor, y_pred: tf.Tensor) -> tf.Tensor:
         """Получение ошибки при обучении
 
         Args:
@@ -269,7 +274,7 @@ class PERAgent:
             self.is_weight * tf.math.squared_difference(y_target, y_pred)
         )
 
-    def train(self):
+    def train(self) -> None:
         """Функция для обучения"""
 
         obs, info = self.env.reset()
@@ -304,7 +309,7 @@ class PERAgent:
             else:
                 obs = next_obs
 
-    def train_step(self):
+    def train_step(self) -> Any:
         """Функция для шага обучения
 
         Returns:
@@ -342,7 +347,7 @@ class PERAgent:
 
         return losses
 
-    def sum_tree_sample(self, k):
+    def sum_tree_sample(self, k: int):
         """Получение батча для обучения
 
         Args:
@@ -384,11 +389,11 @@ class PERAgent:
             )
         return idxes, is_weights
 
-    def evaluation(self, wrapped_env, render=False):
+    def evaluation(self, wrapped_env: Any, render: bool = False) -> float:
         """Получение батча для обучения
 
         Args:
-            env (_type_): среда
+            wrapped_env: обёрнутая среда (для рендеринга/захвата кадров).
             render (bool, optional): визуализировать ли среду или нет
 
         Returns:
@@ -413,7 +418,15 @@ class PERAgent:
         wrapped_env.close()
         return ep_reward
 
-    def store_transition(self, priority, obs, action, reward, next_state, done):
+    def store_transition(
+        self,
+        priority: float,
+        obs: np.ndarray,
+        action: int,
+        reward: float,
+        next_state: np.ndarray,
+        done: bool,
+    ) -> None:
         """Сохранение перехода в буфере
 
         Args:
@@ -436,7 +449,7 @@ class PERAgent:
         pass
 
     # e-greedy
-    def get_action(self, best_action):
+    def get_action(self, best_action: int) -> int:
         """жадная функция стратегии. Возвращает случайное действие если происходит исследование среды
         Args:
             best_action (int): лучшее действие
@@ -449,12 +462,12 @@ class PERAgent:
         return best_action
 
     # assign the current network parameters to target network
-    def update_target_model(self):
+    def update_target_model(self) -> None:
         """Функция обновления целевой нейросети"""
 
         self.target_model.set_weights(self.model.get_weights())
 
-    def get_target_value(self, obs):
+    def get_target_value(self, obs: np.ndarray) -> np.ndarray:
         """Функция получения q значений целевой нейросети
 
         Returns:
@@ -462,7 +475,7 @@ class PERAgent:
         """
         return self.target_model.predict(obs)
 
-    def e_decay(self):
+    def e_decay(self) -> None:
         """Функция для уменьшения вероятности исследования сети"""
 
         self.epsilon *= self.epsilon_decay
@@ -472,22 +485,22 @@ class PERNARXAgent:
     """Агент DQN с NARX моделью обучения.
 
     Args:
-        model (_type_): нейросетевая модель глубокой Q сети
-        target_model (_type_): нейросетевая модель для целевой глубокой Q сети
-        env (_type_): gym среда
-        learning_rate (float, optional)
-        epsilon (float, optional): вероятность исследования среды
-        epsilon_dacay (float, optional): уменьшение вероятности исследования среды за эпизод
-        min_epsilon (float, optional): минимальная вероятность исследования среды
-        gamma (float, optional)
-        batch_size (float, optional)
-        target_update_iter (int, optional): количество эпизодов для обновления целевой сети
-        train_nums (int, optional): количество эпизодов обучения
-        buffer_size (int, optional)
-        replay_period (int, optional)
-        alpha (float, optional)
-        beta (float, optional)
-        beta_increment_per_sample (float, optional)
+        model (tf.keras.Model): модель глубокой Q-сети.
+        target_model (tf.keras.Model): целевая модель глубокой Q-сети.
+        env (gym.Env): среда Gym.
+        learning_rate (float, optional): скорость обучения.
+        epsilon (float, optional): вероятность исследования среды.
+        epsilon_dacay (float, optional): коэффициент уменьшения epsilon по эпизодам.
+        min_epsilon (float, optional): минимальное значение epsilon.
+        gamma (float, optional): коэффициент дисконтирования.
+        batch_size (int, optional): размер мини-батча.
+        target_update_iter (int, optional): период обновления целевой сети (шаги).
+        train_nums (int, optional): количество шагов обучения.
+        buffer_size (int, optional): размер буфера повторов.
+        replay_period (int, optional): период выборки из буфера.
+        alpha (float, optional): степень приоритезации.
+        beta (float, optional): коэффициент importance sampling.
+        beta_increment_per_sample (float, optional): приращение beta за выборку.
     """
 
     def __init__(
@@ -546,7 +559,7 @@ class PERNARXAgent:
         self.is_weight = np.power(self.buffer_size, -self.beta)  # because p1 == 1
         self.abs_error_upper = 1
 
-    def _per_loss(self, y_target, y_pred):
+    def _per_loss(self, y_target: tf.Tensor, y_pred: tf.Tensor) -> tf.Tensor:
         """Получение ошибки при обучении
 
         Args:
@@ -561,7 +574,7 @@ class PERNARXAgent:
             self.is_weight * tf.math.squared_difference(y_target, y_pred)
         )
 
-    def train(self):
+    def train(self) -> None:
         """Функция для обучения"""
 
         obs = self.env.reset()
@@ -598,7 +611,7 @@ class PERNARXAgent:
             else:
                 obs = next_obs
 
-    def train_step(self):
+    def train_step(self) -> Any:
         """Функция для шага обучения
 
         Returns:
@@ -636,7 +649,7 @@ class PERNARXAgent:
 
         return losses
 
-    def sum_tree_sample(self, k):
+    def sum_tree_sample(self, k: int):
         """Получение батча для обучения
 
         Args:
@@ -678,7 +691,7 @@ class PERNARXAgent:
             )
         return idxes, is_weights
 
-    def evaluation(self, env, render=False):
+    def evaluation(self, env, render: bool = False) -> float:
         """Получение батча для обучения
 
         Args:
@@ -703,7 +716,15 @@ class PERNARXAgent:
         env.close()
         return ep_reward
 
-    def store_transition(self, priority, obs, action, reward, next_state, done):
+    def store_transition(
+        self,
+        priority: float,
+        obs: np.ndarray,
+        action: int,
+        reward: float,
+        next_state: np.ndarray,
+        done: bool,
+    ) -> None:
         """Сохранение перехода в буфере
 
         Args:
@@ -726,7 +747,7 @@ class PERNARXAgent:
         pass
 
     # e-greedy
-    def get_action(self, best_action):
+    def get_action(self, best_action: int) -> int:
         """жадная функция стратегии. Возвращает случайное действие если происходит исследование среды
         Args:
             best_action (int): лучшее действие
@@ -739,12 +760,12 @@ class PERNARXAgent:
         return best_action
 
     # assign the current network parameters to target network
-    def update_target_model(self):
+    def update_target_model(self) -> None:
         """Функция обновления целевой нейросети"""
 
         self.target_model.set_weights(self.model.get_weights())
 
-    def get_target_value(self, obs):
+    def get_target_value(self, obs: np.ndarray) -> np.ndarray:
         """Функция получения q значений целевой нейросети
 
         Returns:
@@ -752,7 +773,7 @@ class PERNARXAgent:
         """
         return self.target_model.predict(obs)
 
-    def e_decay(self):
+    def e_decay(self) -> None:
         """Функция для уменьшения вероятности исследования сети"""
 
         self.epsilon *= self.epsilon_decay

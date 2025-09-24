@@ -198,8 +198,8 @@ class Worker(Thread):
         """Функция для подсчёта отложенной награды
 
         Args:
-            rewards (float): полученные награды
-            next_Q (float): предсказанные Q функции
+            rewards (np.ndarray): полученные награды
+            next_Qs (np.ndarray): предсказанные значения на следующих состояниях
             done (bool): флаг завершения эпизода
 
         Returns:

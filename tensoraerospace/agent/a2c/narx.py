@@ -357,7 +357,7 @@ class Runner:
         # Reset previous action at the start of each episode
         self.prev_action = np.zeros(self.env.action_space.shape)
 
-    def run(self, max_steps, memory=None):
+    def run(self, max_steps, memory=None) -> list:
         """
         Выполнение заданного числа шагов в среде для сбора данных обучения.
 

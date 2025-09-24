@@ -1,5 +1,6 @@
 import matplotlib.pyplot as plt
 import numpy as np
+from matplotlib.figure import Figure
 from scipy.signal import cont2discrete
 
 from .base import ModelBase
@@ -78,7 +79,7 @@ class MissileModel(ModelBase):
 
         self.initialise_system(x0, number_time_steps)
 
-    def import_linear_system(self):
+    def import_linear_system(self) -> None:
         """Сохраненные линеаризованные матрицы"""
         self.A = np.array(
             [
@@ -116,7 +117,7 @@ class MissileModel(ModelBase):
             ]
         )
 
-    def initialise_system(self, x0, number_time_steps):
+    def initialise_system(self, x0, number_time_steps) -> None:
         """Инициализация системы
 
         Args:
@@ -216,12 +217,14 @@ class MissileModel(ModelBase):
             return np.array(self.xt1[self.selected_state_index])
         return np.array(self.xt1)
 
-    def update_system_attributes(self):
+    def update_system_attributes(self) -> None:
         """Атрибуты, которые меняются с каждым временным шагом, обновляются"""
         self.xt = self.xt1
         self.time_step += 1
 
-    def get_state(self, state_name: str, to_deg: bool = False, to_rad: bool = False):
+    def get_state(
+        self, state_name: str, to_deg: bool = False, to_rad: bool = False
+    ) -> np.ndarray:
         """
         Получить массив состояния
 
@@ -257,7 +260,7 @@ class MissileModel(ModelBase):
 
     def get_control(
         self, control_name: str, to_deg: bool = False, to_rad: bool = False
-    ):
+    ) -> np.ndarray:
         """
         Получить массив сигнала управления
 
@@ -291,7 +294,9 @@ class MissileModel(ModelBase):
             return np.deg2rad(self.store_states[index][: self.number_time_steps - 1])
         return self.store_input[index][: self.number_time_steps - 1]
 
-    def get_output(self, state_name: str, to_deg: bool = False, to_rad: bool = False):
+    def get_output(
+        self, state_name: str, to_deg: bool = False, to_rad: bool = False
+    ) -> np.ndarray:
         """
         Получить массив выходного сигнала
 
@@ -321,7 +326,7 @@ class MissileModel(ModelBase):
         to_deg: bool = False,
         to_rad: bool = False,
         figsize: tuple = (10, 10),
-    ):
+    ) -> Figure:
         """
         Построить график выходного сигнала
 
