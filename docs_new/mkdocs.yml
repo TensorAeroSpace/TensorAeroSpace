@@ -1,6 +1,6 @@
 site_name: TensorAeroSpace 
 site_description: Open source deep learning framework for aerospace objects
-site_url: https://tensoraerospace.github.io/TensorAeroSpace/
+site_url: https://tensoraerospace.github.io/TensorAeroSpace/docs/
 repo_url: https://github.com/TensorAeroSpace/TensorAeroSpace
 repo_name: TensorAeroSpace/TensorAeroSpace
 docs_dir: docs
@@ -20,67 +20,96 @@ plugins:
             docstring_style: google
             heading_level: 2
             show_source: false
+  - i18n:
+      default_language: en
+      docs_structure: folder
+      prefix_default_language: true
+      languages:
+        - locale: en
+          name: English
+          default: true
+          build: true
+          nav:
+            - Home: index.md
+        - locale: ru
+          name: Русский
+          build: true
+          nav:
+            - Home: index.md
+            - User Guide:
+              - Installation: guide/installation.md
+              - Unity Environment: guide/unity_env.md
+            - Aerospace Models:
+              - F16: model/f16.md
+              - B747: model/b747.md
+              - EVL: model/evl.md
+              - Typical Rocket: model/typical_rocket.md
+              - ComSat: model/comsat.md
+              - F4C: model/f4c.md
+              - GeoSat: model/geosat.md
+              - UAV: model/uav.md
+              - X15: model/x15.md
+              - LSU: model/lsu.md
+              - SUAV: model/suav.md
+              - Unity Environment: model/unity_env.md
+            - Agents:
+              - IHDP:
+                - Описание: agent/ihdp.md
+                - Пример LinearLongitudinalF16‑v0: agent/ihdp/example.md
+              - MPC: agent/mpc.md
+              - DQN: agent/dqn.md
+              - A3C: agent/a3c.md
+              - A2C-NARX: agent/a2c_narx.md
+              - PPO: agent/ppo.md
+              - SAC: agent/sac.md
+              - DDPG: agent/ddpg.md
+              - GAIL: agent/gail.md
+              - Optimization: optimization/optuna_based.md
+              - Benchmark:
+                - Overview: benchmark/bench.md
+                - Metrics: benchmark/metrics.md
+              - Signals: signals/signals.md
+            - Examples:
+              - Environments: example/env/examples.md
+              - IHDP: example/agent/ihdp/example_ihdp.md
+              - SAC F16: example/agent/sac/example-sac-f16.md
+              - Optimization: example/optimization/example_optimization.md
+              - A2C-NARX: example/agent/a2c_narx/example-narx.md
+              - MPC: example/agent/mpc/example_mpc.md
+              - MPC Transformers: example/agent/mpc/example_transformers.md
+              - IHDP Failure: example/failure/ihdp-failure.md
+              - Simulink:
+                - Simulink to Python: example/simulink/sim_pyth.md
+                - Your Simulink: example/simulink/your_sim.md
+              - Unity:
+                - Unity with DQN: example/env/unity_example.md
+              - Simintech:
+                - Simintech: example/simintech/simintech.md
+                - Simintech to Python: example/simintech/simintechToPython.md
+            - Lessons:
+              - Theory:
+                - "Урок 1 — Введение и пространство состояний": lesson/base/tutor_1.md
+                - "Урок 2 — Управляемость и наблюдаемость": lesson/base/tutor_2.md
+                - "Урок 3 — Устойчивость систем управления": lesson/base/tutor_3.md
+                - "Урок 4 — Основы динамики полета": lesson/base/tutor_4.md
+                - "Урок 5 — Метод размещения полюсов": lesson/base/tutor_5.md
+                - "Урок 6 — Наблюдатели и принцип разделения": lesson/base/tutor_6.md
+                - "Урок 7 — Практика: стабилизация продольного движения": lesson/base/tutor_7.md
+              - XFLR5:
+                - Introduction: lesson/0intro.md
+                - Airfoil Analysis: lesson/1analysis_airfoil.md
+                - Plane Aero Analysis: lesson/2analysis_plane_aero.md
+                - Plane Static Analysis: lesson/3analysis_plane_static.md
+                - MATLAB Script: lesson/4matlabscript.md
+                - Simulink Model: lesson/5simulinkmodel.md
+                - DLL Generation: lesson/6dllgen.md
+      reconfigure_material: true
 
-nav:
-  - Home: index.md
-  - User Guide:
-    - Installation: guide/installation.md
-    - Unity Environment: guide/unity_env.md
-  - Aerospace Models:
-    - F16: model/f16.md
-    - B747: model/b747.md
-    - EVL: model/evl.md
-    - Typical Rocket: model/typical_rocket.md
-    - ComSat: model/comsat.md
-    - F4C: model/f4c.md
-    - GeoSat: model/geosat.md
-    - UAV: model/uav.md
-    - X15: model/x15.md
-    - LSU: model/lsu.md
-    - SUAV: model/suav.md
-    - Unity Environment: model/unity_env.md
-  - Agents:
-    - IHDP: 
-      - Описание: agent/ihdp.md
-      - Пример LinearLongitudinalF16‑v0: agent/ihdp/example.md
-    - MPC: agent/mpc.md
-    - DQN: agent/dqn.md
-    - A3C: agent/a3c.md
-    - A2C-NARX: agent/a2c_narx.md
-    - PPO: agent/ppo.md
-    - SAC: agent/sac.md
-    - DDPG: agent/ddpg.md
-    - GAIL: agent/gail.md
-    - Optimization: optimization/optuna_based.md
-    - Benchmark: benchmark/metrics.md
-    - Signals: signals/signals.md
-  - Examples:
-    - Environments: example/env/examples.md
-    - IHDP: example/agent/ihdp/example_ihdp.md
-    - SAC F16: example/agent/sac/example-sac-f16.md
-    - Optimization: example/optimization/example_optimization.md
-    - A2C-NARX: example/agent/a2c_narx/example-narx.md
-    - MPC: example/agent/mpc/example_mpc.md
-    - MPC Transformers: example/agent/mpc/example_transformers.md
-    - IHDP Failure: example/failure/ihdp-failure.md
-    - Simulink to Python: example/simulink/sim_pyth.md
-    - Your Simulink: example/simulink/your_sim.md
-    - Unity Example: example/env/unity_example.md
-    - Simintech: example/simintech/simintech.md
-    - Simintech to Python: example/simintech/simintechToPython.md
-  - Lessons:
-    - Introduction: lesson/0intro.md
-    - Airfoil Analysis: lesson/1analysis_airfoil.md
-    - Plane Aero Analysis: lesson/2analysis_plane_aero.md
-    - Plane Static Analysis: lesson/3analysis_plane_static.md
-    - MATLAB Script: lesson/4matlabscript.md
-    - Simulink Model: lesson/5simulinkmodel.md
-    - DLL Generation: lesson/6dllgen.md
-    - Control Theory Basics: lesson/7control_basics.md
-    - Flight Dynamics Intro: lesson/8flight_dynamics_intro.md
+
 
 theme:
   name: material
+  language: en
   features:
     - navigation.tabs
     - navigation.sections

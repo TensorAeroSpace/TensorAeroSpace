@@ -1,618 +1,388 @@
-Примеры работы с Simulink моделями
-==================================
+# Simulink → Python
 
-Генерация C++ кода
-------------------
+> Интегрируйте модели Simulink в Python через динамические библиотеки, используя Embedded Coder и `ctypes`.
 
-Для поддержки ОУ из ПО Simulink необходима надстройка для Simulink – Embedded Coder.
+## Быстрый старт
 
-Для преобразования Simulink модели в С код:
+1. В Simulink включите Embedded Coder и установите System target file: `ert_shrlib.tlc`.
+2. Соберите модель (Ctrl+B) — появятся исходники и `MODEL_NAME.mk`.
+3. Соберите библиотеку:
 
-#. 	В настройках Simulink были выбраны: Code Generation/System target file ert_shrlib.tlc.
-	
-	![Генерация C++ кода](img/cpp_gen.png){ width=400 }
+   ```bash
+   make -f MODEL_NAME.mk
+   ```
 
-#. Для построения модели использовалось сочетание клавиш ctrl+B. Также это можно сделать в панели навигации, выбрав пункт “Build model”. В результате появлялась папка с кодом на языке C++ в директории, в которой находилась модель. 
+4. В Python загрузите библиотеку и вызовите `initialize → step → terminate`.
 
-Создание объекта управления в симулинке
----------------------------------------
+> Совет: держите библиотеки рядом с моделью (например, `simulinkModel/<model_name>`), чтобы не зависеть от текущего каталога.
 
-![ОУ в ПО Simulink](img/sim.png){ width=400 }
+---
 
-Для создания ОУ в ПО Simulink:
+## Кросс‑платформенная загрузка библиотеки
 
-#. В рабочее поле были добавлены элементы из библиотеки Simulink:
+=== "Windows"
 
-        * Simulink/Continuous/State-Space
+    ```python
+    import ctypes
+    from pathlib import Path
 
-        * Simulink/Sources/Digital Clock
+    path = Path("../tensoraerospace/aerospacemodel/model/simulinkModel/b747/b747_model_win64.dll")
+    lib = ctypes.WinDLL(str(path))
+    ```
 
-        * Simulink/Comonly Used Block/In1
+=== "Linux"
 
-        * Simulink/Comonly Used Block/Out1
+    ```python
+    import ctypes
+    from pathlib import Path
 
-#. Блоки In1/Out1 были переименованы в соответствующие названия.
+    path = Path("../tensoraerospace/aerospacemodel/model/simulinkModel/b747/b747_model_glnxa64.so")
+    lib = ctypes.CDLL(str(path))
+    ```
 
-#. В State-Space были заданы следующие параметры (для удобства работы использовали MATLAB Scripts)
+=== "macOS"
 
-	![Блок State-Space](img/sim_ss.png){ width=400 }
+    ```python
+    import ctypes
+    from pathlib import Path
 
-#. Был создан MATLAB Script со следующим кодом:
+    path = Path("../tensoraerospace/aerospacemodel/model/simulinkModel/b747/b747_model_maci64.dylib")
+    lib = ctypes.CDLL(str(path))
+    ```
 
-    .. code-block:: matlab
+Или используйте универсальную функцию:
 
-        flag = 1;
+```python
+import sys
+import ctypes
+from pathlib import Path
 
-        % Инициализцаия параметров
-        [A,B,C,D] = b747_model(flag);
 
-        init = [0 -0.0 -0.0 0];
-        ref_signal = -0.10;
+def load_simulink_lib(folder: str | Path, basename: str) -> ctypes.CDLL:
+    """Загрузка *.dll/*.so/*.dylib с учётом платформы и типичных суффиксов MATLAB.
 
-        % Время начала/конца/шага времени моделирования
-        t_s = 0;
-        t_e = 500;
-        dt = 0.1;
+    folder   — каталог с библиотекой
+    basename — базовое имя (например, 'b747_model', 'f16_model')
+    """
+    folder = Path(folder)
+    is_win = sys.platform.startswith("win")
+    is_mac = sys.platform == "darwin"
 
-        % Запуск Simulink модели
-        simOut = sim('aircraft_sim.slx');
+    ext = "dll" if is_win else ("dylib" if is_mac else "so")
 
-        y = simOut.get('yout');
+    # Типичные варианты имён, генерируемых Embedded Coder
+    candidates = [
+        f"{basename}.{ext}",           # model.dll / model.so / model.dylib
+        f"{basename}_win64.dll",
+        f"{basename}_glnxa64.so",
+        f"{basename}_maci64.dylib",
+    ]
 
-        u = y.getElement(1).Values.Data;
-        w = y.getElement(2).Values.Data;
-        q = y.getElement(3).Values.Data;
-        theta = y.getElement(4).Values.Data;
-        t = y.getElement(5).Values.Data;
+    for name in candidates:
+        path = folder / name
+        if path.exists():
+            return ctypes.WinDLL(str(path)) if is_win else ctypes.CDLL(str(path))
 
-Интегрирование Simulink модели в Python 
----------------------------------------
+    raise FileNotFoundError(
+        f"Не найдена библиотека для {basename} в {folder} (пробовал: {', '.join(candidates)})"
+    )
+```
 
-Интегрирование Simulink модели в Python осуществлялось с помощью DLL библиотеки (библиотеки динамической компоновки). В результате генерации cpp кода получили код Simulink модели и Makefile с расширением .mk. После его запуска (команда `make -f MODEL_NAME.mk`) была скомпилирована DLL библиотека.
+!!! note "Типы данных"
+    Типы `real32_T`, `ExtY_T`, `ExtY_T_r` находятся в `tensoraerospace/aerospacemodel/utils/rtwtypes.py` и соответствуют сгенерированным структурам/типам модели.
 
-Для согласования типов данных и корректной работы модели использовался модуль ctypes и был написан преобразователь типов. tensoraerospace/aerospacemodel/model/rtwtypes.py
+---
 
-В dll файлу существуют 3 функции
-  * MODEL_NAME_initialize - служит для инициализации модели
-  * MODEL_NAME_step - служит для расчета модели на следующем шаге модели
-    шаг модели равен dt, определенном в MATLAB Script
-  * MODEL_NAME_terminate - служит для освобождении ресурсов модели
+## Генерация C/С++ кода (Embedded Coder)
 
-Пример использования Simulink модели Боинга-747 с Python:
+Для интеграции моделей Simulink в Python требуется надстройка Simulink — Embedded Coder.
 
-.. container:: cell code
+1. Откройте настройки модели в Simulink и выберите Code Generation → System target file: `ert_shrlib.tlc`.
 
-   ```python
+   ![Генерация C++ кода](img/cpp_gen.png){ width=400 }
 
-      import os
-      import ctypes
+2. Соберите модель сочетанием клавиш Ctrl+B (или меню Build model). В каталоге модели появится папка с сгенерированным кодом и make‑файлом с расширением `.mk`.
+3. Соберите динамическую библиотеку командой:
 
-      import matplotlib.pyplot as plt
+   ```bash
+   make -f MODEL_NAME.mk
+   ```
 
-      from tensoraerospace.aerospacemodel.utils.rtwtypes import *
+   В результате будет создана динамическая библиотека: на Windows — `.dll`, на Linux — `.so`, на macOS — `.dylib`.
 
-.. container:: cell markdown
+!!! tip "Windows"
+    Сборка может требовать инструменты MSVC (`Developer Command Prompt`) или MinGW/MSYS. Убедитесь, что компилятор и `make/nmake` доступны в PATH.
 
-   .. rubric:: Боинг 747
-      :name: боинг-747
+---
 
-.. container:: cell code
+## Создание ОУ в Simulink
 
-   ```python
+![ОУ в Simulink](img/sim.png){ width=400 }
 
-      b747_dll_path = os.path.abspath("../tensoraerospace/aerospacemodel/model/simulinkModel/b747/b747_model_win64.dll")
-      b747_dll = ctypes.windll.LoadLibrary(b747_dll_path)
+Для создания объекта управления (ОУ) в Simulink добавьте элементы:
 
-      b747_model_initialize = b747_dll.b747_model_initialize
-      b747_model_step = b747_dll.b747_model_step
-      b747_model_terminate = b747_dll.b747_model_terminate
+- Simulink/Continuous/State‑Space
+- Simulink/Sources/Digital Clock
+- Simulink/Commonly Used Blocks/In1
+- Simulink/Commonly Used Blocks/Out1
 
-      # Model Parameters
-      ref_signal = real32_T.in_dll(b747_dll, "b747_model_U")
+Далее:
 
-      # Model output
-      b747_Y = ExtY_T.in_dll(b747_dll, "b747_model_Y")
+1. Переименуйте блоки `In1`/`Out1` в осмысленные имена.
+2. В блоке State‑Space задайте параметры (для удобства можно использовать MATLAB Script).
 
-.. container:: cell code
+   ![Блок State‑Space](img/sim_ss.png){ width=400 }
 
-   ```python
+3. Пример MATLAB‑скрипта для запуска модели:
 
-      b747_model_initialize()
+   ```matlab
+   flag = 1;
 
-      b747_time = []
-      b747_u = []
-      b747_w = []
-      b747_q = []
-      b747_theta = []
+   % Инициализация параметров
+   [A, B, C, D] = b747_model(flag);
 
-      for step in range(int(2100)):
-          b747_model_step()
-          
-          b747_time.append(float(b747_Y.time))
-          b747_u.append(float(b747_Y.u))
-          b747_w.append(float(b747_Y.w))
-          b747_q.append(float(b747_Y.q))
-          b747_theta.append(float(b747_Y.theta))
+   init = [0, -0.0, -0.0, 0];
+   ref_signal = -0.10;
 
-      b747_model_terminate()
+   % Время начала/конца/шага моделирования
+   t_s = 0;
+   t_e = 500;
+   dt  = 0.1;
 
-   .. container:: output execute_result
+   % Запуск Simulink модели
+   simOut = sim('aircraft_sim.slx');
 
-      ::
+   y = simOut.get('yout');
 
-         -116768371
+   u     = y.getElement(1).Values.Data;
+   w     = y.getElement(2).Values.Data;
+   q     = y.getElement(3).Values.Data;
+   theta = y.getElement(4).Values.Data;
+   t     = y.getElement(5).Values.Data;
+   ```
 
-.. container:: cell code
+---
 
-   ```python
+## Интеграция с Python (ctypes)
 
-      plt.plot(b747_time, b747_u)
+Интеграция выполняется через динамическую библиотеку, скомпилированную из модели. В библиотеке, как правило, есть три функции:
 
-      plt.xlabel('t, [сек]')
-      plt.ylabel('u, [м/c]')
+- `MODEL_NAME_initialize` — инициализация модели
+- `MODEL_NAME_step` — расчёт следующего шага (шаг равен `dt`, заданному в MATLAB‑скрипте)
+- `MODEL_NAME_terminate` — освобождение ресурсов
 
-   .. container:: output execute_result
+Для согласования типов используйте `ctypes` и преобразователи типов из `tensoraerospace`: `tensoraerospace/aerospacemodel/utils/rtwtypes.py`.
 
-      ::
+### Пример: Boeing‑747
 
-         Text(0, 0.5, 'u, [м/c]')
+```python
+import matplotlib.pyplot as plt
+from pathlib import Path
+from tensoraerospace.aerospacemodel.utils.rtwtypes import real32_T, ExtY_T
 
-   .. container:: output display_data
+# Загрузка библиотеки
+b747_folder = Path("../tensoraerospace/aerospacemodel/model/simulinkModel/b747")
+b747 = load_simulink_lib(b747_folder, "b747_model")
 
-      ![Image](img/1d956d83a4eb35a3ba92960c5c8cebccabb52475.png){ width=400 }
+# Точки входа
+b747_initialize = b747.b747_model_initialize
+b747_step       = b747.b747_model_step
+b747_terminate  = b747.b747_model_terminate
 
-.. container:: cell code
+# Параметры/входы (пример: единичный вход в виде real32_T)
+ref_signal = real32_T.in_dll(b747, "b747_model_U")  # зависит от структуры входов конкретной модели
 
-   ```python
+# Выходная структура
+b747_Y = ExtY_T.in_dll(b747, "b747_model_Y")
 
-      plt.plot(b747_time, b747_w)
+# Цикл моделирования
+b747_initialize()
 
-      plt.xlabel('t, [сек]')
-      plt.ylabel('w, [м/c]')
+time, u, w, q, theta = [], [], [], [], []
+for _ in range(int(2100)):
+    b747_step()
+    time.append(float(b747_Y.time))
+    u.append(float(b747_Y.u))
+    w.append(float(b747_Y.w))
+    q.append(float(b747_Y.q))
+    theta.append(float(b747_Y.theta))
 
-   .. container:: output execute_result
+b747_terminate()
 
-      ::
+# Визуализация
+plt.plot(time, u)
+plt.xlabel('t, [сек]')
+plt.ylabel('u, [м/c]')
+plt.show()
+```
 
-         Text(0, 0.5, 'w, [м/c]')
+Примеры графиков:
 
-   .. container:: output display_data
+![u(t)](img/1d956d83a4eb35a3ba92960c5c8cebccabb52475.png){ width=400 }
+![w(t)](img/d4bb03fc0fedcdc1492ceef2f129b9b221da7adf.png){ width=400 }
+![q(t)](img/3ca94c40701bd7000df9db25864bcb033471af45.png){ width=400 }
+![θ(t)](img/c2db9455ddd8a3be7f69f0900a88ef365d86d0c7.png){ width=400 }
 
-      ![Image](img/d4bb03fc0fedcdc1492ceef2f129b9b221da7adf.png){ width=400 }
+---
 
-.. container:: cell code
+### Пример: F‑16
 
-   ```python
+```python
+import matplotlib.pyplot as plt
+from pathlib import Path
+from tensoraerospace.aerospacemodel.utils.rtwtypes import real32_T, ExtY_T
 
-      plt.plot(b747_time, b747_q)
+f16_folder = Path("../tensoraerospace/aerospacemodel/model/simulinkModel/f16")
+f16 = load_simulink_lib(f16_folder, "f16_model")
 
-      plt.xlabel('t, [сек]')
-      plt.ylabel('q, [рад/c]')
+f16_initialize = f16.f16_model_initialize
+f16_step       = f16.f16_model_step
+f16_terminate  = f16.f16_model_terminate
 
-   .. container:: output execute_result
+ref_signal = real32_T.in_dll(f16, "f16_model_U")
+f16_Y = ExtY_T.in_dll(f16, "f16_model_Y")
 
-      ::
+f16_initialize()
 
-         Text(0, 0.5, 'q, [рад/c]')
+time, u, w, q, theta = [], [], [], [], []
+for _ in range(int(2100)):
+    f16_step()
+    time.append(float(f16_Y.time))
+    u.append(float(f16_Y.u))
+    w.append(float(f16_Y.w))
+    q.append(float(f16_Y.q))
+    theta.append(float(f16_Y.theta))
 
-   .. container:: output display_data
+f16_terminate()
 
-      ![Image](img/3ca94c40701bd7000df9db25864bcb033471af45.png){ width=400 }
+plt.plot(time, u)
+plt.xlabel('t, [сек]')
+plt.ylabel('u, [м/c]')
+plt.show()
+```
 
-.. container:: cell code
+![u(t)](img/49fb3125d2081891029fba77e3a1d3f62d709876.png){ width=400 }
+![w(t)](img/8bb6669c2226f4d6315c22e9e8888b56f878e832.png){ width=400 }
+![q(t)](img/066cdf4d4c608a870abb79db3b0080a765a62b96.png){ width=400 }
+![θ(t)](img/e35193b58c1bca5e0f9d471520fbb8063795b50c.png){ width=400 }
 
-   ```python
+---
 
-      plt.plot(b747_time, b747_theta)
+### Пример: ELV (ракета)
 
-      plt.xlabel('t, [сек]')
-      plt.ylabel(r'$\theta$, [рад]')
+```python
+import matplotlib.pyplot as plt
+from pathlib import Path
+from tensoraerospace.aerospacemodel.utils.rtwtypes import real32_T, ExtY_T_r
 
-   .. container:: output execute_result
+elv_folder = Path("../tensoraerospace/aerospacemodel/model/simulinkModel/elv")
+elv = load_simulink_lib(elv_folder, "elv_model")
 
-      ::
+elv_initialize = elv.elv_model_initialize
+elv_step       = elv.elv_model_step
+elv_terminate  = elv.elv_model_terminate
 
-         Text(0, 0.5, '$\\theta$, [рад]')
+ref_signal = real32_T.in_dll(elv, "elv_model_U")
+elv_Y = ExtY_T_r.in_dll(elv, "elv_model_Y")
 
-   .. container:: output display_data
+elv_initialize()
 
-      ![Image](img/c2db9455ddd8a3be7f69f0900a88ef365d86d0c7.png){ width=400 }
+time, w, q, theta = [], [], [], []
+for _ in range(int(20)):
+    elv_step()
+    time.append(float(elv_Y.time))
+    w.append(float(elv_Y.w))
+    q.append(float(elv_Y.q))
+    theta.append(float(elv_Y.theta))
 
-Пример использования Simulink модели F-16 с Python:
+elv_terminate()
 
-.. container:: cell code
+plt.plot(time, w)
+plt.xlabel('t, [сек]')
+plt.ylabel('w, [рад/c]')
+plt.show()
+```
 
-   ```python
+![w(t)](img/9010a17073b06c7889077018e13a3ae56684f593.png){ width=400 }
+![q(t)](img/6c4f9db03680280abd415b3ec1f024ecbdc64353.png){ width=400 }
+![θ(t)](img/4775f06a550c2d893164b0bdaf7d359f3afc4f04.png){ width=400 }
 
-      import os
-      import ctypes
+---
 
-      import matplotlib.pyplot as plt
+### Пример: Typical Rocket
 
-      from tensoraerospace.aerospacemodel.utils.rtwtypes import *
+```python
+import matplotlib.pyplot as plt
+from pathlib import Path
+from tensoraerospace.aerospacemodel.utils.rtwtypes import real32_T, ExtY_T
 
-.. container:: cell markdown
+rocket_folder = Path("../tensoraerospace/aerospacemodel/model/simulinkModel/rocket")
+rocket = load_simulink_lib(rocket_folder, "rocket_model")
 
-   .. rubric:: F-16
-      :name: f-16
+rocket_initialize = rocket.rocket_model_initialize
+rocket_step       = rocket.rocket_model_step
+rocket_terminate  = rocket.rocket_model_terminate
 
-.. container:: cell code
+ref_signal = real32_T.in_dll(rocket, "rocket_model_U")
+rocket_Y = ExtY_T.in_dll(rocket, "rocket_model_Y")
 
-   ```python
+rocket_initialize()
 
-      f16_dll_path = os.path.abspath("../tensoraerospace/aerospacemodel/model/simulinkModel/f16/f16_model_win64.dll")
-      f16_dll = ctypes.windll.LoadLibrary(f16_dll_path)
+time, u, w, q, theta = [], [], [], [], []
+for _ in range(int(2100)):
+    rocket_step()
+    time.append(float(rocket_Y.time))
+    u.append(float(rocket_Y.u))
+    w.append(float(rocket_Y.w))
+    q.append(float(rocket_Y.q))
+    theta.append(float(rocket_Y.theta))
 
-      f16_model_initialize = f16_dll.f16_model_initialize
-      f16_model_step = f16_dll.f16_model_step
-      f16_model_terminate = f16_dll.f16_model_terminate
+rocket_terminate()
 
-      # Model Parameters
-      ref_signal = real32_T.in_dll(f16_dll, "f16_model_U")
+plt.plot(time, u)
+plt.xlabel('t, [сек]')
+plt.ylabel('u, [м/c]')
+plt.show()
+```
 
-      # Model output
-      f16_Y = ExtY_T.in_dll(f16_dll, "f16_model_Y")
+![u(t)](img/14065962e5e7b95769106defe74a45839316524b.png){ width=400 }
+![w(t)](img/2ccbd419db52781eab564bbc37a9f5855cc93c37.png){ width=400 }
+![q(t)](img/deab0f2643965809f749d259c6ba8cf34cb29dcd.png){ width=400 }
+![θ(t)](img/3755763dbacba75c5c0e52c97ac146c21287ca8d.png){ width=400 }
 
-.. container:: cell code
+---
 
-   ```python
+## Частые проблемы и решения
 
-      f16_model_initialize()
+- «Не найдена библиотека …»: проверьте имя файла, платформенный суффикс (`_win64.dll`, `_glnxa64.so`, `_maci64.dylib`) и путь.
+- «undefined symbol / entry point not found»: используйте правильные имена функций (`<model>_initialize/step/terminate`).
+- Windows: запустите сборку из `Developer Command Prompt for VS` или установите MinGW/MSYS. Проверьте PATH (`cl`, `nmake` или `gcc`, `make`).
+- Linux/macOS: убедитесь, что `LD_LIBRARY_PATH`/`DYLD_LIBRARY_PATH` включает каталог библиотеки, либо используйте абсолютный путь при загрузке.
 
-      f16_time = []
-      f16_u = []
-      f16_w = []
-      f16_q = []
-      f16_theta = []
+```bash
+# Linux
+export LD_LIBRARY_PATH=$(pwd):$LD_LIBRARY_PATH
+# macOS
+export DYLD_LIBRARY_PATH=$(pwd):$DYLD_LIBRARY_PATH
+```
 
-      for step in range(int(2100)):
-          f16_model_step()
-          
-          f16_time.append(float(f16_Y.time))
-          f16_u.append(float(f16_Y.u))
-          f16_w.append(float(f16_Y.w))
-          f16_q.append(float(f16_Y.q))
-          f16_theta.append(float(f16_Y.theta))
-          
-      f16_model_terminate()
+!!! warning "Совместимость типов"
+    Поля структур `*_Y` и `*_U` должны соответствовать сгенерированным в вашей модели. Если имена/состав отличаются, обновите обращения в Python.
 
-   .. container:: output execute_result
+---
 
-      ::
+## Чек‑лист для ваших моделей
 
-         -116768371
+- [ ] Включён `ert_shrlib.tlc` и собран `.mk` файл
+- [ ] Библиотека успешно собралась (`.dll`/`.so`/`.dylib`)
+- [ ] Известны имена функций `<model>_initialize/step/terminate`
+- [ ] Определены типы и имена глобальных переменных `*_U`, `*_Y`
+- [ ] Python‑скрипт загружает библиотеку и выполняет цикл шага
 
-.. container:: cell code
+---
 
-   ```python
+## Полезное
 
-      plt.plot(f16_time, f16_u)
-
-      plt.xlabel('t, [сек]')
-      plt.ylabel('u, [м/c]')
-
-   .. container:: output execute_result
-
-      ::
-
-         Text(0, 0.5, 'u, [м/c]')
-
-   .. container:: output display_data
-
-      ![Image](img/49fb3125d2081891029fba77e3a1d3f62d709876.png){ width=400 }
-
-.. container:: cell code
-
-   ```python
-
-      plt.plot(f16_time, f16_w)
-
-      plt.xlabel('t, [сек]')
-      plt.ylabel('w, [м/c]')
-
-   .. container:: output execute_result
-
-      ::
-
-         Text(0, 0.5, 'w, [м/c]')
-
-   .. container:: output display_data
-
-      ![Image](img/8bb6669c2226f4d6315c22e9e8888b56f878e832.png){ width=400 }
-
-.. container:: cell code
-
-   ```python
-
-      plt.plot(f16_time, f16_q)
-
-      plt.xlabel('t, [сек]')
-      plt.ylabel('q, [рад/c]')
-
-   .. container:: output execute_result
-
-      ::
-
-         Text(0, 0.5, 'q, [рад/c]')
-
-   .. container:: output display_data
-
-      ![Image](img/066cdf4d4c608a870abb79db3b0080a765a62b96.png){ width=400 }
-
-.. container:: cell code
-
-   ```python
-
-      plt.plot(f16_time, f16_theta)
-
-      plt.xlabel('t, [сек]')
-      plt.ylabel(r'$\theta$, [рад]')
-
-   .. container:: output execute_result
-
-      ::
-
-         Text(0, 0.5, '$\\theta$, [рад]')
-
-   .. container:: output display_data
-
-      ![Image](img/e35193b58c1bca5e0f9d471520fbb8063795b50c.png){ width=400 }
-
-Пример использования Simulink модели ELV с Python:
-
-.. container:: cell code
-
-   ```python
-
-      import os
-      import ctypes
-
-      import matplotlib.pyplot as plt
-
-      from tensoraerospace.aerospacemodel.utils.rtwtypes import *
-
-.. container:: cell markdown
-
-   .. rubric:: ELV
-      :name: elv
-
-.. container:: cell code
-
-   ```python
-
-      elv_dll_path = os.path.abspath("../tensoraerospace/aerospacemodel/model/simulinkModel/elv/elv_model_win64.dll")
-      elv_dll = ctypes.windll.LoadLibrary(elv_dll_path)
-
-      elv_model_initialize = elv_dll.elv_model_initialize
-      elv_model_step = elv_dll.elv_model_step
-      elv_model_terminate = elv_dll.elv_model_terminate
-
-      # Model Parameters
-      ref_signal = real32_T.in_dll(elv_dll, "elv_model_U")
-
-      # Model output
-      elv_Y = ExtY_T_r.in_dll(elv_dll, "elv_model_Y")
-
-.. container:: cell code
-
-   ```python
-
-      elv_model_initialize()
-
-      elv_time = []
-      elv_w = []
-      elv_q = []
-      elv_theta = []
-
-      for step in range(int(20)):
-          elv_model_step()
-          
-          elv_time.append(float(elv_Y.time))
-          elv_w.append(float(elv_Y.w))
-          elv_q.append(float(elv_Y.q))
-          elv_theta.append(float(elv_Y.theta))
-          
-      elv_model_terminate()
-
-   .. container:: output execute_result
-
-      ::
-
-         -116768371
-
-.. container:: cell code
-
-   ```python
-
-      plt.plot(elv_time, elv_w)
-
-      plt.xlabel('t, [сек]')
-      plt.ylabel('w, [рад/c]')
-
-   .. container:: output execute_result
-
-      ::
-
-         Text(0, 0.5, 'w, [рад/c]')
-
-   .. container:: output display_data
-
-      ![Image](img/9010a17073b06c7889077018e13a3ae56684f593.png){ width=400 }
-
-.. container:: cell code
-
-   ```python
-
-      plt.plot(elv_time, elv_q)
-
-      plt.xlabel('t, [сек]')
-      plt.ylabel('q, [рад/c]')
-
-   .. container:: output execute_result
-
-      ::
-
-         Text(0, 0.5, 'q, [рад/c]')
-
-   .. container:: output display_data
-
-      ![Image](img/6c4f9db03680280abd415b3ec1f024ecbdc64353.png){ width=400 }
-
-.. container:: cell code
-
-   ```python
-
-      plt.plot(elv_time, elv_theta)
-
-      plt.xlabel('t, [сек]')
-      plt.ylabel(r'$\theta$, [рад]')
-
-   .. container:: output execute_result
-
-      ::
-
-         Text(0, 0.5, '$\\theta$, [рад]')
-
-   .. container:: output display_data
-
-      ![Image](img/4775f06a550c2d893164b0bdaf7d359f3afc4f04.png){ width=400 }
-
-Пример использования Simulink модели типичной ракеты с Python:
-
-.. container:: cell code
-
-   ```python
-
-      import os
-      import ctypes
-
-      import matplotlib.pyplot as plt
-
-      from tensoraerospace.aerospacemodel.utils.rtwtypes import *
-
-.. container:: cell markdown
-
-   .. rubric:: Rocket
-      :name: rocket
-
-.. container:: cell code
-
-   ```python
-
-      rocket_dll_path = os.path.abspath("../tensoraerospace/aerospacemodel/model/simulinkModel/rocket/rocket_model_win64.dll")
-      rocket_dll = ctypes.windll.LoadLibrary(rocket_dll_path)
-
-      rocket_model_initialize = rocket_dll.rocket_model_initialize
-      rocket_model_step = rocket_dll.rocket_model_step
-      rocket_model_terminate = rocket_dll.rocket_model_terminate
-
-      # Model Parameters
-      ref_signal = real32_T.in_dll(rocket_dll, "rocket_model_U")
-
-      # Model output
-      rocket_Y = ExtY_T.in_dll(rocket_dll, "rocket_model_Y")
-
-.. container:: cell code
-
-   ```python
-
-      rocket_model_initialize()
-
-      rocket_time = []
-      rocket_u = []
-      rocket_w = []
-      rocket_q = []
-      rocket_theta = []
-
-      for step in range(int(2100)):
-          rocket_model_step()
-          
-          rocket_time.append(float(rocket_Y.time))
-          rocket_u.append(float(rocket_Y.u))
-          rocket_w.append(float(rocket_Y.w))
-          rocket_q.append(float(rocket_Y.q))
-          rocket_theta.append(float(rocket_Y.theta))
-          
-      rocket_model_terminate()
-
-   .. container:: output execute_result
-
-      ::
-
-         -116768371
-
-.. container:: cell code
-
-   ```python
-
-      plt.plot(rocket_time, rocket_u)
-
-      plt.xlabel('t, [сек]')
-      plt.ylabel('u, [м/c]')
-
-   .. container:: output execute_result
-
-      ::
-
-         Text(0, 0.5, 'u, [м/c]')
-
-   .. container:: output display_data
-
-      ![Image](img/14065962e5e7b95769106defe74a45839316524b.png){ width=400 }
-
-.. container:: cell code
-
-   ```python
-
-      plt.plot(rocket_time, rocket_w)
-
-      plt.xlabel('t, [сек]')
-      plt.ylabel('w, [м/c]')
-
-   .. container:: output execute_result
-
-      ::
-
-         Text(0, 0.5, 'w, [м/c]')
-
-   .. container:: output display_data
-
-      ![Image](img/2ccbd419db52781eab564bbc37a9f5855cc93c37.png){ width=400 }
-
-.. container:: cell code
-
-   ```python
-
-      plt.plot(rocket_time, rocket_q)
-
-      plt.xlabel('t, [сек]')
-      plt.ylabel('q, [рад/c]')
-
-   .. container:: output execute_result
-
-      ::
-
-         Text(0, 0.5, 'q, [рад/c]')
-
-   .. container:: output display_data
-
-      ![Image](img/deab0f2643965809f749d259c6ba8cf34cb29dcd.png){ width=400 }
-
-.. container:: cell code
-
-   ```python
-
-      plt.plot(rocket_time, rocket_theta)
-
-      plt.xlabel('t, [сек]')
-      plt.ylabel(r'$\theta$, [рад]')
-
-   .. container:: output execute_result
-
-      ::
-
-         Text(0, 0.5, '$\\theta$, [рад]')
-
-   .. container:: output display_data
-
-      ![Image](img/3755763dbacba75c5c0e52c97ac146c21287ca8d.png){ width=400 }
+- Типы `real32_T`, `ExtY_T`, `ExtY_T_r` определены в `tensoraerospace/aerospacemodel/utils/rtwtypes.py`.
+- Имена глобальных переменных входов/выходов в библиотеке (`*_U`, `*_Y`) зависят от сгенерированного кода и могут отличаться для разных моделей.
+- См. также: «Ваши модели Simulink в Python» — `your_sim.md` в этом разделе.
