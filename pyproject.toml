@@ -50,7 +50,7 @@ pymdown-extensions = "^10.7"
 mkdocs-autorefs = "^1.2.0"
 griffe = "^0.42.0"
 twine = "^4.0.0"
-pre-commit = "^3.0.0"
+pre-commit = ">=3,<5"
 
 [tool.poetry.group.test.dependencies]
 pytest = "^7.4.3"
