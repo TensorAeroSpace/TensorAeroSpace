@@ -2,6 +2,7 @@ import datetime
 import json
 import os
 from pathlib import Path
+from typing import Any, Dict, List, Tuple
 
 import numpy as np
 import torch
@@ -13,7 +14,11 @@ from tqdm import tqdm
 from ..base import BaseRLModel
 
 
-def initialize_tensor(size=torch.Size([1, 1]), min_val=None, max_val=None):
+def initialize_tensor(
+    size: torch.Size = torch.Size([1, 1]),
+    min_val: float | None = None,
+    max_val: float | None = None,
+) -> torch.Tensor:
     mean = (max_val + min_val) / 2
     std_dev = (
         max_val - min_val
@@ -106,8 +111,13 @@ class MPCOptimizationAgent(BaseRLModel):
             )
 
     def train_transformers_model(
-        self, states, actions, next_states, epochs=100, batch_size=64
-    ):
+        self,
+        states: np.ndarray,
+        actions: np.ndarray,
+        next_states: np.ndarray,
+        epochs: int = 100,
+        batch_size: int = 64,
+    ) -> None:
         """
         Обучает трансформерную модель динамики системы, используя данные о состояниях, действиях и следующих состояниях.
 
@@ -169,7 +179,14 @@ class MPCOptimizationAgent(BaseRLModel):
             self.writer.add_scalar("Loss/train", avg_epoch_loss, epoch)
             pbar.set_description(f"Avg Loss {avg_epoch_loss:.4f}")
 
-    def train_model(self, states, actions, next_states, epochs=100, batch_size=64):
+    def train_model(
+        self,
+        states: np.ndarray,
+        actions: np.ndarray,
+        next_states: np.ndarray,
+        epochs: int = 100,
+        batch_size: int = 64,
+    ) -> None:
         """
         Обучает модель динамики среды, используя данные о состояниях, действиях и следующих состояниях.
 
@@ -204,7 +221,9 @@ class MPCOptimizationAgent(BaseRLModel):
             self.writer.add_scalar("Loss/train", loss.item(), epoch)
             pbar.set_description(f"Loss {loss.item()}")
 
-    def collect_data(self, num_episodes=1000, control_exploration_signal=None):
+    def collect_data(
+        self, num_episodes: int = 1000, control_exploration_signal=None
+    ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
         """
         Собирает данные о состояниях, действиях и следующих состояниях, исполняя случайную политику в среде.
 
@@ -250,7 +269,9 @@ class MPCOptimizationAgent(BaseRLModel):
                     state = next_state
             return np.array(states), np.array(actions), np.array(next_states)
 
-    def choose_action(self, state, rollout, horizon):
+    def choose_action(
+        self, state: np.ndarray, rollout: int, horizon: int
+    ) -> np.ndarray:
         """
         Выбирает оптимальное действие, используя модель для прогнозирования и оценки последствий действий.
 
@@ -295,8 +316,14 @@ class MPCOptimizationAgent(BaseRLModel):
         )  # Возвращаем первое действие из наилучшей последовательности
 
     def choose_action_ref(
-        self, state, rollout, horizon, reference_signals, step, optimization_steps
-    ):
+        self,
+        state: np.ndarray,
+        rollout: int,
+        horizon: int,
+        reference_signals: np.ndarray,
+        step: int,
+        optimization_steps: int,
+    ) -> Tuple[np.ndarray, float]:
         """
         Выбирает оптимальное действие с учетом эталонных сигналов.
 
@@ -308,7 +335,7 @@ class MPCOptimizationAgent(BaseRLModel):
             step (int): Текущий временной шаг в среде.
 
         Returns:
-            numpy.ndarray: Возвращает массив, содержащий выбранное действие.
+            Tuple[np.ndarray, float]: Пара (действие, значение функции стоимости для лучшего действия).
         """
 
         initial_state = torch.as_tensor(np.array([state]), dtype=torch.float32)
@@ -346,18 +373,19 @@ class MPCOptimizationAgent(BaseRLModel):
             best_cost,
         )  # Возвращаем первое действие из наилучшей последовательности
 
-    def test_model(self, num_episodes=100, rollout=10, horizon=1):
+    def test_model(
+        self, num_episodes: int = 100, rollout: int = 10, horizon: int = 1
+    ) -> List[float]:
         """
         Тестирует модель в среде, измеряя среднее вознаграждение за серию эпизодов.
 
         Args:
-            env (gym.Env): Среда для тестирования.
             num_episodes (int): Количество эпизодов для тестирования.
             rollout (int): Количество прогнозируемых траекторий для выбора действий.
             horizon (int): Горизонт планирования для выбора действий.
 
         Returns:
-            list: Список суммарных вознаграждений за каждый эпизод.
+            List[float]: Список суммарных вознаграждений за каждый эпизод.
         """
         total_rewards = (
             []
@@ -380,7 +408,9 @@ class MPCOptimizationAgent(BaseRLModel):
         self.writer.add_scalar("Test/AverageReward", average_reward, num_episodes)
         return total_rewards
 
-    def test_network(self, states, actions, next_states):
+    def test_network(
+        self, states: np.ndarray, actions: np.ndarray, next_states: np.ndarray
+    ) -> None:
         """
         Тестирует точность предсказаний модели на заданном наборе данных.
 
@@ -413,7 +443,7 @@ class MPCOptimizationAgent(BaseRLModel):
 
         self.system_model.train()  # Вернуть модель в режим обучения
 
-    def get_param_env(self):
+    def get_param_env(self) -> Dict[str, Dict[str, Any]]:
         """Получаем параметры параметров среды. Возвращает словарь с параметрами среды."""
         env_name = self.env.unwrapped.__class__.__name__
         agent_name = self.__class__.__name__
@@ -450,14 +480,14 @@ class MPCOptimizationAgent(BaseRLModel):
             "policy": {"name": agent_name, "params": policy_params},
         }
 
-    def save(self, path=None):
+    def save(self, path: str | os.PathLike | None = None) -> None:
         """
         Сохраняет модель PyTorch в указанной директории. Если путь не указан,
         создает директорию с текущей датой и временем.
 
         Args:
             path (str, optional): Путь, где будет сохранена модель. Если None,
-            создается директория с текущей датой и временем.
+                создается директория с текущей датой и временем.
 
         Returns:
             None
@@ -481,7 +511,7 @@ class MPCOptimizationAgent(BaseRLModel):
             json.dump(config, outfile)
         torch.save(self.system_model, path)
 
-    def load(self, path):
+    def load(self, path: str | os.PathLike) -> None:
         """
         Загружает модель из файла по указанному пути.
 

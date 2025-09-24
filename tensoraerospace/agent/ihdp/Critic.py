@@ -1,4 +1,5 @@
 import random
+from typing import Any, Tuple
 
 import numpy as np
 import tensorflow as tf
@@ -192,7 +193,9 @@ class Critic:
             self.momentum_dict[count] = 0
             self.rmsprop_dict[count] = 0
 
-    def run_train_critic_online_adaptive_alpha(self, xt, xt_ref):
+    def run_train_critic_online_adaptive_alpha(
+        self, xt: np.ndarray, xt_ref: np.ndarray
+    ) -> np.ndarray:
         """Функция, которая оценивает один раз критическую нейронную сеть и возвращает значение J(xt). В то же
         время он обучает аппроксиматор функции с адаптивной схемой скорости обучения.
 
@@ -255,7 +258,9 @@ class Critic:
 
         return self.Jt
 
-    def run_train_critic_online_adam(self, xt, xt_ref):
+    def run_train_critic_online_adam(
+        self, xt: np.ndarray, xt_ref: np.ndarray
+    ) -> np.ndarray:
         """Функция, которая оценивает один раз критическую нейронную сеть и возвращает значение J(xt). В то же
         время, он обучает аппроксиматор функции с помощью оптимизатора Adam.
 
@@ -287,7 +292,7 @@ class Critic:
 
         return self.Jt
 
-    def adam_iteration(self, dJt_dW, dE_dJ):
+    def adam_iteration(self, dJt_dW: list[np.ndarray], dE_dJ: np.ndarray) -> None:
         """Адам обновляет все веса и смещения, учитывая производную функции потерь по отношению к NN.
         выход и производная выхода нейронной сети относительно весов и смещений.
 
@@ -338,7 +343,9 @@ class Critic:
             # Update the learning rate
             self.learning_rate = max(self.learning_rate * 0.995, 0.000001)
 
-    def run_train_critic_online_alpha_decay(self, xt, xt_ref):
+    def run_train_critic_online_alpha_decay(
+        self, xt: np.ndarray, xt_ref: np.ndarray
+    ) -> np.ndarray:
         """Функция, которая оценивает один раз критическую нейронную сеть и возвращает значение J(xt). В то же
         время обучает аппроксиматор функции градиентным спуском. Скорость обучения падает с увеличением количества
         временные шаги.
@@ -393,12 +400,15 @@ class Critic:
 
         return self.Jt
 
-    def train_critic_replay_adam(self, replay_size, iteration):
-        """Функция, обучающая критика значениям, хранящимся в повторе.
+    def train_critic_replay_adam(self, replay_size: int, iteration: int) -> None:
+        """Обучает критика по данным из буфера повторов (replay).
 
         Args:
-            xt (_type_): текущее состояние временного шага
-            xt_ref (_type_): Заданное состояния текущего временного шага для вычисления одношаговой функции стоимости
+            replay_size (int): Количество элементов из буфера, используемых для обучения.
+            iteration (int): Номер итерации обучения (используется в оптимизаторе Adam).
+
+        Returns:
+            None
         """
 
         # Compute the number of data points used in the replay training
@@ -415,7 +425,7 @@ class Critic:
             xt_1, xt_ref_1, xt, xt_ref, ct_1 = replay
             tracked_states = np.reshape(xt_1[self.indices_tracking_states, :], [-1, 1])
             xt_error = np.reshape(tracked_states - xt_ref_1, [-1, 1])
-            nn_input_1 = tf.constant(np.array([(xt_error)]).astype("float32"))
+            nn_input_1 = tf.constant(np.array([xt_error]).astype("float32"))
 
             # Obtain the forward pass of xt and the derivative of the output with respect to weights and biases
             nn_input, dJt_dW, Jt = self.compute_forward_pass(xt, xt_ref, replay=True)
@@ -435,7 +445,9 @@ class Critic:
             # Ec_critic_after = 0.5 * np.square(ec_critic_after)
             # print("CRITIC LOSS xt after= ", Ec_critic_after)
 
-    def compute_forward_pass(self, xt, xt_ref, replay=False):
+    def compute_forward_pass(
+        self, xt: np.ndarray, xt_ref: np.ndarray, replay: bool = False
+    ) -> Tuple[Any, list[np.ndarray]]:
         """Вычислите результат критика, а также производную от Jt по весам и смещениям сети.
 
         Args:
@@ -462,7 +474,7 @@ class Critic:
             tracked_states = np.reshape(xt[self.indices_tracking_states, :], [-1, 1])
         xt_error = np.reshape(tracked_states - xt_ref, [-1, 1])
 
-        nn_input = tf.constant(np.array([(xt_error)]).astype("float32"))
+        nn_input = tf.constant(np.array([xt_error]).astype("float32"))
 
         # Run the input through the network watching the weights and biases for later derivatives
         with tf.GradientTape() as tape:
@@ -487,7 +499,9 @@ class Critic:
             Jt = prediction.numpy()
             return nn_input, dJt_dW, Jt
 
-    def compute_loss_derivative(self, *args):
+    def compute_loss_derivative(
+        self, *args: Any
+    ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
         """Вычисляет производную функции потерь по Jt
 
         Returns:
@@ -506,7 +520,7 @@ class Critic:
                     self.xt_1[self.indices_tracking_states, :], [-1, 1]
                 )
             xt_1_error = np.reshape(tracked_states - self.xt_ref_1, [-1, 1])
-            nn_input_1 = tf.constant(np.array([(xt_1_error)]).astype("float32"))
+            nn_input_1 = tf.constant(np.array([xt_1_error]).astype("float32"))
 
             self.Jt_1 = self.model(nn_input_1).numpy()
             Jt = self.Jt
@@ -548,7 +562,9 @@ class Critic:
         WB_variable[WB_variable < -self.WB_limits] = -self.WB_limits
         self.model.trainable_variables[count].assign(WB_variable)
 
-    def evaluate_critic(self, xt, xt_ref):
+    def evaluate_critic(
+        self, xt: np.ndarray, xt_ref: np.ndarray
+    ) -> Tuple[np.ndarray, np.ndarray]:
         """Функция, которая оценивает один раз критическую нейронную сеть и возвращает значение J(xt).
 
         Args:
@@ -562,7 +578,7 @@ class Critic:
 
         tracked_states = np.reshape(xt[self.indices_tracking_states, :], [-1, 1])
         xt_error = np.reshape(tracked_states - xt_ref, [-1, 1])
-        nn_input = tf.constant(np.array([(xt_error)]).astype("float32"))
+        nn_input = tf.constant(np.array([xt_error]).astype("float32"))
 
         with tf.GradientTape() as tape:
             tape.watch(nn_input)
@@ -573,7 +589,7 @@ class Critic:
 
         return Jt, dJt_dxt
 
-    def c_computation(self):
+    def c_computation(self) -> np.ndarray:
         """Вычисление одношаговой функции стоимости с полученными реальным и эталонным состояниями.
 
         Returns:
@@ -593,7 +609,7 @@ class Critic:
         self.store_c[0, self.time_step] = ct[0]
         return ct
 
-    def targets_computation_online(self, *args):
+    def targets_computation_online(self, *args: Any) -> np.ndarray:
         """Вычисляет цель на текущем временном шаге с одношаговой функцией стоимости предыдущего
         временной шаг и текущая функция стоимости.
 
@@ -612,7 +628,7 @@ class Critic:
             target = 0
         return target
 
-    def update_critic_attributes(self):
+    def update_critic_attributes(self) -> None:
         """Атрибуты, которые меняются с каждым временным шагом, обновляются"""
         self.time_step += 1
         self.ct_1 = self.ct
@@ -625,11 +641,11 @@ class Critic:
                 self.model.trainable_variables[counter * 2].numpy().flatten()
             )
 
-    def restart_time_step(self):
+    def restart_time_step(self) -> None:
         """Обнуление врменного шага"""
         self.time_step = 0
 
-    def restart_critic(self):
+    def restart_critic(self) -> None:
         """Рестарт Критика."""
         # Declaration of attributes regarding the states and rewards
         self.time_step = 0

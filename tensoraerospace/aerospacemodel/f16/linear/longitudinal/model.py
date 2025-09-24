@@ -3,25 +3,54 @@ import os
 
 import numpy as np
 from scipy.io import loadmat
-from scipy.signal import *
+from scipy.signal import cont2discrete
 
 from tensoraerospace.aerospacemodel.base import ModelBase
 
 
 class LongitudinalF16(ModelBase):
-    """
-    Самолет F-16 ✈ в изолированном продольном канале.
+    """Линеаризованная продольная динамика F‑16 в пространстве состояний.
 
-    Пространство действий:
-        * stab_act: руль высоты [град]
+    Модель описывает продольный канал ЛА с входом по отклонению стабилизатора и
+    выходами по углам/скоростям. Матрицы состояния загружаются из подготовленных
+    файлов Matlab и редуцируются до выбранных переменных, после чего система
+    дискретизируется с шагом ``dt``.
 
+    Состояния (порядок internal-модели):
+      - ``theta`` — тангаж [рад]
+      - ``alpha`` — угол атаки [рад]
+      - ``q`` — угловая скорость по тангажу [рад/с]
+      - ``ele`` — положение руля высоты [рад]
 
-    Пространство состояний:
-        * alpha:  угол атаки  [рад]
-        * wz: угловая скорость тангажа [рад/с]
-        * stab: полжение руля высоты [рад]
-        * dstab: угловая скорость руля высоты [рад/с]
+    Управление:
+      - ``ele`` — отклонение стабилизатора [рад]
 
+    Args:
+        x0 (np.ndarray | list[float]): Начальное состояние модели в порядке
+            internal-модели (см. список выше).
+        number_time_steps (int): Количество шагов моделирования.
+        selected_state_output (list[str] | None): Имена состояний, которые
+            возвращаются наружу (редуцированный вектор состояний). Если ``None``,
+            возвращается полный вектор internal-модели.
+        t0 (float): Начальное время, сек.
+        dt (float): Шаг дискретизации, сек.
+
+    Attributes:
+        selected_states (list[str]): Список состояний internal-модели.
+        selected_output (list[str]): Список выходов.
+        selected_input (list[str]): Список управляющих воздействий.
+        input_magnitude_limits (list[float]): Ограничения по величине управления.
+        input_rate_limits (list[float]): Ограничения по скорости изменения управления.
+        A, B, C, D (np.ndarray | None): Непрерывные матрицы исходной системы.
+        filt_A, filt_B, filt_C, filt_D (np.ndarray | None): Отфильтрованные и
+            дискретизованные матрицы редуцированной системы.
+        store_states, store_input, store_outputs (np.ndarray): История состояний,
+            входов и выходов за горизонт моделирования.
+
+    Notes:
+        - Матрицы загружаются из каталога ``../data`` относительно файла модели.
+        - Дискретизация выполняется с помощью ``scipy.signal.cont2discrete``.
+        - Единицы измерения: углы и угловые скорости внутри модели — в радианах.
     """
 
     def __init__(
@@ -75,11 +104,8 @@ class LongitudinalF16(ModelBase):
 
         self.initialise_system(x0, number_time_steps)
 
-    def import_linear_system(self):
-        """
-        Retrieves the stored linearised matrices obtained from Matlab
-        :return:
-        """
+    def import_linear_system(self) -> None:
+        """Загружает линеаризованные матрицы состояния из Matlab-файлов."""
         x = loadmat(self.folder + "/A.mat")
         self.A = x["A_lo"]
 
@@ -92,10 +118,10 @@ class LongitudinalF16(ModelBase):
         x = loadmat(self.folder + "/D.mat")
         self.D = x["D_lo"]
 
-    def simplify_system(self):
+    def simplify_system(self) -> None:
         """
-        Function which simplifies the F-16 matrices. The filtered matrices are stored as part of the object
-        :return:
+        Редуцирует систему к выбранным состояниям/выходам и
+        формирует фильтрованные матрицы.
         """
 
         # Create dictionaries with the information from the system
@@ -124,24 +150,27 @@ class LongitudinalF16(ModelBase):
             + self.D[selected_rows_output[:, None], selected_rows_input]
         )
 
-    def create_dictionary(self, file_name):
-        """
-        Creates dictionaries from the available states, inputs and outputs
-        :param file_name: name of the file to be read
-        :return: rows --> dictionary with the rows used of the input/state/output vectors
+    def create_dictionary(self, file_name: str) -> dict[str, int]:
+        """Создаёт словарь индексов по именам величин (state/input/output).
+
+        Args:
+            file_name (str): Имя файла-ключа (``states``, ``input``, ``output``).
+
+        Returns:
+            dict[str, int]: Отображение имени величины в индекс строки/столбца.
         """
         full_name = self.folder + "/keySet_" + file_name + ".txt"
-        with open(full_name, "r") as f:
+        with open(full_name, "r", encoding="utf-8") as f:
             keySet = json.loads(f.read())
         rows = dict(zip(keySet, range(len(keySet))))
         return rows
 
-    def initialise_system(self, x0, number_time_steps):
-        """
-        Initialises the F-16 aircraft dynamics
-        :param x0: the initial states
-        :param number_time_steps: the number of time steps within an iteration
-        :return:
+    def initialise_system(self, x0: np.ndarray, number_time_steps: int) -> None:
+        """Инициализирует систему, дискретизирует и выделяет буферы истории.
+
+        Args:
+            x0 (np.ndarray): Начальное состояние.
+            number_time_steps (int): Горизонт моделирования.
         """
         # Import the stored system
         self.import_linear_system()
@@ -172,11 +201,14 @@ class LongitudinalF16(ModelBase):
             ],
         )
 
-    def run_step(self, ut_0: np.array):
-        """
-        Runs one time step of the iteration.
-        :param ut: input to the system
-        :return: xt1 --> the next time step state
+    def run_step(self, ut_0: np.ndarray) -> np.ndarray:
+        """Выполняет один шаг эволюции системы с ограничениями по управлению.
+
+        Args:
+            ut_0 (np.ndarray): Вектор управления на текущем шаге (рад).
+
+        Returns:
+            np.ndarray: Состояние на следующем шаге ``x[t+1]``.
         """
         if self.time_step != 0:
             ut_1 = self.store_input[:, self.time_step - 1]
@@ -232,15 +264,14 @@ class LongitudinalF16(ModelBase):
             return np.array(self.xt1[self.selected_state_index])
         return np.array(self.xt1)
 
-    def update_system_attributes(self):
-        """
-        The attributes that change with every time step are updated
-        :return:
-        """
+    def update_system_attributes(self) -> None:
+        """Обновляет текущее состояние и внутренний таймер модели."""
         self.xt = self.xt1
         self.time_step += 1
 
-    def get_state(self, state_name: str, to_deg: bool = False, to_rad: bool = False):
+    def get_state(
+        self, state_name: str, to_deg: bool = False, to_rad: bool = False
+    ) -> np.ndarray:
         """
         Получить массив состояния
 
@@ -264,19 +295,20 @@ class LongitudinalF16(ModelBase):
         if state_name == "wy":
             state_name = "r"
         if state_name not in self.selected_states:
-            raise Exception(
+            raise ValueError(
                 f"{state_name} нет в списке состояний, доступные {self.selected_states}"
             )
         index = self.selected_states.index(state_name)
         if to_deg:
             return np.rad2deg(self.store_states[index][: self.number_time_steps - 1])
         if to_rad:
-            return np.deg2rad(self.store_states[index][: self.number_time_steps - 1])
+            values_deg = self.store_states[index][: self.number_time_steps - 1]
+            return np.deg2rad(values_deg)
         return self.store_states[index][: self.number_time_steps - 1]
 
     def get_control(
         self, control_name: str, to_deg: bool = False, to_rad: bool = False
-    ):
+    ) -> np.ndarray:
         """
         Получить массив сигнала управления
 
@@ -295,17 +327,25 @@ class LongitudinalF16(ModelBase):
             control_name = "ele"
         if control_name in ["rud", "dir"]:
             control_name = "rud"
-        if control_name not in self.selected_input or control_name not in [
+        allowed_controls = [
             "ele",
             "ail",
             "rud",
-        ]:
-            raise Exception(
-                f"{control_name} нет в списке сигналов управления, доступные {self.selected_input}"
+        ]
+        if (
+            control_name not in self.selected_input
+            or control_name not in allowed_controls
+        ):
+            message = (
+                f"{control_name} нет в списке сигналов управления, доступные "
+                f"{self.selected_input}"
             )
+            raise ValueError(message)
         index = self.selected_input.index(control_name)
         if to_deg:
-            return np.rad2deg(self.store_input[index])[: self.number_time_steps - 1]
+            rad_deg_input = np.rad2deg(self.store_input[index])
+            return rad_deg_input[: self.number_time_steps - 1]
         if to_rad:
-            return np.deg2rad(self.store_states[index][: self.number_time_steps - 1])
+            values_rad = self.store_states[index][: self.number_time_steps - 1]
+            return np.deg2rad(values_rad)
         return self.store_input[index][: self.number_time_steps - 1]

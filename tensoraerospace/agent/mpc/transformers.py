@@ -16,7 +16,7 @@ class PositionalEncoding(nn.Module):
         max_len (int): Максимальная длина последовательности. По умолчанию 5000.
     """
 
-    def __init__(self, d_model, dropout=0.1, max_len=5000):
+    def __init__(self, d_model: int, dropout: float = 0.1, max_len: int = 5000):
         """
         Инициализация модуля позиционного кодирования.
 
@@ -38,7 +38,7 @@ class PositionalEncoding(nn.Module):
         pe = pe.unsqueeze(0).transpose(0, 1)
         self.register_buffer("pe", pe)
 
-    def forward(self, x):
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
         """
         Применяет позиционное кодирование к входным данным.
 
@@ -113,7 +113,7 @@ class TransformerDynamicsModel(nn.Module):
         )
         self.fc_out = nn.Linear(d_model, output_dim)
 
-    def forward(self, x):
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
         """
         Прямое распространение через трансформерную модель.
 

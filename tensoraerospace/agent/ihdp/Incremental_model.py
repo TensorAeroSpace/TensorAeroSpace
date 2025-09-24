@@ -1,3 +1,5 @@
+from typing import Tuple
+
 import numpy as np
 
 
@@ -79,7 +81,7 @@ class IncrementalModel:
             "./incremental_model/delta_xt.npy",
         )
 
-    def build_A_LS_matrix(self):
+    def build_A_LS_matrix(self) -> np.ndarray:
         """Строит матрицу А, необходимую для онлайн-метода идентификации методом наименьших квадратов.
 
         Returns:
@@ -104,7 +106,7 @@ class IncrementalModel:
         A_LS_matrix = np.hstack((x_component, u_component))
         return A_LS_matrix
 
-    def build_x_LS_vector(self):
+    def build_x_LS_vector(self) -> np.ndarray:
         """Строит вектор x, требуемый в методе наименьших квадратов онлайн-идентификации системы.
 
         Returns:
@@ -136,7 +138,9 @@ class IncrementalModel:
 
         return x_LS_vector
 
-    def identify_incremental_model_LS(self, xt, ut_0):
+    def identify_incremental_model_LS(
+        self, xt: np.ndarray, ut_0: np.ndarray
+    ) -> np.ndarray:
         """Вычисляет матрицы F и G идентификации системы
 
         Args:
@@ -198,7 +202,7 @@ class IncrementalModel:
 
         return self.G
 
-    def evaluate_incremental_model(self, *args):
+    def evaluate_incremental_model(self, *args) -> np.ndarray:
         """Оценивает состояния следующего временного шага
 
         Returns:
@@ -300,7 +304,7 @@ class IncrementalModel:
             )
             return xt1_est
 
-    def update_incremental_model_attributes(self):
+    def update_incremental_model_attributes(self) -> None:
         """Атрибуты, которые меняются с каждым временным шагом, обновляются"""
 
         # Update the object state and input variables
@@ -308,11 +312,11 @@ class IncrementalModel:
         self.ut_1 = self.ut
         self.time_step += 1
 
-    def restart_time_step(self):
+    def restart_time_step(self) -> None:
         """Обнуление временного шага"""
         self.time_step = 0
 
-    def restart_incremental_model(self):
+    def restart_incremental_model(self) -> None:
         """Перезапускает инкрементную модель."""
         self.time_step = 0
         self.store_delta_xt = np.zeros((self.number_states, self.number_time_steps))

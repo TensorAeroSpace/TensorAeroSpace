@@ -1,3 +1,5 @@
+from typing import Callable, Dict, Tuple
+
 import numpy as np
 import torch
 
@@ -26,23 +28,23 @@ class AircraftMPC:
 
     def __init__(
         self,
-        dynamics_model,
-        horizon=2,
-        dt=0.1,
-        weights={
+        dynamics_model: Callable[[torch.Tensor], torch.Tensor],
+        horizon: int = 2,
+        dt: float = 0.1,
+        weights: Dict[str, float] = {
             "theta_tracking": 10000.0,
             "control_effort": 0.1,
             "delta_control": 0.01,
         },
-        state_dim=4,
-        control_dim=1,
-        u_max=10.0,
-        delta_u_max=0.001,
-        learning_rate=10e-5,
-        penalty_weight=1_000,
-        iterations=150,
-        increment=1e-3,
-    ):
+        state_dim: int = 4,
+        control_dim: int = 1,
+        u_max: float = 10.0,
+        delta_u_max: float = 0.001,
+        learning_rate: float = 10e-5,
+        penalty_weight: float = 1_000,
+        iterations: int = 150,
+        increment: float = 1e-3,
+    ) -> None:
         """
         Инициализация MPC контроллера.
 
@@ -73,7 +75,9 @@ class AircraftMPC:
         self.iterations = iterations
         self.increment = increment
 
-    def cost_function(self, X, U, theta_ref_np):
+    def cost_function(
+        self, X: np.ndarray, U: np.ndarray, theta_ref_np: np.ndarray
+    ) -> float:
         """
         Вычисляет значение целевой функции.
 
@@ -93,9 +97,9 @@ class AircraftMPC:
         # Штраф за изменение управления
         cost += self.weights["delta_control"] * np.sum(np.diff(U, axis=0) ** 2)
 
-        return cost
+        return float(cost)
 
-    def penalty_function(self, U):
+    def penalty_function(self, U: np.ndarray) -> float:
         """
         Вычисляет значение штрафной функции для ограничений.
 
@@ -112,9 +116,11 @@ class AircraftMPC:
         penalty += np.sum(
             np.maximum(0, np.abs(np.diff(U, axis=0)) - self.delta_u_max) ** 2
         )
-        return penalty
+        return float(penalty)
 
-    def total_cost(self, U, x0, theta_ref_np):
+    def total_cost(
+        self, U: np.ndarray, x0: np.ndarray, theta_ref_np: np.ndarray
+    ) -> float:
         """
         Вычисляет полное значение целевой функции с учётом штрафов.
 
@@ -132,7 +138,7 @@ class AircraftMPC:
             X, U_reshaped, theta_ref_np
         ) + self.penalty_weight * self.penalty_function(U_reshaped)
 
-    def predict_trajectory(self, x0, U):
+    def predict_trajectory(self, x0: np.ndarray, U: np.ndarray) -> np.ndarray:
         """
         Прогнозирует траекторию состояний на основе модели динамики.
 
@@ -162,7 +168,9 @@ class AircraftMPC:
             )
         return X
 
-    def optimize_control(self, x0, theta_ref):
+    def optimize_control(
+        self, x0: np.ndarray, theta_ref: np.ndarray
+    ) -> Tuple[np.ndarray, np.ndarray]:
         """
         Оптимизирует последовательность управления с использованием градиентного спуска.
 

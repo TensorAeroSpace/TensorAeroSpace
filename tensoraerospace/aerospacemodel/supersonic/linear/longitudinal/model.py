@@ -8,7 +8,7 @@ from tensoraerospace.aerospacemodel.utils import state_to_latex_eng, state_to_la
 
 
 class LongitudinalSuperSonic(ModelBase):
-    """
+    r"""
     Сверхзвуковой самолет в изолированном боковом канале.
 
     Пространство действий:
