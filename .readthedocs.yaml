@@ -12,5 +12,4 @@ build:
     - poetry install --only dev --no-root
     - python -m pip install --upgrade "packaging>=25.0"
     - poetry run python -m pip install --upgrade "packaging>=25.0"
-    - poetry run python -c "import os, yaml; p='mkdocs.yml'; d=yaml.safe_load(open(p)); d['site_url']=os.environ.get('READTHEDOCS_CANONICAL_URL',''); open(p,'w').write(yaml.safe_dump(d, sort_keys=False))"
     - poetry run mkdocs build --site-dir "$READTHEDOCS_OUTPUT/html" --config-file mkdocs.yml
