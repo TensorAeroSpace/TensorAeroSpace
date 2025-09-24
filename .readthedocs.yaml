@@ -13,7 +13,7 @@ build:
       - poetry install --only dev --no-root
 
     post_build:
-      - mkdocs build --site-dir "$READTHEDOCS_OUTPUT/html"
+      - poetry run mkdocs build --site-dir "$READTHEDOCS_OUTPUT/html" --config-file mkdocs.yml
 
 mkdocs:
   configuration: mkdocs.yml
