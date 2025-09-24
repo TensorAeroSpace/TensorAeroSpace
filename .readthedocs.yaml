@@ -10,4 +10,5 @@ build:
     - pip install poetry
     - poetry config virtualenvs.create false
     - poetry install --only dev --no-root
+    - python -m pip install --upgrade "packaging>=24.2"
     - poetry run mkdocs build --site-dir "$READTHEDOCS_OUTPUT/html" --config-file mkdocs.yml
