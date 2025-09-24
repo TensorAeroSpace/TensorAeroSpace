@@ -5,15 +5,9 @@ build:
   tools:
     python: "3.11"
 
-  jobs:
-    post_create_environment:
-      - python -m pip install --upgrade pip
-      - pip install poetry
-      - poetry config virtualenvs.create false
-      - poetry install --only dev --no-root
-
-    post_build:
-      - poetry run mkdocs build --site-dir "$READTHEDOCS_OUTPUT/html" --config-file mkdocs.yml
-
-mkdocs:
-  configuration: mkdocs.yml
+  commands:
+    - python -m pip install --upgrade pip
+    - pip install poetry
+    - poetry config virtualenvs.create false
+    - poetry install --only dev --no-root
+    - poetry run mkdocs build --site-dir "$READTHEDOCS_OUTPUT/html" --config-file mkdocs.yml
