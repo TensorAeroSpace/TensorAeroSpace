@@ -1,27 +1,17 @@
 version: 2
 
-
-# Set the version of Python and other tools you might need
 build:
   os: ubuntu-22.04
   tools:
-    python: '3.11'
+    python: "3.11"
+
   jobs:
-    # See https://github.com/readthedocs/readthedocs.org/issues/4912
-    pre_create_environment:
-      # Select Python version (keep in sync with other versions):
-      - asdf install python 3.11.5
-      - asdf global python 3.11.5
-      - python -m pip install --upgrade --no-cache-dir virtualenv
+    post_create_environment:
+      - python -m pip install --upgrade pip
+      - pip install -r requirements.txt
 
-      # Install poetry:
-      - asdf plugin add poetry
-      - asdf install poetry latest
-      - asdf global poetry latest
-      - poetry config virtualenvs.create false
-    post_install:
-      # We build django with `DJANGO_ENV=production`, so no dev deps:
-      - . "$READTHEDOCS_VIRTUALENV_PATH/bin/activate" && poetry install --with dev
+    post_build:
+      - mkdocs build --site-dir "$READTHEDOCS_OUTPUT/html"
 
-sphinx:
-  configuration: docs/conf.py
+mkdocs:
+  configuration: mkdocs.yml
