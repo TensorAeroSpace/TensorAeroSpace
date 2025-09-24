@@ -23,7 +23,6 @@ plugins:
   - autorefs:
       resolve_closest: true
   - i18n:
-      default_language: en
       docs_structure: folder
       languages:
         - locale: en
@@ -208,9 +207,7 @@ markdown_extensions:
       generic: true
   - pymdownx.superfences
   - pymdownx.details
-  - pymdownx.emoji:
-      emoji_index: !!python/name:material.extensions.emoji.twemoji
-      emoji_generator: !!python/name:material.extensions.emoji.to_svg
+  - pymdownx.emoji
   - pymdownx.tabbed:
       alternate_style: true
   - footnotes
