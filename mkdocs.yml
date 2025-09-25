@@ -45,7 +45,7 @@ plugins:
               - X15: model/x15.md
               - LSU: model/lsu.md
               - SUAV: model/suav.md
-            - Unity Environment: model/unity_env.md
+              - Unity Environment: model/unity_env.md
             - Agents:
               - IHDP:
                 - Описание: agent/ihdp.md
@@ -192,10 +192,10 @@ extra:
   alternate:
     - name: English
       lang: en
-      link: .
+      link: /
     - name: Русский
       lang: ru
-      link: ru/
+      link: /ru/
 extra_javascript:
   - https://polyfill.io/v3/polyfill.min.js?features=es6
   - https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js
