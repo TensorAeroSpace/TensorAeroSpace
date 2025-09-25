@@ -1,33 +1,33 @@
 ---
-name: 📚 Вопрос или помощь
-about: Задать вопрос о использовании библиотеки
+name: 📚 Question / Help
+about: Ask a question about using the library
 title: '[QUESTION] '
 labels: ['question', 'help wanted']
 assignees: []
 
 ---
 
-## ❓ Вопрос
-Четко сформулируйте ваш вопрос.
+## ❓ Question
+Clearly state your question.
 
-## 🎯 Что вы пытаетесь достичь?
-Опишите вашу конечную цель или задачу.
+## 🎯 Goal
+What are you trying to achieve?
 
-## 💻 Код, который вы пробовали
+## 💻 Code tried
 ```python
-# Вставьте ваш код здесь
+# Paste your code here
 ```
 
-## 📋 Что вы уже пробовали?
-- [ ] Прочитал документацию
-- [ ] Посмотрел примеры в репозитории
-- [ ] Искал похожие вопросы в Issues
-- [ ] Попробовал разные подходы
+## 📋 What have you tried?
+- [ ] Read the documentation
+- [ ] Checked examples in the repository
+- [ ] Searched similar issues
+- [ ] Tried alternative approaches
 
-## 🖥️ Информация о системе
-- ОС: [например, Ubuntu 20.04, macOS 12.0, Windows 10]
-- Python версия: [например, 3.9.7]
-- TensorAeroSpace версия: [например, 1.0.0]
+## 🖥️ System information
+- OS: [e.g., Ubuntu 20.04, macOS 14, Windows 11]
+- Python version: [e.g., 3.10.13]
+- TensorAeroSpace version: [e.g., 0.3.0]
 
-## 📄 Дополнительный контекст
-Добавьте любую другую информацию, которая может помочь ответить на ваш вопрос.
+## 📄 Additional context
+Add any other information that might help answer your question.

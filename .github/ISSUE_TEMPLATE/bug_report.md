@@ -1,49 +1,49 @@
 ---
-name: 🐛 Сообщение об ошибке
-about: Создать отчет об ошибке для улучшения проекта
+name: 🐛 Bug report
+about: Create a bug report to help us improve
 title: '[BUG] '
 labels: ['bug', 'needs-triage']
 assignees: ['asmazaev']
 
 ---
 
-## 🐛 Описание ошибки
-Краткое и понятное описание того, что произошло.
+## 🐛 Description
+A clear and concise description of what the bug is.
 
-## 🔄 Шаги для воспроизведения
-Шаги для воспроизведения поведения:
-1. Перейти к '...'
-2. Нажать на '....'
-3. Прокрутить вниз до '....'
-4. Увидеть ошибку
+## 🔄 Reproduction steps
+Steps to reproduce the behavior:
+1. Go to '...'
+2. Click on '...'
+3. Scroll down to '...'
+4. See error
 
-## ✅ Ожидаемое поведение
-Краткое и понятное описание того, что вы ожидали.
+## ✅ Expected behavior
+A clear and concise description of what you expected to happen.
 
-## 📸 Скриншоты
-Если применимо, добавьте скриншоты, чтобы помочь объяснить вашу проблему.
+## 📸 Screenshots
+If applicable, add screenshots to help explain your problem.
 
-## 🖥️ Информация о системе
-- ОС: [например, Ubuntu 20.04, macOS 12.0, Windows 10]
-- Python версия: [например, 3.9.7]
-- TensorAeroSpace версия: [например, 1.0.0]
-- Другие релевантные зависимости:
+## 🖥️ System information
+- OS: [e.g., Ubuntu 20.04, macOS 14, Windows 11]
+- Python version: [e.g., 3.10.13]
+- TensorAeroSpace version: [e.g., 0.3.0]
+- Other relevant dependencies:
 
-## 📋 Код для воспроизведения
+## 📋 Minimal reproducible example (MRE)
 ```python
-# Вставьте минимальный код для воспроизведения ошибки
+# Provide the smallest possible code that reproduces the issue
 ```
 
-## 📄 Логи ошибок
+## 📄 Error logs / Traceback
 ```
-Вставьте полный traceback ошибки здесь
+Paste the full error traceback here
 ```
 
-## 🔍 Дополнительный контекст
-Добавьте любой другой контекст о проблеме здесь.
+## 🔍 Additional context
+Add any other context about the problem here.
 
-## ✅ Чек-лист
-- [ ] Я проверил, что эта ошибка не была уже сообщена
-- [ ] Я предоставил минимальный код для воспроизведения
-- [ ] Я включил информацию о системе
-- [ ] Я включил полные логи ошибок
+## ✅ Checklist
+- [ ] I searched for existing issues and found none matching mine
+- [ ] I included a minimal reproducible example
+- [ ] I provided system information
+- [ ] I attached complete error logs
