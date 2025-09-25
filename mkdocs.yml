@@ -187,6 +187,13 @@ theme:
   favicon: logo.png
 
 extra:
+  alternate:
+    - name: English
+      lang: en
+      link: /en/
+    - name: Русский
+      lang: ru
+      link: /ru/
   static:
     - assets
 extra_javascript:
