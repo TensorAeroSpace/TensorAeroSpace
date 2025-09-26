@@ -19,6 +19,7 @@ hide:
     <a href="https://pypi.org/project/tensoraerospace/"><img alt="Python versions" src="https://img.shields.io/pypi/pyversions/tensoraerospace?logo=python&label=Python"></a>
     <a href="https://pypi.org/project/tensoraerospace/"><img alt="Downloads" src="https://img.shields.io/pypi/dm/tensoraerospace?label=Downloads"></a>
     <a href="https://github.com/TensorAeroSpace/TensorAeroSpace/blob/develop/LICENSE"><img alt="License" src="https://img.shields.io/badge/License-MIT-green.svg"></a>
+    <a href="https://deepwiki.com/TensorAeroSpace/TensorAeroSpace"><img alt="Ask DeepWiki" src="https://deepwiki.com/badge.svg"></a>
   </p>
 </div>
 
