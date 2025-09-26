@@ -45,18 +45,18 @@ class Model(tf.keras.Model):
     def action_value(
         self, obs: np.ndarray
     ) -> Tuple[Union[np.ndarray, int], np.ndarray]:
-        """Функция стратегии. Возвращает действие.
+        """Strategy function. Returns action.
 
         Args:
-            obs (_type_): батч входных данных
+            obs: Batch of input data.
 
         Returns:
-            best_action (_type_): батч векторов действий
+            best_action: Batch of action vectors.
 
-            или если на вход подан батч размера 1
+            or if input batch size is 1
 
-            best_action (int): лучшее действие
-            q_values (_type_): q функции для действий в данном состоянии
+            best_action (int): Best action.
+            q_values: Q functions for actions in given state.
         """
 
         q_values = self.predict(obs)
@@ -65,7 +65,7 @@ class Model(tf.keras.Model):
 
 
 def test_model():
-    """функция для проверки работоспособности модели"""
+    """Function to test model functionality."""
 
     env = gym.make("CartPole-v0")
     print("num_actions: ", env.action_space.n)
@@ -80,10 +80,10 @@ def test_model():
 
 
 class SumTree:
-    """Класс бинарного дерева поиска для приоретизированного реплей буфера агента
+    """Binary search tree class for prioritized replay buffer agent.
 
     Args:
-        capacity (int): Размер буфера
+        capacity (int): Buffer size.
     """
 
     def __init__(self, capacity):

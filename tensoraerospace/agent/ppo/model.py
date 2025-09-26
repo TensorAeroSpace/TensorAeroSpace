@@ -48,16 +48,16 @@ def init_layer_uniform(layer: nn.Linear, init_w: float = 3e-3) -> nn.Linear:
 class Critic(nn.Module):
     def __init__(self, input_dim: int, hidden_dim: int = 64):
         """
-        Инициализирует модуль критика.
+        Initialize critic module.
 
         Args:
-            input_dim (int): Размерность входных данных.
-            hidden_dim (int, optional): Размер скрытого слоя. По умолчанию равен 64.
+            input_dim (int): Input data dimension.
+            hidden_dim (int, optional): Hidden layer size. Defaults to 64.
 
-        Осуществляет следующие операции:
-        - Инициализирует первый линейный слой для преобразования входных данных в промежуточное представление.
-        - Инициализирует второй линейный слой для вычисления "значения" из промежуточного представления.
-        - Инициализирует второй линейный слой с использованием равномерного распределения.
+        Performs the following operations:
+        - Initialize first linear layer to transform input data to intermediate representation.
+        - Initialize second linear layer to compute "value" from intermediate representation.
+        - Initialize second linear layer using uniform distribution.
         """
         super(Critic, self).__init__()
         self.d1 = nn.Linear(input_dim, hidden_dim)
@@ -66,17 +66,17 @@ class Critic(nn.Module):
 
     def forward(self, input_data: torch.Tensor) -> torch.Tensor:
         """
-        Производит прямой проход сети.
+        Perform forward pass of the network.
 
         Args:
-            input_data (Tensor): Тензор входных данных.
+            input_data (Tensor): Input data tensor.
 
         Returns:
-            Tensor: Выходной тензор, представляющий "значение" для каждого входного примера.
+            Tensor: Output tensor representing "value" for each input example.
 
-        Применяет последовательность операций:
-        - Пропускает входные данные через первый линейный слой и применяет функцию активации ReLU.
-        - Пропускает результат через второй линейный слой для вычисления конечного "значения".
+        Applies sequence of operations:
+        - Pass input data through first linear layer and apply ReLU activation function.
+        - Pass result through second linear layer to compute final "value".
         """
         x = F.relu(self.d1(input_data))
         v = self.v(x)

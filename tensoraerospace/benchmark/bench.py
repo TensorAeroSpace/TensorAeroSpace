@@ -35,7 +35,7 @@ from .function import (
     steady_state_value,
 )
 
-# Цветовая палитра для графиков
+# Color palette for plots
 COLORS = ["#2E86AB", "#A23B72", "#F18F01", "#C73E1D", "#6A994E", "#7209B7"]
 
 
@@ -54,16 +54,16 @@ class ControlBenchmark:
         dt: float,
     ) -> dict:
         """
-        Оценивает систему управления на одном шаге и возвращает расширенный набор результатов в виде словаря.
+        Evaluate control system on one step and return extended set of results as dictionary.
 
         Args:
-            control_signal (numpy.ndarray): Сигнал управления системы.
-            system_signal (numpy.ndarray): Сигнал системы, на которую воздействует управление.
-            signal_val (float): Значение сигнала, с которого начинается функция перехода.
-            dt (float): Шаг дискретизации.
+            control_signal (numpy.ndarray): System control signal.
+            system_signal (numpy.ndarray): System signal that is affected by control.
+            signal_val (float): Signal value from which the step function begins.
+            dt (float): Discretization step.
 
         Returns:
-            dict: Словарь с результатами оценки системы управления:
+            dict: Dictionary with control system evaluation results:
                   - "overshoot" (float): перерегулирование (%),
                   - "settling_time" (float): время установления (с),
                   - "damping_degree" (float): степень затухания,

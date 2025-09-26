@@ -65,43 +65,43 @@ class Mish(nn.Module):
 
 # Helper function to convert numpy arrays to tensors
 def t(x):
-    """Преобразует numpy массив в PyTorch тензор.
+    """Convert numpy array to PyTorch tensor.
 
     Args:
-        x: Входные данные (numpy массив или другой тип).
+        x: Input data (numpy array or other type).
 
     Returns:
-        torch.Tensor: Тензор PyTorch с типом float.
+        torch.Tensor: PyTorch tensor with float type.
     """
     x = np.array(x) if not isinstance(x, np.ndarray) else x
     return torch.from_numpy(x).float()
 
 
 class Actor(nn.Module):
-    """Нейронная сеть актора для алгоритма A2C.
+    """Actor neural network for A2C algorithm.
 
-    Актор генерирует политику - распределение вероятностей действий
-    для каждого состояния. Использует нормальное распределение для
-    непрерывных действий.
+    Actor generates policy - probability distribution of actions
+    for each state. Uses normal distribution for
+    continuous actions.
 
     Args:
-        state_dim (int): Размерность пространства состояний.
-        n_actions (int): Количество действий.
-        activation: Функция активации для скрытых слоев. По умолчанию nn.Tanh.
+        state_dim (int): State space dimension.
+        n_actions (int): Number of actions.
+        activation: Activation function for hidden layers. Defaults to nn.Tanh.
 
     Attributes:
-        n_actions (int): Количество действий.
-        model (nn.Sequential): Основная нейронная сеть.
-        logstds (nn.Parameter): Логарифмы стандартных отклонений для действий.
+        n_actions (int): Number of actions.
+        model (nn.Sequential): Main neural network.
+        logstds (nn.Parameter): Logarithms of standard deviations for actions.
     """
 
     def __init__(self, state_dim, n_actions, activation=nn.Tanh):
-        """Инициализирует актора.
+        """Initialize actor.
 
         Args:
-            state_dim (int): Размерность пространства состояний.
-            n_actions (int): Количество действий.
-            activation: Функция активации для скрытых слоев.
+            state_dim (int): State space dimension.
+            n_actions (int): Number of actions.
+            activation: Activation function for hidden layers.
         """
         super().__init__()
         self.n_actions = n_actions
