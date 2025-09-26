@@ -11,34 +11,41 @@ from tensoraerospace.aerospacemodel.utils.constant import (
 
 
 class GeoSat(ModelBase):
-    """
-    Геостационарный спутник в продольном канале управления
-
+    """Geostationary satellite in longitudinal control channel.
 
     Args:
-        x0 (_type_): Начальное состояние объекта управления
-        number_time_steps (_type_): Количество временных шагов
-        selected_state_output (_type_, optional): Выбранные состояние объекта управления. Defaults to None.
-        t0 (int, optional): Начальное время. Defaults to 0.
-        dt (float, optional): Частота дискретизации. Defaults to 0.01.
+        x0: Initial state of the control object.
+        number_time_steps: Number of time steps.
+        selected_state_output (optional): Selected states of the control object. Defaults to None.
+        t0 (int, optional): Initial time. Defaults to 0.
+        dt (float, optional): Discretization frequency. Defaults to 0.01.
 
-    Пространство действий:
-        * thrust: тяга двигателя [Н]
+    Action space:
+        thrust: engine thrust [N]
 
-    Пространство состояний:
-        * rho - отношение высоты полета к радиусу Зeмли
-        * theta - позиция спутника относительно земносй системы координат [рад]
-        * omega - угловая скорость вращения спутника [рад/с]
+    State space:
+        rho: ratio of flight altitude to Earth radius
+        theta: satellite position relative to Earth coordinate system [rad]
+        omega: satellite angular velocity [rad/s]
 
-    Пространство выхода:
-        * rho - отношение высоты полета к радиусу Зeмли
-        * theta - позиция спутника относительно земносй системы координат [рад]
-        * omega - угловая скорость вращения спутника [рад/с]
+    Output space:
+        rho: ratio of flight altitude to Earth radius
+        theta: satellite position relative to Earth coordinate system [rad]
+        omega: satellite angular velocity [rad/s]
     """
 
     def __init__(
         self, x0, number_time_steps, selected_state_output=None, t0=0, dt: float = 0.01
     ):
+        """Initialize GeoSat instance.
+
+        Args:
+            x0: Initial state of the control object.
+            number_time_steps: Number of time steps.
+            selected_state_output: Selected states of the control object. Defaults to None.
+            t0: Initial time. Defaults to 0.
+            dt: Discretization frequency. Defaults to 0.01.
+        """
         super().__init__(x0, selected_state_output, t0, dt)
 
         self.discretisation_time = dt

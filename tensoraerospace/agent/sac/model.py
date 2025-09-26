@@ -12,13 +12,13 @@ epsilon = 1e-6
 
 # Initialize Policy weights
 def weights_init_(m: torch.nn.Module) -> None:
-    """Инициализирует веса политики.
+    """Initialize policy weights.
 
-    Применяет инициализацию Xavier для весов и константную инициализацию для смещений
-    линейных слоев.
+    Applies Xavier initialization for weights and constant initialization for biases
+    of linear layers.
 
     Args:
-        m (nn.Module): Модуль нейронной сети для инициализации.
+        m (nn.Module): Neural network module to initialize.
     """
     if isinstance(m, nn.Linear):
         torch.nn.init.xavier_uniform_(m.weight, gain=1)
@@ -26,20 +26,25 @@ def weights_init_(m: torch.nn.Module) -> None:
 
 
 class ValueNetwork(nn.Module):
-    """Нейронная сеть для аппроксимации функции значения.
+    """Neural network for value function approximation.
 
     Args:
-        num_inputs (int): Количество входных признаков.
-        hidden_dim (int): Размерность скрытых слоев.
+        num_inputs (int): Number of input features.
+        hidden_dim (int): Hidden layers dimension.
 
     Attributes:
-        linear1 (nn.Linear): Первый линейный слой.
-        linear2 (nn.Linear): Второй линейный слой.
-        linear3 (nn.Linear): Третий линейный слой.
-
+        linear1 (nn.Linear): First linear layer.
+        linear2 (nn.Linear): Second linear layer.
+        linear3 (nn.Linear): Third linear layer.
     """
 
     def __init__(self, num_inputs: int, hidden_dim: int):
+        """Initialize ValueNetwork.
+
+        Args:
+            num_inputs (int): Number of input features.
+            hidden_dim (int): Hidden layers dimension.
+        """
         super(ValueNetwork, self).__init__()
 
         self.linear1 = nn.Linear(num_inputs, hidden_dim)

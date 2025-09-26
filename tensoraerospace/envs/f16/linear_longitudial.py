@@ -1,10 +1,9 @@
-"""
-Модуль для моделирования линейной продольной динамики самолета F-16.
+"""Module for modeling linear longitudinal dynamics of F-16 aircraft.
 
-Этот модуль содержит реализацию среды Gymnasium для обучения агентов управления
-продольным движением самолета F-16 Fighting Falcon. Среда использует линеаризованную
-модель динамики для управления углом атаки и угловой скоростью тангажа через
-руль высоты.
+This module contains a Gymnasium environment implementation for training agents
+to control longitudinal motion of F-16 Fighting Falcon aircraft. The environment uses
+a linearized dynamics model to control angle of attack and pitch angular velocity
+through elevator control.
 """
 
 import gymnasium as gym
@@ -18,17 +17,17 @@ MODEL_STATE_ORDER = ["theta", "alpha", "q", "ele"]
 
 
 class LinearLongitudinalF16(gym.Env):
-    """Моделирование объекта управления LongitudinalF16 в среде моделирования OpenAI Gym для обучения агентов с исскуственным интелектом
+    """Simulation of LongitudinalF16 control object in OpenAI Gym environment for training AI agents.
 
     Args:
-        initial_state (any): Начальное состояние
-        reference_signal (any): Заданный сигнал
-        number_time_steps (any): Количество шагов моделирования
-        tracking_states (any): Отслеживаемые состояния
-        state_space (any): Пространства состояний
-        control_space (any): Пространство управления
-        output_space (any): Пространство полного выхода (с учетом помех)
-        reward_func (any): Функция вознаграждения (статус WIP)
+        initial_state: Initial state.
+        reference_signal: Reference signal.
+        number_time_steps: Number of simulation steps.
+        tracking_states: Tracked states.
+        state_space: State space.
+        control_space: Control space.
+        output_space: Full output space (including noise).
+        reward_func: Reward function (WIP status).
     """
 
     def __init__(
@@ -43,6 +42,19 @@ class LinearLongitudinalF16(gym.Env):
         reward_func: callable = None,
         use_reward=True,
     ):
+        """Initialize LinearLongitudinalF16 environment.
+
+        Args:
+            initial_state (np.ndarray): Initial state.
+            reference_signal (np.ndarray): Reference signal.
+            number_time_steps (int): Number of simulation steps.
+            tracking_states (list): Tracked states. Defaults to ["alpha", "q"].
+            state_space (list): State space. Defaults to ["alpha", "q"].
+            control_space (list): Control space. Defaults to ["ele"].
+            output_space (list): Full output space. Defaults to ["alpha", "q"].
+            reward_func (callable): Reward function. Defaults to None.
+            use_reward: Whether to use reward. Defaults to True.
+        """
         super(LinearLongitudinalF16, self).__init__()
 
         self.max_action_value = 25.0
