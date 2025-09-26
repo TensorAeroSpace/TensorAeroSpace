@@ -64,8 +64,8 @@ plugins:
                 - Overview: benchmark/bench.md
                 - Metrics: benchmark/metrics.md
               - Signals: signals/signals.md
-            - Examples:
-              - Environments: example/env/examples.md
+            - Example:
+              - Environments: example/env/gymnasium.md
               - IHDP: example/agent/ihdp/example_ihdp.md
               - SAC F16: example/agent/sac/example-sac-f16.md
               - Optimization: example/optimization/example_optimization.md
@@ -137,7 +137,7 @@ plugins:
                 - Метрики: benchmark/metrics.md
               - Сигналы: signals/signals.md
             - Примеры:
-              - Окружения: example/env/examples.md
+              - Окружения: example/env/gymnasium.md
               - IHDP: example/agent/ihdp/example_ihdp.md
               - SAC F16: example/agent/sac/example-sac-f16.md
               - Оптимизация: example/optimization/example_optimization.md

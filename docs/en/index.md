@@ -76,7 +76,7 @@ hide:
 
     Compatible environments and a simple API for training and evaluation.
 
-    [:octicons-arrow-right-24: Learn more](example/env/examples.md)
+    [:octicons-arrow-right-24: Learn more](example/env/gymnasium.md)
 
 -   :material-school-outline: **Tutorials**
 
@@ -195,7 +195,7 @@ for _ in range(1000):
 - Lessons: [lesson/0intro](lesson/0intro.md)
 - Models: [model/f16](model/f16.md), [model/b747](model/b747.md)
 - Algorithms: [agent/sac](agent/sac.md), [agent/ppo](agent/ppo.md), [agent/ddpg](agent/ddpg.md)
-- Examples: [example/env/examples](example/env/examples.md)
+- Examples: [example/env/examples](example/env/gymnasium.md)
 
 ---
 
@@ -235,5 +235,5 @@ Need help? Open an issue on GitHub or check the tutorials section.
 
 <div style="text-align:center; margin: 1.2rem 0 0.2rem;">
   <a href="guide/installation.md" class="md-button md-button--primary">Get started</a>
-  <a href="example/env/examples.md" class="md-button">View examples</a>
+  <a href="example/env/gymnasium.md" class="md-button">View examples</a>
 </div>
