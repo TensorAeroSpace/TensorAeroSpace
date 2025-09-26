@@ -93,13 +93,13 @@ class ControlBenchmark:
                 control_signal[cnt_time:], system_signal[cnt_time:]
             )
         else:
-            # Если время установления не найдено или равно длине массива, используем последние 10% сигнала
+            # If settling time not found or equals array length, use last 10% of signal
             start_idx = max(0, int(0.9 * len(control_signal)))
             static_err = static_error(
                 control_signal[start_idx:], system_signal[start_idx:]
             )
 
-        # Дополнительные метрики
+        # Additional metrics
         rise_t = rise_time(control_signal, system_signal)
         peak_t = peak_time(system_signal)
         max_dev = maximum_deviation(control_signal, system_signal)
@@ -134,21 +134,21 @@ class ControlBenchmark:
         dt: float,
         tps: np.ndarray,
         figsize: tuple = (1600, 1000),
-        title: str = "Анализ системы управления",
+        title: str = "Control System Analysis",
     ):
         """
-        Строит интерактивный график анализа системы управления с использованием Plotly.
+        Build interactive control system analysis plot using Plotly.
 
         Args:
-            control_signal (numpy.ndarray): Сигнал управления системы.
-            system_signal (numpy.ndarray): Сигнал системы, на которую воздействует управление.
-            signal_val (float): Значение сигнала, с которого начинается функция перехода.
-            dt (float): Шаг дискретизации.
-            tps (numpy.ndarray): Массив временных меток.
-            figsize (tuple): Размер графика в пикселях, по умолчанию (1600, 1000).
-            title (str): Заголовок графика.
+            control_signal (numpy.ndarray): System control signal.
+            system_signal (numpy.ndarray): System signal that is affected by control.
+            signal_val (float): Signal value from which the step function begins.
+            dt (float): Discretization step.
+            tps (numpy.ndarray): Array of time stamps.
+            figsize (tuple): Plot size in pixels, defaults to (1600, 1000).
+            title (str): Plot title.
         """
-        # Получаем метрики
+        # Get metrics
         metrics = self.becnchmarking_one_step(
             control_signal, system_signal, signal_val, dt
         )
@@ -169,9 +169,9 @@ class ControlBenchmark:
                 [{"type": "scatter", "colspan": 2}, None],
             ],
             subplot_titles=(
-                "Переходный процесс",
-                "Метрики качества",
-                "Ошибка регулирования",
+                "Transient Process",
+                "Quality Metrics",
+                "Control Error",
             ),
             vertical_spacing=0.08,
             horizontal_spacing=0.05,

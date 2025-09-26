@@ -96,20 +96,20 @@ class SumTree:
 
     @property
     def total_p(self):
-        """Количество записей в буфере
+        """Number of records in buffer.
 
         Returns:
-            (int): количество записей в буфере
+            (int): Number of records in buffer.
         """
 
         return self.tree[0]
 
     def add(self, priority, transition):
-        """Функция для добавления объекта в буффер
+        """Function for adding object to buffer.
 
         Args:
-            priority (int): приоритет добавляемого перехода
-            transition (_type_): вектор перехода S, A, R, S'
+            priority (int): Priority of added transition.
+            transition: Transition vector S, A, R, S'.
         """
 
         idx = self.next_idx + self.capacity - 1
@@ -118,11 +118,11 @@ class SumTree:
         self.next_idx = (self.next_idx + 1) % self.capacity
 
     def update(self, idx, priority):
-        """Функция для обновления приоритета объекта с заданным индексом
+        """Function for updating object priority with given index.
 
         Args:
-            idx (int): индекс перехода
-            priority (int): приоритет обновляемого перехода
+            idx (int): Transition index.
+            priority (int): Priority of updated transition.
         """
 
         change = priority - self.tree[idx]
@@ -130,11 +130,11 @@ class SumTree:
         self._propagate(idx, change)  # O(logn)
 
     def _propagate(self, idx, change):
-        """Функция для обратного обновления приоритетов в дереве
+        """Function for backward priority update in tree.
 
         Args:
-            idx (int): индекс перехода
-            priority (int): приоритет обновляемого перехода
+            idx (int): Transition index.
+            priority (int): Priority of updated transition.
         """
 
         parent = (idx - 1) // 2
@@ -143,15 +143,15 @@ class SumTree:
             self._propagate(parent, change)
 
     def get_leaf(self, s):
-        """Функция для получения объекта по заданному приоритету
+        """Function for getting object by given priority.
 
         Args:
-            s (int): приоритет по которому отсекается переход
+            s (int): Priority by which transition is selected.
 
         Returns:
-            idx (int): индекс перехода
-            priority (int): приоритет обновляемого перехода
-            transitions (_type_): необходимый переход
+            idx (int): Transition index.
+            priority (int): Priority of updated transition.
+            transitions: Required transition.
         """
 
         idx = self._retrieve(0, s)  # from root
