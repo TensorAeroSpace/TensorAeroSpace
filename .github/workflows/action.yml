@@ -72,7 +72,9 @@ jobs:
               --cov-report=term-missing:skip-covered | tee pytest-coverage.txt
 
     - name: Upload coverage to Coveralls
+      if: ${{ success() && hashFiles('coverage.xml') != '' }}
       uses: coverallsapp/github-action@v2
+      continue-on-error: true
       with:
         github-token: ${{ secrets.GITHUB_TOKEN }}
         file: ./coverage.xml
