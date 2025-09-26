@@ -60,7 +60,7 @@ for step in range(int(2100)):
 model_terminate()
 
 
-plt.plot(wz)
+plt.plot(u)
 
 plt.ylabel("$u$, [м/с]")
 
