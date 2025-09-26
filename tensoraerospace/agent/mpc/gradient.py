@@ -44,7 +44,7 @@ def initialize_tensor(
             mean = (max_val + min_val) / 2
             std_dev = (
                 max_val - min_val
-            ) / 4  # 4 стандартных отклонения для охвата ~95% значений
+            ) / 4  # 4 standard deviations to cover ~95% of values
             tensor = torch.normal(mean, std_dev, size, requires_grad=True)
             tensor = torch.clamp(tensor, min=min_val, max=max_val)
 
