@@ -1,17 +1,16 @@
-"""
-Базовый модуль для аэрокосмических моделей.
+"""Base module for aerospace models.
 
-Этот модуль содержит базовый класс ModelBase, который служит основой для всех
-аэрокосмических моделей в библиотеке TensorAeroSpace. Класс предоставляет общую
-функциональность для моделирования динамики летательных аппаратов, включая
-управление состояниями, историей моделирования, визуализацией и анализом данных.
+This module contains the base class ModelBase, which serves as the foundation for all
+aerospace models in the TensorAeroSpace library. The class provides common
+functionality for modeling aircraft dynamics, including state management,
+simulation history, visualization and data analysis.
 
-Основные возможности:
-- Управление состояниями и управляющими сигналами
-- Ведение истории моделирования
-- Визуализация результатов
-- Анализ данных моделирования
-- Поддержка различных форматов данных
+Main capabilities:
+    - State and control signal management
+    - Simulation history tracking
+    - Results visualization
+    - Simulation data analysis
+    - Support for various data formats
 """
 
 import matplotlib.pyplot as plt
@@ -29,24 +28,23 @@ from .utils.constant import (
 
 
 class ModelBase:
-    """
-    Базовый класс для моделей
+    """Base class for models.
 
     Args:
-        dt: Шаг дискретизации
-        selected_state_output: выбранные состояния для работы с системой
-        t0: Начальное время
-        x0: Начальное состояние
+        dt: Discretization step.
+        selected_state_output: Selected states for working with the system.
+        t0: Initial time.
+        x0: Initial state.
 
-    Внутренние переменные:
-        * time_step - Шаг моделирования
-        * u_history - Все сигналы управления за время моделирования
-        * x_history - Все состояния за время моделирования
-        * state_history - Все состояния за время моделирования в формате dict (Для удобной работы с графиками)
-        * control_history - Все сигналы управления за время моделирования в формате dict (Для удобной работы с графиками)
-        * list_state - Список всех состояний объекта управления
-        * control_list - Список всех управляющих сигналов объекта управления
-        * dt - Шаг дискретизации
+    Internal variables:
+        time_step: Simulation step.
+        u_history: All control signals during simulation.
+        x_history: All states during simulation.
+        state_history: All states during simulation in dict format (for convenient work with plots).
+        control_history: All control signals during simulation in dict format (for convenient work with plots).
+        list_state: List of all control object states.
+        control_list: List of all control object control signals.
+        dt: Discretization step.
     """
 
     def __init__(self, x0, selected_state_output=None, t0=0, dt: float = 0.01):
@@ -66,11 +64,11 @@ class ModelBase:
         self.xt1 = None
 
     def _initialize_selected_state_index(self, selected_state_output, list_state):
-        """Инициализация selected_state_index на основе selected_state_output.
+        """Initialize selected_state_index based on selected_state_output.
 
         Args:
-            selected_state_output: Список выбранных выходных состояний.
-            list_state: Полный список состояний модели.
+            selected_state_output: List of selected output states.
+            list_state: Complete list of model states.
         """
         if selected_state_output:
             self.selected_state_index = [
@@ -93,18 +91,18 @@ class ModelBase:
         self.control_list = []
 
     def run_step(self, u):
-        """Расчет состояния объекта управления.
+        """Calculate control object state.
 
         Args:
-            u: Управляющий сигнал для текущего шага.
+            u: Control signal for current step.
         """
         pass
 
     def restart(self):
-        """Рестарт всего объекта управления.
+        """Restart the entire control object.
 
-        Сбрасывает все внутренние переменные и историю состояний
-        к начальным значениям.
+        Resets all internal variables and state history
+        to initial values.
         """
         self.time_step = 1
         self.u_history = []
@@ -115,28 +113,25 @@ class ModelBase:
         self.control_list = []
 
     def get_state(self, state_name: str, to_deg: bool = False, to_rad: bool = False):
-        """
-        Получить массив состояния
+        """Get state array.
 
         Args:
-            state_name: Название состояния
-            to_deg: Конвертировать в градусы
-            to_rad: Конвертировать в радианы
+            state_name: State name.
+            to_deg: Convert to degrees.
+            to_rad: Convert to radians.
 
         Returns:
-            Массив истории выбранного состояния
+            Selected state history array.
 
-        Пример:
-
-        >>> state_hist = model.get_state('alpha', to_deg=True)
-
+        Example:
+            >>> state_hist = model.get_state('alpha', to_deg=True)
         """
         if to_rad and to_deg:
             raise Exception(
-                "Неверно указано форматирование, укажите один из типов: to_rad или to_deg."
+                "Invalid formatting specified, choose one type: to_rad or to_deg."
             )
         if state_name not in self.list_state:
-            raise Exception(f"{state_name} нет в списке состояний")
+            raise Exception(f"{state_name} is not in the states list")
         if not self.state_history:
             self.state_history = state2dict(self.x_history, self.list_state)
         if to_deg:
@@ -148,27 +143,25 @@ class ModelBase:
     def get_control(
         self, control_name: str, to_deg: bool = False, to_rad: bool = False
     ):
-        """
-        Получить массив сигнала управления
+        """Get control signal array.
 
         Args:
-            control_name: Название сигнала управления
-            to_deg: Конвертировать в градусы
-            to_rad: Конвертировать в радианы
+            control_name: Control signal name.
+            to_deg: Convert to degrees.
+            to_rad: Convert to radians.
 
         Returns:
-            Массив истории выбранного сигнала управления
+            Selected control signal history array.
 
-        Пример:
-
-        >>> state_hist = model.get_control('stab', to_deg=True)
+        Example:
+            >>> state_hist = model.get_control('stab', to_deg=True)
         """
         if to_rad and to_deg:
             raise Exception(
-                "Неверно указано форматирование, укажите один из типов: to_rad или to_deg."
+                "Invalid formatting specified, choose one type: to_rad or to_deg."
             )
         if control_name not in self.list_state:
-            raise Exception(f"{control_name} нет в списке сигналов управления")
+            raise Exception(f"{control_name} is not in the control signals list")
         if not self.control_history:
             self.control_history = control2dict(self.u_history, self.control_list)
         if to_deg:

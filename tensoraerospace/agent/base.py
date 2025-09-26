@@ -1,16 +1,15 @@
-"""
-Базовые классы и утилиты для агентов обучения с подкреплением.
+"""Base classes and utilities for reinforcement learning agents.
 
-Этот модуль содержит базовый абстрактный класс BaseRLModel, который определяет
-общий интерфейс для всех алгоритмов обучения с подкреплением в библиотеке
-TensorAeroSpace. Также включает утилиты для работы с моделями, их сериализации
-и интеграции с Hugging Face Hub.
+This module contains the base abstract class BaseRLModel, which defines
+a common interface for all reinforcement learning algorithms in the
+TensorAeroSpace library. Also includes utilities for working with models,
+their serialization and integration with Hugging Face Hub.
 
-Основные компоненты:
-- BaseRLModel: Базовый класс для всех RL-алгоритмов
-- get_class_from_string: Утилита для динамического импорта классов
-- serialize_env: Функция для сериализации сред
-- TheEnvironmentDoesNotMatch: Исключение для несоответствия сред
+Main components:
+    - BaseRLModel: Base class for all RL algorithms
+    - get_class_from_string: Utility for dynamic class import
+    - serialize_env: Function for environment serialization
+    - TheEnvironmentDoesNotMatch: Exception for environment mismatch
 """
 
 import importlib
@@ -20,17 +19,17 @@ from huggingface_hub import HfApi, snapshot_download
 
 
 def get_class_from_string(class_path):
-    """Динамически импортирует и возвращает класс по строковому пути.
+    """Dynamically imports and returns a class by string path.
 
     Args:
-        class_path (str): Полный путь к классу в формате 'module.submodule.ClassName'.
+        class_path (str): Full path to class in format 'module.submodule.ClassName'.
 
     Returns:
-        type: Класс, соответствующий указанному пути.
+        type: Class corresponding to the specified path.
 
     Raises:
-        ImportError: Если модуль не может быть импортирован.
-        AttributeError: Если класс не найден в модуле.
+        ImportError: If the module cannot be imported.
+        AttributeError: If the class is not found in the module.
     """
     # Разделяем путь на имя модуля и имя класса
     module_name, class_name = class_path.rsplit(".", 1)
@@ -45,71 +44,71 @@ def get_class_from_string(class_path):
 
 
 class BaseRLModel(ABC):
-    """Базовый абстрактный класс для моделей обучения с подкреплением.
+    """Base abstract class for reinforcement learning models.
 
-    Этот класс определяет общий интерфейс для всех алгоритмов обучения с подкреплением
-    в библиотеке TensorAeroSpace. Все конкретные реализации алгоритмов должны наследоваться
-    от этого класса и реализовывать его абстрактные методы.
+    This class defines a common interface for all reinforcement learning algorithms
+    in the TensorAeroSpace library. All concrete algorithm implementations should inherit
+    from this class and implement its abstract methods.
 
     Attributes:
-        Базовый класс не содержит специфических атрибутов.
+        Base class contains no specific attributes.
     """
 
     def __init__(self) -> None:
-        """Инициализирует объект класса BaseRLModel."""
+        """Initialize BaseRLModel object."""
         super().__init__()
 
     def get_env(self):
-        """Возвращает текущую среду обучения модели.
+        """Returns the current training environment of the model.
 
         Returns:
-            object: Объект среды, используемой для обучения модели.
+            object: Environment object used for model training.
         """
         pass
 
     def train(self):
-        """Запускает процесс обучения модели."""
+        """Start the model training process."""
         pass
 
     def action_probability(self):
-        """Возвращает вероятности действий для последнего состояния.
+        """Returns action probabilities for the last state.
 
         Returns:
-            list: Список вероятностей действий.
+            list: List of action probabilities.
         """
         pass
 
     def save(self):
-        """Сохраняет текущую модель в файл."""
+        """Save current model to file."""
         pass
 
     def load(self):
-        """Загружает модель из файла."""
+        """Load model from file."""
         pass
 
     def predict(self):
-        """Делает прогноз на основе входных данных.
+        """Make prediction based on input data.
 
         Returns:
-            Any: Результат прогнозирования.
+            Any: Prediction result.
         """
         pass
 
     def get_param_env(self):
-        """Получает параметры текущей среды.
+        """Get parameters of the current environment.
 
         Returns:
-            dict: Словарь параметров среды.
+            dict: Dictionary of environment parameters.
         """
         pass
 
     def publish_to_hub(self, repo_name, folder_path, access_token=None):
-        """Публикует модель в Hugging Face Hub.
+        """Publish model to Hugging Face Hub.
 
         Args:
-            repo_name (str): Название репозитория в Hub.
-            folder_path (str): Путь к папке с моделью.
-            access_token (str, optional): Токен доступа для аутентификации.
+            repo_name (str): Repository name in Hub.
+            folder_path (str): Path to model folder.
+            access_token (str, optional): Access token for authentication.
         """
         api = HfApi()
         api.upload_folder(
@@ -121,15 +120,15 @@ class BaseRLModel(ABC):
 
     @classmethod
     def from_pretrained(cls, repo_name, access_token=None, version=None):
-        """Загружает предобученную модель из Hugging Face Hub.
+        """Load pretrained model from Hugging Face Hub.
 
         Args:
-            repo_name (str): Название репозитория в Hub.
-            access_token (str, optional): Токен доступа для аутентификации.
-            version (str, optional): Версия модели для загрузки.
+            repo_name (str): Repository name in Hub.
+            access_token (str, optional): Access token for authentication.
+            version (str, optional): Model version to load.
 
         Returns:
-            str: Путь к загруженной папке с моделью.
+            str: Path to downloaded model folder.
         """
         folder_path = snapshot_download(
             repo_id=repo_name, token=access_token, revision=version
@@ -138,13 +137,13 @@ class BaseRLModel(ABC):
 
 
 def serialize_env(env):
-    """Сериализует объект среды в словарь для сохранения.
+    """Serialize environment object to dictionary for saving.
 
     Args:
-        env: Объект среды, который нужно сериализовать.
+        env: Environment object to serialize.
 
     Returns:
-        dict: Словарь с параметрами среды, включая все numpy массивы в виде списков.
+        dict: Dictionary with environment parameters, including all numpy arrays as lists.
     """
     import numpy as np
 
@@ -166,13 +165,13 @@ def serialize_env(env):
 
 
 def deserialize_env_params(env_params):
-    """Десериализует параметры среды, преобразуя списки обратно в numpy массивы.
+    """Deserialize environment parameters, converting lists back to numpy arrays.
 
     Args:
-        env_params (dict): Словарь с параметрами среды.
+        env_params (dict): Dictionary with environment parameters.
 
     Returns:
-        dict: Словарь с параметрами среды, где списки преобразованы в numpy массивы.
+        dict: Dictionary with environment parameters where lists are converted to numpy arrays.
     """
     import numpy as np
 
@@ -195,13 +194,13 @@ def deserialize_env_params(env_params):
 
 
 class TheEnvironmentDoesNotMatch(Exception):
-    """Исключение, возникающее при несоответствии загруженной среды ожидаемой.
+    """Exception raised when loaded environment does not match expected one.
 
-    Это исключение выбрасывается, когда загруженная из файла среда не соответствует
-    той, которая ожидается для работы с моделью.
+    This exception is raised when the environment loaded from file does not match
+    the one expected for working with the model.
 
     Attributes:
-        message (str): Сообщение об ошибке.
+        message (str): Error message.
     """
 
     message = "Error The environment does not match the downloaded one"
