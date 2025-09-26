@@ -1,60 +1,60 @@
 # Pull Request
 
-## 📋 Описание
-Краткое описание изменений в этом PR.
+## 📋 Description
+A clear and concise description of the changes in this PR.
 
-## 🔗 Связанные Issues
-Fixes #(номер issue)
-Closes #(номер issue)
-Related to #(номер issue)
+## 🔗 Related Issues
+Fixes #<issue>
+Closes #<issue>
+Related to #<issue>
 
-## 🎯 Тип изменений
-- [ ] 🐛 Исправление ошибки (non-breaking change which fixes an issue)
-- [ ] ✨ Новая функция (non-breaking change which adds functionality)
+## 🎯 Type of change
+- [ ] 🐛 Bug fix (non-breaking change that fixes an issue)
+- [ ] ✨ New feature (non-breaking change that adds functionality)
 - [ ] 💥 Breaking change (fix or feature that would cause existing functionality to not work as expected)
-- [ ] 📚 Обновление документации
-- [ ] 🧹 Рефакторинг кода
-- [ ] ⚡ Улучшение производительности
-- [ ] 🧪 Добавление тестов
-- [ ] 🔧 Изменения в CI/CD
+- [ ] 📚 Documentation update
+- [ ] 🧹 Code refactor
+- [ ] ⚡ Performance improvement
+- [ ] 🧪 Tests
+- [ ] 🔧 CI/CD changes
 
-## 🧪 Как это было протестировано?
-Опишите тесты, которые вы запустили для проверки ваших изменений.
+## 🧪 How has this been tested?
+Describe the tests that you ran to verify your changes.
 
-- [ ] Юнит тесты
-- [ ] Интеграционные тесты
-- [ ] Ручное тестирование
-- [ ] Тестирование производительности
+- [ ] Unit tests
+- [ ] Integration tests
+- [ ] Manual testing
+- [ ] Performance testing
 
-**Команды для тестирования:**
+**Test commands:**
 ```bash
 make test
 make test-quick
 make lint
 ```
 
-## 📸 Скриншоты (если применимо)
-Добавьте скриншоты для демонстрации изменений в UI.
+## 📸 Screenshots (if applicable)
+Add UI screenshots to demonstrate changes.
 
-## ✅ Чек-лист
-- [ ] Мой код следует стилю кодирования этого проекта
-- [ ] Я провел самопроверку своего кода
-- [ ] Я прокомментировал свой код, особенно в сложных областях
-- [ ] Я внес соответствующие изменения в документацию
-- [ ] Мои изменения не генерируют новых предупреждений
-- [ ] Я добавил тесты, которые доказывают, что мое исправление эффективно или что моя функция работает
-- [ ] Новые и существующие юнит тесты проходят локально с моими изменениями
-- [ ] Любые зависимые изменения были объединены и опубликованы в downstream модулях
+## ✅ Checklist
+- [ ] My code follows the project’s coding style
+- [ ] I have performed a self-review of my code
+- [ ] I have added comments where necessary
+- [ ] I have updated the documentation as needed
+- [ ] My changes do not introduce new warnings
+- [ ] I added tests that prove my fix is effective or my feature works
+- [ ] New and existing unit tests pass locally with my changes
+- [ ] Any dependent changes have been merged and published downstream
 
-## 🔍 Дополнительные заметки
-Добавьте любые дополнительные заметки для ревьюеров здесь.
+## 🔍 Additional notes
+Add any additional notes for reviewers here.
 
-## 📊 Влияние на производительность
-- [ ] Нет влияния на производительность
-- [ ] Улучшение производительности
-- [ ] Возможное снижение производительности (объясните почему это приемлемо)
+## 📊 Performance impact
+- [ ] No performance impact
+- [ ] Performance improvement
+- [ ] Potential performance regression (explain why acceptable)
 
-## 🔒 Безопасность
-- [ ] Эти изменения не вводят уязвимости безопасности
-- [ ] Я проверил код с помощью bandit и safety
-- [ ] Секреты и ключи не включены в код
+## 🔒 Security
+- [ ] These changes do not introduce security vulnerabilities
+- [ ] I ran bandit and safety checks
+- [ ] No secrets or keys are included in the code

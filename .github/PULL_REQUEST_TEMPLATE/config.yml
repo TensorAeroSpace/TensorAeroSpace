@@ -1,0 +1,8 @@
+version: 2
+
+# This configuration enables multiple PR templates via the chooser
+# See: https://docs.github.com/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/creating-a-pull-request-template-for-your-repository
+
+blank_issues_enabled: false
+
+# No additional settings needed; presence of multiple files in this directory will trigger the chooser UI.
