@@ -1,9 +1,8 @@
-"""
-Модуль реализации алгоритма Advantage Actor-Critic (A2C).
+"""Advantage Actor-Critic (A2C) algorithm implementation module.
 
-Этот модуль содержит реализацию алгоритма A2C для обучения с подкреплением,
-включая нейронные сети актора и критика, функции обработки памяти и основной
-класс агента A2C для управления аэрокосмическими системами.
+This module contains the A2C algorithm implementation for reinforcement learning,
+including actor and critic neural networks, memory processing functions and the main
+A2C agent class for aerospace system control.
 """
 
 import datetime
@@ -27,39 +26,39 @@ from ..base import (
 
 
 def mish(input):
-    """Функция активации Mish.
+    """Mish activation function.
 
-    Mish - это гладкая, непрерывная функция активации, определяемая как:
+    Mish is a smooth, continuous activation function defined as:
     f(x) = x * tanh(softplus(x))
 
     Args:
-        input (torch.Tensor): Входной тензор.
+        input (torch.Tensor): Input tensor.
 
     Returns:
-        torch.Tensor: Результат применения функции активации Mish.
+        torch.Tensor: Result of applying Mish activation function.
     """
     return input * torch.tanh(F.softplus(input))
 
 
 class Mish(nn.Module):
-    """Модуль PyTorch для функции активации Mish.
+    """PyTorch module for Mish activation function.
 
-    Этот класс оборачивает функцию активации Mish в модуль PyTorch,
-    что позволяет использовать её в нейронных сетях.
+    This class wraps the Mish activation function in a PyTorch module,
+    allowing it to be used in neural networks.
     """
 
     def __init__(self):
-        """Инициализирует модуль Mish."""
+        """Initialize Mish module."""
         super().__init__()
 
     def forward(self, input):
-        """Прямой проход через функцию активации Mish.
+        """Forward pass through Mish activation function.
 
         Args:
-            input (torch.Tensor): Входной тензор.
+            input (torch.Tensor): Input tensor.
 
         Returns:
-            torch.Tensor: Результат применения функции активации Mish.
+            torch.Tensor: Result of applying Mish activation function.
         """
         return mish(input)
 

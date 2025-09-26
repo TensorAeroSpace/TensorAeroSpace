@@ -1,14 +1,13 @@
-"""
-Модуль для оценки качества систем управления.
+"""Control systems quality evaluation module.
 
-Этот модуль предоставляет инструменты для анализа переходных процессов
-в системах автоматического управления, включая расчет различных метрик
-качества и визуализацию результатов с помощью интерактивных графиков.
+This module provides tools for analyzing transient processes
+in automatic control systems, including calculation of various quality
+metrics and visualization of results using interactive plots.
 
-Основные компоненты:
-- ControlBenchmark: Класс для комплексной оценки систем управления
-- Метрики качества: перерегулирование, время установления, статическая ошибка и др.
-- Интерактивная визуализация с использованием Plotly
+Main components:
+    - ControlBenchmark: Class for comprehensive control system evaluation
+    - Quality metrics: overshoot, settling time, static error, etc.
+    - Interactive visualization using Plotly
 """
 
 from typing import Dict, Optional, Tuple
@@ -41,10 +40,10 @@ COLORS = ["#2E86AB", "#A23B72", "#F18F01", "#C73E1D", "#6A994E", "#7209B7"]
 
 
 class ControlBenchmark:
-    """Класс для проведения оценки системы управления и построения красивых графиков.
+    """Class for control system evaluation and beautiful plot generation.
 
-    Предоставляет инструменты для анализа качества переходных процессов
-    в системах автоматического управления с визуализацией результатов.
+    Provides tools for analyzing transient process quality
+    in automatic control systems with results visualization.
     """
 
     def becnchmarking_one_step(

@@ -6,17 +6,17 @@ from tensoraerospace.aerospacemodel import LongitudinalB747
 
 
 class LinearLongitudinalB747(gym.Env):
-    """Моделирование объекта управления LongitudinalB747 в среде моделирования OpenAI Gym для обучения агентов с искусственным интеллектом
+    """Simulation of LongitudinalB747 control object in OpenAI Gym environment for training AI agents.
 
     Args:
-        initial_state (any): Начальное состояние
-        reference_signal (any): Заданный сигнал
-        number_time_steps (any): Количество шагов моделирования
-        tracking_states (any): Отслеживаемые состояния
-        state_space (any): Пространства состояний
-        control_space (any): Пространство управления
-        output_space (any): Пространство полного выхода (с учетом помех)
-        reward_func (any): Функция вознаграждения (статус WIP)
+        initial_state: Initial state.
+        reference_signal: Reference signal.
+        number_time_steps: Number of simulation steps.
+        tracking_states: Tracked states.
+        state_space: State space.
+        control_space: Control space.
+        output_space: Full output space (including noise).
+        reward_func: Reward function (WIP status).
     """
 
     def __init__(
@@ -31,6 +31,19 @@ class LinearLongitudinalB747(gym.Env):
         reward_func=None,
         use_reward=True,
     ):
+        """Initialize LinearLongitudinalB747 environment.
+
+        Args:
+            initial_state: Initial state.
+            reference_signal: Reference signal.
+            number_time_steps: Number of simulation steps.
+            tracking_states: Tracked states. Defaults to ["theta", "q"].
+            state_space: State space. Defaults to ["theta", "q"].
+            control_space: Control space. Defaults to ["stab"].
+            output_space: Full output space. Defaults to ["theta", "q"].
+            reward_func: Reward function. Defaults to None.
+            use_reward: Whether to use reward. Defaults to True.
+        """
         self.max_action_value = 25.0
         self.initial_state = initial_state
         self.number_time_steps = number_time_steps
