@@ -54,13 +54,13 @@ class ValueNetwork(nn.Module):
         self.apply(weights_init_)
 
     def forward(self, state: torch.Tensor) -> torch.Tensor:
-        """Прямой проход нейронной сети.
+        """Forward pass of neural network.
 
         Args:
-            state (torch.Tensor): Тензор входного состояния.
+            state (torch.Tensor): Input state tensor.
 
         Returns:
-            torch.Tensor: Тензор выходного значения.
+            torch.Tensor: Output value tensor.
 
         """
         x = F.relu(self.linear1(state))
@@ -70,20 +70,20 @@ class ValueNetwork(nn.Module):
 
 
 class QNetwork(nn.Module):
-    """Нейронная сеть для оценки функции Q.
+    """Neural network for Q function evaluation.
 
     Args:
-        num_inputs (int): Количество входных признаков.
-        num_actions (int): Количество действий.
-        hidden_dim (int): Размерность скрытых слоев.
+        num_inputs (int): Number of input features.
+        num_actions (int): Number of actions.
+        hidden_dim (int): Hidden layers dimension.
 
     Attributes:
-        linear1 (nn.Linear): Первый линейный слой для Q1.
-        linear2 (nn.Linear): Второй линейный слой для Q1.
-        linear3 (nn.Linear): Третий линейный слой для Q1.
-        linear4 (nn.Linear): Первый линейный слой для Q2.
-        linear5 (nn.Linear): Второй линейный слой для Q2.
-        linear6 (nn.Linear): Третий линейный слой для Q2.
+        linear1 (nn.Linear): First linear layer for Q1.
+        linear2 (nn.Linear): Second linear layer for Q1.
+        linear3 (nn.Linear): Third linear layer for Q1.
+        linear4 (nn.Linear): First linear layer for Q2.
+        linear5 (nn.Linear): Second linear layer for Q2.
+        linear6 (nn.Linear): Third linear layer for Q2.
 
     """
 

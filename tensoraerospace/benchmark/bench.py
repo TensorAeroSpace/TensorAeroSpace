@@ -64,30 +64,30 @@ class ControlBenchmark:
 
         Returns:
             dict: Dictionary with control system evaluation results:
-                  - "overshoot" (float): перерегулирование (%),
-                  - "settling_time" (float): время установления (с),
-                  - "damping_degree" (float): степень затухания,
-                  - "static_error" (float): статическая ошибка,
-                  - "rise_time" (float): время нарастания (с),
-                  - "peak_time" (float): время достижения пика (с),
-                  - "maximum_deviation" (float): максимальное отклонение,
-                  - "iae" (float): интегральная абсолютная ошибка,
-                  - "ise" (float): интегральная квадратичная ошибка,
-                  - "itae" (float): интегральная абсолютная ошибка, взвешенная по времени,
-                  - "oscillation_count" (int): количество колебаний,
-                  - "steady_state_value" (float): установившееся значение,
-                  - "performance_index" (float): комплексный индекс качества.
+                  - "overshoot" (float): overshoot (%),
+                  - "settling_time" (float): settling time (s),
+                  - "damping_degree" (float): damping degree,
+                  - "static_error" (float): static error,
+                  - "rise_time" (float): rise time (s),
+                  - "peak_time" (float): peak time (s),
+                  - "maximum_deviation" (float): maximum deviation,
+                  - "iae" (float): integral absolute error,
+                  - "ise" (float): integral squared error,
+                  - "itae" (float): integral time absolute error,
+                  - "oscillation_count" (int): oscillation count,
+                  - "steady_state_value" (float): steady state value,
+                  - "performance_index" (float): comprehensive quality index.
         """
         control_signal, system_signal = find_step_function(
             control_signal, system_signal, signal_val=signal_val
         )
 
-        # Основные метрики
+        # Main metrics
         overshooting = overshoot(control_signal, system_signal)
         cnt_time = settling_time(control_signal, system_signal)
         damp = damping_degree(system_signal)
 
-        # Исправляем расчет статической ошибки - используем весь сигнал после переходного процесса
+        # Fix static error calculation - use entire signal after transient process
         if cnt_time is not None and cnt_time < len(control_signal):
             static_err = static_error(
                 control_signal[cnt_time:], system_signal[cnt_time:]
