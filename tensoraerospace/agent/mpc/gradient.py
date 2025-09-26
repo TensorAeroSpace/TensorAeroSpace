@@ -19,15 +19,35 @@ def initialize_tensor(
     min_val: float | None = None,
     max_val: float | None = None,
 ) -> torch.Tensor:
-    mean = (max_val + min_val) / 2
-    std_dev = (
-        max_val - min_val
-    ) / 4  # 4 стандартных отклонения для охвата ~95% значений
-    tensor = torch.normal(mean, std_dev, size, requires_grad=True)
-    if min_val is not None:
-        tensor = torch.clamp(tensor, min=min_val)
-    if max_val is not None:
+    # Handle None values and prevent division by zero
+    if min_val is None and max_val is None:
+        # Default initialization with standard normal distribution
+        tensor = torch.randn(size, requires_grad=True)
+    elif min_val is None:
+        # Only max_val is specified
+        mean = max_val - 1.0  # Arbitrary offset
+        std_dev = 1.0
+        tensor = torch.normal(mean, std_dev, size, requires_grad=True)
         tensor = torch.clamp(tensor, max=max_val)
+    elif max_val is None:
+        # Only min_val is specified
+        mean = min_val + 1.0  # Arbitrary offset
+        std_dev = 1.0
+        tensor = torch.normal(mean, std_dev, size, requires_grad=True)
+        tensor = torch.clamp(tensor, min=min_val)
+    else:
+        # Both values are specified
+        if abs(max_val - min_val) < 1e-8:  # Prevent division by zero
+            # If min and max are essentially equal, return constant tensor
+            tensor = torch.full(size, (min_val + max_val) / 2, requires_grad=True)
+        else:
+            mean = (max_val + min_val) / 2
+            std_dev = (
+                max_val - min_val
+            ) / 4  # 4 стандартных отклонения для охвата ~95% значений
+            tensor = torch.normal(mean, std_dev, size, requires_grad=True)
+            tensor = torch.clamp(tensor, min=min_val, max=max_val)
+
     return tensor
 
 
@@ -202,6 +222,9 @@ class MPCOptimizationAgent(BaseRLModel):
         """
         for epoch in (pbar := tqdm(range(epochs))):
             permutation = np.random.permutation(states.shape[0])
+            epoch_loss = 0.0
+            num_batches = 0
+
             for i in range(0, states.shape[0], batch_size):
                 indices = permutation[i : i + batch_size]
                 batch_states, batch_actions, batch_next_states = (
@@ -218,8 +241,14 @@ class MPCOptimizationAgent(BaseRLModel):
                 loss.backward()
                 self.system_model_optimizer.step()
 
-            self.writer.add_scalar("Loss/train", loss.item(), epoch)
-            pbar.set_description(f"Loss {loss.item()}")
+                # Accumulate loss for epoch average
+                epoch_loss += loss.item()
+                num_batches += 1
+
+            # Log average loss for the epoch
+            avg_epoch_loss = epoch_loss / num_batches if num_batches > 0 else 0.0
+            self.writer.add_scalar("Loss/train", avg_epoch_loss, epoch)
+            pbar.set_description(f"Avg Loss {avg_epoch_loss:.4f}")
 
     def collect_data(
         self, num_episodes: int = 1000, control_exploration_signal=None
