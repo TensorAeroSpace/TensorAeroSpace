@@ -1,10 +1,9 @@
-"""
-Модуль для моделирования продольного движения самолета F-4C Phantom II.
+"""Module for modeling longitudinal motion of F-4C Phantom II aircraft.
 
-Этот модуль содержит реализацию среды Gymnasium для обучения агентов управления
-продольным движением самолета F-4C. Среда предоставляет интерфейс для взаимодействия
-с моделью самолета, включая управление углом тангажа, угловой скоростью тангажа,
-углом атаки и скоростью полета.
+This module contains a Gymnasium environment implementation for training agents
+to control longitudinal motion of F-4C aircraft. The environment provides an interface
+for interaction with the aircraft model, including control of pitch angle, pitch angular velocity,
+angle of attack and flight speed.
 """
 
 import gymnasium as gym
@@ -15,17 +14,17 @@ from tensoraerospace.aerospacemodel import LongitudinalF4C
 
 
 class LinearLongitudinalF4C(gym.Env):
-    """Моделирование объекта управления LongitudinalF4C в среде моделирования OpenAI Gym для обучения агентов с искусственным интеллектом
+    """Simulation of LongitudinalF4C control object in OpenAI Gym environment for training AI agents.
 
     Args:
-        initial_state (any): Начальное состояние
-        reference_signal (any): Заданный сигнал
-        number_time_steps (any): Количество шагов моделирования
-        tracking_states (any): Отслеживаемые состояния
-        state_space (any): Пространства состояний
-        control_space (any): Пространство управления
-        output_space (any): Пространство полного выхода (с учетом помех)
-        reward_func (any): Функция вознаграждения (статус WIP)
+        initial_state: Initial state.
+        reference_signal: Reference signal.
+        number_time_steps: Number of simulation steps.
+        tracking_states: Tracked states.
+        state_space: State space.
+        control_space: Control space.
+        output_space: Full output space (including noise).
+        reward_func: Reward function (WIP status).
     """
 
     def __init__(

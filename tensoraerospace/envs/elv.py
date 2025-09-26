@@ -1,10 +1,9 @@
-"""
-Модуль для моделирования ракеты-носителя ELV (Expendable Launch Vehicle).
+"""Module for modeling ELV (Expendable Launch Vehicle) rocket.
 
-Этот модуль содержит реализацию среды Gymnasium для обучения агентов управления
-продольным движением ракеты-носителя ELV. Среда предоставляет интерфейс для
-взаимодействия с моделью ракеты, включая управление углом тангажа и угловой
-скоростью тангажа через стабилизаторы.
+This module contains a Gymnasium environment implementation for training agents
+to control longitudinal motion of ELV launch vehicle. The environment provides an interface
+for interaction with the rocket model, including control of pitch angle and angular
+velocity through stabilizers.
 """
 
 import gymnasium as gym
@@ -15,17 +14,17 @@ from tensoraerospace.aerospacemodel import ELVRocket
 
 
 class LinearLongitudinalELVRocket(gym.Env):
-    """Моделирование объекта управления ELVRocket в среде моделирования OpenAI Gym для обучения агентов с искусственным интеллектом
+    """Simulation of ELVRocket control object in OpenAI Gym environment for training AI agents.
 
     Args:
-        initial_state (any): Начальное состояние
-        reference_signal (any): Заданный сигнал
-        number_time_steps (any): Количество шагов моделирования
-        tracking_states (any): Отслеживаемые состояния
-        state_space (any): Пространства состояний
-        control_space (any): Пространство управления
-        output_space (any): Пространство полного выхода (с учетом помех)
-        reward_func (any): Функция вознаграждения (статус WIP)
+        initial_state: Initial state.
+        reference_signal: Reference signal.
+        number_time_steps: Number of simulation steps.
+        tracking_states: Tracked states.
+        state_space: State space.
+        control_space: Control space.
+        output_space: Full output space (including noise).
+        reward_func: Reward function (WIP status).
     """
 
     def __init__(
