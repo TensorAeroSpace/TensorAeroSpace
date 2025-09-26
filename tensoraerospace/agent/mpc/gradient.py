@@ -52,28 +52,28 @@ def initialize_tensor(
 
 
 class Net(nn.Module):
-    """Создает нейронную сеть для моделирования динамики системы.
+    """Create neural network for system dynamics modeling.
 
-    Сеть состоит из трех линейных слоев и функций активации ReLU между ними.
-    Входной слой принимает вектор из 3 элементов, представляющих состояния системы.
-    Второй и третий слои - это скрытые слои с 128 нейронами.
-    Выходной слой генерирует вектор из 2 элементов, представляющих предсказание следующего состояния системы.
+    Network consists of three linear layers and ReLU activation functions between them.
+    Input layer accepts vector of 3 elements representing system states.
+    Second and third layers are hidden layers with 128 neurons.
+    Output layer generates vector of 2 elements representing prediction of next system state.
     """
 
     def __init__(self):
         super(Net, self).__init__()
-        self.fc1 = nn.Linear(3, 128)  # 3 состояния + 1 действие = 4
+        self.fc1 = nn.Linear(3, 128)  # 3 states + 1 action = 4
         self.fc2 = nn.Linear(128, 128)
-        self.fc3 = nn.Linear(128, 2)  # Предсказание следующего состояния
+        self.fc3 = nn.Linear(128, 2)  # Next state prediction
 
     def forward(self, x):
-        """Выполняет прямое распространение входных данных через сеть.
+        """Perform forward propagation of input data through network.
 
         Args:
-            x (torch.Tensor): Входные данные, представляющие состояния системы.
+            x (torch.Tensor): Input data representing system states.
 
         Returns:
-            torch.Tensor: Предсказание следующего состояния системы.
+            torch.Tensor: Prediction of next system state.
         """
         x = torch.relu(self.fc1(x))
         x = torch.relu(self.fc2(x))
