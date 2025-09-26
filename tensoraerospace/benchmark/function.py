@@ -1,16 +1,15 @@
-"""
-Модуль функций для анализа качества систем управления.
+"""Functions module for control system quality analysis.
 
-Этот модуль содержит набор функций для расчета различных метрик качества
-переходных процессов в системах автоматического управления, включая:
-- Перерегулирование (overshoot)
-- Время установления (settling time)
-- Степень затухания (damping degree)
-- Статическую ошибку (static error)
-- Время нарастания (rise time)
-- Время достижения пика (peak time)
-- Интегральные критерии качества (IAE, ISE, ITAE)
-- И другие метрики для оценки качества управления
+This module contains a set of functions for calculating various quality metrics
+of transient processes in automatic control systems, including:
+- Overshoot
+- Settling time
+- Damping degree
+- Static error
+- Rise time
+- Peak time
+- Integral quality criteria (IAE, ISE, ITAE)
+- Other metrics for control quality assessment
 """
 
 from typing import Optional, Tuple
@@ -20,16 +19,15 @@ from scipy.signal import find_peaks
 
 
 def find_longest_repeating_series(numbers: list):
-    """
-    Находит самую длинную серию повторяющихся чисел в массиве.
+    """Find the longest series of repeating numbers in an array.
 
     Args:
         numbers: list
-            Массив чисел, в котором нужно найти самую длинную серию повторяющихся чисел.
+            Array of numbers in which to find the longest series of repeating numbers.
 
     Returns:
-        tuple: Кортеж вида (начало, конец), представляющий самую длинную серию повторяющихся чисел.
-               Если массив пустой, возвращает (0, 0).
+        tuple: Tuple of the form (start, end) representing the longest series of repeating numbers.
+               If the array is empty, returns (0, 0).
     """
     if len(numbers) == 0:
         return (0, 0)
@@ -41,7 +39,7 @@ def find_longest_repeating_series(numbers: list):
     current_series = (
         numbers[0],
         numbers[0],
-    )  # Текущая серия начинается и заканчивается первым числом
+    )  # Current series starts and ends with the first number
     max_length = 1
 
     for i in range(1, len(numbers)):
