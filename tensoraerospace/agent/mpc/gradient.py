@@ -42,10 +42,12 @@ def initialize_tensor(
             tensor = torch.full(size, (min_val + max_val) / 2, requires_grad=True)
         else:
             mean = (max_val + min_val) / 2
-            std_dev = (max_val - min_val) / 4  # 4 стандартных отклонения для охвата ~95% значений
+            std_dev = (
+                max_val - min_val
+            ) / 4  # 4 стандартных отклонения для охвата ~95% значений
             tensor = torch.normal(mean, std_dev, size, requires_grad=True)
             tensor = torch.clamp(tensor, min=min_val, max=max_val)
-    
+
     return tensor
 
 
@@ -222,7 +224,7 @@ class MPCOptimizationAgent(BaseRLModel):
             permutation = np.random.permutation(states.shape[0])
             epoch_loss = 0.0
             num_batches = 0
-            
+
             for i in range(0, states.shape[0], batch_size):
                 indices = permutation[i : i + batch_size]
                 batch_states, batch_actions, batch_next_states = (
@@ -238,7 +240,7 @@ class MPCOptimizationAgent(BaseRLModel):
                 loss = self.criterion(outputs, targets)
                 loss.backward()
                 self.system_model_optimizer.step()
-                
+
                 # Accumulate loss for epoch average
                 epoch_loss += loss.item()
                 num_batches += 1

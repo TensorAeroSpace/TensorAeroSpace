@@ -285,9 +285,11 @@ class ControlBenchmark:
             ["Перерегулирование", f'{metrics["overshoot"]:.2f}%'],
             [
                 "Время установления",
-                f'{metrics["settling_time"]:.3f}с'
-                if metrics["settling_time"]
-                else "N/A",
+                (
+                    f'{metrics["settling_time"]:.3f}с'
+                    if metrics["settling_time"]
+                    else "N/A"
+                ),
             ],
             [
                 "Время нарастания",
@@ -560,9 +562,11 @@ class ControlBenchmark:
             row = [
                 system_name[:8] + "..." if len(system_name) > 8 else system_name,
                 f'{metrics["overshoot"]:.1f}',
-                f'{metrics["settling_time"]:.2f}'
-                if metrics["settling_time"]
-                else "N/A",
+                (
+                    f'{metrics["settling_time"]:.2f}'
+                    if metrics["settling_time"]
+                    else "N/A"
+                ),
                 f'{metrics["rise_time"]:.2f}' if metrics["rise_time"] else "N/A",
                 f'{metrics["oscillation_count"]}',
                 f'{metrics["iae"]:.1f}',
@@ -738,25 +742,25 @@ class ControlBenchmark:
         overshoot_rating = (
             "Отлично"
             if metrics["overshoot"] < 5
-            else "Хорошо"
-            if metrics["overshoot"] < 15
-            else "Удовлетворительно"
-            if metrics["overshoot"] < 25
-            else "Плохо"
+            else (
+                "Хорошо"
+                if metrics["overshoot"] < 15
+                else "Удовлетворительно" if metrics["overshoot"] < 25 else "Плохо"
+            )
         )
         settling_rating = (
             "Быстро"
             if metrics["settling_time"] and metrics["settling_time"] < 2
-            else "Средне"
-            if metrics["settling_time"] and metrics["settling_time"] < 5
-            else "Медленно"
+            else (
+                "Средне"
+                if metrics["settling_time"] and metrics["settling_time"] < 5
+                else "Медленно"
+            )
         )
         error_rating = (
             "Минимальная"
             if abs(metrics["static_error"]) < 0.01
-            else "Малая"
-            if abs(metrics["static_error"]) < 0.05
-            else "Значительная"
+            else "Малая" if abs(metrics["static_error"]) < 0.05 else "Значительная"
         )
 
         report += f"""
