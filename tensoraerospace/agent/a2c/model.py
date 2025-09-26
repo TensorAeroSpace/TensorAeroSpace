@@ -117,13 +117,13 @@ class Actor(nn.Module):
         self.register_parameter("logstds", logstds_param)
 
     def forward(self, X):
-        """Прямой проход через сеть актора.
+        """Forward pass through actor network.
 
         Args:
-            X (torch.Tensor): Входные состояния.
+            X (torch.Tensor): Input states.
 
         Returns:
-            torch.distributions.Normal: Нормальное распределение действий.
+            torch.distributions.Normal: Normal distribution of actions.
         """
         means = self.model(X)
         stds = torch.clamp(self.logstds.exp(), 1e-3, 50)
@@ -131,25 +131,25 @@ class Actor(nn.Module):
 
 
 class Critic(nn.Module):
-    """Нейронная сеть критика для алгоритма A2C.
+    """Critic neural network for A2C algorithm.
 
-    Критик оценивает ценность состояний, предсказывая ожидаемую
-    суммарную награду из данного состояния.
+    Critic evaluates state values, predicting expected
+    cumulative reward from given state.
 
     Args:
-        state_dim (int): Размерность пространства состояний.
-        activation: Функция активации для скрытых слоев. По умолчанию nn.Tanh.
+        state_dim (int): State space dimension.
+        activation: Activation function for hidden layers. Defaults to nn.Tanh.
 
     Attributes:
-        model (nn.Sequential): Основная нейронная сеть.
+        model (nn.Sequential): Main neural network.
     """
 
     def __init__(self, state_dim, activation=nn.Tanh):
-        """Инициализирует критика.
+        """Initialize critic.
 
         Args:
-            state_dim (int): Размерность пространства состояний.
-            activation: Функция активации для скрытых слоев.
+            state_dim (int): State space dimension.
+            activation: Activation function for hidden layers.
         """
         super().__init__()
         self.model = nn.Sequential(
@@ -161,13 +161,13 @@ class Critic(nn.Module):
         )
 
     def forward(self, X):
-        """Прямой проход через сеть критика.
+        """Forward pass through critic network.
 
         Args:
-            X (torch.Tensor): Входные состояния.
+            X (torch.Tensor): Input states.
 
         Returns:
-            torch.Tensor: Оценки ценности состояний.
+            torch.Tensor: State value estimates.
         """
         return self.model(X)
 

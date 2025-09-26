@@ -86,15 +86,15 @@ class Critic(nn.Module):
 class Actor(nn.Module):
     def __init__(self, input_dim: int, out_dim: int, hidden_dim: int = 32):
         """
-        Инициализирует класс Actor, который является подклассом nn.Module.
+        Initialize Actor class, which is a subclass of nn.Module.
 
         Args:
-            input_dim (int): Размер входного слоя.
-            out_dim (int): Размер выходного слоя.
-            hidden_dim (int, optional): Размер скрытого слоя. По умолчанию равен 32.
+            input_dim (int): Input layer size.
+            out_dim (int): Output layer size.
+            hidden_dim (int, optional): Hidden layer size. Defaults to 32.
 
-        Инициализирует линейные слои для расчета промежуточных представлений и параметров действий.
-        Использует пользовательские функции init_layer_uniform для инициализации слоев `mu` и `delta`.
+        Initialize linear layers for calculating intermediate representations and action parameters.
+        Uses custom init_layer_uniform functions to initialize `mu` and `delta` layers.
         """
         super(Actor, self).__init__()
         self.d1 = nn.Linear(input_dim, hidden_dim)
@@ -114,18 +114,18 @@ class Actor(nn.Module):
         continous_actions: bool = False,
     ) -> Any:
         """
-        Производит прямой проход через модель, вычисляя действия агента на основе входных данных.
+        Perform forward pass through model, computing agent actions based on input data.
 
         Args:
-            input_data (Tensor): Входные данные для модели.
-            return_reward (bool, optional): Флаг, указывающий, следует ли возвращать вознаграждение. По умолчанию False.
-            continous_actions (bool, optional): Флаг, указывающий, должны ли действия быть непрерывными. По умолчанию False.
+            input_data (Tensor): Input data for model.
+            return_reward (bool, optional): Flag indicating whether to return reward. Defaults to False.
+            continous_actions (bool, optional): Flag indicating whether actions should be continuous. Defaults to False.
 
         Returns:
             Union[Tuple[torch.Tensor, torch.distributions.Normal], Tuple[torch.Tensor, torch.distributions.Normal, torch.Tensor], torch.Tensor, Tuple[torch.Tensor, torch.Tensor]]:
-            В зависимости от флагов возвращает действие, распределение (и вознаграждение, если запрошено).
-            Если continous_actions True, возвращает либо пару (action, dist), либо тройку (action, dist, r).
-            В противном случае возвращает либо действие, либо пару (action, r).
+            Depending on flags returns action, distribution (and reward if requested).
+            If continous_actions True, returns either pair (action, dist) or triple (action, dist, r).
+            Otherwise returns either action or pair (action, r).
         """
         x = F.relu(self.d1(input_data))
 
@@ -159,17 +159,17 @@ def ppo_iter(
     advantages: torch.Tensor,
     rewards: torch.Tensor,
 ):
-    """Инициализирует итератор для PPO.
+    """Initialize iterator for PPO.
 
     Args:
-        epoch (int): Количество эпох для итераций.
-        mini_batch_size (int): Размер мини-батча для каждой итерации.
-        states (torch.Tensor): Тензор состояний.
-        actions (torch.Tensor): Тензор действий.
-        log_probs (torch.Tensor): Тензор логарифмов вероятностей действий.
-        returns (torch.Tensor): Тензор ожидаемых доходов.
-        advantages (torch.Tensor): Тензор преимуществ.
-        rewards (torch.Tensor): Тензор наград.
+        epoch (int): Number of epochs for iterations.
+        mini_batch_size (int): Mini-batch size for each iteration.
+        states (torch.Tensor): States tensor.
+        actions (torch.Tensor): Actions tensor.
+        log_probs (torch.Tensor): Action log probabilities tensor.
+        returns (torch.Tensor): Expected returns tensor.
+        advantages (torch.Tensor): Advantages tensor.
+        rewards (torch.Tensor): Rewards tensor.
     """
     batch_size = states.size(0)
     for _ in range(epoch):
