@@ -1,5 +1,5 @@
 # Combine updates, installations, and clean-up into a single layer to reduce image size
-FROM nvidia/cuda:12.1.0-cudnn8-devel-ubuntu22.04
+FROM nvidia/cuda:12.2.2-cudnn8-devel-ubuntu22.04
 
 # Combine updates, installations, and clean-up into a single layer to reduce image size
 RUN apt-get update && \
