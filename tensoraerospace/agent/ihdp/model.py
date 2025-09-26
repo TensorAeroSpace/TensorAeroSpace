@@ -6,17 +6,17 @@ from .Incremental_model import IncrementalModel
 
 
 class IHDPAgent(object):
-    """IHDP Агент управления
+    """IHDP Control Agent.
 
     Args:
-        actor_settings (dict): Настройки Actor
-        critic_settings (dict): Настройки Critic
-        incremental_settings (dict): Настройки инкрементальной модели
-        tracking_states (_type_): Отслеживаемые состояния
-        selected_states (_type_): Выбранные состояния
-        selected_input (_type_): Выбранные входные сигналы
-        number_time_steps (_type_): Количество временных шагов
-        indices_tracking_states (_type_): Индекс отслеживаемых состояний
+        actor_settings (dict): Actor settings.
+        critic_settings (dict): Critic settings.
+        incremental_settings (dict): Incremental model settings.
+        tracking_states: Tracked states.
+        selected_states: Selected states.
+        selected_input: Selected input signals.
+        number_time_steps: Number of time steps.
+        indices_tracking_states: Index of tracked states.
     """
 
     def __init__(
