@@ -51,7 +51,7 @@ def find_longest_repeating_series(numbers: list):
                 longest_series = current_series
             current_series = (numbers[i], numbers[i])
 
-    # Проверяем последнюю текущую серию после завершения цикла
+    # Check the last current series after loop completion
     if current_series[1] - current_series[0] + 1 > max_length:
         longest_series = current_series
 
@@ -62,27 +62,27 @@ def find_step_function(
     control_signal: np.ndarray, system_signal: np.ndarray, signal_val: float = 0
 ) -> Tuple[np.ndarray, np.ndarray]:
     """
-    Находит функцию перехода системы управления на основе сигналов управления и системы.
+    Find control system step function based on control and system signals.
 
     Args:
         control_signal: numpy.ndarray
-            Сигнал управления системы.
+            System control signal.
         system_signal: numpy.ndarray
-            Сигнал системы, на которую воздействует управление.
+            System signal that is affected by control.
         signal_val: float, optional (default: 0)
-            Значение сигнала, с которого начинается функция перехода.
+            Signal value from which the step function begins.
 
     Returns:
-        Tuple[numpy.ndarray, numpy.ndarray]: Кортеж из двух массивов: обновленный сигнал управления и сигнал системы.
+        Tuple[numpy.ndarray, numpy.ndarray]: Tuple of two arrays: updated control signal and system signal.
     """
     if len(control_signal) != len(system_signal):
         raise ValueError(
-            "Массивы control_signal и system_signal должны иметь одинаковую длину."
+            "Arrays control_signal and system_signal must have the same length."
         )
 
     indices = np.where(control_signal > signal_val)[0]
     if len(indices) == 0:
-        # Если нет значений больше signal_val, возвращаем исходные массивы
+        # If there are no values greater than signal_val, return original arrays
         return control_signal, system_signal
     index_where_step_signal_start = indices[0]
     control_signal = control_signal[index_where_step_signal_start:]
@@ -92,7 +92,7 @@ def find_step_function(
 
 def overshoot(control_signal: np.ndarray, system_signal: np.ndarray) -> float:
     """
-    Рассчитывает перерегулирование системы управления на основе сигналов управления и системы.
+    Calculate control system overshoot based on control and system signals.
 
     Args:
         control_signal: numpy.ndarray
