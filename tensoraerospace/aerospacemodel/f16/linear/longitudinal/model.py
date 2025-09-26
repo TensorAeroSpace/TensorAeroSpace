@@ -9,43 +9,43 @@ from tensoraerospace.aerospacemodel.base import ModelBase
 
 
 class LongitudinalF16(ModelBase):
-    """Линеаризованная продольная динамика F‑16 в пространстве состояний.
+    """Linearized longitudinal F-16 dynamics in state space.
 
-    Модель описывает продольный канал ЛА с входом по отклонению стабилизатора и
-    выходами по углам/скоростям. Матрицы состояния загружаются из подготовленных
-    файлов Matlab и редуцируются до выбранных переменных, после чего система
-    дискретизируется с шагом ``dt``.
+    The model describes the longitudinal channel of the aircraft with input via stabilizer
+    deflection and outputs via angles/velocities. State matrices are loaded from prepared
+    Matlab files and reduced to selected variables, then the system is discretized
+    with step ``dt``.
 
-    Состояния (порядок internal-модели):
-      - ``theta`` — тангаж [рад]
-      - ``alpha`` — угол атаки [рад]
-      - ``q`` — угловая скорость по тангажу [рад/с]
-      - ``ele`` — положение руля высоты [рад]
+    States (internal-model order):
+        theta: pitch [rad]
+        alpha: angle of attack [rad]
+        q: pitch angular velocity [rad/s]
+        ele: elevator position [rad]
 
-    Управление:
-      - ``ele`` — отклонение стабилизатора [рад]
+    Control:
+        ele: stabilizer deflection [rad]
 
     Args:
-        x0 (np.ndarray | list[float]): Начальное состояние модели в порядке
-            internal-модели (см. список выше).
-        number_time_steps (int): Количество шагов моделирования.
-        selected_state_output (list[str] | None): Имена состояний, которые
-            возвращаются наружу (редуцированный вектор состояний). Если ``None``,
-            возвращается полный вектор internal-модели.
-        t0 (float): Начальное время, сек.
-        dt (float): Шаг дискретизации, сек.
+        x0 (np.ndarray | list[float]): Initial model state in internal-model order
+            (see list above).
+        number_time_steps (int): Number of simulation steps.
+        selected_state_output (list[str] | None): Names of states that are returned
+            externally (reduced state vector). If ``None``, full internal-model vector
+            is returned.
+        t0 (float): Initial time, sec.
+        dt (float): Discretization step, sec.
 
     Attributes:
-        selected_states (list[str]): Список состояний internal-модели.
-        selected_output (list[str]): Список выходов.
-        selected_input (list[str]): Список управляющих воздействий.
-        input_magnitude_limits (list[float]): Ограничения по величине управления.
-        input_rate_limits (list[float]): Ограничения по скорости изменения управления.
-        A, B, C, D (np.ndarray | None): Непрерывные матрицы исходной системы.
-        filt_A, filt_B, filt_C, filt_D (np.ndarray | None): Отфильтрованные и
-            дискретизованные матрицы редуцированной системы.
-        store_states, store_input, store_outputs (np.ndarray): История состояний,
-            входов и выходов за горизонт моделирования.
+        selected_states (list[str]): List of internal-model states.
+        selected_output (list[str]): List of outputs.
+        selected_input (list[str]): List of control inputs.
+        input_magnitude_limits (list[float]): Control magnitude limits.
+        input_rate_limits (list[float]): Control rate limits.
+        A, B, C, D (np.ndarray | None): Continuous matrices of original system.
+        filt_A, filt_B, filt_C, filt_D (np.ndarray | None): Filtered and
+            discretized matrices of reduced system.
+        store_states, store_input, store_outputs (np.ndarray): History of states,
+            inputs and outputs over simulation horizon.
 
     Notes:
         - Матрицы загружаются из каталога ``../data`` относительно файла модели.
