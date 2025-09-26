@@ -96,21 +96,21 @@ def overshoot(control_signal: np.ndarray, system_signal: np.ndarray) -> float:
 
     Args:
         control_signal: numpy.ndarray
-            Сигнал управления системы.
+            System control signal.
         system_signal: numpy.ndarray
-            Сигнал системы, на которую воздействует управление.
+            System signal that is affected by control.
 
     Returns:
-        float: Значение перерегулирования в процентах.
+        float: Overshoot value in percent.
 
     """
-    # Предполагаем, что установившееся значение - это среднее значение последних 10% отклика системы
+    # Assume steady-state value is the average value of last 10% of system response
     y_final = np.mean(control_signal[int(0.9 * len(control_signal)) :])
 
-    # Максимальное значение функции отклика системы
+    # Maximum value of system response function
     M = np.max(system_signal)
 
-    # Расчет перерегулирования
+    # Overshoot calculation
     output = (M - y_final) / y_final * 100
 
     return output
@@ -120,39 +120,39 @@ def settling_time(
     control_signal: np.ndarray, system_signal: np.ndarray, threshold: float = 0.05
 ) -> Optional[int]:
     """
-    Рассчитывает время установления системы управления на основе сигналов управления и системы.
+    Calculate control system settling time based on control and system signals.
 
     Args:
         control_signal: numpy.ndarray
-            Сигнал управления системы.
+            System control signal.
         system_signal: numpy.ndarray
-            Сигнал системы, на которую воздействует управление.
+            System signal that is affected by control.
         threshold: float, optional (default: 0.05)
-            Пороговое значение относительного отклонения для определения диапазона установившегося значения.
+            Threshold value of relative deviation for determining steady-state value range.
 
     Returns:
-        Optional[int]: Время установления системы в индексах массива system_signal. Если система не достигла установившегося значения в заданном пороговом диапазоне, возвращается None.
+        Optional[int]: System settling time in system_signal array indices. If system did not reach steady-state value in given threshold range, returns None.
     """
-    # Предполагаем, что установившееся значение - это среднее значение последних 10% отклика системы
+    # Assume steady-state value is the average value of last 10% of system response
     y_final = np.mean(control_signal[int(0.9 * len(control_signal)) :])
 
-    # Определяем границы диапазона в пределах установившегося значения
+    # Define range boundaries within steady-state value
     lower_bound = y_final * (1 - threshold)
     upper_bound = y_final * (1 + threshold)
 
-    # Находим индексы, где сигнал впервые входит в этот диапазон
+    # Find indices where signal first enters this range
     within_range_indices = np.where(
         (system_signal >= lower_bound) & (system_signal <= upper_bound)
     )[0]
 
-    # Если сигнал никогда не входит в диапазон, возвращаем все время моделирования
+    # If signal never enters range, return entire simulation time
     if len(within_range_indices) == 0:
         return len(system_signal)
 
-    # Получаем самую длинную серию
+    # Get longest series
     longest_series = find_longest_repeating_series(within_range_indices.tolist())
 
-    # Возвращаем начало самой длинной серии
+    # Return start of longest series
     return longest_series[0]
 
 

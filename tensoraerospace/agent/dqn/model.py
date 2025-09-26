@@ -159,14 +159,14 @@ class SumTree:
         return idx, self.tree[idx], self.transitions[trans_idx]
 
     def _retrieve(self, idx, s):
-        """Функция для поиска объекта по заданному приоритету и индексу
+        """Function for searching object by given priority and index.
 
         Args:
-            idx (int): индекс в котором в данный момент осуществляется поиск
-            s (int): приоритет по которому отсекается переход
+            idx (int): Index where search is currently performed.
+            s (int): Priority by which transition is selected.
 
         Returns:
-            idx (int): индекс найденного перехода
+            idx (int): Index of found transition.
         """
 
         left = 2 * idx + 1
@@ -180,18 +180,18 @@ class SumTree:
 
 
 class PERAgent:
-    """Агент DQN.
+    """DQN Agent.
 
     Args:
-        model (tf.keras.Model): модель глубокой Q-сети.
-        target_model (tf.keras.Model): целевая модель глубокой Q-сети.
-        env (gym.Env): среда Gym/Gymnasium.
-        learning_rate (float, optional): скорость обучения.
-        epsilon (float, optional): вероятность исследования среды.
-        epsilon_dacay (float, optional): коэффициент уменьшения epsilon по эпизодам.
-        min_epsilon (float, optional): минимальное значение epsilon.
-        gamma (float, optional): коэффициент дисконтирования.
-        batch_size (int, optional): размер мини-батча.
+        model (tf.keras.Model): Deep Q-network model.
+        target_model (tf.keras.Model): Target deep Q-network model.
+        env (gym.Env): Gym/Gymnasium environment.
+        learning_rate (float, optional): Learning rate.
+        epsilon (float, optional): Environment exploration probability.
+        epsilon_dacay (float, optional): Epsilon reduction coefficient per episode.
+        min_epsilon (float, optional): Minimum epsilon value.
+        gamma (float, optional): Discount coefficient.
+        batch_size (int, optional): Mini-batch size.
         target_update_iter (int, optional): период обновления целевой сети (шаги).
         train_nums (int, optional): количество шагов обучения.
         buffer_size (int, optional): размер буфера повторов.
