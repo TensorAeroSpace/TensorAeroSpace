@@ -19,6 +19,7 @@ plugins:
             docstring_style: google
             heading_level: 2
             show_source: false
+            extensions: []
   - autorefs:
       resolve_closest: true
   - i18n:
@@ -45,7 +46,7 @@ plugins:
               - X15: model/x15.md
               - LSU: model/lsu.md
               - SUAV: model/suav.md
-            - Unity Environment: model/unity_env.md
+              - Unity Environment: model/unity_env.md
             - Agents:
               - IHDP:
                 - Описание: agent/ihdp.md
@@ -64,7 +65,7 @@ plugins:
                 - Metrics: benchmark/metrics.md
               - Signals: signals/signals.md
             - Examples:
-              - Environments: example/env/examples.md
+              - Environments: example/enviroment/gymnasium.md
               - IHDP: example/agent/ihdp/example_ihdp.md
               - SAC F16: example/agent/sac/example-sac-f16.md
               - Optimization: example/optimization/example_optimization.md
@@ -76,7 +77,7 @@ plugins:
                 - Simulink to Python: example/simulink/sim_pyth.md
                 - Your Simulink: example/simulink/your_sim.md
               - Unity:
-                - Unity with DQN: example/env/unity_example.md
+                - Unity with DQN: example/enviroment/unity_example.md
               - Simintech:
                 - Simintech: example/simintech/simintech.md
                 - Simintech to Python: example/simintech/simintechToPython.md
@@ -136,7 +137,7 @@ plugins:
                 - Метрики: benchmark/metrics.md
               - Сигналы: signals/signals.md
             - Примеры:
-              - Окружения: example/env/examples.md
+              - Окружения: example/enviroment/gymnasium.md
               - IHDP: example/agent/ihdp/example_ihdp.md
               - SAC F16: example/agent/sac/example-sac-f16.md
               - Оптимизация: example/optimization/example_optimization.md
@@ -148,7 +149,7 @@ plugins:
                 - Simulink в Python: example/simulink/sim_pyth.md
                 - Ваш Simulink: example/simulink/your_sim.md
               - Unity:
-                - Unity с DQN: example/env/unity_example.md
+                - Unity с DQN: example/enviroment/unity_example.md
               - Simintech:
                 - Simintech: example/simintech/simintech.md
                 - Simintech в Python: example/simintech/simintechToPython.md
@@ -187,15 +188,15 @@ theme:
   favicon: logo.png
 
 extra:
-  static:
-    - assets
   alternate:
     - name: English
       lang: en
-      link: .
+      link: /en/
     - name: Русский
       lang: ru
-      link: ru/
+      link: /ru/
+  static:
+    - assets
 extra_javascript:
   - https://polyfill.io/v3/polyfill.min.js?features=es6
   - https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js

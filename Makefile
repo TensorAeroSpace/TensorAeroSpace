@@ -113,25 +113,25 @@ security: ## Проверить безопасность
 docs: ## Сгенерировать документацию
 	@echo "$(BLUE)Генерация документации...$(RESET)"
 	poetry run docstr-coverage tensoraerospace --skip-magic --skip-init --fail-under=70
-	cd docs && poetry run make html
+	poetry run mkdocs build
 
-build_docs: ## Собрать документацию (legacy)
-	cd docs && poetry run make html
+build_docs: ## Собрать документацию (MkDocs)
+	poetry run mkdocs build
 
 check_doc_quality: ## Проверить качество документации (legacy)
 	poetry run docstr-coverage ./tensoraerospace --skip-magic --skip-init --skip-file-doc  --fail-under=90.0
 
-docs-serve: ## Запустить сервер документации
-	@echo "$(BLUE)Запуск сервера документации...$(RESET)"
-	cd docs/_build/html && python -m http.server 8000
+docs-serve: ## Запустить сервер документации (MkDocs)
+	@echo "$(BLUE)MkDocs: serve http://127.0.0.1:8000$(RESET)"
+	poetry run mkdocs serve
 
 mkdocs-serve: ## Запустить MkDocs сервер (docs_new)
 	@echo "$(BLUE)MkDocs: serve http://127.0.0.1:8000$(RESET)"
-	mkdocs serve
+	poetry run mkdocs serve
 
 mkdocs-build: ## Собрать MkDocs сайт (docs_new/site)
 	@echo "$(BLUE)MkDocs: build$(RESET)"
-	mkdocs build
+	poetry run mkdocs build
 
 mkdocs-clean: ## Очистить MkDocs сборку
 	@echo "$(BLUE)MkDocs: clean$(RESET)"

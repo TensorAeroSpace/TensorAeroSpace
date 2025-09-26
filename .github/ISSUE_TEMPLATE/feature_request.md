@@ -1,42 +1,41 @@
 ---
-name: ✨ Запрос новой функции
-about: Предложить идею для этого проекта
+name: ✨ Feature request
+about: Suggest an idea for this project
 title: '[FEATURE] '
 labels: ['enhancement', 'needs-triage']
 assignees: ['asmazaev']
 
 ---
 
-## 🚀 Описание функции
-Краткое описание того, что вы хотите добавить.
+## 🚀 Summary
+Briefly describe the feature you would like to add.
 
-## 💡 Мотивация
-Связана ли ваша функция с проблемой? Пожалуйста, опишите.
-Краткое и понятное описание того, в чем проблема. Например: Я всегда расстраиваюсь, когда [...]
+## 💡 Motivation
+Is your feature request related to a problem? Please describe.
 
-## 📋 Подробное описание
-Краткое и понятное описание того, что вы хотите.
+## 📋 Detailed description
+Describe the solution you'd like, including any constraints or preferences.
 
-## 🎯 Альтернативы
-Краткое и понятное описание любых альтернативных решений или функций, которые вы рассматривали.
+## 🎯 Alternatives considered
+Describe any alternative solutions or features you've considered.
 
-## 📝 Дополнительный контекст
-Добавьте любой другой контекст или скриншоты о запросе функции здесь.
+## 🔧 Proposed implementation (optional)
+If you have ideas on how this could be implemented, outline them here.
 
-## 🔧 Предлагаемая реализация
-Если у вас есть идеи о том, как это можно реализовать, опишите их здесь.
+## 📝 Additional context
+Add any other context or screenshots about the feature request here.
 
-## ✅ Чек-лист
-- [ ] Я проверил, что эта функция не была уже запрошена
-- [ ] Я предоставил четкое описание функции
-- [ ] Я объяснил мотивацию для этой функции
-- [ ] Я рассмотрел альтернативы
+## ✅ Checklist
+- [ ] I searched for existing feature requests
+- [ ] I provided a clear description of the feature
+- [ ] I explained the motivation
+- [ ] I listed alternatives
 
-## 🏷️ Тип функции
-- [ ] Новый алгоритм управления
-- [ ] Новая модель самолета/космического аппарата
-- [ ] Улучшение существующего функционала
-- [ ] Новая среда симуляции
-- [ ] Улучшение документации
-- [ ] Улучшение производительности
-- [ ] Другое (опишите)
+## 🏷️ Feature type (select all that apply)
+- [ ] New control algorithm
+- [ ] New aircraft/spacecraft model
+- [ ] Improve existing functionality
+- [ ] New simulation environment
+- [ ] Documentation improvements
+- [ ] Performance improvements
+- [ ] Other (please describe)
