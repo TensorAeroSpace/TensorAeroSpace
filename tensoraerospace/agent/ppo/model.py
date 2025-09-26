@@ -1,9 +1,8 @@
-"""
-Модуль реализации алгоритма Proximal Policy Optimization (PPO).
+"""Proximal Policy Optimization (PPO) algorithm implementation module.
 
-Этот модуль содержит реализацию алгоритма PPO для обучения с подкреплением,
-включая нейронные сети актора и критика, функции для итерации по батчам
-и основной класс агента PPO для управления аэрокосмическими системами.
+This module contains the PPO algorithm implementation for reinforcement learning,
+including actor and critic neural networks, batch iteration functions
+and the main PPO agent class for aerospace system control.
 """
 
 import datetime
@@ -27,17 +26,16 @@ from ..base import (
 
 
 def init_layer_uniform(layer: nn.Linear, init_w: float = 3e-3) -> nn.Linear:
-    """
-    Инициализирует веса и смещения (биасы) слоя с помощью равномерного распределения.
+    """Initialize layer weights and biases using uniform distribution.
 
     Args:
-        layer (nn.Linear): Слой нейронной сети, который будет инициализирован.
-        init_w (float, optional): Половина интервала для равномерного распределения. По умолчанию 3e-3.
+        layer (nn.Linear): Neural network layer to be initialized.
+        init_w (float, optional): Half interval for uniform distribution. Defaults to 3e-3.
 
     Returns:
-        nn.Linear: Слой с инициализированными весами и смещениями.
+        nn.Linear: Layer with initialized weights and biases.
 
-    Примеры:
+    Examples:
         >>> layer = nn.Linear(10, 5)
         >>> init_layer_uniform(layer)
         Linear(in_features=10, out_features=5, bias=True)
