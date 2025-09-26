@@ -94,7 +94,7 @@ class LongitudinalX15(ModelBase):
         self.initialise_system(x0, number_time_steps)
 
     def import_linear_system(self):
-        """Сохраненные линеаризованные матрицы"""
+        """Saved linearized matrices"""
         self.A = np.array(
             [
                 [-0.0087, -0.0190, 0, -32.174],
@@ -125,11 +125,11 @@ class LongitudinalX15(ModelBase):
         )
 
     def initialise_system(self, x0, number_time_steps):
-        """Инициализация системы
+        """System initialization.
 
         Args:
-            x0 (_type_): Начальное состояние объекта управления
-            number_time_steps (_type_): количество временных шагов в итерации
+            x0: Initial state of the control object.
+            number_time_steps: Number of time steps in iteration.
         """
 
         # Import the stored system

@@ -59,15 +59,15 @@ def constant_line(tp: np.ndarray, value_state: float = 2) -> np.ndarray:
 def sinusoid_vertical_shift(
     tp: np.ndarray, frequency: float, amplitude: float, vertical_shift: float = 0.0
 ) -> np.ndarray:
-    """Синусоидальный сигнал с вертикальным сдвигом
+    """Sinusoidal signal with vertical shift.
 
     Args:
-        tp (np.ndarray): Временной промежуток
-        frequency (float): Частота волны
-        amplitude (float): Амплитуда волны
-        vertical_shift (float): Вертикальный сдвиг волны по умолчанию равен 0.0
+        tp (np.ndarray): Time period.
+        frequency (float): Wave frequency.
+        amplitude (float): Wave amplitude.
+        vertical_shift (float): Vertical wave shift, defaults to 0.0.
 
     Returns:
-        np.ndarray: Синусоидальный сигнал, колеблющийся между значениями (vertical_shift + amplitude) и (vertical_shift - amplitude)
+        np.ndarray: Sinusoidal signal oscillating between (vertical_shift + amplitude) and (vertical_shift - amplitude).
     """
     return amplitude * np.sin(2 * np.pi * frequency * tp) + vertical_shift
