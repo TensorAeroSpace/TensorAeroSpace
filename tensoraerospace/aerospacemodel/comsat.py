@@ -1,15 +1,14 @@
-"""
-Модель спутника связи для продольного канала управления.
+"""Communication satellite model for longitudinal control channel.
 
-Этот модуль содержит линеаризованную модель спутника связи для анализа
-и управления орбитальным движением. Модель включает три состояния:
-отношение высоты к радиусу Земли, позицию спутника и угловую скорость вращения.
+This module contains a linearized communication satellite model for analysis
+and control of orbital motion. The model includes three states:
+altitude to Earth radius ratio, satellite position and angular rotation velocity.
 
-Основные компоненты:
-- ComSat: Класс модели спутника связи в продольном канале
-- Линеаризованные матрицы состояния A, B, C, D для орбитальной динамики
-- Ограничения на управляющие воздействия (тяга двигателя)
-- Методы для симуляции орбитального движения и управления ориентацией
+Main components:
+    - ComSat: Communication satellite model class in longitudinal channel
+    - Linearized state matrices A, B, C, D for orbital dynamics
+    - Control input constraints (engine thrust)
+    - Methods for orbital motion simulation and attitude control
 """
 
 import matplotlib.pyplot as plt
@@ -25,34 +24,41 @@ from tensoraerospace.aerospacemodel.utils.constant import (
 
 
 class ComSat(ModelBase):
-    """
-    Спутник связи в продольном канале управления
-
+    """Communication satellite in longitudinal control channel.
 
     Args:
-        x0 (_type_): Начальное состояние объекта управления
-        number_time_steps (_type_): Количество временных шагов
-        selected_state_output (_type_, optional): Выбранные состояние объекта управления. Defaults to None.
-        t0 (int, optional): Начальное время. Defaults to 0.
-        dt (float, optional): Частота дискретизации. Defaults to 0.01.
+        x0: Initial state of the control object.
+        number_time_steps: Number of time steps.
+        selected_state_output (optional): Selected states of the control object. Defaults to None.
+        t0 (int, optional): Initial time. Defaults to 0.
+        dt (float, optional): Discretization frequency. Defaults to 0.01.
 
-    Пространство действий:
-        * thrust: тяга двигателя
+    Action space:
+        thrust: engine thrust
 
-    Пространство состояний:
-        * rho - отношение высоты полета к радиусу ЗЕмли
-        * theta - позиция спутника относительно земносй системы координат [рад]
-        * omega - угловая скорость вращения спутника [рад/с]
+    State space:
+        rho: ratio of flight altitude to Earth radius
+        theta: satellite position relative to Earth coordinate system [rad]
+        omega: satellite angular rotation velocity [rad/s]
 
-    Пространство выхода:
-        * rho - отношение высоты полета к радиусу ЗЕмли
-        * theta - позиция спутника относительно земносй системы координат [рад]
-        * omega - угловая скорость вращения спутника [рад/с]
+    Output space:
+        rho: ratio of flight altitude to Earth radius
+        theta: satellite position relative to Earth coordinate system [rad]
+        omega: satellite angular rotation velocity [rad/s]
     """
 
     def __init__(
         self, x0, number_time_steps, selected_state_output=None, t0=0, dt: float = 0.01
     ):
+        """Initialize ComSat instance.
+
+        Args:
+            x0: Initial state of the control object.
+            number_time_steps: Number of time steps.
+            selected_state_output: Selected states of the control object. Defaults to None.
+            t0: Initial time. Defaults to 0.
+            dt: Discretization frequency. Defaults to 0.01.
+        """
         super().__init__(x0, selected_state_output, t0, dt)
 
         self.discretisation_time = dt
