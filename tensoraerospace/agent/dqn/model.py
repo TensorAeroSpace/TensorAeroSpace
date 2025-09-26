@@ -14,11 +14,11 @@ from typing import Any, Tuple, Union
 
 
 class Model(tf.keras.Model):
-    """Нейросеть для глубокой Q нейросети. Принимает на вход количество действий. Содержит методы для инициализации,
-    forward и выбора действия.
+    """Neural network for deep Q network. Takes the number of actions as input. Contains methods for initialization,
+    forward pass and action selection.
 
     Args:
-        num_actions (int): количество действий
+        num_actions (int): Number of actions.
     """
 
     def __init__(self, num_actions: int) -> None:
@@ -28,13 +28,13 @@ class Model(tf.keras.Model):
         self.logits = kl.Dense(num_actions, name="q_values")
 
     def predict(self, inputs: np.ndarray) -> np.ndarray:
-        """Функция forward. Возвращает q функции для действий.
+        """Forward function. Returns q functions for actions.
 
         Args:
-            inputs (_type_): батч входных данных
+            inputs: Batch of input data.
 
         Returns:
-            x (_type_): батч векторов Q функций для действий
+            x: Batch of Q function vectors for actions.
         """
 
         x = self.fc1(inputs)

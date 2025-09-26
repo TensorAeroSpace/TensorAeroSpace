@@ -37,6 +37,15 @@ class MissileModel(ModelBase):
     def __init__(
         self, x0, number_time_steps, selected_state_output=None, t0=0, dt: float = 0.01
     ):
+        """Initialize MissileModel instance.
+
+        Args:
+            x0: Initial state of the control object.
+            number_time_steps: Number of time steps.
+            selected_state_output: Selected states of the control object. Defaults to None.
+            t0: Initial time. Defaults to 0.
+            dt: Discretization frequency. Defaults to 0.01.
+        """
         super().__init__(x0, selected_state_output, t0, dt)
 
         self.discretisation_time = dt
@@ -148,13 +157,13 @@ class MissileModel(ModelBase):
         )
 
     def run_step(self, ut_0: np.ndarray) -> np.ndarray:
-        """Выполняет один временной шаг итерации.
+        """Execute one time step iteration.
 
         Args:
-            ut_0 (np.ndarray): Вектор управления
+            ut_0 (np.ndarray): Control vector.
 
         Returns:
-            xt1 (np.ndarray): Состояние объекта управления на шаге t+1
+            xt1 (np.ndarray): Control object state at step t+1.
         """
         if self.time_step != 0:
             ut_1 = self.store_input[:, self.time_step - 1]

@@ -48,6 +48,14 @@ class ModelBase:
     """
 
     def __init__(self, x0, selected_state_output=None, t0=0, dt: float = 0.01):
+        """Initialize ModelBase instance.
+
+        Args:
+            x0: Initial state.
+            selected_state_output: Selected states for working with the system.
+            t0: Initial time. Defaults to 0.
+            dt: Discretization step. Defaults to 0.01.
+        """
         # Массивы с историей
         self.u_history = []
         self.x_history = []
