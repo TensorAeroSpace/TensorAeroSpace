@@ -745,7 +745,7 @@ class ControlBenchmark:
             else (
                 "Хорошо"
                 if metrics["overshoot"] < 15
-                else "Удовлетворительно" if metrics["overshoot"] < 25 else "Плохо"
+                else ("Удовлетворительно" if metrics["overshoot"] < 25 else "Плохо")
             )
         )
         settling_rating = (
@@ -760,7 +760,7 @@ class ControlBenchmark:
         error_rating = (
             "Минимальная"
             if abs(metrics["static_error"]) < 0.01
-            else "Малая" if abs(metrics["static_error"]) < 0.05 else "Значительная"
+            else ("Малая" if abs(metrics["static_error"]) < 0.05 else "Значительная")
         )
 
         report += f"""
