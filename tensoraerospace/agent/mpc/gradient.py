@@ -82,16 +82,16 @@ class Net(nn.Module):
 
 class MPCOptimizationAgent(BaseRLModel):
     """
-    Агент, использующий метод Модельно-Прогностического Управления (MPC) для оптимизации действий в среде.
+    Agent using Model Predictive Control (MPC) method for action optimization in environment.
 
     Attributes:
-        gamma (float): Коэффициент дисконтирования.
-        action_dim (int): Размерность пространства действий.
-        observation_dim (int): Размерность пространства наблюдений.
-        model (torch.nn.Module): Модель для аппроксимации динамики среды.
-        cost_function (callable): Функция стоимости, используемая для оценки действий.
-        lr (float): Скорость обучения для оптимизатора модели.
-        criterion (torch.nn.modules.loss): Критерий потерь для обучения модели.
+        gamma (float): Discount coefficient.
+        action_dim (int): Action space dimension.
+        observation_dim (int): Observation space dimension.
+        model (torch.nn.Module): Model for environment dynamics approximation.
+        cost_function (callable): Cost function used for action evaluation.
+        lr (float): Learning rate for model optimizer.
+        criterion (torch.nn.modules.loss): Loss criterion for model training.
     """
 
     def __init__(
@@ -139,7 +139,7 @@ class MPCOptimizationAgent(BaseRLModel):
         batch_size: int = 64,
     ) -> None:
         """
-        Обучает трансформерную модель динамики системы, используя данные о состояниях, действиях и следующих состояниях.
+        Train transformer model of system dynamics using data about states, actions and next states.
 
         Args:
             states (numpy.ndarray): Массив текущих состояний.

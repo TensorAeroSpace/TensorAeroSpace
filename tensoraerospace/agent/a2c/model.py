@@ -173,15 +173,15 @@ class Critic(nn.Module):
 
 
 def discounted_rewards(rewards, dones, gamma):
-    """Вычисляет дисконтированные награды для эпизода.
+    """Calculate discounted rewards for episode.
 
     Args:
-        rewards (list): Список наград за каждый шаг.
-        dones (list): Список флагов завершения эпизода.
-        gamma (float): Коэффициент дисконтирования.
+        rewards (list): List of rewards for each step.
+        dones (list): List of episode termination flags.
+        gamma (float): Discount coefficient.
 
     Returns:
-        list: Список дисконтированных наград.
+        list: List of discounted rewards.
     """
     ret = 0
     discounted = []
@@ -193,15 +193,15 @@ def discounted_rewards(rewards, dones, gamma):
 
 
 def process_memory(memory, gamma=0.99, discount_rewards=True):
-    """Обрабатывает память опыта для обучения.
+    """Process experience memory for training.
 
     Args:
-        memory (list): Список кортежей (action, reward, state, next_state, done).
-        gamma (float): Коэффициент дисконтирования. По умолчанию 0.99.
-        discount_rewards (bool): Применять ли дисконтирование наград. По умолчанию True.
+        memory (list): List of tuples (action, reward, state, next_state, done).
+        gamma (float): Discount coefficient. Defaults to 0.99.
+        discount_rewards (bool): Whether to apply reward discounting. Defaults to True.
 
     Returns:
-        tuple: Кортеж тензоров (actions, rewards, states, next_states, dones).
+        tuple: Tuple of tensors (actions, rewards, states, next_states, dones).
     """
     actions, states, next_states, rewards, dones = [], [], [], [], []
 
