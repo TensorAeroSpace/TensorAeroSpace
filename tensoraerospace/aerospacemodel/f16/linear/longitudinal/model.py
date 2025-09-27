@@ -11,10 +11,10 @@ from tensoraerospace.aerospacemodel.base import ModelBase
 class LongitudinalF16(ModelBase):
     """Linearized longitudinal F-16 dynamics in state space.
 
-    The model describes the longitudinal channel of the aircraft with input via stabilizer
-    deflection and outputs via angles/velocities. State matrices are loaded from prepared
-    Matlab files and reduced to selected variables, then the system is discretized
-    with step ``dt``.
+    The model describes the longitudinal channel of the aircraft with input via
+    stabilizer deflection and outputs via angles/velocities. State matrices are
+    loaded from prepared MATLAB files and reduced to selected variables, then the
+    system is discretized with step ``dt``.
 
     States (internal-model order):
         theta: pitch [rad]
@@ -48,9 +48,9 @@ class LongitudinalF16(ModelBase):
             inputs and outputs over simulation horizon.
 
     Notes:
-        - Матрицы загружаются из каталога ``../data`` относительно файла модели.
-        - Дискретизация выполняется с помощью ``scipy.signal.cont2discrete``.
-        - Единицы измерения: углы и угловые скорости внутри модели — в радианах.
+        - Matrices are loaded from the ``../data`` directory relative to this file.
+        - Discretization is performed using ``scipy.signal.cont2discrete``.
+        - Units: angles and angular rates inside the model are in radians.
     """
 
     def __init__(
@@ -105,7 +105,7 @@ class LongitudinalF16(ModelBase):
         self.initialise_system(x0, number_time_steps)
 
     def import_linear_system(self) -> None:
-        """Загружает линеаризованные матрицы состояния из Matlab-файлов."""
+        """Load linearized state-space matrices from MATLAB files."""
         x = loadmat(self.folder + "/A.mat")
         self.A = x["A_lo"]
 
@@ -119,9 +119,8 @@ class LongitudinalF16(ModelBase):
         self.D = x["D_lo"]
 
     def simplify_system(self) -> None:
-        """
-        Редуцирует систему к выбранным состояниям/выходам и
-        формирует фильтрованные матрицы.
+        """Reduce the system to selected states/outputs
+        and form filtered matrices.
         """
 
         # Create dictionaries with the information from the system
@@ -151,13 +150,13 @@ class LongitudinalF16(ModelBase):
         )
 
     def create_dictionary(self, file_name: str) -> dict[str, int]:
-        """Создаёт словарь индексов по именам величин (state/input/output).
+        """Create a dictionary that maps quantity names to indices (state/input/output).
 
         Args:
-            file_name (str): Имя файла-ключа (``states``, ``input``, ``output``).
+            file_name (str): Key file name (``states``, ``input``, ``output``).
 
         Returns:
-            dict[str, int]: Отображение имени величины в индекс строки/столбца.
+            dict[str, int]: Mapping from quantity name to row/column index.
         """
         full_name = self.folder + "/keySet_" + file_name + ".txt"
         with open(full_name, "r", encoding="utf-8") as f:
@@ -166,11 +165,11 @@ class LongitudinalF16(ModelBase):
         return rows
 
     def initialise_system(self, x0: np.ndarray, number_time_steps: int) -> None:
-        """Инициализирует систему, дискретизирует и выделяет буферы истории.
+        """Initialize the system, discretize it, and allocate history buffers.
 
         Args:
-            x0 (np.ndarray): Начальное состояние.
-            number_time_steps (int): Горизонт моделирования.
+            x0 (np.ndarray): Initial state.
+            number_time_steps (int): Simulation horizon.
         """
         # Import the stored system
         self.import_linear_system()
@@ -202,13 +201,13 @@ class LongitudinalF16(ModelBase):
         )
 
     def run_step(self, ut_0: np.ndarray) -> np.ndarray:
-        """Выполняет один шаг эволюции системы с ограничениями по управлению.
+        """Perform one evolution step subject to control constraints.
 
         Args:
-            ut_0 (np.ndarray): Вектор управления на текущем шаге (рад).
+            ut_0 (np.ndarray): Control vector at the current step (rad).
 
         Returns:
-            np.ndarray: Состояние на следующем шаге ``x[t+1]``.
+            np.ndarray: Next-step state ``x[t+1]``.
         """
         if self.time_step != 0:
             ut_1 = self.store_input[:, self.time_step - 1]
@@ -265,7 +264,7 @@ class LongitudinalF16(ModelBase):
         return np.array(self.xt1)
 
     def update_system_attributes(self) -> None:
-        """Обновляет текущее состояние и внутренний таймер модели."""
+        """Update the current state and the internal model timer."""
         self.xt = self.xt1
         self.time_step += 1
 
@@ -273,17 +272,17 @@ class LongitudinalF16(ModelBase):
         self, state_name: str, to_deg: bool = False, to_rad: bool = False
     ) -> np.ndarray:
         """
-        Получить массив состояния
+        Get the state history array.
 
         Args:
-            state_name: Название состояния
-            to_deg: Конвертировать в градусы
-            to_rad: Конвертировать в радианы
+            state_name: State name.
+            to_deg: Convert to degrees.
+            to_rad: Convert to radians.
 
         Returns:
-            Массив истории выбранного состояния
+            History array of the selected state.
 
-        Пример:
+        Example:
 
         >>> state_hist = model.get_state('alpha', to_deg=True)
 
@@ -310,16 +309,16 @@ class LongitudinalF16(ModelBase):
         self, control_name: str, to_deg: bool = False, to_rad: bool = False
     ) -> np.ndarray:
         """
-        Получить массив сигнала управления
+        Get the control signal history array.
 
         Args:
-            control_name: Название сигнала управления
-            to_deg: Конвертировать в градусы
+            control_name: Name of the control signal.
+            to_deg: Convert to degrees.
 
         Returns:
-            Массив истории выбранного сигнала управления
+            History array of the selected control signal.
 
-        Пример:
+        Example:
 
         >>> state_hist = model.get_control('stab', to_deg=True)
         """
