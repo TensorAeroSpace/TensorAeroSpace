@@ -137,8 +137,8 @@ class Critic:
         self.ct = data[3]
 
     def build_critic_model(self):
-        """Функция, создающая нейронную сеть. На данный момент это плотно связанная нейронная сеть. Пользователь может
-        определять количество слоев, количество нейронов, а также функцию активации.
+        """Function creating neural network. Currently this is a densely connected neural network. User can
+        define number of layers, number of neurons, and activation function.
         """
         # initializer = tf.keras.initializers.GlorotNormal()
         initializer = tf.keras.initializers.VarianceScaling(
@@ -196,15 +196,15 @@ class Critic:
     def run_train_critic_online_adaptive_alpha(
         self, xt: np.ndarray, xt_ref: np.ndarray
     ) -> np.ndarray:
-        """Функция, которая оценивает один раз критическую нейронную сеть и возвращает значение J(xt). В то же
-        время он обучает аппроксиматор функции с адаптивной схемой скорости обучения.
+        """Function that evaluates critic neural network once and returns J(xt) value. At the same
+        time it trains function approximator with adaptive learning rate scheme.
 
         Args:
-            xt (_type_): текущее состояние временного шага
-            xt_ref (_type_): Заданное состояния текущего временного шага для вычисления одношаговой функции стоимости
+            xt: Current state of time step.
+            xt_ref: Reference state of current time step for computing one-step cost function.
 
         Returns:
-            Jt (_type_): оценка критика на текущем временном шаге
+            Jt: Critic evaluation at current time step.
         """
 
         nn_input, dJt_dW = self.compute_forward_pass(xt, xt_ref)
@@ -261,15 +261,15 @@ class Critic:
     def run_train_critic_online_adam(
         self, xt: np.ndarray, xt_ref: np.ndarray
     ) -> np.ndarray:
-        """Функция, которая оценивает один раз критическую нейронную сеть и возвращает значение J(xt). В то же
-        время, он обучает аппроксиматор функции с помощью оптимизатора Adam.
+        """Function that evaluates critic neural network once and returns J(xt) value. At the same
+        time, it trains function approximator using Adam optimizer.
 
         Args:
-            xt (_type_): текущее состояние временного шага
-            xt_ref (_type_): Заданное состояния текущего временного шага для вычисления одношаговой функции стоимости
+            xt: Current state of time step.
+            xt_ref: Reference state of current time step for computing one-step cost function.
 
         Returns:
-            Jt (_type_): оценка критика на текущем временном шаге
+            Jt: Critic evaluation at current time step.
         """
 
         # Safe the information in the replay attribute
@@ -293,8 +293,8 @@ class Critic:
         return self.Jt
 
     def adam_iteration(self, dJt_dW: list[np.ndarray], dE_dJ: np.ndarray) -> None:
-        """Адам обновляет все веса и смещения, учитывая производную функции потерь по отношению к NN.
-        выход и производная выхода нейронной сети относительно весов и смещений.
+        """Adam updates all weights and biases considering loss function derivative with respect to NN
+        output and derivative of neural network output with respect to weights and biases.
 
         Args:
             dJt_dW (_type_): производная выхода NN по весам и смещениям

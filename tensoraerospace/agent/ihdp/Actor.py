@@ -179,15 +179,15 @@ class Actor:
         self.model.load_weights(self.model_path)
 
     def create_NN(self, store_weights, seed: int) -> Tuple[KModel, dict]:
-        """Создает NN с учетом пользовательского ввода
+        """Create NN with user input.
 
         Args:
-            store_weights (_type_): словарь, содержащий веса и смещения
-            seed (_type_): Сид, для сохранения рандомных переменных
+            store_weights: Dictionary containing weights and biases.
+            seed: Seed for saving random variables.
 
         Returns:
-            model (_type_): созданная модель NN
-            store_weights (_type_): словарь, содержащий обновленные веса и смещения.
+            model: Created NN model.
+            store_weights: Dictionary containing updated weights and biases.
 
         """
 
@@ -197,14 +197,14 @@ class Actor:
         )
         model = tf.keras.Sequential()
 
-        # Определяем размерность входа на основе количества отслеживаемых состояний
+        # Determine input dimension based on number of tracked states
         input_dim = (
             len(self.indices_tracking_states)
             if hasattr(self, "indices_tracking_states")
             else 1
         )
 
-        # Создаем модель с правильной входной размерностью
+        # Create model with correct input dimension
         model.add(
             Dense(
                 self.layers[0],
@@ -244,14 +244,14 @@ class Actor:
         return model, store_weights
 
     def run_actor_online(self, xt: np.ndarray, xt_ref: np.ndarray) -> np.ndarray:
-        """Сгенерируйте ввод в систему с заданным и реальным состояниями.
+        """Generate system input with given and real states.
 
         Args:
-            xt (_type_): текущее состояние временного шага
-            xt_ref (_type_): заданное состояния текущего временного шага
+            xt: Current state of time step.
+            xt_ref: Reference state of current time step.
 
         Returns:
-            ut (_type_): ввод в систему и инкрементную модель
+            ut: Input to system and incremental model.
         """
 
         if self.cascaded_actor:
@@ -324,7 +324,7 @@ class Actor:
             self.xt = xt
             self.xt_ref = xt_ref
 
-            # Если xt уже содержит только отслеживаемые состояния, используем его напрямую
+            # If xt already contains only tracked states, use it directly
             if xt.shape[0] == len(self.indices_tracking_states):
                 tracked_states = np.reshape(xt, [-1, 1])
             else:
@@ -332,7 +332,7 @@ class Actor:
                     xt[self.indices_tracking_states, :], [-1, 1]
                 )
             xt_error = np.reshape(tracked_states - xt_ref, [-1, 1])
-            # Создаем входные данные с правильной размерностью для модели
+            # Create input data with correct dimension for model
             nn_input = tf.constant(xt_error.flatten().reshape(1, -1).astype("float32"))
 
             with tf.GradientTape() as tape:
@@ -364,7 +364,7 @@ class Actor:
                 np.reshape(-self.maximum_input, ut.shape),
             )
 
-        # Убеждаемся, что возвращаем массив, а не скаляр
+        # Ensure we return array, not scalar
         if np.isscalar(self.ut):
             return np.array([self.ut])
         return self.ut
