@@ -214,16 +214,16 @@ def get_lower_upper_bound(
     control_signal: np.ndarray, epsilon: float = 0.05
 ) -> Tuple[np.ndarray, np.ndarray]:
     """
-    Возвращает нижнюю и верхнюю границы для сигнала управления.
+    Return lower and upper bounds for control signal.
 
     Args:
         control_signal: numpy.ndarray
-            Сигнал управления системы.
+            System control signal.
         epsilon: float, optional (default: 0.05)
-            Значение для определения границ.
+            Value for determining bounds.
 
     Returns:
-        Tuple[numpy.ndarray, numpy.ndarray]: Кортеж из двух массивов: нижняя и верхняя границы для сигнала управления.
+        Tuple[numpy.ndarray, numpy.ndarray]: Tuple of two arrays: lower and upper bounds for control signal.
     """
     final_value = control_signal[-1]
     upper = np.full_like(control_signal, final_value + final_value * epsilon)
