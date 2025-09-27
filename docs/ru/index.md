@@ -173,13 +173,39 @@ hide:
 
 ```python
 import gymnasium as gym
-from tensoraerospace.envs import LinearLongitudinalF16
+import numpy as np
 
-env = gym.make('LinearLongitudinalF16-v0', number_time_steps=2000)
-state, _ = env.reset()
-for _ in range(1000):
-    action = env.action_space.sample()
-    state, reward, terminated, truncated, info = env.step(action)
+from tensoraerospace.agent.pid import PID
+from tensoraerospace.utils import generate_time_period
+from tensoraerospace.signals.standart import unit_step
+
+# Параметры симуляции
+dt = 0.01
+tp = generate_time_period(tn=10, dt=dt)  # 10 секунд
+N = len(tp)
+
+# Опорный сигнал для слежения по alpha (ступенька 5° в радианах)
+reference = unit_step(degree=5, tp=tp, time_step=100, output_rad=True).reshape(1, -1)
+
+# Создание среды F-16 (порядок состояний: [alpha, q])
+env = gym.make(
+    'LinearLongitudinalF16-v0',
+    number_time_steps=N,
+    initial_state=[[0], [0]],
+    reference_signal=reference,
+    use_reward=False,
+)
+
+# ПИД-контроллер (коэффициенты из примера PID)
+pid = PID(env, kp=-14.290139135229715, ki=-8.240470780203491, kd=-1.2991634935096958, dt=dt)
+
+obs, info = env.reset()
+for t in range(N - 1):
+    setpoint = reference[0, t]
+    alpha = float(obs[0])  # env возвращает [alpha, q]
+    u = pid.select_action(setpoint, alpha)
+    action = np.array([[float(u)]], dtype=np.float32)
+    obs, reward, terminated, truncated, info = env.step(action)
     if terminated or truncated:
         break
 ```
