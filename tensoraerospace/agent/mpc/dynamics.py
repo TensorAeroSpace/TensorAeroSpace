@@ -46,30 +46,30 @@ class DynamicsNN:
             control_dim: int, default 1
                 Control input dimension.
             state_ranges: list of tuples
-                Диапазоны значений для каждого измерения состояния.
-            control_ranges: list of tuples, опционально
-                Диапазоны значений для каждого управляющего сигнала.
+                Value ranges for each state dimension.
+            control_ranges: list of tuples, optional
+                Value ranges for each control signal.
             A: numpy.ndarray
-                Матрица состояния системы (размерности state_dim x state_dim).
+                System state matrix (dimensions state_dim x state_dim).
             B: numpy.ndarray
-                Матрица управления (размерности state_dim x control_dim).
-            control_limits: tuple, по умолчанию (-25, 25)
-                Ограничения на значения управляющих сигналов.
-            control_signals: list of str, опционально
-                Типы управляющих сигналов для генерации.
+                Control matrix (dimensions state_dim x control_dim).
+            control_limits: tuple, default (-25, 25)
+                Constraints on control signal values.
+            control_signals: list of str, optional
+                Control signal types for generation.
 
-        Возвращает:
-            tuple из трех тензоров (states, controls, next_states):
+        Returns:
+            tuple of three tensors (states, controls, next_states):
                 - states: torch.Tensor
-                    Состояния системы.
+                    System states.
                 - controls: torch.Tensor
-                    Управляющие воздействия.
+                    Control inputs.
                 - next_states: torch.Tensor
-                    Следующие состояния системы после применения управления.
+                    Next system states after applying control.
 
-        Исключения:
+        Exceptions:
             ValueError:
-                Если входные параметры не соответствуют ожидаемым требованиям.
+                If input parameters do not meet expected requirements.
         """
         if state_ranges is None:
             raise ValueError("state_ranges must be provided.")

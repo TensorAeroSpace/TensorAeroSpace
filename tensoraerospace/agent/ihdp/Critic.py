@@ -117,19 +117,19 @@ class Critic:
         self.replay = []
 
     def save_model(self):
-        """Сохранение модели"""
+        """Save model."""
         self.model.save_weights("./critic_weight.h5")
 
     def load_model(self):
-        """Загрузка весов"""
+        """Load weights."""
         self.model.load_weights(self.model_path)
 
     def save_Jt_ct(self):
-        """Сохранение оценки состояния критиком"""
+        """Save critic state evaluation."""
         np.save("./critic_jt", [self.Jt_1, self.Jt, self.ct_1, self.ct])
 
     def load_Jt_ct(self):
-        """Загрузка оценки состоянгия критиком"""
+        """Load critic state evaluation."""
         data = np.load("./critic_jt.npy", allow_pickle=True)
         self.Jt_1 = data[0]
         self.Jt = data[1]

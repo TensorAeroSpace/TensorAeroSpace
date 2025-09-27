@@ -132,8 +132,8 @@ class Actor:
         self.store_q = np.zeros((1, self.number_time_steps))
 
     def build_actor_model(self):
-        """Функция, создающая сеть Actor (актера). Это полносвязная сеть.
-        Можно определить количество слоев, количество нейронов в слою, а так же функции активации
+        """Function creating Actor network. This is a fully connected network.
+        Can define number of layers, number of neurons per layer, and activation functions.
         """
 
         # First Neural Network
@@ -158,16 +158,16 @@ class Actor:
             self.rmsprop_dict[count] = 0
 
     def save_model(self):
-        """Сохранение модели"""
+        """Save model."""
         self.model.save_weights("actor_weight.h5")
 
     def save_dut_dWb(self):
-        """Сохранение градиента"""
+        """Save gradient."""
         for i in range(len(self.dut_dWb)):
             np.save(f"./actor_dut_dWb/{i}_dut_dWb.txt", self.dut_dWb[i])
 
     def load_dut_dWb(self):
-        """Загрузка градиента"""
+        """Load gradient."""
         line = []
         for file in glob.glob("./actor_dut_dWb/*"):
             line.append(tf.constant((np.load(file, allow_pickle=True))))
@@ -175,7 +175,7 @@ class Actor:
         self.dut_dWb_1 = line
 
     def load_model(self):
-        """Загрузка весов модели"""
+        """Load model weights."""
         self.model.load_weights(self.model_path)
 
     def create_NN(self, store_weights, seed: int) -> Tuple[KModel, dict]:
