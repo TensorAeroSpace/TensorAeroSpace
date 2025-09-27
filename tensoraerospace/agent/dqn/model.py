@@ -310,10 +310,10 @@ class PERAgent:
                 obs = next_obs
 
     def train_step(self) -> Any:
-        """Функция для шага обучения
+        """Function for training step.
 
         Returns:
-            losses (float): ошибки после одного шага обучения
+            losses (float): Losses after one training step.
         """
 
         idxes, self.is_weight = self.sum_tree_sample(self.batch_size)
@@ -612,10 +612,10 @@ class PERNARXAgent:
                 obs = next_obs
 
     def train_step(self) -> Any:
-        """Функция для шага обучения
+        """Function for training step.
 
         Returns:
-            losses (float): ошибки после одного шага обучения
+            losses (float): Losses after one training step.
         """
 
         idxes, self.is_weight = self.sum_tree_sample(self.batch_size)
