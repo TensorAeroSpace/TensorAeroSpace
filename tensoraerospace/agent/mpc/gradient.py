@@ -162,39 +162,39 @@ class MPCOptimizationAgent(BaseRLModel):
                     next_states[indices],
                 )
 
-                # Объединяем состояния и действия в один тензор
+                # Combine states and actions into one tensor
                 inputs = np.hstack((batch_states, batch_actions.reshape(-1, 1)))
                 inputs = torch.tensor(inputs, dtype=torch.float32)
                 targets = torch.tensor(batch_next_states, dtype=torch.float32)
 
-                # Преобразование входных данных в форму (batch_size, sequence_length, embedding_dim)
+                # Transform input data to form (batch_size, sequence_length, embedding_dim)
                 inputs = inputs.unsqueeze(1)  # (batch_size, 1, embedding_dim)
                 inputs = inputs.transpose(
                     0, 1
                 )  # (sequence_length, batch_size, embedding_dim)
 
-                # Обнуляем градиенты
+                # Zero gradients
                 self.system_model_optimizer.zero_grad()
 
-                # Прямое распространение через модель
+                # Forward propagation through model
                 outputs = self.system_model(inputs)
 
-                # Преобразование выходных данных обратно
+                # Transform output data back
                 outputs = outputs.transpose(0, 1).squeeze(1)  # (batch_size, 2)
 
-                # Вычисляем потерю
+                # Calculate loss
                 loss = self.criterion(outputs, targets)
 
-                # Обратное распространение
+                # Backward propagation
                 loss.backward()
 
-                # Обновляем параметры модели
+                # Update model parameters
                 self.system_model_optimizer.step()
 
-                # Агрегируем потерю по батчам
+                # Aggregate loss across batches
                 epoch_loss += loss.item()
 
-            # Логгирование среднего значения потерь за эпоху
+            # Log average loss value per epoch
             avg_epoch_loss = epoch_loss / (states.shape[0] // batch_size)
             self.writer.add_scalar("Loss/train", avg_epoch_loss, epoch)
             pbar.set_description(f"Avg Loss {avg_epoch_loss:.4f}")

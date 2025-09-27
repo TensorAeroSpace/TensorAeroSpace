@@ -225,11 +225,11 @@ def process_memory(memory, gamma=0.99, discount_rewards=True):
 
 
 def clip_grad_norm_(module, max_grad_norm):
-    """Обрезает градиенты по норме для стабилизации обучения.
+    """Clip gradients by norm for training stabilization.
 
     Args:
-        module: Оптимизатор PyTorch.
-        max_grad_norm (float): Максимальная норма градиентов.
+        module: PyTorch optimizer.
+        max_grad_norm (float): Maximum gradient norm.
     """
     nn.utils.clip_grad_norm_(
         [p for g in module.param_groups for p in g["params"]], max_grad_norm
@@ -237,37 +237,37 @@ def clip_grad_norm_(module, max_grad_norm):
 
 
 class A2C(BaseRLModel):
-    """Реализация алгоритма Advantage Actor-Critic (A2C).
+    """Implementation of Advantage Actor-Critic (A2C) algorithm.
 
-    A2C - это алгоритм обучения с подкреплением, который использует
-    актора для выбора действий и критика для оценки состояний.
-    Алгоритм минимизирует потери актора и критика одновременно.
+    A2C is a reinforcement learning algorithm that uses
+    actor for action selection and critic for state evaluation.
+    Algorithm minimizes actor and critic losses simultaneously.
 
     Args:
-        env: Среда для обучения.
-        actor: Нейронная сеть актора.
-        critic: Нейронная сеть критика.
-        gamma (float): Коэффициент дисконтирования. По умолчанию 0.9.
-        entropy_beta (float): Коэффициент энтропийного бонуса. По умолчанию 0.01.
-        actor_lr (float): Скорость обучения актора. По умолчанию 4e-4.
-        critic_lr (float): Скорость обучения критика. По умолчанию 4e-3.
-        max_grad_norm (float): Максимальная норма градиентов. По умолчанию 0.5.
-        seed (int, optional): Семя для воспроизводимости результатов.
+        env: Training environment.
+        actor: Actor neural network.
+        critic: Critic neural network.
+        gamma (float): Discount coefficient. Defaults to 0.9.
+        entropy_beta (float): Entropy bonus coefficient. Defaults to 0.01.
+        actor_lr (float): Actor learning rate. Defaults to 4e-4.
+        critic_lr (float): Critic learning rate. Defaults to 4e-3.
+        max_grad_norm (float): Maximum gradient norm. Defaults to 0.5.
+        seed (int, optional): Seed for reproducible results.
 
     Attributes:
-        env: Среда для обучения.
-        state: Текущее состояние среды.
-        done (bool): Флаг завершения эпизода.
-        steps (int): Общее количество шагов.
-        episode_reward (float): Награда за текущий эпизод.
-        episode_rewards (list): История наград по эпизодам.
-        actor: Нейронная сеть актора.
-        critic: Нейронная сеть критика.
-        gamma (float): Коэффициент дисконтирования.
-        entropy_beta (float): Коэффициент энтропийного бонуса.
-        actor_optim: Оптимизатор для актора.
-        critic_optim: Оптимизатор для критика.
-        writer: TensorBoard writer для логирования.
+        env: Training environment.
+        state: Current environment state.
+        done (bool): Episode termination flag.
+        steps (int): Total number of steps.
+        episode_reward (float): Reward for current episode.
+        episode_rewards (list): Episode reward history.
+        actor: Actor neural network.
+        critic: Critic neural network.
+        gamma (float): Discount coefficient.
+        entropy_beta (float): Entropy bonus coefficient.
+        actor_optim: Actor optimizer.
+        critic_optim: Critic optimizer.
+        writer: TensorBoard writer for logging.
     """
 
     def __init__(
