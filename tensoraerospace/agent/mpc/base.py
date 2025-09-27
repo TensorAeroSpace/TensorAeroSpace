@@ -5,25 +5,24 @@ import torch
 
 
 class AircraftMPC:
-    """
-    Класс для реализации управления с использованием Model Predictive Control (MPC) для авиационных систем.
+    """Class for implementing Model Predictive Control (MPC) for aircraft systems.
 
     Attributes:
-        dynamics_model: Модель динамики системы.
-        horizon (int): Горизонт предсказания.
-        dt (float): Шаг дискретизации.
-        weights (dict): Веса для целевой функции, включающие:
-            - 'theta_tracking': Вес ошибки отслеживания.
-            - 'control_effort': Вес за управление.
-            - 'delta_control': Вес за изменение управления.
-        state_dim (int): Размерность вектора состояния.
-        control_dim (int): Размерность вектора управления.
-        u_max (float): Максимальное значение управления.
-        delta_u_max (float): Максимальное изменение управления между шагами.
-        learning_rate (float): Скорость обучения для градиентного спуска.
-        penalty_weight (float): Вес штрафной функции для ограничений.
-        iterations (int): Количество итераций оптимизации.
-        increment (float): Малое приращение для численного вычисления градиента.
+        dynamics_model: System dynamics model.
+        horizon (int): Prediction horizon.
+        dt (float): Discretization step.
+        weights (dict): Weights for objective function, including:
+            - 'theta_tracking': Tracking error weight.
+            - 'control_effort': Control effort weight.
+            - 'delta_control': Control change weight.
+        state_dim (int): State vector dimension.
+        control_dim (int): Control vector dimension.
+        u_max (float): Maximum control value.
+        delta_u_max (float): Maximum control change between steps.
+        learning_rate (float): Learning rate for gradient descent.
+        penalty_weight (float): Penalty function weight for constraints.
+        iterations (int): Number of optimization iterations.
+        increment (float): Small increment for numerical gradient computation.
     """
 
     def __init__(
@@ -45,22 +44,21 @@ class AircraftMPC:
         iterations: int = 150,
         increment: float = 1e-3,
     ) -> None:
-        """
-        Инициализация MPC контроллера.
+        """Initialize MPC controller.
 
         Args:
-            dynamics_model: Модель динамики системы.
-            horizon (int): Горизонт предсказания.
-            dt (float): Шаг дискретизации.
-            weights (dict): Веса для целевой функции.
-            state_dim (int): Размерность состояния системы.
-            control_dim (int): Размерность управления системы.
-            u_max (float): Максимальное значение управления.
-            delta_u_max (float): Максимальное изменение управления между шагами.
-            learning_rate (float): Скорость обучения для градиентного спуска.
-            penalty_weight (float): Вес штрафной функции для ограничений.
-            iterations (int): Количество итераций оптимизации.
-            increment (float): Малое приращение для численного вычисления градиента.
+            dynamics_model: System dynamics model.
+            horizon (int): Prediction horizon.
+            dt (float): Discretization step.
+            weights (dict): Objective function weights.
+            state_dim (int): System state dimension.
+            control_dim (int): System control dimension.
+            u_max (float): Maximum control value.
+            delta_u_max (float): Maximum control change between steps.
+            learning_rate (float): Learning rate for gradient descent.
+            penalty_weight (float): Penalty function weight for constraints.
+            iterations (int): Number of optimization iterations.
+            increment (float): Small increment for numerical gradient computation.
         """
         self.dynamics_model = dynamics_model
         self.horizon = horizon

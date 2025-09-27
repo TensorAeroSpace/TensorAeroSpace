@@ -19,6 +19,7 @@ hide:
     <a href="https://pypi.org/project/tensoraerospace/"><img alt="Python versions" src="https://img.shields.io/pypi/pyversions/tensoraerospace?logo=python&label=Python"></a>
     <a href="https://pypi.org/project/tensoraerospace/"><img alt="Downloads" src="https://img.shields.io/pypi/dm/tensoraerospace?label=Downloads"></a>
     <a href="https://github.com/TensorAeroSpace/TensorAeroSpace/blob/develop/LICENSE"><img alt="License" src="https://img.shields.io/badge/License-MIT-green.svg"></a>
+    <a href="https://deepwiki.com/TensorAeroSpace/TensorAeroSpace"><img alt="Ask DeepWiki" src="https://deepwiki.com/badge.svg"></a>
   </p>
 </div>
 
@@ -172,13 +173,39 @@ hide:
 
 ```python
 import gymnasium as gym
-from tensoraerospace.envs import LinearLongitudinalF16
+import numpy as np
 
-env = gym.make('LinearLongitudinalF16-v0', number_time_steps=2000)
-state, _ = env.reset()
-for _ in range(1000):
-    action = env.action_space.sample()
-    state, reward, terminated, truncated, info = env.step(action)
+from tensoraerospace.agent.pid import PID
+from tensoraerospace.utils import generate_time_period
+from tensoraerospace.signals.standart import unit_step
+
+# Simulation setup
+dt = 0.01
+tp = generate_time_period(tn=10, dt=dt)  # 10 seconds
+N = len(tp)
+
+# Reference signal for alpha tracking (5 deg step in radians)
+reference = unit_step(degree=5, tp=tp, time_step=100, output_rad=True).reshape(1, -1)
+
+# Create F-16 longitudinal environment (state order here: [alpha, q])
+env = gym.make(
+    'LinearLongitudinalF16-v0',
+    number_time_steps=N,
+    initial_state=[[0], [0]],
+    reference_signal=reference,
+    use_reward=False,
+)
+
+# PID controller (coefficients from PID example)
+pid = PID(env, kp=-14.290139135229715, ki=-8.240470780203491, kd=-1.2991634935096958, dt=dt)
+
+obs, info = env.reset()
+for t in range(N - 1):
+    setpoint = reference[0, t]
+    alpha = float(obs[0])  # env returns [alpha, q]
+    u = pid.select_action(setpoint, alpha)
+    action = np.array([[float(u)]], dtype=np.float32)
+    obs, reward, terminated, truncated, info = env.step(action)
     if terminated or truncated:
         break
 ```

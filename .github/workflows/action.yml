@@ -373,4 +373,3 @@ jobs:
           --data-binary @"$GITHUB_EVENT_PATH" \
           | tee rtd_response.json
         echo "RTD response:" && cat rtd_response.json
-

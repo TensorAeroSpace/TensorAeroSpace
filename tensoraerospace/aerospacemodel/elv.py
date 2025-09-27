@@ -9,29 +9,27 @@ from .utils.constant import state_to_latex_eng, state_to_latex_rus
 
 
 class ELVRocket(ModelBase):
-    """
-    ELV ракета в продольном канале управления
-
+    """ELV rocket in longitudinal control channel.
 
     Args:
-        x0 (_type_): Начальное состояние объекта управления
-        number_time_steps (_type_): Количество временных шагов
-        selected_state_output (_type_, optional): Выбранные состояние объекта управления. Defaults to None.
-        t0 (int, optional): Начальное время. Defaults to 0.
-        dt (float, optional): Частота дискретизации. Defaults to 0.01.
+        x0: Initial state of the control object.
+        number_time_steps: Number of time steps.
+        selected_state_output (optional): Selected states of the control object. Defaults to None.
+        t0 (int, optional): Initial time. Defaults to 0.
+        dt (float, optional): Discretization frequency. Defaults to 0.01.
 
-    Пространство действий:
-        * ele: руль высоты [град]
+    Action space:
+        ele: elevator [deg]
 
-    Пространство состояний:
-        * theta - Тангаж  [град]
-        * q - Угловая скорость Тангажа [град/с]
-        * w - Продольная скорость ЛА [м/с]
+    State space:
+        theta: Pitch [deg]
+        q: Pitch angular velocity [deg/s]
+        w: Longitudinal aircraft velocity [m/s]
 
-    Пространство выхода:
-        * theta - Тангаж  [град]
-        * q - Угловая скорость Тангажа [град/с]
-        * w - Продольная скорость ЛА [м/с]
+    Output space:
+        theta: Pitch [deg]
+        q: Pitch angular velocity [deg/s]
+        w: Longitudinal aircraft velocity [m/s]
     """
 
     def __init__(

@@ -14,11 +14,11 @@ from typing import Any, Tuple, Union
 
 
 class Model(tf.keras.Model):
-    """Нейросеть для глубокой Q нейросети. Принимает на вход количество действий. Содержит методы для инициализации,
-    forward и выбора действия.
+    """Neural network for deep Q network. Takes the number of actions as input. Contains methods for initialization,
+    forward pass and action selection.
 
     Args:
-        num_actions (int): количество действий
+        num_actions (int): Number of actions.
     """
 
     def __init__(self, num_actions: int) -> None:
@@ -28,13 +28,13 @@ class Model(tf.keras.Model):
         self.logits = kl.Dense(num_actions, name="q_values")
 
     def predict(self, inputs: np.ndarray) -> np.ndarray:
-        """Функция forward. Возвращает q функции для действий.
+        """Forward function. Returns q functions for actions.
 
         Args:
-            inputs (_type_): батч входных данных
+            inputs: Batch of input data.
 
         Returns:
-            x (_type_): батч векторов Q функций для действий
+            x: Batch of Q function vectors for actions.
         """
 
         x = self.fc1(inputs)
@@ -45,18 +45,18 @@ class Model(tf.keras.Model):
     def action_value(
         self, obs: np.ndarray
     ) -> Tuple[Union[np.ndarray, int], np.ndarray]:
-        """Функция стратегии. Возвращает действие.
+        """Strategy function. Returns action.
 
         Args:
-            obs (_type_): батч входных данных
+            obs: Batch of input data.
 
         Returns:
-            best_action (_type_): батч векторов действий
+            best_action: Batch of action vectors.
 
-            или если на вход подан батч размера 1
+            or if input batch size is 1
 
-            best_action (int): лучшее действие
-            q_values (_type_): q функции для действий в данном состоянии
+            best_action (int): Best action.
+            q_values: Q functions for actions in given state.
         """
 
         q_values = self.predict(obs)
@@ -65,7 +65,7 @@ class Model(tf.keras.Model):
 
 
 def test_model():
-    """функция для проверки работоспособности модели"""
+    """Function to test model functionality."""
 
     env = gym.make("CartPole-v0")
     print("num_actions: ", env.action_space.n)
@@ -80,10 +80,10 @@ def test_model():
 
 
 class SumTree:
-    """Класс бинарного дерева поиска для приоретизированного реплей буфера агента
+    """Binary search tree class for prioritized replay buffer agent.
 
     Args:
-        capacity (int): Размер буфера
+        capacity (int): Buffer size.
     """
 
     def __init__(self, capacity):
@@ -96,20 +96,20 @@ class SumTree:
 
     @property
     def total_p(self):
-        """Количество записей в буфере
+        """Number of records in buffer.
 
         Returns:
-            (int): количество записей в буфере
+            (int): Number of records in buffer.
         """
 
         return self.tree[0]
 
     def add(self, priority, transition):
-        """Функция для добавления объекта в буффер
+        """Function for adding object to buffer.
 
         Args:
-            priority (int): приоритет добавляемого перехода
-            transition (_type_): вектор перехода S, A, R, S'
+            priority (int): Priority of added transition.
+            transition: Transition vector S, A, R, S'.
         """
 
         idx = self.next_idx + self.capacity - 1
@@ -118,11 +118,11 @@ class SumTree:
         self.next_idx = (self.next_idx + 1) % self.capacity
 
     def update(self, idx, priority):
-        """Функция для обновления приоритета объекта с заданным индексом
+        """Function for updating object priority with given index.
 
         Args:
-            idx (int): индекс перехода
-            priority (int): приоритет обновляемого перехода
+            idx (int): Transition index.
+            priority (int): Priority of updated transition.
         """
 
         change = priority - self.tree[idx]
@@ -130,11 +130,11 @@ class SumTree:
         self._propagate(idx, change)  # O(logn)
 
     def _propagate(self, idx, change):
-        """Функция для обратного обновления приоритетов в дереве
+        """Function for backward priority update in tree.
 
         Args:
-            idx (int): индекс перехода
-            priority (int): приоритет обновляемого перехода
+            idx (int): Transition index.
+            priority (int): Priority of updated transition.
         """
 
         parent = (idx - 1) // 2
@@ -143,15 +143,15 @@ class SumTree:
             self._propagate(parent, change)
 
     def get_leaf(self, s):
-        """Функция для получения объекта по заданному приоритету
+        """Function for getting object by given priority.
 
         Args:
-            s (int): приоритет по которому отсекается переход
+            s (int): Priority by which transition is selected.
 
         Returns:
-            idx (int): индекс перехода
-            priority (int): приоритет обновляемого перехода
-            transitions (_type_): необходимый переход
+            idx (int): Transition index.
+            priority (int): Priority of updated transition.
+            transitions: Required transition.
         """
 
         idx = self._retrieve(0, s)  # from root
@@ -159,14 +159,14 @@ class SumTree:
         return idx, self.tree[idx], self.transitions[trans_idx]
 
     def _retrieve(self, idx, s):
-        """Функция для поиска объекта по заданному приоритету и индексу
+        """Function for searching object by given priority and index.
 
         Args:
-            idx (int): индекс в котором в данный момент осуществляется поиск
-            s (int): приоритет по которому отсекается переход
+            idx (int): Index where search is currently performed.
+            s (int): Priority by which transition is selected.
 
         Returns:
-            idx (int): индекс найденного перехода
+            idx (int): Index of found transition.
         """
 
         left = 2 * idx + 1
@@ -180,25 +180,25 @@ class SumTree:
 
 
 class PERAgent:
-    """Агент DQN.
+    """DQN Agent.
 
     Args:
-        model (tf.keras.Model): модель глубокой Q-сети.
-        target_model (tf.keras.Model): целевая модель глубокой Q-сети.
-        env (gym.Env): среда Gym/Gymnasium.
-        learning_rate (float, optional): скорость обучения.
-        epsilon (float, optional): вероятность исследования среды.
-        epsilon_dacay (float, optional): коэффициент уменьшения epsilon по эпизодам.
-        min_epsilon (float, optional): минимальное значение epsilon.
-        gamma (float, optional): коэффициент дисконтирования.
-        batch_size (int, optional): размер мини-батча.
-        target_update_iter (int, optional): период обновления целевой сети (шаги).
-        train_nums (int, optional): количество шагов обучения.
-        buffer_size (int, optional): размер буфера повторов.
-        replay_period (int, optional): период выборки из буфера.
-        alpha (float, optional): степень приоритезации.
-        beta (float, optional): коэффициент importance sampling.
-        beta_increment_per_sample (float, optional): приращение beta за выборку.
+        model (tf.keras.Model): Deep Q-network model.
+        target_model (tf.keras.Model): Target deep Q-network model.
+        env (gym.Env): Gym/Gymnasium environment.
+        learning_rate (float, optional): Learning rate.
+        epsilon (float, optional): Environment exploration probability.
+        epsilon_dacay (float, optional): Epsilon reduction coefficient per episode.
+        min_epsilon (float, optional): Minimum epsilon value.
+        gamma (float, optional): Discount coefficient.
+        batch_size (int, optional): Mini-batch size.
+        target_update_iter (int, optional): Target network update period (steps).
+        train_nums (int, optional): Number of training steps.
+        buffer_size (int, optional): Replay buffer size.
+        replay_period (int, optional): Buffer sampling period.
+        alpha (float, optional): Prioritization degree.
+        beta (float, optional): Importance sampling coefficient.
+        beta_increment_per_sample (float, optional): Beta increment per sample.
     """
 
     def __init__(
@@ -260,14 +260,14 @@ class PERAgent:
         self.abs_error_upper = 1
 
     def _per_loss(self, y_target: tf.Tensor, y_pred: tf.Tensor) -> tf.Tensor:
-        """Получение ошибки при обучении
+        """Get training loss.
 
         Args:
-            y_target (_type_): q функции сгенерированные целевой нейросетью
-            y_pred (int): q функции сгенерированные основной нейросетью
+            y_target: Q functions generated by target neural network.
+            y_pred (int): Q functions generated by main neural network.
 
         Returns:
-            loss (float): ошибка
+            loss (float): Loss value.
         """
 
         return tf.reduce_mean(
@@ -275,7 +275,7 @@ class PERAgent:
         )
 
     def train(self) -> None:
-        """Функция для обучения"""
+        """Function for training."""
 
         obs, info = self.env.reset()
         for t in range(1, self.train_nums):
@@ -310,10 +310,10 @@ class PERAgent:
                 obs = next_obs
 
     def train_step(self) -> Any:
-        """Функция для шага обучения
+        """Function for training step.
 
         Returns:
-            losses (float): ошибки после одного шага обучения
+            losses (float): Losses after one training step.
         """
 
         idxes, self.is_weight = self.sum_tree_sample(self.batch_size)
@@ -348,14 +348,14 @@ class PERAgent:
         return losses
 
     def sum_tree_sample(self, k: int):
-        """Получение батча для обучения
+        """Get batch for training.
 
         Args:
-            k (int): размер получаемого батча
+            k (int): Size of batch to get.
 
         Returns:
-            idxes (int): индексы объектов из батча
-            is_weights (float): приоритеты объектов из батча
+            idxes (int): Indices of objects from batch.
+            is_weights (float): Priorities of objects from batch.
         """
 
         idxes = []
@@ -390,14 +390,14 @@ class PERAgent:
         return idxes, is_weights
 
     def evaluation(self, wrapped_env: Any, render: bool = False) -> float:
-        """Получение батча для обучения
+        """Get batch for training.
 
         Args:
-            wrapped_env: обёрнутая среда (для рендеринга/захвата кадров).
-            render (bool, optional): визуализировать ли среду или нет
+            wrapped_env: Wrapped environment (for rendering/frame capture).
+            render (bool, optional): Whether to visualize environment or not.
 
         Returns:
-            ep_reward (float): суммарная награда за эпизод
+            ep_reward (float): Total reward per episode.
         """
 
         obs, info = wrapped_env.env.reset()
@@ -463,7 +463,7 @@ class PERAgent:
 
     # assign the current network parameters to target network
     def update_target_model(self) -> None:
-        """Функция обновления целевой нейросети"""
+        """Target neural network update function."""
 
         self.target_model.set_weights(self.model.get_weights())
 
@@ -476,31 +476,31 @@ class PERAgent:
         return self.target_model.predict(obs)
 
     def e_decay(self) -> None:
-        """Функция для уменьшения вероятности исследования сети"""
+        """Function for reducing network exploration probability."""
 
         self.epsilon *= self.epsilon_decay
 
 
 class PERNARXAgent:
-    """Агент DQN с NARX моделью обучения.
+    """DQN Agent with NARX training model.
 
     Args:
-        model (tf.keras.Model): модель глубокой Q-сети.
-        target_model (tf.keras.Model): целевая модель глубокой Q-сети.
-        env (gym.Env): среда Gym.
-        learning_rate (float, optional): скорость обучения.
-        epsilon (float, optional): вероятность исследования среды.
-        epsilon_dacay (float, optional): коэффициент уменьшения epsilon по эпизодам.
-        min_epsilon (float, optional): минимальное значение epsilon.
-        gamma (float, optional): коэффициент дисконтирования.
-        batch_size (int, optional): размер мини-батча.
-        target_update_iter (int, optional): период обновления целевой сети (шаги).
-        train_nums (int, optional): количество шагов обучения.
-        buffer_size (int, optional): размер буфера повторов.
-        replay_period (int, optional): период выборки из буфера.
-        alpha (float, optional): степень приоритезации.
-        beta (float, optional): коэффициент importance sampling.
-        beta_increment_per_sample (float, optional): приращение beta за выборку.
+        model (tf.keras.Model): Deep Q-network model.
+        target_model (tf.keras.Model): Target deep Q-network model.
+        env (gym.Env): Gym environment.
+        learning_rate (float, optional): Learning rate.
+        epsilon (float, optional): Environment exploration probability.
+        epsilon_dacay (float, optional): Epsilon reduction coefficient per episode.
+        min_epsilon (float, optional): Minimum epsilon value.
+        gamma (float, optional): Discount coefficient.
+        batch_size (int, optional): Mini-batch size.
+        target_update_iter (int, optional): Target network update period (steps).
+        train_nums (int, optional): Number of training steps.
+        buffer_size (int, optional): Replay buffer size.
+        replay_period (int, optional): Buffer sampling period.
+        alpha (float, optional): Prioritization degree.
+        beta (float, optional): Importance sampling coefficient.
+        beta_increment_per_sample (float, optional): Beta increment per sample.
     """
 
     def __init__(
@@ -560,14 +560,14 @@ class PERNARXAgent:
         self.abs_error_upper = 1
 
     def _per_loss(self, y_target: tf.Tensor, y_pred: tf.Tensor) -> tf.Tensor:
-        """Получение ошибки при обучении
+        """Get training loss.
 
         Args:
-            y_target (_type_): q функции сгенерированные целевой нейросетью
-            y_pred (int): q функции сгенерированные основной нейросетью
+            y_target: Q functions generated by target neural network.
+            y_pred (int): Q functions generated by main neural network.
 
         Returns:
-            loss (float): ошибка
+            loss (float): Loss value.
         """
 
         return tf.reduce_mean(
@@ -575,7 +575,7 @@ class PERNARXAgent:
         )
 
     def train(self) -> None:
-        """Функция для обучения"""
+        """Function for training."""
 
         obs = self.env.reset()
         prev_action = [0]
@@ -612,10 +612,10 @@ class PERNARXAgent:
                 obs = next_obs
 
     def train_step(self) -> Any:
-        """Функция для шага обучения
+        """Function for training step.
 
         Returns:
-            losses (float): ошибки после одного шага обучения
+            losses (float): Losses after one training step.
         """
 
         idxes, self.is_weight = self.sum_tree_sample(self.batch_size)
@@ -650,14 +650,14 @@ class PERNARXAgent:
         return losses
 
     def sum_tree_sample(self, k: int):
-        """Получение батча для обучения
+        """Get batch for training.
 
         Args:
-            k (int): размер получаемого батча
+            k (int): Size of batch to get.
 
         Returns:
-            idxes (int): индексы объектов из батча
-            is_weights (float): приоритеты объектов из батча
+            idxes (int): Indices of objects from batch.
+            is_weights (float): Priorities of objects from batch.
         """
 
         idxes = []
@@ -692,7 +692,7 @@ class PERNARXAgent:
         return idxes, is_weights
 
     def evaluation(self, env, render: bool = False) -> float:
-        """Получение батча для обучения
+        """Get batch for training.
 
         Args:
             env (_type_): среда
@@ -761,7 +761,7 @@ class PERNARXAgent:
 
     # assign the current network parameters to target network
     def update_target_model(self) -> None:
-        """Функция обновления целевой нейросети"""
+        """Target neural network update function."""
 
         self.target_model.set_weights(self.model.get_weights())
 
@@ -774,6 +774,6 @@ class PERNARXAgent:
         return self.target_model.predict(obs)
 
     def e_decay(self) -> None:
-        """Функция для уменьшения вероятности исследования сети"""
+        """Function for reducing network exploration probability."""
 
         self.epsilon *= self.epsilon_decay

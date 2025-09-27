@@ -1,16 +1,15 @@
-"""
-TensorAeroSpace - Библиотека для обучения с подкреплением в аэрокосмической области.
+"""TensorAeroSpace - Reinforcement learning library for aerospace applications.
 
-Этот пакет предоставляет инструменты и среды для применения методов обучения с подкреплением
-в задачах управления аэрокосмическими системами. Включает в себя различные модели самолетов,
-ракет и спутников, а также алгоритмы управления.
+This package provides tools and environments for applying reinforcement learning methods
+to aerospace system control tasks. It includes various models of aircraft, rockets,
+and satellites, as well as control algorithms.
 
-Основные компоненты:
-- Среды для обучения с подкреплением (envs)
-- Агенты обучения с подкреплением (agent)
-- Модели аэрокосмических объектов (aerospacemodel)
-- Инструменты для анализа качества управления (benchmark)
-- Утилиты и вспомогательные функции (utils, signals)
+Main components:
+    - Reinforcement learning environments (envs)
+    - Reinforcement learning agents (agent)
+    - Aerospace object models (aerospacemodel)
+    - Control quality analysis tools (benchmark)
+    - Utilities and helper functions (utils, signals)
 """
 
 from gymnasium.envs.registration import register

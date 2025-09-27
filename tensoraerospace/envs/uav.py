@@ -1,10 +1,9 @@
-"""
-Модуль для моделирования продольного движения беспилотного летательного аппарата (БПЛА).
+"""Module for modeling longitudinal motion of unmanned aerial vehicle (UAV).
 
-Этот модуль содержит реализацию среды Gymnasium для обучения агентов управления
-продольным движением БПЛА. Среда предоставляет интерфейс для взаимодействия
-с моделью БПЛА, включая управление углом тангажа и угловой скоростью тангажа
-через руль высоты.
+This module contains a Gymnasium environment implementation for training agents
+to control longitudinal motion of UAV. The environment provides an interface
+for interaction with the UAV model, including control of pitch angle and
+pitch angular velocity through elevator control.
 """
 
 import gymnasium as gym
@@ -15,17 +14,17 @@ from tensoraerospace.aerospacemodel import LongitudinalUAV
 
 
 class LinearLongitudinalUAV(gym.Env):
-    """Моделирование объекта управления LongitudinalUAV в среде моделирования OpenAI Gym для обучения агентов с искусственным интеллектом
+    """Simulation of LongitudinalUAV control object in OpenAI Gym environment for training AI agents.
 
     Args:
-        initial_state (any): Начальное состояние
-        reference_signal (any): Заданный сигнал
-        number_time_steps (any): Количество шагов моделирования
-        tracking_states (any): Отслеживаемые состояния
-        state_space (any): Пространства состояний
-        control_space (any): Пространство управления
-        output_space (any): Пространство полного выхода (с учетом помех)
-        reward_func (any): Функция вознаграждения (статус WIP)
+        initial_state: Initial state.
+        reference_signal: Reference signal.
+        number_time_steps: Number of simulation steps.
+        tracking_states: Tracked states.
+        state_space: State space.
+        control_space: Control space.
+        output_space: Full output space (including noise).
+        reward_func: Reward function (WIP status).
     """
 
     def __init__(

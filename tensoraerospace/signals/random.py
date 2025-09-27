@@ -1,8 +1,7 @@
-"""
-Модуль генерации случайных сигналов.
+"""Random signal generation module.
 
-Этот модуль содержит функции для создания случайных сигналов различных типов,
-используемых для тестирования систем управления и обучения агентов.
+This module contains functions for creating random signals of various types,
+used for control system testing and agent training.
 """
 
 import numpy as np
@@ -11,18 +10,17 @@ import numpy as np
 def full_random_signal(
     t0: float, dt: float, tn: float, sd: tuple, sv: tuple
 ) -> np.ndarray:
-    """
-    Случайный сигнал по частоте и амплитуде
+    """Random signal with variable frequency and amplitude.
 
     Args:
-        t0: Начальное время
-        dt: Шаг дискретизации
-        tn: Время сигнала
-        sd: Ограничения значений по длине сигнала (min, max)
-        sv: Ограничения значений по значению сигнала (min, max)
+        t0: Initial time.
+        dt: Discretization step.
+        tn: Signal duration.
+        sd: Signal duration constraints (min, max).
+        sv: Signal value constraints (min, max).
 
     Returns:
-       Массив с случайным сигналом по частоте и амплитуде
+        np.ndarray: Array with random signal by frequency and amplitude.
     """
     sd_min, sd_max = sd
     sv_min, sv_max = sv

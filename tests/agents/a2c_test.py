@@ -1,4 +1,8 @@
-# tests.py
+"""Tests for A2C agent implementation.
+
+This module contains unit tests for the A2C (Advantage Actor-Critic) agent
+implementation, including tests for actor, critic, and the main A2C algorithm.
+"""
 
 import datetime
 import json

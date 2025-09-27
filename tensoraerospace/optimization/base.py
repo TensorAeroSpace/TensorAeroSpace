@@ -6,28 +6,26 @@ import optuna
 
 
 class HyperParamOptimizationBase(ABC):
-    """
-    Класс интерфейс для поиска гиперпараметров
-    """
+    """Interface class for hyperparameter search."""
 
     def __init__(self) -> None:
-        """Инициализация"""
+        """Initialize."""
         pass
 
     def run_optimization(self):
-        """Запуск оптимизации"""
+        """Run optimization."""
         pass
 
     def get_best_param(self) -> dict:
-        """Получить лучшие найденные параметры
+        """Get best found parameters.
 
         Returns:
-            dict: Лучшие параметры
+            dict: Best parameters.
         """
         pass
 
     def plot_parms(self, fig_size):
-        """Построить график шагов оптимизации"""
+        """Plot optimization steps."""
         pass
 
 

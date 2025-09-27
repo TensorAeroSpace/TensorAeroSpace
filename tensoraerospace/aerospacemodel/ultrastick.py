@@ -11,36 +11,32 @@ from tensoraerospace.aerospacemodel.utils.constant import (
 
 
 class Ultrastick(ModelBase):
-    """
-    БПЛА Ultrastick-25e в продольном канале управления
-
+    """UAV Ultrastick-25e in longitudinal control channel.
 
     Args:
-        x0 (_type_): Начальное состояние объекта управления
-        number_time_steps (_type_): Количество временных шагов
-        selected_state_output (_type_, optional): Выбранные состояние объекта управления. Defaults to None.
-        t0 (int, optional): Начальное время. Defaults to 0.
-        dt (float, optional): Частота дискретизации. Defaults to 0.01.
+        x0: Initial state of the control object.
+        number_time_steps: Number of time steps.
+        selected_state_output (optional): Selected states of the control object. Defaults to None.
+        t0 (int, optional): Initial time. Defaults to 0.
+        dt (float, optional): Discretization frequency. Defaults to 0.01.
 
-    Пространство действий:
-        - ele: Руль высоты [град]
-        - delta_t: Угол отклонения ручки управления двигателем [град]
+    Action space:
+        ele: Elevator [deg]
+        delta_t: Engine throttle stick deflection angle [deg]
 
+    State space:
+        u: Longitudinal aircraft velocity [m/s]
+        w: Normal aircraft velocity [m/s]
+        q: Pitch angular velocity [deg/s]
+        theta: Pitch [deg]
+        h: Altitude [m]
 
-    Пространство состояний:
-        - u - Продольная скорость ЛА [м/с]
-        - w - Нормальная скорость ЛА [м/с]
-        - q - Угловая скорость Тангажа [град/с]
-        - theta - Тангаж [град]
-        - h - Высота [м]
-
-    Пространство выхода:
-        - u - Продольная скорость ЛА [м/с]
-        - w - Нормальная скорость ЛА [м/с]
-        - q - Угловая скорость Тангажа [град/с]
-        - theta - Тангаж [град]
-        - h - Высота [м]
-
+    Output space:
+        u: Longitudinal aircraft velocity [m/s]
+        w: Normal aircraft velocity [m/s]
+        q: Pitch angular velocity [deg/s]
+        theta: Pitch [deg]
+        h: Altitude [m]
     """
 
     def __init__(

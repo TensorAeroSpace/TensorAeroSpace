@@ -1,9 +1,8 @@
-"""
-Модуль генерации сигналов для тестирования и обучения.
+"""Signal generation module for testing and training.
 
-Этот модуль предоставляет различные типы сигналов для использования в симуляциях
-и тестировании систем управления, включая случайные сигналы, синусоидальные
-сигналы и единичные ступенчатые функции.
+This module provides various types of signals for use in simulations
+and control system testing, including random signals, sinusoidal
+signals and unit step functions.
 """
 
 from .random import full_random_signal as full_random_signal
