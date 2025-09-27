@@ -7,26 +7,26 @@ from tensorflow.keras.layers import Dense, Flatten
 
 
 class Critic:
-    """Предоставляет классу Critic аппроксиматор функций (NN) класса Critic.
+    """Provides Critic class with function approximator (NN) for Critic class.
 
-    Critic создает модель нейронной сети с помощью Tensorflow и может обучать сеть онлайн.
-    Пользователь может выбрать количество слоев, количество нейронов, размер партии и количество эпох и активационных функций.
+    Critic creates neural network model using Tensorflow and can train network online.
+    User can choose number of layers, number of neurons, batch size, number of epochs and activation functions.
 
     Args:
-        Q_weights (_type_): _description_
-        selected_states (_type_): Выбранные состояния
-        tracking_states (_type_): Отслеживаемые состояния
-        indices_tracking_states (_type_): Индекс отслеживаемых состояний
-        number_time_steps (_type_): Количесво врменных шагов
-        start_training (_type_): Начало обучения
-        gamma (float, optional): Gamma. Defaults to 0.8.
-        learning_rate (int, optional): Скорость обучения. Defaults to 2.
-        learning_rate_exponent_limit (int, optional): предел экспоненты скорости обучения. Defaults to 10.
-        layers (tuple, optional): Количество слоев и нейронов в слоях. Defaults to (10, 6, 1).
-        activations (tuple, optional): Функции активации в слоях. Defaults to ("sigmoid", "sigmoid", "linear").
-        WB_limits (int, optional): Ограничения значения в весах. Defaults to 30.
-        NN_initial (_type_, optional): Начальные значения в весах. Defaults to None.
-        model_path (_type_, optional): Путь к модели. Defaults to None.
+        Q_weights: Q-function weights.
+        selected_states: Selected states.
+        tracking_states: Tracked states.
+        indices_tracking_states: Index of tracked states.
+        number_time_steps: Number of time steps.
+        start_training: Training start step.
+        gamma (float, optional): Gamma discount factor. Defaults to 0.8.
+        learning_rate (int, optional): Learning rate. Defaults to 2.
+        learning_rate_exponent_limit (int, optional): Learning rate exponent limit. Defaults to 10.
+        layers (tuple, optional): Number of layers and neurons in layers. Defaults to (10, 6, 1).
+        activations (tuple, optional): Activation functions in layers. Defaults to ("sigmoid", "sigmoid", "linear").
+        WB_limits (int, optional): Weight value constraints. Defaults to 30.
+        NN_initial (optional): Initial weight values. Defaults to None.
+        model_path (optional): Model path. Defaults to None.
     """
 
     # Class attributes
@@ -117,19 +117,19 @@ class Critic:
         self.replay = []
 
     def save_model(self):
-        """Сохранение модели"""
+        """Save model."""
         self.model.save_weights("./critic_weight.h5")
 
     def load_model(self):
-        """Загрузка весов"""
+        """Load weights."""
         self.model.load_weights(self.model_path)
 
     def save_Jt_ct(self):
-        """Сохранение оценки состояния критиком"""
+        """Save critic state evaluation."""
         np.save("./critic_jt", [self.Jt_1, self.Jt, self.ct_1, self.ct])
 
     def load_Jt_ct(self):
-        """Загрузка оценки состоянгия критиком"""
+        """Load critic state evaluation."""
         data = np.load("./critic_jt.npy", allow_pickle=True)
         self.Jt_1 = data[0]
         self.Jt = data[1]
@@ -137,8 +137,8 @@ class Critic:
         self.ct = data[3]
 
     def build_critic_model(self):
-        """Функция, создающая нейронную сеть. На данный момент это плотно связанная нейронная сеть. Пользователь может
-        определять количество слоев, количество нейронов, а также функцию активации.
+        """Function creating neural network. Currently this is a densely connected neural network. User can
+        define number of layers, number of neurons, and activation function.
         """
         # initializer = tf.keras.initializers.GlorotNormal()
         initializer = tf.keras.initializers.VarianceScaling(
@@ -196,15 +196,15 @@ class Critic:
     def run_train_critic_online_adaptive_alpha(
         self, xt: np.ndarray, xt_ref: np.ndarray
     ) -> np.ndarray:
-        """Функция, которая оценивает один раз критическую нейронную сеть и возвращает значение J(xt). В то же
-        время он обучает аппроксиматор функции с адаптивной схемой скорости обучения.
+        """Function that evaluates critic neural network once and returns J(xt) value. At the same
+        time it trains function approximator with adaptive learning rate scheme.
 
         Args:
-            xt (_type_): текущее состояние временного шага
-            xt_ref (_type_): Заданное состояния текущего временного шага для вычисления одношаговой функции стоимости
+            xt: Current state of time step.
+            xt_ref: Reference state of current time step for computing one-step cost function.
 
         Returns:
-            Jt (_type_): оценка критика на текущем временном шаге
+            Jt: Critic evaluation at current time step.
         """
 
         nn_input, dJt_dW = self.compute_forward_pass(xt, xt_ref)
@@ -261,15 +261,15 @@ class Critic:
     def run_train_critic_online_adam(
         self, xt: np.ndarray, xt_ref: np.ndarray
     ) -> np.ndarray:
-        """Функция, которая оценивает один раз критическую нейронную сеть и возвращает значение J(xt). В то же
-        время, он обучает аппроксиматор функции с помощью оптимизатора Adam.
+        """Function that evaluates critic neural network once and returns J(xt) value. At the same
+        time, it trains function approximator using Adam optimizer.
 
         Args:
-            xt (_type_): текущее состояние временного шага
-            xt_ref (_type_): Заданное состояния текущего временного шага для вычисления одношаговой функции стоимости
+            xt: Current state of time step.
+            xt_ref: Reference state of current time step for computing one-step cost function.
 
         Returns:
-            Jt (_type_): оценка критика на текущем временном шаге
+            Jt: Critic evaluation at current time step.
         """
 
         # Safe the information in the replay attribute
@@ -293,8 +293,8 @@ class Critic:
         return self.Jt
 
     def adam_iteration(self, dJt_dW: list[np.ndarray], dE_dJ: np.ndarray) -> None:
-        """Адам обновляет все веса и смещения, учитывая производную функции потерь по отношению к NN.
-        выход и производная выхода нейронной сети относительно весов и смещений.
+        """Adam updates all weights and biases considering loss function derivative with respect to NN
+        output and derivative of neural network output with respect to weights and biases.
 
         Args:
             dJt_dW (_type_): производная выхода NN по весам и смещениям

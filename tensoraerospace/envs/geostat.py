@@ -6,17 +6,17 @@ from tensoraerospace.aerospacemodel import GeoSat
 
 
 class GeoSatEnv(gym.Env):
-    """Моделирование объекта управления "Спутник связи в продольном канале управления" в среде моделирования OpenAI Gym для обучения агентов с искусственным интеллектом
+    """Simulation of "Communication satellite in longitudinal control channel" control object in OpenAI Gym environment for training AI agents.
 
     Args:
-        initial_state (any): Начальное состояние
-        reference_signal (any): Заданный сигнал
-        number_time_steps (any): Количество шагов моделирования
-        tracking_states (any): Отслеживаемые состояния
-        state_space (any): Пространства состояний
-        control_space (any): Пространство управления
-        output_space (any): Пространство полного выхода (с учетом помех)
-        reward_func (any): Функция вознаграждения (статус WIP)
+        initial_state: Initial state.
+        reference_signal: Reference signal.
+        number_time_steps: Number of simulation steps.
+        tracking_states: Tracked states.
+        state_space: State space.
+        control_space: Control space.
+        output_space: Full output space (including noise).
+        reward_func: Reward function (WIP status).
     """
 
     def __init__(

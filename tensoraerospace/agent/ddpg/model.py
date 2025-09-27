@@ -13,9 +13,7 @@ device = torch.device("cuda" if use_cuda else "cpu")
 
 
 class ReplayBuffer:
-    """
-    Класс для ReplayBuffer.
-    """
+    """Class for ReplayBuffer."""
 
     def __init__(self, capacity):
         self.capacity = capacity

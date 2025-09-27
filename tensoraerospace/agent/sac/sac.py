@@ -1,9 +1,8 @@
-"""
-Модуль реализации алгоритма Soft Actor-Critic (SAC).
+"""Soft Actor-Critic (SAC) algorithm implementation module.
 
-Этот модуль содержит реализацию алгоритма SAC для обучения с подкреплением,
-включая основной класс агента SAC с поддержкой автоматической настройки энтропии
-и различных типов политик для управления аэрокосмическими системами.
+This module contains the SAC algorithm implementation for reinforcement learning,
+including the main SAC agent class with automatic entropy tuning support
+and various policy types for aerospace system control.
 """
 
 import datetime
@@ -30,33 +29,31 @@ from .utils import hard_update, soft_update
 
 
 class SAC(BaseRLModel):
-    """Soft Actor-Critic (SAC) алгоритм для обучения с подкреплением.
+    """Soft Actor-Critic (SAC) algorithm for reinforcement learning.
 
     Args:
-        env: Окружение (совместимое с Gym API).
-        updates_per_step (int): Обновлений на шаг взаимодействия.
-        batch_size (int): Размер мини-пакета.
-        memory_capacity (int): Вместимость буфера повторов.
-        lr (float): Скорость обучения.
-        gamma (float): Коэффициент дисконтирования.
-        tau (float): Коэффициент мягкого обновления целевой сети.
-        alpha (float): Коэффициент энтропии (для политики).
-        policy_type (str): Тип политики ("Gaussian" или "Deterministic").
-        target_update_interval (int): Интервал обновления целевой сети.
-        automatic_entropy_tuning (bool): Автонастройка энтропии.
-        hidden_size (int): Размер скрытого слоя сетей.
-        device (str | torch.device): Устройство для вычислений.
-        verbose_histogram (bool): Логирование гистограмм в TensorBoard.
-        seed (int): Сид генератора случайных чисел.
+        env: Environment (Gym API compatible).
+        updates_per_step (int): Updates per interaction step.
+        batch_size (int): Mini-batch size.
+        memory_capacity (int): Replay buffer capacity.
+        lr (float): Learning rate.
+        gamma (float): Discount coefficient.
+        tau (float): Soft update coefficient for target network.
+        alpha (float): Entropy coefficient (for policy).
+        policy_type (str): Policy type ("Gaussian" or "Deterministic").
+        target_update_interval (int): Target network update interval.
+        automatic_entropy_tuning (bool): Automatic entropy tuning.
+        hidden_size (int): Hidden layer size of networks.
+        device (str | torch.device): Device for computations.
+        verbose_histogram (bool): Histogram logging in TensorBoard.
+        seed (int): Random number generator seed.
 
     Attributes:
-
-        critic: Сеть критика.
-        critic_optim: Оптимизатор для обновления весов критика.
-        critic_target: Целевая сеть критика.
-
-        policy: Политика агента.
-        policy_optim: Оптимизатор для обновления весов политики.
+        critic: Critic network.
+        critic_optim: Optimizer for updating critic weights.
+        critic_target: Target critic network.
+        policy: Agent policy.
+        policy_optim: Optimizer for updating policy weights.
 
     """
 

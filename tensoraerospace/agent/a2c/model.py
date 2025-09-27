@@ -1,9 +1,8 @@
-"""
-Модуль реализации алгоритма Advantage Actor-Critic (A2C).
+"""Advantage Actor-Critic (A2C) algorithm implementation module.
 
-Этот модуль содержит реализацию алгоритма A2C для обучения с подкреплением,
-включая нейронные сети актора и критика, функции обработки памяти и основной
-класс агента A2C для управления аэрокосмическими системами.
+This module contains the A2C algorithm implementation for reinforcement learning,
+including actor and critic neural networks, memory processing functions and the main
+A2C agent class for aerospace system control.
 """
 
 import datetime
@@ -27,82 +26,82 @@ from ..base import (
 
 
 def mish(input):
-    """Функция активации Mish.
+    """Mish activation function.
 
-    Mish - это гладкая, непрерывная функция активации, определяемая как:
+    Mish is a smooth, continuous activation function defined as:
     f(x) = x * tanh(softplus(x))
 
     Args:
-        input (torch.Tensor): Входной тензор.
+        input (torch.Tensor): Input tensor.
 
     Returns:
-        torch.Tensor: Результат применения функции активации Mish.
+        torch.Tensor: Result of applying Mish activation function.
     """
     return input * torch.tanh(F.softplus(input))
 
 
 class Mish(nn.Module):
-    """Модуль PyTorch для функции активации Mish.
+    """PyTorch module for Mish activation function.
 
-    Этот класс оборачивает функцию активации Mish в модуль PyTorch,
-    что позволяет использовать её в нейронных сетях.
+    This class wraps the Mish activation function in a PyTorch module,
+    allowing it to be used in neural networks.
     """
 
     def __init__(self):
-        """Инициализирует модуль Mish."""
+        """Initialize Mish module."""
         super().__init__()
 
     def forward(self, input):
-        """Прямой проход через функцию активации Mish.
+        """Forward pass through Mish activation function.
 
         Args:
-            input (torch.Tensor): Входной тензор.
+            input (torch.Tensor): Input tensor.
 
         Returns:
-            torch.Tensor: Результат применения функции активации Mish.
+            torch.Tensor: Result of applying Mish activation function.
         """
         return mish(input)
 
 
 # Helper function to convert numpy arrays to tensors
 def t(x):
-    """Преобразует numpy массив в PyTorch тензор.
+    """Convert numpy array to PyTorch tensor.
 
     Args:
-        x: Входные данные (numpy массив или другой тип).
+        x: Input data (numpy array or other type).
 
     Returns:
-        torch.Tensor: Тензор PyTorch с типом float.
+        torch.Tensor: PyTorch tensor with float type.
     """
     x = np.array(x) if not isinstance(x, np.ndarray) else x
     return torch.from_numpy(x).float()
 
 
 class Actor(nn.Module):
-    """Нейронная сеть актора для алгоритма A2C.
+    """Actor neural network for A2C algorithm.
 
-    Актор генерирует политику - распределение вероятностей действий
-    для каждого состояния. Использует нормальное распределение для
-    непрерывных действий.
+    Actor generates policy - probability distribution of actions
+    for each state. Uses normal distribution for
+    continuous actions.
 
     Args:
-        state_dim (int): Размерность пространства состояний.
-        n_actions (int): Количество действий.
-        activation: Функция активации для скрытых слоев. По умолчанию nn.Tanh.
+        state_dim (int): State space dimension.
+        n_actions (int): Number of actions.
+        activation: Activation function for hidden layers. Defaults to nn.Tanh.
 
     Attributes:
-        n_actions (int): Количество действий.
-        model (nn.Sequential): Основная нейронная сеть.
-        logstds (nn.Parameter): Логарифмы стандартных отклонений для действий.
+        n_actions (int): Number of actions.
+        model (nn.Sequential): Main neural network.
+        logstds (nn.Parameter): Logarithms of standard deviations for actions.
     """
 
     def __init__(self, state_dim, n_actions, activation=nn.Tanh):
-        """Инициализирует актора.
+        """Initialize actor.
 
         Args:
-            state_dim (int): Размерность пространства состояний.
-            n_actions (int): Количество действий.
-            activation: Функция активации для скрытых слоев.
+            state_dim (int): State space dimension.
+            n_actions (int): Number of actions.
+            activation: Activation function for hidden layers.
         """
         super().__init__()
         self.n_actions = n_actions
@@ -118,13 +117,13 @@ class Actor(nn.Module):
         self.register_parameter("logstds", logstds_param)
 
     def forward(self, X):
-        """Прямой проход через сеть актора.
+        """Forward pass through actor network.
 
         Args:
-            X (torch.Tensor): Входные состояния.
+            X (torch.Tensor): Input states.
 
         Returns:
-            torch.distributions.Normal: Нормальное распределение действий.
+            torch.distributions.Normal: Normal distribution of actions.
         """
         means = self.model(X)
         stds = torch.clamp(self.logstds.exp(), 1e-3, 50)
@@ -132,25 +131,25 @@ class Actor(nn.Module):
 
 
 class Critic(nn.Module):
-    """Нейронная сеть критика для алгоритма A2C.
+    """Critic neural network for A2C algorithm.
 
-    Критик оценивает ценность состояний, предсказывая ожидаемую
-    суммарную награду из данного состояния.
+    Critic evaluates state values, predicting expected
+    cumulative reward from given state.
 
     Args:
-        state_dim (int): Размерность пространства состояний.
-        activation: Функция активации для скрытых слоев. По умолчанию nn.Tanh.
+        state_dim (int): State space dimension.
+        activation: Activation function for hidden layers. Defaults to nn.Tanh.
 
     Attributes:
-        model (nn.Sequential): Основная нейронная сеть.
+        model (nn.Sequential): Main neural network.
     """
 
     def __init__(self, state_dim, activation=nn.Tanh):
-        """Инициализирует критика.
+        """Initialize critic.
 
         Args:
-            state_dim (int): Размерность пространства состояний.
-            activation: Функция активации для скрытых слоев.
+            state_dim (int): State space dimension.
+            activation: Activation function for hidden layers.
         """
         super().__init__()
         self.model = nn.Sequential(
@@ -162,27 +161,27 @@ class Critic(nn.Module):
         )
 
     def forward(self, X):
-        """Прямой проход через сеть критика.
+        """Forward pass through critic network.
 
         Args:
-            X (torch.Tensor): Входные состояния.
+            X (torch.Tensor): Input states.
 
         Returns:
-            torch.Tensor: Оценки ценности состояний.
+            torch.Tensor: State value estimates.
         """
         return self.model(X)
 
 
 def discounted_rewards(rewards, dones, gamma):
-    """Вычисляет дисконтированные награды для эпизода.
+    """Calculate discounted rewards for episode.
 
     Args:
-        rewards (list): Список наград за каждый шаг.
-        dones (list): Список флагов завершения эпизода.
-        gamma (float): Коэффициент дисконтирования.
+        rewards (list): List of rewards for each step.
+        dones (list): List of episode termination flags.
+        gamma (float): Discount coefficient.
 
     Returns:
-        list: Список дисконтированных наград.
+        list: List of discounted rewards.
     """
     ret = 0
     discounted = []
@@ -194,15 +193,15 @@ def discounted_rewards(rewards, dones, gamma):
 
 
 def process_memory(memory, gamma=0.99, discount_rewards=True):
-    """Обрабатывает память опыта для обучения.
+    """Process experience memory for training.
 
     Args:
-        memory (list): Список кортежей (action, reward, state, next_state, done).
-        gamma (float): Коэффициент дисконтирования. По умолчанию 0.99.
-        discount_rewards (bool): Применять ли дисконтирование наград. По умолчанию True.
+        memory (list): List of tuples (action, reward, state, next_state, done).
+        gamma (float): Discount coefficient. Defaults to 0.99.
+        discount_rewards (bool): Whether to apply reward discounting. Defaults to True.
 
     Returns:
-        tuple: Кортеж тензоров (actions, rewards, states, next_states, dones).
+        tuple: Tuple of tensors (actions, rewards, states, next_states, dones).
     """
     actions, states, next_states, rewards, dones = [], [], [], [], []
 
@@ -226,11 +225,11 @@ def process_memory(memory, gamma=0.99, discount_rewards=True):
 
 
 def clip_grad_norm_(module, max_grad_norm):
-    """Обрезает градиенты по норме для стабилизации обучения.
+    """Clip gradients by norm for training stabilization.
 
     Args:
-        module: Оптимизатор PyTorch.
-        max_grad_norm (float): Максимальная норма градиентов.
+        module: PyTorch optimizer.
+        max_grad_norm (float): Maximum gradient norm.
     """
     nn.utils.clip_grad_norm_(
         [p for g in module.param_groups for p in g["params"]], max_grad_norm
@@ -238,37 +237,37 @@ def clip_grad_norm_(module, max_grad_norm):
 
 
 class A2C(BaseRLModel):
-    """Реализация алгоритма Advantage Actor-Critic (A2C).
+    """Implementation of Advantage Actor-Critic (A2C) algorithm.
 
-    A2C - это алгоритм обучения с подкреплением, который использует
-    актора для выбора действий и критика для оценки состояний.
-    Алгоритм минимизирует потери актора и критика одновременно.
+    A2C is a reinforcement learning algorithm that uses
+    actor for action selection and critic for state evaluation.
+    Algorithm minimizes actor and critic losses simultaneously.
 
     Args:
-        env: Среда для обучения.
-        actor: Нейронная сеть актора.
-        critic: Нейронная сеть критика.
-        gamma (float): Коэффициент дисконтирования. По умолчанию 0.9.
-        entropy_beta (float): Коэффициент энтропийного бонуса. По умолчанию 0.01.
-        actor_lr (float): Скорость обучения актора. По умолчанию 4e-4.
-        critic_lr (float): Скорость обучения критика. По умолчанию 4e-3.
-        max_grad_norm (float): Максимальная норма градиентов. По умолчанию 0.5.
-        seed (int, optional): Семя для воспроизводимости результатов.
+        env: Training environment.
+        actor: Actor neural network.
+        critic: Critic neural network.
+        gamma (float): Discount coefficient. Defaults to 0.9.
+        entropy_beta (float): Entropy bonus coefficient. Defaults to 0.01.
+        actor_lr (float): Actor learning rate. Defaults to 4e-4.
+        critic_lr (float): Critic learning rate. Defaults to 4e-3.
+        max_grad_norm (float): Maximum gradient norm. Defaults to 0.5.
+        seed (int, optional): Seed for reproducible results.
 
     Attributes:
-        env: Среда для обучения.
-        state: Текущее состояние среды.
-        done (bool): Флаг завершения эпизода.
-        steps (int): Общее количество шагов.
-        episode_reward (float): Награда за текущий эпизод.
-        episode_rewards (list): История наград по эпизодам.
-        actor: Нейронная сеть актора.
-        critic: Нейронная сеть критика.
-        gamma (float): Коэффициент дисконтирования.
-        entropy_beta (float): Коэффициент энтропийного бонуса.
-        actor_optim: Оптимизатор для актора.
-        critic_optim: Оптимизатор для критика.
-        writer: TensorBoard writer для логирования.
+        env: Training environment.
+        state: Current environment state.
+        done (bool): Episode termination flag.
+        steps (int): Total number of steps.
+        episode_reward (float): Reward for current episode.
+        episode_rewards (list): Episode reward history.
+        actor: Actor neural network.
+        critic: Critic neural network.
+        gamma (float): Discount coefficient.
+        entropy_beta (float): Entropy bonus coefficient.
+        actor_optim: Actor optimizer.
+        critic_optim: Critic optimizer.
+        writer: TensorBoard writer for logging.
     """
 
     def __init__(

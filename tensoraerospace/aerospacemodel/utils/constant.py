@@ -1,60 +1,58 @@
-"""
-Константы для отображения состояний и управляющих сигналов.
+"""Constants for displaying states and control signals.
 
-Этот модуль содержит словари с LaTeX-форматированием для отображения названий
-состояний и управляющих сигналов на графиках и в документации. Поддерживаются
-как русские, так и английские обозначения для различных параметров летательных
-аппаратов.
+This module contains dictionaries with LaTeX formatting for displaying names
+of states and control signals in plots and documentation. Both Russian and English
+notations are supported for various aircraft parameters.
 
-Доступные словари:
-- state_to_latex_rus: Русские обозначения состояний
-- state_to_latex_eng: Английские обозначения состояний
-- ref_state_to_latex_rus: Русские обозначения опорных состояний
-- ref_state_to_latex_eng: Английские обозначения опорных состояний
-- control_to_latex_rus: Русские обозначения управляющих сигналов
-- control_to_latex_eng: Английские обозначения управляющих сигналов
+Available dictionaries:
+- state_to_latex_rus: Russian state notations
+- state_to_latex_eng: English state notations
+- ref_state_to_latex_rus: Russian reference state notations
+- ref_state_to_latex_eng: English reference state notations
+- control_to_latex_rus: Russian control signal notations
+- control_to_latex_eng: English control signal notations
 """
 
 state_to_latex_rus = {
-    "alpha": r"$\alpha$" + ", град.",
-    "beta": r"$\beta$" + ", град.",
-    "wx": r"$\omega_x$" + ", град./с",
-    "wy": r"$\omega_y$" + ", град./с",
-    "wz": r"$\omega_z$" + ", град./с",
-    # eng названия состояний
-    "q": r"$\omega_z$" + ", град./с",
-    "u": r"$u$" + ", м/с",
-    "gamma": r"$\gamma$" + ", град.",
-    "phi": r"$\gamma$" + ", град.",
-    "psi": r"$\varpsi$" + ", град.",
-    "theta": r"$\vartheta$" + ", град.",
-    "stab": r"$\delta_{B}$" + ", град.",
-    "ele": r"$\delta_{B}$" + ", град.",
-    "ail": r"$\delta_{Э}$" + ", град.",
-    "dir": r"$\delta_{Н}$" + ", град.",
-    "rud": r"$\delta_{Н}$" + ", град.",
-    "dstab": r"$\dot{\delta_{B}}$" + ", град./с",
-    "dail": r"$\dot{\delta_{Э}}$" + ", град./с",
-    "ddir": r"$\dot{\delta_{Н}}$" + ", град./с",
-    "altitude": r"Высота" + ", м.",
+    "alpha": r"$\alpha$" + ", deg.",
+    "beta": r"$\beta$" + ", deg.",
+    "wx": r"$\omega_x$" + ", deg./s",
+    "wy": r"$\omega_y$" + ", deg./s",
+    "wz": r"$\omega_z$" + ", deg./s",
+    # English state names
+    "q": r"$\omega_z$" + ", deg./s",
+    "u": r"$u$" + ", m/s",
+    "gamma": r"$\gamma$" + ", deg.",
+    "phi": r"$\gamma$" + ", deg.",
+    "psi": r"$\varpsi$" + ", deg.",
+    "theta": r"$\vartheta$" + ", deg.",
+    "stab": r"$\delta_{B}$" + ", deg.",
+    "ele": r"$\delta_{B}$" + ", deg.",
+    "ail": r"$\delta_{A}$" + ", deg.",
+    "dir": r"$\delta_{R}$" + ", deg.",
+    "rud": r"$\delta_{R}$" + ", deg.",
+    "dstab": r"$\dot{\delta_{B}}$" + ", deg./s",
+    "dail": r"$\dot{\delta_{A}}$" + ", deg./s",
+    "ddir": r"$\dot{\delta_{R}}$" + ", deg./s",
+    "altitude": r"Altitude" + ", m.",
 }
 
 ref_state_to_latex_rus = {
-    "alpha": r"$\alpha^{ref}$" + ", град.",
-    "beta": r"$\beta^{ref}$" + ", град.",
-    "wx": r"$\omega^{ref}_x$" + ", град./с",
-    "wy": r"$\omega^{ref}_y$" + ", град./с",
-    "wz": r"$\omega^{ref}_z$" + ", град./с",
-    "q": r"$\omega^{ref}_z$" + ", град./с",
-    "gamma": r"$\gamma^{ref}$" + ", град.",
-    "phi": r"$\gamma^{ref}$" + ", град.",
-    "psi": r"$\varpsi^{ref}$" + ", град.",
-    "theta": r"$\vartheta^{ref}$" + ", град.",
-    "stab": r"$\delta^{ref}_{B}$" + ", град.",
-    "ele": r"$\delta{ref}_{B}$" + ", град.",
-    "ail": r"$\delta{ref}_{Э}$" + ", град.",
-    "dir": r"$\delta{ref}_{Н}$" + ", град.",
-    "rud": r"$\delta{ref}_{Н}$" + ", град.",
+    "alpha": r"$\alpha^{ref}$" + ", deg.",
+    "beta": r"$\beta^{ref}$" + ", deg.",
+    "wx": r"$\omega^{ref}_x$" + ", deg./s",
+    "wy": r"$\omega^{ref}_y$" + ", deg./s",
+    "wz": r"$\omega^{ref}_z$" + ", deg./s",
+    "q": r"$\omega^{ref}_z$" + ", deg./s",
+    "gamma": r"$\gamma^{ref}$" + ", deg.",
+    "phi": r"$\gamma^{ref}$" + ", deg.",
+    "psi": r"$\varpsi^{ref}$" + ", deg.",
+    "theta": r"$\vartheta^{ref}$" + ", deg.",
+    "stab": r"$\delta^{ref}_{B}$" + ", deg.",
+    "ele": r"$\delta{ref}_{B}$" + ", deg.",
+    "ail": r"$\delta{ref}_{Э}$" + ", deg.",
+    "dir": r"$\delta{ref}_{Н}$" + ", deg.",
+    "rud": r"$\delta{ref}_{Н}$" + ", deg.",
     "altitude": r"Высота" + ", м.",
 }
 
@@ -97,11 +95,11 @@ state_to_latex_eng = {
 }
 
 control_to_latex_rus = {
-    "stab": r"$\delta_{S_{act}}$" + ", град.",
-    "ele": r"$\delta_{S_{act}}$" + ", град.",
-    "ail": r"$\delta_{A_{act}}$" + ", град.",
-    "dir": r"$\delta_{D_{act}}$" + ", град.",
-    "rud": r"$\delta_{D_{act}}$" + ", град.",
+    "stab": r"$\delta_{S_{act}}$" + ", deg.",
+    "ele": r"$\delta_{S_{act}}$" + ", deg.",
+    "ail": r"$\delta_{A_{act}}$" + ", deg.",
+    "dir": r"$\delta_{D_{act}}$" + ", deg.",
+    "rud": r"$\delta_{D_{act}}$" + ", deg.",
 }
 
 control_to_latex_eng = {

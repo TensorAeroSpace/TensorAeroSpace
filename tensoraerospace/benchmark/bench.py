@@ -1,14 +1,13 @@
-"""
-Модуль для оценки качества систем управления.
+"""Control systems quality evaluation module.
 
-Этот модуль предоставляет инструменты для анализа переходных процессов
-в системах автоматического управления, включая расчет различных метрик
-качества и визуализацию результатов с помощью интерактивных графиков.
+This module provides tools for analyzing transient processes
+in automatic control systems, including calculation of various quality
+metrics and visualization of results using interactive plots.
 
-Основные компоненты:
-- ControlBenchmark: Класс для комплексной оценки систем управления
-- Метрики качества: перерегулирование, время установления, статическая ошибка и др.
-- Интерактивная визуализация с использованием Plotly
+Main components:
+    - ControlBenchmark: Class for comprehensive control system evaluation
+    - Quality metrics: overshoot, settling time, static error, etc.
+    - Interactive visualization using Plotly
 """
 
 from typing import Dict, Optional, Tuple
@@ -36,15 +35,15 @@ from .function import (
     steady_state_value,
 )
 
-# Цветовая палитра для графиков
+# Color palette for plots
 COLORS = ["#2E86AB", "#A23B72", "#F18F01", "#C73E1D", "#6A994E", "#7209B7"]
 
 
 class ControlBenchmark:
-    """Класс для проведения оценки системы управления и построения красивых графиков.
+    """Class for control system evaluation and beautiful plot generation.
 
-    Предоставляет инструменты для анализа качества переходных процессов
-    в системах автоматического управления с визуализацией результатов.
+    Provides tools for analyzing transient process quality
+    in automatic control systems with results visualization.
     """
 
     def becnchmarking_one_step(
@@ -55,52 +54,52 @@ class ControlBenchmark:
         dt: float,
     ) -> dict:
         """
-        Оценивает систему управления на одном шаге и возвращает расширенный набор результатов в виде словаря.
+        Evaluate control system on one step and return extended set of results as dictionary.
 
         Args:
-            control_signal (numpy.ndarray): Сигнал управления системы.
-            system_signal (numpy.ndarray): Сигнал системы, на которую воздействует управление.
-            signal_val (float): Значение сигнала, с которого начинается функция перехода.
-            dt (float): Шаг дискретизации.
+            control_signal (numpy.ndarray): System control signal.
+            system_signal (numpy.ndarray): System signal that is affected by control.
+            signal_val (float): Signal value from which the step function begins.
+            dt (float): Discretization step.
 
         Returns:
-            dict: Словарь с результатами оценки системы управления:
-                  - "overshoot" (float): перерегулирование (%),
-                  - "settling_time" (float): время установления (с),
-                  - "damping_degree" (float): степень затухания,
-                  - "static_error" (float): статическая ошибка,
-                  - "rise_time" (float): время нарастания (с),
-                  - "peak_time" (float): время достижения пика (с),
-                  - "maximum_deviation" (float): максимальное отклонение,
-                  - "iae" (float): интегральная абсолютная ошибка,
-                  - "ise" (float): интегральная квадратичная ошибка,
-                  - "itae" (float): интегральная абсолютная ошибка, взвешенная по времени,
-                  - "oscillation_count" (int): количество колебаний,
-                  - "steady_state_value" (float): установившееся значение,
-                  - "performance_index" (float): комплексный индекс качества.
+            dict: Dictionary with control system evaluation results:
+                  - "overshoot" (float): overshoot (%),
+                  - "settling_time" (float): settling time (s),
+                  - "damping_degree" (float): damping degree,
+                  - "static_error" (float): static error,
+                  - "rise_time" (float): rise time (s),
+                  - "peak_time" (float): peak time (s),
+                  - "maximum_deviation" (float): maximum deviation,
+                  - "iae" (float): integral absolute error,
+                  - "ise" (float): integral squared error,
+                  - "itae" (float): integral time absolute error,
+                  - "oscillation_count" (int): oscillation count,
+                  - "steady_state_value" (float): steady state value,
+                  - "performance_index" (float): comprehensive quality index.
         """
         control_signal, system_signal = find_step_function(
             control_signal, system_signal, signal_val=signal_val
         )
 
-        # Основные метрики
+        # Main metrics
         overshooting = overshoot(control_signal, system_signal)
         cnt_time = settling_time(control_signal, system_signal)
         damp = damping_degree(system_signal)
 
-        # Исправляем расчет статической ошибки - используем весь сигнал после переходного процесса
+        # Fix static error calculation - use entire signal after transient process
         if cnt_time is not None and cnt_time < len(control_signal):
             static_err = static_error(
                 control_signal[cnt_time:], system_signal[cnt_time:]
             )
         else:
-            # Если время установления не найдено или равно длине массива, используем последние 10% сигнала
+            # If settling time not found or equals array length, use last 10% of signal
             start_idx = max(0, int(0.9 * len(control_signal)))
             static_err = static_error(
                 control_signal[start_idx:], system_signal[start_idx:]
             )
 
-        # Дополнительные метрики
+        # Additional metrics
         rise_t = rise_time(control_signal, system_signal)
         peak_t = peak_time(system_signal)
         max_dev = maximum_deviation(control_signal, system_signal)
@@ -135,21 +134,21 @@ class ControlBenchmark:
         dt: float,
         tps: np.ndarray,
         figsize: tuple = (1600, 1000),
-        title: str = "Анализ системы управления",
+        title: str = "Control System Analysis",
     ):
         """
-        Строит интерактивный график анализа системы управления с использованием Plotly.
+        Build interactive control system analysis plot using Plotly.
 
         Args:
-            control_signal (numpy.ndarray): Сигнал управления системы.
-            system_signal (numpy.ndarray): Сигнал системы, на которую воздействует управление.
-            signal_val (float): Значение сигнала, с которого начинается функция перехода.
-            dt (float): Шаг дискретизации.
-            tps (numpy.ndarray): Массив временных меток.
-            figsize (tuple): Размер графика в пикселях, по умолчанию (1600, 1000).
-            title (str): Заголовок графика.
+            control_signal (numpy.ndarray): System control signal.
+            system_signal (numpy.ndarray): System signal that is affected by control.
+            signal_val (float): Signal value from which the step function begins.
+            dt (float): Discretization step.
+            tps (numpy.ndarray): Array of time stamps.
+            figsize (tuple): Plot size in pixels, defaults to (1600, 1000).
+            title (str): Plot title.
         """
-        # Получаем метрики
+        # Get metrics
         metrics = self.becnchmarking_one_step(
             control_signal, system_signal, signal_val, dt
         )
@@ -170,9 +169,9 @@ class ControlBenchmark:
                 [{"type": "scatter", "colspan": 2}, None],
             ],
             subplot_titles=(
-                "Переходный процесс",
-                "Метрики качества",
-                "Ошибка регулирования",
+                "Transient Process",
+                "Quality Metrics",
+                "Control Error",
             ),
             vertical_spacing=0.08,
             horizontal_spacing=0.05,

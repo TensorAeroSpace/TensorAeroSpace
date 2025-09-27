@@ -7,44 +7,38 @@ from tensoraerospace.aerospacemodel.base import ModelBase
 
 
 class LongitudinalF16(ModelBase):
-    r"""
-    Cамолет F-16 ✈ в изолированном продольном канале.
+    r"""F-16 aircraft ✈ in isolated longitudinal channel.
 
-    Пространство действий:
-        * stab_act: руль высоты [рад]
+    Action space:
+        stab_act: elevator [rad]
 
+    State space:
+        alpha: angle of attack [rad]
+        wz: pitch angular velocity [rad/s]
+        stab: elevator position [rad]
+        dstab: elevator angular velocity [rad/s]
 
-    Пространство состояний:
-        * alpha:  угол атаки  [рад]
-        * wz: угловая скорость тангажа [рад/с]
-        * stab: полжение руля высоты [рад]
-        * dstab: угловая скорость руля высоты [рад/с]
-
-
-    Пример использования:
-
-    >>> model = LongitudinalF16(initial_state)
-    >>> x_t = model.run_step([ [0], ])
+    Example usage:
+        >>> model = LongitudinalF16(initial_state)
+        >>> x_t = model.run_step([ [0], ])
 
     Args:
-        x0: Начальное состояние
-        t0: (Optional) Начальное время
-        x0: (Optional) Шаг дискетизации
+        x0: Initial state.
+        t0: (Optional) Initial time.
+        dt: (Optional) Discretization step.
     """
 
     def __init__(self, x0, selected_state_output=None, t0=0, dt: float = 0.01):
         super(LongitudinalF16, self).__init__(x0, selected_state_output, t0, dt)
         self.matlab_files_path = os.path.join(os.path.dirname(__file__), "matlab_code")
-        self.eng = matlab.engine.start_matlab()  # Запуск экземпляр Matlab
+        self.eng = matlab.engine.start_matlab()  # Start Matlab instance
         self.eng.addpath(self.matlab_files_path)
         self.list_state = ["alpha", "wz", "stab", "dstab"]
         self.control_list = [
             "stab",
         ]
         self.action_space_length = len(self.control_list)
-        self.param = (
-            self.eng.airplane_parameters()
-        )  # Получаем параметры объекта управления
+        self.param = self.eng.airplane_parameters()  # Get control object parameters
         self.x_history = [x0]
         self._initialize_selected_state_index(
             self.selected_state_output, self.list_state

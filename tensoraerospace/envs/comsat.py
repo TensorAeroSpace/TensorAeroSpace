@@ -1,10 +1,9 @@
-"""
-Модуль для моделирования спутника связи в продольном канале управления.
+"""Module for modeling communication satellite in longitudinal control channel.
 
-Этот модуль содержит реализацию среды Gymnasium для обучения агентов управления
-спутником связи. Среда предоставляет интерфейс для взаимодействия с моделью
-спутника, включая управление радиусом орбиты, углом поворота и угловой скоростью
-через двигательную установку.
+This module contains a Gymnasium environment implementation for training agents
+to control a communication satellite. The environment provides an interface
+for interaction with the satellite model, including control of orbital radius,
+rotation angle and angular velocity through propulsion system.
 """
 
 import gymnasium as gym
@@ -15,17 +14,17 @@ from tensoraerospace.aerospacemodel import ComSat
 
 
 class ComSatEnv(gym.Env):
-    """Моделирование объекта управления "Спутник связи в продольном канале управления" в среде моделирования OpenAI Gym для обучения агентов с искусственным интеллектом
+    """Simulation of "Communication satellite in longitudinal control channel" control object in OpenAI Gym environment for training AI agents.
 
     Args:
-        initial_state (any): Начальное состояние
-        reference_signal (any): Заданный сигнал
-        number_time_steps (any): Количество шагов моделирования
-        tracking_states (any): Отслеживаемые состояния
-        state_space (any): Пространства состояний
-        control_space (any): Пространство управления
-        output_space (any): Пространство полного выхода (с учетом помех)
-        reward_func (any): Функция вознаграждения (статус WIP)
+        initial_state: Initial state.
+        reference_signal: Reference signal.
+        number_time_steps: Number of simulation steps.
+        tracking_states: Tracked states.
+        state_space: State space.
+        control_space: Control space.
+        output_space: Full output space (including noise).
+        reward_func: Reward function (WIP status).
     """
 
     def __init__(

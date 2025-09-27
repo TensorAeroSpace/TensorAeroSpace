@@ -1,16 +1,15 @@
-"""
-Модуль функций для анализа качества систем управления.
+"""Functions module for control system quality analysis.
 
-Этот модуль содержит набор функций для расчета различных метрик качества
-переходных процессов в системах автоматического управления, включая:
-- Перерегулирование (overshoot)
-- Время установления (settling time)
-- Степень затухания (damping degree)
-- Статическую ошибку (static error)
-- Время нарастания (rise time)
-- Время достижения пика (peak time)
-- Интегральные критерии качества (IAE, ISE, ITAE)
-- И другие метрики для оценки качества управления
+This module contains a set of functions for calculating various quality metrics
+of transient processes in automatic control systems, including:
+- Overshoot
+- Settling time
+- Damping degree
+- Static error
+- Rise time
+- Peak time
+- Integral quality criteria (IAE, ISE, ITAE)
+- Other metrics for control quality assessment
 """
 
 from typing import Optional, Tuple
@@ -20,16 +19,15 @@ from scipy.signal import find_peaks
 
 
 def find_longest_repeating_series(numbers: list):
-    """
-    Находит самую длинную серию повторяющихся чисел в массиве.
+    """Find the longest series of repeating numbers in an array.
 
     Args:
         numbers: list
-            Массив чисел, в котором нужно найти самую длинную серию повторяющихся чисел.
+            Array of numbers in which to find the longest series of repeating numbers.
 
     Returns:
-        tuple: Кортеж вида (начало, конец), представляющий самую длинную серию повторяющихся чисел.
-               Если массив пустой, возвращает (0, 0).
+        tuple: Tuple of the form (start, end) representing the longest series of repeating numbers.
+               If the array is empty, returns (0, 0).
     """
     if len(numbers) == 0:
         return (0, 0)
@@ -41,7 +39,7 @@ def find_longest_repeating_series(numbers: list):
     current_series = (
         numbers[0],
         numbers[0],
-    )  # Текущая серия начинается и заканчивается первым числом
+    )  # Current series starts and ends with the first number
     max_length = 1
 
     for i in range(1, len(numbers)):
@@ -53,7 +51,7 @@ def find_longest_repeating_series(numbers: list):
                 longest_series = current_series
             current_series = (numbers[i], numbers[i])
 
-    # Проверяем последнюю текущую серию после завершения цикла
+    # Check the last current series after loop completion
     if current_series[1] - current_series[0] + 1 > max_length:
         longest_series = current_series
 
@@ -64,27 +62,27 @@ def find_step_function(
     control_signal: np.ndarray, system_signal: np.ndarray, signal_val: float = 0
 ) -> Tuple[np.ndarray, np.ndarray]:
     """
-    Находит функцию перехода системы управления на основе сигналов управления и системы.
+    Find control system step function based on control and system signals.
 
     Args:
         control_signal: numpy.ndarray
-            Сигнал управления системы.
+            System control signal.
         system_signal: numpy.ndarray
-            Сигнал системы, на которую воздействует управление.
+            System signal that is affected by control.
         signal_val: float, optional (default: 0)
-            Значение сигнала, с которого начинается функция перехода.
+            Signal value from which the step function begins.
 
     Returns:
-        Tuple[numpy.ndarray, numpy.ndarray]: Кортеж из двух массивов: обновленный сигнал управления и сигнал системы.
+        Tuple[numpy.ndarray, numpy.ndarray]: Tuple of two arrays: updated control signal and system signal.
     """
     if len(control_signal) != len(system_signal):
         raise ValueError(
-            "Массивы control_signal и system_signal должны иметь одинаковую длину."
+            "Arrays control_signal and system_signal must have the same length."
         )
 
     indices = np.where(control_signal > signal_val)[0]
     if len(indices) == 0:
-        # Если нет значений больше signal_val, возвращаем исходные массивы
+        # If there are no values greater than signal_val, return original arrays
         return control_signal, system_signal
     index_where_step_signal_start = indices[0]
     control_signal = control_signal[index_where_step_signal_start:]
@@ -94,25 +92,25 @@ def find_step_function(
 
 def overshoot(control_signal: np.ndarray, system_signal: np.ndarray) -> float:
     """
-    Рассчитывает перерегулирование системы управления на основе сигналов управления и системы.
+    Calculate control system overshoot based on control and system signals.
 
     Args:
         control_signal: numpy.ndarray
-            Сигнал управления системы.
+            System control signal.
         system_signal: numpy.ndarray
-            Сигнал системы, на которую воздействует управление.
+            System signal that is affected by control.
 
     Returns:
-        float: Значение перерегулирования в процентах.
+        float: Overshoot value in percent.
 
     """
-    # Предполагаем, что установившееся значение - это среднее значение последних 10% отклика системы
+    # Assume steady-state value is the average value of last 10% of system response
     y_final = np.mean(control_signal[int(0.9 * len(control_signal)) :])
 
-    # Максимальное значение функции отклика системы
+    # Maximum value of system response function
     M = np.max(system_signal)
 
-    # Расчет перерегулирования
+    # Overshoot calculation
     output = (M - y_final) / y_final * 100
 
     return output
@@ -122,68 +120,68 @@ def settling_time(
     control_signal: np.ndarray, system_signal: np.ndarray, threshold: float = 0.05
 ) -> Optional[int]:
     """
-    Рассчитывает время установления системы управления на основе сигналов управления и системы.
+    Calculate control system settling time based on control and system signals.
 
     Args:
         control_signal: numpy.ndarray
-            Сигнал управления системы.
+            System control signal.
         system_signal: numpy.ndarray
-            Сигнал системы, на которую воздействует управление.
+            System signal that is affected by control.
         threshold: float, optional (default: 0.05)
-            Пороговое значение относительного отклонения для определения диапазона установившегося значения.
+            Threshold value of relative deviation for determining steady-state value range.
 
     Returns:
-        Optional[int]: Время установления системы в индексах массива system_signal. Если система не достигла установившегося значения в заданном пороговом диапазоне, возвращается None.
+        Optional[int]: System settling time in system_signal array indices. If system did not reach steady-state value in given threshold range, returns None.
     """
-    # Предполагаем, что установившееся значение - это среднее значение последних 10% отклика системы
+    # Assume steady-state value is the average value of last 10% of system response
     y_final = np.mean(control_signal[int(0.9 * len(control_signal)) :])
 
-    # Определяем границы диапазона в пределах установившегося значения
+    # Define range boundaries within steady-state value
     lower_bound = y_final * (1 - threshold)
     upper_bound = y_final * (1 + threshold)
 
-    # Находим индексы, где сигнал впервые входит в этот диапазон
+    # Find indices where signal first enters this range
     within_range_indices = np.where(
         (system_signal >= lower_bound) & (system_signal <= upper_bound)
     )[0]
 
-    # Если сигнал никогда не входит в диапазон, возвращаем все время моделирования
+    # If signal never enters range, return entire simulation time
     if len(within_range_indices) == 0:
         return len(system_signal)
 
-    # Получаем самую длинную серию
+    # Get longest series
     longest_series = find_longest_repeating_series(within_range_indices.tolist())
 
-    # Возвращаем начало самой длинной серии
+    # Return start of longest series
     return longest_series[0]
 
 
 def damping_degree(system_signal: np.ndarray) -> float:
     """
-    Рассчитывает степень затухания системы на основе сигнала системы.
+    Calculate system damping degree based on system signal.
 
     Args:
         system_signal: numpy.ndarray
-            Сигнал системы, для которого вычисляется степень затухания.
+            System signal for which damping degree is calculated.
 
     Returns:
         float:
-            Среднее значений степени затухания между всеми пиками сигнала системы.
+            Average damping degree values between all peaks of system signal.
 
     Raises:
-        ValueError: Если количество пиков меньше двух, невозможно рассчитать степень затухания.
+        ValueError: If number of peaks is less than two, cannot calculate damping degree.
     """
-    # Находим пики в сигнале системы
+    # Find peaks in system signal
     peaks, _ = find_peaks(system_signal)
 
-    # Если пиков меньше двух, то нельзя рассчитать степень затухания
+    # If less than two peaks, cannot calculate damping degree
     if len(peaks) < 2:
-        return 0.0  # Возвращаем 0 как значение по умолчанию
+        return 0.0  # Return 0 as default value
 
-    # Вычисляем амплитуды пиков
+    # Calculate peak amplitudes
     amplitudes = system_signal[peaks]
 
-    # Расчет степени затухания
+    # Damping degree calculation
     y_values = 1 - (amplitudes[1:] / amplitudes[:-1])
 
     return np.mean(y_values)
@@ -191,24 +189,24 @@ def damping_degree(system_signal: np.ndarray) -> float:
 
 def static_error(control_signal: np.ndarray, system_signal: np.ndarray) -> float:
     """
-    Рассчитывает статическую ошибку системы управления на основе сигналов управления и системы.
+    Calculate control system static error based on control and system signals.
 
     Args:
         control_signal: numpy.ndarray
-            Сигнал управления системы.
+            System control signal.
         system_signal: numpy.ndarray
-            Сигнал системы, на которую воздействует управление.
+            System signal that is affected by control.
 
     Returns:
-        float: Значение статической ошибки.
+        float: Static error value.
     """
-    # Установившееся значение - это среднее значение последних 5-10% отклика системы
+    # Steady-state value is the average value of last 5-10% of system response
     y_final = np.mean(system_signal[int(0.9 * len(system_signal)) :])
 
-    # Целевое значение - это среднее значение последних 5-10% заданного сигнала управления
+    # Target value is the average value of last 5-10% of given control signal
     r_final = np.mean(control_signal[int(0.9 * len(control_signal)) :])
 
-    # Статическая ошибка - это разница между целевым значением и установившимся значением
+    # Static error is the difference between target value and steady-state value
     return r_final - y_final
 
 
@@ -216,16 +214,16 @@ def get_lower_upper_bound(
     control_signal: np.ndarray, epsilon: float = 0.05
 ) -> Tuple[np.ndarray, np.ndarray]:
     """
-    Возвращает нижнюю и верхнюю границы для сигнала управления.
+    Return lower and upper bounds for control signal.
 
     Args:
         control_signal: numpy.ndarray
-            Сигнал управления системы.
+            System control signal.
         epsilon: float, optional (default: 0.05)
-            Значение для определения границ.
+            Value for determining bounds.
 
     Returns:
-        Tuple[numpy.ndarray, numpy.ndarray]: Кортеж из двух массивов: нижняя и верхняя границы для сигнала управления.
+        Tuple[numpy.ndarray, numpy.ndarray]: Tuple of two arrays: lower and upper bounds for control signal.
     """
     final_value = control_signal[-1]
     upper = np.full_like(control_signal, final_value + final_value * epsilon)

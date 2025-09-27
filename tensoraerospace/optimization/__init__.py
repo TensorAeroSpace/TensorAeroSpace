@@ -1,13 +1,12 @@
-"""
-Модуль для оптимизации гиперпараметров алгоритмов управления.
+"""Module for control algorithm hyperparameter optimization.
 
-Этот модуль предоставляет инструменты для автоматической оптимизации гиперпараметров
-алгоритмов обучения с подкреплением и других методов управления аэрокосмическими
-системами. Поддерживает различные фреймворки оптимизации, включая Optuna и Ray Tune.
+This module provides tools for automatic hyperparameter optimization
+of reinforcement learning algorithms and other aerospace system control methods.
+Supports various optimization frameworks, including Optuna and Ray Tune.
 
-Основные компоненты:
-- HyperParamOptimizationOptuna: Оптимизация гиперпараметров с использованием Optuna
-- HyperParamOptimizationRay: Оптимизация гиперпараметров с использованием Ray Tune
+Main components:
+    - HyperParamOptimizationOptuna: Hyperparameter optimization using Optuna
+    - HyperParamOptimizationRay: Hyperparameter optimization using Ray Tune
 """
 
 from .base import HyperParamOptimizationOptuna as HyperParamOptimizationOptuna

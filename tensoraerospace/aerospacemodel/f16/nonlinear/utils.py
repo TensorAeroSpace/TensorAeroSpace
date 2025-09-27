@@ -2,39 +2,41 @@ import numpy as np
 
 
 def state2dict(state: list, list_state: list) -> dict:
-    """
-    Конвертирование массива состояний в словрь состояний
+    """Convert state array to state dictionary.
 
-    :param state: Массив состояний
+    Args:
+        state: State array.
+        list_state: List of state names.
 
-    :return: Словарь состояний
+    Returns:
+        dict: State dictionary.
     """
     state = np.array(state).reshape([len(state), -1])
     return {st: state[:, list_state.index(st)] for i, st in enumerate(list_state)}
 
 
 def control2dict(control: list, control_list: list) -> dict:
-    """
-    Конвертирование массива управления в словарь управления
+    """Convert control array to control dictionary.
 
     Args:
-        control: Массив управления
+        control: Control array.
+        control_list: List of control names.
 
     Returns:
-        Словарь управления
+        dict: Control dictionary.
     """
     control = np.array(control).reshape([len(control), -1])
     return {st: control[:, control_list.index(st)] for i, st in enumerate(control_list)}
 
 
 def output2dict(output: np.ndarray, output_list: list) -> dict:
-    """
-    Конвертирование массива выхода state-space в словарь управления
+    """Convert state-space output array to output dictionary.
 
     Args:
-        control: Массив управления
+        output: Output array.
+        output_list: List of output names.
 
     Returns:
-        Словарь управления
+        dict: Output dictionary.
     """
     return {st: output[i] for i, st in enumerate(output_list)}

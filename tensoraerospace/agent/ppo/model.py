@@ -1,9 +1,8 @@
-"""
-Модуль реализации алгоритма Proximal Policy Optimization (PPO).
+"""Proximal Policy Optimization (PPO) algorithm implementation module.
 
-Этот модуль содержит реализацию алгоритма PPO для обучения с подкреплением,
-включая нейронные сети актора и критика, функции для итерации по батчам
-и основной класс агента PPO для управления аэрокосмическими системами.
+This module contains the PPO algorithm implementation for reinforcement learning,
+including actor and critic neural networks, batch iteration functions
+and the main PPO agent class for aerospace system control.
 """
 
 import datetime
@@ -27,17 +26,16 @@ from ..base import (
 
 
 def init_layer_uniform(layer: nn.Linear, init_w: float = 3e-3) -> nn.Linear:
-    """
-    Инициализирует веса и смещения (биасы) слоя с помощью равномерного распределения.
+    """Initialize layer weights and biases using uniform distribution.
 
     Args:
-        layer (nn.Linear): Слой нейронной сети, который будет инициализирован.
-        init_w (float, optional): Половина интервала для равномерного распределения. По умолчанию 3e-3.
+        layer (nn.Linear): Neural network layer to be initialized.
+        init_w (float, optional): Half interval for uniform distribution. Defaults to 3e-3.
 
     Returns:
-        nn.Linear: Слой с инициализированными весами и смещениями.
+        nn.Linear: Layer with initialized weights and biases.
 
-    Примеры:
+    Examples:
         >>> layer = nn.Linear(10, 5)
         >>> init_layer_uniform(layer)
         Linear(in_features=10, out_features=5, bias=True)
@@ -50,16 +48,16 @@ def init_layer_uniform(layer: nn.Linear, init_w: float = 3e-3) -> nn.Linear:
 class Critic(nn.Module):
     def __init__(self, input_dim: int, hidden_dim: int = 64):
         """
-        Инициализирует модуль критика.
+        Initialize critic module.
 
         Args:
-            input_dim (int): Размерность входных данных.
-            hidden_dim (int, optional): Размер скрытого слоя. По умолчанию равен 64.
+            input_dim (int): Input data dimension.
+            hidden_dim (int, optional): Hidden layer size. Defaults to 64.
 
-        Осуществляет следующие операции:
-        - Инициализирует первый линейный слой для преобразования входных данных в промежуточное представление.
-        - Инициализирует второй линейный слой для вычисления "значения" из промежуточного представления.
-        - Инициализирует второй линейный слой с использованием равномерного распределения.
+        Performs the following operations:
+        - Initialize first linear layer to transform input data to intermediate representation.
+        - Initialize second linear layer to compute "value" from intermediate representation.
+        - Initialize second linear layer using uniform distribution.
         """
         super(Critic, self).__init__()
         self.d1 = nn.Linear(input_dim, hidden_dim)
@@ -68,17 +66,17 @@ class Critic(nn.Module):
 
     def forward(self, input_data: torch.Tensor) -> torch.Tensor:
         """
-        Производит прямой проход сети.
+        Perform forward pass of the network.
 
         Args:
-            input_data (Tensor): Тензор входных данных.
+            input_data (Tensor): Input data tensor.
 
         Returns:
-            Tensor: Выходной тензор, представляющий "значение" для каждого входного примера.
+            Tensor: Output tensor representing "value" for each input example.
 
-        Применяет последовательность операций:
-        - Пропускает входные данные через первый линейный слой и применяет функцию активации ReLU.
-        - Пропускает результат через второй линейный слой для вычисления конечного "значения".
+        Applies sequence of operations:
+        - Pass input data through first linear layer and apply ReLU activation function.
+        - Pass result through second linear layer to compute final "value".
         """
         x = F.relu(self.d1(input_data))
         v = self.v(x)
@@ -88,15 +86,15 @@ class Critic(nn.Module):
 class Actor(nn.Module):
     def __init__(self, input_dim: int, out_dim: int, hidden_dim: int = 32):
         """
-        Инициализирует класс Actor, который является подклассом nn.Module.
+        Initialize Actor class, which is a subclass of nn.Module.
 
         Args:
-            input_dim (int): Размер входного слоя.
-            out_dim (int): Размер выходного слоя.
-            hidden_dim (int, optional): Размер скрытого слоя. По умолчанию равен 32.
+            input_dim (int): Input layer size.
+            out_dim (int): Output layer size.
+            hidden_dim (int, optional): Hidden layer size. Defaults to 32.
 
-        Инициализирует линейные слои для расчета промежуточных представлений и параметров действий.
-        Использует пользовательские функции init_layer_uniform для инициализации слоев `mu` и `delta`.
+        Initialize linear layers for calculating intermediate representations and action parameters.
+        Uses custom init_layer_uniform functions to initialize `mu` and `delta` layers.
         """
         super(Actor, self).__init__()
         self.d1 = nn.Linear(input_dim, hidden_dim)
@@ -116,18 +114,18 @@ class Actor(nn.Module):
         continous_actions: bool = False,
     ) -> Any:
         """
-        Производит прямой проход через модель, вычисляя действия агента на основе входных данных.
+        Perform forward pass through model, computing agent actions based on input data.
 
         Args:
-            input_data (Tensor): Входные данные для модели.
-            return_reward (bool, optional): Флаг, указывающий, следует ли возвращать вознаграждение. По умолчанию False.
-            continous_actions (bool, optional): Флаг, указывающий, должны ли действия быть непрерывными. По умолчанию False.
+            input_data (Tensor): Input data for model.
+            return_reward (bool, optional): Flag indicating whether to return reward. Defaults to False.
+            continous_actions (bool, optional): Flag indicating whether actions should be continuous. Defaults to False.
 
         Returns:
             Union[Tuple[torch.Tensor, torch.distributions.Normal], Tuple[torch.Tensor, torch.distributions.Normal, torch.Tensor], torch.Tensor, Tuple[torch.Tensor, torch.Tensor]]:
-            В зависимости от флагов возвращает действие, распределение (и вознаграждение, если запрошено).
-            Если continous_actions True, возвращает либо пару (action, dist), либо тройку (action, dist, r).
-            В противном случае возвращает либо действие, либо пару (action, r).
+            Depending on flags returns action, distribution (and reward if requested).
+            If continous_actions True, returns either pair (action, dist) or triple (action, dist, r).
+            Otherwise returns either action or pair (action, r).
         """
         x = F.relu(self.d1(input_data))
 
@@ -161,17 +159,17 @@ def ppo_iter(
     advantages: torch.Tensor,
     rewards: torch.Tensor,
 ):
-    """Инициализирует итератор для PPO.
+    """Initialize iterator for PPO.
 
     Args:
-        epoch (int): Количество эпох для итераций.
-        mini_batch_size (int): Размер мини-батча для каждой итерации.
-        states (torch.Tensor): Тензор состояний.
-        actions (torch.Tensor): Тензор действий.
-        log_probs (torch.Tensor): Тензор логарифмов вероятностей действий.
-        returns (torch.Tensor): Тензор ожидаемых доходов.
-        advantages (torch.Tensor): Тензор преимуществ.
-        rewards (torch.Tensor): Тензор наград.
+        epoch (int): Number of epochs for iterations.
+        mini_batch_size (int): Mini-batch size for each iteration.
+        states (torch.Tensor): States tensor.
+        actions (torch.Tensor): Actions tensor.
+        log_probs (torch.Tensor): Action log probabilities tensor.
+        returns (torch.Tensor): Expected returns tensor.
+        advantages (torch.Tensor): Advantages tensor.
+        rewards (torch.Tensor): Rewards tensor.
     """
     batch_size = states.size(0)
     for _ in range(epoch):
@@ -183,11 +181,11 @@ def ppo_iter(
 
 
 class PPO(BaseRLModel):
-    """Класс, реализующий агента PPO с использованием PyTorch.
+    """Class implementing PPO agent using PyTorch.
 
     Args:
-        env: объект окружения.
-        gamma (float): коэффициент дисконтирования.
+        env: Environment object.
+        gamma (float): Discount coefficient.
     """
 
     def __init__(
@@ -204,11 +202,11 @@ class PPO(BaseRLModel):
         critic_lr: float = 0.005,
         seed: int = 336699,
     ) -> None:
-        """Инициализация агента с заданным окружением и коэффициентом дисконтирования.
+        """Initialize agent with given environment and discount coefficient.
 
         Args:
-            env: объект окружения, с которым будет взаимодействовать агент.
-            gamma (float, optional): коэффициент дисконтирования, используемый в расчетах. По умолчанию 0.99.
+            env: Environment object with which agent will interact.
+            gamma (float, optional): Discount coefficient used in calculations. Defaults to 0.99.
         """
         self.gamma = gamma
         self.env = env
@@ -234,13 +232,13 @@ class PPO(BaseRLModel):
         self.writer = SummaryWriter()
 
     def act(self, state: np.ndarray) -> Tuple[torch.Tensor, np.ndarray, torch.Tensor]:
-        """Выбирает действие для данного состояния.
+        """Select action for given state.
 
         Args:
-            state: текущее состояние среды.
+            state: Current environment state.
 
         Returns:
-            tuple: кортеж, содержащий действие, среднее действие и логарифм вероятности действия.
+            tuple: Tuple containing action, mean action and log probability of action.
         """
         state = torch.FloatTensor(np.array([state]))
         action, dist = self.actor(state, continous_actions=True)
@@ -258,17 +256,17 @@ class PPO(BaseRLModel):
         adv: torch.Tensor,
         old_probs: torch.Tensor,
     ) -> torch.Tensor:
-        """Вычисляет потери актора.
+        """Calculate actor losses.
 
         Args:
-            probs: вероятности действий новой политики.
-            entropy: энтропия действий.
-            actions: предпринятые действия.
-            adv: преимущества (advantages).
-            old_probs: вероятности действий старой политики.
+            probs: Action probabilities of new policy.
+            entropy: Action entropy.
+            actions: Actions taken.
+            adv: Advantages.
+            old_probs: Action probabilities of old policy.
 
         Returns:
-            Tensor: значение функции потерь для актора.
+            Tensor: Actor loss function value.
         """
         ratios = torch.exp(probs - old_probs)
         surr1 = ratios * adv
@@ -277,14 +275,14 @@ class PPO(BaseRLModel):
         return loss
 
     def auxillary_task(self, r: torch.Tensor, rewards: torch.Tensor) -> torch.Tensor:
-        """Вычисляет потери вспомогательной задачи (прогнозирование наград).
+        """Calculate auxiliary task losses (reward prediction).
 
         Args:
-            r: предсказанные награды.
-            rewards: реальные награды.
+            r: Predicted rewards.
+            rewards: Real rewards.
 
         Returns:
-            Tensor: значение функции потерь MSE между предсказанными и реальными наградами.
+            Tensor: MSE loss function value between predicted and real rewards.
         """
         return F.mse_loss(r, rewards)
 
@@ -297,18 +295,18 @@ class PPO(BaseRLModel):
         discnt_rewards: torch.Tensor,
         rewards: torch.Tensor,
     ) -> Tuple[float, float]:
-        """Процедура обучения агента.
+        """Agent training procedure.
 
         Args:
-            states: состояния, испытанные агентом.
-            actions: действия, предпринятые агентом.
-            adv: преимущества (advantages).
-            old_probs: логарифмические вероятности предыдущих действий.
-            discnt_rewards: дисконтированные награды.
-            rewards: фактические полученные награды.
+            states: States experienced by agent.
+            actions: Actions taken by agent.
+            adv: Advantages.
+            old_probs: Log probabilities of previous actions.
+            discnt_rewards: Discounted rewards.
+            rewards: Actual received rewards.
 
         Returns:
-            tuple: кортеж, содержащий значения функций потерь актора и критика.
+            tuple: Tuple containing actor and critic loss function values.
         """
         self.a_opt.zero_grad()
         self.c_opt.zero_grad()
@@ -329,10 +327,10 @@ class PPO(BaseRLModel):
         return a_loss.item(), c_loss.item()
 
     def test_reward(self) -> float:
-        """Тестирование модели путем выполнения одного эпизода.
+        """Test model by executing one episode.
 
         Returns:
-            float: суммарная награда за эпизод.
+            float: Total reward per episode.
         """
         total_reward = 0
         reset_return = self.env.reset()
@@ -370,19 +368,19 @@ class PPO(BaseRLModel):
         torch.Tensor,
         torch.Tensor,
     ]:
-        """Предобработка переходов для буфера.
+        """Preprocess transitions for buffer.
 
         Args:
-            states: список состояний.
-            actions: список действий.
-            rewards: список наград.
-            dones: список булевых значений, указывающих окончание эпизода.
-            values: значения состояний.
-            probs: логарифмические вероятности действий.
-            gamma: коэффициент дисконтирования.
+            states: List of states.
+            actions: List of actions.
+            rewards: List of rewards.
+            dones: List of boolean values indicating episode termination.
+            values: State values.
+            probs: Log probabilities of actions.
+            gamma: Discount coefficient.
 
         Returns:
-            tuple: кортеж, содержащий обработанные состояния, действия, награды, преимущества и вероятности.
+            tuple: Tuple containing processed states, actions, rewards, advantages and probabilities.
         """
 
         states2 = torch.cat(states).view(-1, 3)
