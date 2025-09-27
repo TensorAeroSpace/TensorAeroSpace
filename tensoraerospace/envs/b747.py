@@ -86,39 +86,39 @@ class LinearLongitudinalB747(gym.Env):
 
     @staticmethod
     def reward(state, ref_signal, ts):
-        """Оценка управления
+        """Control evaluation.
 
         Args:
-            state (_type_): Текущее состояния
-            ref_signal (_type_): Заданное состояние
-            ts (_type_): Временной шаг
+            state: Current state.
+            ref_signal: Reference state.
+            ts: Time step.
 
         Returns:
-            reward (float): Оценка управления
+            reward (float): Control evaluation.
         """
-        # Вычисляем среднеквадратичную ошибку по всем состояниям
+        # Calculate mean squared error across all states
         error = np.mean((state.flatten() - ref_signal[:, ts]) ** 2)
         return float(error)
 
     def _get_info(self):
-        """Возвращает дополнительную информацию о состоянии среды.
+        """Return additional information about environment state.
 
         Returns:
-            dict: Пустой словарь с дополнительной информацией.
+            dict: Empty dictionary with additional information.
         """
         return {}
 
     def step(self, action: np.ndarray):
-        """Выполнения шага моделирования
+        """Execute simulation step.
 
         Args:
-            action (np.ndarray): Массив управляющего сигнала по выбранным органам
+            action (np.ndarray): Control signal array for selected actuators.
 
         Returns:
-            next_state (np.ndarray): Следующие состояние объекта управления
-            reward (np.ndarray): Оценка действий алгоритма управления
-            done (bool): Статус моделирования, завершено или нет
-            logging (any): Дополнительная информацию (не используется)
+            next_state (np.ndarray): Next state of control object.
+            reward (np.ndarray): Evaluation of control algorithm actions.
+            done (bool): Simulation status, completed or not.
+            logging (any): Additional information (not used).
         """
         if action[0] > self.max_action_value:
             action[0] = self.max_action_value

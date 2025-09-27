@@ -1,18 +1,16 @@
-"""
-Константы для отображения состояний и управляющих сигналов.
+"""Constants for displaying states and control signals.
 
-Этот модуль содержит словари с LaTeX-форматированием для отображения названий
-состояний и управляющих сигналов на графиках и в документации. Поддерживаются
-как русские, так и английские обозначения для различных параметров летательных
-аппаратов.
+This module contains dictionaries with LaTeX formatting for displaying names
+of states and control signals in plots and documentation. Both Russian and English
+notations are supported for various aircraft parameters.
 
-Доступные словари:
-- state_to_latex_rus: Русские обозначения состояний
-- state_to_latex_eng: Английские обозначения состояний
-- ref_state_to_latex_rus: Русские обозначения опорных состояний
-- ref_state_to_latex_eng: Английские обозначения опорных состояний
-- control_to_latex_rus: Русские обозначения управляющих сигналов
-- control_to_latex_eng: Английские обозначения управляющих сигналов
+Available dictionaries:
+- state_to_latex_rus: Russian state notations
+- state_to_latex_eng: English state notations
+- ref_state_to_latex_rus: Russian reference state notations
+- ref_state_to_latex_eng: English reference state notations
+- control_to_latex_rus: Russian control signal notations
+- control_to_latex_eng: English control signal notations
 """
 
 state_to_latex_rus = {
@@ -21,7 +19,7 @@ state_to_latex_rus = {
     "wx": r"$\omega_x$" + ", град./с",
     "wy": r"$\omega_y$" + ", град./с",
     "wz": r"$\omega_z$" + ", град./с",
-    # eng названия состояний
+    # English state names
     "q": r"$\omega_z$" + ", град./с",
     "u": r"$u$" + ", м/с",
     "gamma": r"$\gamma$" + ", град.",

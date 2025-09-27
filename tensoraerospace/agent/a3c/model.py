@@ -12,13 +12,13 @@ GLOBAL_EP = 0
 
 
 class Actor(tf.keras.Model):
-    """Модель актора в A3C
+    """Actor model in A3C.
 
     Args:
-        state_size (_type_): Размер состояния подающегося на вход
-        action_size (_type_): Размер вектора действий
-        action_bound (_type_): Границы действий
-        std_bound (_type_): Границы стандартного отклонения
+        state_size: Size of input state.
+        action_size: Size of action vector.
+        action_bound: Action boundaries.
+        std_bound: Standard deviation boundaries.
     """
 
     def __init__(self, state_size, action_size, action_bound, std_bound):
@@ -32,9 +32,7 @@ class Actor(tf.keras.Model):
         self.opt = tf.keras.optimizers.Adam(actor_lr)
 
     def create_model(self):
-        """
-        Функция создающая модель актора
-        """
+        """Function creating actor model."""
         state_input = Input((self.state_size,))
         dense_1 = Dense(hidden_size, activation="relu")(state_input)
         dense_2 = Dense(hidden_size, activation="relu")(dense_1)
@@ -44,16 +42,16 @@ class Actor(tf.keras.Model):
         return tf.keras.models.Model(state_input, [mu_output, std_output])
 
     def compute_loss(self, actions, mu, std, advantages):
-        """Функция которая вычисляет ошибку актора
+        """Function that computes actor loss.
 
         Args:
-            actions (_type_): батч действий
-            mu (float): коэффициент
-            std (float): стандартное отклонение
-            advantages (_type_): батч значений функции advantage
+            actions: Batch of actions.
+            mu (float): Coefficient.
+            std (float): Standard deviation.
+            advantages: Batch of advantage function values.
 
         Returns:
-            policy_loss (float): ошибка актора
+            policy_loss (float): Actor loss.
         """
         std = tf.clip_by_value(std, self.std_bound[0], self.std_bound[1])
         var = std**2
