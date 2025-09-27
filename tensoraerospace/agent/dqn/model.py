@@ -192,13 +192,13 @@ class PERAgent:
         min_epsilon (float, optional): Minimum epsilon value.
         gamma (float, optional): Discount coefficient.
         batch_size (int, optional): Mini-batch size.
-        target_update_iter (int, optional): период обновления целевой сети (шаги).
-        train_nums (int, optional): количество шагов обучения.
-        buffer_size (int, optional): размер буфера повторов.
-        replay_period (int, optional): период выборки из буфера.
-        alpha (float, optional): степень приоритезации.
-        beta (float, optional): коэффициент importance sampling.
-        beta_increment_per_sample (float, optional): приращение beta за выборку.
+        target_update_iter (int, optional): Target network update period (steps).
+        train_nums (int, optional): Number of training steps.
+        buffer_size (int, optional): Replay buffer size.
+        replay_period (int, optional): Buffer sampling period.
+        alpha (float, optional): Prioritization degree.
+        beta (float, optional): Importance sampling coefficient.
+        beta_increment_per_sample (float, optional): Beta increment per sample.
     """
 
     def __init__(

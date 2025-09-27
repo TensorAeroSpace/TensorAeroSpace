@@ -158,30 +158,30 @@ def settling_time(
 
 def damping_degree(system_signal: np.ndarray) -> float:
     """
-    Рассчитывает степень затухания системы на основе сигнала системы.
+    Calculate system damping degree based on system signal.
 
     Args:
         system_signal: numpy.ndarray
-            Сигнал системы, для которого вычисляется степень затухания.
+            System signal for which damping degree is calculated.
 
     Returns:
         float:
-            Среднее значений степени затухания между всеми пиками сигнала системы.
+            Average damping degree values between all peaks of system signal.
 
     Raises:
-        ValueError: Если количество пиков меньше двух, невозможно рассчитать степень затухания.
+        ValueError: If number of peaks is less than two, cannot calculate damping degree.
     """
-    # Находим пики в сигнале системы
+    # Find peaks in system signal
     peaks, _ = find_peaks(system_signal)
 
-    # Если пиков меньше двух, то нельзя рассчитать степень затухания
+    # If less than two peaks, cannot calculate damping degree
     if len(peaks) < 2:
-        return 0.0  # Возвращаем 0 как значение по умолчанию
+        return 0.0  # Return 0 as default value
 
-    # Вычисляем амплитуды пиков
+    # Calculate peak amplitudes
     amplitudes = system_signal[peaks]
 
-    # Расчет степени затухания
+    # Damping degree calculation
     y_values = 1 - (amplitudes[1:] / amplitudes[:-1])
 
     return np.mean(y_values)
@@ -189,24 +189,24 @@ def damping_degree(system_signal: np.ndarray) -> float:
 
 def static_error(control_signal: np.ndarray, system_signal: np.ndarray) -> float:
     """
-    Рассчитывает статическую ошибку системы управления на основе сигналов управления и системы.
+    Calculate control system static error based on control and system signals.
 
     Args:
         control_signal: numpy.ndarray
-            Сигнал управления системы.
+            System control signal.
         system_signal: numpy.ndarray
-            Сигнал системы, на которую воздействует управление.
+            System signal that is affected by control.
 
     Returns:
-        float: Значение статической ошибки.
+        float: Static error value.
     """
-    # Установившееся значение - это среднее значение последних 5-10% отклика системы
+    # Steady-state value is the average value of last 5-10% of system response
     y_final = np.mean(system_signal[int(0.9 * len(system_signal)) :])
 
-    # Целевое значение - это среднее значение последних 5-10% заданного сигнала управления
+    # Target value is the average value of last 5-10% of given control signal
     r_final = np.mean(control_signal[int(0.9 * len(control_signal)) :])
 
-    # Статическая ошибка - это разница между целевым значением и установившимся значением
+    # Static error is the difference between target value and steady-state value
     return r_final - y_final
 
 
