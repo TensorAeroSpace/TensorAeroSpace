@@ -4,8 +4,8 @@ contact_links:
     url: https://tensoraerospace.readthedocs.io/
     about: Read the documentation before opening an issue.
   - name: 💬 Discussions
-    url: https://github.com/AsmaZaev/TensorAeroSpace/discussions
+    url: https://github.com/TensorAeroSpace/TensorAeroSpace/discussions
     about: Ask questions, share ideas, and get help from the community.
   - name: 🐞 Security / Vulnerability report
-    url: https://github.com/AsmaZaev/TensorAeroSpace/security/policy
+    url: https://github.com/TensorAeroSpace/TensorAeroSpace/security/policy
     about: Please report security issues using our security policy.
