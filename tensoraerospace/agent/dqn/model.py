@@ -390,7 +390,7 @@ class PERAgent:
         return idxes, is_weights
 
     def evaluation(self, wrapped_env: Any, render: bool = False) -> float:
-        """Получение батча для обучения
+        """Get batch for training.
 
         Args:
             wrapped_env: Wrapped environment (for rendering/frame capture).
@@ -463,7 +463,7 @@ class PERAgent:
 
     # assign the current network parameters to target network
     def update_target_model(self) -> None:
-        """Функция обновления целевой нейросети"""
+        """Target neural network update function."""
 
         self.target_model.set_weights(self.model.get_weights())
 
@@ -476,31 +476,31 @@ class PERAgent:
         return self.target_model.predict(obs)
 
     def e_decay(self) -> None:
-        """Функция для уменьшения вероятности исследования сети"""
+        """Function for reducing network exploration probability."""
 
         self.epsilon *= self.epsilon_decay
 
 
 class PERNARXAgent:
-    """Агент DQN с NARX моделью обучения.
+    """DQN Agent with NARX training model.
 
     Args:
-        model (tf.keras.Model): модель глубокой Q-сети.
-        target_model (tf.keras.Model): целевая модель глубокой Q-сети.
-        env (gym.Env): среда Gym.
-        learning_rate (float, optional): скорость обучения.
-        epsilon (float, optional): вероятность исследования среды.
-        epsilon_dacay (float, optional): коэффициент уменьшения epsilon по эпизодам.
-        min_epsilon (float, optional): минимальное значение epsilon.
-        gamma (float, optional): коэффициент дисконтирования.
-        batch_size (int, optional): размер мини-батча.
-        target_update_iter (int, optional): период обновления целевой сети (шаги).
-        train_nums (int, optional): количество шагов обучения.
-        buffer_size (int, optional): размер буфера повторов.
-        replay_period (int, optional): период выборки из буфера.
-        alpha (float, optional): степень приоритезации.
-        beta (float, optional): коэффициент importance sampling.
-        beta_increment_per_sample (float, optional): приращение beta за выборку.
+        model (tf.keras.Model): Deep Q-network model.
+        target_model (tf.keras.Model): Target deep Q-network model.
+        env (gym.Env): Gym environment.
+        learning_rate (float, optional): Learning rate.
+        epsilon (float, optional): Environment exploration probability.
+        epsilon_dacay (float, optional): Epsilon reduction coefficient per episode.
+        min_epsilon (float, optional): Minimum epsilon value.
+        gamma (float, optional): Discount coefficient.
+        batch_size (int, optional): Mini-batch size.
+        target_update_iter (int, optional): Target network update period (steps).
+        train_nums (int, optional): Number of training steps.
+        buffer_size (int, optional): Replay buffer size.
+        replay_period (int, optional): Buffer sampling period.
+        alpha (float, optional): Prioritization degree.
+        beta (float, optional): Importance sampling coefficient.
+        beta_increment_per_sample (float, optional): Beta increment per sample.
     """
 
     def __init__(
@@ -692,7 +692,7 @@ class PERNARXAgent:
         return idxes, is_weights
 
     def evaluation(self, env, render: bool = False) -> float:
-        """Получение батча для обучения
+        """Get batch for training.
 
         Args:
             env (_type_): среда
@@ -761,7 +761,7 @@ class PERNARXAgent:
 
     # assign the current network parameters to target network
     def update_target_model(self) -> None:
-        """Функция обновления целевой нейросети"""
+        """Target neural network update function."""
 
         self.target_model.set_weights(self.model.get_weights())
 
@@ -774,6 +774,6 @@ class PERNARXAgent:
         return self.target_model.predict(obs)
 
     def e_decay(self) -> None:
-        """Функция для уменьшения вероятности исследования сети"""
+        """Function for reducing network exploration probability."""
 
         self.epsilon *= self.epsilon_decay

@@ -302,15 +302,15 @@ class MPCOptimizationAgent(BaseRLModel):
         self, state: np.ndarray, rollout: int, horizon: int
     ) -> np.ndarray:
         """
-        Выбирает оптимальное действие, используя модель для прогнозирования и оценки последствий действий.
+        Select optimal action using model for prediction and evaluation of action consequences.
 
         Args:
-            state (numpy.ndarray): Текущее состояние среды.
-            rollout (int): Количество прогнозируемых траекторий для оценки.
-            horizon (int): Горизонт планирования (количество шагов вперед для оценки).
+            state (numpy.ndarray): Current environment state.
+            rollout (int): Number of predicted trajectories for evaluation.
+            horizon (int): Planning horizon (number of steps ahead for evaluation).
 
         Returns:
-            numpy.ndarray: Возвращает массив, содержащий выбранное действие.
+            numpy.ndarray: Returns array containing selected action.
         """
         initial_state = torch.tensor(np.array([state]), dtype=torch.float32)
         best_cost = float("inf")
@@ -319,10 +319,10 @@ class MPCOptimizationAgent(BaseRLModel):
         for _ in range(rollout):
             action_sequence = torch.randn(
                 horizon, 1, requires_grad=True
-            )  # Инициализируем последовательность действий
+            )  # Initialize action sequence
             optimizer = optim.Adam([action_sequence], lr=1)
 
-            for optimization_step in range(rollout):  # Количество шагов оптимизации
+            for optimization_step in range(rollout):  # Number of optimization steps
                 optimizer.zero_grad()
                 state = initial_state
                 total_cost = 0
