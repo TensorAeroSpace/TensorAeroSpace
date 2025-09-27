@@ -118,11 +118,11 @@ class LinearLongitudinalX15(gym.Env):
         return next_state.reshape([-1, 1]), reward, self.done, False, info
 
     def reset(self, seed=None, options=None):
-        """Восстановление среды моделирования в начальные условия
+        """Reset simulation environment to initial conditions.
 
         Args:
-            seed (int, optional): Seed для генератора случайных чисел
-            options (dict, optional): Дополнительные опции для инициализации
+            seed (int, optional): Seed for random number generator.
+            options (dict, optional): Additional options for initialization.
         """
         super().reset(seed=seed)
 
