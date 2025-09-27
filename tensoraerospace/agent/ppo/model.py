@@ -295,18 +295,18 @@ class PPO(BaseRLModel):
         discnt_rewards: torch.Tensor,
         rewards: torch.Tensor,
     ) -> Tuple[float, float]:
-        """Процедура обучения агента.
+        """Agent training procedure.
 
         Args:
-            states: состояния, испытанные агентом.
-            actions: действия, предпринятые агентом.
-            adv: преимущества (advantages).
-            old_probs: логарифмические вероятности предыдущих действий.
-            discnt_rewards: дисконтированные награды.
-            rewards: фактические полученные награды.
+            states: States experienced by agent.
+            actions: Actions taken by agent.
+            adv: Advantages.
+            old_probs: Log probabilities of previous actions.
+            discnt_rewards: Discounted rewards.
+            rewards: Actual received rewards.
 
         Returns:
-            tuple: кортеж, содержащий значения функций потерь актора и критика.
+            tuple: Tuple containing actor and critic loss function values.
         """
         self.a_opt.zero_grad()
         self.c_opt.zero_grad()
@@ -327,10 +327,10 @@ class PPO(BaseRLModel):
         return a_loss.item(), c_loss.item()
 
     def test_reward(self) -> float:
-        """Тестирование модели путем выполнения одного эпизода.
+        """Test model by executing one episode.
 
         Returns:
-            float: суммарная награда за эпизод.
+            float: Total reward per episode.
         """
         total_reward = 0
         reset_return = self.env.reset()
@@ -368,19 +368,19 @@ class PPO(BaseRLModel):
         torch.Tensor,
         torch.Tensor,
     ]:
-        """Предобработка переходов для буфера.
+        """Preprocess transitions for buffer.
 
         Args:
-            states: список состояний.
-            actions: список действий.
-            rewards: список наград.
-            dones: список булевых значений, указывающих окончание эпизода.
-            values: значения состояний.
-            probs: логарифмические вероятности действий.
-            gamma: коэффициент дисконтирования.
+            states: List of states.
+            actions: List of actions.
+            rewards: List of rewards.
+            dones: List of boolean values indicating episode termination.
+            values: State values.
+            probs: Log probabilities of actions.
+            gamma: Discount coefficient.
 
         Returns:
-            tuple: кортеж, содержащий обработанные состояния, действия, награды, преимущества и вероятности.
+            tuple: Tuple containing processed states, actions, rewards, advantages and probabilities.
         """
 
         states2 = torch.cat(states).view(-1, 3)

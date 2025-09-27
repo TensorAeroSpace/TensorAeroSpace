@@ -372,12 +372,12 @@ class Actor:
     def train_actor_online(
         self, Jt1: np.ndarray, dJt1_dxt1: np.ndarray, G: np.ndarray
     ) -> None:
-        """Получает элементы цепного правила, вычисляет градиент и применяет его к соответствующим весам и смещениям.
+        """Get chain rule elements, calculate gradient and apply it to corresponding weights and biases.
 
         Args:
             Jt1 (_type_): dEa/dJ
             dJt1_dxt1 (_type_): dJ/dx
-            G (_type_): dx/du, полученное из инкрементной модели
+            G: dx/du, obtained from incremental model.
         """
 
         Jt1 = Jt1.flatten()[0]
@@ -408,15 +408,15 @@ class Actor:
         critic: Any,
         xt_ref1: np.ndarray,
     ) -> None:
-        """Обучение Actor (актера). с помощью адаптивной альфы в зависимости от знака и величины сетевых ошибок
+        """Train Actor using adaptive alpha depending on sign and magnitude of network errors.
 
         Args:
-            Jt1 (_type_): оценка критика с предсказанием следующего временного шага инкрементной модели
-            dJt1_dxt1 (_type_): градиент критической сети по отношению к следующему прогнозу времени инкрементной модели
-            G (_type_): матрица распределения входных данных
-            incremental_model (_type_): инкрементная модель
-            critic (_type_): Критик
-            xt_ref1 (_type_): заданное состояния на следующем временном шаге
+            Jt1: Critic evaluation with incremental model next time step prediction.
+            dJt1_dxt1: Critical network gradient with respect to incremental model next time prediction.
+            G: Input data distribution matrix.
+            incremental_model: Incremental model.
+            critic: Critic.
+            xt_ref1: Reference state at next time step.
         """
         Ec_actor_before = 0.5 * np.square(Jt1)
         # print("ACTOR LOSS xt1 before= ", Ec_actor_before)
