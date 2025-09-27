@@ -11,17 +11,17 @@ import numpy as np
 
 class ActionNormalizer(gym.ActionWrapper):
     """Rescale and relocate the actions.
-    
+
     This wrapper normalizes actions from the range (-1, 1) to the actual
     action space bounds (low, high) of the environment.
     """
 
     def action(self, action: np.ndarray) -> np.ndarray:
         """Change the range (-1, 1) to (low, high).
-        
+
         Args:
             action (np.ndarray): Action in range (-1, 1).
-            
+
         Returns:
             np.ndarray: Action in environment's action space range.
         """
@@ -38,10 +38,10 @@ class ActionNormalizer(gym.ActionWrapper):
 
     def reverse_action(self, action: np.ndarray) -> np.ndarray:
         """Change the range (low, high) to (-1, 1).
-        
+
         Args:
             action (np.ndarray): Action in environment's action space range.
-            
+
         Returns:
             np.ndarray: Action in range (-1, 1).
         """

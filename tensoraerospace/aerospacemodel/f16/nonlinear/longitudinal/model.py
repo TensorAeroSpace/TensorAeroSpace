@@ -38,9 +38,7 @@ class LongitudinalF16(ModelBase):
             "stab",
         ]
         self.action_space_length = len(self.control_list)
-        self.param = (
-            self.eng.airplane_parameters()
-        )  # Get control object parameters
+        self.param = self.eng.airplane_parameters()  # Get control object parameters
         self.x_history = [x0]
         self._initialize_selected_state_index(
             self.selected_state_output, self.list_state

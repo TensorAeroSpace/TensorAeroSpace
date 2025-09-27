@@ -9,7 +9,7 @@ from tensorflow.keras.models import Model as KModel
 
 class Actor:
     """Actor Model in IHDP.
-    
+
     Provides Actor class with Actor function approximator (NN).
     Actor creates neural network model using Tensorflow and can train network online.
     User can choose number of layers, number of neurons, batch size, number of epochs and activation functions.
