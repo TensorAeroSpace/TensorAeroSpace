@@ -142,11 +142,11 @@ class MPCOptimizationAgent(BaseRLModel):
         Train transformer model of system dynamics using data about states, actions and next states.
 
         Args:
-            states (numpy.ndarray): Массив текущих состояний.
-            actions (numpy.ndarray): Массив действий, совершенных в этих состояниях.
-            next_states (numpy.ndarray): Массив следующих состояний после совершения действий.
-            epochs (int): Количество эпох обучения.
-            batch_size (int): Размер батча для обучения.
+            states (numpy.ndarray): Array of current states.
+            actions (numpy.ndarray): Array of actions performed in these states.
+            next_states (numpy.ndarray): Array of next states after performing actions.
+            epochs (int): Number of training epochs.
+            batch_size (int): Batch size for training.
 
         Returns:
             None
@@ -208,14 +208,14 @@ class MPCOptimizationAgent(BaseRLModel):
         batch_size: int = 64,
     ) -> None:
         """
-        Обучает модель динамики среды, используя данные о состояниях, действиях и следующих состояниях.
+        Train environment dynamics model using data about states, actions and next states.
 
         Args:
-            states (numpy.ndarray): Массив текущих состояний.
-            actions (numpy.ndarray): Массив действий, совершенных в этих состояниях.
-            next_states (numpy.ndarray): Массив следующих состояний после совершения действий.
-            epochs (int): Количество эпох обучения.
-            batch_size (int): Размер батча для обучения.
+            states (numpy.ndarray): Array of current states.
+            actions (numpy.ndarray): Array of actions performed in these states.
+            next_states (numpy.ndarray): Array of next states after performing actions.
+            epochs (int): Number of training epochs.
+            batch_size (int): Batch size for training.
 
         Returns:
             None
@@ -254,13 +254,13 @@ class MPCOptimizationAgent(BaseRLModel):
         self, num_episodes: int = 1000, control_exploration_signal=None
     ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
         """
-        Собирает данные о состояниях, действиях и следующих состояниях, исполняя случайную политику в среде.
+        Collect data about states, actions and next states by executing random policy in environment.
 
         Args:
-            num_episodes (int): Количество эпизодов для сбора данных.
+            num_episodes (int): Number of episodes for data collection.
 
         Returns:
-            tuple: Возвращает кортеж из трех массивов (states, actions, next_states).
+            tuple: Returns tuple of three arrays (states, actions, next_states).
         """
         if control_exploration_signal is not None:
             states, actions, next_states = [], [], []

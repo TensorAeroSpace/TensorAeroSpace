@@ -181,11 +181,11 @@ def ppo_iter(
 
 
 class PPO(BaseRLModel):
-    """Класс, реализующий агента PPO с использованием PyTorch.
+    """Class implementing PPO agent using PyTorch.
 
     Args:
-        env: объект окружения.
-        gamma (float): коэффициент дисконтирования.
+        env: Environment object.
+        gamma (float): Discount coefficient.
     """
 
     def __init__(
@@ -202,11 +202,11 @@ class PPO(BaseRLModel):
         critic_lr: float = 0.005,
         seed: int = 336699,
     ) -> None:
-        """Инициализация агента с заданным окружением и коэффициентом дисконтирования.
+        """Initialize agent with given environment and discount coefficient.
 
         Args:
-            env: объект окружения, с которым будет взаимодействовать агент.
-            gamma (float, optional): коэффициент дисконтирования, используемый в расчетах. По умолчанию 0.99.
+            env: Environment object with which agent will interact.
+            gamma (float, optional): Discount coefficient used in calculations. Defaults to 0.99.
         """
         self.gamma = gamma
         self.env = env
@@ -232,13 +232,13 @@ class PPO(BaseRLModel):
         self.writer = SummaryWriter()
 
     def act(self, state: np.ndarray) -> Tuple[torch.Tensor, np.ndarray, torch.Tensor]:
-        """Выбирает действие для данного состояния.
+        """Select action for given state.
 
         Args:
-            state: текущее состояние среды.
+            state: Current environment state.
 
         Returns:
-            tuple: кортеж, содержащий действие, среднее действие и логарифм вероятности действия.
+            tuple: Tuple containing action, mean action and log probability of action.
         """
         state = torch.FloatTensor(np.array([state]))
         action, dist = self.actor(state, continous_actions=True)
@@ -256,17 +256,17 @@ class PPO(BaseRLModel):
         adv: torch.Tensor,
         old_probs: torch.Tensor,
     ) -> torch.Tensor:
-        """Вычисляет потери актора.
+        """Calculate actor losses.
 
         Args:
-            probs: вероятности действий новой политики.
-            entropy: энтропия действий.
-            actions: предпринятые действия.
-            adv: преимущества (advantages).
-            old_probs: вероятности действий старой политики.
+            probs: Action probabilities of new policy.
+            entropy: Action entropy.
+            actions: Actions taken.
+            adv: Advantages.
+            old_probs: Action probabilities of old policy.
 
         Returns:
-            Tensor: значение функции потерь для актора.
+            Tensor: Actor loss function value.
         """
         ratios = torch.exp(probs - old_probs)
         surr1 = ratios * adv
@@ -275,14 +275,14 @@ class PPO(BaseRLModel):
         return loss
 
     def auxillary_task(self, r: torch.Tensor, rewards: torch.Tensor) -> torch.Tensor:
-        """Вычисляет потери вспомогательной задачи (прогнозирование наград).
+        """Calculate auxiliary task losses (reward prediction).
 
         Args:
-            r: предсказанные награды.
-            rewards: реальные награды.
+            r: Predicted rewards.
+            rewards: Real rewards.
 
         Returns:
-            Tensor: значение функции потерь MSE между предсказанными и реальными наградами.
+            Tensor: MSE loss function value between predicted and real rewards.
         """
         return F.mse_loss(r, rewards)
 
