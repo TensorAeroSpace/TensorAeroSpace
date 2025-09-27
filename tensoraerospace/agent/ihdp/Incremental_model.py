@@ -4,18 +4,18 @@ import numpy as np
 
 
 class IncrementalModel:
-    """Предоставляет класс IncrementalModel для идентификации системы
+    """Provides IncrementalModel class for system identification.
 
-    IncrementalModel вычисляет матрицы A и x, необходимые для идентификации системы,
-    вычисляет матрицы F и G, необходимые для инкрементной модели, и оценивает идентифицированной модели, чтобы обеспечить оценки состояний на следующем временном шаге.
+    IncrementalModel computes A and x matrices needed for system identification,
+    computes F and G matrices needed for incremental model, and evaluates identified model to provide state estimates at next time step.
 
     Args:
-        selected_states (_type_): Выбранные состояния
-        selected_input (_type_): Выбранные управляющие сигналы
-        number_time_steps (_type_): Количество временных шагов
-        discretisation_time (float, optional): Время дискретизации. Defaults to 0.5.
-        input_magnitude_limits (int, optional): Пределы входных управляющих сигнгалов. Defaults to 25.
-        input_rate_limits (int, optional): Ограничения скорости управляющих сигнгалов. Defaults to 60.
+        selected_states: Selected states.
+        selected_input: Selected control signals.
+        number_time_steps: Number of time steps.
+        discretisation_time (float, optional): Discretization time. Defaults to 0.5.
+        input_magnitude_limits (int, optional): Input control signal limits. Defaults to 25.
+        input_rate_limits (int, optional): Control signal rate constraints. Defaults to 60.
     """
 
     def __init__(

@@ -8,33 +8,34 @@ from tensorflow.keras.models import Model as KModel
 
 
 class Actor:
-    """Модель Актера в IHDP
-        Предоставляет классу Актера функцию-аппроксиматор (NN) Актера.
-        Актер создает модель нейронной сети с помощью Tensorflow и может обучать сеть онлайн.
-        Пользователь может выбрать количество слоев, количество нейронов, размер партии и количество эпох и активационных функций.
+    """Actor Model in IHDP.
+    
+    Provides Actor class with Actor function approximator (NN).
+    Actor creates neural network model using Tensorflow and can train network online.
+    User can choose number of layers, number of neurons, batch size, number of epochs and activation functions.
 
     Args:
-        selected_inputs (_type_): Выбранные сигналы управления
-        selected_states (_type_): Выбранные сигналы состояния
-        tracking_states (_type_): Отслеживаемые состояния
-        indices_tracking_states (_type_): Индексы отслеживаемых состояний
-        number_time_steps (_type_): Количество временных шагов
-        start_training (_type_): Шаг с которого начинается обучение
-        layers (tuple, optional): _description_. Слои модели Defaults to (6, 1).
-        activations (tuple, optional): _description_. Слои активации ('sigmoid', 'sigmoid').
-        learning_rate (float, optional): скорость_обучения. Defaults to 0.9.
-        learning_rate_cascaded (float, optional): Скорость обучения в каскадном режиме. Defaults to 0.9.
-        learning_rate_exponent_limit (int, optional): предел экспоненты скорости обучения. Defaults to 10.
-        type_PE (str, optional): Тип PE. Defaults to '3211'.
-        amplitude_3211 (int, optional): Амплитуда 3211. Defaults to 1.
-        pulse_length_3211 (int, optional): Длина пульса 3211. Defaults to 15.
-        WB_limits (int, optional): Лимит весов. Defaults to 30.
-        maximum_input (int, optional): Максимальное значение. Defaults to 25.
-        maximum_q_rate (int, optional): Максимальная скорость. Defaults to 20.
-        cascaded_actor (bool, optional): Включить каскадный режим сети. Defaults to False.
-        NN_initial (_type_, optional): Инициализации весов. Defaults to None.
-        cascade_tracking_state (list, optional): Трекинг в каскадном режиме. Defaults to ['alpha', 'wz'].
-        model_path (str, optional): Путь к модели для загрузки весов. Defaults to None.
+        selected_inputs: Selected control signals.
+        selected_states: Selected state signals.
+        tracking_states: Tracked states.
+        indices_tracking_states: Indices of tracked states.
+        number_time_steps: Number of time steps.
+        start_training: Step from which training begins.
+        layers (tuple, optional): Model layers. Defaults to (6, 1).
+        activations (tuple, optional): Activation layers ('sigmoid', 'sigmoid').
+        learning_rate (float, optional): Learning rate. Defaults to 0.9.
+        learning_rate_cascaded (float, optional): Learning rate in cascade mode. Defaults to 0.9.
+        learning_rate_exponent_limit (int, optional): Learning rate exponent limit. Defaults to 10.
+        type_PE (str, optional): PE type. Defaults to '3211'.
+        amplitude_3211 (int, optional): 3211 amplitude. Defaults to 1.
+        pulse_length_3211 (int, optional): 3211 pulse length. Defaults to 15.
+        WB_limits (int, optional): Weight limits. Defaults to 30.
+        maximum_input (int, optional): Maximum value. Defaults to 25.
+        maximum_q_rate (int, optional): Maximum rate. Defaults to 20.
+        cascaded_actor (bool, optional): Enable cascade network mode. Defaults to False.
+        NN_initial (optional): Weight initialization. Defaults to None.
+        cascade_tracking_state (list, optional): Tracking in cascade mode. Defaults to ['alpha', 'wz'].
+        model_path (str, optional): Model path for loading weights. Defaults to None.
     """
 
     beta_rmsprop = 0.999

@@ -7,26 +7,26 @@ from tensorflow.keras.layers import Dense, Flatten
 
 
 class Critic:
-    """Предоставляет классу Critic аппроксиматор функций (NN) класса Critic.
+    """Provides Critic class with function approximator (NN) for Critic class.
 
-    Critic создает модель нейронной сети с помощью Tensorflow и может обучать сеть онлайн.
-    Пользователь может выбрать количество слоев, количество нейронов, размер партии и количество эпох и активационных функций.
+    Critic creates neural network model using Tensorflow and can train network online.
+    User can choose number of layers, number of neurons, batch size, number of epochs and activation functions.
 
     Args:
-        Q_weights (_type_): _description_
-        selected_states (_type_): Выбранные состояния
-        tracking_states (_type_): Отслеживаемые состояния
-        indices_tracking_states (_type_): Индекс отслеживаемых состояний
-        number_time_steps (_type_): Количесво врменных шагов
-        start_training (_type_): Начало обучения
-        gamma (float, optional): Gamma. Defaults to 0.8.
-        learning_rate (int, optional): Скорость обучения. Defaults to 2.
-        learning_rate_exponent_limit (int, optional): предел экспоненты скорости обучения. Defaults to 10.
-        layers (tuple, optional): Количество слоев и нейронов в слоях. Defaults to (10, 6, 1).
-        activations (tuple, optional): Функции активации в слоях. Defaults to ("sigmoid", "sigmoid", "linear").
-        WB_limits (int, optional): Ограничения значения в весах. Defaults to 30.
-        NN_initial (_type_, optional): Начальные значения в весах. Defaults to None.
-        model_path (_type_, optional): Путь к модели. Defaults to None.
+        Q_weights: Q-function weights.
+        selected_states: Selected states.
+        tracking_states: Tracked states.
+        indices_tracking_states: Index of tracked states.
+        number_time_steps: Number of time steps.
+        start_training: Training start step.
+        gamma (float, optional): Gamma discount factor. Defaults to 0.8.
+        learning_rate (int, optional): Learning rate. Defaults to 2.
+        learning_rate_exponent_limit (int, optional): Learning rate exponent limit. Defaults to 10.
+        layers (tuple, optional): Number of layers and neurons in layers. Defaults to (10, 6, 1).
+        activations (tuple, optional): Activation functions in layers. Defaults to ("sigmoid", "sigmoid", "linear").
+        WB_limits (int, optional): Weight value constraints. Defaults to 30.
+        NN_initial (optional): Initial weight values. Defaults to None.
+        model_path (optional): Model path. Defaults to None.
     """
 
     # Class attributes

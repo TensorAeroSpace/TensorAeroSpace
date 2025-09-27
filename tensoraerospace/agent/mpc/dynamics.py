@@ -5,23 +5,21 @@ from tqdm import tqdm
 
 
 class DynamicsNN:
-    """
-    Класс для работы с нейронной сетью, моделирующей динамику системы.
+    """Class for working with neural network modeling system dynamics.
 
-    Атрибуты:
+    Attributes:
         model: torch.nn.Module
-            Нейронная сеть для моделирования динамики.
+            Neural network for dynamics modeling.
         optimizer: torch.optim.Optimizer
-            Оптимизатор для обучения модели.
+            Optimizer for model training.
     """
 
     def __init__(self, model):
-        """
-        Инициализация объекта DynamicsNN.
+        """Initialize DynamicsNN object.
 
-        Параметры:
+        Parameters:
             model: torch.nn.Module
-                Нейронная сеть, которая будет использоваться для моделирования динамики.
+                Neural network to be used for dynamics modeling.
         """
         self.model = model
         self.optimizer = torch.optim.Adam(self.model.parameters(), lr=0.001)
@@ -38,16 +36,15 @@ class DynamicsNN:
         control_limits=(-25, 25),
         control_signals=None,
     ):
-        """
-        Генерация данных для обучения модели.
+        """Generate training data for model.
 
-        Параметры:
-            num_samples: int, по умолчанию 1000000
-                Количество образцов для генерации.
-            state_dim: int, по умолчанию 4
-                Размерность состояния системы.
-            control_dim: int, по умолчанию 1
-                Размерность управляющего воздействия.
+        Parameters:
+            num_samples: int, default 1000000
+                Number of samples to generate.
+            state_dim: int, default 4
+                System state dimension.
+            control_dim: int, default 1
+                Control input dimension.
             state_ranges: list of tuples
                 Диапазоны значений для каждого измерения состояния.
             control_ranges: list of tuples, опционально
