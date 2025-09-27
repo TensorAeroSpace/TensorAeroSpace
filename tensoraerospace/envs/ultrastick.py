@@ -149,8 +149,7 @@ class LinearLongitudinalUltrastick(gym.Env):
         return observation, info
 
     def render(self):
-        """Visual display of actions in environment. WIP status."""
-        Raises:
-            NotImplementedError
+        """Visual display of actions in environment. WIP status. Raises:
+        NotImplementedError: Rendering is not implemented.
         """
         raise NotImplementedError()
