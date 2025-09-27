@@ -1,9 +1,8 @@
-"""
-Модуль агентов обучения с подкреплением для управления аэрокосмическими системами.
+"""Reinforcement learning agents module for aerospace system control.
 
-Этот модуль предоставляет различные алгоритмы обучения с подкреплением,
-включая A2C, A3C, DQN, IHDP, MPC, PPO, DDPS, GAIL, SAC, специально адаптированные
-для задач управления летательными аппаратами и космическими системами.
+This module provides various reinforcement learning algorithms,
+including A2C, A3C, DQN, IHDP, MPC, PPO, DDPS, GAIL, SAC, specially adapted
+for aircraft and space system control tasks.
 """
 
 from .a2c.model import A2C as A2C

@@ -1,12 +1,11 @@
-"""
-Модуль для оценки качества управления аэрокосмическими системами.
+"""Module for evaluating aerospace system control quality.
 
-Этот модуль предоставляет инструменты для анализа и оценки производительности
-алгоритмов управления, включая метрики качества, бенчмарки и сравнительный
-анализ различных подходов к управлению летательными аппаратами.
+This module provides tools for analyzing and evaluating the performance
+of control algorithms, including quality metrics, benchmarks and comparative
+analysis of various approaches to aircraft control.
 
-Основные компоненты:
-- ControlBenchmark: Класс для комплексной оценки качества управления
+Main components:
+    - ControlBenchmark: Class for comprehensive control quality assessment
 """
 
 from .bench import ControlBenchmark as ControlBenchmark

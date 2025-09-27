@@ -11,37 +11,43 @@ from tensoraerospace.aerospacemodel.utils.constant import (
 
 
 class LongitudinalX15(ModelBase):
-    """
-    North American X-15 в продольном канале управления
-
+    """North American X-15 in longitudinal control channel.
 
     Args:
-        x0 (_type_): Начальное состояние объекта управления
-        number_time_steps (_type_): Количество временных шагов
-        selected_state_output (_type_, optional): Выбранные состояние объекта управления. Defaults to None.
-        t0 (int, optional): Начальное время. Defaults to 0.
-        dt (float, optional): Частота дискретизации. Defaults to 0.01.
+        x0: Initial state of the control object.
+        number_time_steps: Number of time steps.
+        selected_state_output (optional): Selected states of the control object. Defaults to None.
+        t0 (int, optional): Initial time. Defaults to 0.
+        dt (float, optional): Discretization frequency. Defaults to 0.01.
 
-    Пространство действий:
-        - ele: руль высоты [град]
+    Action space:
+        ele: elevator [deg]
 
+    State space:
+        u: Longitudinal aircraft velocity [m/s]
+        w: Normal aircraft velocity [m/s]
+        q: Pitch angular velocity [deg/s]
+        theta: Pitch [deg]
 
-    Пространство состояний:
-        - u - Продольная скорость ЛА [м/с]
-        - w - Нормальная скорость ЛА [м/с]
-        - q - Угловая скорость Тангажа [град/с]
-        - theta - Тангаж [град]
-
-    Пространство выхода:
-        - u - Продольная скорость ЛА [м/с]
-        - w - Нормальная скорость ЛА [м/с]
-        - q - Угловая скорость Тангажа [град/с]
-        - theta - Тангаж [град]
+    Output space:
+        u: Longitudinal aircraft velocity [m/s]
+        w: Normal aircraft velocity [m/s]
+        q: Pitch angular velocity [deg/s]
+        theta: Pitch [deg]
     """
 
     def __init__(
         self, x0, number_time_steps, selected_state_output=None, t0=0, dt: float = 0.01
     ):
+        """Initialize LongitudinalX15 instance.
+
+        Args:
+            x0: Initial state of the control object.
+            number_time_steps: Number of time steps.
+            selected_state_output: Selected states of the control object. Defaults to None.
+            t0: Initial time. Defaults to 0.
+            dt: Discretization frequency. Defaults to 0.01.
+        """
         super().__init__(x0, selected_state_output, t0, dt)
 
         self.discretisation_time = dt
@@ -88,7 +94,7 @@ class LongitudinalX15(ModelBase):
         self.initialise_system(x0, number_time_steps)
 
     def import_linear_system(self):
-        """Сохраненные линеаризованные матрицы"""
+        """Saved linearized matrices"""
         self.A = np.array(
             [
                 [-0.0087, -0.0190, 0, -32.174],
@@ -119,11 +125,11 @@ class LongitudinalX15(ModelBase):
         )
 
     def initialise_system(self, x0, number_time_steps):
-        """Инициализация системы
+        """System initialization.
 
         Args:
-            x0 (_type_): Начальное состояние объекта управления
-            number_time_steps (_type_): количество временных шагов в итерации
+            x0: Initial state of the control object.
+            number_time_steps: Number of time steps in iteration.
         """
 
         # Import the stored system

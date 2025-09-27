@@ -1,15 +1,14 @@
-"""
-Модель Boeing 747 для продольного канала управления.
+"""Boeing 747 model for longitudinal control channel.
 
-Этот модуль содержит линеаризованную модель самолета Boeing 747 для анализа
-и управления в продольном канале. Модель включает четыре состояния:
-продольную скорость, нормальную скорость, угловую скорость тангажа и угол тангажа.
+This module contains a linearized model of Boeing 747 aircraft for analysis
+and control in the longitudinal channel. The model includes four states:
+longitudinal velocity, normal velocity, pitch angular velocity and pitch angle.
 
-Основные компоненты:
-- LongitudinalB747: Класс модели Boeing 747 в продольном канале
-- Линеаризованные матрицы состояния A, B, C, D
-- Ограничения на управляющие воздействия (руль высоты)
-- Методы для симуляции и анализа динамики полета
+Main components:
+    - LongitudinalB747: Boeing 747 model class in longitudinal channel
+    - Linearized state matrices A, B, C, D
+    - Control input constraints (elevator)
+    - Methods for flight dynamics simulation and analysis
 """
 
 import matplotlib.pyplot as plt
@@ -23,32 +22,29 @@ from .utils.constant import state_to_latex_eng, state_to_latex_rus
 
 
 class LongitudinalB747(ModelBase):
-    """
-    Boeing 747 в продольном канале управления
-
+    """Boeing 747 in longitudinal control channel.
 
     Args:
-        x0 (_type_): Начальное состояние объекта управления
-        number_time_steps (_type_): Количество временных шагов
-        selected_state_output (_type_, optional): Выбранные состояние объекта управления. Defaults to None.
-        t0 (int, optional): Начальное время. Defaults to 0.
-        dt (float, optional): Частота дискретизации. Defaults to 0.01.
+        x0: Initial state of the control object.
+        number_time_steps: Number of time steps.
+        selected_state_output (optional): Selected states of the control object. Defaults to None.
+        t0 (int, optional): Initial time. Defaults to 0.
+        dt (float, optional): Discretization frequency. Defaults to 0.01.
 
-    Пространство действий:
-        - ele: руль высоты [град]
+    Action space:
+        ele: elevator [deg]
 
+    State space:
+        u: Longitudinal aircraft velocity [m/s]
+        w: Normal aircraft velocity [m/s]
+        q: Pitch angular velocity [deg/s]
+        theta: Pitch [deg]
 
-    Пространство состояний:
-        - u - Продольная скорость ЛА [м/с]
-        - w - Нормальная скорость ЛА [м/с]
-        - q - Угловая скорость Тангажа [град/с]
-        - theta - Тангаж [град]
-
-    Пространство выхода:
-        - u - Продольная скорость ЛА [м/с]
-        - w - Нормальная скорость ЛА [м/с]
-        - q - Угловая скорость Тангажа [град/с]
-        - theta - Тангаж [град]
+    Output space:
+        u: Longitudinal aircraft velocity [m/s]
+        w: Normal aircraft velocity [m/s]
+        q: Pitch angular velocity [deg/s]
+        theta: Pitch [deg]
     """
 
     def __init__(

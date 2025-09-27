@@ -1,10 +1,10 @@
 """
-Модуль для моделирования самолета Ultrastick-25e.
+Module for modeling Ultrastick-25e aircraft.
 
-Этот модуль содержит реализацию среды Gymnasium для обучения агентов управления
-продольным движением самолета Ultrastick-25e. Среда предоставляет интерфейс для
-взаимодействия с моделью самолета, включая управление углом тангажа и угловой
-скоростью тангажа через стабилизаторы.
+This module contains a Gymnasium environment implementation for training agents
+to control longitudinal motion of Ultrastick-25e aircraft. The environment provides an interface
+for interaction with the aircraft model, including control of pitch angle and angular
+velocity through stabilizers.
 """
 
 import gymnasium as gym
@@ -15,17 +15,17 @@ from tensoraerospace.aerospacemodel import Ultrastick
 
 
 class LinearLongitudinalUltrastick(gym.Env):
-    """Моделирование объекта управления Ultrastick-25e в среде моделирования OpenAI Gym для обучения агентов с искусственным интеллектом
+    """Simulation of Ultrastick-25e control object in OpenAI Gym environment for training AI agents.
 
     Args:
-        initial_state (any): Начальное состояние
-        reference_signal (any): Заданный сигнал
-        number_time_steps (any): Количество шагов моделирования
-        tracking_states (any): Отслеживаемые состояния
-        state_space (any): Пространства состояний
-        control_space (any): Пространство управления
-        output_space (any): Пространство полного выхода (с учетом помех)
-        reward_func (any): Функция вознаграждения (статус WIP)
+        initial_state: Initial state.
+        reference_signal: Reference signal.
+        number_time_steps: Number of simulation steps.
+        tracking_states: Tracked states.
+        state_space: State space.
+        control_space: Control space.
+        output_space: Full output space (including noise).
+        reward_func: Reward function (WIP status).
     """
 
     def __init__(
@@ -80,15 +80,15 @@ class LinearLongitudinalUltrastick(gym.Env):
 
     @staticmethod
     def reward(state, ref_signal, ts):
-        """Оценка управления
+        """Control evaluation.
 
         Args:
-            state (_type_): Текущее состояния
-            ref_signal (_type_): Заданное состояние
-            ts (_type_): Временное шаг
+            state: Current state.
+            ref_signal: Reference state.
+            ts: Time step.
 
         Returns:
-            reward (float): Оценка управления
+            reward (float): Control evaluation.
         """
         return np.abs(state[0] - ref_signal[:, ts])
 
@@ -96,16 +96,16 @@ class LinearLongitudinalUltrastick(gym.Env):
         return {}
 
     def step(self, action: np.ndarray):
-        """Выполнения шага моделирования
+        """Execute simulation step.
 
         Args:
-            action (np.ndarray): Массив управляющего сигнала по выбранным органам
+            action (np.ndarray): Control signal array for selected actuators.
 
         Returns:
-            next_state (np.ndarray): Следующие состояние объекта управления
-            reward (np.ndarray): Оценка действий алгоритма управления
-            done (bool): Статус моделирования, завершено или нет
-            logging (any): Дополнительная информацию (не используется)
+            next_state (np.ndarray): Next state of control object.
+            reward (np.ndarray): Evaluation of control algorithm actions.
+            done (bool): Simulation status, completed or not.
+            logging (any): Additional information (not used).
         """
         if action[0] > self.max_action_value:
             action[0] = self.max_action_value
@@ -121,11 +121,11 @@ class LinearLongitudinalUltrastick(gym.Env):
         return next_state.reshape([-1, 1]), reward, self.done, False, info
 
     def reset(self, seed=None, options=None):
-        """Восстановление среды моделирования в начальные условия
+        """Reset simulation environment to initial conditions.
 
         Args:
-            seed (int, optional): Seed для генератора случайных чисел
-            options (dict, optional): Дополнительные опции для инициализации
+            seed (int, optional): Seed for random number generator.
+            options (dict, optional): Additional options for initialization.
         """
         super().reset(seed=seed)
 
@@ -149,8 +149,7 @@ class LinearLongitudinalUltrastick(gym.Env):
         return observation, info
 
     def render(self):
-        """Визуальное отображение действий в среде. В статусе WIP
-        Raises:
-            NotImplementedError
+        """Visual display of actions in environment. WIP status. Raises:
+        NotImplementedError: Rendering is not implemented.
         """
         raise NotImplementedError()

@@ -19,41 +19,61 @@ def initialize_tensor(
     min_val: float | None = None,
     max_val: float | None = None,
 ) -> torch.Tensor:
-    mean = (max_val + min_val) / 2
-    std_dev = (
-        max_val - min_val
-    ) / 4  # 4 стандартных отклонения для охвата ~95% значений
-    tensor = torch.normal(mean, std_dev, size, requires_grad=True)
-    if min_val is not None:
-        tensor = torch.clamp(tensor, min=min_val)
-    if max_val is not None:
+    # Handle None values and prevent division by zero
+    if min_val is None and max_val is None:
+        # Default initialization with standard normal distribution
+        tensor = torch.randn(size, requires_grad=True)
+    elif min_val is None:
+        # Only max_val is specified
+        mean = max_val - 1.0  # Arbitrary offset
+        std_dev = 1.0
+        tensor = torch.normal(mean, std_dev, size, requires_grad=True)
         tensor = torch.clamp(tensor, max=max_val)
+    elif max_val is None:
+        # Only min_val is specified
+        mean = min_val + 1.0  # Arbitrary offset
+        std_dev = 1.0
+        tensor = torch.normal(mean, std_dev, size, requires_grad=True)
+        tensor = torch.clamp(tensor, min=min_val)
+    else:
+        # Both values are specified
+        if abs(max_val - min_val) < 1e-8:  # Prevent division by zero
+            # If min and max are essentially equal, return constant tensor
+            tensor = torch.full(size, (min_val + max_val) / 2, requires_grad=True)
+        else:
+            mean = (max_val + min_val) / 2
+            std_dev = (
+                max_val - min_val
+            ) / 4  # 4 standard deviations to cover ~95% of values
+            tensor = torch.normal(mean, std_dev, size, requires_grad=True)
+            tensor = torch.clamp(tensor, min=min_val, max=max_val)
+
     return tensor
 
 
 class Net(nn.Module):
-    """Создает нейронную сеть для моделирования динамики системы.
+    """Create neural network for system dynamics modeling.
 
-    Сеть состоит из трех линейных слоев и функций активации ReLU между ними.
-    Входной слой принимает вектор из 3 элементов, представляющих состояния системы.
-    Второй и третий слои - это скрытые слои с 128 нейронами.
-    Выходной слой генерирует вектор из 2 элементов, представляющих предсказание следующего состояния системы.
+    Network consists of three linear layers and ReLU activation functions between them.
+    Input layer accepts vector of 3 elements representing system states.
+    Second and third layers are hidden layers with 128 neurons.
+    Output layer generates vector of 2 elements representing prediction of next system state.
     """
 
     def __init__(self):
         super(Net, self).__init__()
-        self.fc1 = nn.Linear(3, 128)  # 3 состояния + 1 действие = 4
+        self.fc1 = nn.Linear(3, 128)  # 3 states + 1 action = 4
         self.fc2 = nn.Linear(128, 128)
-        self.fc3 = nn.Linear(128, 2)  # Предсказание следующего состояния
+        self.fc3 = nn.Linear(128, 2)  # Next state prediction
 
     def forward(self, x):
-        """Выполняет прямое распространение входных данных через сеть.
+        """Perform forward propagation of input data through network.
 
         Args:
-            x (torch.Tensor): Входные данные, представляющие состояния системы.
+            x (torch.Tensor): Input data representing system states.
 
         Returns:
-            torch.Tensor: Предсказание следующего состояния системы.
+            torch.Tensor: Prediction of next system state.
         """
         x = torch.relu(self.fc1(x))
         x = torch.relu(self.fc2(x))
@@ -62,16 +82,16 @@ class Net(nn.Module):
 
 class MPCOptimizationAgent(BaseRLModel):
     """
-    Агент, использующий метод Модельно-Прогностического Управления (MPC) для оптимизации действий в среде.
+    Agent using Model Predictive Control (MPC) method for action optimization in environment.
 
     Attributes:
-        gamma (float): Коэффициент дисконтирования.
-        action_dim (int): Размерность пространства действий.
-        observation_dim (int): Размерность пространства наблюдений.
-        model (torch.nn.Module): Модель для аппроксимации динамики среды.
-        cost_function (callable): Функция стоимости, используемая для оценки действий.
-        lr (float): Скорость обучения для оптимизатора модели.
-        criterion (torch.nn.modules.loss): Критерий потерь для обучения модели.
+        gamma (float): Discount coefficient.
+        action_dim (int): Action space dimension.
+        observation_dim (int): Observation space dimension.
+        model (torch.nn.Module): Model for environment dynamics approximation.
+        cost_function (callable): Cost function used for action evaluation.
+        lr (float): Learning rate for model optimizer.
+        criterion (torch.nn.modules.loss): Loss criterion for model training.
     """
 
     def __init__(
@@ -119,14 +139,14 @@ class MPCOptimizationAgent(BaseRLModel):
         batch_size: int = 64,
     ) -> None:
         """
-        Обучает трансформерную модель динамики системы, используя данные о состояниях, действиях и следующих состояниях.
+        Train transformer model of system dynamics using data about states, actions and next states.
 
         Args:
-            states (numpy.ndarray): Массив текущих состояний.
-            actions (numpy.ndarray): Массив действий, совершенных в этих состояниях.
-            next_states (numpy.ndarray): Массив следующих состояний после совершения действий.
-            epochs (int): Количество эпох обучения.
-            batch_size (int): Размер батча для обучения.
+            states (numpy.ndarray): Array of current states.
+            actions (numpy.ndarray): Array of actions performed in these states.
+            next_states (numpy.ndarray): Array of next states after performing actions.
+            epochs (int): Number of training epochs.
+            batch_size (int): Batch size for training.
 
         Returns:
             None
@@ -142,39 +162,39 @@ class MPCOptimizationAgent(BaseRLModel):
                     next_states[indices],
                 )
 
-                # Объединяем состояния и действия в один тензор
+                # Combine states and actions into one tensor
                 inputs = np.hstack((batch_states, batch_actions.reshape(-1, 1)))
                 inputs = torch.tensor(inputs, dtype=torch.float32)
                 targets = torch.tensor(batch_next_states, dtype=torch.float32)
 
-                # Преобразование входных данных в форму (batch_size, sequence_length, embedding_dim)
+                # Transform input data to form (batch_size, sequence_length, embedding_dim)
                 inputs = inputs.unsqueeze(1)  # (batch_size, 1, embedding_dim)
                 inputs = inputs.transpose(
                     0, 1
                 )  # (sequence_length, batch_size, embedding_dim)
 
-                # Обнуляем градиенты
+                # Zero gradients
                 self.system_model_optimizer.zero_grad()
 
-                # Прямое распространение через модель
+                # Forward propagation through model
                 outputs = self.system_model(inputs)
 
-                # Преобразование выходных данных обратно
+                # Transform output data back
                 outputs = outputs.transpose(0, 1).squeeze(1)  # (batch_size, 2)
 
-                # Вычисляем потерю
+                # Calculate loss
                 loss = self.criterion(outputs, targets)
 
-                # Обратное распространение
+                # Backward propagation
                 loss.backward()
 
-                # Обновляем параметры модели
+                # Update model parameters
                 self.system_model_optimizer.step()
 
-                # Агрегируем потерю по батчам
+                # Aggregate loss across batches
                 epoch_loss += loss.item()
 
-            # Логгирование среднего значения потерь за эпоху
+            # Log average loss value per epoch
             avg_epoch_loss = epoch_loss / (states.shape[0] // batch_size)
             self.writer.add_scalar("Loss/train", avg_epoch_loss, epoch)
             pbar.set_description(f"Avg Loss {avg_epoch_loss:.4f}")
@@ -188,20 +208,23 @@ class MPCOptimizationAgent(BaseRLModel):
         batch_size: int = 64,
     ) -> None:
         """
-        Обучает модель динамики среды, используя данные о состояниях, действиях и следующих состояниях.
+        Train environment dynamics model using data about states, actions and next states.
 
         Args:
-            states (numpy.ndarray): Массив текущих состояний.
-            actions (numpy.ndarray): Массив действий, совершенных в этих состояниях.
-            next_states (numpy.ndarray): Массив следующих состояний после совершения действий.
-            epochs (int): Количество эпох обучения.
-            batch_size (int): Размер батча для обучения.
+            states (numpy.ndarray): Array of current states.
+            actions (numpy.ndarray): Array of actions performed in these states.
+            next_states (numpy.ndarray): Array of next states after performing actions.
+            epochs (int): Number of training epochs.
+            batch_size (int): Batch size for training.
 
         Returns:
             None
         """
         for epoch in (pbar := tqdm(range(epochs))):
             permutation = np.random.permutation(states.shape[0])
+            epoch_loss = 0.0
+            num_batches = 0
+
             for i in range(0, states.shape[0], batch_size):
                 indices = permutation[i : i + batch_size]
                 batch_states, batch_actions, batch_next_states = (
@@ -218,20 +241,26 @@ class MPCOptimizationAgent(BaseRLModel):
                 loss.backward()
                 self.system_model_optimizer.step()
 
-            self.writer.add_scalar("Loss/train", loss.item(), epoch)
-            pbar.set_description(f"Loss {loss.item()}")
+                # Accumulate loss for epoch average
+                epoch_loss += loss.item()
+                num_batches += 1
+
+            # Log average loss for the epoch
+            avg_epoch_loss = epoch_loss / num_batches if num_batches > 0 else 0.0
+            self.writer.add_scalar("Loss/train", avg_epoch_loss, epoch)
+            pbar.set_description(f"Avg Loss {avg_epoch_loss:.4f}")
 
     def collect_data(
         self, num_episodes: int = 1000, control_exploration_signal=None
     ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
         """
-        Собирает данные о состояниях, действиях и следующих состояниях, исполняя случайную политику в среде.
+        Collect data about states, actions and next states by executing random policy in environment.
 
         Args:
-            num_episodes (int): Количество эпизодов для сбора данных.
+            num_episodes (int): Number of episodes for data collection.
 
         Returns:
-            tuple: Возвращает кортеж из трех массивов (states, actions, next_states).
+            tuple: Returns tuple of three arrays (states, actions, next_states).
         """
         if control_exploration_signal is not None:
             states, actions, next_states = [], [], []
@@ -273,15 +302,15 @@ class MPCOptimizationAgent(BaseRLModel):
         self, state: np.ndarray, rollout: int, horizon: int
     ) -> np.ndarray:
         """
-        Выбирает оптимальное действие, используя модель для прогнозирования и оценки последствий действий.
+        Select optimal action using model for prediction and evaluation of action consequences.
 
         Args:
-            state (numpy.ndarray): Текущее состояние среды.
-            rollout (int): Количество прогнозируемых траекторий для оценки.
-            horizon (int): Горизонт планирования (количество шагов вперед для оценки).
+            state (numpy.ndarray): Current environment state.
+            rollout (int): Number of predicted trajectories for evaluation.
+            horizon (int): Planning horizon (number of steps ahead for evaluation).
 
         Returns:
-            numpy.ndarray: Возвращает массив, содержащий выбранное действие.
+            numpy.ndarray: Returns array containing selected action.
         """
         initial_state = torch.tensor(np.array([state]), dtype=torch.float32)
         best_cost = float("inf")
@@ -290,10 +319,10 @@ class MPCOptimizationAgent(BaseRLModel):
         for _ in range(rollout):
             action_sequence = torch.randn(
                 horizon, 1, requires_grad=True
-            )  # Инициализируем последовательность действий
+            )  # Initialize action sequence
             optimizer = optim.Adam([action_sequence], lr=1)
 
-            for optimization_step in range(rollout):  # Количество шагов оптимизации
+            for optimization_step in range(rollout):  # Number of optimization steps
                 optimizer.zero_grad()
                 state = initial_state
                 total_cost = 0

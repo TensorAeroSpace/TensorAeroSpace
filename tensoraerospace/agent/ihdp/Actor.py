@@ -8,33 +8,34 @@ from tensorflow.keras.models import Model as KModel
 
 
 class Actor:
-    """Модель Актера в IHDP
-        Предоставляет классу Актера функцию-аппроксиматор (NN) Актера.
-        Актер создает модель нейронной сети с помощью Tensorflow и может обучать сеть онлайн.
-        Пользователь может выбрать количество слоев, количество нейронов, размер партии и количество эпох и активационных функций.
+    """Actor Model in IHDP.
+
+    Provides Actor class with Actor function approximator (NN).
+    Actor creates neural network model using Tensorflow and can train network online.
+    User can choose number of layers, number of neurons, batch size, number of epochs and activation functions.
 
     Args:
-        selected_inputs (_type_): Выбранные сигналы управления
-        selected_states (_type_): Выбранные сигналы состояния
-        tracking_states (_type_): Отслеживаемые состояния
-        indices_tracking_states (_type_): Индексы отслеживаемых состояний
-        number_time_steps (_type_): Количество временных шагов
-        start_training (_type_): Шаг с которого начинается обучение
-        layers (tuple, optional): _description_. Слои модели Defaults to (6, 1).
-        activations (tuple, optional): _description_. Слои активации ('sigmoid', 'sigmoid').
-        learning_rate (float, optional): скорость_обучения. Defaults to 0.9.
-        learning_rate_cascaded (float, optional): Скорость обучения в каскадном режиме. Defaults to 0.9.
-        learning_rate_exponent_limit (int, optional): предел экспоненты скорости обучения. Defaults to 10.
-        type_PE (str, optional): Тип PE. Defaults to '3211'.
-        amplitude_3211 (int, optional): Амплитуда 3211. Defaults to 1.
-        pulse_length_3211 (int, optional): Длина пульса 3211. Defaults to 15.
-        WB_limits (int, optional): Лимит весов. Defaults to 30.
-        maximum_input (int, optional): Максимальное значение. Defaults to 25.
-        maximum_q_rate (int, optional): Максимальная скорость. Defaults to 20.
-        cascaded_actor (bool, optional): Включить каскадный режим сети. Defaults to False.
-        NN_initial (_type_, optional): Инициализации весов. Defaults to None.
-        cascade_tracking_state (list, optional): Трекинг в каскадном режиме. Defaults to ['alpha', 'wz'].
-        model_path (str, optional): Путь к модели для загрузки весов. Defaults to None.
+        selected_inputs: Selected control signals.
+        selected_states: Selected state signals.
+        tracking_states: Tracked states.
+        indices_tracking_states: Indices of tracked states.
+        number_time_steps: Number of time steps.
+        start_training: Step from which training begins.
+        layers (tuple, optional): Model layers. Defaults to (6, 1).
+        activations (tuple, optional): Activation layers ('sigmoid', 'sigmoid').
+        learning_rate (float, optional): Learning rate. Defaults to 0.9.
+        learning_rate_cascaded (float, optional): Learning rate in cascade mode. Defaults to 0.9.
+        learning_rate_exponent_limit (int, optional): Learning rate exponent limit. Defaults to 10.
+        type_PE (str, optional): PE type. Defaults to '3211'.
+        amplitude_3211 (int, optional): 3211 amplitude. Defaults to 1.
+        pulse_length_3211 (int, optional): 3211 pulse length. Defaults to 15.
+        WB_limits (int, optional): Weight limits. Defaults to 30.
+        maximum_input (int, optional): Maximum value. Defaults to 25.
+        maximum_q_rate (int, optional): Maximum rate. Defaults to 20.
+        cascaded_actor (bool, optional): Enable cascade network mode. Defaults to False.
+        NN_initial (optional): Weight initialization. Defaults to None.
+        cascade_tracking_state (list, optional): Tracking in cascade mode. Defaults to ['alpha', 'wz'].
+        model_path (str, optional): Model path for loading weights. Defaults to None.
     """
 
     beta_rmsprop = 0.999
@@ -131,8 +132,8 @@ class Actor:
         self.store_q = np.zeros((1, self.number_time_steps))
 
     def build_actor_model(self):
-        """Функция, создающая сеть Actor (актера). Это полносвязная сеть.
-        Можно определить количество слоев, количество нейронов в слою, а так же функции активации
+        """Function creating Actor network. This is a fully connected network.
+        Can define number of layers, number of neurons per layer, and activation functions.
         """
 
         # First Neural Network
@@ -157,16 +158,16 @@ class Actor:
             self.rmsprop_dict[count] = 0
 
     def save_model(self):
-        """Сохранение модели"""
+        """Save model."""
         self.model.save_weights("actor_weight.h5")
 
     def save_dut_dWb(self):
-        """Сохранение градиента"""
+        """Save gradient."""
         for i in range(len(self.dut_dWb)):
             np.save(f"./actor_dut_dWb/{i}_dut_dWb.txt", self.dut_dWb[i])
 
     def load_dut_dWb(self):
-        """Загрузка градиента"""
+        """Load gradient."""
         line = []
         for file in glob.glob("./actor_dut_dWb/*"):
             line.append(tf.constant((np.load(file, allow_pickle=True))))
@@ -174,19 +175,19 @@ class Actor:
         self.dut_dWb_1 = line
 
     def load_model(self):
-        """Загрузка весов модели"""
+        """Load model weights."""
         self.model.load_weights(self.model_path)
 
     def create_NN(self, store_weights, seed: int) -> Tuple[KModel, dict]:
-        """Создает NN с учетом пользовательского ввода
+        """Create NN with user input.
 
         Args:
-            store_weights (_type_): словарь, содержащий веса и смещения
-            seed (_type_): Сид, для сохранения рандомных переменных
+            store_weights: Dictionary containing weights and biases.
+            seed: Seed for saving random variables.
 
         Returns:
-            model (_type_): созданная модель NN
-            store_weights (_type_): словарь, содержащий обновленные веса и смещения.
+            model: Created NN model.
+            store_weights: Dictionary containing updated weights and biases.
 
         """
 
@@ -196,14 +197,14 @@ class Actor:
         )
         model = tf.keras.Sequential()
 
-        # Определяем размерность входа на основе количества отслеживаемых состояний
+        # Determine input dimension based on number of tracked states
         input_dim = (
             len(self.indices_tracking_states)
             if hasattr(self, "indices_tracking_states")
             else 1
         )
 
-        # Создаем модель с правильной входной размерностью
+        # Create model with correct input dimension
         model.add(
             Dense(
                 self.layers[0],
@@ -243,14 +244,14 @@ class Actor:
         return model, store_weights
 
     def run_actor_online(self, xt: np.ndarray, xt_ref: np.ndarray) -> np.ndarray:
-        """Сгенерируйте ввод в систему с заданным и реальным состояниями.
+        """Generate system input with given and real states.
 
         Args:
-            xt (_type_): текущее состояние временного шага
-            xt_ref (_type_): заданное состояния текущего временного шага
+            xt: Current state of time step.
+            xt_ref: Reference state of current time step.
 
         Returns:
-            ut (_type_): ввод в систему и инкрементную модель
+            ut: Input to system and incremental model.
         """
 
         if self.cascaded_actor:
@@ -323,7 +324,7 @@ class Actor:
             self.xt = xt
             self.xt_ref = xt_ref
 
-            # Если xt уже содержит только отслеживаемые состояния, используем его напрямую
+            # If xt already contains only tracked states, use it directly
             if xt.shape[0] == len(self.indices_tracking_states):
                 tracked_states = np.reshape(xt, [-1, 1])
             else:
@@ -331,7 +332,7 @@ class Actor:
                     xt[self.indices_tracking_states, :], [-1, 1]
                 )
             xt_error = np.reshape(tracked_states - xt_ref, [-1, 1])
-            # Создаем входные данные с правильной размерностью для модели
+            # Create input data with correct dimension for model
             nn_input = tf.constant(xt_error.flatten().reshape(1, -1).astype("float32"))
 
             with tf.GradientTape() as tape:
@@ -363,7 +364,7 @@ class Actor:
                 np.reshape(-self.maximum_input, ut.shape),
             )
 
-        # Убеждаемся, что возвращаем массив, а не скаляр
+        # Ensure we return array, not scalar
         if np.isscalar(self.ut):
             return np.array([self.ut])
         return self.ut
@@ -371,12 +372,12 @@ class Actor:
     def train_actor_online(
         self, Jt1: np.ndarray, dJt1_dxt1: np.ndarray, G: np.ndarray
     ) -> None:
-        """Получает элементы цепного правила, вычисляет градиент и применяет его к соответствующим весам и смещениям.
+        """Get chain rule elements, calculate gradient and apply it to corresponding weights and biases.
 
         Args:
             Jt1 (_type_): dEa/dJ
             dJt1_dxt1 (_type_): dJ/dx
-            G (_type_): dx/du, полученное из инкрементной модели
+            G: dx/du, obtained from incremental model.
         """
 
         Jt1 = Jt1.flatten()[0]
@@ -407,15 +408,15 @@ class Actor:
         critic: Any,
         xt_ref1: np.ndarray,
     ) -> None:
-        """Обучение Actor (актера). с помощью адаптивной альфы в зависимости от знака и величины сетевых ошибок
+        """Train Actor using adaptive alpha depending on sign and magnitude of network errors.
 
         Args:
-            Jt1 (_type_): оценка критика с предсказанием следующего временного шага инкрементной модели
-            dJt1_dxt1 (_type_): градиент критической сети по отношению к следующему прогнозу времени инкрементной модели
-            G (_type_): матрица распределения входных данных
-            incremental_model (_type_): инкрементная модель
-            critic (_type_): Критик
-            xt_ref1 (_type_): заданное состояния на следующем временном шаге
+            Jt1: Critic evaluation with incremental model next time step prediction.
+            dJt1_dxt1: Critical network gradient with respect to incremental model next time prediction.
+            G: Input data distribution matrix.
+            incremental_model: Incremental model.
+            critic: Critic.
+            xt_ref1: Reference state at next time step.
         """
         Ec_actor_before = 0.5 * np.square(Jt1)
         # print("ACTOR LOSS xt1 before= ", Ec_actor_before)

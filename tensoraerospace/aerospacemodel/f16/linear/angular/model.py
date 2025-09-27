@@ -9,27 +9,25 @@ from tensoraerospace.aerospacemodel.base import ModelBase
 
 
 class AngularF16(ModelBase):
-    """
-    Объект управления высокомоневренный самолет F-16 ✈ в угловых координатах.
+    """High-maneuverability F-16 ✈ aircraft control object in angular coordinates.
 
+    Action space:
+        stab_act: elevator [deg]
+        ail_act: ailerons [deg]
+        dir_act: rudder [deg]
 
-    Пространство действий:
-        * stab_act: руль высоты [град]
-        * ail_act: элероны [град]
-        * dir_act: руль направления [град]
-
-    Пространство состояний:
-        * alpha: угол атаки [рад]
-        * beta: угол скольжения [рад]
-        * wx: угловая скорость крена [рад/с]
-        * wy: угловая скорость рысканья [рад/с]
-        * wz: угловая скорость тангажа [рад/с]
-        * gamma: крен [рад]
-        * psi: рысканье [рад]
-        * theta: тангаж [рад]
-        * stab: полжение руля высоты [рад]
-        * ail: полжение элеронов [рад]
-        * dir: положение руля направления [рад]
+    State space:
+        alpha: angle of attack [rad]
+        beta: sideslip angle [rad]
+        wx: roll angular velocity [rad/s]
+        wy: yaw angular velocity [rad/s]
+        wz: pitch angular velocity [rad/s]
+        gamma: roll [rad]
+        psi: yaw [rad]
+        theta: pitch [rad]
+        stab: elevator position [rad]
+        ail: aileron position [rad]
+        dir: rudder position [rad]
     """
 
     def __init__(
@@ -39,7 +37,7 @@ class AngularF16(ModelBase):
         self.discretisation_time = dt
         self.folder = os.path.join(os.path.dirname(__file__), "../data")
 
-        # Выбранные данные для системы
+        # Selected data for the system
         self.selected_states = [
             "phi",
             "theta",
