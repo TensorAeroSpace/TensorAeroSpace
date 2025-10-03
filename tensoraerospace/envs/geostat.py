@@ -1,6 +1,7 @@
 import gymnasium as gym
 import numpy as np
 from gymnasium import spaces
+from typing import Callable
 
 from tensoraerospace.aerospacemodel import GeoSat
 
@@ -21,15 +22,15 @@ class GeoSatEnv(gym.Env):
 
     def __init__(
         self,
-        initial_state: any,
-        reference_signal,
-        number_time_steps,
-        tracking_states=["theta", "omega"],
-        state_space=["rho", "theta", "omega"],
-        control_space=["thrust"],
-        output_space=["rho", "theta", "omega"],
-        reward_func=None,
-    ):
+        initial_state: np.ndarray | list[float],
+        reference_signal: np.ndarray | Callable,
+        number_time_steps: int,
+        tracking_states: list[str] = ["theta", "omega"],
+        state_space: tuple[float, float] = ["rho", "theta", "omega"],
+        control_space: tuple[float, float] = ["thrust"],
+        output_space: tuple[float, float] = ["rho", "theta", "omega"],
+        reward_func: Callable | None = None,
+    ) -> None:
         self.initial_state = initial_state
         self.number_time_steps = number_time_steps
         self.selected_state_output = output_space

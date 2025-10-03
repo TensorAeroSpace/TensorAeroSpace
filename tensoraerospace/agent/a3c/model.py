@@ -1,6 +1,7 @@
 import datetime
 from multiprocessing import cpu_count
 from threading import Thread
+from typing import Any, Callable
 
 import numpy as np
 import tensorflow as tf
@@ -21,7 +22,7 @@ class Actor(tf.keras.Model):
         std_bound: Standard deviation boundaries.
     """
 
-    def __init__(self, state_size, action_size, action_bound, std_bound):
+    def __init__(self, state_size: int, action_size: int, action_bound: float, std_bound: list[float]) -> None:
         super(Actor, self).__init__()
 
         self.state_size = state_size
@@ -41,7 +42,7 @@ class Actor(tf.keras.Model):
         std_output = Dense(self.action_size, activation="softplus")(dense_2)
         return tf.keras.models.Model(state_input, [mu_output, std_output])
 
-    def compute_loss(self, actions, mu, std, advantages):
+    def compute_loss(self, actions: tf.Tensor, mu: tf.Tensor, std: tf.Tensor, advantages: tf.Tensor) -> tf.Tensor:
         """Function that computes actor loss.
 
         Args:
@@ -63,7 +64,7 @@ class Actor(tf.keras.Model):
         policy_loss = tf.reduce_sum(-policy_loss)
         return policy_loss
 
-    def train(self, states, actions, advantages):
+    def train(self, states: tf.Tensor, actions: tf.Tensor, advantages: tf.Tensor) -> tf.Tensor:
         """Функция для одного шага обновления сети актора
 
         Args:
@@ -93,7 +94,7 @@ class Critic(tf.keras.Model):
         state_size (_type_): Размер состояния подающегося на вход
     """
 
-    def __init__(self, state_size):
+    def __init__(self, state_size: int) -> None:
         super(Critic, self).__init__()
         self.state_size = state_size
         self.model = self.create_model()
@@ -112,7 +113,7 @@ class Critic(tf.keras.Model):
             ]
         )
 
-    def compute_loss(self, v_pred, td_targets):
+    def compute_loss(self, v_pred: tf.Tensor, td_targets: tf.Tensor) -> tf.Tensor:
         """Функция которая вычисляет ошибку критика
 
         Args:
@@ -125,7 +126,7 @@ class Critic(tf.keras.Model):
         mse = tf.keras.losses.MeanSquaredError()
         return mse(td_targets, v_pred)
 
-    def train(self, states, td_targets):
+    def train(self, states: tf.Tensor, td_targets: tf.Tensor) -> tf.Tensor:
         """Функция для одного шага обновления сети критика
 
         Args:
@@ -158,7 +159,7 @@ class Worker(Thread):
         global_critic (_type_): ссылка на глобальную сеть критика
     """
 
-    def __init__(self, env, gamma, global_actor, global_critic):
+    def __init__(self, env: Any, gamma: float, global_actor: Actor, global_critic: Critic) -> None:
         Thread.__init__(self)
 
         self.env = env
@@ -307,8 +308,8 @@ max_episodes = 50
 
 
 def setup_global_params(
-    actor_lr_f, critic_lr_f, gamma_f, hidden_size_f, update_interval_f, max_episodes_f
-):
+    actor_lr_f: float, critic_lr_f: float, gamma_f: float, hidden_size_f: int, update_interval_f: int, max_episodes_f: int
+) -> None:
     """
     Функция для установки глобальных параметров для алгоритма
     Args:
@@ -345,7 +346,7 @@ class Agent:
         gamma (float): коэффициент гамма
     """
 
-    def __init__(self, env_function, gamma):
+    def __init__(self, env_function: Callable, gamma: float) -> None:
         self.env_function = env_function
         env = self.env_function(0)
         self.gamma = gamma

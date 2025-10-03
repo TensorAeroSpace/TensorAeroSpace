@@ -86,7 +86,7 @@ class SumTree:
         capacity (int): Buffer size.
     """
 
-    def __init__(self, capacity):
+    def __init__(self, capacity: int) -> None:
         self.capacity = capacity  # N, the size of replay buffer, so as to the number of sum tree's leaves
         self.tree = np.zeros(
             2 * capacity - 1
@@ -104,7 +104,7 @@ class SumTree:
 
         return self.tree[0]
 
-    def add(self, priority, transition):
+    def add(self, priority: float, transition: Any) -> None:
         """Function for adding object to buffer.
 
         Args:
@@ -117,7 +117,7 @@ class SumTree:
         self.update(idx, priority)
         self.next_idx = (self.next_idx + 1) % self.capacity
 
-    def update(self, idx, priority):
+    def update(self, idx: int, priority: float) -> None:
         """Function for updating object priority with given index.
 
         Args:
@@ -129,7 +129,7 @@ class SumTree:
         self.tree[idx] = priority
         self._propagate(idx, change)  # O(logn)
 
-    def _propagate(self, idx, change):
+    def _propagate(self, idx: int, change: float) -> None:
         """Function for backward priority update in tree.
 
         Args:
@@ -142,7 +142,7 @@ class SumTree:
         if parent != 0:
             self._propagate(parent, change)
 
-    def get_leaf(self, s):
+    def get_leaf(self, s: float) -> tuple[int, float, Any]:
         """Function for getting object by given priority.
 
         Args:
@@ -158,7 +158,7 @@ class SumTree:
         trans_idx = idx - self.capacity + 1
         return idx, self.tree[idx], self.transitions[trans_idx]
 
-    def _retrieve(self, idx, s):
+    def _retrieve(self, idx: int, s: float) -> int:
         """Function for searching object by given priority and index.
 
         Args:
@@ -203,23 +203,23 @@ class PERAgent:
 
     def __init__(
         self,
-        model,
-        target_model,
-        env,
-        learning_rate=0.0012,
-        epsilon=0.1,
-        epsilon_dacay=0.995,
-        min_epsilon=0.01,
-        gamma=0.9,
-        batch_size=8,
-        target_update_iter=400,
-        train_nums=5000,
-        buffer_size=200,
-        replay_period=20,
-        alpha=0.4,
-        beta=0.4,
-        beta_increment_per_sample=0.001,
-    ):
+        model: Any,
+        target_model: Any,
+        env: Any,
+        learning_rate: float = 0.0012,
+        epsilon: float = 0.1,
+        epsilon_dacay: float = 0.995,
+        min_epsilon: float = 0.01,
+        gamma: float = 0.9,
+        batch_size: int = 8,
+        target_update_iter: int = 400,
+        train_nums: int = 5000,
+        buffer_size: int = 200,
+        replay_period: int = 20,
+        alpha: float = 0.4,
+        beta: float = 0.4,
+        beta_increment_per_sample: float = 0.001,
+    ) -> None:
         self.model = model
         self.target_model = target_model
         # gradient clip
@@ -505,23 +505,23 @@ class PERNARXAgent:
 
     def __init__(
         self,
-        model,
-        target_model,
-        env,
-        learning_rate=0.0012,
-        epsilon=0.1,
-        epsilon_dacay=0.995,
-        min_epsilon=0.01,
-        gamma=0.9,
-        batch_size=8,
-        target_update_iter=400,
-        train_nums=5000,
-        buffer_size=200,
-        replay_period=20,
-        alpha=0.4,
-        beta=0.4,
-        beta_increment_per_sample=0.001,
-    ):
+        model: Any,
+        target_model: Any,
+        env: Any,
+        learning_rate: float = 0.0012,
+        epsilon: float = 0.1,
+        epsilon_dacay: float = 0.995,
+        min_epsilon: float = 0.01,
+        gamma: float = 0.9,
+        batch_size: int = 8,
+        target_update_iter: int = 400,
+        train_nums: int = 5000,
+        buffer_size: int = 200,
+        replay_period: int = 20,
+        alpha: float = 0.4,
+        beta: float = 0.4,
+        beta_increment_per_sample: float = 0.001,
+    ) -> None:
         self.model = model
         self.target_model = target_model
         # gradient clip

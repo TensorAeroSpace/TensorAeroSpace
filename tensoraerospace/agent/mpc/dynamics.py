@@ -14,7 +14,7 @@ class DynamicsNN:
             Optimizer for model training.
     """
 
-    def __init__(self, model):
+    def __init__(self, model: nn.Module) -> None:
         """Initialize DynamicsNN object.
 
         Parameters:
@@ -26,16 +26,16 @@ class DynamicsNN:
 
     def generate_training_data(
         self,
-        num_samples=1000000,
-        state_dim=4,
-        control_dim=1,
-        state_ranges=None,
-        control_ranges=None,
-        A=None,
-        B=None,
-        control_limits=(-25, 25),
-        control_signals=None,
-    ):
+        num_samples: int = 1000000,
+        state_dim: int = 4,
+        control_dim: int = 1,
+        state_ranges: list[tuple[float, float]] | None = None,
+        control_ranges: list[tuple[float, float]] | None = None,
+        A: np.ndarray | None = None,
+        B: np.ndarray | None = None,
+        control_limits: tuple[float, float] = (-25, 25),
+        control_signals: list[str] | None = None,
+    ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         """Generate training data for model.
 
         Parameters:
@@ -209,14 +209,14 @@ class DynamicsNN:
 
     def train_and_validate(
         self,
-        states,
-        controls,
-        next_states,
-        epochs=5,
-        batch_size=1024,
-        val_split=0.2,
-        verbose_epoch=10,
-    ):
+        states: torch.Tensor,
+        controls: torch.Tensor,
+        next_states: torch.Tensor,
+        epochs: int = 5,
+        batch_size: int = 1024,
+        val_split: float = 0.2,
+        verbose_epoch: int = 10,
+    ) -> None:
         """
         Обучение и валидация модели на предоставленных данных.
 
@@ -303,7 +303,7 @@ class DynamicsNN:
                     f"Epoch {epoch+1}, Train Loss: {train_loss:.6f}, Val Loss: {val_loss:.6f}"
                 )
 
-    def predict(self, state, control):
+    def predict(self, state: np.ndarray | torch.Tensor, control: np.ndarray | torch.Tensor) -> np.ndarray:
         """
         Предсказание следующего состояния системы на основе текущего состояния и управления.
 
