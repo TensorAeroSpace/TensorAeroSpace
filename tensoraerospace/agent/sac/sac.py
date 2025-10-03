@@ -285,9 +285,7 @@ class SAC(BaseRLModel):
         )
         save_best = bool(kwargs.get("save_best", False))
         save_path = kwargs.get("save_path", None)
-        save_best_with_gradients = bool(
-            kwargs.get("save_best_with_gradients", False)
-        )
+        save_best_with_gradients = bool(kwargs.get("save_best_with_gradients", False))
         # Training Loop
         total_numsteps = 0
         updates = 0
@@ -453,9 +451,7 @@ class SAC(BaseRLModel):
                         alpha_optim_path,
                     )
             except Exception as exc:  # protect against unexpected write errors
-                raise RuntimeError(
-                    f"Error saving optimizer states: {exc}"
-                ) from exc
+                raise RuntimeError(f"Error saving optimizer states: {exc}") from exc
 
     @classmethod
     def __load(

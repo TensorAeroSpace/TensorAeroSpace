@@ -17,6 +17,7 @@ Where:
 """
 
 import argparse
+
 import numpy as np
 import torch
 
@@ -72,9 +73,7 @@ def build_env(dt: float, tn: int) -> ImprovedB747Env:
     return env
 
 
-def evaluate_episode(
-    agent: SAC, env: ImprovedB747Env, render: bool = True
-) -> float:
+def evaluate_episode(agent: SAC, env: ImprovedB747Env, render: bool = True) -> float:
     """Evaluate policy in a single episode.
 
     Args:
@@ -127,9 +126,7 @@ def parse_args() -> argparse.Namespace:
         action="store_false",
         help="Disable visualization",
     )
-    parser.add_argument(
-        "--seed", type=int, default=42, help="Seed for reproducibility"
-    )
+    parser.add_argument("--seed", type=int, default=42, help="Seed for reproducibility")
     return parser.parse_args()
 
 
