@@ -21,52 +21,55 @@ help: ## Показать справку по командам
 # === УСТАНОВКА И НАСТРОЙКА ===
 install: ## Установить зависимости
 	@echo "$(BLUE)Установка зависимостей...$(RESET)"
+	poetry config virtualenvs.in-project true
 	poetry install --with dev,test
 	poetry run pre-commit install
 
 install_dev: ## Установить dev зависимости (legacy)
+	poetry config virtualenvs.in-project true
 	poetry install
 
 install-ci: ## Установить зависимости для CI
 	@echo "$(BLUE)Установка зависимостей для CI...$(RESET)"
+	poetry config virtualenvs.in-project true
 	poetry install --with dev,test --no-interaction
 
 # === ТЕСТИРОВАНИЕ ===
 test: ## Запустить все тесты
 	@echo "$(BLUE)Запуск всех тестов...$(RESET)"
-	poetry run pytest tests/ -v --cov=tensoraerospace --cov-report=html --cov-report=term
+	PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 poetry run pytest -p pytest_cov tests/ -v --cov=tensoraerospace --cov-report=html --cov-report=term
 
 test-quick: ## Запустить быстрые тесты
 	@echo "$(BLUE)Запуск быстрых тестов...$(RESET)"
-	poetry run pytest tests/envs/ -x --maxfail=3 -q
+	PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 poetry run pytest tests/envs/ -x --maxfail=3 -q
 
 run_env_test: ## Тестировать окружения (legacy)
 	@echo "Running enviroments tests..."
-	poetry run pytest -s tests/envs 
+	PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 poetry run pytest -s tests/envs 
 
 run_signal_test: ## Тестировать сигналы (legacy)
 	@echo "Running signals tests..."
-	poetry run pytest -s tests/signals 
+	PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 poetry run pytest -s tests/signals 
 
 run_bench_test: ## Тестировать бенчмарки (legacy)
 	@echo "Running bench tests..."
-	poetry run pytest -s tests/bench 
+	PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 poetry run pytest -s tests/bench 
 
 test-agents: ## Тестировать агентов
 	@echo "$(BLUE)Тестирование агентов...$(RESET)"
-	poetry run pytest tests/agents/ -v
+	PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 poetry run pytest tests/agents/ -v
 
 test-envs: ## Тестировать окружения
 	@echo "$(BLUE)Тестирование окружений...$(RESET)"
-	poetry run pytest tests/envs/ -v
+	PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 poetry run pytest tests/envs/ -v
 
 test-signals: ## Тестировать сигналы
 	@echo "$(BLUE)Тестирование сигналов...$(RESET)"
-	poetry run pytest tests/signals/ -v
+	PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 poetry run pytest tests/signals/ -v
 
 test-bench: ## Тестировать бенчмарки
 	@echo "$(BLUE)Тестирование бенчмарков...$(RESET)"
-	poetry run pytest tests/bench/ -v
+	PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 poetry run pytest tests/bench/ -v
 
 jupyter_example_test: ## Тестировать Jupyter примеры
 	@echo "Starting tests for Jupyter Notebook files..."

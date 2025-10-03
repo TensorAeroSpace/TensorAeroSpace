@@ -225,7 +225,7 @@ class LinearLongitudinalB747(gym.Env):
         self.done = self.current_step >= self.number_time_steps - 2
 
         return (
-            np.array(next_state, dtype=np.float32).reshape([-1]),
+            np.array(next_state, dtype=np.float32).reshape(-1, 1),
             reward,
             self.done,
             False,
@@ -272,7 +272,7 @@ class LinearLongitudinalB747(gym.Env):
                 next_state[2] = np.rad2deg(next_state[2])
             if next_state.shape[0] >= 4:
                 next_state[3] = np.rad2deg(next_state[3])
-        observation = next_state.astype(np.float32).reshape([-1])
+        observation = next_state.astype(np.float32).reshape(-1, 1)
         return observation, self._get_info()
 
     def render(self):

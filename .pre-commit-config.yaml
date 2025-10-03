@@ -54,7 +54,6 @@ repos:
     rev: v1.8.0
     hooks:
       - id: mypy
-        additional_dependencies: [types-all]
         args: [--ignore-missing-imports]
 
   # Проверка зависимостей на уязвимости
@@ -82,7 +81,7 @@ repos:
         language: system
         args: [tests/envs/, -x, --maxfail=3, -q]
         pass_filenames: false
-        stages: [commit]
+        stages: [pre-commit]
 
 # Конфигурация для CI
 ci:

@@ -55,10 +55,10 @@ def test_step_function(env_setup):
 
     # Test action clamping
     high_action = np.array([100], dtype=np.float32)  # exceeds max_action_value
-    _, _, _, _, _ = env.step(high_action)
-    assert (
-        high_action[0] == env.max_action_value
-    ), "Action should be clamped to max_action_value."
+    _, _, _, _, info_high = env.step(high_action)
+    assert info_high["action"][0] == env.max_action_value, (
+        "Action should be clamped to max_action_value."
+    )
 
 
 def test_reset_function(env_setup):
