@@ -90,7 +90,9 @@ class MPCAgent(BaseRLModel):
 
     def from_pretrained(self, repo_name, access_token=None, version=None):
         folder_path = super().from_pretrained(repo_name, access_token, version)
-        self.system_model = torch.load(os.path.join(folder_path, "model.pth"), weights_only=False)
+        self.system_model = torch.load(
+            os.path.join(folder_path, "model.pth"), weights_only=False
+        )
         config_path = Path(folder_path)
         config_path = config_path / "config.json"
         with open(config_path, "r") as f:

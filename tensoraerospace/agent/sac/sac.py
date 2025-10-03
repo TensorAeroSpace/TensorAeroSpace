@@ -474,8 +474,12 @@ class SAC(BaseRLModel):
         new_agent = cls(env=env, **config["policy"]["params"])
 
         # Загружаем модели
-        new_agent.critic = torch.load(critic_path, map_location=new_agent.device, weights_only=False)
-        new_agent.policy = torch.load(policy_path, map_location=new_agent.device, weights_only=False)
+        new_agent.critic = torch.load(
+            critic_path, map_location=new_agent.device, weights_only=False
+        )
+        new_agent.policy = torch.load(
+            policy_path, map_location=new_agent.device, weights_only=False
+        )
         new_agent.critic_target = torch.load(
             critic_target_path, map_location=new_agent.device, weights_only=False
         )
@@ -485,7 +489,9 @@ class SAC(BaseRLModel):
             getattr(new_agent, "automatic_entropy_tuning", False)
             and log_alpha_path.exists()
         ):
-            loaded_alpha = torch.load(log_alpha_path, map_location=new_agent.device, weights_only=False)
+            loaded_alpha = torch.load(
+                log_alpha_path, map_location=new_agent.device, weights_only=False
+            )
             if isinstance(loaded_alpha, dict) and "log_alpha" in loaded_alpha:
                 new_agent.log_alpha.data.copy_(
                     loaded_alpha["log_alpha"].to(new_agent.device)
@@ -513,16 +519,22 @@ class SAC(BaseRLModel):
         # Опционально загружаем состояния оптимизаторов для продолжения обучения
         if load_gradients:
             if policy_optim_path.exists():
-                state = torch.load(policy_optim_path, map_location=new_agent.device, weights_only=False)
+                state = torch.load(
+                    policy_optim_path, map_location=new_agent.device, weights_only=False
+                )
                 new_agent.policy_optim.load_state_dict(state)
             if critic_optim_path.exists():
-                state = torch.load(critic_optim_path, map_location=new_agent.device, weights_only=False)
+                state = torch.load(
+                    critic_optim_path, map_location=new_agent.device, weights_only=False
+                )
                 new_agent.critic_optim.load_state_dict(state)
             if (
                 getattr(new_agent, "automatic_entropy_tuning", False)
                 and alpha_optim_path.exists()
             ):
-                state = torch.load(alpha_optim_path, map_location=new_agent.device, weights_only=False)
+                state = torch.load(
+                    alpha_optim_path, map_location=new_agent.device, weights_only=False
+                )
                 new_agent.alpha_optim.load_state_dict(state)
         return new_agent
 
