@@ -132,14 +132,14 @@ class SAC(BaseRLModel):
             self.policy_optim = Adam(self.policy.parameters(), lr=lr)
 
     def select_action(self, state: np.ndarray, evaluate: bool = False) -> np.ndarray:
-        """Выбор действия на основе текущего состояния.
+        """Select action based on current state.
 
         Args:
-            state: Текущее состояние агента.
-            evaluate (bool): Флаг режима оценки.
+            state: Current state of the agent.
+            evaluate (bool): Evaluation mode flag.
 
         Returns:
-            action: Выбранное действие.
+            action: Selected action.
 
         """
         state_t = torch.as_tensor(
@@ -155,19 +155,19 @@ class SAC(BaseRLModel):
     def update_parameters(
         self, memory: ReplayMemory, batch_size: int, updates: int
     ) -> Tuple[float, float, float, float, float]:
-        """Обновление параметров сетей на основе мини-пакета из памяти.
+        """Update network parameters based on a mini-batch from memory.
 
         Args:
-            memory: Память для хранения переходов.
-            batch_size (int): Размер мини-пакета.
-            updates (int): Количество обновлений.
+            memory: Memory for storing transitions.
+            batch_size (int): Mini-batch size.
+            updates (int): Number of updates.
 
         Returns:
-            qf1_loss (float): Значение функции потерь для первой Q-сети.
-            qf2_loss (float): Значение функции потерь для второй Q-сети.
-            policy_loss (float): Значение функции потерь для политики.
-            alpha_loss (float): Значение функции потерь для коэффициента alpha.
-            alpha_tlogs (float): Значение коэффициента alpha.
+            qf1_loss (float): Loss value for the first Q-network.
+            qf2_loss (float): Loss value for the second Q-network.
+            policy_loss (float): Loss value for the policy.
+            alpha_loss (float): Loss value for the alpha coefficient.
+            alpha_tlogs (float): Value of the alpha coefficient.
 
         """
         # Sample a batch from memory
@@ -283,9 +283,15 @@ class SAC(BaseRLModel):
         num_episodes = (
             int(args[0]) if len(args) > 0 else int(kwargs.get("num_episodes", 1))
         )
+        save_best = bool(kwargs.get("save_best", False))
+        save_path = kwargs.get("save_path", None)
+        save_best_with_gradients = bool(
+            kwargs.get("save_best_with_gradients", False)
+        )
         # Training Loop
         total_numsteps = 0
         updates = 0
+        best_reward = float("-inf")
         for i_episode in tqdm(range(num_episodes)):
             episode_reward = 0
             episode_steps = 0
@@ -304,9 +310,9 @@ class SAC(BaseRLModel):
                         updates += 1
 
                 next_state, reward, terminated, truncated, _ = self.env.step(action)
-                # Важно: разделяем логику окончания цикла и бутстрапа
-                # - цикл завершаем при (terminated or truncated)
-                # - для таргетов в реплее используем done только по terminated
+                # Important: separate loop termination logic from bootstrap logic
+                # - terminate loop when (terminated or truncated)
+                # - for replay targets use done only when terminated
                 done_env = bool(terminated or truncated)
                 done_bootstrap = float(bool(terminated))
                 episode_steps += 1
@@ -319,6 +325,17 @@ class SAC(BaseRLModel):
                 state = next_state
                 done = done_env
             self.writer.add_scalar("Performance/Reward", episode_reward, i_episode)
+            if save_best and episode_reward > best_reward:
+                best_reward = episode_reward
+                self.save(
+                    path=save_path,
+                    save_gradients=save_best_with_gradients,
+                )
+                self.writer.add_scalar(
+                    "Performance/BestReward",
+                    best_reward,
+                    i_episode,
+                )
 
     def get_param_env(self) -> Dict[str, Dict[str, Any]]:
         class_name = self.env.unwrapped.__class__.__name__
@@ -331,14 +348,14 @@ class SAC(BaseRLModel):
         module_name = self.__class__.__module__
         agent_name = f"{module_name}.{class_name}"
 
-        # Получение информации о сигнале справки, если она доступна
+        # Get reference signal information if available
         try:
             ref_cls = self.env.ref_signal.__class__
             env_params["ref_signal"] = f"{ref_cls.__module__}.{ref_cls.__name__}"
         except AttributeError:
             pass
 
-        # Добавление информации о пространстве действий и пространстве состояний
+        # Add action space and observation space information
         try:
             action_space = str(self.env.action_space)
             env_params["action_space"] = action_space
@@ -377,14 +394,13 @@ class SAC(BaseRLModel):
         path: Union[str, Path, None] = None,
         save_gradients: bool = False,
     ) -> None:
-        """
-        Сохраняет модель PyTorch в указанной директории.
+        """Save PyTorch model to the specified directory.
 
         Args:
-            path (str | Path | None): Путь сохранения. Если None — создается
-                папка с текущей датой и временем в рабочем каталоге.
-            save_gradients (bool): Сохранять состояния оптимизаторов для
-                продолжения обучения (моменты Adam и т.п.).
+            path (str | Path | None): Save path. If None, creates
+                a folder with current date and time in the working directory.
+            save_gradients (bool): Save optimizer states for
+                continuing training (Adam moments, etc.).
 
         Returns:
             None
@@ -393,10 +409,10 @@ class SAC(BaseRLModel):
             path = Path.cwd()
         else:
             path = Path(path)
-        # Текущая дата и время в формате 'YYYY-MM-DD_HH-MM-SS'
+        # Current date and time in format 'YYYY-MM-DD_HH-MM-SS'
         date_str = datetime.datetime.now().strftime("%b%d_%H-%M-%S")
         date_str = date_str + "_" + self.__class__.__name__
-        # Создание пути в текущем каталоге с датой и временем
+        # Create path in current directory with date and time
 
         config_path = path / date_str / "config.json"
         policy_path = path / date_str / "policy.pth"
@@ -407,9 +423,9 @@ class SAC(BaseRLModel):
         alpha_optim_path = path / date_str / "alpha_optim.pth"
         log_alpha_path = path / date_str / "log_alpha.pth"
 
-        # Создание директории, если она не существует
+        # Create directory if it doesn't exist
         policy_path.parent.mkdir(parents=True, exist_ok=True)
-        # Сохранение модели
+        # Save model
         config = self.get_param_env()
         with open(config_path, "w", encoding="utf-8") as outfile:
             json.dump(config, outfile)
@@ -417,28 +433,28 @@ class SAC(BaseRLModel):
         torch.save(self.critic, critic_path)
         torch.save(self.critic_target, critic_target_path)
 
-        # Сохраняем log_alpha, если используется автоматическая настройка энтропии
+        # Save log_alpha if automatic entropy tuning is used
         if getattr(self, "automatic_entropy_tuning", False):
             torch.save(
                 {"log_alpha": self.log_alpha.detach().cpu()},
                 log_alpha_path,
             )
 
-        # Опционально сохраняем состояния оптимизаторов для возобновления обучения
+        # Optionally save optimizer states for resuming training
         if save_gradients:
             try:
                 torch.save(self.policy_optim.state_dict(), policy_optim_path)
                 torch.save(self.critic_optim.state_dict(), critic_optim_path)
                 if getattr(self, "automatic_entropy_tuning", False):
-                    # alpha_optim существует только при включенном автонастройке
-                    # энтропии
+                    # alpha_optim exists only when automatic entropy
+                    # tuning is enabled
                     torch.save(
                         self.alpha_optim.state_dict(),
                         alpha_optim_path,
                     )
-            except Exception as exc:  # предохраняемся от неожиданных ошибок записи
+            except Exception as exc:  # protect against unexpected write errors
                 raise RuntimeError(
-                    f"Ошибка сохранения состояний оптимизаторов: {exc}"
+                    f"Error saving optimizer states: {exc}"
                 ) from exc
 
     @classmethod
@@ -473,7 +489,7 @@ class SAC(BaseRLModel):
             env = get_class_from_string(config["env"]["name"])()
         new_agent = cls(env=env, **config["policy"]["params"])
 
-        # Загружаем модели
+        # Load models
         new_agent.critic = torch.load(
             critic_path, map_location=new_agent.device, weights_only=False
         )
@@ -484,7 +500,7 @@ class SAC(BaseRLModel):
             critic_target_path, map_location=new_agent.device, weights_only=False
         )
 
-        # Восстанавливаем log_alpha, если имеется
+        # Restore log_alpha if available
         if (
             getattr(new_agent, "automatic_entropy_tuning", False)
             and log_alpha_path.exists()
@@ -498,7 +514,7 @@ class SAC(BaseRLModel):
                 )
                 new_agent.alpha = float(new_agent.log_alpha.exp().item())
 
-        # Сохраняем текущие значения LR до переинициализации оптимизаторов
+        # Save current LR values before reinitializing optimizers
         critic_lr = new_agent.critic_optim.defaults.get("lr", 0.0003)
         policy_lr = new_agent.policy_optim.defaults.get("lr", 0.0003)
         alpha_lr = (
@@ -507,7 +523,7 @@ class SAC(BaseRLModel):
             else None
         )
 
-        # Переинициализируем оптимизаторы под новые параметры
+        # Reinitialize optimizers for new parameters
         new_agent.critic_optim = Adam(new_agent.critic.parameters(), lr=critic_lr)
         new_agent.policy_optim = Adam(new_agent.policy.parameters(), lr=policy_lr)
         if (
@@ -516,7 +532,7 @@ class SAC(BaseRLModel):
         ):
             new_agent.alpha_optim = Adam([new_agent.log_alpha], lr=alpha_lr)
 
-        # Опционально загружаем состояния оптимизаторов для продолжения обучения
+        # Optionally load optimizer states for continuing training
         if load_gradients:
             if policy_optim_path.exists():
                 state = torch.load(
@@ -546,34 +562,35 @@ class SAC(BaseRLModel):
         version: Optional[str] = None,
         load_gradients: bool = False,
     ) -> "SAC":
-        """
-        Загрузка предобученной модели из локальной директории или Hugging Face.
+        """Load pretrained model from local directory or Hugging Face.
 
         Args:
-            repo_name: Путь к локальной папке с весами или имя репозитория
-                в формате "namespace/repo_name" на Hugging Face.
-            access_token: Токен доступа к приватному репозиторию HF.
-            version: Ревизия/ветка/тег репозитория HF.
-            load_gradients: Загружать состояния оптимизаторов для
-                продолжения обучения.
+            repo_name: Path to local folder with weights or repository name
+                in format "namespace/repo_name" on Hugging Face.
+            access_token: Access token for private HF repository.
+            version: Revision/branch/tag of HF repository.
+            load_gradients: Load optimizer states for
+                continuing training.
 
         Returns:
-            SAC: Инициализированный агент.
+            SAC: Initialized agent.
         """
-        # 1) Попытка локальной загрузки (абсолютный/относительный путь)
+        # 1) Try local loading (absolute/relative path)
         p = Path(str(repo_name)).expanduser()
         if p.is_dir():
             return cls.__load(p, load_gradients=load_gradients)
 
-        # 2) Если явно указан путь (по префиксу), но папки нет — ошибка пути
+        # 2) If path is explicitly specified (by prefix), but folder
+        # doesn't exist - path error
         pathlike_prefixes = ("./", "../", "/", "~")
         if str(repo_name).startswith(pathlike_prefixes):
             if not p.exists() or not p.is_dir():
                 raise FileNotFoundError(
-                    f"Локальная директория не найдена: '{repo_name}'. Проверьте путь."
+                    f"Local directory not found: '{repo_name}'."
+                    " Please check the path."
                 )
             return cls.__load(p, load_gradients=load_gradients)
 
-        # 3) Иначе — считаем, что это repo id на Hugging Face (namespace/repo)
+        # 3) Otherwise - assume it's a repo id on Hugging Face (namespace/repo)
         folder_path = super().from_pretrained(repo_name, access_token, version)
         return cls.__load(folder_path, load_gradients=load_gradients)

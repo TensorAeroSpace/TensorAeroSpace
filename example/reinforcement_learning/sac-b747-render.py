@@ -1,18 +1,19 @@
-"""Пример использования TensorAeroSpace: оценка предобученного SAC-агента
-для управления продольной динамикой Boeing 747.
+"""TensorAeroSpace usage example: evaluating a pretrained SAC agent
+for controlling longitudinal dynamics of Boeing 747.
 
-- Строим окружение `ImprovedB747Env` с синусоидальной ссылкой по тангажу.
-- Загружаем предобученную политику из Hugging Face: "TensorAeroSpace/sac-b747".
-- Запускаем один эпизод в режиме оценки и (опционально) визуализируем.
+- Build `ImprovedB747Env` environment with sinusoidal pitch reference.
+- Load pretrained policy from Hugging Face: "TensorAeroSpace/sac-b747".
+- Run one episode in evaluation mode and (optionally) visualize.
 
-Запуск:
-    python sac-b747-render.py --render --repo TensorAeroSpace/sac-b747 --dt 0.1 --tn 200
+Usage:
+    python sac-b747-render.py --render --repo TensorAeroSpace/sac-b747 \
+        --dt 0.1 --tn 200
 
-Где:
-    --render  включить пошаговую визуализацию (по умолчанию включено)
-    --repo    репозиторий или локальный путь с весами агента
-    --dt      шаг дискретизации модели (сек)
-    --tn      количество тактов эпизода
+Where:
+    --render  enable step-by-step visualization (enabled by default)
+    --repo    repository or local path to agent weights
+    --dt      model discretization step (sec)
+    --tn      number of episode timesteps
 """
 
 import argparse
@@ -24,15 +25,16 @@ from tensoraerospace.envs.b747 import ImprovedB747Env
 from tensoraerospace.signals.standart import sinusoid_vertical_shift
 from tensoraerospace.utils import convert_tp_to_sec_tp, generate_time_period
 
+
 def build_env(dt: float, tn: int) -> ImprovedB747Env:
-    """Создает окружение B747 с синусоидальной ссылкой по углу тангажа.
+    """Create B747 environment with sinusoidal pitch angle reference.
 
     Args:
-        dt: шаг дискретизации в секундах
-        tn: число тактов эпизода
+        dt: discretization step in seconds
+        tn: number of episode timesteps
 
     Returns:
-        Инициализированное окружение ImprovedB747Env
+        Initialized ImprovedB747Env environment
     """
     tp = generate_time_period(tn=tn, dt=dt)
     tps = convert_tp_to_sec_tp(tp, dt=dt)
@@ -47,13 +49,15 @@ def build_env(dt: float, tn: int) -> ImprovedB747Env:
         ),
         [1, -1],
     )
-    # Альтернативная ступенька:
+    # Alternative step reference:
     # reference_signals = np.reshape(
-    #     unit_step(degree=1, tp=np.asarray(tps), time_step=5, output_rad=True),
+    #     unit_step(
+    #         degree=1, tp=np.asarray(tps), time_step=5, output_rad=True
+    #     ),
     #     [1, -1]
     # )
 
-    # Начальное состояние: [u, w, q, theta]
+    # Initial state: [u, w, q, theta]
     initial_state = np.array([[0], [0], [0], [0]], dtype=np.float32)
 
     env = ImprovedB747Env(
@@ -68,16 +72,18 @@ def build_env(dt: float, tn: int) -> ImprovedB747Env:
     return env
 
 
-def evaluate_episode(agent: SAC, env: ImprovedB747Env, render: bool = True) -> float:
-    """Оценивает политику в одном эпизоде.
+def evaluate_episode(
+    agent: SAC, env: ImprovedB747Env, render: bool = True
+) -> float:
+    """Evaluate policy in a single episode.
 
     Args:
-        agent: предобученный агент SAC
-        env: окружение ImprovedB747Env
-        render: визуализировать ли шаги
+        agent: pretrained SAC agent
+        env: ImprovedB747Env environment
+        render: whether to visualize steps
 
     Returns:
-        Суммарная награда за эпизод
+        Total reward for the episode
     """
     state, _info = env.reset()
     done = False
@@ -101,23 +107,29 @@ def parse_args() -> argparse.Namespace:
         "--repo",
         type=str,
         default="TensorAeroSpace/sac-b747",
-        help="Hugging Face repo id или локальный путь к весам",
+        help="Hugging Face repo id or local path to weights",
     )
-    parser.add_argument("--dt", type=float, default=0.1, help="Шаг дискретизации, сек")
-    parser.add_argument("--tn", type=int, default=200, help="Число тактов эпизода")
+    parser.add_argument(
+        "--dt", type=float, default=0.1, help="Discretization step, sec"
+    )
+    parser.add_argument(
+        "--tn", type=int, default=200, help="Number of episode timesteps"
+    )
     parser.add_argument(
         "--render",
         action="store_true",
         default=True,
-        help="Включить визуализацию",
+        help="Enable visualization",
     )
     parser.add_argument(
         "--no-render",
         dest="render",
         action="store_false",
-        help="Отключить визуализацию",
+        help="Disable visualization",
     )
-    parser.add_argument("--seed", type=int, default=42, help="Сид для воспроизводимости")
+    parser.add_argument(
+        "--seed", type=int, default=42, help="Seed for reproducibility"
+    )
     return parser.parse_args()
 
 
