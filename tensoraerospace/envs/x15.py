@@ -6,10 +6,11 @@ for interaction with the aircraft model, including control of pitch angle and pi
 through elevator control.
 """
 
+from typing import Callable
+
 import gymnasium as gym
 import numpy as np
 from gymnasium import spaces
-from typing import Callable
 
 from tensoraerospace.aerospacemodel import LongitudinalX15
 

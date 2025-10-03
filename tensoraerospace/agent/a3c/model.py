@@ -22,7 +22,13 @@ class Actor(tf.keras.Model):
         std_bound: Standard deviation boundaries.
     """
 
-    def __init__(self, state_size: int, action_size: int, action_bound: float, std_bound: list[float]) -> None:
+    def __init__(
+        self,
+        state_size: int,
+        action_size: int,
+        action_bound: float,
+        std_bound: list[float],
+    ) -> None:
         super(Actor, self).__init__()
 
         self.state_size = state_size
@@ -42,7 +48,9 @@ class Actor(tf.keras.Model):
         std_output = Dense(self.action_size, activation="softplus")(dense_2)
         return tf.keras.models.Model(state_input, [mu_output, std_output])
 
-    def compute_loss(self, actions: tf.Tensor, mu: tf.Tensor, std: tf.Tensor, advantages: tf.Tensor) -> tf.Tensor:
+    def compute_loss(
+        self, actions: tf.Tensor, mu: tf.Tensor, std: tf.Tensor, advantages: tf.Tensor
+    ) -> tf.Tensor:
         """Function that computes actor loss.
 
         Args:
@@ -64,7 +72,9 @@ class Actor(tf.keras.Model):
         policy_loss = tf.reduce_sum(-policy_loss)
         return policy_loss
 
-    def train(self, states: tf.Tensor, actions: tf.Tensor, advantages: tf.Tensor) -> tf.Tensor:
+    def train(
+        self, states: tf.Tensor, actions: tf.Tensor, advantages: tf.Tensor
+    ) -> tf.Tensor:
         """Функция для одного шага обновления сети актора
 
         Args:
@@ -159,7 +169,9 @@ class Worker(Thread):
         global_critic (_type_): ссылка на глобальную сеть критика
     """
 
-    def __init__(self, env: Any, gamma: float, global_actor: Actor, global_critic: Critic) -> None:
+    def __init__(
+        self, env: Any, gamma: float, global_actor: Actor, global_critic: Critic
+    ) -> None:
         Thread.__init__(self)
 
         self.env = env
@@ -308,7 +320,12 @@ max_episodes = 50
 
 
 def setup_global_params(
-    actor_lr_f: float, critic_lr_f: float, gamma_f: float, hidden_size_f: int, update_interval_f: int, max_episodes_f: int
+    actor_lr_f: float,
+    critic_lr_f: float,
+    gamma_f: float,
+    hidden_size_f: int,
+    update_interval_f: int,
+    max_episodes_f: int,
 ) -> None:
     """
     Функция для установки глобальных параметров для алгоритма

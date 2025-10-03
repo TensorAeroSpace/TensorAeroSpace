@@ -6,10 +6,11 @@ for interaction with the rocket model, including control of pitch angle and pitc
 through stabilizers.
 """
 
+from typing import Callable
+
 import gymnasium as gym
 import numpy as np
 from gymnasium import spaces
-from typing import Callable
 
 from tensoraerospace.aerospacemodel import MissileModel
 

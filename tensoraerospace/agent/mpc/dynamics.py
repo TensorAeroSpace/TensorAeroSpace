@@ -303,7 +303,9 @@ class DynamicsNN:
                     f"Epoch {epoch+1}, Train Loss: {train_loss:.6f}, Val Loss: {val_loss:.6f}"
                 )
 
-    def predict(self, state: np.ndarray | torch.Tensor, control: np.ndarray | torch.Tensor) -> np.ndarray:
+    def predict(
+        self, state: np.ndarray | torch.Tensor, control: np.ndarray | torch.Tensor
+    ) -> np.ndarray:
         """
         Предсказание следующего состояния системы на основе текущего состояния и управления.
 

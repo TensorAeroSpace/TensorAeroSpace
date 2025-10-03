@@ -6,11 +6,11 @@ for interaction with the satellite model, including control of orbital radius,
 rotation angle and angular velocity through propulsion system.
 """
 
+from typing import Callable
+
 import gymnasium as gym
 import numpy as np
 from gymnasium import spaces
-
-from typing import Callable
 
 from tensoraerospace.aerospacemodel import ComSat
 

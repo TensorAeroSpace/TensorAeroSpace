@@ -130,7 +130,9 @@ class IHDPAgent(object):
             incremental_settings["input_rate_limits"],
         )
 
-    def predict(self, xt: np.ndarray, reference_signals: np.ndarray, time_step: int) -> np.ndarray:
+    def predict(
+        self, xt: np.ndarray, reference_signals: np.ndarray, time_step: int
+    ) -> np.ndarray:
         """Сделать предикт и получить следующи сигналы управления
 
         Args:
