@@ -36,7 +36,9 @@ plugins:
               - Unity Environment: guide/unity_env.md
             - Aerospace Models:
               - F16: model/f16.md
-              - B747: model/b747.md
+              - B747: 
+                - Classic State-Space: model/b747.md
+                - Normalized State-Space: model/b747_imporove.md
               - EVL: model/evl.md
               - Typical Rocket: model/typical_rocket.md
               - ComSat: model/comsat.md
@@ -47,6 +49,7 @@ plugins:
               - LSU: model/lsu.md
               - SUAV: model/suav.md
               - Unity Environment: model/unity_env.md
+              
             - Agents:
               - IHDP:
                 - Описание: agent/ihdp.md
@@ -68,6 +71,7 @@ plugins:
               - Environments: example/enviroment/gymnasium.md
               - IHDP: example/agent/ihdp/example_ihdp.md
               - SAC F16: example/agent/sac/example-sac-f16.md
+              - SAC B747: example/agent/sac/example-sac-b747.md
               - Optimization: example/optimization/example_optimization.md
               - A2C-NARX: example/agent/a2c_narx/example-narx.md
               - MPC: example/agent/mpc/example_mpc.md
@@ -108,7 +112,9 @@ plugins:
               - Unity-окружение: guide/unity_env.md
             - Объекты управления:
               - F16: model/f16.md
-              - B747: model/b747.md
+              - B747: 
+                - Пространство состояний: model/b747.md
+                - Нормализованное управление: model/b747_imporove.md
               - EVL: model/evl.md
               - Typical Rocket: model/typical_rocket.md
               - ComSat: model/comsat.md
