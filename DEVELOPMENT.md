@@ -37,7 +37,6 @@ make dev-setup
 
 This will:
 - Install all dependencies
-- Configure pre-commit hooks
 - Show available commands
 
 ## 📝 Manual setup
@@ -52,11 +51,6 @@ poetry install --with dev,test
 2. Activate the virtualenv:
 ```bash
 poetry shell
-```
-
-3. Install pre-commit hooks:
-```bash
-pre-commit install
 ```
 
 ## 🧪 Verify the setup
@@ -86,7 +80,6 @@ make test-envs      # Environment tests
 make format         # Code formatting
 make lint           # Linters
 make security       # Security checks
-make pre-commit     # Run pre-commit hooks
 ```
 
 ### Documentation
@@ -182,8 +175,6 @@ git add .
 git commit -m "feat: add your feature description"
 ```
 
-Pre-commit hooks will run automatically.
-
 4. Push the branch:
 ```bash
 git push origin feature/your-feature-name
@@ -203,15 +194,7 @@ rm poetry.lock
 poetry install
 ```
 
-### pre-commit issues
-```bash
-# Reinstall pre-commit hooks
-pre-commit uninstall
-pre-commit install
 
-# Run on all files
-pre-commit run --all-files
-```
 
 ### Test issues
 ```bash

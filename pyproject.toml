@@ -48,7 +48,6 @@ pymdown-extensions = "^10.7"
 mkdocs-autorefs = "^1.4.0"
 griffe = "^1.13.0"
 twine = "^4.0.0"
-pre-commit = "^4.3.0"
 
 [tool.poetry.group.test.dependencies]
 pytest = "^7.4.3"

@@ -23,7 +23,6 @@ install: ## Установить зависимости
 	@echo "$(BLUE)Установка зависимостей...$(RESET)"
 	poetry config virtualenvs.in-project true
 	poetry install --with dev,test
-	poetry run pre-commit install
 
 install_dev: ## Установить dev зависимости (legacy)
 	poetry config virtualenvs.in-project true
@@ -45,15 +44,15 @@ test-quick: ## Запустить быстрые тесты
 
 run_env_test: ## Тестировать окружения (legacy)
 	@echo "Running enviroments tests..."
-	PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 poetry run pytest -s tests/envs 
+	PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 poetry run pytest -s tests/envs
 
 run_signal_test: ## Тестировать сигналы (legacy)
 	@echo "Running signals tests..."
-	PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 poetry run pytest -s tests/signals 
+	PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 poetry run pytest -s tests/signals
 
 run_bench_test: ## Тестировать бенчмарки (legacy)
 	@echo "Running bench tests..."
-	PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 poetry run pytest -s tests/bench 
+	PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 poetry run pytest -s tests/bench
 
 test-agents: ## Тестировать агентов
 	@echo "$(BLUE)Тестирование агентов...$(RESET)"
@@ -176,12 +175,6 @@ docker_debug: ## Запустить Docker в debug режиме
 	docker run -v ${PWD}/example:/app/example -p 8888:8888 -it tensor_aero_space
 
 # === КОМПЛЕКСНЫЕ КОМАНДЫ ===
-pre_commit: fmt test ## Pre-commit проверки (legacy)
-
-pre-commit: ## Запустить pre-commit hooks
-	@echo "$(BLUE)Запуск pre-commit hooks...$(RESET)"
-	poetry run pre-commit run --all-files
-
 check-all: format-check lint security test docs ## Полная проверка кода
 
 ci-test: install-ci test lint security docs ## CI pipeline тестирование

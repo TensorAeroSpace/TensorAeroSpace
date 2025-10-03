@@ -6,7 +6,6 @@ from tensoraerospace.envs.b747 import ImprovedB747Env
 from tensoraerospace.signals.standart import unit_step
 from tensoraerospace.utils import convert_tp_to_sec_tp, generate_time_period
 
-
 INITIAL_STATE = [[0], [0], [0], [0]]
 dt = 0.01
 tp = generate_time_period(tn=20, dt=dt)
@@ -79,7 +78,9 @@ def test_truncation_flag():
         use_initial_action_on_first_step=False,
     )
     small_steps_env.reset()
-    _, _, terminated, truncated, _ = small_steps_env.step(np.array([0.0], dtype=np.float32))
+    _, _, terminated, truncated, _ = small_steps_env.step(
+        np.array([0.0], dtype=np.float32)
+    )
     assert isinstance(terminated, bool)
     assert isinstance(truncated, bool)
     # For number_time_steps=3, truncated becomes True at current_step>=1
@@ -99,5 +100,6 @@ def test_initial_action_override_on_first_step():
     input_action = np.array([-1.0], dtype=np.float32)
     _, _, _, _, _ = env.step(input_action)
     # previous_action should reflect initial_elevator_deg on first step, not input
-    assert env.previous_action == pytest.approx(10.0 / env.max_stabilizer_angle_deg, rel=0, abs=1e-6)
-
+    assert env.previous_action == pytest.approx(
+        10.0 / env.max_stabilizer_angle_deg, rel=0, abs=1e-6
+    )
