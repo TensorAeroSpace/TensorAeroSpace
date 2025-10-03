@@ -572,8 +572,8 @@ class A2C(BaseRLModel):
             )
         else:
             env = get_class_from_string(config["env"]["name"])()
-        critic = torch.load(critic_path)
-        actor = torch.load(actor_path)
+        critic = torch.load(critic_path, weights_only=False)
+        actor = torch.load(actor_path, weights_only=False)
         new_agent = cls(
             env=env, critic=critic, actor=actor, **config["policy"]["params"]
         )

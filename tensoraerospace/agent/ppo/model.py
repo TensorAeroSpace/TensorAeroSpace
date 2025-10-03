@@ -635,8 +635,8 @@ class PPO(BaseRLModel):
         else:
             env = get_class_from_string(config["env"]["name"])()
         new_agent = cls(env=env, **config["policy"]["params"])
-        new_agent.critic = torch.load(critic_path)
-        new_agent.actor = torch.load(actor_path)
+        new_agent.critic = torch.load(critic_path, weights_only=False)
+        new_agent.actor = torch.load(actor_path, weights_only=False)
         return new_agent
 
     @classmethod
