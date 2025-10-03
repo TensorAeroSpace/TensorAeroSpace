@@ -32,7 +32,7 @@ class ReplayMemory:
         action: np.ndarray,
         reward: Union[float, np.ndarray],
         next_state: np.ndarray,
-        done: bool,
+        done: Union[bool, float],
     ) -> None:
         """Добавление повторного сэмпла в хранилище.
 
@@ -41,7 +41,7 @@ class ReplayMemory:
             action: Действие.
             reward: Награда.
             next_state: Следующее состояние.
-            done: Флаг окончания эпизода.
+            done: Маска окончания эпизода (True/False или 0.0/1.0).
 
         """
         if len(self.buffer) < self.capacity:
@@ -58,7 +58,8 @@ class ReplayMemory:
             batch_size (int): Размер пакета.
 
         Returns:
-            Tuple: Кортеж с состояниями, действиями, наградами, следующими состояниями и флагами окончания.
+            Tuple: Кортеж с состояниями, действиями, наградами,
+            следующими состояниями и флагами окончания.
 
         """
         batch = random.sample(self.buffer, batch_size)

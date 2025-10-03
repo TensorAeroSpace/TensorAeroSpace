@@ -48,8 +48,13 @@ class LongitudinalB747(ModelBase):
     """
 
     def __init__(
-        self, x0, number_time_steps, selected_state_output=None, t0=0, dt: float = 0.01
-    ):
+        self,
+        x0: np.ndarray,
+        number_time_steps: int,
+        selected_state_output: list[str] | None = None,
+        t0: int = 0,
+        dt: float = 0.01,
+    ) -> None:
         super().__init__(x0, selected_state_output, t0, dt)
 
         self.discretisation_time = dt
@@ -70,7 +75,7 @@ class LongitudinalB747(ModelBase):
         # ele
         # Limitations of the system
         self.input_magnitude_limits = [
-            25,
+            np.deg2rad(25),
         ]
         self.input_rate_limits = [
             60,
@@ -103,14 +108,14 @@ class LongitudinalB747(ModelBase):
         """
         self.A = np.array(
             [
-                [-0.0212, 0.0466, 0, 0.1153],
-                [-0.2229, -0.5839, 0.9404, 0],
-                [0.0150, -0.5031, -0.5015, 0],
+                [-0.0069, 0.0139, 0, -9.8100],
+                [-0.0905, -0.3149, 235.8928, 0],
+                [0.0004, -0.0034, -0.4282, 0],
                 [0, 0, 1, 0],
             ]
         )
 
-        self.B = np.array([[0], [-0.0340], [-0.5746], [0]])
+        self.B = np.array([[-0.0001], [-5.5079], [-1.1569], [0]])
 
         self.C = np.array(
             [
@@ -130,12 +135,12 @@ class LongitudinalB747(ModelBase):
             ]
         )
 
-    def initialise_system(self, x0, number_time_steps) -> None:
+    def initialise_system(self, x0: np.ndarray, number_time_steps: int) -> None:
         """Инициализация системы
 
         Args:
-            x0 (_type_): Начальное состояние объекта управления
-            number_time_steps (_type_): количество временных шагов в итерации
+            x0: Начальное состояние объекта управления
+            number_time_steps: количество временных шагов в итерации
         """
 
         # Import the stored system
