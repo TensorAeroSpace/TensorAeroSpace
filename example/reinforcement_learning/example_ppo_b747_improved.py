@@ -12,12 +12,13 @@ Features:
 """
 
 import os
+
+import matplotlib.pyplot as plt
 import numpy as np
 import torch
-import matplotlib.pyplot as plt
 
-from tensoraerospace.envs.b747 import ImprovedB747Env
 from tensoraerospace.agent.ppo.model import PPO
+from tensoraerospace.envs.b747 import ImprovedB747Env
 from tensoraerospace.signals.standart import sinusoid_vertical_shift
 from tensoraerospace.utils import convert_tp_to_sec_tp, generate_time_period
 
@@ -203,9 +204,7 @@ print("✓ Saved theta tracking plot")
 
 # Plot pitch rate (q)
 plt.figure(figsize=(15, 4))
-env.unwrapped.model.plot_state(
-    state_name="q", time=tps, to_deg=True, figsize=(15, 4)
-)
+env.unwrapped.model.plot_state(state_name="q", time=tps, to_deg=True, figsize=(15, 4))
 pitch_path = os.path.join(log_root, "pitch_rate.png")
 plt.savefig(pitch_path, dpi=150, bbox_inches="tight")
 print("✓ Saved pitch rate plot")

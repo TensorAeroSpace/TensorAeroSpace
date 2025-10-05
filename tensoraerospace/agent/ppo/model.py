@@ -8,7 +8,7 @@ and the main PPO agent class for aerospace system control.
 import datetime
 import json
 from pathlib import Path
-from typing import Any, Dict, Tuple, Union, Optional
+from typing import Any, Dict, Optional, Tuple, Union
 
 import numpy as np
 import torch
@@ -66,11 +66,7 @@ class RunningMeanStd:
         new_mean = self.mean + delta * batch_count / tot_count
         m_a = self.var * self.count
         m_b = batch_var * batch_count
-        M2 = (
-            m_a
-            + m_b
-            + np.square(delta) * self.count * batch_count / tot_count
-        )
+        M2 = m_a + m_b + np.square(delta) * self.count * batch_count / tot_count
         new_var = M2 / tot_count
         new_count = tot_count
 
@@ -200,9 +196,9 @@ class Actor(nn.Module):
         if continous_actions:
             mu = torch.tanh(self.mu(x))
             log_std = torch.tanh(self.delta(x))
-            log_std = self.log_std_min + 0.5 * (
-                self.log_std_max - self.log_std_min
-            ) * (log_std + 1)
+            log_std = self.log_std_min + 0.5 * (self.log_std_max - self.log_std_min) * (
+                log_std + 1
+            )
             std = torch.exp(log_std)
             dist = torch.distributions.Normal(mu, std)
             action = dist.sample()
@@ -251,9 +247,13 @@ def ppo_iter(
             if end > batch_size:
                 end = batch_size
             batch_indices = indices[start:end]
-            yield states[batch_indices, :], actions[batch_indices], log_probs[batch_indices], returns[
+            yield states[batch_indices, :], actions[batch_indices], log_probs[
                 batch_indices
-            ], advantages[batch_indices], rewards[batch_indices], values[batch_indices]
+            ], returns[batch_indices], advantages[batch_indices], rewards[
+                batch_indices
+            ], values[
+                batch_indices
+            ]
 
 
 class PPO(BaseRLModel):
@@ -323,9 +323,7 @@ class PPO(BaseRLModel):
         self.critic_lr = critic_lr
         self.seed = seed
         self.a_opt = torch.optim.Adam(self.actor.parameters(), lr=self.actor_lr)
-        self.c_opt = torch.optim.Adam(
-            self.critic.parameters(), lr=self.critic_lr
-        )
+        self.c_opt = torch.optim.Adam(self.critic.parameters(), lr=self.critic_lr)
         self.clip_pram = clip_pram
         self.gae_lambda = gae_lambda
         self.max_grad_norm = max_grad_norm
@@ -348,9 +346,7 @@ class PPO(BaseRLModel):
 
         # Observation and reward normalization
         if self.normalize_obs:
-            self.obs_rms = RunningMeanStd(
-                shape=env.observation_space.shape
-            )
+            self.obs_rms = RunningMeanStd(shape=env.observation_space.shape)
         if self.normalize_reward:
             self.ret_rms = RunningMeanStd(shape=())
 
@@ -491,26 +487,18 @@ class PPO(BaseRLModel):
         # Calculate clip fraction (for diagnostics)
         with torch.no_grad():
             ratio = torch.exp(new_probs - old_probs)
-            clip_fraction = (
-                torch.abs(ratio - 1.0) > self.clip_pram
-            ).float().mean()
+            clip_fraction = (torch.abs(ratio - 1.0) > self.clip_pram).float().mean()
 
         # Actor loss
-        a_loss = self.actor_loss(
-            new_probs, entropy, actions, adv.detach(), old_probs
-        )
+        a_loss = self.actor_loss(new_probs, entropy, actions, adv.detach(), old_probs)
 
         # Backward passes
         a_loss.backward()
         c_loss.backward()
 
         # Gradient clipping for stability
-        torch.nn.utils.clip_grad_norm_(
-            self.actor.parameters(), self.max_grad_norm
-        )
-        torch.nn.utils.clip_grad_norm_(
-            self.critic.parameters(), self.max_grad_norm
-        )
+        torch.nn.utils.clip_grad_norm_(self.actor.parameters(), self.max_grad_norm)
+        torch.nn.utils.clip_grad_norm_(self.critic.parameters(), self.max_grad_norm)
 
         # Optimizer steps
         self.a_opt.step()
@@ -582,9 +570,7 @@ class PPO(BaseRLModel):
         """
 
         # Use environment observation dimension instead of a hardcoded value
-        states2 = torch.cat(states).view(
-            -1, self.env.observation_space.shape[0]
-        )
+        states2 = torch.cat(states).view(-1, self.env.observation_space.shape[0])
         actions2 = torch.cat(actions).detach()
         rewards2 = torch.cat(rewards)
         dones2 = torch.cat(dones)
@@ -644,14 +630,10 @@ class PPO(BaseRLModel):
                 action, mu, prob = self.act(state)
                 # Normalize state for value function if needed
                 state_normalized = (
-                    self._normalize_obs(state)
-                    if self.normalize_obs
-                    else state
+                    self._normalize_obs(state) if self.normalize_obs else state
                 )
                 with torch.no_grad():
-                    value = self.critic(
-                        torch.FloatTensor(np.array([state_normalized]))
-                    )
+                    value = self.critic(torch.FloatTensor(np.array([state_normalized])))
                 # Clip action to environment bounds to avoid invalid controls
                 env_action = action.detach().cpu().numpy()[0]
                 try:
@@ -672,14 +654,10 @@ class PPO(BaseRLModel):
                 score += reward
                 curr_ep_len += 1
                 dones.append(
-                    torch.FloatTensor(
-                        np.reshape(done, (1, -1)).astype(np.float64)
-                    )
+                    torch.FloatTensor(np.reshape(done, (1, -1)).astype(np.float64))
                 )
                 rewards.append(
-                    torch.FloatTensor(
-                        np.reshape(reward, (1, -1)).astype(np.float64)
-                    )
+                    torch.FloatTensor(np.reshape(reward, (1, -1)).astype(np.float64))
                 )
                 states.append(torch.FloatTensor(state_normalized))
                 actions.append(action[0])
@@ -704,9 +682,7 @@ class PPO(BaseRLModel):
 
             # Calculate next state value for the terminal state
             next_state_normalized = (
-                self._normalize_obs(next_state)
-                if self.normalize_obs
-                else next_state
+                self._normalize_obs(next_state) if self.normalize_obs else next_state
             )
             with torch.no_grad():
                 next_value = self.critic(
@@ -717,9 +693,7 @@ class PPO(BaseRLModel):
             _, _, returns, _, _, _ = self.preprocess1(
                 states, actions, rewards, dones, values, probs, self.gamma
             )
-            states = torch.cat(states).view(
-                -1, self.env.observation_space.shape[0]
-            )
+            states = torch.cat(states).view(-1, self.env.observation_space.shape[0])
             actions = torch.cat(actions).view(-1, 1)
             rewards = torch.cat(rewards)
             returns = torch.cat(returns).detach()
@@ -729,9 +703,7 @@ class PPO(BaseRLModel):
             # Store old values for clipped value loss
             old_values = values[:-1].clone()
             # Normalize advantages for stability
-            advantages = (advantages - advantages.mean()) / (
-                advantages.std() + 1e-8
-            )
+            advantages = (advantages - advantages.mean()) / (advantages.std() + 1e-8)
 
             # Train for a number of epochs with KL early stopping
             all_approx_kl = []
@@ -782,9 +754,7 @@ class PPO(BaseRLModel):
             avg_aloss = np.mean(all_aloss)
             avg_closs = np.mean(all_closs)
             avg_entropy = np.mean(all_entropies)
-            avg_episode_length = (
-                np.mean(episode_lengths) if episode_lengths else 0.0
-            )
+            avg_episode_length = np.mean(episode_lengths) if episode_lengths else 0.0
             avg_approx_kl = np.mean(all_approx_kl)
             avg_clip_fraction = np.mean(all_clip_fractions)
 
@@ -796,9 +766,7 @@ class PPO(BaseRLModel):
             self.writer.add_scalar(
                 "Performance/Episode Length", avg_episode_length, episode
             )
-            self.writer.add_scalar(
-                "Diagnostics/Approx KL", avg_approx_kl, episode
-            )
+            self.writer.add_scalar("Diagnostics/Approx KL", avg_approx_kl, episode)
             self.writer.add_scalar(
                 "Diagnostics/Clip Fraction", avg_clip_fraction, episode
             )
@@ -806,9 +774,7 @@ class PPO(BaseRLModel):
             # Periodic evaluation
             if (episode + 1) % self.eval_freq == 0:
                 eval_reward = self.test_reward()
-                self.writer.add_scalar(
-                    "Evaluation/Reward", eval_reward, episode
-                )
+                self.writer.add_scalar("Evaluation/Reward", eval_reward, episode)
                 # Save best model
                 if eval_reward > self.best_reward:
                     self.best_reward = eval_reward
@@ -937,7 +903,9 @@ class PPO(BaseRLModel):
         if config["policy"]["name"] != agent_name:
             raise TheEnvironmentDoesNotMatch
         if "tensoraerospace" in config["env"]["name"]:
-            env = get_class_from_string(config["env"]["name"])(**config["env"]["params"])
+            env = get_class_from_string(config["env"]["name"])(
+                **config["env"]["params"]
+            )
         else:
             env = get_class_from_string(config["env"]["name"])()
         new_agent = cls(env=env, **config["policy"]["params"])
