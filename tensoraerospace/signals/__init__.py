@@ -21,9 +21,7 @@ from .standart import pulse as pulse  # noqa: F401
 from .standart import ramp as ramp  # noqa: F401
 from .standart import sawtooth as sawtooth  # noqa: F401
 from .standart import sinusoid as sinusoid  # noqa: F401
-from .standart import (  # noqa: F401
-    sinusoid_vertical_shift as sinusoid_vertical_shift,
-)
+from .standart import sinusoid_vertical_shift as sinusoid_vertical_shift  # noqa: F401
 from .standart import square_wave as square_wave  # noqa: F401
 from .standart import triangular_wave as triangular_wave  # noqa: F401
 from .standart import unit_step as unit_step  # noqa: F401

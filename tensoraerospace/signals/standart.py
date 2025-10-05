@@ -84,9 +84,7 @@ def sinusoid_vertical_shift(
     return amplitude * np.sin(2 * np.pi * frequency * tp) + vertical_shift
 
 
-def ramp(
-    tp: np.ndarray, slope: float = 1.0, time_start: float = 0.0
-) -> np.ndarray:
+def ramp(tp: np.ndarray, slope: float = 1.0, time_start: float = 0.0) -> np.ndarray:
     """Generate ramp signal.
 
     Args:
@@ -231,18 +229,14 @@ def doublet(
     Returns:
         np.ndarray: Doublet signal.
     """
-    positive_pulse = amplitude * (
-        (tp >= time_start) & (tp < time_start + width)
-    )
+    positive_pulse = amplitude * ((tp >= time_start) & (tp < time_start + width))
     negative_pulse = -amplitude * (
         (tp >= time_start + width) & (tp < time_start + 2 * width)
     )
     return positive_pulse + negative_pulse
 
 
-def multi_step(
-    tp: np.ndarray, step_times: list, step_values: list
-) -> np.ndarray:
+def multi_step(tp: np.ndarray, step_times: list, step_values: list) -> np.ndarray:
     """Generate multi-step signal.
 
     Args:
@@ -254,9 +248,7 @@ def multi_step(
         np.ndarray: Multi-step signal.
     """
     if len(step_times) != len(step_values):
-        raise ValueError(
-            "step_times and step_values must have the same length"
-        )
+        raise ValueError("step_times and step_values must have the same length")
 
     signal = np.zeros_like(tp)
     for time, value in zip(step_times, step_values):
@@ -283,11 +275,7 @@ def exponential(
         np.ndarray: Exponential signal.
     """
     t_shifted = np.maximum(tp - time_start, 0)
-    return (
-        amplitude
-        * (1 - np.exp(-t_shifted / time_constant))
-        * (tp >= time_start)
-    )
+    return amplitude * (1 - np.exp(-t_shifted / time_constant)) * (tp >= time_start)
 
 
 def gaussian_pulse(
@@ -329,9 +317,7 @@ def multisine(
         np.ndarray: Multi-sine signal.
     """
     if len(frequencies) != len(amplitudes):
-        raise ValueError(
-            "frequencies and amplitudes must have the same length"
-        )
+        raise ValueError("frequencies and amplitudes must have the same length")
 
     if phases is None:
         phases = [0.0] * len(frequencies)
