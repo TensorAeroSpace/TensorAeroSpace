@@ -128,9 +128,7 @@ def sinusoid_vertical_shift(
     return amplitude * np.sin(2 * np.pi * frequency * tp) + vertical_shift
 
 
-def ramp(
-    tp: np.ndarray, slope: float = 1.0, time_start: float = 0.0
-) -> np.ndarray:
+def ramp(tp: np.ndarray, slope: float = 1.0, time_start: float = 0.0) -> np.ndarray:
     """Generate ramp (linearly increasing) signal.
 
     Creates a ramp signal for testing the tracking capability of control
@@ -357,18 +355,14 @@ def doublet(
         ...                       time_start=3.0, width=1.0)
         >>> # 5-degree doublet maneuver starting at t=3s
     """
-    positive_pulse = amplitude * (
-        (tp >= time_start) & (tp < time_start + width)
-    )
+    positive_pulse = amplitude * ((tp >= time_start) & (tp < time_start + width))
     negative_pulse = -amplitude * (
         (tp >= time_start + width) & (tp < time_start + 2 * width)
     )
     return positive_pulse + negative_pulse
 
 
-def multi_step(
-    tp: np.ndarray, step_times: list, step_values: list
-) -> np.ndarray:
+def multi_step(tp: np.ndarray, step_times: list, step_values: list) -> np.ndarray:
     """Generate multi-step signal with multiple setpoint changes.
 
     Creates a signal with multiple step changes at specified times, useful
@@ -397,9 +391,7 @@ def multi_step(
         >>> # Signal: 0→1 at t=2, 1→3 at t=5, 3→2 at t=10, 2→5 at t=15
     """
     if len(step_times) != len(step_values):
-        raise ValueError(
-            "step_times and step_values must have the same length"
-        )
+        raise ValueError("step_times and step_values must have the same length")
 
     signal = np.zeros_like(tp)
     for time, value in zip(step_times, step_values):
@@ -441,11 +433,7 @@ def exponential(
         >>> # Exponential rise from 0 to 10 with τ=2s, starting at t=1s
     """
     t_shifted = np.maximum(tp - time_start, 0)
-    return (
-        amplitude
-        * (1 - np.exp(-t_shifted / time_constant))
-        * (tp >= time_start)
-    )
+    return amplitude * (1 - np.exp(-t_shifted / time_constant)) * (tp >= time_start)
 
 
 def gaussian_pulse(
@@ -520,9 +508,7 @@ def multisine(
         >>> # Sum of three sinusoids at 0.5, 1.0, and 2.0 Hz
     """
     if len(frequencies) != len(amplitudes):
-        raise ValueError(
-            "frequencies and amplitudes must have the same length"
-        )
+        raise ValueError("frequencies and amplitudes must have the same length")
 
     if phases is None:
         phases = [0.0] * len(frequencies)
