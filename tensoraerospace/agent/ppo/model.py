@@ -147,70 +147,50 @@ class Actor(nn.Module):
             hidden_dim (int, optional): Hidden layer size. Defaults to 256.
 
         Initialize linear layers for calculating intermediate representations
-        and action parameters.
+        and action parameters for continuous action spaces.
         Uses custom init_layer_uniform functions to initialize `mu` and
         `delta` layers.
         """
         super(Actor, self).__init__()
         self.d1 = nn.Linear(input_dim, hidden_dim)
         self.d2 = nn.Linear(hidden_dim, hidden_dim)
-        self.a = nn.Linear(hidden_dim, out_dim)
+        # Mean of the action distribution
         self.mu = nn.Linear(hidden_dim, out_dim)
         self.mu = init_layer_uniform(self.mu)
+        # Log std of the action distribution
         self.delta = nn.Linear(hidden_dim, out_dim)
         self.delta = init_layer_uniform(self.delta)
         self.log_std_min = -20
         self.log_std_max = 0
-        self.r = nn.Linear(hidden_dim, 1)
 
     def forward(
         self,
         input_data: torch.Tensor,
-        return_reward: bool = False,
-        continous_actions: bool = False,
-    ) -> Any:
+    ) -> Tuple[torch.Tensor, torch.distributions.Normal]:
         """
         Perform forward pass through model, computing agent actions
-        based on input data.
+        based on input data for continuous action spaces.
 
         Args:
             input_data (Tensor): Input data for model.
-            return_reward (bool, optional): Flag indicating whether to
-                return reward. Defaults to False.
-            continous_actions (bool, optional): Flag indicating whether
-                actions should be continuous. Defaults to False.
 
         Returns:
-            Union[Tuple[torch.Tensor, torch.distributions.Normal],
-                  Tuple[torch.Tensor, torch.distributions.Normal, torch.Tensor],
-                  torch.Tensor, Tuple[torch.Tensor, torch.Tensor]]:
-            Depending on flags returns action, distribution
-            (and reward if requested).
-            If continous_actions True, returns either pair (action, dist)
-            or triple (action, dist, r).
-            Otherwise returns either action or pair (action, r).
+            Tuple[torch.Tensor, torch.distributions.Normal]:
+                Sampled action and the action distribution.
         """
         x = F.relu(self.d1(input_data))
         x = F.relu(self.d2(x))
 
-        if continous_actions:
-            mu = torch.tanh(self.mu(x))
-            log_std = torch.tanh(self.delta(x))
-            log_std = self.log_std_min + 0.5 * (self.log_std_max - self.log_std_min) * (
-                log_std + 1
-            )
-            std = torch.exp(log_std)
-            dist = torch.distributions.Normal(mu, std)
-            action = dist.sample()
-            if return_reward:
-                r = torch.flatten(F.relu(self.r(x)))
-                return action, dist, r
-            return action, dist
-        a = F.softmax(self.a(x), dim=-1)
-        if return_reward:
-            r = torch.flatten(F.relu(self.r(x)))
-            return a, r
-        return a
+        # Continuous action space: Gaussian policy
+        mu = torch.tanh(self.mu(x))
+        log_std = torch.tanh(self.delta(x))
+        log_std = self.log_std_min + 0.5 * (
+            self.log_std_max - self.log_std_min
+        ) * (log_std + 1)
+        std = torch.exp(log_std)
+        dist = torch.distributions.Normal(mu, std)
+        action = dist.sample()
+        return action, dist
 
 
 def ppo_iter(
@@ -383,7 +363,7 @@ class PPO(BaseRLModel):
             state = self._normalize_obs(state)
         state_t = torch.as_tensor(np.array([state]), dtype=torch.float32)
         with torch.no_grad():
-            action, dist = self.actor(state_t, continous_actions=True)
+            action, dist = self.actor(state_t)
             log_prob = dist.log_prob(action).sum(dim=-1, keepdim=True)
             mean_action = dist.mean
             if deterministic:
@@ -421,17 +401,6 @@ class PPO(BaseRLModel):
         loss = -torch.min(surr1, surr2).mean() - self.entropy_coef * entropy
         return loss
 
-    def auxillary_task(self, r: torch.Tensor, rewards: torch.Tensor) -> torch.Tensor:
-        """Calculate auxiliary task losses (reward prediction).
-
-        Args:
-            r: Predicted rewards.
-            rewards: Real rewards.
-
-        Returns:
-            Tensor: MSE loss function value between predicted and real rewards.
-        """
-        return F.mse_loss(r, rewards)
 
     def learn(
         self,
@@ -459,9 +428,7 @@ class PPO(BaseRLModel):
         """
         self.a_opt.zero_grad()
         self.c_opt.zero_grad()
-        new_actions, new_distr, r = self.actor(
-            states, return_reward=True, continous_actions=True
-        )
+        new_actions, new_distr = self.actor(states)
         # Sum log-probabilities across action dimensions
         new_probs = new_distr.log_prob(actions).sum(dim=-1, keepdim=True)
         # Entropy summed across action dimensions, averaged across batch
@@ -513,7 +480,7 @@ class PPO(BaseRLModel):
         }
 
     def test_reward(self) -> float:
-        """Test model by executing one episode.
+        """Test model by executing one episode with deterministic actions.
 
         Returns:
             float: Total reward per episode.
@@ -526,7 +493,8 @@ class PPO(BaseRLModel):
             state = reset_return
         done = False
         while not done:
-            action, mean_action, delta = self.act(state)
+            # Use deterministic actions for evaluation (no sampling)
+            action, mean_action, delta = self.act(state, deterministic=True)
             step_return = self.env.step(mean_action[0])
             if len(step_return) > 4:
                 next_state, reward, terminated, trunkated, info = step_return
@@ -534,6 +502,7 @@ class PPO(BaseRLModel):
             else:
                 next_state, reward, terminated, info = step_return
                 done = terminated
+            state = next_state
             total_reward += reward
         return total_reward
 
@@ -699,9 +668,30 @@ class PPO(BaseRLModel):
             returns = torch.cat(returns).detach()
             values = torch.cat(values).detach()
             probs = torch.cat(probs).detach()
+
+            # Reward normalization (normalize returns)
+            if self.normalize_reward:
+                returns_np = returns.cpu().numpy().flatten()
+                self.ret_rms.update(returns_np)
+                returns = torch.clamp(
+                    (returns - self.ret_rms.mean) / np.sqrt(self.ret_rms.var + 1e-8),
+                    -10.0,
+                    10.0,
+                )
+
             advantages = returns - values[:-1]
             # Store old values for clipped value loss
             old_values = values[:-1].clone()
+
+            # Calculate explained variance (quality of value function)
+            with torch.no_grad():
+                y_pred = values[:-1]
+                y_true = returns
+                var_y = torch.var(y_true)
+                explained_var = (
+                    1 - torch.var(y_true - y_pred) / (var_y + 1e-8)
+                ).item()
+
             # Normalize advantages for stability
             advantages = (advantages - advantages.mean()) / (advantages.std() + 1e-8)
 
@@ -769,6 +759,9 @@ class PPO(BaseRLModel):
             self.writer.add_scalar("Diagnostics/Approx KL", avg_approx_kl, episode)
             self.writer.add_scalar(
                 "Diagnostics/Clip Fraction", avg_clip_fraction, episode
+            )
+            self.writer.add_scalar(
+                "Diagnostics/Explained Variance", explained_var, episode
             )
 
             # Periodic evaluation
@@ -867,6 +860,8 @@ class PPO(BaseRLModel):
         config_path = path / date_str / "config.json"
         actor_path = path / date_str / "actor.pth"
         critic_path = path / date_str / "critic.pth"
+        obs_rms_path = path / date_str / "obs_rms.npz"
+        ret_rms_path = path / date_str / "ret_rms.npz"
 
         # Создание директории, если она не существует
         actor_path.parent.mkdir(parents=True, exist_ok=True)
@@ -876,6 +871,22 @@ class PPO(BaseRLModel):
             json.dump(config, outfile)
         torch.save(self.actor.state_dict(), actor_path)
         torch.save(self.critic.state_dict(), critic_path)
+
+        # Save normalization statistics
+        if self.normalize_obs:
+            np.savez(
+                obs_rms_path,
+                mean=self.obs_rms.mean,
+                var=self.obs_rms.var,
+                count=self.obs_rms.count,
+            )
+        if self.normalize_reward:
+            np.savez(
+                ret_rms_path,
+                mean=self.ret_rms.mean,
+                var=self.ret_rms.var,
+                count=self.ret_rms.count,
+            )
 
     @classmethod
     def __load(cls, path: Union[str, Path]) -> "PPO":
@@ -894,6 +905,9 @@ class PPO(BaseRLModel):
         config_path = path / "config.json"
         critic_path = path / "critic.pth"
         actor_path = path / "actor.pth"
+        obs_rms_path = path / "obs_rms.npz"
+        ret_rms_path = path / "ret_rms.npz"
+
         with open(config_path, "r") as f:
             config = json.load(f)
         class_name = cls.__name__
@@ -914,6 +928,20 @@ class PPO(BaseRLModel):
         actor_state = torch.load(actor_path)
         new_agent.critic.load_state_dict(critic_state)
         new_agent.actor.load_state_dict(actor_state)
+
+        # Load normalization statistics if they exist
+        if new_agent.normalize_obs and obs_rms_path.exists():
+            obs_rms_data = np.load(obs_rms_path)
+            new_agent.obs_rms.mean = obs_rms_data["mean"]
+            new_agent.obs_rms.var = obs_rms_data["var"]
+            new_agent.obs_rms.count = float(obs_rms_data["count"])
+
+        if new_agent.normalize_reward and ret_rms_path.exists():
+            ret_rms_data = np.load(ret_rms_path)
+            new_agent.ret_rms.mean = ret_rms_data["mean"]
+            new_agent.ret_rms.var = ret_rms_data["var"]
+            new_agent.ret_rms.count = float(ret_rms_data["count"])
+
         return new_agent
 
     @classmethod
