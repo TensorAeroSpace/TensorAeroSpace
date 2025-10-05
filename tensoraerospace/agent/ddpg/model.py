@@ -1,4 +1,8 @@
 import os
+import datetime
+import json
+from pathlib import Path
+from typing import Any, Dict, Optional, Tuple, Union
 import random
 
 import numpy as np
@@ -59,6 +63,13 @@ except Exception:
 
         def close(self):
             pass
+
+from ..base import (
+    BaseRLModel,
+    TheEnvironmentDoesNotMatch,
+    get_class_from_string,
+    serialize_env,
+)
 
 
 class ReplayBuffer:
@@ -472,14 +483,43 @@ class DDPG:
                 grads[name] = param.grad.detach().cpu()
         return grads
 
-    def save(self, filepath, include_grads=False):
-        """Save full training state to a checkpoint.
+    def save(self, filepath, include_grads: bool = False):
+        """Save training state (checkpoint) OR full model folder.
 
-        Args:
-            filepath (str): Path to checkpoint file.
-            include_grads (bool): Save parameter gradients for
-                continuing an unfinished optimizer step.
+        Behavior:
+          - If filepath looks like a file (has .pt/.pth extension), saves a
+            single checkpoint file (backward compatible behavior).
+          - Otherwise, treats filepath as a directory and writes a
+            HuggingFace-style folder with config and separate model files.
         """
+        # Directory-style save (HF-style)
+        ext = os.path.splitext(str(filepath))[1].lower()
+        if ext not in (".pt", ".pth"):
+            folder = Path(str(filepath)).expanduser()
+            folder.mkdir(parents=True, exist_ok=True)
+
+            # 1) Save config (env + policy params)
+            config = self.get_param_env()
+            with open(folder / "config.json", "w", encoding="utf-8") as f:
+                json.dump(config, f)
+
+            # 2) Save networks
+            torch.save(self.policy_net, folder / "policy.pth")
+            torch.save(self.value_net, folder / "value.pth")
+            torch.save(self.target_policy_net, folder / "target_policy.pth")
+            torch.save(self.target_value_net, folder / "target_value.pth")
+
+            # 3) Optionally save optimizers
+            if include_grads:
+                torch.save(
+                    self.policy_optimizer.state_dict(), folder / "policy_optim.pth"
+                )
+                torch.save(
+                    self.value_optimizer.state_dict(), folder / "value_optim.pth"
+                )
+            return
+
+        # File checkpoint (original behavior)
         dirpath = os.path.dirname(filepath)
         if dirpath:
             os.makedirs(dirpath, exist_ok=True)
@@ -493,8 +533,8 @@ class DDPG:
             "policy_optimizer": self.policy_optimizer.state_dict(),
             "replay_buffer": self.replay_buffer.state_dict(),
             "ou_noise": self.ou_noise.state_dict(),
-            "frame_idx": self.frame_idx,
-            "rewards": self.rewards,
+            "frame_idx": getattr(self, "frame_idx", 0),
+            "rewards": getattr(self, "rewards", []),
             "max_frames": getattr(self, "max_frames", None),
             "max_steps": getattr(self, "max_steps", None),
             "batch_size": getattr(self, "batch_size", None),
@@ -582,3 +622,161 @@ class DDPG:
                         param.grad = None
                     else:
                         param.grad = grad.to(param.device).clone()
+
+    # ====== HuggingFace-style API (mirror of SAC) ======
+    def get_param_env(self) -> Dict[str, Dict[str, Any]]:
+        """Collect environment and policy params for saving.
+
+        Returns a dict compatible with SAC saving format for consistency.
+        """
+        class_name = self.env.unwrapped.__class__.__name__
+        module_name = self.env.unwrapped.__class__.__module__
+        env_name = f"{module_name}.{class_name}"
+        env_params: Dict[str, Any] = {}
+        try:
+            if "tensoraerospace" in env_name:
+                env_params = serialize_env(self.env)
+        except Exception:
+            env_params = {}
+
+        class_name = self.__class__.__name__
+        module_name = self.__class__.__module__
+        agent_name = f"{module_name}.{class_name}"
+
+        policy_params = {
+            "value_lr": self.value_lr,
+            "policy_lr": self.policy_lr,
+            "hidden_dim": self.hidden_dim,
+            "replay_buffer_size": self.replay_buffer_size,
+            "device": device.type,
+            "ou_noise": {
+                "theta": getattr(self.ou_noise, "theta", 0.15),
+                "max_sigma": getattr(self.ou_noise, "max_sigma", 0.3),
+                "min_sigma": getattr(self.ou_noise, "min_sigma", 0.3),
+                "decay_period": getattr(self.ou_noise, "decay_period", 100000),
+            },
+        }
+
+        return {
+            "env": {"name": env_name, "params": env_params},
+            "policy": {"name": agent_name, "params": policy_params},
+        }
+
+    @classmethod
+    def __load(
+        cls,
+        path: Union[str, Path],
+        load_gradients: bool = False,
+    ) -> "DDPG":
+        path = Path(path)
+        config_path = path / "config.json"
+        policy_path = path / "policy.pth"
+        value_path = path / "value.pth"
+        target_policy_path = path / "target_policy.pth"
+        target_value_path = path / "target_value.pth"
+        policy_optim_path = path / "policy_optim.pth"
+        value_optim_path = path / "value_optim.pth"
+
+        with open(config_path, "r", encoding="utf-8") as f:
+            config = json.load(f)
+        class_name = cls.__name__
+        module_name = cls.__module__
+        agent_name = f"{module_name}.{class_name}"
+        if config["policy"]["name"] != agent_name:
+            raise TheEnvironmentDoesNotMatch
+
+        # Recreate env
+        if "tensoraerospace" in config["env"]["name"]:
+            env = get_class_from_string(config["env"]["name"])(
+                **config["env"]["params"]
+            )
+        else:
+            env = get_class_from_string(config["env"]["name"])()
+
+        p = config["policy"]["params"]
+        new_agent = cls(
+            env=env,
+            value_lr=float(p.get("value_lr", 1e-3)),
+            policy_lr=float(p.get("policy_lr", 1e-3)),
+            replay_buffer_size=int(p.get("replay_buffer_size", 100000)),
+        )
+
+        # Load networks
+        new_agent.policy_net = torch.load(policy_path, map_location=device, weights_only=False)
+        new_agent.value_net = torch.load(value_path, map_location=device, weights_only=False)
+        new_agent.target_policy_net = torch.load(
+            target_policy_path, map_location=device, weights_only=False
+        )
+        new_agent.target_value_net = torch.load(
+            target_value_path, map_location=device, weights_only=False
+        )
+
+        # Reinit optimizers to match new params
+        new_agent.policy_optimizer = optim.Adam(
+            new_agent.policy_net.parameters(), lr=float(p.get("policy_lr", 1e-3))
+        )
+        new_agent.value_optimizer = optim.Adam(
+            new_agent.value_net.parameters(), lr=float(p.get("value_lr", 1e-3))
+        )
+
+        if load_gradients:
+            if policy_optim_path.exists():
+                st = torch.load(policy_optim_path, map_location=device, weights_only=False)
+                new_agent.policy_optimizer.load_state_dict(st)
+            if value_optim_path.exists():
+                st = torch.load(value_optim_path, map_location=device, weights_only=False)
+                new_agent.value_optimizer.load_state_dict(st)
+        return new_agent
+
+    @classmethod
+    def from_pretrained(
+        cls,
+        repo_name: str,
+        access_token: Optional[str] = None,
+        version: Optional[str] = None,
+        load_gradients: bool = False,
+    ) -> "DDPG":
+        """Load pretrained model from local directory or Hugging Face Hub."""
+        p = Path(str(repo_name)).expanduser()
+        if p.is_dir():
+            return cls.__load(p, load_gradients=load_gradients)
+
+        pathlike_prefixes = ("./", "../", "/", "~")
+        if str(repo_name).startswith(pathlike_prefixes):
+            if not p.exists() or not p.is_dir():
+                raise FileNotFoundError(
+                    f"Local directory not found: '{repo_name}'. Please check the path."
+                )
+            return cls.__load(p, load_gradients=load_gradients)
+
+        folder_path = BaseRLModel.from_pretrained(
+            repo_name, access_token=access_token, version=version
+        )
+        return cls.__load(folder_path, load_gradients=load_gradients)
+
+    def push_to_hub(
+        self,
+        repo_name: str,
+        access_token: Optional[str] = None,
+        save_path: Optional[Union[str, Path]] = None,
+        include_gradients: bool = False,
+    ) -> str:
+        """Save the model to a folder and upload to Hugging Face Hub.
+
+        Returns path to the saved folder.
+        """
+        if save_path is None:
+            date_str = datetime.datetime.now().strftime("%b%d_%H-%M-%S")
+            save_path = Path.cwd() / f"{date_str}_{self.__class__.__name__}"
+        else:
+            save_path = Path(str(save_path))
+        save_path.mkdir(parents=True, exist_ok=True)
+
+        # Save in folder-style format for hub
+        self.save(save_path, include_grads=include_gradients)
+
+        # Upload
+        BaseRLModel().publish_to_hub(
+            repo_name=repo_name, folder_path=str(save_path), access_token=access_token
+        )
+        return str(save_path)
