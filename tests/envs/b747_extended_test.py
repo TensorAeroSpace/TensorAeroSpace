@@ -33,7 +33,7 @@ def test_linear_b747_with_custom_reward_func():
         error = np.mean((state.flatten() - ref_signal[:, ts].flatten()) ** 2)
         action_penalty = 0.0
         if action is not None:
-            action_penalty = 0.01 * np.sum(action ** 2)
+            action_penalty = 0.01 * np.sum(action**2)
         return float(-error - action_penalty)
 
     env = LinearLongitudinalB747(

@@ -13,7 +13,6 @@ import torch
 from tensoraerospace.agent.sac.replay_memory import ReplayMemory
 from tensoraerospace.agent.sac.sac import SAC
 
-
 # ============================================================================
 # ReplayMemory tests
 # ============================================================================
@@ -170,11 +169,9 @@ class _TensorAeroEnv:
 
         if self.base_env is None:
             self.observation_space = type("Space", (), {"shape": (3,)})()
-            self.action_space = type("Space", (), {
-                "shape": (1,),
-                "high": np.ones(1),
-                "low": -np.ones(1)
-            })()
+            self.action_space = type(
+                "Space", (), {"shape": (1,), "high": np.ones(1), "low": -np.ones(1)}
+            )()
         else:
             self.observation_space = self.base_env.observation_space
             self.action_space = self.base_env.action_space
@@ -212,10 +209,11 @@ class _TensorAeroEnv:
 
             @property
             def __class__(self):
-                return type(self.__name__, (), {
-                    "__module__": self.__module__,
-                    "__name__": self.__name__
-                })
+                return type(
+                    self.__name__,
+                    (),
+                    {"__module__": self.__module__, "__name__": self.__name__},
+                )
 
         return _Unwrapped(self)
 
