@@ -1,16 +1,15 @@
-import os
 import datetime
 import json
+import os
+import random
 from pathlib import Path
 from typing import Any, Dict, Optional, Tuple, Union
-import random
 
 import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
-
 
 # Device setup
 use_cuda = torch.cuda.is_available()
@@ -23,6 +22,7 @@ except Exception:
     # Fallback no-op tqdm if not available
     def tqdm(iterable=None, total=None, desc=None):
         if iterable is None:
+
             class _Dummy:
                 def __enter__(self):
                     return self
@@ -44,10 +44,12 @@ except Exception:
             for x in iterable:
                 yield x
 
+
 # Optional TensorBoard SummaryWriter
 try:
     from torch.utils.tensorboard import SummaryWriter
 except Exception:
+
     class SummaryWriter:  # type: ignore
         def __init__(self, *args, **kwargs):
             pass
@@ -63,6 +65,7 @@ except Exception:
 
         def close(self):
             pass
+
 
 from ..base import (
     BaseRLModel,
@@ -139,10 +142,7 @@ class OUNoise(object):
 
     def evolve_state(self):
         x = self.state
-        dx = (
-            self.theta * (self.mu - x)
-            + self.sigma * np.random.randn(self.action_dim)
-        )
+        dx = self.theta * (self.mu - x) + self.sigma * np.random.randn(self.action_dim)
         self.state = x + dx
         return self.state
 
@@ -278,9 +278,7 @@ class DDPG:
         ):
             target_param.data.copy_(param.data)
 
-        self.value_optimizer = optim.Adam(
-            self.value_net.parameters(), lr=self.value_lr
-        )
+        self.value_optimizer = optim.Adam(self.value_net.parameters(), lr=self.value_lr)
         self.policy_optimizer = optim.Adam(
             self.policy_net.parameters(), lr=self.policy_lr
         )
@@ -303,9 +301,7 @@ class DDPG:
         """
         Функция обновления ddpg.
         """
-        state, action, reward, next_state, done = self.replay_buffer.sample(
-            batch_size
-        )
+        state, action, reward, next_state, done = self.replay_buffer.sample(batch_size)
 
         state = torch.FloatTensor(state).to(device)
         next_state = torch.FloatTensor(next_state).to(device)
@@ -317,9 +313,7 @@ class DDPG:
         policy_loss = -policy_loss.mean()
 
         next_action = self.target_policy_net(next_state)
-        target_value = self.target_value_net(
-            next_state, next_action.detach()
-        )
+        target_value = self.target_value_net(next_state, next_action.detach())
         expected_value = reward + (1.0 - done) * gamma * target_value
         expected_value = torch.clamp(expected_value, min_value, max_value)
 
@@ -428,12 +422,17 @@ class DDPG:
                         done,
                     )
                     # Warmup: collect transitions without updates
-                    if self.frame_idx > warmup_frames and len(self.replay_buffer) > batch_size:
+                    if (
+                        self.frame_idx > warmup_frames
+                        and len(self.replay_buffer) > batch_size
+                    ):
                         for _ in range(max(1, int(updates_per_step))):
                             if target_value_clip is None:
                                 mn, mx = -np.inf, np.inf
                             else:
-                                mn, mx = float(target_value_clip[0]), float(target_value_clip[1])
+                                mn, mx = float(target_value_clip[0]), float(
+                                    target_value_clip[1]
+                                )
                             self.ddpg_update(
                                 batch_size,
                                 gamma=gamma,
@@ -591,19 +590,11 @@ class DDPG:
         if load_noise and "ou_noise" in ckpt:
             self.ou_noise.load_state_dict(ckpt["ou_noise"])
 
-        self.frame_idx = int(
-            ckpt.get("frame_idx", getattr(self, "frame_idx", 0))
-        )
+        self.frame_idx = int(ckpt.get("frame_idx", getattr(self, "frame_idx", 0)))
         self.rewards = list(ckpt.get("rewards", []))
-        self.max_frames = ckpt.get(
-            "max_frames", getattr(self, "max_frames", None)
-        )
-        self.max_steps = ckpt.get(
-            "max_steps", getattr(self, "max_steps", None)
-        )
-        self.batch_size = ckpt.get(
-            "batch_size", getattr(self, "batch_size", None)
-        )
+        self.max_frames = ckpt.get("max_frames", getattr(self, "max_frames", None))
+        self.max_steps = ckpt.get("max_steps", getattr(self, "max_steps", None))
+        self.batch_size = ckpt.get("batch_size", getattr(self, "batch_size", None))
 
         if load_grads:
             vgrads = ckpt.get("value_net_grads")
@@ -702,8 +693,12 @@ class DDPG:
         )
 
         # Load networks
-        new_agent.policy_net = torch.load(policy_path, map_location=device, weights_only=False)
-        new_agent.value_net = torch.load(value_path, map_location=device, weights_only=False)
+        new_agent.policy_net = torch.load(
+            policy_path, map_location=device, weights_only=False
+        )
+        new_agent.value_net = torch.load(
+            value_path, map_location=device, weights_only=False
+        )
         new_agent.target_policy_net = torch.load(
             target_policy_path, map_location=device, weights_only=False
         )
@@ -721,10 +716,14 @@ class DDPG:
 
         if load_gradients:
             if policy_optim_path.exists():
-                st = torch.load(policy_optim_path, map_location=device, weights_only=False)
+                st = torch.load(
+                    policy_optim_path, map_location=device, weights_only=False
+                )
                 new_agent.policy_optimizer.load_state_dict(st)
             if value_optim_path.exists():
-                st = torch.load(value_optim_path, map_location=device, weights_only=False)
+                st = torch.load(
+                    value_optim_path, map_location=device, weights_only=False
+                )
                 new_agent.value_optimizer.load_state_dict(st)
         return new_agent
 

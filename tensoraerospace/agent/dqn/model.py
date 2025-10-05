@@ -1,16 +1,15 @@
+import json
 import time
-
+from pathlib import Path
 from typing import Any, Tuple, Union, cast
 
 import gymnasium as gym
-from gymnasium.spaces import Discrete
 import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from gymnasium.spaces import Discrete
 from torch.utils.tensorboard import SummaryWriter
-from pathlib import Path
-import json
 from tqdm import tqdm
 
 np.random.seed(1)
@@ -260,9 +259,7 @@ class DQNAgent:
         self.train_nums = train_nums  # total training steps
 
         # replay buffer params [(s, a, r, ns, done), ...]
-        self.b_obs = np.empty(
-            (self.batch_size,) + self.env.observation_space.shape
-        )
+        self.b_obs = np.empty((self.batch_size,) + self.env.observation_space.shape)
         self.b_actions = np.empty(self.batch_size, dtype=np.int8)
         self.b_rewards = np.empty(self.batch_size, dtype=np.float32)
         self.b_next_states = np.empty(
@@ -280,9 +277,7 @@ class DQNAgent:
         self.margin = 0.01  # pi = |td_error| + margin
         self.p1 = 1  # initialize priority for the first transition
         # self.is_weight = np.empty((None, 1))
-        self.is_weight = np.power(
-            self.buffer_size, -self.beta
-        )  # because p1 == 1
+        self.is_weight = np.power(self.buffer_size, -self.beta)  # because p1 == 1
         self.abs_error_upper = 1
         self.verbose_histogram = verbose_histogram
         self.global_step = 0
@@ -300,15 +295,13 @@ class DQNAgent:
             best_action, _q_values = self.model.action_value(input_obs)
             # input the obs to the network model
             action = self.get_action(best_action)  # get the real action
-            next_obs, reward, terminated, truncated, info = self.env.step(
-                action
-            )
+            next_obs, reward, terminated, truncated, info = self.env.step(action)
             done = bool(terminated or truncated)
             episode_reward += float(reward)
             if t == 1:
                 p = self.p1
             else:
-                p = np.max(self.replay_buffer.tree[-self.replay_buffer.capacity:])
+                p = np.max(self.replay_buffer.tree[-self.replay_buffer.capacity :])
             self.store_transition(
                 p, obs, action, reward, next_obs, done
             )  # store that transition into replay butter
@@ -318,7 +311,9 @@ class DQNAgent:
                 # if t % self.replay_period == 0:  # transition sampling and update
                 recent_loss = self.train_step()
                 if t % 200 == 0 and recent_loss is not None:
-                    pbar.set_postfix({"loss": f"{recent_loss:.4f}", "eps": f"{self.epsilon:.3f}"})
+                    pbar.set_postfix(
+                        {"loss": f"{recent_loss:.4f}", "eps": f"{self.epsilon:.3f}"}
+                    )
 
             if t % self.target_update_iter == 0:
                 self.update_target_model()
@@ -359,12 +354,10 @@ class DQNAgent:
         with torch.no_grad():
             next_q_target = self.target_model(b_next)
             next_actions_online = self.model(b_next).argmax(dim=1)
-            next_q_sa = (
-                next_q_target.gather(1, next_actions_online.unsqueeze(1)).squeeze(1)
-            )
-            q_target_sa = (
-                rewards + self.gamma * next_q_sa * (1.0 - dones)
-            )
+            next_q_sa = next_q_target.gather(
+                1, next_actions_online.unsqueeze(1)
+            ).squeeze(1)
+            q_target_sa = rewards + self.gamma * next_q_sa * (1.0 - dones)
 
         # Predicted Q for current states & chosen actions
         q_pred = self.model(b_obs)  # [B, A]
@@ -380,9 +373,7 @@ class DQNAgent:
 
         # Update priorities based on TD-error
         with torch.no_grad():
-            abs_td_error = (
-                (q_target_sa - q_pred_sa).abs().detach().cpu().numpy()
-            )
+            abs_td_error = (q_target_sa - q_pred_sa).abs().detach().cpu().numpy()
         clipped_error = np.where(
             abs_td_error < self.abs_error_upper,
             abs_td_error,
@@ -399,27 +390,13 @@ class DQNAgent:
         td_err_max = float(np.max(abs_td_error)) if abs_td_error.size > 0 else 0.0
         td_err_min = float(np.min(abs_td_error)) if abs_td_error.size > 0 else 0.0
 
-        self.writer.add_scalar(
-            "Loss/DQN", float(loss.item()), self.global_step
-        )
-        self.writer.add_scalar(
-            "Q/PredSA/Mean", q_pred_sa_mean, self.global_step
-        )
-        self.writer.add_scalar(
-            "Q/TargetSA/Mean", q_target_sa_mean, self.global_step
-        )
-        self.writer.add_scalar(
-            "TD-Error/Mean", td_err_mean, self.global_step
-        )
-        self.writer.add_scalar(
-            "TD-Error/Max", td_err_max, self.global_step
-        )
-        self.writer.add_scalar(
-            "TD-Error/Min", td_err_min, self.global_step
-        )
-        self.writer.add_scalar(
-            "PER/Beta", float(self.beta), self.global_step
-        )
+        self.writer.add_scalar("Loss/DQN", float(loss.item()), self.global_step)
+        self.writer.add_scalar("Q/PredSA/Mean", q_pred_sa_mean, self.global_step)
+        self.writer.add_scalar("Q/TargetSA/Mean", q_target_sa_mean, self.global_step)
+        self.writer.add_scalar("TD-Error/Mean", td_err_mean, self.global_step)
+        self.writer.add_scalar("TD-Error/Max", td_err_max, self.global_step)
+        self.writer.add_scalar("TD-Error/Min", td_err_min, self.global_step)
+        self.writer.add_scalar("PER/Beta", float(self.beta), self.global_step)
 
         if (
             self.verbose_histogram
@@ -427,9 +404,7 @@ class DQNAgent:
             and (self.global_step % 1000 == 0)
         ):
             for name, param in self.model.named_parameters():
-                self.writer.add_histogram(
-                    f"DQN/{name}", param, self.global_step
-                )
+                self.writer.add_histogram(f"DQN/{name}", param, self.global_step)
 
         self.global_step += 1
         return float(loss.item())
@@ -450,7 +425,7 @@ class DQNAgent:
         self.beta = min(1.0, self.beta + self.beta_increment_per_sample)
         # calculate max_weight
         min_prob = (
-            np.min(self.replay_buffer.tree[-self.replay_buffer.capacity:])
+            np.min(self.replay_buffer.tree[-self.replay_buffer.capacity :])
             / self.replay_buffer.total_p
         )
         max_weight = np.power(self.buffer_size * min_prob, -self.beta)
@@ -496,8 +471,8 @@ class DQNAgent:
             action, _q_values = self.model.action_value(
                 input_obs
             )  # Using [None] to extend its dimension (4,) -> (1, 4)
-            next_obs, reward, terminated, truncated, _info = (
-                wrapped_env.env.step(action)
+            next_obs, reward, terminated, truncated, _info = wrapped_env.env.step(
+                action
             )
             done = bool(terminated or truncated)
             obs = next_obs
@@ -694,14 +669,10 @@ class PERNARXAgent:
         self.train_nums = train_nums  # total training steps
 
         # replay buffer params [(s, a, r, ns, done), ...]
-        self.b_obs = np.empty(
-            (self.batch_size,) + self.env.observation_space.shape
-        )
+        self.b_obs = np.empty((self.batch_size,) + self.env.observation_space.shape)
         self.b_actions = np.empty(self.batch_size, dtype=np.int8)
         self.b_rewards = np.empty(self.batch_size, dtype=np.float32)
-        self.b_next_states = np.empty(
-            (self.batch_size,) + env.observation_space.shape
-        )
+        self.b_next_states = np.empty((self.batch_size,) + env.observation_space.shape)
         self.b_dones = np.empty(self.batch_size, dtype=np.bool_)
 
         self.replay_buffer = SumTree(buffer_size)  # sum-tree data structure
@@ -714,9 +685,7 @@ class PERNARXAgent:
         self.margin = 0.01  # pi = |td_error| + margin
         self.p1 = 1  # initialize priority for the first transition
         # self.is_weight = np.empty((None, 1))
-        self.is_weight = np.power(
-            self.buffer_size, -self.beta
-        )  # because p1 == 1
+        self.is_weight = np.power(self.buffer_size, -self.beta)  # because p1 == 1
         self.abs_error_upper = 1
         self.verbose_histogram = verbose_histogram
         self.global_step = 0
@@ -735,15 +704,13 @@ class PERNARXAgent:
             best_action, _q_values = self.model.action_value(obs[None])
 
             action = self.get_action(best_action)  # get the real action
-            next_obs, reward, terminated, truncated, _info = self.env.step(
-                action
-            )
+            next_obs, reward, terminated, truncated, _info = self.env.step(action)
             done = bool(terminated or truncated)
             episode_reward += float(reward)
             if t == 1:
                 p = self.p1
             else:
-                p = np.max(self.replay_buffer.tree[-self.replay_buffer.capacity:])
+                p = np.max(self.replay_buffer.tree[-self.replay_buffer.capacity :])
             self.store_transition(
                 p, obs, action, reward, next_obs, done
             )  # store that transition into replay butter
@@ -753,7 +720,9 @@ class PERNARXAgent:
                 # if t % self.replay_period == 0:  # transition sampling and update
                 recent_loss = self.train_step()
                 if t % 200 == 0 and recent_loss is not None:
-                    pbar.set_postfix({"loss": f"{recent_loss:.4f}", "eps": f"{self.epsilon:.3f}"})
+                    pbar.set_postfix(
+                        {"loss": f"{recent_loss:.4f}", "eps": f"{self.epsilon:.3f}"}
+                    )
 
             if t % self.target_update_iter == 0:
                 self.update_target_model()
@@ -797,9 +766,7 @@ class PERNARXAgent:
             next_q_sa = next_q_target.gather(
                 1, next_actions_online.unsqueeze(1)
             ).squeeze(1)
-            q_target_sa = (
-                rewards + self.gamma * next_q_sa * (1.0 - dones)
-            )
+            q_target_sa = rewards + self.gamma * next_q_sa * (1.0 - dones)
 
         # Predicted Q for current states & chosen actions
         q_pred = self.model(b_obs)
@@ -815,9 +782,7 @@ class PERNARXAgent:
 
         # Update priorities based on TD-error
         with torch.no_grad():
-            abs_td_error = (
-                (q_target_sa - q_pred_sa).abs().detach().cpu().numpy()
-            )
+            abs_td_error = (q_target_sa - q_pred_sa).abs().detach().cpu().numpy()
         clipped_error = np.where(
             abs_td_error < self.abs_error_upper,
             abs_td_error,
@@ -834,33 +799,21 @@ class PERNARXAgent:
         td_err_max = float(np.max(abs_td_error)) if abs_td_error.size > 0 else 0.0
         td_err_min = float(np.min(abs_td_error)) if abs_td_error.size > 0 else 0.0
 
-        self.writer.add_scalar(
-            "Loss/DQN", float(loss.item()), self.global_step
-        )
-        self.writer.add_scalar(
-            "Q/PredSA/Mean", q_pred_sa_mean, self.global_step
-        )
-        self.writer.add_scalar(
-            "Q/TargetSA/Mean", q_target_sa_mean, self.global_step
-        )
-        self.writer.add_scalar(
-            "TD-Error/Mean", td_err_mean, self.global_step
-        )
-        self.writer.add_scalar(
-            "TD-Error/Max", td_err_max, self.global_step
-        )
-        self.writer.add_scalar(
-            "TD-Error/Min", td_err_min, self.global_step
-        )
-        self.writer.add_scalar(
-            "PER/Beta", float(self.beta), self.global_step
-        )
+        self.writer.add_scalar("Loss/DQN", float(loss.item()), self.global_step)
+        self.writer.add_scalar("Q/PredSA/Mean", q_pred_sa_mean, self.global_step)
+        self.writer.add_scalar("Q/TargetSA/Mean", q_target_sa_mean, self.global_step)
+        self.writer.add_scalar("TD-Error/Mean", td_err_mean, self.global_step)
+        self.writer.add_scalar("TD-Error/Max", td_err_max, self.global_step)
+        self.writer.add_scalar("TD-Error/Min", td_err_min, self.global_step)
+        self.writer.add_scalar("PER/Beta", float(self.beta), self.global_step)
 
-        if self.verbose_histogram and self.global_step > 0 and (self.global_step % 1000 == 0):
+        if (
+            self.verbose_histogram
+            and self.global_step > 0
+            and (self.global_step % 1000 == 0)
+        ):
             for name, param in self.model.named_parameters():
-                self.writer.add_histogram(
-                    f"DQN/{name}", param, self.global_step
-                )
+                self.writer.add_histogram(f"DQN/{name}", param, self.global_step)
 
         self.global_step += 1
         return float(loss.item())
@@ -881,7 +834,7 @@ class PERNARXAgent:
         self.beta = min(1.0, self.beta + self.beta_increment_per_sample)
         # calculate max_weight
         min_prob = (
-            np.min(self.replay_buffer.tree[-self.replay_buffer.capacity:])
+            np.min(self.replay_buffer.tree[-self.replay_buffer.capacity :])
             / self.replay_buffer.total_p
         )
         max_weight = np.power(self.buffer_size * min_prob, -self.beta)
