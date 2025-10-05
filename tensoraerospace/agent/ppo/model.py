@@ -26,14 +26,23 @@ from ..base import (
 
 
 class RunningMeanStd:
-    """Tracks the running mean and std of observations for normalization."""
+    """Tracks the running mean and standard deviation of observations for normalization.
+
+    This class implements Welford's online algorithm for computing running mean and variance,
+    which is numerically stable and memory efficient.
+
+    Attributes:
+        mean: Running mean of the data.
+        var: Running variance of the data.
+        count: Number of samples processed.
+    """
 
     def __init__(self, epsilon: float = 1e-4, shape: Tuple = ()):
         """Initialize running statistics.
 
         Args:
-            epsilon: Small value to avoid division by zero.
-            shape: Shape of the data to track.
+            epsilon: Small value to avoid division by zero. Defaults to 1e-4.
+            shape: Shape of the data to track. Defaults to scalar (empty tuple).
         """
         self.mean = np.zeros(shape, dtype=np.float64)
         self.var = np.ones(shape, dtype=np.float64)
@@ -96,18 +105,27 @@ def init_layer_uniform(layer: nn.Linear, init_w: float = 3e-3) -> nn.Linear:
 
 
 class Critic(nn.Module):
+    """Value function network for PPO algorithm.
+
+    The critic estimates the expected return (value) from a given state,
+    which is used to compute advantages for policy updates.
+
+    Architecture:
+        - Two hidden layers with ReLU activation
+        - Final linear layer outputs scalar value estimate
+
+    Attributes:
+        d1: First hidden layer.
+        d2: Second hidden layer.
+        v: Value output layer.
+    """
+
     def __init__(self, input_dim: int, hidden_dim: int = 256):
-        """
-        Initialize critic module.
+        """Initialize critic network.
 
         Args:
-            input_dim (int): Input data dimension.
-            hidden_dim (int, optional): Hidden layer size. Defaults to 256.
-
-        Performs the following operations:
-        - Initialize first linear layer to transform input data to intermediate representation.
-        - Initialize second linear layer to compute "value" from intermediate representation.
-        - Initialize second linear layer using uniform distribution.
+            input_dim: Dimension of input observations.
+            hidden_dim: Number of units in hidden layers. Defaults to 256.
         """
         super(Critic, self).__init__()
         self.d1 = nn.Linear(input_dim, hidden_dim)
@@ -116,19 +134,13 @@ class Critic(nn.Module):
         self.v = init_layer_uniform(self.v)
 
     def forward(self, input_data: torch.Tensor) -> torch.Tensor:
-        """
-        Perform forward pass of the network.
+        """Perform forward pass to compute state value.
 
         Args:
-            input_data (Tensor): Input data tensor.
+            input_data: Input observation tensor of shape (batch_size, input_dim).
 
         Returns:
-            Tensor: Output tensor representing "value" for each input example.
-
-        Applies sequence of operations:
-        - Pass input data through first linear layer and apply ReLU.
-        - Pass through second hidden layer with ReLU.
-        - Pass result through final linear layer to compute "value".
+            Value estimates of shape (batch_size, 1).
         """
         x = F.relu(self.d1(input_data))
         x = F.relu(self.d2(x))
@@ -137,19 +149,32 @@ class Critic(nn.Module):
 
 
 class Actor(nn.Module):
+    """Policy network for PPO algorithm with continuous action spaces.
+
+    The actor implements a Gaussian policy that outputs mean and standard deviation
+    for continuous action distributions.
+
+    Architecture:
+        - Two hidden layers with ReLU activation
+        - Separate output heads for mean (mu) and log std (delta)
+        - Tanh activation on outputs to bound actions
+
+    Attributes:
+        d1: First hidden layer.
+        d2: Second hidden layer.
+        mu: Mean output layer for action distribution.
+        delta: Log standard deviation output layer.
+        log_std_min: Minimum allowed log std value.
+        log_std_max: Maximum allowed log std value.
+    """
+
     def __init__(self, input_dim: int, out_dim: int, hidden_dim: int = 256):
-        """
-        Initialize Actor class, which is a subclass of nn.Module.
+        """Initialize actor network.
 
         Args:
-            input_dim (int): Input layer size.
-            out_dim (int): Output layer size.
-            hidden_dim (int, optional): Hidden layer size. Defaults to 256.
-
-        Initialize linear layers for calculating intermediate representations
-        and action parameters for continuous action spaces.
-        Uses custom init_layer_uniform functions to initialize `mu` and
-        `delta` layers.
+            input_dim: Dimension of input observations.
+            out_dim: Dimension of action space.
+            hidden_dim: Number of units in hidden layers. Defaults to 256.
         """
         super(Actor, self).__init__()
         self.d1 = nn.Linear(input_dim, hidden_dim)
@@ -167,16 +192,15 @@ class Actor(nn.Module):
         self,
         input_data: torch.Tensor,
     ) -> Tuple[torch.Tensor, torch.distributions.Normal]:
-        """
-        Perform forward pass through model, computing agent actions
-        based on input data for continuous action spaces.
+        """Perform forward pass to compute action distribution and sample action.
 
         Args:
-            input_data (Tensor): Input data for model.
+            input_data: Input observation tensor of shape (batch_size, input_dim).
 
         Returns:
-            Tuple[torch.Tensor, torch.distributions.Normal]:
-                Sampled action and the action distribution.
+            Tuple containing:
+                - Sampled action tensor of shape (batch_size, action_dim).
+                - Normal distribution object representing the action distribution.
         """
         x = F.relu(self.d1(input_data))
         x = F.relu(self.d2(x))
@@ -184,9 +208,9 @@ class Actor(nn.Module):
         # Continuous action space: Gaussian policy
         mu = torch.tanh(self.mu(x))
         log_std = torch.tanh(self.delta(x))
-        log_std = self.log_std_min + 0.5 * (
-            self.log_std_max - self.log_std_min
-        ) * (log_std + 1)
+        log_std = self.log_std_min + 0.5 * (self.log_std_max - self.log_std_min) * (
+            log_std + 1
+        )
         std = torch.exp(log_std)
         dist = torch.distributions.Normal(mu, std)
         action = dist.sample()
@@ -204,18 +228,25 @@ def ppo_iter(
     rewards: torch.Tensor,
     values: torch.Tensor,
 ):
-    """Initialize iterator for PPO.
+    """Create mini-batch iterator for PPO training with shuffled indices.
+
+    This function generates mini-batches by randomly shuffling the data indices
+    for each epoch, which helps prevent overfitting and improves generalization.
 
     Args:
-        epoch (int): Number of epochs for iterations.
-        mini_batch_size (int): Mini-batch size for each iteration.
-        states (torch.Tensor): States tensor.
-        actions (torch.Tensor): Actions tensor.
-        log_probs (torch.Tensor): Action log probabilities tensor.
-        returns (torch.Tensor): Expected returns tensor.
-        advantages (torch.Tensor): Advantages tensor.
-        rewards (torch.Tensor): Rewards tensor.
-        values (torch.Tensor): Old value function estimates.
+        epoch: Number of epochs to iterate over the data.
+        mini_batch_size: Size of each mini-batch.
+        states: State tensor of shape (batch_size, state_dim).
+        actions: Action tensor of shape (batch_size, action_dim).
+        log_probs: Log probability tensor of shape (batch_size, 1).
+        returns: Return tensor of shape (batch_size, 1).
+        advantages: Advantage tensor of shape (batch_size, 1).
+        rewards: Reward tensor of shape (batch_size, 1).
+        values: Old value estimates of shape (batch_size, 1).
+
+    Yields:
+        Tuple containing mini-batches of (states, actions, log_probs, returns,
+        advantages, rewards, values) for each iteration.
     """
     batch_size = states.size(0)
     for _ in range(epoch):
@@ -237,11 +268,33 @@ def ppo_iter(
 
 
 class PPO(BaseRLModel):
-    """Class implementing PPO agent using PyTorch.
+    """Proximal Policy Optimization (PPO) reinforcement learning agent.
 
-    Args:
-        env: Environment object.
-        gamma (float): Discount coefficient.
+    PPO is a policy gradient method that uses a clipped objective function to ensure
+    stable and monotonic policy improvements. This implementation includes:
+        - Actor-Critic architecture with separate networks
+        - Generalized Advantage Estimation (GAE)
+        - Observation and reward normalization
+        - Value function clipping
+        - Gradient clipping for stability
+        - KL divergence early stopping
+        - TensorBoard logging
+
+    The agent is designed for continuous control tasks in aerospace applications.
+
+    Attributes:
+        actor: Policy network that outputs action distributions.
+        critic: Value network that estimates state values.
+        gamma: Discount factor for future rewards.
+        clip_pram: PPO clipping parameter epsilon.
+        gae_lambda: GAE lambda for advantage estimation.
+        max_grad_norm: Maximum gradient norm for clipping.
+        target_kl: Target KL divergence for early stopping.
+        normalize_obs: Whether to normalize observations.
+        normalize_reward: Whether to normalize rewards.
+        obs_rms: Running statistics for observation normalization.
+        ret_rms: Running statistics for return normalization.
+        writer: TensorBoard summary writer.
     """
 
     def __init__(
@@ -400,7 +453,6 @@ class PPO(BaseRLModel):
         # Encourage higher entropy (exploration)
         loss = -torch.min(surr1, surr2).mean() - self.entropy_coef * entropy
         return loss
-
 
     def learn(
         self,
@@ -561,10 +613,25 @@ class PPO(BaseRLModel):
         return states2, actions2, returns2, adv2, rewards2, probs2
 
     def train(self) -> None:
-        """Функция обучения агента.
+        """Train the PPO agent through interaction with the environment.
 
-        В процессе обучения агент проходит через заданное количество эпизодов, собирает данные,
-        обрабатывает их и обновляет параметры модели.
+        This method implements the complete PPO training loop:
+            1. Collect rollout data by interacting with environment
+            2. Compute advantages using GAE
+            3. Update policy and value function using mini-batch SGD
+            4. Log metrics to TensorBoard
+            5. Periodically evaluate policy performance
+
+        The training loop continues for max_episodes, with each episode consisting
+        of rollout_len environment steps. Policy updates are performed using
+        num_epochs of optimization over mini-batches of size batch_size.
+
+        Training can be stopped early using KL divergence thresholds (target_kl)
+        or by setting self.target = True.
+
+        Note:
+            All metrics are logged to TensorBoard including actor/critic losses,
+            rewards, entropy, KL divergence, clip fraction, and explained variance.
         """
         for episode in tqdm(range(self.max_episodes)):
             # print("Episode", episode)
@@ -688,9 +755,7 @@ class PPO(BaseRLModel):
                 y_pred = values[:-1]
                 y_true = returns
                 var_y = torch.var(y_true)
-                explained_var = (
-                    1 - torch.var(y_true - y_pred) / (var_y + 1e-8)
-                ).item()
+                explained_var = (1 - torch.var(y_true - y_pred) / (var_y + 1e-8)).item()
 
             # Normalize advantages for stability
             advantages = (advantages - advantages.mean()) / (advantages.std() + 1e-8)
@@ -779,10 +844,20 @@ class PPO(BaseRLModel):
         # print("Training completed. Average rewards list:", self.avg_rewards_list)
 
     def get_param_env(self) -> Dict[str, Dict[str, Any]]:
-        """Получает параметры среды и агента для сохранения.
+        """Get environment and agent parameters for serialization.
+
+        This method extracts all necessary information to reconstruct the agent
+        and its environment, including hyperparameters, network architectures,
+        and environment specifications.
 
         Returns:
-            dict: Словарь с параметрами среды и политики агента.
+            Dictionary with two main keys:
+                - 'env': Dictionary containing environment name and parameters.
+                - 'policy': Dictionary containing agent name and hyperparameters.
+
+        Note:
+            For TensorAeroSpace environments, full environment parameters are
+            serialized. For other environments, only the class name is stored.
         """
         class_name = self.env.unwrapped.__class__.__name__
         module_name = self.env.unwrapped.__class__.__module__
@@ -794,14 +869,14 @@ class PPO(BaseRLModel):
         module_name = self.__class__.__module__
         agent_name = f"{module_name}.{class_name}"
 
-        # Получение информации о сигнале справки, если она доступна
+        # Get reference signal information if available
         try:
             ref_signal = self.env.ref_signal.__class__
             env_params["ref_signal"] = ref_signal
         except AttributeError:
             pass
 
-        # Добавление информации о пространстве действий и пространстве состояний
+        # Add information about action space and observation space
         try:
             action_space = str(self.env.action_space)
             env_params["action_space"] = action_space
@@ -840,22 +915,34 @@ class PPO(BaseRLModel):
         }
 
     def save(self, path: Union[str, Path, None] = None) -> None:
-        """Сохраняет модель PPO в указанной директории.
+        """Save the PPO model to disk.
 
-        Если путь не указан, создает директорию с текущей датой и временем.
+        This method saves all components needed to restore the agent:
+            - Configuration file (config.json) with hyperparameters
+            - Actor network weights (actor.pth)
+            - Critic network weights (critic.pth)
+            - Observation normalization statistics (obs_rms.npz, if enabled)
+            - Return normalization statistics (ret_rms.npz, if enabled)
+
+        The model is saved in a timestamped directory with format:
+        {path}/{Month}{Day}_{Hour}-{Minute}-{Second}_PPO/
 
         Args:
-            path (str, optional): Путь, где будет сохранена модель. Если None,
-                                создается директория с текущей датой и временем.
+            path: Directory where the model will be saved. If None, uses current
+                working directory. Defaults to None.
+
+        Example:
+            >>> agent.save('/path/to/models')
+            # Saves to: /path/to/models/Oct05_14-30-45_PPO/
         """
         if path is None:
             path = Path.cwd()
         else:
             path = Path(path)
-        # Текущая дата и время в формате 'YYYY-MM-DD_HH-MM-SS'
+        # Current date and time in format 'MonthDay_Hour-Minute-Second'
         date_str = datetime.datetime.now().strftime("%b%d_%H-%M-%S")
         date_str = date_str + "_" + self.__class__.__name__
-        # Создание пути в текущем каталоге с датой и временем
+        # Create path in current directory with date and time
 
         config_path = path / date_str / "config.json"
         actor_path = path / date_str / "actor.pth"
@@ -863,9 +950,9 @@ class PPO(BaseRLModel):
         obs_rms_path = path / date_str / "obs_rms.npz"
         ret_rms_path = path / date_str / "ret_rms.npz"
 
-        # Создание директории, если она не существует
+        # Create directory if it doesn't exist
         actor_path.parent.mkdir(parents=True, exist_ok=True)
-        # Сохранение модели
+        # Save model
         config = self.get_param_env()
         with open(config_path, "w") as outfile:
             json.dump(config, outfile)
@@ -890,16 +977,25 @@ class PPO(BaseRLModel):
 
     @classmethod
     def __load(cls, path: Union[str, Path]) -> "PPO":
-        """Загружает модель PPO из указанной директории.
+        """Load a PPO model from disk (internal method).
+
+        This private method handles the complete restoration of a saved PPO agent,
+        including network weights, configuration, and normalization statistics.
 
         Args:
-            path (str or Path): Путь к директории с сохраненной моделью.
+            path: Directory containing the saved model files (config.json,
+                actor.pth, critic.pth, and optional normalization files).
 
         Returns:
-            PPO: Загруженный экземпляр модели PPO.
+            Restored PPO agent instance with loaded weights and configuration.
 
         Raises:
-            TheEnvironmentDoesNotMatch: Если тип агента не соответствует ожидаемому.
+            TheEnvironmentDoesNotMatch: If the agent type in the saved config
+                does not match the current class.
+            FileNotFoundError: If required model files are not found.
+
+        Note:
+            This is a private method. Use `from_pretrained()` for loading models.
         """
         path = Path(path)
         config_path = path / "config.json"
@@ -951,15 +1047,39 @@ class PPO(BaseRLModel):
         access_token: Optional[str] = None,
         version: Optional[str] = None,
     ) -> "PPO":
-        """Загружает предобученную модель из локального пути или Hugging Face Hub.
+        """Load a pretrained PPO model from local path or Hugging Face Hub.
+
+        This method provides a unified interface for loading models from either:
+            1. Local filesystem paths
+            2. Hugging Face Hub repositories
+
+        The method automatically detects whether repo_name is a local path or
+        a remote repository and handles downloading/loading appropriately.
 
         Args:
-            repo_name (str): Имя репозитория или локальный путь к модели.
-            access_token (str, optional): Токен доступа для Hugging Face Hub.
-            version (str, optional): Версия модели для загрузки.
+            repo_name: Either a local directory path containing saved model files,
+                or a Hugging Face Hub repository name (e.g., 'username/model-name').
+            access_token: Hugging Face API token for accessing private repositories.
+                Only required for private models. Defaults to None.
+            version: Specific version/tag of the model to load from Hub.
+                Defaults to None (loads latest version).
 
         Returns:
-            PPO: Загруженный экземпляр модели PPO.
+            Loaded PPO agent instance ready for inference or further training.
+
+        Examples:
+            Load from local path:
+            >>> agent = PPO.from_pretrained('./saved_models/my_agent')
+
+            Load from Hugging Face Hub:
+            >>> agent = PPO.from_pretrained('username/ppo-pendulum-v1')
+
+            Load specific version with auth:
+            >>> agent = PPO.from_pretrained(
+            ...     'username/private-model',
+            ...     access_token='hf_xxx',
+            ...     version='v1.0.0'
+            ... )
         """
         path = Path(repo_name)
         if path.exists():

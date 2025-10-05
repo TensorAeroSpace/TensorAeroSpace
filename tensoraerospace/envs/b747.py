@@ -353,6 +353,9 @@ class ImprovedB747Env(gym.Env):
         self.w_smooth = 0.01  # плавность (|Δu|)
         self.w_jerk = 0.001  # подавление дрожания (|Δ²u|)
 
+        # Сохраняем аргументы инициализации для сериализации
+        self.init_args = locals()
+
         # Модель
         # Важно: оставляем полный вывод состояний, чтобы однозначно адресовать q/theta
         self.model = LongitudinalB747(
@@ -421,6 +424,17 @@ class ImprovedB747Env(gym.Env):
         return np.array(
             [norm_pitch_error, norm_q, norm_theta, norm_prev_action], dtype=np.float32
         )
+
+    def get_init_args(self):
+        """Получаем аргументы инициализации в виде словаря."""
+        init_args = self.init_args.copy()
+        init_args.pop(
+            "self", None
+        )  # Удаление ссылки на текущий объект из словаря аргументов
+        init_args.pop(
+            "__class__", None
+        )  # Удаление ссылки на класс из словаря аргументов
+        return init_args
 
     def reset(self, seed=None, options=None):
         super().reset(seed=seed)

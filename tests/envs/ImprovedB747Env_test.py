@@ -103,3 +103,29 @@ def test_initial_action_override_on_first_step():
     assert env.previous_action == pytest.approx(
         10.0 / env.max_stabilizer_angle_deg, rel=0, abs=1e-6
     )
+
+
+def test_get_init_args(env_setup_default):
+    env = env_setup_default
+    init_args = env.get_init_args()
+
+    # Check that the method returns a dictionary
+    assert isinstance(init_args, dict)
+
+    # Check that expected keys are present
+    assert "initial_state" in init_args
+    assert "reference_signal" in init_args
+    assert "number_time_steps" in init_args
+    assert "dt" in init_args
+    assert "initial_elevator_deg" in init_args
+    assert "use_initial_action_on_first_step" in init_args
+
+    # Check that internal keys are removed
+    assert "self" not in init_args
+    assert "__class__" not in init_args
+
+    # Verify values
+    assert init_args["number_time_steps"] == NUMBER_TIME_STEPS
+    assert init_args["dt"] == dt
+    assert init_args["initial_elevator_deg"] == 0.0
+    assert init_args["use_initial_action_on_first_step"] is False
