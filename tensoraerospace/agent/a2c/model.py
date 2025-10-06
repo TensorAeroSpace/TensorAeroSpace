@@ -7,7 +7,6 @@ A2C agent class for aerospace system control.
 
 import datetime
 import json
-import shutil
 from pathlib import Path
 
 import numpy as np
@@ -64,17 +63,20 @@ class Mish(nn.Module):
 
 
 # Helper function to convert numpy arrays to tensors
-def t(x):
-    """Convert numpy array to PyTorch tensor.
+def to_tensor(x, device="cpu", dtype=torch.float32):
+    """Convert numpy array to PyTorch tensor on specified device.
 
     Args:
         x: Input data (numpy array or other type).
+        device (str or torch.device): Device to place tensor on. Defaults to 'cpu'.
+        dtype: Data type of tensor. Defaults to torch.float32.
 
     Returns:
-        torch.Tensor: PyTorch tensor with float type.
+        torch.Tensor: PyTorch tensor on specified device.
     """
-    x = np.array(x) if not isinstance(x, np.ndarray) else x
-    return torch.from_numpy(x).float()
+    if not isinstance(x, np.ndarray):
+        x = np.array(x)
+    return torch.from_numpy(x).to(device=device, dtype=dtype)
 
 
 class Actor(nn.Module):
@@ -113,7 +115,7 @@ class Actor(nn.Module):
             nn.Linear(64, n_actions),
         )
 
-        logstds_param = nn.Parameter(torch.full((n_actions,), 0.1))
+        logstds_param = nn.Parameter(torch.full((n_actions,), -1.0))
         self.register_parameter("logstds", logstds_param)
 
     def forward(self, X):
@@ -192,13 +194,17 @@ def discounted_rewards(rewards, dones, gamma):
     return discounted[::-1]
 
 
-def process_memory(memory, gamma=0.99, discount_rewards=True):
+def process_memory(memory, gamma=0.99, discount_rewards=True, device="cpu"):
     """Process experience memory for training.
 
     Args:
-        memory (list): List of tuples (action, reward, state, next_state, done).
+        memory (list): List of tuples (action, reward, state,
+            next_state, done).
         gamma (float): Discount coefficient. Defaults to 0.99.
-        discount_rewards (bool): Whether to apply reward discounting. Defaults to True.
+        discount_rewards (bool): Whether to apply reward discounting.
+            Defaults to True.
+        device (str or torch.device): Device to place tensors on.
+            Defaults to 'cpu'.
 
     Returns:
         tuple: Tuple of tensors (actions, rewards, states, next_states, dones).
@@ -215,11 +221,11 @@ def process_memory(memory, gamma=0.99, discount_rewards=True):
     if discount_rewards:
         rewards = discounted_rewards(rewards, dones, gamma)
 
-    actions = t(actions).view(-1, 1)
-    states = t(states)
-    next_states = t(next_states)
-    rewards = t(rewards).view(-1, 1)
-    dones = t(dones).view(-1, 1)
+    actions = to_tensor(actions, device=device)
+    states = to_tensor(states, device=device)
+    next_states = to_tensor(next_states, device=device)
+    rewards = to_tensor(rewards, device=device).view(-1, 1)
+    dones = to_tensor(dones, device=device).view(-1, 1)
 
     return actions, rewards, states, next_states, dones
 
@@ -247,10 +253,10 @@ class A2C(BaseRLModel):
         env: Training environment.
         actor: Actor neural network.
         critic: Critic neural network.
-        gamma (float): Discount coefficient. Defaults to 0.9.
+        gamma (float): Discount coefficient. Defaults to 0.99.
         entropy_beta (float): Entropy bonus coefficient. Defaults to 0.01.
-        actor_lr (float): Actor learning rate. Defaults to 4e-4.
-        critic_lr (float): Critic learning rate. Defaults to 4e-3.
+        actor_lr (float): Actor learning rate. Defaults to 1e-4.
+        critic_lr (float): Critic learning rate. Defaults to 3e-4.
         max_grad_norm (float): Maximum gradient norm. Defaults to 0.5.
         seed (int, optional): Seed for reproducible results.
 
@@ -275,25 +281,29 @@ class A2C(BaseRLModel):
         env,
         actor,
         critic,
-        gamma=0.9,
+        gamma=0.99,
         entropy_beta=0.01,
-        actor_lr=4e-4,
-        critic_lr=4e-3,
+        actor_lr=1e-4,
+        critic_lr=3e-4,
         max_grad_norm=0.5,
         seed=None,
+        device=None,
     ):
-        """Инициализирует агента A2C.
+        """Initialize A2C agent.
 
         Args:
-            env: Среда для обучения.
-            actor: Нейронная сеть актора.
-            critic: Нейронная сеть критика.
-            gamma (float): Коэффициент дисконтирования.
-            entropy_beta (float): Коэффициент энтропийного бонуса.
-            actor_lr (float): Скорость обучения актора.
-            critic_lr (float): Скорость обучения критика.
-            max_grad_norm (float): Максимальная норма градиентов.
-            seed (int, optional): Семя для воспроизводимости результатов.
+            env: Training environment.
+            actor: Actor neural network.
+            critic: Critic neural network.
+            gamma (float): Discount factor. Defaults to 0.99.
+            entropy_beta (float): Entropy bonus coefficient. Defaults to 0.01.
+            actor_lr (float): Actor learning rate. Defaults to 1e-4.
+            critic_lr (float): Critic learning rate. Defaults to 3e-4.
+            max_grad_norm (float): Maximum gradient norm for clipping.
+                Defaults to 0.5.
+            seed (int, optional): Random seed for reproducibility.
+            device (str or torch.device, optional): Device to use
+                ('cpu' or 'cuda'). If None, auto-selects CUDA if available.
         """
         self.env = env
         self.state = None
@@ -301,14 +311,21 @@ class A2C(BaseRLModel):
         self.steps = 0
         self.episode_reward = 0
         self.episode_rewards = []
-        self.seed = seed
-        if seed:
-            torch.manual_seed(seed)
-        state_dim = env.observation_space.shape[0]
-        n_actions = env.action_space.shape[0]
 
-        self.actor = actor
-        self.critic = critic
+        # Set device
+        if device is None:
+            self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        else:
+            self.device = torch.device(device)
+
+        # Set seed for reproducibility
+        self.seed = seed
+        if seed is not None:
+            self._set_seed(seed)
+
+        # Move models to device
+        self.actor = actor.to(self.device)
+        self.critic = critic.to(self.device)
 
         self.gamma = gamma
         self.max_grad_norm = max_grad_norm
@@ -322,17 +339,105 @@ class A2C(BaseRLModel):
 
         self.writer = SummaryWriter()
 
-    def reset(self):
-        """Сбрасывает состояние агента и среды для нового эпизода."""
-        self.episode_reward = 0
-        self.done = False
-        self.state, info = self.env.reset()
+        print(f"A2C initialized on device: {self.device}")
 
-    def run_episode(self, max_steps):
-        """Выполняет один эпизод взаимодействия со средой.
+    def _set_seed(self, seed):
+        """Set random seeds for reproducibility.
 
         Args:
-            max_steps (int): Максимальное количество шагов в эпизоде.
+            seed (int): Random seed value.
+        """
+        import random
+
+        random.seed(seed)
+        np.random.seed(seed)
+        torch.manual_seed(seed)
+
+        if torch.cuda.is_available():
+            torch.cuda.manual_seed(seed)
+            torch.cuda.manual_seed_all(seed)
+            # For full determinism (may impact performance)
+            torch.backends.cudnn.deterministic = True
+            torch.backends.cudnn.benchmark = False
+
+        # Set seed for environment if supported
+        if hasattr(self.env, "seed"):
+            try:
+                self.env.seed(seed)
+            except TypeError:
+                # For Gymnasium envs
+                pass
+
+    def reset(self):
+        """Reset agent and environment state for new episode."""
+        self.episode_reward = 0
+        self.done = False
+        self.state, _ = self.env.reset()
+
+    def predict(self, state, deterministic=True):
+        """Predict action for given state.
+
+        Args:
+            state: Environment state (numpy array or list).
+            deterministic (bool): If True, returns mean of distribution.
+                If False, samples from distribution. Defaults to True.
+
+        Returns:
+            numpy.ndarray: Action, clipped to action space bounds.
+
+        Example:
+            >>> state = env.reset()
+            >>> action = agent.predict(state, deterministic=True)
+            >>> next_state, reward, done, info = env.step(action)
+        """
+        self.actor.eval()
+
+        with torch.no_grad():
+            state_tensor = to_tensor(state, device=self.device)
+
+            # Add batch dimension if needed
+            if state_tensor.dim() == 1:
+                state_tensor = state_tensor.unsqueeze(0)
+
+            # Get action distribution
+            dist = self.actor(state_tensor)
+
+            # Select action
+            if deterministic:
+                action = dist.mean
+            else:
+                action = dist.sample()
+
+            # Convert to numpy and remove batch dimension
+            action = action.squeeze(0).cpu().numpy()
+
+            # Clip to action space bounds
+            action = np.clip(
+                action, self.env.action_space.low, self.env.action_space.high
+            )
+
+        self.actor.train()
+        return action
+
+    def set_eval_mode(self):
+        """Set models to evaluation mode."""
+        self.actor.eval()
+        self.critic.eval()
+
+    def set_train_mode(self):
+        """Set models to training mode."""
+        self.actor.train()
+        self.critic.train()
+
+    def run_episode(self, max_steps):
+        """Собирает опыт взаимодействия со средой на фиксированное количество шагов.
+
+        Метод всегда собирает ровно max_steps шагов, автоматически начиная
+        новые эпизоды если предыдущие завершились. Это обеспечивает постоянный
+        размер батча для стабильного обучения A2C.
+
+        Args:
+            max_steps (int): Количество шагов для сбора опыта.
 
         Returns:
             list: Список кортежей (action, reward, state, next_state, done)
@@ -340,24 +445,28 @@ class A2C(BaseRLModel):
         """
         memory = []
 
-        for i in range(max_steps):
+        for _ in range(max_steps):
             if self.done:
                 self.reset()
 
-            dists = self.actor(t(self.state))
-            actions = dists.sample().detach().data.numpy()
+            with torch.no_grad():
+                state_tensor = to_tensor(self.state, device=self.device)
+                if state_tensor.dim() == 1:
+                    state_tensor = state_tensor.unsqueeze(0)
+                dist = self.actor(state_tensor)
+                action = dist.sample().squeeze(0).cpu().numpy()
             actions_clipped = np.clip(
-                actions,
-                self.env.action_space.low.min(),
-                self.env.action_space.high.max(),
+                action,
+                self.env.action_space.low,
+                self.env.action_space.high,
             )
 
-            next_state, reward, terminated, truncated, info = self.env.step(
+            next_state, reward, terminated, truncated, _ = self.env.step(
                 actions_clipped
             )
             self.done = terminated or truncated
 
-            memory.append((actions, reward, self.state, next_state, self.done))
+            memory.append((actions_clipped, reward, self.state, next_state, self.done))
 
             self.state = next_state
             self.steps += 1
@@ -365,10 +474,33 @@ class A2C(BaseRLModel):
 
             if self.done:
                 self.episode_rewards.append(self.episode_reward)
+
+                # Логируем награду за эпизод
                 self.writer.add_scalar(
-                    "episode_reward", self.episode_reward, global_step=self.steps
+                    "Performance/Episode_Reward",
+                    self.episode_reward,
+                    global_step=self.steps,
                 )
-                break
+
+                # Логируем скользящее среднее за последние 10 эпизодов
+                if len(self.episode_rewards) >= 10:
+                    avg_reward = np.mean(self.episode_rewards[-10:])
+                    self.writer.add_scalar(
+                        "Performance/Episode_Reward_Avg_10",
+                        avg_reward,
+                        global_step=self.steps,
+                    )
+
+                # Логируем скользящее среднее за последние 100 эпизодов
+                if len(self.episode_rewards) >= 100:
+                    avg_reward_100 = np.mean(self.episode_rewards[-100:])
+                    self.writer.add_scalar(
+                        "Performance/Episode_Reward_Avg_100",
+                        avg_reward_100,
+                        global_step=self.steps,
+                    )
+
+                self.episode_reward = 0
 
         return memory
 
@@ -385,37 +517,55 @@ class A2C(BaseRLModel):
                                    По умолчанию True.
         """
         actions, rewards, states, next_states, dones = process_memory(
-            memory, self.gamma, discount_rewards
+            memory, self.gamma, discount_rewards, device=self.device
         )
 
-        td_target = (
-            rewards
-            if discount_rewards
-            else rewards + self.gamma * self.critic(next_states) * (1 - dones)
-        )
+        # Calculate TD target (always detached!)
+        if discount_rewards:
+            # Monte Carlo return - must detach!
+            td_target = rewards.detach()
+        else:
+            # TD(0) bootstrap - detach to prevent gradient flow
+            with torch.no_grad():
+                next_value = self.critic(next_states)
+            td_target = rewards + self.gamma * next_value * (1 - dones)
+
+        # Critic learning FIRST
         value = self.critic(states)
-        advantage = td_target - value
-
-        # Actor learning
-        norm_dists = self.actor(states)
-        logs_probs = norm_dists.log_prob(actions)
-        entropy = norm_dists.entropy().mean()
-
-        actor_loss = (
-            -logs_probs * advantage.detach()
-        ).mean() - entropy * self.entropy_beta
-        self.actor_optim.zero_grad()
-        actor_loss.backward()
-
-        clip_grad_norm_(self.actor_optim, self.max_grad_norm)
-        self.actor_optim.step()
-
-        # Critic learning
-        critic_loss = F.mse_loss(td_target, value)
+        critic_loss = F.mse_loss(value, td_target)
         self.critic_optim.zero_grad()
         critic_loss.backward()
         clip_grad_norm_(self.critic_optim, self.max_grad_norm)
         self.critic_optim.step()
+
+        # Recalculate value with updated critic (no grad for advantage)
+        with torch.no_grad():
+            value_updated = self.critic(states)
+            advantage = td_target - value_updated
+
+            # Normalize advantage for stable learning (critical for A2C!)
+            advantage_normalized = (advantage - advantage.mean()) / (
+                advantage.std() + 1e-8
+            )
+
+        # Actor learning with fresh advantage estimates
+        norm_dists = self.actor(states)
+        logs_probs = norm_dists.log_prob(actions)
+        if logs_probs.dim() > 1:
+            logs_probs = logs_probs.sum(dim=-1, keepdim=True)
+        entropy = norm_dists.entropy()
+        if entropy.dim() > 1:
+            entropy = entropy.sum(dim=-1).mean()
+
+        # Policy gradient with entropy bonus
+        actor_loss = (
+            -(logs_probs * advantage_normalized).mean() - self.entropy_beta * entropy
+        )
+
+        self.actor_optim.zero_grad()
+        actor_loss.backward()
+        clip_grad_norm_(self.actor_optim, self.max_grad_norm)
+        self.actor_optim.step()
 
         # Reporting
         self.writer.add_scalar("Loss/Log_probs", -logs_probs.mean(), global_step=steps)
@@ -424,28 +574,115 @@ class A2C(BaseRLModel):
             "Loss/Entropy_beta", self.entropy_beta, global_step=steps
         )
         self.writer.add_scalar("Loss/Actor", actor_loss, global_step=steps)
-        self.writer.add_scalar("Loss/Advantage", advantage.mean(), global_step=steps)
-        self.writer.add_scalar(
-            "Performance/Reward",
-            np.mean(rewards.detach().cpu().numpy()),
-            global_step=steps,
-        )
         self.writer.add_scalar("Loss/Critic", critic_loss, global_step=steps)
 
-    def train(self, steps_on_memory=32, episodes=2000, episode_length=300):
-        """Запускает процесс обучения агента.
+        # Advantage metrics (для диагностики)
+        self.writer.add_scalar(
+            "Advantage/Raw_Mean", advantage.mean(), global_step=steps
+        )
+        self.writer.add_scalar("Advantage/Raw_Std", advantage.std(), global_step=steps)
+        self.writer.add_scalar(
+            "Advantage/Normalized_Mean", advantage_normalized.mean(), global_step=steps
+        )
+
+        # Value and TD target metrics
+        self.writer.add_scalar("Value/Mean", value_updated.mean(), global_step=steps)
+        self.writer.add_scalar(
+            "Value/TD_Target_Mean", td_target.mean(), global_step=steps
+        )
+        self.writer.add_scalar(
+            "Value/Value_Before_Update", value.mean().item(), global_step=steps
+        )
+
+        # Policy statistics
+        self.writer.add_scalar(
+            "Policy/Action_Std", norm_dists.stddev.mean(), global_step=steps
+        )
+
+    def train(
+        self,
+        steps_on_memory=128,
+        episodes=2000,
+        episode_length=300,
+        discount_rewards=True,
+        log_freq=10,
+        save_freq=None,
+        save_path=None,
+    ):
+        """Train the agent.
 
         Args:
-            steps_on_memory (int): Количество шагов для накопления опыта
-                                 перед обучением. По умолчанию 32.
-            episodes (int): Общее количество эпизодов обучения. По умолчанию 2000.
-            episode_length (int): Максимальная длина эпизода. По умолчанию 300.
+            steps_on_memory (int): Number of steps to collect before learning.
+                Defaults to 128.
+            episodes (int): Total number of training episodes. Defaults to 2000.
+            episode_length (int): Maximum episode length. Defaults to 300.
+            discount_rewards (bool): Whether to use Monte Carlo returns (True)
+                or TD(0) (False). Defaults to True (recommended for stability).
+            log_freq (int): Frequency of console logging (in iterations).
+                Defaults to 10.
+            save_freq (int, optional): Frequency of saving checkpoints (in iterations).
+                If None, does not save during training.
+            save_path (str, optional): Base path for saving checkpoints.
+                If None, uses current directory / 'checkpoints'.
+
+        Returns:
+            dict: Training statistics including episode rewards.
         """
         total_steps = (episodes * episode_length) // steps_on_memory
+        best_reward = -np.inf
 
-        for i in tqdm(range(total_steps)):
+        for i in tqdm(range(total_steps), desc="Training"):
             memory = self.run_episode(steps_on_memory)
-            self.learn(memory, self.steps, discount_rewards=False)
+            self.learn(memory, self.steps, discount_rewards=discount_rewards)
+
+            # Console logging
+            if i % log_freq == 0 and len(self.episode_rewards) > 0:
+                recent_rewards = self.episode_rewards[-10:]
+                avg_reward = np.mean(recent_rewards)
+                print(
+                    f"Step {self.steps} | "
+                    f"Episodes: {len(self.episode_rewards)} | "
+                    f"Avg Reward (last 10): {avg_reward:.2f}"
+                )
+
+                # Save best model
+                if avg_reward > best_reward:
+                    best_reward = avg_reward
+                    if save_path:
+                        best_path = Path(save_path) / "best_model"
+                        best_path.mkdir(parents=True, exist_ok=True)
+                        self.save(best_path)
+
+            # Periodic checkpoint saving
+            if save_freq and i % save_freq == 0 and i > 0:
+                if save_path is None:
+                    save_path = Path.cwd() / "checkpoints"
+                checkpoint_path = Path(save_path) / f"checkpoint_step_{self.steps}"
+                self.save(checkpoint_path)
+
+        return {
+            "episode_rewards": self.episode_rewards,
+            "total_steps": self.steps,
+            "best_reward": best_reward,
+        }
+
+    def close(self):
+        """Close TensorBoard writer and cleanup resources."""
+        if hasattr(self, "writer") and self.writer is not None:
+            self.writer.close()
+            self.writer = None
+
+    def __del__(self):
+        """Cleanup when object is destroyed."""
+        self.close()
+
+    def __enter__(self):
+        """Context manager entry."""
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        """Context manager exit."""
+        self.close()
 
     def get_param_env(self):
         """Получает параметры среды и агента для сохранения.
@@ -466,7 +703,7 @@ class A2C(BaseRLModel):
         # Получение информации о сигнале справки, если она доступна
         try:
             ref_signal = self.env.unwrapped.ref_signal.__class__
-            env_params["ref_signal"] = ref_signal
+            env_params["ref_signal"] = f"{ref_signal.__module__}.{ref_signal.__name__}"
         except AttributeError:
             pass
 
@@ -497,85 +734,107 @@ class A2C(BaseRLModel):
         }
 
     def save(self, path=None):
-        """
-        Сохраняет модель PyTorch в указанной директории. Если путь не указан,
-        создает директорию с текущей датой и временем.
+        """Save model to specified directory.
+
+        Creates a timestamped subdirectory to avoid overwriting existing models.
+        Saves actor network, critic network, and configuration.
 
         Args:
-            path (str, optional): Путь, где будет сохранена модель. Если None,
-            создается директория с текущей датой и временем.
+            path (str, optional): Base directory path where model will be saved.
+                If None, saves to 'checkpoints' directory in current working directory.
 
         Returns:
-            None
+            Path: Path to the saved model directory.
+
+        Example:
+            >>> agent.save()  # Saves to ./checkpoints/20231005_143022_A2C/
+            >>> agent.save('/path/to/models')  # Saves to /path/to/models/20231005_143022_A2C/
         """
         if path is None:
-            path = Path.cwd()
+            path = Path.cwd() / "checkpoints"
         else:
             path = Path(path)
-        # Очистка целевой директории, чтобы избежать конфликтов при тестировании
-        path.mkdir(parents=True, exist_ok=True)
-        for item in path.iterdir():
-            try:
-                if item.is_dir():
-                    shutil.rmtree(item)
-                else:
-                    item.unlink()
-            except Exception:
-                # Игнорируем ошибки удаления отдельных файлов/папок
-                pass
-        # Текущая дата и время в формате 'YYYY-MM-DD_HH-MM-SS'
-        date_str = datetime.datetime.now().strftime("%b%d_%H-%M-%S")
-        date_str = date_str + "_" + self.__class__.__name__
-        # Создание пути в текущем каталоге с датой и временем
 
-        config_path = path / date_str / "config.json"
-        actor_path = path / date_str / "actor.pth"
-        critic_path = path / date_str / "critic.pth"
+        # Create unique directory with timestamp
+        date_str = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+        save_dir = path / f"{date_str}_{self.__class__.__name__}"
 
-        # Создание директории, если она не существует
-        actor_path.parent.mkdir(parents=True, exist_ok=True)
-        # Сохранение модели
+        # Create directory - fail if it already exists to prevent accidental overwrites
+        save_dir.mkdir(parents=True, exist_ok=False)
+
+        # Define file paths
+        config_path = save_dir / "config.json"
+        actor_path = save_dir / "actor.pth"
+        critic_path = save_dir / "critic.pth"
+
+        # Save configuration
         config = self.get_param_env()
-        with open(config_path, "w") as outfile:
-            json.dump(config, outfile)
-        torch.save(self.actor, actor_path)
-        torch.save(self.critic, critic_path)
+        with open(config_path, "w", encoding="utf-8") as outfile:
+            json.dump(config, outfile, indent=2)
+
+        # Save model weights
+        torch.save(self.actor.state_dict(), actor_path)
+        torch.save(self.critic.state_dict(), critic_path)
+
+        print(f"Model saved to: {save_dir}")
+        return save_dir
 
     @classmethod
     def __load(cls, path):
-        """Загружает модель A2C из указанной директории.
+        """Load A2C model from specified directory.
 
         Args:
-            path (str or Path): Путь к директории с сохраненной моделью.
+            path (str or Path): Path to directory with saved model.
 
         Returns:
-            A2C: Загруженный экземпляр модели A2C.
+            A2C: Loaded A2C model instance.
 
         Raises:
-            TheEnvironmentDoesNotMatch: Если тип агента не соответствует ожидаемому.
+            TheEnvironmentDoesNotMatch: If agent type doesn't match expected.
+            FileNotFoundError: If required files are not found.
         """
         path = Path(path)
         config_path = path / "config.json"
         critic_path = path / "critic.pth"
         actor_path = path / "actor.pth"
-        with open(config_path, "r") as f:
+
+        # Load configuration
+        with open(config_path, "r", encoding="utf-8") as f:
             config = json.load(f)
+
+        # Verify agent type
         class_name = cls.__name__
         module_name = cls.__module__
         agent_name = f"{module_name}.{class_name}"
 
         if config["policy"]["name"] != agent_name:
-            raise TheEnvironmentDoesNotMatch
+            raise TheEnvironmentDoesNotMatch(
+                f"Expected {agent_name}, but got {config['policy']['name']}"
+            )
+
+        # Recreate environment
         if "tensoraerospace" in config["env"]["name"]:
             env = get_class_from_string(config["env"]["name"])(
                 **config["env"]["params"]
             )
         else:
             env = get_class_from_string(config["env"]["name"])()
-        critic = torch.load(critic_path, weights_only=False)
-        actor = torch.load(actor_path, weights_only=False)
+
+        # Get dimensions
+        state_dim = env.observation_space.shape[0]
+        n_actions = env.action_space.shape[0]
+
+        # Recreate networks
+        actor = Actor(state_dim, n_actions)
+        critic = Critic(state_dim)
+
+        # Load weights
+        actor.load_state_dict(torch.load(actor_path, weights_only=False))
+        critic.load_state_dict(torch.load(critic_path, weights_only=False))
+
+        # Create agent
         new_agent = cls(
-            env=env, critic=critic, actor=actor, **config["policy"]["params"]
+            env=env, actor=actor, critic=critic, **config["policy"]["params"]
         )
 
         return new_agent
