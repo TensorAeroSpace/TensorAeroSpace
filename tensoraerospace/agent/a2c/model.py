@@ -7,6 +7,7 @@ A2C agent class for aerospace system control.
 
 import datetime
 import json
+import time
 from pathlib import Path
 
 import numpy as np
@@ -22,6 +23,7 @@ from ..base import (
     get_class_from_string,
     serialize_env,
 )
+from .narx_critic import build_narx_features
 
 
 def mish(input):
@@ -77,6 +79,17 @@ def to_tensor(x, device="cpu", dtype=torch.float32):
     if not isinstance(x, np.ndarray):
         x = np.array(x)
     return torch.from_numpy(x).to(device=device, dtype=dtype)
+
+
+def t(x):
+    """Convert input to a float32 torch tensor on CPU.
+
+    This helper mirrors the behavior expected by tests and is equivalent to
+    ``torch.from_numpy(np.array(x)).float()`` for array-like inputs.
+    """
+    if not isinstance(x, np.ndarray):
+        x = np.array(x)
+    return torch.from_numpy(x).float()
 
 
 class Actor(nn.Module):
@@ -755,9 +768,15 @@ class A2C(BaseRLModel):
         else:
             path = Path(path)
 
-        # Create unique directory with timestamp
-        date_str = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+        # Create unique directory with timestamp format matching tests
+        # Example: Oct06_12-34-56_A2C
+        date_str = datetime.datetime.now().strftime("%b%d_%H-%M-%S")
         save_dir = path / f"{date_str}_{self.__class__.__name__}"
+        # Handle rare collisions when called multiple times within the same second
+        while save_dir.exists():
+            time.sleep(1)
+            date_str = datetime.datetime.now().strftime("%b%d_%H-%M-%S")
+            save_dir = path / f"{date_str}_{self.__class__.__name__}"
 
         # Create directory - fail if it already exists to prevent accidental overwrites
         save_dir.mkdir(parents=True, exist_ok=False)
@@ -859,3 +878,72 @@ class A2C(BaseRLModel):
             folder_path = super().from_pretrained(repo_name, access_token, version)
             new_agent = cls.__load(folder_path)
             return new_agent
+
+
+class A2CWithNARXCritic(A2C):
+    def __init__(self, *args, history_length: int = 4, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.history_length = history_length
+
+    def _build_narx_batch(
+        self, states: torch.Tensor, actions: torch.Tensor
+    ) -> torch.Tensor:
+        # states: (T, state_dim), actions: (T, action_dim)
+        return build_narx_features(states, actions, self.history_length)
+
+    def learn(self, memory, steps, discount_rewards=True):
+        actions, rewards, states, next_states, dones = process_memory(
+            memory, self.gamma, discount_rewards, device=self.device
+        )
+
+        # TD target
+        if discount_rewards:
+            td_target = rewards.detach()
+        else:
+            with torch.no_grad():
+                # for TD(0) with NARX critic we need next-state features; we approximate using same feature builder
+                next_features = self._build_narx_batch(next_states, actions)
+                next_value = self.critic(next_features)
+            td_target = rewards + self.gamma * next_value * (1 - dones)
+
+        # Critic update (with NARX features)
+        features = self._build_narx_batch(states, actions)
+        value = self.critic(features)
+        critic_loss = F.mse_loss(value, td_target)
+        self.critic_optim.zero_grad()
+        critic_loss.backward()
+        clip_grad_norm_(self.critic_optim, self.max_grad_norm)
+        self.critic_optim.step()
+
+        # Advantage with updated critic
+        with torch.no_grad():
+            value_updated = self.critic(features)
+            advantage = td_target - value_updated
+            advantage_normalized = (advantage - advantage.mean()) / (
+                advantage.std() + 1e-8
+            )
+
+        # Actor update (standard A2C)
+        norm_dists = self.actor(states)
+        log_probs = norm_dists.log_prob(actions)
+        if log_probs.dim() > 1:
+            log_probs = log_probs.sum(dim=-1, keepdim=True)
+        entropy = norm_dists.entropy()
+        if entropy.dim() > 1:
+            entropy = entropy.sum(dim=-1).mean()
+
+        actor_loss = (
+            -(log_probs * advantage_normalized).mean() - self.entropy_beta * entropy
+        )
+        self.actor_optim.zero_grad()
+        actor_loss.backward()
+        clip_grad_norm_(self.actor_optim, self.max_grad_norm)
+        self.actor_optim.step()
+
+        # Logging
+        self.writer.add_scalar("Loss/Actor", actor_loss, global_step=steps)
+        self.writer.add_scalar("Loss/Critic", critic_loss, global_step=steps)
+        self.writer.add_scalar("Advantage/Mean", advantage.mean(), global_step=steps)
+        self.writer.add_scalar(
+            "Policy/Action_Std", norm_dists.stddev.mean(), global_step=steps
+        )
