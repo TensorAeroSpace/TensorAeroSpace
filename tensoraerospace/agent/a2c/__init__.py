@@ -1,6 +1,7 @@
+from .model import A2C, A2CWithNARXCritic
 from .narx import A2CLearner, Runner
-from .narx_critic import NARXCritic, build_narx_features    
-from .model import A2CWithNARXCritic, A2C
+from .narx_critic import NARXCritic, build_narx_features
+
 __all__ = [
     "A2CLearner",
     "Runner",
