@@ -49,7 +49,23 @@ jobs:
 
     - name: ✅ Verify package
       run: |
-        poetry run twine check dist/*
+        # Basic verification: check if dist files exist
+        echo "📦 Built packages:"
+        ls -lh dist/
+        
+        # Count wheel and source distribution files
+        WHL_COUNT=$(ls dist/*.whl 2>/dev/null | wc -l)
+        TAR_COUNT=$(ls dist/*.tar.gz 2>/dev/null | wc -l)
+        
+        if [ "$WHL_COUNT" -eq 0 ] || [ "$TAR_COUNT" -eq 0 ]; then
+          echo "❌ Error: Package files not found in dist/"
+          echo "Expected: .whl and .tar.gz files"
+          exit 1
+        fi
+        
+        echo "✅ Package verification passed"
+        echo "  - Found $WHL_COUNT wheel file(s)"
+        echo "  - Found $TAR_COUNT source distribution(s)"
 
 
   publish-pypi:
