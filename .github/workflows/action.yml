@@ -18,7 +18,7 @@ jobs:
     - name: 🧹 Free up disk space
       run: |
         echo "Disk usage before cleanup:"
-        df -h
+        
         
         # Remove large unnecessary packages
         sudo rm -rf /usr/share/dotnet
@@ -33,7 +33,7 @@ jobs:
         sudo apt-get clean
         
         echo "Disk usage after cleanup:"
-        df -h
+        
     
     - name: 📥 Checkout code
       uses: actions/checkout@v4
@@ -157,7 +157,7 @@ jobs:
         # Clean pip cache
         pip cache purge || true
         echo "Disk usage after test cleanup:"
-        df -h
+        
 
   docs-coverage:
     name: 📚 Documentation Coverage
@@ -168,7 +168,7 @@ jobs:
     - name: 🧹 Free up disk space
       run: |
         echo "Disk usage before cleanup:"
-        df -h
+        
         
         # Remove large unnecessary packages
         sudo rm -rf /usr/share/dotnet
@@ -183,7 +183,7 @@ jobs:
         sudo apt-get clean
         
         echo "Disk usage after cleanup:"
-        df -h
+        
     
     - name: 📥 Checkout code
       uses: actions/checkout@v4
