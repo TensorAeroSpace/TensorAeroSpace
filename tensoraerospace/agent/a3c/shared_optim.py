@@ -24,11 +24,16 @@ class SharedAdam(torch.optim.Adam):
         for group in self.param_groups:
             for p in group["params"]:
                 state = self.state[p]
-                # PyTorch Adam functional API requires step as a singleton tensor
-                state["step"] = torch.zeros((), dtype=torch.long)
+                # PyTorch Adam functional API requires step as a singleton
+                # tensor. Use a tensor in shared memory for the step counter
+                # as well,
+                # so bias-correction terms are consistent across
+                # processes.
+                state["step"] = torch.zeros(1, dtype=torch.long)
                 state["exp_avg"] = torch.zeros_like(p.data)
                 state["exp_avg_sq"] = torch.zeros_like(p.data)
 
                 # share in memory
+                state["step"].share_memory_()
                 state["exp_avg"].share_memory_()
                 state["exp_avg_sq"].share_memory_()
