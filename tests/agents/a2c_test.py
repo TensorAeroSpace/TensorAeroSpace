@@ -75,10 +75,10 @@ def test_save(mock_environment):
 
 def test_from_pretrained(mock_environment):
     path = "/tmp/mock_model_a2c_pretrained"
-    
+
     # Save model
     saved_dir = mock_environment.save(path)
-    
+
     # Load model from saved directory
     loaded_model = A2C.from_pretrained(str(saved_dir))
     assert loaded_model.gamma == mock_environment.gamma
