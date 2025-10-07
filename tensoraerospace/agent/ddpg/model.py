@@ -1,9 +1,9 @@
+from __future__ import annotations
+
 import datetime
 import json
 import os
 import random
-from __future__ import annotations
-
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple, Union
 
@@ -94,9 +94,7 @@ class RunningMeanStd:
         count: Total number of samples processed.
     """
 
-    def __init__(
-        self, shape: Tuple[int, ...] = (), epsilon: float = 1e-4
-    ) -> None:
+    def __init__(self, shape: Tuple[int, ...] = (), epsilon: float = 1e-4) -> None:
         """Initialize RunningMeanStd.
 
         Args:
@@ -227,7 +225,9 @@ class ReplayBuffer:
         self.buffer[self.position] = (state, action, reward, next_state, done)
         self.position = (self.position + 1) % self.capacity
 
-    def sample(self, batch_size: int) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    def sample(
+        self, batch_size: int
+    ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
         """Sample a random batch of transitions.
 
         Args:

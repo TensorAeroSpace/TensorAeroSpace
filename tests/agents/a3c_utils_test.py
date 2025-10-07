@@ -9,8 +9,8 @@ This module tests utility functions including:
 
 import numpy as np
 import torch
-import torch.nn as nn
 import torch.multiprocessing as mp
+import torch.nn as nn
 
 from tensoraerospace.agent.a3c.pytorch import Net
 from tensoraerospace.agent.a3c.shared_optim import SharedAdam
@@ -88,9 +88,7 @@ def test_set_init_multiple_layers():
 
     # All biases should be zero
     for layer in layers:
-        assert torch.allclose(
-            layer.bias.data, torch.zeros_like(layer.bias.data)
-        )
+        assert torch.allclose(layer.bias.data, torch.zeros_like(layer.bias.data))
 
 
 def test_set_init_weight_distribution():
@@ -181,9 +179,7 @@ def test_push_and_pull_updates_global():
     br = [1.0 for _ in range(5)]
     s_ = np.random.randn(s_dim)
 
-    push_and_pull(
-        opt, lnet, gnet, done=True, s_=s_, bs=bs, ba=ba, br=br, gamma=0.99
-    )
+    push_and_pull(opt, lnet, gnet, done=True, s_=s_, bs=bs, ba=ba, br=br, gamma=0.99)
 
     # Check that at least some global weights changed
     changed = False
@@ -211,9 +207,7 @@ def test_push_and_pull_syncs_local():
     br = [1.0 for _ in range(5)]
     s_ = np.random.randn(s_dim)
 
-    push_and_pull(
-        opt, lnet, gnet, done=True, s_=s_, bs=bs, ba=ba, br=br, gamma=0.99
-    )
+    push_and_pull(opt, lnet, gnet, done=True, s_=s_, bs=bs, ba=ba, br=br, gamma=0.99)
 
     # After push_and_pull, local should match global
     for lp, gp in zip(lnet.parameters(), gnet.parameters()):
@@ -304,7 +298,7 @@ def test_record_multiple_episodes():
     # Episode counter should be 3
     with global_ep.get_lock():
         ep_count = global_ep.value
-    
+
     assert ep_count == expected_count
 
     # Queue should have items (exact count may vary in different contexts)
@@ -364,4 +358,3 @@ if __name__ == "__main__":
     test_v_wrap_different_dtypes()
     test_push_and_pull_empty_buffers()
     print("All utils tests passed!")
-

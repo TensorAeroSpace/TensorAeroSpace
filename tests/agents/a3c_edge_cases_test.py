@@ -370,4 +370,3 @@ if __name__ == "__main__":
     test_shared_adam_state_sharing()
     test_net_gradient_explosion_protection()
     print("All edge case tests passed!")
-

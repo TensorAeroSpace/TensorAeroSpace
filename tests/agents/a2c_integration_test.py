@@ -81,9 +81,7 @@ def test_process_memory():
         (np.array([0.0, 0.0]), 0.0, np.array([0.0, 0.0]), np.array([0.0, 0.0]), 1),
     ]
 
-    actions, rewards_t, states, next_states, dones_t = process_memory(
-        memory, gamma=0.9
-    )
+    actions, rewards_t, states, next_states, dones_t = process_memory(memory, gamma=0.9)
 
     assert actions.shape[0] == 3
     assert rewards_t.shape[0] == 3
@@ -277,14 +275,10 @@ def test_a2c_entropy_regularization():
     critic = Critic(state_dim)
 
     # Agent with high entropy beta
-    agent_high_entropy = A2C(
-        env=env, actor=actor, critic=critic, entropy_beta=1.0
-    )
+    agent_high_entropy = A2C(env=env, actor=actor, critic=critic, entropy_beta=1.0)
 
     # Agent with low entropy beta
-    agent_low_entropy = A2C(
-        env=env, actor=actor, critic=critic, entropy_beta=0.0
-    )
+    agent_low_entropy = A2C(env=env, actor=actor, critic=critic, entropy_beta=0.0)
 
     # Both should run without error
     memory = agent_high_entropy.run_episode(max_steps=5)

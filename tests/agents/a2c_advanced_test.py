@@ -317,6 +317,7 @@ def test_a2c_learn_with_small_batch():
 
 def test_a2c_different_state_action_dims():
     """Test A2C with different state and action dimensions."""
+
     class _CustomEnv(_DummyEnv):
         def __init__(self, state_dim, action_dim):
             super().__init__()
@@ -417,4 +418,3 @@ if __name__ == "__main__":
     test_actor_logstd_bounds()
     test_process_memory_batch_consistency()
     print("All advanced tests passed!")
-

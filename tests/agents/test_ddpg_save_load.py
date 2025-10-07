@@ -12,6 +12,7 @@ import torch
 
 from tensoraerospace.agent.ddpg.model import DDPG
 
+
 @pytest.fixture
 def test_tmpdir():
     """Create test directory in /tmp and clean up after test."""
@@ -23,11 +24,13 @@ def test_tmpdir():
     if os.path.exists(test_dir):
         shutil.rmtree(test_dir)
 
+
 class _DummySpace:
     def __init__(self, shape, low=-1.0, high=1.0):
         self.shape = shape
         self.low = np.full(shape, low, dtype=np.float32)
         self.high = np.full(shape, high, dtype=np.float32)
+
 
 class _FakeEnv:
     """Minimal fake environment for testing."""
@@ -53,13 +56,12 @@ class _FakeEnv:
 
     def step(self, action):
         del action  # Unused but required by interface
-        next_state = np.zeros(
-            self.observation_space.shape[0], dtype=np.float32
-        )
+        next_state = np.zeros(self.observation_space.shape[0], dtype=np.float32)
         reward = 1.0
         terminated = False
         truncated = False
         return next_state, reward, terminated, truncated, {}
+
 
 class TestDDPGSaveCheckpoint:
     """Tests for saving DDPG checkpoints."""
@@ -67,9 +69,7 @@ class TestDDPGSaveCheckpoint:
     def test_save_checkpoint_basic(self, test_tmpdir):
         """Test basic checkpoint saving."""
         env = _FakeEnv()
-        agent = DDPG(
-            env=env, value_lr=1e-3, policy_lr=1e-3, replay_buffer_size=100
-        )
+        agent = DDPG(env=env, value_lr=1e-3, policy_lr=1e-3, replay_buffer_size=100)
 
         filepath = os.path.join(test_tmpdir, "checkpoint.pt")
         agent.save(filepath)
@@ -80,9 +80,7 @@ class TestDDPGSaveCheckpoint:
     def test_save_checkpoint_with_grads(self, test_tmpdir):
         """Test saving checkpoint with gradients."""
         env = _FakeEnv()
-        agent = DDPG(
-            env=env, value_lr=1e-3, policy_lr=1e-3, replay_buffer_size=100
-        )
+        agent = DDPG(env=env, value_lr=1e-3, policy_lr=1e-3, replay_buffer_size=100)
 
         # Perform update to generate gradients
         for _ in range(20):
@@ -103,9 +101,7 @@ class TestDDPGSaveCheckpoint:
     def test_save_directory_structure(self, test_tmpdir):
         """Test saving as directory (HuggingFace style)."""
         env = _FakeEnv()
-        agent = DDPG(
-            env=env, value_lr=1e-3, policy_lr=1e-3, replay_buffer_size=100
-        )
+        agent = DDPG(env=env, value_lr=1e-3, policy_lr=1e-3, replay_buffer_size=100)
 
         save_dir = os.path.join(test_tmpdir, "model_dir")
         agent.save(save_dir)
@@ -144,9 +140,7 @@ class TestDDPGSaveCheckpoint:
     def test_save_includes_replay_buffer(self, test_tmpdir):
         """Test that replay buffer is saved."""
         env = _FakeEnv()
-        agent = DDPG(
-            env=env, value_lr=1e-3, policy_lr=1e-3, replay_buffer_size=100
-        )
+        agent = DDPG(env=env, value_lr=1e-3, policy_lr=1e-3, replay_buffer_size=100)
 
         # Add some transitions
         for _ in range(10):
@@ -160,6 +154,7 @@ class TestDDPGSaveCheckpoint:
         ckpt = torch.load(filepath, weights_only=False)
         assert "replay_buffer" in ckpt
         assert len(ckpt["replay_buffer"]["buffer"]) == 10
+
 
 class TestDDPGLoadCheckpoint:
     """Tests for loading DDPG checkpoints."""
@@ -180,9 +175,7 @@ class TestDDPGLoadCheckpoint:
         agent1.save(filepath)
 
         # Create new agent and load
-        agent2 = DDPG(
-            env=env, value_lr=1e-3, policy_lr=1e-3, replay_buffer_size=100
-        )
+        agent2 = DDPG(env=env, value_lr=1e-3, policy_lr=1e-3, replay_buffer_size=100)
         agent2.load(filepath)
 
         # Check that weights match
@@ -230,9 +223,7 @@ class TestDDPGLoadCheckpoint:
         filepath = os.path.join(test_tmpdir, "checkpoint.pt")
         agent1.save(filepath)
 
-        agent2 = DDPG(
-            env=env, value_lr=1e-3, policy_lr=1e-3, replay_buffer_size=100
-        )
+        agent2 = DDPG(env=env, value_lr=1e-3, policy_lr=1e-3, replay_buffer_size=100)
 
         # Load without optimizer states
         agent2.load(filepath, load_optimizer=False)
@@ -253,9 +244,7 @@ class TestDDPGLoadCheckpoint:
         filepath = os.path.join(test_tmpdir, "checkpoint.pt")
         agent1.save(filepath)
 
-        agent2 = DDPG(
-            env=env, value_lr=1e-3, policy_lr=1e-3, replay_buffer_size=100
-        )
+        agent2 = DDPG(env=env, value_lr=1e-3, policy_lr=1e-3, replay_buffer_size=100)
         agent2.load(filepath, load_replay=False)
 
         # Replay buffer should be empty
@@ -276,14 +265,13 @@ class TestDDPGLoadCheckpoint:
         filepath = os.path.join(test_tmpdir, "checkpoint.pt")
         agent1.save(filepath)
 
-        agent2 = DDPG(
-            env=env, value_lr=1e-3, policy_lr=1e-3, replay_buffer_size=100
-        )
+        agent2 = DDPG(env=env, value_lr=1e-3, policy_lr=1e-3, replay_buffer_size=100)
         agent2.load(filepath)
 
         assert agent2.frame_idx == 1000
         assert agent2.rewards == [1.0, 2.0, 3.0]
         assert agent2.max_frames == 10000
+
 
 class TestDDPGGetParamEnv:
     """Tests for get_param_env method."""
@@ -291,9 +279,7 @@ class TestDDPGGetParamEnv:
     def test_get_param_env_structure(self, test_tmpdir):
         """Test that get_param_env returns correct structure."""
         env = _FakeEnv()
-        agent = DDPG(
-            env=env, value_lr=1e-3, policy_lr=1e-4, replay_buffer_size=1000
-        )
+        agent = DDPG(env=env, value_lr=1e-3, policy_lr=1e-4, replay_buffer_size=1000)
 
         config = agent.get_param_env()
 
@@ -345,6 +331,7 @@ class TestDDPGGetParamEnv:
         assert "mean" in params["obs_rms"]
         assert "var" in params["obs_rms"]
 
+
 class TestDDPGFromPretrained:
     """Tests for from_pretrained classmethod."""
 
@@ -377,9 +364,7 @@ class TestDDPGFromPretrained:
     def test_from_pretrained_config_structure(self, test_tmpdir):
         """Test that config.json has correct structure."""
         env = _FakeEnv()
-        agent = DDPG(
-            env=env, value_lr=1e-3, policy_lr=1e-4, replay_buffer_size=1000
-        )
+        agent = DDPG(env=env, value_lr=1e-3, policy_lr=1e-4, replay_buffer_size=1000)
 
         save_dir = os.path.join(test_tmpdir, "model")
         agent.save(save_dir)
@@ -393,15 +378,14 @@ class TestDDPGFromPretrained:
         assert config["policy"]["params"]["value_lr"] == 1e-3
         assert config["policy"]["params"]["policy_lr"] == 1e-4
 
+
 class TestDDPGPushToHub:
     """Tests for push_to_hub method (without actual Hub interaction)."""
 
     def test_push_to_hub_creates_directory(self, test_tmpdir):
         """Test that push_to_hub creates proper directory structure."""
         env = _FakeEnv()
-        agent = DDPG(
-            env=env, value_lr=1e-3, policy_lr=1e-3, replay_buffer_size=100
-        )
+        agent = DDPG(env=env, value_lr=1e-3, policy_lr=1e-3, replay_buffer_size=100)
 
         save_path = os.path.join(test_tmpdir, "my_model")
 
@@ -416,6 +400,7 @@ class TestDDPGPushToHub:
         # Check that directory was created
         assert os.path.exists(save_path)
         assert os.path.exists(os.path.join(save_path, "config.json"))
+
 
 class TestDDPGSaveLoadIntegration:
     """Integration tests for save/load cycle."""

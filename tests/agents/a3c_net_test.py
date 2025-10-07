@@ -314,4 +314,3 @@ if __name__ == "__main__":
     test_net_parameter_count()
     test_net_gradient_flow()
     print("All Net tests passed!")
-

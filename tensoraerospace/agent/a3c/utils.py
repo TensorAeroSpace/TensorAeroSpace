@@ -62,12 +62,7 @@ def push_and_pull(opt, lnet, gnet, done, s_, bs, ba, br, gamma):
     if done:
         v_s_ = 0.0  # terminal
     else:
-        v_s_ = (
-            lnet.forward(v_wrap(s_[None, :]))[-1]
-            .detach()
-            .cpu()
-            .numpy()[0, 0]
-        )
+        v_s_ = lnet.forward(v_wrap(s_[None, :]))[-1].detach().cpu().numpy()[0, 0]
 
     buffer_v_target = []
     for r in br[::-1]:  # reverse buffer r
@@ -90,11 +85,7 @@ def push_and_pull(opt, lnet, gnet, done, s_, bs, ba, br, gamma):
     c_loss = td.pow(2)
 
     base = lnet.distribution(mu, sigma)
-    dist = (
-        torch.distributions.Independent(base, 1)
-        if lnet.a_dim > 1
-        else base
-    )
+    dist = torch.distributions.Independent(base, 1) if lnet.a_dim > 1 else base
     log_prob = dist.log_prob(a_batch)
     entropy = dist.entropy()
     exp_v = log_prob * td.detach().squeeze(-1) + 0.005 * entropy
@@ -151,6 +142,4 @@ def record(global_ep, global_ep_r, ep_r, res_queue, name, writer=None):
     # Log to TensorBoard if writer is provided
     if writer is not None:
         writer.add_scalar(f"Performance/{name}/episode_reward", ep_r, ep_idx)
-        writer.add_scalar(
-            f"Performance/{name}/moving_avg_reward", moving_avg, ep_idx
-        )
+        writer.add_scalar(f"Performance/{name}/moving_avg_reward", moving_avg, ep_idx)

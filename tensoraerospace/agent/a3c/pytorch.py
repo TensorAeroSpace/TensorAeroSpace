@@ -84,11 +84,7 @@ class Net(nn.Module):
         with torch.no_grad():
             mu, sigma, _ = self.forward(s)
             base = self.distribution(mu, sigma)
-            dist = (
-                torch.distributions.Independent(base, 1)
-                if self.a_dim > 1
-                else base
-            )
+            dist = torch.distributions.Independent(base, 1) if self.a_dim > 1 else base
             a = dist.sample()
         return a.cpu().numpy().squeeze(0)
 
@@ -111,11 +107,7 @@ class Net(nn.Module):
         c_loss = td.pow(2)
 
         base = self.distribution(mu, sigma)
-        dist = (
-            torch.distributions.Independent(base, 1)
-            if self.a_dim > 1
-            else base
-        )
+        dist = torch.distributions.Independent(base, 1) if self.a_dim > 1 else base
         log_prob = dist.log_prob(a)  # shape: [batch]
         entropy = dist.entropy()  # shape: [batch]
         exp_v = log_prob * td.detach().squeeze(-1) + 0.005 * entropy
@@ -213,11 +205,7 @@ class Worker(mp.Process):
             buffer_s, buffer_a, buffer_r = [], [], []
             ep_r = 0.0
             for t in range(self.max_ep_step):
-                if (
-                    self.render
-                    and self.name == "w0"
-                    and hasattr(self.env, "render")
-                ):
+                if self.render and self.name == "w0" and hasattr(self.env, "render"):
                     self.env.render()
                 a = self.lnet.choose_action(v_wrap(s[None, :]))
                 if (
@@ -262,10 +250,7 @@ class Worker(mp.Process):
                     )
 
                     # Log training metrics to TensorBoard
-                    if (
-                        self.writer is not None
-                        and self.global_step is not None
-                    ):
+                    if self.writer is not None and self.global_step is not None:
                         with self.global_step.get_lock():
                             step = self.global_step.value
                             self.global_step.value += 1
