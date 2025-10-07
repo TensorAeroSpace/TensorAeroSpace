@@ -15,6 +15,26 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+    - name: 🧹 Free up disk space
+      run: |
+        echo "Disk usage before cleanup:"
+        
+        
+        # Remove large unnecessary packages
+        sudo rm -rf /usr/share/dotnet
+        sudo rm -rf /usr/local/lib/android
+        sudo rm -rf /opt/ghc
+        sudo rm -rf /opt/hostedtoolcache/CodeQL
+        
+        # Clean Docker
+        docker system prune -af --volumes || true
+        
+        # Clean apt cache
+        sudo apt-get clean
+        
+        echo "Disk usage after cleanup:"
+        
+    
     - name: 📥 Checkout code
       uses: actions/checkout@v4
 
@@ -125,6 +145,19 @@ jobs:
         recreate: true
         header: coverage-links
         path: coverage-link.md
+    
+    - name: 🧹 Clean up temporary files
+      if: always()
+      run: |
+        # Remove test artifacts and cache
+        rm -rf .pytest_cache
+        rm -rf .coverage
+        rm -rf htmlcov
+        rm -rf .tox
+        # Clean pip cache
+        pip cache purge || true
+        echo "Disk usage after test cleanup:"
+        
 
   docs-coverage:
     name: 📚 Documentation Coverage
@@ -132,6 +165,26 @@ jobs:
     needs: test
 
     steps:
+    - name: 🧹 Free up disk space
+      run: |
+        echo "Disk usage before cleanup:"
+        
+        
+        # Remove large unnecessary packages
+        sudo rm -rf /usr/share/dotnet
+        sudo rm -rf /usr/local/lib/android
+        sudo rm -rf /opt/ghc
+        sudo rm -rf /opt/hostedtoolcache/CodeQL
+        
+        # Clean Docker
+        docker system prune -af --volumes || true
+        
+        # Clean apt cache
+        sudo apt-get clean
+        
+        echo "Disk usage after cleanup:"
+        
+    
     - name: 📥 Checkout code
       uses: actions/checkout@v4
 
@@ -238,6 +291,15 @@ jobs:
     needs: test
 
     steps:
+    - name: 🧹 Free up disk space
+      run: |
+        sudo rm -rf /usr/share/dotnet
+        sudo rm -rf /usr/local/lib/android
+        sudo rm -rf /opt/ghc
+        sudo rm -rf /opt/hostedtoolcache/CodeQL
+        docker system prune -af --volumes || true
+        sudo apt-get clean
+    
     - name: 📥 Checkout code
       uses: actions/checkout@v4
 
@@ -270,6 +332,15 @@ jobs:
     needs: [test, docs-coverage]
 
     steps:
+    - name: 🧹 Free up disk space
+      run: |
+        sudo rm -rf /usr/share/dotnet
+        sudo rm -rf /usr/local/lib/android
+        sudo rm -rf /opt/ghc
+        sudo rm -rf /opt/hostedtoolcache/CodeQL
+        docker system prune -af --volumes || true
+        sudo apt-get clean
+    
     - name: 📥 Checkout code
       uses: actions/checkout@v4
 

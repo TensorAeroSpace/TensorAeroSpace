@@ -162,4 +162,4 @@ for t in range(10000):
 
 ::: tensoraerospace.agent.dqn.model.SumTree
 
-::: tensoraerospace.agent.dqn.model.PERAgent
+::: tensoraerospace.agent.dqn.model.DQNAgent

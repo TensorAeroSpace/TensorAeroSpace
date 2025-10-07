@@ -37,8 +37,13 @@ class LongitudinalX15(ModelBase):
     """
 
     def __init__(
-        self, x0, number_time_steps, selected_state_output=None, t0=0, dt: float = 0.01
-    ):
+        self,
+        x0: np.ndarray | list[float],
+        number_time_steps: int,
+        selected_state_output: list[int] | None = None,
+        t0: float = 0,
+        dt: float = 0.01,
+    ) -> None:
         """Initialize LongitudinalX15 instance.
 
         Args:
@@ -124,7 +129,9 @@ class LongitudinalX15(ModelBase):
             ]
         )
 
-    def initialise_system(self, x0, number_time_steps):
+    def initialise_system(
+        self, x0: np.ndarray | list[float], number_time_steps: int
+    ) -> None:
         """System initialization.
 
         Args:

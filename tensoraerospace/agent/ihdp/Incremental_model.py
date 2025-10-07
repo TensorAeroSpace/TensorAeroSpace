@@ -20,13 +20,13 @@ class IncrementalModel:
 
     def __init__(
         self,
-        selected_states,
-        selected_input,
-        number_time_steps,
-        discretisation_time=0.5,
-        input_magnitude_limits=25,
-        input_rate_limits=60,
-    ):
+        selected_states: list[str],
+        selected_input: list[str],
+        number_time_steps: int,
+        discretisation_time: float = 0.5,
+        input_magnitude_limits: float = 25,
+        input_rate_limits: float = 60,
+    ) -> None:
         # Define the inputs to the incremental model
         self.xt_1 = None
         self.xt = None

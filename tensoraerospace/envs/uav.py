@@ -6,6 +6,8 @@ for interaction with the UAV model, including control of pitch angle and
 pitch angular velocity through elevator control.
 """
 
+from typing import Callable
+
 import gymnasium as gym
 import numpy as np
 from gymnasium import spaces
@@ -29,15 +31,15 @@ class LinearLongitudinalUAV(gym.Env):
 
     def __init__(
         self,
-        initial_state: any,
-        reference_signal,
-        number_time_steps,
-        tracking_states=["theta", "q"],
-        state_space=["theta", "q"],
-        control_space=["ele"],
-        output_space=["theta", "q"],
-        reward_func=None,
-    ):
+        initial_state: np.ndarray | list[float],
+        reference_signal: np.ndarray | Callable,
+        number_time_steps: int,
+        tracking_states: list[str] = ["theta", "q"],
+        state_space: tuple[float, float] = ["theta", "q"],
+        control_space: tuple[float, float] = ["ele"],
+        output_space: tuple[float, float] = ["theta", "q"],
+        reward_func: Callable | None = None,
+    ) -> None:
         self.initial_state = initial_state
         self.number_time_steps = number_time_steps
         self.selected_state_output = output_space

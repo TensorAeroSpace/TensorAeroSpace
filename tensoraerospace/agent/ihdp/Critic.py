@@ -39,21 +39,21 @@ class Critic:
 
     def __init__(
         self,
-        Q_weights,
-        selected_states,
-        tracking_states,
-        indices_tracking_states,
-        number_time_steps,
-        start_training,
-        gamma=0.8,
-        learning_rate=2,
-        learning_rate_exponent_limit=10,
-        layers=(10, 6, 1),
-        activations=("sigmoid", "sigmoid", "linear"),
-        WB_limits=30,
-        NN_initial=None,
-        model_path=None,
-    ):
+        Q_weights: list[float],
+        selected_states: list[str],
+        tracking_states: list[str],
+        indices_tracking_states: list[int],
+        number_time_steps: int,
+        start_training: int,
+        gamma: float = 0.8,
+        learning_rate: float = 2,
+        learning_rate_exponent_limit: int = 10,
+        layers: tuple[int, ...] = (10, 6, 1),
+        activations: tuple[str, ...] = ("sigmoid", "sigmoid", "linear"),
+        WB_limits: float = 30,
+        NN_initial: int | None = None,
+        model_path: str | None = None,
+    ) -> None:
         # Declaration of attributes regarding the states and rewards
         self.number_states = len(selected_states)
         self.number_tracking_states = len(tracking_states)

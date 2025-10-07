@@ -4,7 +4,6 @@ This module contains unit tests for the A2C (Advantage Actor-Critic) agent
 implementation, including tests for actor, critic, and the main A2C algorithm.
 """
 
-import datetime
 import json
 import os
 from pathlib import Path
@@ -57,18 +56,16 @@ def test_get_param_env(mock_environment):
 
 
 def test_save(mock_environment):
-    path = "/tmp/mock_model"
+    path = "/tmp/mock_model_a2c"
 
     # Call save
-    mock_environment.save(path)
+    saved_dir = mock_environment.save(path)
 
     # Check directory existence
-    saved_dirs = os.listdir(path)
-    model_dir = Path(path) / saved_dirs[0]  # Access the first item directly
-    assert model_dir.exists()
+    assert saved_dir.exists()
 
     # Check config file
-    with open(model_dir / "config.json") as f:
+    with open(saved_dir / "config.json") as f:
         config = json.load(f)
     assert (
         config["policy"]["name"]
@@ -76,12 +73,14 @@ def test_save(mock_environment):
     )
 
 
-def test_from_pretrained(mock_environment, monkeypatch):
-    monkeypatch.chdir("/tmp/mock_model")
-    mock_environment.save("/tmp/mock_model")
-    date_str = datetime.datetime.now().strftime("%b%d_%H-%M-%S")
-    date_str = date_str + "_" + A2C.__name__
-    loaded_model = A2C.from_pretrained(f"/tmp/mock_model/{date_str}")
+def test_from_pretrained(mock_environment):
+    path = "/tmp/mock_model_a2c_pretrained"
+
+    # Save model
+    saved_dir = mock_environment.save(path)
+
+    # Load model from saved directory
+    loaded_model = A2C.from_pretrained(str(saved_dir))
     assert loaded_model.gamma == mock_environment.gamma
     assert loaded_model.entropy_beta == mock_environment.entropy_beta
     assert loaded_model.actor_lr == mock_environment.actor_lr
