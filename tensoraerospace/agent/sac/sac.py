@@ -8,7 +8,7 @@ and various policy types for aerospace system control.
 import datetime
 import json
 from pathlib import Path
-from typing import Any, Dict, Tuple, Union
+from typing import Any, Dict, Optional, Tuple, Union, cast
 
 import numpy as np
 import torch
@@ -64,6 +64,7 @@ class SAC(BaseRLModel):
         batch_size: int = 32,
         memory_capacity: int = 10000000,
         lr: float = 0.0003,
+        policy_lr: float = 0.0003,
         gamma: float = 0.99,
         tau: float = 0.005,
         alpha: float = 0.2,
@@ -75,9 +76,10 @@ class SAC(BaseRLModel):
         verbose_histogram: bool = False,
         seed: int = 42,
     ) -> None:
+        super().__init__()
         self.gamma = gamma
         self.tau = tau
-        self.alpha = alpha
+        self.alpha: float = float(alpha)
         self.verbose_histogram = verbose_histogram
         self.memory = ReplayMemory(memory_capacity, seed=seed)
         self.seed = seed
@@ -103,8 +105,12 @@ class SAC(BaseRLModel):
         ).to(self.device)
         hard_update(self.critic_target, self.critic)
 
+        # Type annotation helps static checkers when assigning different policy classes
+        self.policy: Union[GaussianPolicy, DeterministicPolicy]
+
         if self.policy_type == "Gaussian":
-            # Target Entropy = −dim(A) (e.g. , -6 for HalfCheetah-v2) as given in the paper
+            # Target Entropy = −dim(A)
+            # (e.g., -6 for HalfCheetah-v2) as given in the paper
             if self.automatic_entropy_tuning is True:
                 self.target_entropy = -torch.prod(
                     torch.Tensor(action_space.shape).to(self.device)
@@ -115,7 +121,7 @@ class SAC(BaseRLModel):
             self.policy = GaussianPolicy(
                 num_inputs, action_space.shape[0], hidden_size, action_space
             ).to(self.device)
-            self.policy_optim = Adam(self.policy.parameters(), lr=lr)
+            self.policy_optim = Adam(self.policy.parameters(), lr=policy_lr)
 
         else:
             self.alpha = 0
@@ -126,39 +132,42 @@ class SAC(BaseRLModel):
             self.policy_optim = Adam(self.policy.parameters(), lr=lr)
 
     def select_action(self, state: np.ndarray, evaluate: bool = False) -> np.ndarray:
-        """Выбор действия на основе текущего состояния.
+        """Select action based on current state.
 
         Args:
-            state: Текущее состояние агента.
-            evaluate (bool): Флаг режима оценки.
+            state: Current state of the agent.
+            evaluate (bool): Evaluation mode flag.
 
         Returns:
-            action: Выбранное действие.
+            action: Selected action.
 
         """
-        state = torch.FloatTensor(state).to(self.device).unsqueeze(0)
+        state_t = torch.as_tensor(
+            state, dtype=torch.float32, device=self.device
+        ).unsqueeze(0)
         if evaluate is False:
-            action, _, _ = self.policy.sample(state)
+            action_t, _, _ = self.policy.sample(state_t)
         else:
-            _, _, action = self.policy.sample(state)
-        return action.detach().cpu().numpy()[0]
+            _, _, action_t = self.policy.sample(state_t)
+        action_np = cast(np.ndarray, action_t.detach().cpu().numpy()[0])
+        return action_np
 
     def update_parameters(
         self, memory: ReplayMemory, batch_size: int, updates: int
     ) -> Tuple[float, float, float, float, float]:
-        """Обновление параметров сетей на основе мини-пакета из памяти.
+        """Update network parameters based on a mini-batch from memory.
 
         Args:
-            memory: Память для хранения переходов.
-            batch_size (int): Размер мини-пакета.
-            updates (int): Количество обновлений.
+            memory: Memory for storing transitions.
+            batch_size (int): Mini-batch size.
+            updates (int): Number of updates.
 
         Returns:
-            qf1_loss (float): Значение функции потерь для первой Q-сети.
-            qf2_loss (float): Значение функции потерь для второй Q-сети.
-            policy_loss (float): Значение функции потерь для политики.
-            alpha_loss (float): Значение функции потерь для коэффициента alpha.
-            alpha_tlogs (float): Значение коэффициента alpha.
+            qf1_loss (float): Loss value for the first Q-network.
+            qf2_loss (float): Loss value for the second Q-network.
+            policy_loss (float): Loss value for the policy.
+            alpha_loss (float): Loss value for the alpha coefficient.
+            alpha_tlogs (float): Value of the alpha coefficient.
 
         """
         # Sample a batch from memory
@@ -167,30 +176,42 @@ class SAC(BaseRLModel):
             action_batch,
             reward_batch,
             next_state_batch,
-            mask_batch,
+            done_batch,
         ) = memory.sample(batch_size=batch_size)
 
-        state_batch = torch.FloatTensor(state_batch).to(self.device)
-        next_state_batch = torch.FloatTensor(next_state_batch).to(self.device)
-        action_batch = torch.FloatTensor(action_batch).to(self.device)
-        reward_batch = torch.FloatTensor(reward_batch).to(self.device).unsqueeze(1)
-        mask_batch = torch.FloatTensor(mask_batch).to(self.device).unsqueeze(1)
+        state_batch_t = torch.as_tensor(
+            state_batch, dtype=torch.float32, device=self.device
+        )
+        next_state_batch_t = torch.as_tensor(
+            next_state_batch, dtype=torch.float32, device=self.device
+        )
+        action_batch_t = torch.as_tensor(
+            action_batch, dtype=torch.float32, device=self.device
+        )
+        reward_batch_t = torch.as_tensor(
+            reward_batch, dtype=torch.float32, device=self.device
+        ).unsqueeze(1)
+        done_batch_t = torch.as_tensor(
+            done_batch, dtype=torch.float32, device=self.device
+        ).unsqueeze(1)
+        mask_batch = 1.0 - done_batch_t
 
         with torch.no_grad():
             next_state_action, next_state_log_pi, _ = self.policy.sample(
-                next_state_batch
+                next_state_batch_t
             )
             qf1_next_target, qf2_next_target = self.critic_target(
-                next_state_batch, next_state_action
+                next_state_batch_t, next_state_action
             )
             min_qf_next_target = (
                 torch.min(qf1_next_target, qf2_next_target)
                 - self.alpha * next_state_log_pi
             )
-            next_q_value = reward_batch + mask_batch * self.gamma * (min_qf_next_target)
-        qf1, qf2 = self.critic(
-            state_batch, action_batch
-        )  # Two Q-functions to mitigate positive bias in the policy improvement step
+            next_q_value = reward_batch_t + mask_batch * self.gamma * (
+                min_qf_next_target
+            )
+        # Two Q-functions to mitigate positive bias in the policy improvement step
+        qf1, qf2 = self.critic(state_batch_t, action_batch_t)
         qf1_loss = F.mse_loss(
             qf1, next_q_value
         )  # JQ = 𝔼(st,at)~D[0.5(Q1(st,at) - r(st,at) - γ(𝔼st+1~p[V(st+1)]))^2]
@@ -201,11 +222,13 @@ class SAC(BaseRLModel):
 
         self.critic_optim.zero_grad()
         qf_loss.backward()
+        # gradient clipping to prevent rare gradient spikes
+        torch.nn.utils.clip_grad_norm_(self.critic.parameters(), max_norm=1.0)
         self.critic_optim.step()
 
-        pi, log_pi, _ = self.policy.sample(state_batch)
+        pi, log_pi, _ = self.policy.sample(state_batch_t)
 
-        qf1_pi, qf2_pi = self.critic(state_batch, pi)
+        qf1_pi, qf2_pi = self.critic(state_batch_t, pi)
         min_qf_pi = torch.min(qf1_pi, qf2_pi)
 
         policy_loss = (
@@ -214,6 +237,7 @@ class SAC(BaseRLModel):
 
         self.policy_optim.zero_grad()
         policy_loss.backward()
+        torch.nn.utils.clip_grad_norm_(self.policy.parameters(), max_norm=1.0)
         self.policy_optim.step()
 
         if self.automatic_entropy_tuning:
@@ -225,11 +249,11 @@ class SAC(BaseRLModel):
             alpha_loss.backward()
             self.alpha_optim.step()
 
-            self.alpha = self.log_alpha.exp()
-            alpha_tlogs = self.alpha.clone()  # For TensorboardX logs
+            self.alpha = float(self.log_alpha.exp().item())
+            alpha_tlogs = torch.tensor(self.alpha, device=self.device)
         else:
             alpha_loss = torch.tensor(0.0).to(self.device)
-            alpha_tlogs = torch.tensor(self.alpha)  # For TensorboardX logs
+            alpha_tlogs = torch.tensor(self.alpha, device=self.device)
 
         if updates % self.target_update_interval == 0:
             soft_update(self.critic_target, self.critic, self.tau)
@@ -238,7 +262,7 @@ class SAC(BaseRLModel):
         self.writer.add_scalar("Loss/QF2", qf2_loss.item(), updates)
         self.writer.add_scalar("Loss/Policy", policy_loss.item(), updates)
         self.writer.add_scalar("Loss/Alpha", alpha_loss.item(), updates)
-        self.writer.add_scalar("Loss/Alpha", alpha_tlogs.item(), updates)
+        self.writer.add_scalar("Alpha/value", alpha_tlogs.item(), updates)
 
         if self.verbose_histogram:
             for name, param in self.critic.named_parameters():
@@ -255,65 +279,81 @@ class SAC(BaseRLModel):
             alpha_tlogs.item(),
         )
 
-    def train(self, num_episodes: int) -> None:
+    def train(self, *args, **kwargs) -> None:
+        num_episodes = (
+            int(args[0]) if len(args) > 0 else int(kwargs.get("num_episodes", 1))
+        )
+        save_best = bool(kwargs.get("save_best", False))
+        save_path = kwargs.get("save_path", None)
+        save_best_with_gradients = bool(kwargs.get("save_best_with_gradients", False))
         # Training Loop
         total_numsteps = 0
         updates = 0
+        best_reward = float("-inf")
         for i_episode in tqdm(range(num_episodes)):
             episode_reward = 0
             episode_steps = 0
             done = False
-            state, info = self.env.reset()
+            state, _ = self.env.reset()
             reward_per_step = []
             done = False
             while not done:
                 action = self.select_action(state)
                 if len(self.memory) > self.batch_size:
-                    for i in range(self.updates_per_step):
+                    for _ in range(self.updates_per_step):
                         # Update parameters of all the networks
-                        (
-                            critic_1_loss,
-                            critic_2_loss,
-                            policy_loss,
-                            ent_loss,
-                            alpha,
-                        ) = self.update_parameters(
+                        _c1, _c2, _pi, _ent, _a = self.update_parameters(
                             self.memory, self.batch_size, updates
                         )
                         updates += 1
 
-                next_state, reward, terminated, truncated, info = self.env.step(action)
-                done = terminated or truncated
+                next_state, reward, terminated, truncated, _ = self.env.step(action)
+                # Important: separate loop termination logic from bootstrap logic
+                # - terminate loop when (terminated or truncated)
+                # - for replay targets use done only when terminated
+                done_env = bool(terminated or truncated)
+                done_bootstrap = float(bool(terminated))
                 episode_steps += 1
                 total_numsteps += 1
                 episode_reward += reward
                 reward_per_step.append(reward)
-                mask = 1 if done else float(not done)
                 self.memory.push(
-                    state, action, reward, next_state, mask
+                    state, action, reward, next_state, done_bootstrap
                 )  # Append transition to memory
                 state = next_state
+                done = done_env
             self.writer.add_scalar("Performance/Reward", episode_reward, i_episode)
+            if save_best and episode_reward > best_reward:
+                best_reward = episode_reward
+                self.save(
+                    path=save_path,
+                    save_gradients=save_best_with_gradients,
+                )
+                self.writer.add_scalar(
+                    "Performance/BestReward",
+                    best_reward,
+                    i_episode,
+                )
 
     def get_param_env(self) -> Dict[str, Dict[str, Any]]:
         class_name = self.env.unwrapped.__class__.__name__
         module_name = self.env.unwrapped.__class__.__module__
         env_name = f"{module_name}.{class_name}"
+        env_params: Dict[str, Any] = {}
         if "tensoraerospace" in env_name:
             env_params = serialize_env(self.env)
         class_name = self.__class__.__name__
         module_name = self.__class__.__module__
         agent_name = f"{module_name}.{class_name}"
-        env_params = {}
 
-        # Получение информации о сигнале справки, если она доступна
+        # Get reference signal information if available
         try:
-            ref_signal = self.env.ref_signal.__class__
-            env_params["ref_signal"] = ref_signal
+            ref_cls = self.env.ref_signal.__class__
+            env_params["ref_signal"] = f"{ref_cls.__module__}.{ref_cls.__name__}"
         except AttributeError:
             pass
 
-        # Добавление информации о пространстве действий и пространстве состояний
+        # Add action space and observation space information
         try:
             action_space = str(self.env.action_space)
             env_params["action_space"] = action_space
@@ -331,16 +371,14 @@ class SAC(BaseRLModel):
             "tau": self.tau,
             "alpha": self.alpha,
             "verbose_histogram": self.verbose_histogram,
-            "memory_capacity": self.memory.capacity,  # Assuming the ReplayMemory class has a capacity attribute.
+            "memory_capacity": self.memory.capacity,
             "policy_type": self.policy_type,
             "updates_per_step": self.updates_per_step,
             "target_update_interval": self.target_update_interval,
             "batch_size": self.batch_size,
             "automatic_entropy_tuning": self.automatic_entropy_tuning,
             "device": self.device.type,
-            "lr": self.critic_optim.defaults[
-                "lr"
-            ],  # Or another way to get learning rate.
+            "lr": self.critic_optim.defaults["lr"],
         }
         print(policy_params)
 
@@ -349,13 +387,18 @@ class SAC(BaseRLModel):
             "policy": {"name": agent_name, "params": policy_params},
         }
 
-    def save(self, path: Union[str, Path, None] = None) -> None:
-        """
-        Сохраняет модель PyTorch в указанной директории.
+    def save(
+        self,
+        path: Union[str, Path, None] = None,
+        save_gradients: bool = False,
+    ) -> None:
+        """Save PyTorch model to the specified directory.
 
         Args:
-            path (str | Path | None): Путь сохранения. Если None — создается папка
-                с текущей датой и временем в рабочем каталоге.
+            path (str | Path | None): Save path. If None, creates
+                a folder with current date and time in the working directory.
+            save_gradients (bool): Save optimizer states for
+                continuing training (Adam moments, etc.).
 
         Returns:
             None
@@ -364,35 +407,69 @@ class SAC(BaseRLModel):
             path = Path.cwd()
         else:
             path = Path(path)
-        # Текущая дата и время в формате 'YYYY-MM-DD_HH-MM-SS'
+        # Current date and time in format 'YYYY-MM-DD_HH-MM-SS'
         date_str = datetime.datetime.now().strftime("%b%d_%H-%M-%S")
         date_str = date_str + "_" + self.__class__.__name__
-        # Создание пути в текущем каталоге с датой и временем
+        # Create path in current directory with date and time
 
         config_path = path / date_str / "config.json"
         policy_path = path / date_str / "policy.pth"
         critic_path = path / date_str / "critic.pth"
         critic_target_path = path / date_str / "critic_target.pth"
+        policy_optim_path = path / date_str / "policy_optim.pth"
+        critic_optim_path = path / date_str / "critic_optim.pth"
+        alpha_optim_path = path / date_str / "alpha_optim.pth"
+        log_alpha_path = path / date_str / "log_alpha.pth"
 
-        # Создание директории, если она не существует
+        # Create directory if it doesn't exist
         policy_path.parent.mkdir(parents=True, exist_ok=True)
-        # Сохранение модели
+        # Save model
         config = self.get_param_env()
-        with open(config_path, "w") as outfile:
+        with open(config_path, "w", encoding="utf-8") as outfile:
             json.dump(config, outfile)
         torch.save(self.policy, policy_path)
         torch.save(self.critic, critic_path)
         torch.save(self.critic_target, critic_target_path)
 
+        # Save log_alpha if automatic entropy tuning is used
+        if getattr(self, "automatic_entropy_tuning", False):
+            torch.save(
+                {"log_alpha": self.log_alpha.detach().cpu()},
+                log_alpha_path,
+            )
+
+        # Optionally save optimizer states for resuming training
+        if save_gradients:
+            try:
+                torch.save(self.policy_optim.state_dict(), policy_optim_path)
+                torch.save(self.critic_optim.state_dict(), critic_optim_path)
+                if getattr(self, "automatic_entropy_tuning", False):
+                    # alpha_optim exists only when automatic entropy
+                    # tuning is enabled
+                    torch.save(
+                        self.alpha_optim.state_dict(),
+                        alpha_optim_path,
+                    )
+            except Exception as exc:  # protect against unexpected write errors
+                raise RuntimeError(f"Error saving optimizer states: {exc}") from exc
+
     @classmethod
-    def __load(cls, path: Union[str, Path]):
+    def __load(
+        cls,
+        path: Union[str, Path],
+        load_gradients: bool = False,
+    ) -> "SAC":
         path = Path(path)
         config_path = path / "config.json"
         critic_path = path / "critic.pth"
         policy_path = path / "policy.pth"
         critic_target_path = path / "critic_target.pth"
+        policy_optim_path = path / "policy_optim.pth"
+        critic_optim_path = path / "critic_optim.pth"
+        alpha_optim_path = path / "alpha_optim.pth"
+        log_alpha_path = path / "log_alpha.pth"
 
-        with open(config_path, "r") as f:
+        with open(config_path, "r", encoding="utf-8") as f:
             config = json.load(f)
         class_name = cls.__name__
         module_name = cls.__module__
@@ -401,24 +478,115 @@ class SAC(BaseRLModel):
         if config["policy"]["name"] != agent_name:
             raise TheEnvironmentDoesNotMatch
         if "tensoraerospace" in config["env"]["name"]:
-            env = get_class_from_string(config["env"]["name"])(**config["env"]["param"])
+            env = get_class_from_string(config["env"]["name"])(
+                **config["env"]["params"]
+            )
         else:
             env = get_class_from_string(config["env"]["name"])()
         new_agent = cls(env=env, **config["policy"]["params"])
-        new_agent.critic = torch.load(critic_path)
-        new_agent.policy = torch.load(policy_path)
-        new_agent.critic_target = torch.load(critic_target_path)
+
+        # Load models
+        new_agent.critic = torch.load(
+            critic_path, map_location=new_agent.device, weights_only=False
+        )
+        new_agent.policy = torch.load(
+            policy_path, map_location=new_agent.device, weights_only=False
+        )
+        new_agent.critic_target = torch.load(
+            critic_target_path, map_location=new_agent.device, weights_only=False
+        )
+
+        # Restore log_alpha if available
+        if (
+            getattr(new_agent, "automatic_entropy_tuning", False)
+            and log_alpha_path.exists()
+        ):
+            loaded_alpha = torch.load(
+                log_alpha_path, map_location=new_agent.device, weights_only=False
+            )
+            if isinstance(loaded_alpha, dict) and "log_alpha" in loaded_alpha:
+                new_agent.log_alpha.data.copy_(
+                    loaded_alpha["log_alpha"].to(new_agent.device)
+                )
+                new_agent.alpha = float(new_agent.log_alpha.exp().item())
+
+        # Save current LR values before reinitializing optimizers
+        critic_lr = new_agent.critic_optim.defaults.get("lr", 0.0003)
+        policy_lr = new_agent.policy_optim.defaults.get("lr", 0.0003)
+        alpha_lr = (
+            new_agent.alpha_optim.defaults.get("lr", 0.0003)
+            if getattr(new_agent, "automatic_entropy_tuning", False)
+            else None
+        )
+
+        # Reinitialize optimizers for new parameters
+        new_agent.critic_optim = Adam(new_agent.critic.parameters(), lr=critic_lr)
+        new_agent.policy_optim = Adam(new_agent.policy.parameters(), lr=policy_lr)
+        if (
+            getattr(new_agent, "automatic_entropy_tuning", False)
+            and alpha_lr is not None
+        ):
+            new_agent.alpha_optim = Adam([new_agent.log_alpha], lr=alpha_lr)
+
+        # Optionally load optimizer states for continuing training
+        if load_gradients:
+            if policy_optim_path.exists():
+                state = torch.load(
+                    policy_optim_path, map_location=new_agent.device, weights_only=False
+                )
+                new_agent.policy_optim.load_state_dict(state)
+            if critic_optim_path.exists():
+                state = torch.load(
+                    critic_optim_path, map_location=new_agent.device, weights_only=False
+                )
+                new_agent.critic_optim.load_state_dict(state)
+            if (
+                getattr(new_agent, "automatic_entropy_tuning", False)
+                and alpha_optim_path.exists()
+            ):
+                state = torch.load(
+                    alpha_optim_path, map_location=new_agent.device, weights_only=False
+                )
+                new_agent.alpha_optim.load_state_dict(state)
         return new_agent
 
     @classmethod
     def from_pretrained(
-        cls, repo_name: str, access_token: str | None = None, version: str | None = None
+        cls,
+        repo_name: str,
+        access_token: Optional[str] = None,
+        version: Optional[str] = None,
+        load_gradients: bool = False,
     ) -> "SAC":
-        path = Path(repo_name)
-        if path.exists():
-            new_agent = cls.__load(path)
-            return new_agent
-        else:
-            folder_path = super().from_pretrained(repo_name, access_token, version)
-            new_agent = cls.__load(folder_path)
-            return new_agent
+        """Load pretrained model from local directory or Hugging Face.
+
+        Args:
+            repo_name: Path to local folder with weights or repository name
+                in format "namespace/repo_name" on Hugging Face.
+            access_token: Access token for private HF repository.
+            version: Revision/branch/tag of HF repository.
+            load_gradients: Load optimizer states for
+                continuing training.
+
+        Returns:
+            SAC: Initialized agent.
+        """
+        # 1) Try local loading (absolute/relative path)
+        p = Path(str(repo_name)).expanduser()
+        if p.is_dir():
+            return cls.__load(p, load_gradients=load_gradients)
+
+        # 2) If path is explicitly specified (by prefix), but folder
+        # doesn't exist - path error
+        pathlike_prefixes = ("./", "../", "/", "~")
+        if str(repo_name).startswith(pathlike_prefixes):
+            if not p.exists() or not p.is_dir():
+                raise FileNotFoundError(
+                    f"Local directory not found: '{repo_name}'."
+                    " Please check the path."
+                )
+            return cls.__load(p, load_gradients=load_gradients)
+
+        # 3) Otherwise - assume it's a repo id on Hugging Face (namespace/repo)
+        folder_path = super().from_pretrained(repo_name, access_token, version)
+        return cls.__load(folder_path, load_gradients=load_gradients)

@@ -5,9 +5,21 @@ import numpy as np
 import pytest
 
 from tensoraerospace.signals.standart import (
+    chirp,
     constant_line,
+    damped_sinusoid,
+    doublet,
+    exponential,
+    gaussian_pulse,
+    multi_step,
+    multisine,
+    pulse,
+    ramp,
+    sawtooth,
     sinusoid,
     sinusoid_vertical_shift,
+    square_wave,
+    triangular_wave,
     unit_step,
 )
 

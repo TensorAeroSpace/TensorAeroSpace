@@ -2,7 +2,21 @@
 __pycache__/
 *.py[cod]
 *$py.class
-
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+.coverage-report.xml
+.coverage-report.json
+.coverage-report.html
+.coverage-report.txt
+.coverage-report.xml
+.coverage-report.json
+.coverage-report.html
+.coverage-report.txt
+.cursor
+htmlcov/
 # C extensions
 *.so
 _site/
@@ -254,4 +268,3 @@ shippable/
 scripts/
 
 .DS_Store
-

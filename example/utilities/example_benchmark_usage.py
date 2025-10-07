@@ -12,7 +12,8 @@
 
 import matplotlib.pyplot as plt
 import numpy as np
-from bench import ControlBenchmark
+
+from tensoraerospace.benchmark.bench import ControlBenchmark
 
 
 def generate_sample_system_response(

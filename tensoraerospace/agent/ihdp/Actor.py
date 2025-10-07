@@ -46,28 +46,28 @@ class Actor:
 
     def __init__(
         self,
-        selected_inputs,
-        selected_states,
-        tracking_states,
-        indices_tracking_states,
-        number_time_steps,
-        start_training,
-        layers=(6, 1),
-        activations=("sigmoid", "sigmoid"),
-        learning_rate=0.9,
-        learning_rate_cascaded=0.9,
-        learning_rate_exponent_limit=10,
-        type_PE="3211",
-        amplitude_3211=1,
-        pulse_length_3211=15,
-        WB_limits=30,
-        maximum_input=25,
-        maximum_q_rate=20,
-        cascaded_actor=False,
-        NN_initial=None,
-        cascade_tracking_state=["alpha", "wz"],
-        model_path: str = None,
-    ):
+        selected_inputs: list[str],
+        selected_states: list[str],
+        tracking_states: list[str],
+        indices_tracking_states: list[int],
+        number_time_steps: int,
+        start_training: int,
+        layers: tuple[int, ...] = (6, 1),
+        activations: tuple[str, ...] = ("sigmoid", "sigmoid"),
+        learning_rate: float = 0.9,
+        learning_rate_cascaded: float = 0.9,
+        learning_rate_exponent_limit: int = 10,
+        type_PE: str = "3211",
+        amplitude_3211: float = 1,
+        pulse_length_3211: int = 15,
+        WB_limits: float = 30,
+        maximum_input: float = 25,
+        maximum_q_rate: float = 20,
+        cascaded_actor: bool = False,
+        NN_initial: int | None = None,
+        cascade_tracking_state: list[str] = ["alpha", "wz"],
+        model_path: str | None = None,
+    ) -> None:
         self.number_inputs = len(selected_inputs)
         self.selected_states = selected_states
         self.cascade_tracking_state = cascade_tracking_state
@@ -178,7 +178,7 @@ class Actor:
         """Load model weights."""
         self.model.load_weights(self.model_path)
 
-    def create_NN(self, store_weights, seed: int) -> Tuple[KModel, dict]:
+    def create_NN(self, store_weights: dict, seed: int) -> Tuple[KModel, dict]:
         """Create NN with user input.
 
         Args:

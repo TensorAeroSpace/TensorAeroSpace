@@ -24,12 +24,12 @@ class IHDPAgent(object):
         actor_settings: dict,
         critic_settings: dict,
         incremental_settings: dict,
-        tracking_states,
-        selected_states,
-        selected_input,
-        number_time_steps,
-        indices_tracking_states,
-    ):
+        tracking_states: list[str],
+        selected_states: list[str],
+        selected_input: list[str],
+        number_time_steps: int,
+        indices_tracking_states: list[int],
+    ) -> None:
         actor_keys = [
             "start_training",
             "layers",
@@ -130,7 +130,9 @@ class IHDPAgent(object):
             incremental_settings["input_rate_limits"],
         )
 
-    def predict(self, xt, reference_signals, time_step):
+    def predict(
+        self, xt: np.ndarray, reference_signals: np.ndarray, time_step: int
+    ) -> np.ndarray:
         """Сделать предикт и получить следующи сигналы управления
 
         Args:
@@ -183,7 +185,7 @@ class IHDPAgent(object):
         self.actor.update_actor_attributes()
         return ut
 
-    def _process_state_input(self, xt):
+    def _process_state_input(self, xt: np.ndarray | list) -> np.ndarray:
         """Обработка входных состояний для совместимости с новой моделью F16
 
         Args:

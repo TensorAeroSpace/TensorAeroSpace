@@ -126,6 +126,9 @@ class PID(BaseRLModel):
         Args:
             path (str, optional): Путь, где будет сохранена модель. Если None,
                                 создается директория с текущей датой и временем.
+
+        Returns:
+            Path: Путь к директории с сохраненной моделью.
         """
         if path is None:
             path = Path.cwd()
@@ -136,7 +139,8 @@ class PID(BaseRLModel):
         date_str = date_str + "_" + self.__class__.__name__
         # Создание пути в текущем каталоге с датой и временем
 
-        config_path = path / date_str / "config.json"
+        save_dir = path / date_str
+        config_path = save_dir / "config.json"
 
         # Создание директории, если она не существует
         config_path.parent.mkdir(parents=True, exist_ok=True)
@@ -144,6 +148,8 @@ class PID(BaseRLModel):
         config = self.get_param_env()
         with open(config_path, "w") as outfile:
             json.dump(config, outfile)
+
+        return save_dir
 
     @classmethod
     def __load(cls, path):

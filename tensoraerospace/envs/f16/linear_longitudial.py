@@ -40,8 +40,8 @@ class LinearLongitudinalF16(gym.Env):
         control_space: list = ["ele"],
         output_space: list = ["alpha", "q"],
         reward_func: callable = None,
-        use_reward=True,
-    ):
+        use_reward: bool = True,
+    ) -> None:
         """Initialize LinearLongitudinalF16 environment.
 
         Args:

@@ -2,12 +2,20 @@
 
 Generators of standard test signals for modeling, identification, and verification of control systems in `TensorAeroSpace`.
 
+TensorAeroSpace provides **17 types of signals** for comprehensive system testing and analysis:
+
+- **Basic signals**: Step, Ramp, Pulse, Constant
+- **Periodic signals**: Sinusoid, Square wave, Triangular wave, Sawtooth
+- **Complex signals**: Chirp, Doublet, Multi-step, Exponential, Gaussian pulse, Multisine, Damped sinusoid
+- **Random signals**: Full random signal
+
 ## Quick Start
 
 ```python
 from tensoraerospace.utils import generate_time_period
-from tensoraerospace.signals.standart import unit_step, sinusoid
+from tensoraerospace.signals.standart import unit_step, sinusoid, chirp, doublet
 from tensoraerospace.signals.random import full_random_signal
+import numpy as np
 
 # Time axis 0..20 s (default step)
 tp = generate_time_period(tn=20)
@@ -18,6 +26,12 @@ u_step = unit_step(degree=5, tp=tp, time_step=10, output_rad=False)
 # Sine wave with amplitude 10 units, frequency 0.01 Hz
 u_sin = sinusoid(tp=tp, amplitude=10, frequency=0.01)
 
+# Chirp signal for frequency response analysis
+u_chirp = chirp(tp, f0=0.1, f1=2.0, amplitude=2.0, method='linear')
+
+# Doublet for aerospace maneuvers
+u_doublet = doublet(tp, amplitude=np.deg2rad(5), time_start=5.0, width=1.0)
+
 # Random signal with random frequency and amplitude
 u_rand = full_random_signal(0, 0.01, 20, (-0.5, 0.5), (-0.5, 0.5))
 ```
@@ -27,9 +41,11 @@ u_rand = full_random_signal(0, 0.01, 20, (-0.5, 0.5), (-0.5, 0.5))
 
 ---
 
-## Step Signal
+## Basic Signals
 
-A classic step input for exciting transient processes.
+### Step Signal
+
+A classic step input for exciting transient processes and analyzing system response.
 
 === "API"
 
@@ -49,7 +65,75 @@ A classic step input for exciting transient processes.
 
 ---
 
-## Sinusoidal Signal
+### Ramp Signal
+
+Linear increasing signal for testing tracking capability of control systems.
+
+=== "API"
+
+    ::: tensoraerospace.signals.standart.ramp
+
+=== "Example"
+
+    ```python
+    from tensoraerospace.utils import generate_time_period
+    from tensoraerospace.signals.standart import ramp
+
+    tp = generate_time_period(tn=20)
+    u = ramp(tp, slope=0.5, time_start=2.0)
+    ```
+
+![Ramp signal](img/ramp.png)
+
+---
+
+### Pulse Signal
+
+Rectangular pulse for analyzing impulse response and transient behavior.
+
+=== "API"
+
+    ::: tensoraerospace.signals.standart.pulse
+
+=== "Example"
+
+    ```python
+    from tensoraerospace.utils import generate_time_period
+    from tensoraerospace.signals.standart import pulse
+
+    tp = generate_time_period(tn=20)
+    u = pulse(tp, amplitude=5.0, time_start=5.0, width=3.0)
+    ```
+
+![Pulse signal](img/pulse.png)
+
+---
+
+### Constant Signal
+
+Constant reference signal for setpoint tracking and steady-state analysis.
+
+=== "API"
+
+    ::: tensoraerospace.signals.standart.constant_line
+
+=== "Example"
+
+    ```python
+    from tensoraerospace.utils import generate_time_period
+    from tensoraerospace.signals.standart import constant_line
+
+    tp = generate_time_period(tn=20)
+    u = constant_line(tp, value_state=3.0)
+    ```
+
+![Constant signal](img/constant_line.png)
+
+---
+
+## Periodic Signals
+
+### Sinusoidal Signal
 
 Used for frequency analysis and testing linear subsystems.
 
@@ -71,9 +155,259 @@ Used for frequency analysis and testing linear subsystems.
 
 ---
 
-## Random Signal by Frequency and Amplitude
+### Sinusoid with Vertical Shift
 
-Generates a random test input with configurable frequency and amplitude ranges.
+Sinusoidal signal with DC offset for testing systems with non-zero operating points.
+
+=== "API"
+
+    ::: tensoraerospace.signals.standart.sinusoid_vertical_shift
+
+=== "Example"
+
+    ```python
+    from tensoraerospace.utils import generate_time_period
+    from tensoraerospace.signals.standart import sinusoid_vertical_shift
+
+    tp = generate_time_period(tn=20)
+    u = sinusoid_vertical_shift(tp, frequency=0.5, amplitude=2.0, vertical_shift=5.0)
+    ```
+
+![Sinusoid with vertical shift](img/sinusoid_vertical_shift.png)
+
+---
+
+### Square Wave
+
+Periodic square wave for switching control and relay-based systems.
+
+=== "API"
+
+    ::: tensoraerospace.signals.standart.square_wave
+
+=== "Example"
+
+    ```python
+    from tensoraerospace.utils import generate_time_period
+    from tensoraerospace.signals.standart import square_wave
+
+    tp = generate_time_period(tn=20)
+    u = square_wave(tp, frequency=0.5, amplitude=3.0, duty_cycle=0.5)
+    ```
+
+![Square wave signal](img/square_wave.png)
+
+---
+
+### Triangular Wave
+
+Smooth periodic signal with symmetric rise and fall times.
+
+=== "API"
+
+    ::: tensoraerospace.signals.standart.triangular_wave
+
+=== "Example"
+
+    ```python
+    from tensoraerospace.utils import generate_time_period
+    from tensoraerospace.signals.standart import triangular_wave
+
+    tp = generate_time_period(tn=20)
+    u = triangular_wave(tp, frequency=0.3, amplitude=4.0)
+    ```
+
+![Triangular wave signal](img/triangular_wave.png)
+
+---
+
+### Sawtooth Wave
+
+Periodic sawtooth signal with linear increase from negative to positive amplitude.
+
+=== "API"
+
+    ::: tensoraerospace.signals.standart.sawtooth
+
+=== "Example"
+
+    ```python
+    from tensoraerospace.utils import generate_time_period
+    from tensoraerospace.signals.standart import sawtooth
+
+    tp = generate_time_period(tn=20)
+    u = sawtooth(tp, frequency=0.4, amplitude=3.0)
+    ```
+
+![Sawtooth signal](img/sawtooth.png)
+
+---
+
+## Complex Signals
+
+### Chirp Signal
+
+Swept-frequency signal for system identification and frequency response analysis.
+
+=== "API"
+
+    ::: tensoraerospace.signals.standart.chirp
+
+=== "Example"
+
+    ```python
+    from tensoraerospace.utils import generate_time_period
+    from tensoraerospace.signals.standart import chirp
+
+    tp = generate_time_period(tn=20)
+    u = chirp(tp, f0=0.1, f1=2.0, amplitude=2.0, method='linear')
+    ```
+
+![Chirp signal](img/chirp.png)
+
+---
+
+### Doublet
+
+Aerospace maneuver signal consisting of positive and negative pulses for stability analysis.
+
+=== "API"
+
+    ::: tensoraerospace.signals.standart.doublet
+
+=== "Example"
+
+    ```python
+    import numpy as np
+    from tensoraerospace.utils import generate_time_period
+    from tensoraerospace.signals.standart import doublet
+
+    tp = generate_time_period(tn=20)
+    u = doublet(tp, amplitude=np.deg2rad(10), time_start=5.0, width=1.0)
+    ```
+
+![Doublet signal](img/doublet.png)
+
+---
+
+### Multi-Step Signal
+
+Sequence of step changes for testing tracking performance with multiple setpoints.
+
+=== "API"
+
+    ::: tensoraerospace.signals.standart.multi_step
+
+=== "Example"
+
+    ```python
+    from tensoraerospace.utils import generate_time_period
+    from tensoraerospace.signals.standart import multi_step
+
+    tp = generate_time_period(tn=20)
+    u = multi_step(tp, step_times=[2, 5, 8, 12, 16], step_values=[1, 2, -1, 3, -2])
+    ```
+
+![Multi-step signal](img/multi_step.png)
+
+---
+
+### Exponential Signal
+
+Smooth exponential approach to final value, modeling first-order system response.
+
+=== "API"
+
+    ::: tensoraerospace.signals.standart.exponential
+
+=== "Example"
+
+    ```python
+    from tensoraerospace.utils import generate_time_period
+    from tensoraerospace.signals.standart import exponential
+
+    tp = generate_time_period(tn=20)
+    u = exponential(tp, amplitude=10.0, time_constant=2.0, time_start=3.0)
+    ```
+
+![Exponential signal](img/exponential.png)
+
+---
+
+### Gaussian Pulse
+
+Bell-shaped pulse for smooth disturbances and band-limited excitations.
+
+=== "API"
+
+    ::: tensoraerospace.signals.standart.gaussian_pulse
+
+=== "Example"
+
+    ```python
+    from tensoraerospace.utils import generate_time_period
+    from tensoraerospace.signals.standart import gaussian_pulse
+
+    tp = generate_time_period(tn=20)
+    u = gaussian_pulse(tp, amplitude=8.0, center=10.0, width=1.5)
+    ```
+
+![Gaussian pulse signal](img/gaussian_pulse.png)
+
+---
+
+### Multisine Signal
+
+Sum of multiple sinusoids for multi-frequency system excitation and MIMO analysis.
+
+=== "API"
+
+    ::: tensoraerospace.signals.standart.multisine
+
+=== "Example"
+
+    ```python
+    import numpy as np
+    from tensoraerospace.utils import generate_time_period
+    from tensoraerospace.signals.standart import multisine
+
+    tp = generate_time_period(tn=20)
+    u = multisine(tp, frequencies=[0.2, 0.5, 1.0, 1.5], 
+                  amplitudes=[2.0, 1.5, 1.0, 0.5],
+                  phases=[0, np.pi/4, np.pi/2, np.pi])
+    ```
+
+![Multisine signal](img/multisine.png)
+
+---
+
+### Damped Sinusoid
+
+Exponentially decaying oscillation, characteristic of underdamped systems.
+
+=== "API"
+
+    ::: tensoraerospace.signals.standart.damped_sinusoid
+
+=== "Example"
+
+    ```python
+    from tensoraerospace.utils import generate_time_period
+    from tensoraerospace.signals.standart import damped_sinusoid
+
+    tp = generate_time_period(tn=20)
+    u = damped_sinusoid(tp, frequency=1.0, amplitude=5.0, damping=0.3, time_start=2.0)
+    ```
+
+![Damped sinusoid signal](img/damped_sinusoid.png)
+
+---
+
+## Random Signals
+
+### Random Signal by Frequency and Amplitude
+
+Generates a random test input with configurable frequency and amplitude ranges for modeling disturbances.
 
 === "API"
 
@@ -92,7 +426,10 @@ Generates a random test input with configurable frequency and amplitude ranges.
 
 ---
 
-### Notes
+## Notes
 
 - Use `tensoraerospace.utils.generate_time_period` to build the time axis.
 - All functions return an array of signal values that aligns with the `tp` time axis.
+- For aerospace applications, doublet signals are particularly useful for flight control testing.
+- Chirp signals are ideal for system identification and frequency response analysis.
+- Combine multiple signals to create complex test scenarios.
