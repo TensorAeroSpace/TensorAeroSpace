@@ -170,46 +170,94 @@ hide:
     pip install tensoraerospace
     ```
 
-## Quick example
+## Quick examples
 
-```python
-import gymnasium as gym
-import numpy as np
+=== "Pretrained SAC Agent"
 
-from tensoraerospace.agent.pid import PID
-from tensoraerospace.utils import generate_time_period
-from tensoraerospace.signals.standart import unit_step
+    Run a pretrained Soft Actor-Critic agent on Boeing 747 pitch control:
 
-# Simulation setup
-dt = 0.01
-tp = generate_time_period(tn=10, dt=dt)  # 10 seconds
-N = len(tp)
+    ![SAC B747](example/agent/sac/img/sac-b747-impoved.jpg)
 
-# Reference signal for alpha tracking (5 deg step in radians)
-reference = unit_step(degree=5, tp=tp, time_step=100, output_rad=True).reshape(1, -1)
+    ```bash
+    python example/reinforcement_learning/sac-b747-render.py \
+        --render \
+        --dt 0.1 \
+        --tn 200 \
+        --repo TensorAeroSpace/sac-b747
+    ```
 
-# Create F-16 longitudinal environment (state order here: [alpha, q])
-env = gym.make(
-    'LinearLongitudinalF16-v0',
-    number_time_steps=N,
-    initial_state=[[0], [0]],
-    reference_signal=reference,
-    use_reward=False,
-)
+    Or use the Python API:
 
-# PID controller (coefficients from PID example)
-pid = PID(env, kp=-14.290139135229715, ki=-8.240470780203491, kd=-1.2991634935096958, dt=dt)
+    ```python
+    from tensoraerospace.agent.sac import SAC
+    from tensoraerospace.envs.b747 import ImprovedB747Env
 
-obs, info = env.reset()
-for t in range(N - 1):
-    setpoint = reference[0, t]
-    alpha = float(obs[0])  # env returns [alpha, q]
-    u = pid.select_action(setpoint, alpha)
-    action = np.array([[float(u)]], dtype=np.float32)
-    obs, reward, terminated, truncated, info = env.step(action)
-    if terminated or truncated:
-        break
-```
+    # Load pretrained agent from Hugging Face
+    agent = SAC.from_pretrained("TensorAeroSpace/sac-b747")
+
+    # Create environment
+    env = ImprovedB747Env(dt=0.1, number_time_steps=200)
+    
+    # Run evaluation
+    obs, info = env.reset()
+    done = False
+    while not done:
+        action = agent.select_action(obs, evaluate=True)
+        obs, reward, terminated, truncated, info = env.step(action)
+        env.render(mode="human")
+        done = terminated or truncated
+    ```
+
+    [:octicons-arrow-right-24: Full SAC B747 tutorial](example/agent/sac/example-sac-b747.md)
+
+=== "PID Controller"
+
+    ```python
+    import gymnasium as gym
+    import numpy as np
+
+    from tensoraerospace.agent.pid import PID
+    from tensoraerospace.utils import generate_time_period
+    from tensoraerospace.signals.standart import unit_step
+
+    # Simulation setup
+    dt = 0.01
+    tp = generate_time_period(tn=10, dt=dt)  # 10 seconds
+    N = len(tp)
+
+    # Reference signal for alpha tracking (5 deg step in radians)
+    reference = unit_step(
+        degree=5, tp=tp, time_step=100, output_rad=True
+    ).reshape(1, -1)
+
+    # Create F-16 longitudinal environment
+    env = gym.make(
+        'LinearLongitudinalF16-v0',
+        number_time_steps=N,
+        initial_state=[[0], [0]],
+        reference_signal=reference,
+        use_reward=False,
+    )
+
+    # PID controller with tuned coefficients
+    pid = PID(
+        env,
+        kp=-14.290139135229715,
+        ki=-8.240470780203491,
+        kd=-1.2991634935096958,
+        dt=dt
+    )
+
+    obs, info = env.reset()
+    for t in range(N - 1):
+        setpoint = reference[0, t]
+        alpha = float(obs[0])
+        u = pid.select_action(setpoint, alpha)
+        action = np.array([[float(u)]], dtype=np.float32)
+        obs, reward, terminated, truncated, info = env.step(action)
+        if terminated or truncated:
+            break
+    ```
 
 ## Why TensorAeroSpace?
 

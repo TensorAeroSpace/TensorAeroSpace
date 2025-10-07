@@ -55,7 +55,32 @@ docker build -t tensoraerospace . --platform=linux/amd64
 docker run -v $(pwd)/example:/app/example -p 8888:8888 -it tensoraerospace
 ```
 
-### 🏃‍♂️ Quick Example
+### 🏃‍♂️ Quick Examples
+
+#### 🚀 Pretrained SAC Agent (Boeing 747)
+
+Run a pretrained Soft Actor-Critic agent on Boeing 747 pitch control:
+
+<div align="center">
+
+![SAC B747](./docs/en/example/agent/sac/img/sac-b747-impoved.jpg)
+
+</div>
+
+**Command line:**
+```bash
+python example/reinforcement_learning/sac-b747-render.py \
+    --render \
+    --dt 0.1 \
+    --tn 200 \
+    --repo TensorAeroSpace/sac-b747
+```
+
+> 📖 **See full tutorial**: [SAC B747 Documentation](https://tensoraerospace.readthedocs.io/en/latest/example/agent/sac/example-sac-b747/)
+
+---
+
+#### 🎛️ PID Controller (F-16)
 
 ```python
 import gymnasium as gym
@@ -71,9 +96,11 @@ tp = generate_time_period(tn=10, dt=dt)  # 10 seconds
 N = len(tp)
 
 # Reference signal for alpha tracking (5 deg step in radians)
-reference = unit_step(degree=5, tp=tp, time_step=100, output_rad=True).reshape(1, -1)
+reference = unit_step(
+    degree=5, tp=tp, time_step=100, output_rad=True
+).reshape(1, -1)
 
-# Create F-16 longitudinal environment (state order here: [alpha, q])
+# Create F-16 longitudinal environment
 env = gym.make(
     'LinearLongitudinalF16-v0',
     number_time_steps=N,
@@ -82,13 +109,19 @@ env = gym.make(
     use_reward=False,
 )
 
-# PID controller (coefficients from PID example)
-pid = PID(env, kp=-14.290139135229715, ki=-8.240470780203491, kd=-1.2991634935096958, dt=dt)
+# PID controller with tuned coefficients
+pid = PID(
+    env,
+    kp=-14.290139135229715,
+    ki=-8.240470780203491,
+    kd=-1.2991634935096958,
+    dt=dt
+)
 
 obs, info = env.reset()
 for t in range(N - 1):
     setpoint = reference[0, t]
-    alpha = float(obs[0])  # env returns [alpha, q]
+    alpha = float(obs[0])
     u = pid.select_action(setpoint, alpha)
     action = np.array([[float(u)]], dtype=np.float32)
     obs, reward, terminated, truncated, info = env.step(action)

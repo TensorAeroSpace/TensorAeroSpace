@@ -1,3 +1,7 @@
+from __future__ import annotations
+
+from typing import Iterable, Tuple
+
 import torch
 
 
@@ -16,7 +20,14 @@ class SharedAdam(torch.optim.Adam):
         weight_decay (float): Коэффициент регуляризации весов. По умолчанию 0.
     """
 
-    def __init__(self, params, lr=1e-3, betas=(0.9, 0.99), eps=1e-8, weight_decay=0):
+    def __init__(
+        self,
+        params: Iterable[torch.nn.Parameter],
+        lr: float = 1e-3,
+        betas: Tuple[float, float] = (0.9, 0.99),
+        eps: float = 1e-8,
+        weight_decay: float = 0,
+    ) -> None:
         super(SharedAdam, self).__init__(
             params, lr=lr, betas=betas, eps=eps, weight_decay=weight_decay
         )

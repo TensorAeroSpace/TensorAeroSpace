@@ -8,7 +8,7 @@ and the main PPO agent class for aerospace system control.
 import datetime
 import json
 from pathlib import Path
-from typing import Any, Dict, Optional, Tuple, Union
+from typing import Any, Dict, Generator, Optional, Tuple, Union
 
 import numpy as np
 import torch
@@ -227,7 +227,19 @@ def ppo_iter(
     advantages: torch.Tensor,
     rewards: torch.Tensor,
     values: torch.Tensor,
-):
+) -> Generator[
+    Tuple[
+        torch.Tensor,
+        torch.Tensor,
+        torch.Tensor,
+        torch.Tensor,
+        torch.Tensor,
+        torch.Tensor,
+        torch.Tensor,
+    ],
+    None,
+    None,
+]:
     """Create mini-batch iterator for PPO training with shuffled indices.
 
     This function generates mini-batches by randomly shuffling the data indices

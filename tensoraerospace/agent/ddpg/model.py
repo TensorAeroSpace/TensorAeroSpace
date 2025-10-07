@@ -2,14 +2,21 @@ import datetime
 import json
 import os
 import random
+from __future__ import annotations
+
 from pathlib import Path
-from typing import Any, Dict, Optional, Union
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
+
+try:  # Prefer gymnasium typing when available
+    import gymnasium as gym
+except ImportError:  # pragma: no cover
+    import gym
 
 # Device setup
 use_cuda = torch.cuda.is_available()
@@ -87,7 +94,9 @@ class RunningMeanStd:
         count: Total number of samples processed.
     """
 
-    def __init__(self, shape=(), epsilon=1e-4):
+    def __init__(
+        self, shape: Tuple[int, ...] = (), epsilon: float = 1e-4
+    ) -> None:
         """Initialize RunningMeanStd.
 
         Args:
@@ -99,7 +108,7 @@ class RunningMeanStd:
         self.var = np.ones(shape, dtype=np.float64)
         self.count = epsilon
 
-    def update(self, x):
+    def update(self, x: np.ndarray) -> None:
         """Update statistics based on a new batch of data.
 
         Args:
@@ -111,7 +120,9 @@ class RunningMeanStd:
         batch_count = x.shape[0]
         self.update_from_moments(batch_mean, batch_var, batch_count)
 
-    def update_from_moments(self, batch_mean, batch_var, batch_count):
+    def update_from_moments(
+        self, batch_mean: np.ndarray, batch_var: np.ndarray, batch_count: int
+    ) -> None:
         """Update statistics using batch moments.
 
         This method implements Welford's online algorithm for computing
@@ -136,7 +147,7 @@ class RunningMeanStd:
         self.var = new_var
         self.count = total_count
 
-    def normalize(self, x, epsilon=1e-8):
+    def normalize(self, x: np.ndarray, epsilon: float = 1e-8) -> np.ndarray:
         """Normalize data using current statistics.
 
         Args:
@@ -149,7 +160,7 @@ class RunningMeanStd:
         """
         return (x - self.mean) / np.sqrt(self.var + epsilon)
 
-    def state_dict(self):
+    def state_dict(self) -> Dict[str, Union[List[float], float, np.ndarray]]:
         """Serialize the current state for checkpointing.
 
         Returns:
@@ -161,7 +172,7 @@ class RunningMeanStd:
             "count": float(self.count),
         }
 
-    def load_state_dict(self, state):
+    def load_state_dict(self, state: Dict[str, Any]) -> None:
         """Restore state from a checkpoint dictionary.
 
         Args:
@@ -184,7 +195,7 @@ class ReplayBuffer:
         position: Current position in the circular buffer.
     """
 
-    def __init__(self, capacity):
+    def __init__(self, capacity: int) -> None:
         """Initialize ReplayBuffer.
 
         Args:
@@ -194,7 +205,14 @@ class ReplayBuffer:
         self.buffer = []
         self.position = 0
 
-    def push(self, state, action, reward, next_state, done):
+    def push(
+        self,
+        state: np.ndarray,
+        action: np.ndarray,
+        reward: float,
+        next_state: np.ndarray,
+        done: bool,
+    ) -> None:
         """Store a transition in the buffer.
 
         Args:
@@ -209,7 +227,7 @@ class ReplayBuffer:
         self.buffer[self.position] = (state, action, reward, next_state, done)
         self.position = (self.position + 1) % self.capacity
 
-    def sample(self, batch_size):
+    def sample(self, batch_size: int) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
         """Sample a random batch of transitions.
 
         Args:
@@ -231,11 +249,11 @@ class ReplayBuffer:
         state, action, reward, next_state, done = map(np.stack, zip(*batch))
         return state, action, reward, next_state, done
 
-    def __len__(self):
+    def __len__(self) -> int:
         """Return the current number of transitions in the buffer."""
         return len(self.buffer)
 
-    def state_dict(self):
+    def state_dict(self) -> Dict[str, Any]:
         """Serialize replay buffer state for checkpointing.
 
         Returns:
@@ -247,7 +265,7 @@ class ReplayBuffer:
             "position": self.position,
         }
 
-    def load_state_dict(self, state):
+    def load_state_dict(self, state: Dict[str, Any]) -> None:
         """Restore replay buffer state from a checkpoint dictionary.
 
         Args:
@@ -280,13 +298,13 @@ class OUNoise(object):
 
     def __init__(
         self,
-        action_space,
-        mu=0.0,
-        theta=0.15,
-        max_sigma=0.3,
-        min_sigma=0.3,
-        decay_period=100000,
-    ):
+        action_space: gym.Space,
+        mu: float = 0.0,
+        theta: float = 0.15,
+        max_sigma: float = 0.3,
+        min_sigma: float = 0.3,
+        decay_period: int = 100000,
+    ) -> None:
         """Initialize Ornstein-Uhlenbeck noise process.
 
         Args:
@@ -309,11 +327,11 @@ class OUNoise(object):
         self.high = action_space.high
         self.reset()
 
-    def reset(self):
+    def reset(self) -> None:
         """Reset the OU process state to the mean."""
         self.state = np.ones(self.action_dim) * self.mu
 
-    def evolve_state(self):
+    def evolve_state(self) -> np.ndarray:
         """Evolve the OU process by one timestep.
 
         Returns:
@@ -325,7 +343,7 @@ class OUNoise(object):
         self.state = x + dx
         return self.state
 
-    def get_action(self, action, t=0):
+    def get_action(self, action: np.ndarray, t: int = 0) -> np.ndarray:
         """Add OU noise to an action and clip to action space bounds.
 
         Args:
@@ -342,7 +360,7 @@ class OUNoise(object):
         )
         return np.clip(action + ou_state, self.low, self.high)
 
-    def state_dict(self):
+    def state_dict(self) -> Dict[str, Any]:
         """Serialize OU noise state for checkpointing.
 
         Returns:
@@ -361,7 +379,7 @@ class OUNoise(object):
             "state": self.state,
         }
 
-    def load_state_dict(self, state):
+    def load_state_dict(self, state: Dict[str, Any]) -> None:
         """Restore OU noise state from a checkpoint dictionary.
 
         Args:
@@ -387,7 +405,13 @@ class ValueNetwork(nn.Module):
     architecture with ReLU activations.
     """
 
-    def __init__(self, num_inputs, num_actions, hidden_size, init_w=3e-3):
+    def __init__(
+        self,
+        num_inputs: int,
+        num_actions: int,
+        hidden_size: int,
+        init_w: float = 3e-3,
+    ) -> None:
         """Initialize the value network.
 
         Args:
@@ -407,7 +431,7 @@ class ValueNetwork(nn.Module):
         self.linear3.weight.data.uniform_(-init_w, init_w)
         self.linear3.bias.data.uniform_(-init_w, init_w)
 
-    def forward(self, state, action):
+    def forward(self, state: torch.Tensor, action: torch.Tensor) -> torch.Tensor:
         """Forward pass to compute Q(s, a).
 
         Args:
@@ -437,13 +461,13 @@ class PolicyNetwork(nn.Module):
 
     def __init__(
         self,
-        num_inputs,
-        num_actions,
-        hidden_size,
-        action_low=None,
-        action_high=None,
-        init_w=3e-3,
-    ):
+        num_inputs: int,
+        num_actions: int,
+        hidden_size: int,
+        action_low: Optional[np.ndarray] = None,
+        action_high: Optional[np.ndarray] = None,
+        init_w: float = 3e-3,
+    ) -> None:
         """Initialize the policy network.
 
         Args:
@@ -476,7 +500,7 @@ class PolicyNetwork(nn.Module):
             self.action_scale = torch.FloatTensor([1.0]).to(device)
             self.action_bias = torch.FloatTensor([0.0]).to(device)
 
-    def forward(self, state):
+    def forward(self, state: torch.Tensor) -> torch.Tensor:
         """Forward pass to compute the action for a given state.
 
         Args:
@@ -492,7 +516,7 @@ class PolicyNetwork(nn.Module):
         x = x * self.action_scale + self.action_bias
         return x
 
-    def get_action(self, state):
+    def get_action(self, state: np.ndarray) -> np.ndarray:
         """Get action for a single state (inference mode).
 
         Args:
@@ -529,12 +553,12 @@ class DDPG:
 
     def __init__(
         self,
-        env,
-        value_lr,
-        policy_lr,
-        replay_buffer_size,
-        normalize_observations=True,
-    ):
+        env: gym.Env,
+        value_lr: float,
+        policy_lr: float,
+        replay_buffer_size: int,
+        normalize_observations: bool = True,
+    ) -> None:
         """Initialize DDPG agent.
 
         Args:
@@ -614,7 +638,7 @@ class DDPG:
         # TensorBoard writer (lazy init in learn to include run-time params)
         self.writer = None
 
-    def _normalize_observation(self, obs):
+    def _normalize_observation(self, obs: np.ndarray) -> np.ndarray:
         """Normalize observation using running statistics.
 
         Args:
@@ -630,12 +654,12 @@ class DDPG:
 
     def ddpg_update(
         self,
-        batch_size,
-        gamma=0.99,
-        min_value=-np.inf,
-        max_value=np.inf,
-        soft_tau=1e-2,
-    ):
+        batch_size: int,
+        gamma: float = 0.99,
+        min_value: float = -np.inf,
+        max_value: float = np.inf,
+        soft_tau: float = 1e-2,
+    ) -> None:
         """Perform one DDPG update step on both actor and critic networks.
 
         This method implements the core DDPG algorithm:
@@ -722,15 +746,15 @@ class DDPG:
 
     def learn(
         self,
-        max_frames,
-        max_steps,
-        batch_size,
+        max_frames: int,
+        max_steps: int,
+        batch_size: int,
         gamma: float = 0.995,
         soft_tau: float = 5e-3,
         warmup_frames: int = 10_000,
         updates_per_step: int = 1,
-        target_value_clip: Optional[tuple] = (-10.0, 10.0),
-    ):
+        target_value_clip: Optional[Tuple[float, float]] = (-10.0, 10.0),
+    ) -> None:
         """Train the DDPG agent.
 
         Runs the main training loop: collect experience, update networks, and
@@ -854,7 +878,7 @@ class DDPG:
                     except Exception:
                         pass
 
-    def _collect_grads(self, model):
+    def _collect_grads(self, model: nn.Module) -> Dict[str, Optional[torch.Tensor]]:
         """Collect parameter gradients of a model as CPU tensors.
 
         Helper method for saving gradients in checkpoints for debugging
@@ -877,7 +901,7 @@ class DDPG:
                 grads[name] = param.grad.detach().cpu()
         return grads
 
-    def save(self, filepath, include_grads: bool = False):
+    def save(self, filepath: Union[str, Path], include_grads: bool = False) -> None:
         """Save training state (checkpoint) or full model folder.
 
         Supports two save formats:
@@ -961,15 +985,15 @@ class DDPG:
 
     def load(
         self,
-        filepath,
-        map_location=None,
-        load_optimizer=True,
-        load_targets=True,
-        load_replay=True,
-        load_noise=True,
-        load_grads=False,
-        strict=True,
-    ):
+        filepath: Union[str, Path],
+        map_location: Optional[Union[str, torch.device]] = None,
+        load_optimizer: bool = True,
+        load_targets: bool = True,
+        load_replay: bool = True,
+        load_noise: bool = True,
+        load_grads: bool = False,
+        strict: bool = True,
+    ) -> None:
         """Load training state from a checkpoint file.
 
         Restores networks, optimizers, replay buffer, OU noise, and observation

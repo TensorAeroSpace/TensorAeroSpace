@@ -1,8 +1,17 @@
+from __future__ import annotations
+
 import numpy as np
 import torch
 import torch.multiprocessing as mp
 import torch.nn as nn
 import torch.nn.functional as F
+
+try:  # Prefer gymnasium when available for typing accuracy
+    import gymnasium as gym
+except ImportError:  # pragma: no cover - fallback for older environments
+    import gym
+
+from typing import Callable, Optional, Tuple
 
 from .shared_optim import SharedAdam
 from .utils import push_and_pull, record, set_init, v_wrap
@@ -30,7 +39,7 @@ class Net(nn.Module):
             моделирования действий агента.
     """
 
-    def __init__(self, s_dim, a_dim):
+    def __init__(self, s_dim: int, a_dim: int) -> None:
         super(Net, self).__init__()
         self.s_dim = s_dim
         self.a_dim = a_dim
@@ -43,7 +52,9 @@ class Net(nn.Module):
         set_init([self.a1, self.mu, self.sigma, self.c1, self.v])
         self.distribution = torch.distributions.Normal
 
-    def forward(self, x):
+    def forward(
+        self, x: torch.Tensor
+    ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         """Выполняет один шаг прямого распространения.
 
         Args:
@@ -60,7 +71,7 @@ class Net(nn.Module):
         values = self.v(c1)
         return mu, sigma, values
 
-    def choose_action(self, s):
+    def choose_action(self, s: torch.Tensor) -> np.ndarray:
         """Выбор действия агента на основе текущего состояния.
 
         Args:
@@ -81,7 +92,9 @@ class Net(nn.Module):
             a = dist.sample()
         return a.cpu().numpy().squeeze(0)
 
-    def loss_func(self, s, a, v_t):
+    def loss_func(
+        self, s: torch.Tensor, a: torch.Tensor, v_t: torch.Tensor
+    ) -> torch.Tensor:
         """Вычисляет функцию потерь для обучения сети.
 
         Args:
@@ -151,23 +164,23 @@ class Worker(mp.Process):
 
     def __init__(
         self,
-        env,
-        gnet,
-        opt,
-        global_ep,
-        global_ep_r,
-        res_queue,
-        name,
-        num_actions,
-        num_observations,
-        MAX_EP,
-        MAX_EP_STEP,
-        GAMMA,
-        update_global_iter,
-        render=False,
-        writer=None,
-        global_step=None,
-    ):
+        env: gym.Env,
+        gnet: Net,
+        opt: SharedAdam,
+        global_ep: mp.Value,
+        global_ep_r: mp.Value,
+        res_queue: mp.Queue,
+        name: int,
+        num_actions: int,
+        num_observations: int,
+        MAX_EP: int,
+        MAX_EP_STEP: int,
+        GAMMA: float,
+        update_global_iter: int,
+        render: bool = False,
+        writer: Optional["torch.utils.tensorboard.SummaryWriter"] = None,
+        global_step: Optional[mp.Value] = None,
+    ) -> None:
         super(Worker, self).__init__()
         self.name = "w%i" % name
         self.g_ep, self.g_ep_r, self.res_queue = (
@@ -186,7 +199,7 @@ class Worker(mp.Process):
         self.writer = writer
         self.global_step = global_step
 
-    def run(self):
+    def run(self) -> None:
         """Выполнение рабочего процесса, содержащего обучение агента."""
         total_step = 1
         # initial sync from global to local to avoid stale params
@@ -342,9 +355,9 @@ class Agent:
 
     def __init__(
         self,
-        env_function,
+        env_function: Callable[[int], gym.Env],
         gamma: float = DEFAULT_GAMMA,
-        n_workers=None,
+        n_workers: Optional[int] = None,
         lr: float = DEFAULT_LR,
         max_episodes: int = DEFAULT_MAX_EP,
         max_ep_step: int = DEFAULT_MAX_EP_STEP,
