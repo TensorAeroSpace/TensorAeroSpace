@@ -1,5 +1,3 @@
-import datetime
-
 import gymnasium as gym
 import pytest
 
@@ -39,16 +37,15 @@ def test_pid_get_param_env():
     assert params["policy"]["params"]["dt"] == 0.01
 
 
-def test_pid_save_and_load(monkeypatch):
+def test_pid_save_and_load():
     env = gym.make("Pendulum-v1")
     pid = PID(env=env, kp=1, ki=1, kd=0.5, dt=0.01)
 
-    monkeypatch.chdir("/tmp/mock_model")
-    pid.save("/tmp/mock_model")
-    date_str = datetime.datetime.now().strftime("%b%d_%H-%M-%S")
-    date_str = date_str + "_" + PID.__name__
+    # Save and get the path to saved model
+    saved_dir = pid.save("/tmp/mock_model_pid")
 
-    loaded_pid = PID.from_pretrained(f"/tmp/mock_model/{date_str}")
+    # Load from the saved directory
+    loaded_pid = PID.from_pretrained(str(saved_dir))
     assert pid.kp == loaded_pid.kp
     assert pid.ki == loaded_pid.ki
     assert pid.kd == loaded_pid.kd
