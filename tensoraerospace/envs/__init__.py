@@ -1,6 +1,8 @@
+from .b747 import ImprovedB747Env as ImprovedB747Env
 from .b747 import LinearLongitudinalB747 as LinearLongitudinalB747
 from .comsat import ComSatEnv as ComSatEnv
 from .elv import LinearLongitudinalELVRocket as LinearLongitudinalELVRocket
+from .f4c import F4CPitchEnvNormalized as F4CPitchEnvNormalized
 from .f4c import LinearLongitudinalF4C as LinearLongitudinalF4C
 from .f16.linear_longitudial import LinearLongitudinalF16 as LinearLongitudinalF16
 from .geostat import GeoSatEnv as GeoSatEnv
