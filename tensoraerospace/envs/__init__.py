@@ -10,6 +10,7 @@ from .lapan import LinearLongitudinalLAPAN as LinearLongitudinalLAPAN
 from .rocket import LinearLongitudinalMissileModel as LinearLongitudinalMissileModel
 from .uav import LinearLongitudinalUAV as LinearLongitudinalUAV
 from .ultrastick import LinearLongitudinalUltrastick as LinearLongitudinalUltrastick
+from .x15 import ImprovedX15Env as ImprovedX15Env
 from .x15 import LinearLongitudinalX15 as LinearLongitudinalX15
 
 # from .unity_env import get_plane_env, unity_discrete_env
