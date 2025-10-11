@@ -334,14 +334,10 @@ class ImprovedX15Env(gym.Env):
 
         # 1) Pitch error (normalized)
         pitch_error = target_theta - theta
-        norm_pitch_error = float(
-            np.clip(pitch_error / self.max_pitch_rad, -1.0, 1.0)
-        )
+        norm_pitch_error = float(np.clip(pitch_error / self.max_pitch_rad, -1.0, 1.0))
 
         # 2) Pitch rate (normalized)
-        norm_q = float(
-            np.clip(q / self.max_pitch_rate_rad_s, -1.0, 1.0)
-        )
+        norm_q = float(np.clip(q / self.max_pitch_rate_rad_s, -1.0, 1.0))
 
         # 3) Pitch angle (normalized)
         norm_theta = float(np.clip(theta / self.max_pitch_rad, -1.0, 1.0))
@@ -379,9 +375,7 @@ class ImprovedX15Env(gym.Env):
             tuple: Initial observation and empty info dict.
         """
         super().reset(seed=seed)
-        self.model.initialise_system(
-            self.initial_state, self.number_time_steps
-        )
+        self.model.initialise_system(self.initial_state, self.number_time_steps)
         # Initial state as full vector [u, alpha, q, theta]
         self.state = np.array(self.initial_state, dtype=float).reshape(-1)
         self.current_step = 0
@@ -413,9 +407,7 @@ class ImprovedX15Env(gym.Env):
         scaled_action_rad = np.deg2rad(scaled_action_deg)
 
         # Simulation step
-        self.state = self.model.run_step(
-            scaled_action_rad
-        ).reshape(-1)
+        self.state = self.model.run_step(scaled_action_rad).reshape(-1)
         self.current_step += 1
 
         # Reward calculation
@@ -445,8 +437,7 @@ class ImprovedX15Env(gym.Env):
         e_q_rel = float((q - ref_theta_dot) / self.max_pitch_rate_rad_s)
         # Normalized actually applied action
         u_applied_norm = float(
-            np.asarray(scaled_action_deg).reshape(-1)[0]
-            / self.max_elevator_angle_deg
+            np.asarray(scaled_action_deg).reshape(-1)[0] / self.max_elevator_angle_deg
         )
         u = u_applied_norm
         du = u_applied_norm - float(self.previous_action)
