@@ -19,6 +19,13 @@ from tensoraerospace.aerospacemodel import LongitudinalX15
 class LinearLongitudinalX15(gym.Env):
     """Simulation of LongitudinalX15 in OpenAI Gym for training agents.
 
+    State vector: [u, alpha, q, theta]
+    where:
+        u - flight velocity (ft/s)
+        alpha - angle of attack (rad)
+        q - pitch rate (rad/s)
+        theta - pitch angle (rad)
+
     Args:
         initial_state: Initial state.
         reference_signal: Reference signal.
@@ -176,9 +183,9 @@ class ImprovedX15Env(gym.Env):
     Attributes:
         action_space (spaces.Box): Normalized action space [-1, 1].
         observation_space (spaces.Box): Normalized observation space [-1, 1].
-        max_pitch_rad (float): Maximum pitch angle in radians.
-        max_pitch_rate_rad_s (float): Maximum pitch rate in rad/s.
-        max_elevator_angle_deg (float): Maximum elevator angle in degrees.
+        max_pitch_rad (float): Maximum pitch angle in radians (±30°).
+        max_pitch_rate_rad_s (float): Maximum pitch rate in rad/s (±10°/s).
+        max_elevator_angle_deg (float): Maximum elevator angle in degrees (±20°).
     """
 
     metadata = {"render_modes": ["human"]}
@@ -195,8 +202,10 @@ class ImprovedX15Env(gym.Env):
         """Initialize ImprovedX15Env environment.
 
         Args:
-            initial_state (np.ndarray): Initial state vector [u, w, q, theta]
-                in SI units (m/s, m/s, rad, rad).
+            initial_state (np.ndarray): Initial state vector
+                [u, alpha, q, theta] where u is flight velocity (ft/s),
+                alpha is angle of attack (rad), q is pitch rate (rad/s),
+                theta is pitch angle (rad).
             reference_signal (np.ndarray): Reference pitch angle
                 trajectory in radians. Shape: (1, number_time_steps).
             number_time_steps (int): Total number of simulation time
@@ -214,9 +223,9 @@ class ImprovedX15Env(gym.Env):
 
         # Normalization parameters and physical constraints
         # X-15 is experimental rocket plane with larger pitch envelope
-        self.max_pitch_rad = np.deg2rad(30.0)  # |theta| <= 30 deg
+        self.max_pitch_rad = np.deg2rad(5)  # |theta| <= 30 deg
         self.max_pitch_rate_rad_s = np.deg2rad(10.0)  # |q| <= 10 deg/s
-        self.max_elevator_angle_deg = 25.0  # |ele| <= 25 deg
+        self.max_elevator_angle_deg = 20.0  # |ele| <= 20 deg
 
         # Gymnasium spaces
         self.action_space = spaces.Box(low=-1.0, high=1.0, shape=(1,), dtype=np.float32)
@@ -232,7 +241,7 @@ class ImprovedX15Env(gym.Env):
         self.current_step = 0
         self.state = np.array(self.initial_state, dtype=float).reshape(
             -1
-        )  # Full state vector [u, w, q, theta] in SI units
+        )  # Full state vector [u, alpha, q, theta]
         # Initial elevator value, degrees -> normalized value
         self.initial_elevator_deg = float(initial_elevator_deg)
         self.initial_action_norm = float(
@@ -250,12 +259,12 @@ class ImprovedX15Env(gym.Env):
         self.reward_scale = 0.1
 
         # Cost function weights (tune for your task)
-        self.w_pitch = 5.0  # Pitch angle accuracy (increased)
-        self.w_q = 0.2  # Angular velocity damping (decreased)
+        self.w_pitch = 20.0  # Pitch angle accuracy (increased)
+        self.w_q = 0.1  # Angular velocity damping (decreased)
         self.w_cross = 0.0  # Disable cross-term
-        self.w_action = 0.003  # Energy cost (|u|)
-        self.w_smooth = 0.01  # Smoothness (|Δu|)
-        self.w_jerk = 0.001  # Jitter suppression (|Δ²u|)
+        self.w_action = 1e-4  # Energy cost (|u|)
+        self.w_smooth = 1e-4  # Smoothness (|Δu|)
+        self.w_jerk = 1e-5  # Jitter suppression (|Δ²u|)
 
         # Store initialization arguments for serialization
         self.init_args = locals()
@@ -295,16 +304,16 @@ class ImprovedX15Env(gym.Env):
         """Index of pitch rate q in state vector.
 
         Returns:
-            int: Index 2 (model state order: [u, w, q, theta]).
+            int: Index 2 (model state order: [u, alpha, q, theta]).
         """
-        return 2  # Model state order: [u, w, q, theta]
+        return 2  # Model state order: [u, alpha, q, theta]
 
     @property
     def _idx_theta(self) -> int:
         """Index of pitch angle theta in state vector.
 
         Returns:
-            int: Index 3 (model state order: [u, w, q, theta]).
+            int: Index 3 (model state order: [u, alpha, q, theta]).
         """
         return 3
 
@@ -325,10 +334,14 @@ class ImprovedX15Env(gym.Env):
 
         # 1) Pitch error (normalized)
         pitch_error = target_theta - theta
-        norm_pitch_error = float(np.clip(pitch_error / self.max_pitch_rad, -1.0, 1.0))
+        norm_pitch_error = float(
+            np.clip(pitch_error / self.max_pitch_rad, -1.0, 1.0)
+        )
 
         # 2) Pitch rate (normalized)
-        norm_q = float(np.clip(q / self.max_pitch_rate_rad_s, -1.0, 1.0))
+        norm_q = float(
+            np.clip(q / self.max_pitch_rate_rad_s, -1.0, 1.0)
+        )
 
         # 3) Pitch angle (normalized)
         norm_theta = float(np.clip(theta / self.max_pitch_rad, -1.0, 1.0))
@@ -366,8 +379,10 @@ class ImprovedX15Env(gym.Env):
             tuple: Initial observation and empty info dict.
         """
         super().reset(seed=seed)
-        self.model.initialise_system(self.initial_state, self.number_time_steps)
-        # Initial state as full vector [u, w, q, theta]
+        self.model.initialise_system(
+            self.initial_state, self.number_time_steps
+        )
+        # Initial state as full vector [u, alpha, q, theta]
         self.state = np.array(self.initial_state, dtype=float).reshape(-1)
         self.current_step = 0
         # Reset action history to specified initial elevator value
@@ -398,7 +413,9 @@ class ImprovedX15Env(gym.Env):
         scaled_action_rad = np.deg2rad(scaled_action_deg)
 
         # Simulation step
-        self.state = self.model.run_step(scaled_action_rad).reshape(-1)
+        self.state = self.model.run_step(
+            scaled_action_rad
+        ).reshape(-1)
         self.current_step += 1
 
         # Reward calculation
@@ -428,7 +445,8 @@ class ImprovedX15Env(gym.Env):
         e_q_rel = float((q - ref_theta_dot) / self.max_pitch_rate_rad_s)
         # Normalized actually applied action
         u_applied_norm = float(
-            np.asarray(scaled_action_deg).reshape(-1)[0] / self.max_elevator_angle_deg
+            np.asarray(scaled_action_deg).reshape(-1)[0]
+            / self.max_elevator_angle_deg
         )
         u = u_applied_norm
         du = u_applied_norm - float(self.previous_action)
@@ -696,8 +714,8 @@ class ImprovedX15Env(gym.Env):
         draw_series(
             self._hist_elev_deg,
             (255, 120, 80),
-            -25.0,
-            25.0,
+            -20.0,
+            20.0,
             plot2_x,
             plot2_y,
             plot2_w,
@@ -836,7 +854,7 @@ class ImprovedX15Env(gym.Env):
 
         Features:
             - Aircraft position: screen center, rotated by current pitch
-            - Elevator indicator: horizontal scale [-25, 25] deg
+            - Elevator indicator: horizontal scale [-20, 20] deg
             - HUD: step, current/target pitch, reward
 
         Args:
