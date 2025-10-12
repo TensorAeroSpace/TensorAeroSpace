@@ -1,12 +1,13 @@
 """Module for modeling longitudinal motion of rocket/guided missile.
 
-This module contains a Gymnasium environment implementation for training agents
-to control longitudinal motion of rocket. The environment provides an interface
-for interaction with the rocket model, including control of pitch angle and pitch angular velocity
+This module contains a Gymnasium environment implementation for
+training agents to control longitudinal motion of rocket. The
+environment provides an interface for interaction with the rocket
+model, including control of pitch angle and pitch angular velocity
 through stabilizers.
 """
 
-from typing import Callable
+from typing import Callable, Optional, Union
 
 import gymnasium as gym
 import numpy as np
@@ -16,7 +17,7 @@ from tensoraerospace.aerospacemodel import MissileModel
 
 
 class LinearLongitudinalMissileModel(gym.Env):
-    """Simulation of MissileModel control object in OpenAI Gym environment for training AI agents.
+    """Simulation of MissileModel in Gym for training AI agents.
 
     Args:
         initial_state: Initial state.
@@ -31,23 +32,33 @@ class LinearLongitudinalMissileModel(gym.Env):
 
     def __init__(
         self,
-        initial_state: np.ndarray | list[float],
-        reference_signal: np.ndarray | Callable,
+        initial_state: Union[np.ndarray, list[float]],
+        reference_signal: Union[np.ndarray, Callable],
         number_time_steps: int,
-        tracking_states: list[str] = ["theta", "q"],
-        state_space: tuple[float, float] = ["theta", "q"],
-        control_space: tuple[float, float] = ["stab"],
-        output_space: tuple[float, float] = ["theta", "q"],
-        reward_func: Callable | None = None,
+        tracking_states: Optional[list[str]] = None,
+        state_space: Optional[list[str]] = None,
+        control_space: Optional[list[str]] = None,
+        output_space: Optional[list[str]] = None,
+        reward_func: Optional[Callable] = None,
     ) -> None:
         self.max_action_value = 25.0
         self.initial_state = initial_state
         self.number_time_steps = number_time_steps
-        self.selected_state_output = output_space
-        self.tracking_states = tracking_states
-        self.state_space = state_space
-        self.control_space = control_space
-        self.output_space = output_space
+        self.selected_state_output = (
+            output_space if output_space is not None else ["theta", "q"]
+        )
+        self.tracking_states = (
+            tracking_states if tracking_states is not None else ["theta", "q"]
+        )
+        self.state_space = (
+            state_space if state_space is not None else ["theta", "q"]
+        )
+        self.control_space = (
+            control_space if control_space is not None else ["stab"]
+        )
+        self.output_space = (
+            output_space if output_space is not None else ["theta", "q"]
+        )
         self.reference_signal = reference_signal
         if reward_func:
             self.reward_func = reward_func
@@ -57,11 +68,12 @@ class LinearLongitudinalMissileModel(gym.Env):
         self.model = MissileModel(
             initial_state,
             number_time_steps=number_time_steps,
-            selected_state_output=output_space,
+            selected_state_output=None,
             t0=0,
         )
         self.indices_tracking_states = [
-            state_space.index(tracking_states[i]) for i in range(len(tracking_states))
+            self.state_space.index(self.tracking_states[i])
+            for i in range(len(self.tracking_states))
         ]
 
         self.ref_signal = reference_signal
@@ -71,10 +83,16 @@ class LinearLongitudinalMissileModel(gym.Env):
         self.number_time_steps = number_time_steps
 
         self.action_space = spaces.Box(
-            low=-60, high=60, shape=(len(control_space), 1), dtype=np.float32
+            low=-60,
+            high=60,
+            shape=(len(self.control_space), 1),
+            dtype=np.float32,
         )
         self.observation_space = spaces.Box(
-            low=-np.inf, high=np.inf, shape=(len(state_space), 1), dtype=np.float32
+            low=-np.inf,
+            high=np.inf,
+            shape=(len(self.state_space), 1),
+            dtype=np.float32,
         )
 
         self.current_step = 0
@@ -101,7 +119,8 @@ class LinearLongitudinalMissileModel(gym.Env):
         """Выполнения шага моделирования
 
         Args:
-            action (np.ndarray): Массив управляющего сигнала по выбранным органам
+            action (np.ndarray): Массив управляющего сигнала по выбранным
+                органам
 
         Returns:
             next_state (np.ndarray): Следующие состояние объекта управления
@@ -139,7 +158,7 @@ class LinearLongitudinalMissileModel(gym.Env):
         self.model = MissileModel(
             self.initial_state,
             number_time_steps=self.number_time_steps,
-            selected_state_output=self.output_space,
+            selected_state_output=None,
         )
         self.model.initialise_system(
             x0=self.initial_state, number_time_steps=self.number_time_steps
@@ -157,3 +176,236 @@ class LinearLongitudinalMissileModel(gym.Env):
             NotImplementedError
         """
         raise NotImplementedError()
+
+
+class ImprovedMissileEnv(gym.Env):
+    """Improved missile longitudinal control environment.
+
+    RL-friendly API with normalized spaces and shaped reward.
+
+    Observation (shape: (4,)):
+        [norm_pitch_error, norm_q, norm_theta, norm_prev_action]
+
+    Action (shape: (1,)):
+        Normalized elevator command in [-1, 1]. Internally scaled to degrees
+        and then converted to radians for the model.
+    """
+
+    metadata = {"render_modes": ["human"]}
+
+    def __init__(
+        self,
+        initial_state: np.ndarray,
+        reference_signal: np.ndarray,
+        number_time_steps: int,
+        dt: float = 0.01,
+        initial_elevator_deg: float = 0.0,
+        use_initial_action_on_first_step: bool = True,
+    ) -> None:
+        super().__init__()
+
+        # Physical/normalization limits
+        self.max_pitch_rad = np.deg2rad(20.0)  # |theta| <= 20 deg
+        self.max_pitch_rate_rad_s = np.deg2rad(5.0)  # |q| <= 5 deg/s
+        self.max_elevator_angle_deg = 25.0  # |ele| <= 25 deg
+
+        # Gymnasium spaces
+        self.action_space = spaces.Box(
+            low=-1.0, high=1.0, shape=(1,), dtype=np.float32
+        )
+        self.observation_space = spaces.Box(
+            low=-1.0,
+            high=1.0,
+            shape=(4,),
+            dtype=np.float32,
+        )
+
+        # Simulation parameters
+        self.dt = float(dt)
+        self.initial_state = np.array(initial_state, dtype=float).reshape(-1)
+        self.reference_signal = np.array(reference_signal, dtype=float)
+        self.number_time_steps = int(number_time_steps)
+        self.current_step = 0
+        self.state = np.array(self.initial_state, dtype=float).reshape(-1)
+
+        # Initial elevator and action history (normalized)
+        self.initial_elevator_deg = float(initial_elevator_deg)
+        self.initial_action_norm = float(
+            np.clip(
+                self.initial_elevator_deg / self.max_elevator_angle_deg,
+                -1.0,
+                1.0,
+            )
+        )
+        self.use_initial_action_on_first_step = bool(
+            use_initial_action_on_first_step
+        )
+        self.previous_action = float(self.initial_action_norm)
+        self.pre_previous_action = float(self.initial_action_norm)
+        self._last_reward = 0.0
+
+        # Reward shaping
+        self.reward_scale = 0.1
+        self.w_pitch = 8.0
+        self.w_q = 0.2
+        self.w_action = 0.003
+        self.w_smooth = 0.01
+        self.w_jerk = 0.001
+
+        # Store init args for (de)serialization helpers
+        self.init_args = locals()
+
+        # Underlying model (keep full state output order: [u, w, q, theta])
+        self.model = MissileModel(
+            self.initial_state,
+            number_time_steps=self.number_time_steps,
+            selected_state_output=None,
+            t0=0,
+            dt=self.dt,
+        )
+        self.model.initialise_system(
+            x0=self.initial_state, number_time_steps=self.number_time_steps
+        )
+
+    @property
+    def _idx_q(self) -> int:
+        return 2  # [u, w, q, theta]
+
+    @property
+    def _idx_theta(self) -> int:
+        return 3  # [u, w, q, theta]
+
+    def _get_obs(self) -> np.ndarray:
+        theta = float(self.state[self._idx_theta])
+        q = float(self.state[self._idx_q])
+        idx = int(
+            np.clip(self.current_step, 0, self.reference_signal.shape[1] - 1)
+        )
+        target_theta = float(self.reference_signal[0, idx])
+
+        pitch_error = target_theta - theta
+        norm_pitch_error = float(
+            np.clip(pitch_error / self.max_pitch_rad, -1.0, 1.0)
+        )
+        norm_q = float(
+            np.clip(q / self.max_pitch_rate_rad_s, -1.0, 1.0)
+        )
+        norm_theta = float(np.clip(theta / self.max_pitch_rad, -1.0, 1.0))
+        norm_prev_action = float(self.previous_action)
+
+        return np.array(
+            [norm_pitch_error, norm_q, norm_theta, norm_prev_action],
+            dtype=np.float32,
+        )
+
+    def get_init_args(self):
+        init_args = self.init_args.copy()
+        init_args.pop("self", None)
+        init_args.pop("__class__", None)
+        return init_args
+
+    def reset(self, seed=None, options=None):
+        super().reset(seed=seed)
+        self.model.initialise_system(
+            self.initial_state, self.number_time_steps
+        )
+        self.state = np.array(self.initial_state, dtype=float).reshape(-1)
+        self.current_step = 0
+        self.previous_action = float(self.initial_action_norm)
+        self.pre_previous_action = float(self.initial_action_norm)
+        self._last_reward = 0.0
+        return self._get_obs(), {}
+
+    def step(self, action: np.ndarray):
+        # action in [-1, 1]
+        action = np.asarray(action, dtype=np.float32).reshape(-1)
+        action = np.clip(action, -1.0, 1.0)
+
+        # Scale to degrees, optionally use initial elevator at first step
+        if self.current_step == 0 and self.use_initial_action_on_first_step:
+            scaled_action_deg = np.array(
+                [self.initial_elevator_deg], dtype=np.float32
+            )
+        else:
+            scaled_action_deg = action * self.max_elevator_angle_deg
+        # Convert to radians for the model
+        scaled_action_rad = np.deg2rad(scaled_action_deg)
+
+        # Simulate one step
+        self.state = self.model.run_step(scaled_action_rad).reshape(-1)
+        self.current_step += 1
+
+        # Reward
+        theta = float(self.state[self._idx_theta])
+        q = float(self.state[self._idx_q])
+        idx_safe = int(
+            np.clip(
+                self.current_step,
+                0,
+                self.reference_signal.shape[1] - 1,
+            )
+        )
+        target_theta = float(self.reference_signal[0, idx_safe])
+
+        if self.current_step > 0:
+            idx_prev = int(
+                np.clip(
+                    self.current_step - 1,
+                    0,
+                    self.reference_signal.shape[1] - 1,
+                )
+            )
+            ref_theta_prev = float(self.reference_signal[0, idx_prev])
+        else:
+            ref_theta_prev = target_theta
+        ref_theta_dot = float((target_theta - ref_theta_prev) / self.dt)
+
+        e_theta = float((theta - target_theta) / self.max_pitch_rad)
+        e_q_rel = float((q - ref_theta_dot) / self.max_pitch_rate_rad_s)
+
+        u_applied_norm = float(
+            np.asarray(scaled_action_deg).reshape(-1)[0]
+            / self.max_elevator_angle_deg
+        )
+        u = u_applied_norm
+        du = u_applied_norm - float(self.previous_action)
+        ddu = (
+            u_applied_norm
+            - 2.0 * float(self.previous_action)
+            + float(self.pre_previous_action)
+        )
+
+        cost = (
+            self.w_pitch * (e_theta**2)
+            + self.w_q * (e_q_rel**2)
+            + self.w_action * (u**2)
+            + self.w_smooth * (du**2)
+            + self.w_jerk * (ddu**2)
+        )
+        reward = float(-cost) * float(self.reward_scale)
+
+        self.pre_previous_action = float(self.previous_action)
+        self.previous_action = float(u_applied_norm)
+        self._last_reward = float(reward)
+
+        terminated = False
+        if abs(theta) > self.max_pitch_rad:
+            reward = -100.0
+            terminated = True
+
+        truncated = self.current_step >= self.number_time_steps - 2
+
+        return (
+            self._get_obs(),
+            float(reward),
+            bool(terminated),
+            bool(truncated),
+            {},
+        )
+
+    def render(self, mode: str = "human"):
+        # Optional: visualization can be added later
+        return
+
+    def close(self):
+        return

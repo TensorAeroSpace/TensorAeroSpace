@@ -8,6 +8,7 @@ from .f16.linear_longitudial import LinearLongitudinalF16 as LinearLongitudinalF
 from .geostat import GeoSatEnv as GeoSatEnv
 from .lapan import LinearLongitudinalLAPAN as LinearLongitudinalLAPAN
 from .rocket import LinearLongitudinalMissileModel as LinearLongitudinalMissileModel
+from .rocket import ImprovedMissileEnv as ImprovedMissileEnv
 from .uav import LinearLongitudinalUAV as LinearLongitudinalUAV
 from .ultrastick import LinearLongitudinalUltrastick as LinearLongitudinalUltrastick
 from .x15 import ImprovedX15Env as ImprovedX15Env
