@@ -55,9 +55,7 @@ class ELVRocket(ModelBase):
         ]
         self.control_list = self.selected_input
 
-        self._initialize_selected_state_index(
-            self.selected_states, self.list_state
-        )
+        self._initialize_selected_state_index(self.selected_states, self.list_state)
 
         self.state_space = self.selected_states
         self.action_space = self.selected_input
@@ -89,7 +87,7 @@ class ELVRocket(ModelBase):
         Базовые матрицы заданы в старом порядке состояний [alpha, q, theta].
         Здесь они приводятся к новому порядку [w, q, theta] с помощью
         перестановочной матрицы P.
-        
+
         Старый порядок: x_old = [alpha, q, theta]
         Новый порядок:  x_new = [w, q, theta]
         где w ≈ alpha для малых углов в продольном канале.

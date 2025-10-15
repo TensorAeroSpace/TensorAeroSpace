@@ -50,15 +50,9 @@ class LinearLongitudinalMissileModel(gym.Env):
         self.tracking_states = (
             tracking_states if tracking_states is not None else ["theta", "q"]
         )
-        self.state_space = (
-            state_space if state_space is not None else ["theta", "q"]
-        )
-        self.control_space = (
-            control_space if control_space is not None else ["stab"]
-        )
-        self.output_space = (
-            output_space if output_space is not None else ["theta", "q"]
-        )
+        self.state_space = state_space if state_space is not None else ["theta", "q"]
+        self.control_space = control_space if control_space is not None else ["stab"]
+        self.output_space = output_space if output_space is not None else ["theta", "q"]
         self.reference_signal = reference_signal
         if reward_func:
             self.reward_func = reward_func
@@ -210,9 +204,7 @@ class ImprovedMissileEnv(gym.Env):
         self.max_elevator_angle_deg = 25.0  # |ele| <= 25 deg
 
         # Gymnasium spaces
-        self.action_space = spaces.Box(
-            low=-1.0, high=1.0, shape=(1,), dtype=np.float32
-        )
+        self.action_space = spaces.Box(low=-1.0, high=1.0, shape=(1,), dtype=np.float32)
         self.observation_space = spaces.Box(
             low=-1.0,
             high=1.0,
@@ -237,9 +229,7 @@ class ImprovedMissileEnv(gym.Env):
                 1.0,
             )
         )
-        self.use_initial_action_on_first_step = bool(
-            use_initial_action_on_first_step
-        )
+        self.use_initial_action_on_first_step = bool(use_initial_action_on_first_step)
         self.previous_action = float(self.initial_action_norm)
         self.pre_previous_action = float(self.initial_action_norm)
         self._last_reward = 0.0
@@ -278,18 +268,12 @@ class ImprovedMissileEnv(gym.Env):
     def _get_obs(self) -> np.ndarray:
         theta = float(self.state[self._idx_theta])
         q = float(self.state[self._idx_q])
-        idx = int(
-            np.clip(self.current_step, 0, self.reference_signal.shape[1] - 1)
-        )
+        idx = int(np.clip(self.current_step, 0, self.reference_signal.shape[1] - 1))
         target_theta = float(self.reference_signal[0, idx])
 
         pitch_error = target_theta - theta
-        norm_pitch_error = float(
-            np.clip(pitch_error / self.max_pitch_rad, -1.0, 1.0)
-        )
-        norm_q = float(
-            np.clip(q / self.max_pitch_rate_rad_s, -1.0, 1.0)
-        )
+        norm_pitch_error = float(np.clip(pitch_error / self.max_pitch_rad, -1.0, 1.0))
+        norm_q = float(np.clip(q / self.max_pitch_rate_rad_s, -1.0, 1.0))
         norm_theta = float(np.clip(theta / self.max_pitch_rad, -1.0, 1.0))
         norm_prev_action = float(self.previous_action)
 
@@ -306,9 +290,7 @@ class ImprovedMissileEnv(gym.Env):
 
     def reset(self, seed=None, options=None):
         super().reset(seed=seed)
-        self.model.initialise_system(
-            self.initial_state, self.number_time_steps
-        )
+        self.model.initialise_system(self.initial_state, self.number_time_steps)
         self.state = np.array(self.initial_state, dtype=float).reshape(-1)
         self.current_step = 0
         self.previous_action = float(self.initial_action_norm)
@@ -323,9 +305,7 @@ class ImprovedMissileEnv(gym.Env):
 
         # Scale to degrees, optionally use initial elevator at first step
         if self.current_step == 0 and self.use_initial_action_on_first_step:
-            scaled_action_deg = np.array(
-                [self.initial_elevator_deg], dtype=np.float32
-            )
+            scaled_action_deg = np.array([self.initial_elevator_deg], dtype=np.float32)
         else:
             scaled_action_deg = action * self.max_elevator_angle_deg
         # Convert to radians for the model
@@ -364,8 +344,7 @@ class ImprovedMissileEnv(gym.Env):
         e_q_rel = float((q - ref_theta_dot) / self.max_pitch_rate_rad_s)
 
         u_applied_norm = float(
-            np.asarray(scaled_action_deg).reshape(-1)[0]
-            / self.max_elevator_angle_deg
+            np.asarray(scaled_action_deg).reshape(-1)[0] / self.max_elevator_angle_deg
         )
         u = u_applied_norm
         du = u_applied_norm - float(self.previous_action)

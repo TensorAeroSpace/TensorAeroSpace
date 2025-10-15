@@ -55,9 +55,7 @@ class LinearLongitudinalELVRocket(gym.Env):
         self.state_space = (
             state_space if state_space is not None else ["w", "q", "theta"]
         )
-        self.control_space = (
-            control_space if control_space is not None else ["ele"]
-        )
+        self.control_space = control_space if control_space is not None else ["ele"]
         self.output_space = (
             output_space if output_space is not None else ["w", "q", "theta"]
         )
@@ -215,9 +213,7 @@ class ImprovedELVEnv(gym.Env):
         self.max_elevator_angle_rad = np.deg2rad(25.0)  # |ele| <= 25 deg
 
         # Gymnasium spaces
-        self.action_space = spaces.Box(
-            low=-1.0, high=1.0, shape=(1,), dtype=np.float32
-        )
+        self.action_space = spaces.Box(low=-1.0, high=1.0, shape=(1,), dtype=np.float32)
         self.observation_space = spaces.Box(
             low=-1.0, high=1.0, shape=(4,), dtype=np.float32
         )
@@ -241,9 +237,7 @@ class ImprovedELVEnv(gym.Env):
                 1.0,
             )
         )
-        self.use_initial_action_on_first_step = bool(
-            use_initial_action_on_first_step
-        )
+        self.use_initial_action_on_first_step = bool(use_initial_action_on_first_step)
         self.previous_action = float(self.initial_action_norm)
         self.pre_previous_action = float(self.initial_action_norm)
         self._last_reward = 0.0
@@ -287,15 +281,11 @@ class ImprovedELVEnv(gym.Env):
     def _get_obs(self) -> np.ndarray:
         theta = float(self.state[self._idx_theta])
         q = float(self.state[self._idx_q])
-        idx = int(
-            np.clip(self.current_step, 0, self.reference_signal.shape[1] - 1)
-        )
+        idx = int(np.clip(self.current_step, 0, self.reference_signal.shape[1] - 1))
         target_theta = float(self.reference_signal[0, idx])
 
         pitch_error = target_theta - theta
-        norm_pitch_error = float(
-            np.clip(pitch_error / self.max_pitch_rad, -1.0, 1.0)
-        )
+        norm_pitch_error = float(np.clip(pitch_error / self.max_pitch_rad, -1.0, 1.0))
         norm_q = float(np.clip(q / self.max_pitch_rate_rad_s, -1.0, 1.0))
         norm_theta = float(np.clip(theta / self.max_pitch_rad, -1.0, 1.0))
         norm_prev_action = float(self.previous_action)
@@ -313,9 +303,7 @@ class ImprovedELVEnv(gym.Env):
 
     def reset(self, seed=None, options=None):
         super().reset(seed=seed)
-        self.model.initialise_system(
-            self.initial_state, self.number_time_steps
-        )
+        self.model.initialise_system(self.initial_state, self.number_time_steps)
         self.state = np.array(self.initial_state, dtype=float).reshape(-1)
         self.current_step = 0
         self.previous_action = float(self.initial_action_norm)
@@ -366,8 +354,7 @@ class ImprovedELVEnv(gym.Env):
         e_q_rel = float((q - ref_theta_dot) / self.max_pitch_rate_rad_s)
 
         u_applied_norm = float(
-            np.asarray(scaled_action_rad).reshape(-1)[0]
-            / self.max_elevator_angle_rad
+            np.asarray(scaled_action_rad).reshape(-1)[0] / self.max_elevator_angle_rad
         )
         u = u_applied_norm
         du = u_applied_norm - float(self.previous_action)
