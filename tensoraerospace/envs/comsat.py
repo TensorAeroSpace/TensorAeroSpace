@@ -217,9 +217,7 @@ class ImprovedComSatEnv(gym.Env):
         self.nominal_rho = float(nominal_rho)
 
         # Gymnasium spaces
-        self.action_space = spaces.Box(
-            low=-1.0, high=1.0, shape=(1,), dtype=np.float32
-        )
+        self.action_space = spaces.Box(low=-1.0, high=1.0, shape=(1,), dtype=np.float32)
         # Observation: [norm_theta_dot_error, norm_rho_error,
         #               norm_rho_dot, norm_prev_action]
         self.observation_space = spaces.Box(
@@ -240,9 +238,7 @@ class ImprovedComSatEnv(gym.Env):
         self.initial_action_norm = float(
             np.clip(self.initial_thrust / self.max_thrust, -1.0, 1.0)
         )
-        self.use_initial_action_on_first_step = bool(
-            use_initial_action_on_first_step
-        )
+        self.use_initial_action_on_first_step = bool(use_initial_action_on_first_step)
         self.previous_action = float(self.initial_action_norm)
         self.pre_previous_action = 0.0
         self._last_reward = 0.0
@@ -351,9 +347,7 @@ class ImprovedComSatEnv(gym.Env):
             tuple: Initial observation and empty info dict.
         """
         super().reset(seed=seed)
-        self.model.initialise_system(
-            self.initial_state, self.number_time_steps
-        )
+        self.model.initialise_system(self.initial_state, self.number_time_steps)
         self.state = np.array(self.initial_state, dtype=float).reshape(-1)
         self.current_step = 0
         self.previous_action = float(self.initial_action_norm)
@@ -399,9 +393,7 @@ class ImprovedComSatEnv(gym.Env):
         # Currently using direct state feedback instead
 
         # Normalized errors for LQR-style cost
-        e_theta_dot = float(
-            (theta_dot - target_theta_dot) / self.max_angular_velocity
-        )
+        e_theta_dot = float((theta_dot - target_theta_dot) / self.max_angular_velocity)
         e_rho = float((rho - self.nominal_rho) / self.max_radial_position_deviation)
         e_rho_dot = float(rho_dot / self.max_radial_velocity)
 
@@ -429,7 +421,7 @@ class ImprovedComSatEnv(gym.Env):
 
         reward = float(-cost)
         reward *= float(self.reward_scale)
-        
+
         # Add survival bonus to encourage longer episodes
         reward += 0.1  # Small bonus for each successful step
 
@@ -445,7 +437,9 @@ class ImprovedComSatEnv(gym.Env):
             reward = -10.0  # Reduced penalty (was -100)
             terminated = True
         # Excessive radial deviation (orbit instability)
-        if abs(rho - self.nominal_rho) > 5.0 * self.max_radial_position_deviation:  # 2500 km
+        if (
+            abs(rho - self.nominal_rho) > 5.0 * self.max_radial_position_deviation
+        ):  # 2500 km
             reward = -10.0  # Reduced penalty
             terminated = True
         # Excessive radial velocity

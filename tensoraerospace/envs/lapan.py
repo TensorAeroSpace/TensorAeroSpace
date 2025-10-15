@@ -226,9 +226,7 @@ class ImprovedLAPANEnv(gym.Env):
                 1.0,
             )
         )
-        self.use_initial_action_on_first_step = bool(
-            use_initial_action_on_first_step
-        )
+        self.use_initial_action_on_first_step = bool(use_initial_action_on_first_step)
         self.previous_action = float(self.initial_action_norm)
         self.pre_previous_action = float(self.initial_action_norm)
         self._last_reward = 0.0
@@ -270,15 +268,11 @@ class ImprovedLAPANEnv(gym.Env):
         # Model provides theta, q in radians now
         theta_rad = float(self.state[self._idx_theta])
         q_rad_s = float(self.state[self._idx_q])
-        idx = int(
-            np.clip(self.current_step, 0, self.reference_signal.shape[1] - 1)
-        )
+        idx = int(np.clip(self.current_step, 0, self.reference_signal.shape[1] - 1))
         target_theta = float(self.reference_signal[0, idx])  # radians
 
         pitch_error = target_theta - theta_rad
-        norm_pitch_error = float(
-            np.clip(pitch_error / self.max_pitch_rad, -1.0, 1.0)
-        )
+        norm_pitch_error = float(np.clip(pitch_error / self.max_pitch_rad, -1.0, 1.0))
         norm_q = float(np.clip(q_rad_s / self.max_pitch_rate_rad_s, -1.0, 1.0))
         norm_theta = float(np.clip(theta_rad / self.max_pitch_rad, -1.0, 1.0))
         norm_prev_action = float(self.previous_action)
@@ -352,8 +346,7 @@ class ImprovedLAPANEnv(gym.Env):
         e_q_rel = float((q_rad_s - ref_theta_dot) / self.max_pitch_rate_rad_s)
 
         u_applied_norm = float(
-            np.asarray(scaled_action_rad).reshape(-1)[0]
-            / self.max_elevator_angle_rad
+            np.asarray(scaled_action_rad).reshape(-1)[0] / self.max_elevator_angle_rad
         )
         u = u_applied_norm
         du = u_applied_norm - float(self.previous_action)

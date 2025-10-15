@@ -12,8 +12,8 @@ from .f16.linear_longitudial import (  # noqa: F401
     LinearLongitudinalF16 as LinearLongitudinalF16,
 )
 from .geostat import GeoSatEnv as GeoSatEnv  # noqa: F401
-from .lapan import LinearLongitudinalLAPAN as LinearLongitudinalLAPAN  # noqa: F401
 from .lapan import ImprovedLAPANEnv as ImprovedLAPANEnv  # noqa: F401
+from .lapan import LinearLongitudinalLAPAN as LinearLongitudinalLAPAN  # noqa: F401
 from .rocket import ImprovedMissileEnv as ImprovedMissileEnv
 from .rocket import (  # noqa: F401
     LinearLongitudinalMissileModel as LinearLongitudinalMissileModel,

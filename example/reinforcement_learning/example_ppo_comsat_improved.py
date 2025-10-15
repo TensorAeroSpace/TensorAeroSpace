@@ -14,6 +14,7 @@ The environment features:
 """
 
 import numpy as np
+
 from tensoraerospace.envs import ImprovedComSatEnv
 from tensoraerospace.signals.standart import unit_step
 from tensoraerospace.utils import generate_time_period
@@ -41,7 +42,7 @@ def create_comsat_env(dt=0.01, total_time=20.0):
         time_step=int(10.0 / dt),  # Step at 10 seconds
         output_rad=True,
     ).reshape(1, -1)
-    
+
     # Add initial baseline
     reference_signals = reference_signals + 0.001  # Baseline 0.001 rad/s
 
@@ -150,11 +151,11 @@ def train_ppo_comsat():
         # Use trained policy
         action_tensor = model.policy.predict(obs, deterministic=True)[0]
         # Convert from tensor to numpy if needed
-        if hasattr(action_tensor, 'cpu'):
+        if hasattr(action_tensor, "cpu"):
             action = action_tensor.cpu().numpy()
         else:
             action = np.array(action_tensor)
-        
+
         obs, reward, terminated, truncated, info = env.step(action)
         done = terminated or truncated
         total_reward += reward
@@ -192,6 +193,5 @@ if __name__ == "__main__":
 
     # Optionally train PPO
     user_input = input("\nDo you want to train a PPO agent? (y/n): ")
-    if user_input.lower() == 'y':
+    if user_input.lower() == "y":
         train_ppo_comsat()
-

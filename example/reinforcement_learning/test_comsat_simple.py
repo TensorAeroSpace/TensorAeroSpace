@@ -1,8 +1,9 @@
 """Test simplified ComSat environment for easier PPO training."""
 
 import numpy as np
+
 from tensoraerospace.envs import ImprovedComSatEnv
-from tensoraerospace.utils import generate_time_period, convert_tp_to_sec_tp
+from tensoraerospace.utils import convert_tp_to_sec_tp, generate_time_period
 
 print("=" * 80)
 print("🧪 TESTING SIMPLIFIED COMSAT ENVIRONMENT")
@@ -43,18 +44,20 @@ theta_dots = []
 for i in range(100):
     theta_dot = env.state[2]
     theta_dots.append(theta_dot)
-    
+
     # Proportional control
     error = theta_dot - target_angular_velocity
     control = -50 * error  # P-controller
     control = np.clip(control / 25.0, -1, 1)  # Normalize
-    
+
     obs, reward, terminated, truncated, _ = env.step(np.array([control]))
     rewards.append(reward)
-    
+
     if i < 10 or i % 20 == 0:
-        print(f"  Step {i+1:3d}: θ̇={theta_dot:+.6f}, error={error:+.6f}, u={control*25:+6.2f}, reward={reward:+7.3f}")
-    
+        print(
+            f"  Step {i+1:3d}: θ̇={theta_dot:+.6f}, error={error:+.6f}, u={control*25:+6.2f}, reward={reward:+7.3f}"
+        )
+
     if terminated:
         print(f"\n⚠️ Terminated at step {i+1}")
         break
@@ -78,7 +81,7 @@ for i in range(100):
     action = env.action_space.sample()
     obs, reward, terminated, truncated, _ = env.step(action)
     rewards_random.append(reward)
-    
+
     if terminated:
         print(f"  Terminated at step {i+1}")
         break
@@ -98,4 +101,3 @@ if np.mean(rewards) > np.mean(rewards_random) + 5:
     print("   PPO should be able to learn this!")
 else:
     print("\n⚠️ Task might be too easy or rewards not well-tuned.")
-
