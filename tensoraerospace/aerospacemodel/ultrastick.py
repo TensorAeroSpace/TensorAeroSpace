@@ -21,21 +21,21 @@ class Ultrastick(ModelBase):
         dt (float, optional): Discretization frequency. Defaults to 0.01.
 
     Action space:
-        ele: Elevator [deg]
-        delta_t: Engine throttle stick deflection angle [deg]
+        ele: Elevator [rad]
+        delta_t: безразмерная величина, 0 — выкл., 1 — макс. тяга
 
     State space:
         u: Longitudinal aircraft velocity [m/s]
         w: Normal aircraft velocity [m/s]
-        q: Pitch angular velocity [deg/s]
-        theta: Pitch [deg]
+        q: Pitch angular velocity [rad/s]
+        theta: Pitch [rad]
         h: Altitude [m]
 
     Output space:
         u: Longitudinal aircraft velocity [m/s]
         w: Normal aircraft velocity [m/s]
-        q: Pitch angular velocity [deg/s]
-        theta: Pitch [deg]
+        q: Pitch angular velocity [rad/s]
+        theta: Pitch [rad]
         h: Altitude [m]
     """
 
@@ -63,9 +63,10 @@ class Ultrastick(ModelBase):
         self.state_space = self.selected_states
         self.action_space = self.selected_input
         # ele
-        # Limitations of the system
-        self.input_magnitude_limits = [25, 25]
-        self.input_rate_limits = [60, 60]
+        # Limitations of the system (SI units)
+        # ele (radians), delta_t (dimensionless)
+        self.input_magnitude_limits = [np.deg2rad(30), 1]
+        self.input_rate_limits = [np.deg2rad(300), 10000]
 
         # Store the number of inputs, states and outputs
         self.number_inputs = len(self.selected_input)
@@ -88,27 +89,29 @@ class Ultrastick(ModelBase):
 
     def import_linear_system(self):
         """Сохраненные линеаризованные матрицы"""
-        self.A = np.array(
-            [
-                [-0.5944, 0.8008, -9.791, -0.8747, 5.077 * (10**-5)],
-                [-0.744, -7.56, -0.5294, 15.72, -0.000939],
-                [0, 0, 0, 1, 0],
-                [1.041, -7.406, 0, -15.81, -7.284 * (10**-18)],
-                [-0.05399, 0.9985, -17, 0, 0],
-            ]
-        )
+        self.A = np.array([
+            [-0.5944, -0.8008, 9.791, -0.8747, 5.077e-5],
+            [-0.744, -7.56, 0.5294, -1.572, 0.000939],
+            [0, 0, 0, 1, 0],
+            [1.041, -7.406, 0, 0, 0],
+            [-15.81, -7.284e-3, 0.05399, -0.9985, 0]
+        ])
 
-        self.B = np.array([[0.4669, 0], [-2.703, 0], [0, 0], [-133.7, 0], [0, 0]])
+        self.B = np.array([
+            [0.4669, 0],
+            [2.703, 0],
+            [0, 0],
+            [133.7, 0],
+            [0, 1]
+        ])
 
-        self.C = np.array(
-            [
-                [1, 0, 0, 0, 0],
-                [0, 1, 0, 0, 0],
-                [0, 0, 1, 0, 0],
-                [0, 0, 0, 1, 0],
-                [0, 0, 0, 0, 1],
-            ]
-        )
+        self.C = np.array([
+            [0.9985, 0.05399, 0, 0, 0],  # Va
+            [0.003176, 0.05874, 0, 0, 0],  # alpha
+            [0, 0, 1, 0, 0],  # theta
+            [0, 0, 0, 1, 0],  # pitch rate (q)
+            [0, 0, 0, 0, 1],  # altitude (h)
+        ])
 
         self.D = np.array(
             [
@@ -160,46 +163,28 @@ class Ultrastick(ModelBase):
             ut_0 (np.ndarray): Вектор управления
 
         Returns:
-            xt1 (np.ndarray): Состояние объекта управления на шаге t+1
+            y_t (np.ndarray): Выход системы на шаге t (рассчитанный через C/D)
         """
+        # Ensure 1D float control vector
+        ut_0 = np.asarray(ut_0, dtype=float).reshape(-1)
         if self.time_step != 0:
-            ut_1 = self.store_input[:, self.time_step - 1]
-        else:
-            ut_1 = ut_0
-        ut = [0, 0]
-        for i in range(self.number_inputs):
-            ut[i] = max(
-                min(
-                    max(
-                        min(
-                            ut_0[i],
-                            np.reshape(
-                                np.array(
-                                    [
-                                        ut_1[i]
-                                        + self.input_rate_limits[i]
-                                        * self.discretisation_time
-                                    ]
-                                ),
-                                [-1, 1],
-                            ),
-                        ),
-                        np.reshape(
-                            np.array(
-                                [
-                                    ut_1[i]
-                                    - self.input_rate_limits[i]
-                                    * self.discretisation_time
-                                ]
-                            ),
-                            [-1, 1],
-                        ),
-                    ),
-                    np.array([[self.input_magnitude_limits[i]]]),
-                ),
-                -np.array([[self.input_magnitude_limits[i]]]),
+            ut_1 = (
+                np.asarray(self.store_input[:, self.time_step - 1], dtype=float)
+                .reshape(-1)
             )
-        ut = np.array(ut)
+        else:
+            ut_1 = ut_0.copy()
+
+        # Rate and magnitude limiting (scalar clipping)
+        ut = ut_0.copy()
+        for i in range(self.number_inputs):
+            rate = float(self.input_rate_limits[i]) * float(self.discretisation_time)
+            low_rate = float(ut_1[i] - rate)
+            high_rate = float(ut_1[i] + rate)
+            ut[i] = float(np.clip(float(ut[i]), low_rate, high_rate))
+            amp = float(self.input_magnitude_limits[i])
+            ut[i] = float(np.clip(float(ut[i]), -amp, amp))
+        ut = np.asarray(ut, dtype=float).reshape(-1)
         self.xt1 = np.matmul(self.filt_A, np.reshape(self.xt, [-1, 1])) + np.matmul(
             self.filt_B, np.reshape(ut, [-1, 1])
         )
@@ -214,9 +199,10 @@ class Ultrastick(ModelBase):
         )
 
         self.update_system_attributes()
+        output_flat = np.reshape(output, [output.shape[0]])
         if self.selected_state_output:
-            return np.array(self.xt1[self.selected_state_index])
-        return np.array(self.xt1)
+            return np.array(output_flat[self.selected_state_index])
+        return output_flat
 
     def update_system_attributes(self):
         """Атрибуты, которые меняются с каждым временным шагом, обновляются"""
