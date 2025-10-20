@@ -45,15 +45,9 @@ class LinearLongitudinalUltrastick(gym.Env):
         self.tracking_states = (
             tracking_states if tracking_states is not None else ["theta", "q"]
         )
-        self.state_space = (
-            state_space if state_space is not None else ["theta", "q"]
-        )
-        self.control_space = (
-            control_space if control_space is not None else ["stab"]
-        )
-        self.output_space = (
-            output_space if output_space is not None else ["theta", "q"]
-        )
+        self.state_space = state_space if state_space is not None else ["theta", "q"]
+        self.control_space = control_space if control_space is not None else ["stab"]
+        self.output_space = output_space if output_space is not None else ["theta", "q"]
         self.selected_state_output = self.output_space
         self.reference_signal = reference_signal
         if reward_func:
@@ -204,9 +198,7 @@ class ImprovedUltrastickEnv(gym.Env):
         self.max_throttle = 1.0  # |delta_t| <= 1.0
 
         # Gym spaces
-        self.action_space = spaces.Box(
-            low=-1.0, high=1.0, shape=(2,), dtype=np.float32
-        )
+        self.action_space = spaces.Box(low=-1.0, high=1.0, shape=(2,), dtype=np.float32)
         self.observation_space = spaces.Box(
             low=-1.0, high=1.0, shape=(5,), dtype=np.float32
         )
@@ -221,9 +213,7 @@ class ImprovedUltrastickEnv(gym.Env):
         # Previous actions (normalized)
         self.initial_elevator_deg = float(initial_elevator_deg)
         self.initial_throttle = float(initial_throttle)
-        self.use_initial_action_on_first_step = bool(
-            use_initial_action_on_first_step
-        )
+        self.use_initial_action_on_first_step = bool(use_initial_action_on_first_step)
         self.prev_elev_norm = float(
             np.clip(
                 self.initial_elevator_deg / self.max_elevator_deg,
@@ -336,9 +326,7 @@ class ImprovedUltrastickEnv(gym.Env):
 
         # Normalized features
         pitch_error = target_theta - theta
-        norm_pitch_error = float(
-            np.clip(pitch_error / self.max_pitch_rad, -1.0, 1.0)
-        )
+        norm_pitch_error = float(np.clip(pitch_error / self.max_pitch_rad, -1.0, 1.0))
         norm_q = float(np.clip(q / self.max_pitch_rate_rad_s, -1.0, 1.0))
         norm_theta = float(np.clip(theta / self.max_pitch_rad, -1.0, 1.0))
 
@@ -353,9 +341,7 @@ class ImprovedUltrastickEnv(gym.Env):
             dtype=np.float32,
         )
 
-    def reset(
-        self, seed: Optional[int] = None, options: Optional[dict] = None
-    ):
+    def reset(self, seed: Optional[int] = None, options: Optional[dict] = None):
         super().reset(seed=seed)
         self.model.initialise_system(
             self.initial_state,
@@ -397,8 +383,7 @@ class ImprovedUltrastickEnv(gym.Env):
             prev_elev_deg = float(self.prev_elev_norm) * self.max_elevator_deg
             cmd_elev_deg = cmd_elev_norm * self.max_elevator_deg
             elev_deg_pre = (
-                self.elev_alpha * cmd_elev_deg
-                + (1.0 - self.elev_alpha) * prev_elev_deg
+                self.elev_alpha * cmd_elev_deg + (1.0 - self.elev_alpha) * prev_elev_deg
             )
             deg_step_limit = 300.0 * self.dt  # deg per step
             elev_deg = float(
@@ -414,9 +399,7 @@ class ImprovedUltrastickEnv(gym.Env):
 
         # Run model step (Ultrastick expects [ele (rad), delta_t])
         elev_rad = float(np.deg2rad(elev_deg))
-        y = self.model.run_step(
-            np.array([elev_rad, thr], dtype=float)
-        ).reshape(-1)
+        y = self.model.run_step(np.array([elev_rad, thr], dtype=float)).reshape(-1)
         self.state = y.copy()
         self.current_step += 1
 
@@ -451,9 +434,7 @@ class ImprovedUltrastickEnv(gym.Env):
 
         # Normalize actually applied actions
         elev_norm = float(np.clip(elev_deg / self.max_elevator_deg, -1.0, 1.0))
-        thr_norm = float(
-            np.clip((2.0 * thr / self.max_throttle) - 1.0, -1.0, 1.0)
-        )
+        thr_norm = float(np.clip((2.0 * thr / self.max_throttle) - 1.0, -1.0, 1.0))
         du_elev = elev_norm - float(self.prev_elev_norm)
         du_thr = thr_norm - float(self.prev_thr_norm)
         ddu_elev = (
@@ -462,30 +443,27 @@ class ImprovedUltrastickEnv(gym.Env):
             + float(self.pre_prev_elev_norm)
         )
         ddu_thr = (
-            thr_norm
-            - 2.0 * float(self.prev_thr_norm)
-            + float(self.pre_prev_thr_norm)
+            thr_norm - 2.0 * float(self.prev_thr_norm) + float(self.pre_prev_thr_norm)
         )
 
         cost = (
-            self.w_theta * (e_theta ** 2)
-            + self.w_q * (e_q_rel ** 2)
-            + self.w_action_elev * (elev_norm ** 2)
-            + self.w_action_thr * (thr_norm ** 2)
-            + self.w_smooth_elev * (du_elev ** 2)
-            + self.w_smooth_thr * (du_thr ** 2)
-            + self.w_jerk_elev * (ddu_elev ** 2)
-            + self.w_jerk_thr * (ddu_thr ** 2)
+            self.w_theta * (e_theta**2)
+            + self.w_q * (e_q_rel**2)
+            + self.w_action_elev * (elev_norm**2)
+            + self.w_action_thr * (thr_norm**2)
+            + self.w_smooth_elev * (du_elev**2)
+            + self.w_smooth_thr * (du_thr**2)
+            + self.w_jerk_elev * (ddu_elev**2)
+            + self.w_jerk_thr * (ddu_thr**2)
         )
         progress = float(
             self.k_progress
             * (
-                (self._prev_e_theta ** 2 + self._prev_e_q_rel ** 2)
-                - (e_theta ** 2 + e_q_rel ** 2)
+                (self._prev_e_theta**2 + self._prev_e_q_rel**2)
+                - (e_theta**2 + e_q_rel**2)
             )
         )
         reward = float(-cost * self.reward_scale + progress)
-
 
         # Update action history
         self.pre_prev_elev_norm = float(self.prev_elev_norm)
@@ -506,14 +484,14 @@ class ImprovedUltrastickEnv(gym.Env):
             "reward": float(reward),
             "cost": float(cost),
             "progress": float(progress),
-            "e_theta2": float(e_theta ** 2),
-            "e_q_rel2": float(e_q_rel ** 2),
-            "elev_norm2": float(elev_norm ** 2),
-            "thr_norm2": float(thr_norm ** 2),
-            "du_elev2": float(du_elev ** 2),
-            "du_thr2": float(du_thr ** 2),
-            "ddu_elev2": float(ddu_elev ** 2),
-            "ddu_thr2": float(ddu_thr ** 2),
+            "e_theta2": float(e_theta**2),
+            "e_q_rel2": float(e_q_rel**2),
+            "elev_norm2": float(elev_norm**2),
+            "thr_norm2": float(thr_norm**2),
+            "du_elev2": float(du_elev**2),
+            "du_thr2": float(du_thr**2),
+            "ddu_elev2": float(ddu_elev**2),
+            "ddu_thr2": float(ddu_thr**2),
         }
         return self._get_obs(), reward, terminated, truncated, info
 

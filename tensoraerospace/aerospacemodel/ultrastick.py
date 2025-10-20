@@ -89,29 +89,27 @@ class Ultrastick(ModelBase):
 
     def import_linear_system(self):
         """Сохраненные линеаризованные матрицы"""
-        self.A = np.array([
-            [-0.5944, -0.8008, 9.791, -0.8747, 5.077e-5],
-            [-0.744, -7.56, 0.5294, -1.572, 0.000939],
-            [0, 0, 0, 1, 0],
-            [1.041, -7.406, 0, 0, 0],
-            [-15.81, -7.284e-3, 0.05399, -0.9985, 0]
-        ])
+        self.A = np.array(
+            [
+                [-0.5944, -0.8008, 9.791, -0.8747, 5.077e-5],
+                [-0.744, -7.56, 0.5294, -1.572, 0.000939],
+                [0, 0, 0, 1, 0],
+                [1.041, -7.406, 0, 0, 0],
+                [-15.81, -7.284e-3, 0.05399, -0.9985, 0],
+            ]
+        )
 
-        self.B = np.array([
-            [0.4669, 0],
-            [2.703, 0],
-            [0, 0],
-            [133.7, 0],
-            [0, 1]
-        ])
+        self.B = np.array([[0.4669, 0], [2.703, 0], [0, 0], [133.7, 0], [0, 1]])
 
-        self.C = np.array([
-            [0.9985, 0.05399, 0, 0, 0],  # Va
-            [0.003176, 0.05874, 0, 0, 0],  # alpha
-            [0, 0, 1, 0, 0],  # theta
-            [0, 0, 0, 1, 0],  # pitch rate (q)
-            [0, 0, 0, 0, 1],  # altitude (h)
-        ])
+        self.C = np.array(
+            [
+                [0.9985, 0.05399, 0, 0, 0],  # Va
+                [0.003176, 0.05874, 0, 0, 0],  # alpha
+                [0, 0, 1, 0, 0],  # theta
+                [0, 0, 0, 1, 0],  # pitch rate (q)
+                [0, 0, 0, 0, 1],  # altitude (h)
+            ]
+        )
 
         self.D = np.array(
             [
@@ -168,10 +166,9 @@ class Ultrastick(ModelBase):
         # Ensure 1D float control vector
         ut_0 = np.asarray(ut_0, dtype=float).reshape(-1)
         if self.time_step != 0:
-            ut_1 = (
-                np.asarray(self.store_input[:, self.time_step - 1], dtype=float)
-                .reshape(-1)
-            )
+            ut_1 = np.asarray(
+                self.store_input[:, self.time_step - 1], dtype=float
+            ).reshape(-1)
         else:
             ut_1 = ut_0.copy()
 
