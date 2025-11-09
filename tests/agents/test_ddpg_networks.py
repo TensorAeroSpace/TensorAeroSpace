@@ -23,10 +23,11 @@ class TestValueNetwork:
     def test_forward_shape(self):
         """Test forward pass output shape."""
         net = ValueNetwork(num_inputs=4, num_actions=2, hidden_size=32)
+        device = next(net.parameters()).device
 
         batch_size = 8
-        state = torch.randn(batch_size, 4)
-        action = torch.randn(batch_size, 2)
+        state = torch.randn(batch_size, 4, device=device)
+        action = torch.randn(batch_size, 2, device=device)
 
         q_value = net(state, action)
 
@@ -35,9 +36,10 @@ class TestValueNetwork:
     def test_forward_single(self):
         """Test forward pass with single sample."""
         net = ValueNetwork(num_inputs=3, num_actions=1, hidden_size=16)
+        device = next(net.parameters()).device
 
-        state = torch.randn(1, 3)
-        action = torch.randn(1, 1)
+        state = torch.randn(1, 3, device=device)
+        action = torch.randn(1, 1, device=device)
 
         q_value = net(state, action)
 
@@ -47,9 +49,10 @@ class TestValueNetwork:
     def test_gradient_flow(self):
         """Test that gradients flow through the network."""
         net = ValueNetwork(num_inputs=3, num_actions=1, hidden_size=16)
+        device = next(net.parameters()).device
 
-        state = torch.randn(4, 3, requires_grad=True)
-        action = torch.randn(4, 1, requires_grad=True)
+        state = torch.randn(4, 3, requires_grad=True, device=device)
+        action = torch.randn(4, 1, requires_grad=True, device=device)
 
         q_value = net(state, action)
         loss = q_value.mean()
@@ -82,8 +85,9 @@ class TestValueNetwork:
 
         for num_inputs, num_actions, hidden_size in configs:
             net = ValueNetwork(num_inputs, num_actions, hidden_size)
-            state = torch.randn(1, num_inputs)
-            action = torch.randn(1, num_actions)
+            device = next(net.parameters()).device
+            state = torch.randn(1, num_inputs, device=device)
+            action = torch.randn(1, num_actions, device=device)
 
             q_value = net(state, action)
             assert q_value.shape == (1, 1)
@@ -113,23 +117,25 @@ class TestPolicyNetwork:
             action_low=action_low,
             action_high=action_high,
         )
+        device = next(net.parameters()).device
 
         expected_scale = (action_high - action_low) / 2.0
         expected_bias = (action_high + action_low) / 2.0
 
         assert torch.allclose(
-            net.action_scale, torch.FloatTensor(expected_scale), atol=1e-5
+            net.action_scale, torch.FloatTensor(expected_scale).to(device), atol=1e-5
         )
         assert torch.allclose(
-            net.action_bias, torch.FloatTensor(expected_bias), atol=1e-5
+            net.action_bias, torch.FloatTensor(expected_bias).to(device), atol=1e-5
         )
 
     def test_forward_shape(self):
         """Test forward pass output shape."""
         net = PolicyNetwork(num_inputs=4, num_actions=2, hidden_size=32)
+        device = next(net.parameters()).device
 
         batch_size = 8
-        state = torch.randn(batch_size, 4)
+        state = torch.randn(batch_size, 4, device=device)
 
         action = net(state)
 
@@ -138,8 +144,9 @@ class TestPolicyNetwork:
     def test_forward_output_range_default(self):
         """Test that output is in default range [-1, 1]."""
         net = PolicyNetwork(num_inputs=3, num_actions=1, hidden_size=16)
+        device = next(net.parameters()).device
 
-        state = torch.randn(100, 3)
+        state = torch.randn(100, 3, device=device)
         actions = net(state)
 
         # With default bounds, should be roughly in [-1, 1]
@@ -158,8 +165,9 @@ class TestPolicyNetwork:
             action_low=action_low,
             action_high=action_high,
         )
+        device = next(net.parameters()).device
 
-        state = torch.randn(100, 3)
+        state = torch.randn(100, 3, device=device)
         actions = net(state)
 
         # Should be roughly in [action_low, action_high]
@@ -189,8 +197,9 @@ class TestPolicyNetwork:
     def test_gradient_flow(self):
         """Test that gradients flow through the network."""
         net = PolicyNetwork(num_inputs=3, num_actions=1, hidden_size=16)
+        device = next(net.parameters()).device
 
-        state = torch.randn(4, 3, requires_grad=True)
+        state = torch.randn(4, 3, requires_grad=True, device=device)
 
         action = net(state)
         loss = action.mean()
@@ -224,9 +233,10 @@ class TestPolicyNetwork:
             action_low=action_low,
             action_high=action_high,
         )
+        device = next(net.parameters()).device
 
         # For zero input to tanh (before activation), output should be near bias
-        state = torch.zeros(1, 3)
+        state = torch.zeros(1, 3, device=device)
         with torch.no_grad():
             # Manually set weights to zero to get zero output from tanh
             net.linear3.weight.data.fill_(0)
@@ -235,7 +245,7 @@ class TestPolicyNetwork:
             action = net(state)
 
             # tanh(0) = 0, so action should be bias (midpoint)
-            expected = torch.FloatTensor([0.0, 0.0])
+            expected = torch.FloatTensor([0.0, 0.0]).to(device)
             assert torch.allclose(action[0], expected, atol=1e-5)
 
     def test_different_dimensions(self):
@@ -248,7 +258,8 @@ class TestPolicyNetwork:
 
         for num_inputs, num_actions, hidden_size in configs:
             net = PolicyNetwork(num_inputs, num_actions, hidden_size)
-            state = torch.randn(1, num_inputs)
+            device = next(net.parameters()).device
+            state = torch.randn(1, num_inputs, device=device)
 
             action = net(state)
             assert action.shape == (1, num_actions)
@@ -256,8 +267,9 @@ class TestPolicyNetwork:
     def test_deterministic_output(self):
         """Test that same input produces same output (deterministic policy)."""
         net = PolicyNetwork(num_inputs=3, num_actions=1, hidden_size=16)
+        device = next(net.parameters()).device
 
-        state = torch.randn(1, 3)
+        state = torch.randn(1, 3, device=device)
 
         action1 = net(state)
         action2 = net(state)
@@ -271,7 +283,8 @@ class TestPolicyNetwork:
         batch_sizes = [1, 4, 16, 32]
 
         for batch_size in batch_sizes:
-            state = torch.randn(batch_size, 3)
+            device = next(net.parameters()).device
+            state = torch.randn(batch_size, 3, device=device)
             actions = net(state)
 
             assert actions.shape == (batch_size, 2)

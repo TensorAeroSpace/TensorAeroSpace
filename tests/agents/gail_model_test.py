@@ -51,7 +51,8 @@ def test_init_weights_linear_sets_params():
 def test_actorcritic_forward_shapes():
     obs_dim, act_dim, hidden = 3, 2, 16
     net = ActorCritic(obs_dim, act_dim, hidden, std=0.0)
-    x = torch.randn(4, obs_dim)
+    device = next(net.parameters()).device
+    x = torch.randn(4, obs_dim, device=device)
     dist, value = net(x)
     assert value.shape == (4, 1)
     sample = dist.sample()
@@ -94,7 +95,8 @@ def test_ppo_iter_batches_count_and_shapes():
 
 def test_discriminator_forward_range():
     disc = Discriminator(num_inputs=5, hidden_size=8)
-    x = torch.randn(4, 5)
+    device = next(disc.parameters()).device
+    x = torch.randn(4, 5, device=device)
     out = disc(x)
     assert out.shape == (4, 1)
     assert torch.ge(out, 0).all() and torch.le(out, 1).all()
@@ -113,8 +115,11 @@ def test_gail_expert_reward_and_test_env_smoke():
         data=expert_data,
     )
 
+    # Get device from model
+    device = next(gail.model.parameters()).device
+
     # expert_reward
-    state = torch.zeros(1, env.observation_space.shape[0])
+    state = torch.zeros(1, env.observation_space.shape[0], device=device)
     action = np.zeros((1, env.action_space.shape[0]), dtype=np.float32)
     r = gail.expert_reward(state, action)
     assert np.asarray(r).shape == (1, 1)
@@ -137,13 +142,16 @@ def test_gail_ppo_update_runs_one_step():
         data=expert_data,
     )
 
+    # Get device from model
+    device = next(gail.model.parameters()).device
+
     N, S, A = 4, env.observation_space.shape[0], env.action_space.shape[0]
-    states = torch.randn(N, S)
-    actions = torch.randn(N, A)
+    states = torch.randn(N, S, device=device)
+    actions = torch.randn(N, A, device=device)
     # Create a simple Gaussian log_prob approximation (not exact but shape-correct)
-    log_probs = torch.zeros(N, A)
-    returns = torch.randn(N, 1)
-    advantages = torch.randn(N, 1)
+    log_probs = torch.zeros(N, A, device=device)
+    returns = torch.randn(N, 1, device=device)
+    advantages = torch.randn(N, 1, device=device)
 
     # Should run without exceptions
     gail.ppo_update(

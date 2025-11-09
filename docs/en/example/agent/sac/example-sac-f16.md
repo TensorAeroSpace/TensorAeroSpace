@@ -54,7 +54,7 @@ np.random.seed(seed)
 ```python
 # Replay buffer and agent
 memory = ReplayMemory(replay_size, seed)
-agent = SAC(observation_dim=2, action_space=action_space_boxes, hidden_size=32, cuda=False)
+agent = SAC(observation_dim=2, action_space=action_space_boxes, hidden_size=32, device="cpu")
 ```
 
 ```python

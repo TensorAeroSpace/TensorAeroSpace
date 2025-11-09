@@ -73,7 +73,8 @@ python example/reinforcement_learning/sac-b747-render.py \
     --render \
     --dt 0.1 \
     --tn 200 \
-    --repo TensorAeroSpace/sac-b747
+    --repo TensorAeroSpace/sac-b747 \
+    --device cuda  # Optional: 'cuda', 'mps', or 'cpu' (auto-detects if not specified)
 ```
 
 > 📖 **See full tutorial**: [SAC B747 Documentation](https://tensoraerospace.readthedocs.io/en/latest/example/agent/sac/example-sac-b747/)

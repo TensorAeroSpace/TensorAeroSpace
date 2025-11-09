@@ -126,31 +126,25 @@ update theta by SGD
 import gymnasium as gym
 import numpy as np
 
-from tensoraerospace.agent.dqn.model import PERAgent
+from tensoraerospace.agent.dqn.model import Model, DQNAgent
 
 env = gym.make('LinearLongitudinalF16-v0', number_time_steps=2000)
-state, info = env.reset()
+num_actions = env.action_space.n
 
-agent = PERAgent(
-    state_dim=len(state),
-    action_dim=env.action_space.shape[0] if hasattr(env.action_space, 'shape') else env.action_space.n,
+model = Model(num_actions)
+target_model = Model(num_actions)
+
+agent = DQNAgent(
+    model=model,
+    target_model=target_model,
+    env=env,
+    train_nums=10000,
+    epsilon=1.0,
+    epsilon_dacay=0.995,
+    min_epsilon=0.05,
 )
 
-epsilon = 1.0
-for t in range(10000):
-    if np.random.rand() < epsilon:
-        action = env.action_space.sample()
-    else:
-        action = agent.select_action(state)
-
-    next_state, reward, terminated, truncated, info = env.step(action)
-    agent.remember(state, action, reward, next_state, terminated or truncated)
-    agent.train_step()
-
-    state = next_state
-    if terminated or truncated:
-        state, info = env.reset()
-    epsilon = max(0.05, epsilon * 0.995)
+agent.train()
 ```
 
 !!! tip
