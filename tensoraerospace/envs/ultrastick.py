@@ -61,6 +61,12 @@ class LinearLongitudinalUltrastick(gym.Env):
             selected_state_output=None,
             t0=0,
         )
+        # Map state_space to model's full state indices
+        # Model's selected_states: ["u", "w", "q", "theta", "h"]
+        model_state_names = self.model.selected_states
+        self.state_space_indices = [
+            model_state_names.index(state_name) for state_name in self.state_space
+        ]
         self.indices_tracking_states = [
             self.state_space.index(self.tracking_states[i])
             for i in range(len(self.tracking_states))
@@ -117,12 +123,25 @@ class LinearLongitudinalUltrastick(gym.Env):
             done (bool): Simulation status, completed or not.
             logging (any): Additional information (not used).
         """
-        if action[0] > self.max_action_value:
-            action[0] = self.max_action_value
-        if action[0] < self.max_action_value * -1:
-            action[0] = self.max_action_value * -1
+        # Ensure action is 1D and get elevator value
+        action_flat = np.asarray(action).flatten()
+        ele_deg = float(action_flat[0])
+        
+        # Clip elevator to limits
+        if ele_deg > self.max_action_value:
+            ele_deg = self.max_action_value
+        if ele_deg < self.max_action_value * -1:
+            ele_deg = self.max_action_value * -1
+        
+        # Convert to radians and create model input [ele (rad), delta_t]
+        # delta_t = 0 means no throttle change
+        ele_rad = np.deg2rad(ele_deg)
+        model_action = np.array([ele_rad, 0.0], dtype=np.float32)
+        
         self.current_step += 1
-        next_state = self.model.run_step(action)
+        next_state_full = self.model.run_step(model_action)
+        # Map full model state to state_space
+        next_state = next_state_full[self.state_space_indices]
         reward = self.reward_func(
             next_state[self.indices_tracking_states],
             self.ref_signal,
@@ -130,7 +149,7 @@ class LinearLongitudinalUltrastick(gym.Env):
         )
         self.done = self.current_step >= self.number_time_steps - 2
         info = self._get_info()
-        return next_state.reshape([-1, 1]), reward, self.done, False, info
+        return next_state.reshape([-1, 1]).astype(np.float32), reward, self.done, False, info
 
     def reset(self, seed=None, options=None):
         """Reset simulation environment to initial conditions.
@@ -150,14 +169,19 @@ class LinearLongitudinalUltrastick(gym.Env):
             selected_state_output=None,
             t0=0,
         )
+        # Recompute state_space_indices after model recreation
+        model_state_names = self.model.selected_states
+        self.state_space_indices = [
+            model_state_names.index(state_name) for state_name in self.state_space
+        ]
         self.ref_signal = self.reference_signal
         self.model.initialise_system(
             x0=self.initial_state, number_time_steps=self.number_time_steps
         )
         info = self._get_info()
-        observation = np.array(self.initial_state, dtype=np.float32)[
-            self.model.selected_state_index
-        ].reshape([-1, 1])
+        # Map initial_state to state_space
+        initial_state_array = np.array(self.initial_state, dtype=np.float32).reshape(-1)
+        observation = initial_state_array[self.state_space_indices].reshape([-1, 1]).astype(np.float32)
         return observation, info
 
     def render(self):

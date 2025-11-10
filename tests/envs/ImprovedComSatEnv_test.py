@@ -137,14 +137,16 @@ def test_termination_conditions(env_setup):
     max_steps = env.number_time_steps  # Run until truncation
     terminated = False
     truncated = False
-    
+
     for i in range(max_steps):
         action = np.array([1.0], dtype=np.float32)
         obs, reward, terminated, truncated, info = env.step(action)
 
         if terminated:
             # Check that termination penalty was applied (reduced from -100 to -10)
-            assert reward == -10.0, f"Termination should give penalty reward, got {reward}"
+            assert (
+                reward == -10.0
+            ), f"Termination should give penalty reward, got {reward}"
             break
 
         if truncated:
@@ -152,7 +154,9 @@ def test_termination_conditions(env_setup):
             break
 
     # At least one termination condition should be met (truncated is acceptable)
-    assert terminated or truncated, f"Episode should terminate or truncate. Steps: {env.current_step}, max: {env.number_time_steps - 2}"
+    assert (
+        terminated or truncated
+    ), f"Episode should terminate or truncate. Steps: {env.current_step}, max: {env.number_time_steps - 2}"
 
 
 def test_reward_structure(env_setup):
@@ -177,7 +181,9 @@ def test_reward_structure(env_setup):
     # Note: rewards include survival bonus (+0.1 per step), so they may be positive
     # We just check that rewards are finite and reasonable
     # The cost function is negative, but survival bonus can make total reward positive
-    assert all(np.abs(r) < 1000 for r in rewards), "Rewards should be reasonable magnitude"
+    assert all(
+        np.abs(r) < 1000 for r in rewards
+    ), "Rewards should be reasonable magnitude"
 
 
 def test_state_indices(env_setup):

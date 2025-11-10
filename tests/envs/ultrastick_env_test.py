@@ -20,7 +20,10 @@ class _StubModel:
     def initialise_system(self, x0, number_time_steps):
         self._state = np.array(x0, dtype=np.float32)
         # Ensure selected_state_index is set after initialization
-        if not hasattr(self, 'selected_state_index') or self.selected_state_index is None:
+        if (
+            not hasattr(self, "selected_state_index")
+            or self.selected_state_index is None
+        ):
             self.selected_state_index = list(range(len(x0)))
 
     def run_step(self, action):
@@ -57,9 +60,13 @@ def test_ultrastick_env_reset_and_step(monkeypatch):
     )
     assert next_obs.shape == (2, 1)
     # Reward is returned as float from reward() method, not as numpy array
-    assert isinstance(reward, (float, np.floating, np.ndarray)), f"Reward should be float or array, got {type(reward)}"
+    assert isinstance(
+        reward, (float, np.floating, np.ndarray)
+    ), f"Reward should be float or array, got {type(reward)}"
     # If it's an array, check it's not empty; if it's a scalar, that's fine too
     if isinstance(reward, np.ndarray):
         assert reward.shape != (), "If reward is array, it should not be scalar"
     assert isinstance(done, (np.bool_, bool)), f"Done should be bool, got {type(done)}"
-    assert isinstance(truncated, (np.bool_, bool)), f"Truncated should be bool, got {type(truncated)}"
+    assert isinstance(
+        truncated, (np.bool_, bool)
+    ), f"Truncated should be bool, got {type(truncated)}"
