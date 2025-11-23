@@ -54,7 +54,7 @@ np.random.seed(seed)
 ```python
 # Replay buffer and agent
 memory = ReplayMemory(replay_size, seed)
-agent = SAC(observation_dim=2, action_space=action_space_boxes, hidden_size=32, device="cpu")
+agent = SAC(env=env, hidden_size=32, device="cpu")
 ```
 
 ```python
@@ -107,4 +107,3 @@ env.model.plot_transient_process('alpha', tps, reference_signals[0], to_deg=True
 
 <!-- Image not available in the repository; comment left to avoid build warnings. -->
 <!-- ![alpha](output_10_0.png) -->
-

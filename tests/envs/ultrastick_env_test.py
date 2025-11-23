@@ -5,17 +5,19 @@ from tensoraerospace.envs.ultrastick import LinearLongitudinalUltrastick
 
 
 class _StubModel:
+    _FULL_STATE_ORDER = ["u", "w", "q", "theta", "h"]
+    _TWO_STATE_ORDER = ["theta", "q"]
+
     def __init__(self, initial_state, number_time_steps, selected_state_output, t0):
         # Simulate ModelBase behavior: when selected_state_output is None,
         # use all states. Ultrastick has 5 states: ["u", "w", "q", "theta", "h"]
         # But in the test we use 2 states: ["theta", "q"]
         # So we need to match the actual state space length
-        if selected_state_output is None:
-            # Use length of initial_state which matches the actual state space
-            # In the test, initial_state has 2 elements for ["theta", "q"]
-            self.selected_state_index = list(range(len(initial_state)))
-        else:
-            self.selected_state_index = list(range(len(selected_state_output)))
+        self.selected_states = self._infer_state_names(
+            initial_state, selected_state_output
+        )
+        self.list_state = self.selected_states
+        self.selected_state_index = list(range(len(self.selected_states)))
 
     def initialise_system(self, x0, number_time_steps):
         self._state = np.array(x0, dtype=np.float32)
@@ -30,6 +32,24 @@ class _StubModel:
         # simple deterministic next state
         self._state = self._state + 0.1 * np.ones_like(self._state)
         return self._state
+
+    @classmethod
+    def _infer_state_names(cls, initial_state, selected_state_output):
+        if (
+            selected_state_output is not None
+            and isinstance(selected_state_output, (list, tuple))
+            and all(isinstance(name, str) for name in selected_state_output)
+        ):
+            return list(selected_state_output)
+
+        state_len = len(initial_state)
+        if state_len == 2:
+            return cls._TWO_STATE_ORDER.copy()
+        if state_len == len(cls._FULL_STATE_ORDER):
+            return cls._FULL_STATE_ORDER.copy()
+        if state_len < len(cls._FULL_STATE_ORDER):
+            return cls._FULL_STATE_ORDER[:state_len]
+        return [f"x{i}" for i in range(state_len)]
 
 
 def test_ultrastick_env_reset_and_step(monkeypatch):
