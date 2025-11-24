@@ -45,12 +45,16 @@
                       tracking_states=["theta"])
 
       # Сброс среды к начальному состоянию
-      state, info = env.reset()
+     state, info = env.reset()
 
-      state_dim = env.observation_space.shape[0]
-      n_actions = env.action_space.shape[0]
+     def flatten_obs(obs):
+         return np.asarray(obs, dtype=np.float32).reshape(-1)
+
+     state_dim = int(np.prod(env.observation_space.shape))
+     n_actions = int(np.prod(env.action_space.shape))
       actor = Actor(state_dim, n_actions, activation=Mish)
       critic = Critic(state_dim, activation=Mish)
+     state = flatten_obs(state)
 
    .. container:: output stream stderr
 
@@ -63,9 +67,9 @@
 
    ```python
 
-      # config
-      state_dim = env.observation_space.shape[0]
-      n_actions = env.action_space.shape[0]
+     # config
+     state_dim = int(np.prod(env.observation_space.shape))
+     n_actions = int(np.prod(env.action_space.shape))
       actor = Actor(state_dim, n_actions, activation=Mish)
       critic = Critic(state_dim, activation=Mish)
 
@@ -100,8 +104,9 @@
       # Демонстрация обученного агента
       num_demo_episodes = 5
 
-      for episode in range(num_demo_episodes):
-          state, info = env.reset()
+     for episode in range(num_demo_episodes):
+         state, info = env.reset()
+         state = flatten_obs(state)
           done = False
           total_reward = 0
           frames = 0
@@ -111,11 +116,11 @@
               actions = dists.sample().detach().data.numpy()
               actions_clipped = np.clip(actions, env.action_space.low.min(), env.action_space.high.max())
               next_state, reward, terminated, truncated, info= env.step(actions_clipped[0])
+             next_state = flatten_obs(next_state)
               prev_action = actions_clipped[0]  # Update the previous action
               done = terminated or truncated
               state = next_state
               total_reward += reward
-              state = next_state
               frames +=1
           print(f"Demo Episode {episode}, Total Reward: {total_reward}, {frames}")
 

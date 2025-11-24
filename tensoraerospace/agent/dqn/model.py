@@ -288,7 +288,7 @@ class DQNAgent:
 
         obs, _info = self.env.reset()
         episode_reward = 0.0
-        pbar = tqdm(range(1, self.train_nums), desc="PERAgent Train", unit="step")
+        pbar = tqdm(range(1, self.train_nums), desc="DQNAgent Train", unit="step")
         recent_loss = None
         for t in pbar:
             input_obs = obs.reshape([1, -1])

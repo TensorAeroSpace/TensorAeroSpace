@@ -39,45 +39,52 @@ The model is defined in the state space:
 where:
 
 \[
- x = \begin{bmatrix} \rho & \theta & \omega \end{bmatrix}^{\top}, \quad
- u_{in} = \eta
+ x = \begin{bmatrix} x_1 \\ x_3 \\ x_4 \end{bmatrix} = \begin{bmatrix} \rho \\ \dot{\rho} \\ \dot{\theta} \end{bmatrix}, \quad
+ u = u_2
 \]
 
-The typical matrix structure is:
+The linearized system:
 
 \[
 \begin{bmatrix}
-\dot{\rho} \\
-\dot{\theta} \\
-\dot{\omega}
+\dot{x}_1 \\
+\dot{x}_3 \\
+\dot{x}_4
 \end{bmatrix}
 =
 \begin{bmatrix}
 0 & 1 & 0 \\
-f_1(\rho, \omega) & 0 & f_2(\rho, \omega) \\
-0 & f_3(\omega, r) & 0
+0.01036 & 0 & 0.7753 \\
+0 & -0.01775 & 0
 \end{bmatrix}
-\begin{bmatrix} \rho \\ \theta \\ \omega \end{bmatrix}
+\begin{bmatrix} x_1 \\ x_3 \\ x_4 \end{bmatrix}
  +
-\begin{bmatrix} 0 \\ 0 \\ g(r) \end{bmatrix} \eta
+\begin{bmatrix} 0 \\ 0 \\ 0.1513 \end{bmatrix} u_2
 \]
 
-=== "Variables"
+=== "State Variables"
 
-    - **ρ**: altitude-to-Earth-radius ratio (dimensionless)
-    - **θ**: satellite position relative to the Earth frame, rad
-    - **ω**: angular velocity, rad/s
-    - **η**: control input (thrust), N (normalized in the model)
+    - **x₁ = ρ**: radial position - distance from Earth center, km
+    - **x₃ = ρ̇**: radial velocity, m/s
+    - **x₄ = θ̇**: angular velocity, rad/s
 
-=== "Coefficients"
+=== "Control Input"
 
-    - **f1(ρ, ω) ≈ 0.01036** — derivative with respect to ρ (linearized term)
-    - **f2(ρ, ω) ≈ 0.7753** — derivative with respect to ω in the θ̇ equation
-    - **f3(ω, r) ≈ -0.1774** — derivative with respect to θ in the ω̇ equation
-    - **g(r) ≈ 0.1512** — thrust influence on ω̇
+    - **u₂**: tangential thrust, N
+        - u₂ > 0 — thrust in direction of motion (acceleration)
+        - u₂ < 0 — thrust against direction of motion (deceleration)
+        - u₂ = 0 — no thrust
+
+=== "System Coefficients"
+
+    - **a₁₃ = 1.0** — radial position changes with radial velocity
+    - **a₃₁ = 0.01036** — radial acceleration component from position
+    - **a₃₄ = 0.7753** — radial acceleration component from angular velocity
+    - **a₄₃ = -0.01775** — angular acceleration component from radial velocity
+    - **b₄ = 0.1513** — tangential thrust influence on angular acceleration
 
 !!! note "Units"
-    Angles and angular rates are in radians. API methods can output in degrees.
+    Angular rates are in radians. Position in km, velocity in m/s. API methods can convert units.
 
 ## Mathematical model {#mathematical-model}
 
@@ -85,50 +92,59 @@ $$
 \dot{x} = A x + B u, \qquad y = C x + D u
 $$
 
-Numerical matrices (example linearization):
+Numerical matrices (linearized system):
 
 \[
 \begin{bmatrix}
-\dot{\rho} \\
-\dot{\theta} \\
-\dot{\omega}
+\dot{x}_1 \\
+\dot{x}_3 \\
+\dot{x}_4
 \end{bmatrix}
 =
 \begin{bmatrix}
 0 & 1 & 0 \\
 0.01036 & 0 & 0.7753 \\
-0 & -0.1774 & 0 
+0 & -0.01775 & 0 
 \end{bmatrix}
 \begin{bmatrix}
-\rho \\
-\theta \\
-\omega 
+x_1 \\
+x_3 \\
+x_4 
 \end{bmatrix}
  +
 \begin{bmatrix}
 0 \\
 0 \\
-0.1512
+0.1513
 \end{bmatrix}
-\eta
+u_2
+\]
+
+Expanded form:
+\[
+\begin{aligned}
+\dot{x}_1 &= x_3 \\
+\dot{x}_3 &= 0.01036 \cdot x_1 + 0.7753 \cdot x_4 \\
+\dot{x}_4 &= -0.01775 \cdot x_3 + 0.1513 \cdot u_2
+\end{aligned}
 \]
 
 ### Derivatives (numerical values)
 
-- **Matrix A (derivatives):**
+- **Matrix A (state derivatives):**
 
-  | Коэффициент | Значение |
-  |-------------|----------|
-  | a_ρθ (∂ρ̇/∂θ) | 1.0 |
-  | a_θρ (∂θ̇/∂ρ) | 0.01036 |
-  | a_θω (∂θ̇/∂ω) | 0.7753 |
-  | a_ωθ (∂ω̇/∂θ) | -0.1774 |
+  | Coefficient | Value | Physical Meaning |
+  |-------------|-------|------------------|
+  | a₁₃ (∂ẋ₁/∂x₃) | 1.0 | Radial position rate = radial velocity |
+  | a₃₁ (∂ẋ₃/∂x₁) | 0.01036 | Position effect on radial acceleration |
+  | a₃₄ (∂ẋ₃/∂x₄) | 0.7753 | Angular velocity effect on radial acceleration |
+  | a₄₃ (∂ẋ₄/∂x₃) | -0.01775 | Radial velocity effect on angular acceleration |
 
-- **Input η (column B):**
+- **Matrix B (control input):**
 
-  | Коэффициент | Значение |
-  |-------------|----------|
-  | b_η→ω (∂ω̇/∂η) | 0.1512 |
+  | Coefficient | Value | Physical Meaning |
+  |-------------|-------|------------------|
+  | b₄ (∂ẋ₄/∂u₂) | 0.1513 | Tangential thrust effect on angular acceleration |
 
 !!! tip "Actuator limits"
     Default control limits inside the model (normalized):
@@ -157,17 +173,18 @@ Numerical matrices (example linearization):
     dt = 0.01
     tp = generate_time_period(tn=20, dt=dt)
     number_time_steps = len(tp)
-    reference_signals = unit_step(degree=5, tp=tp, time_step=10, output_rad=True).reshape(1, -1)
+    # Reference signal for angular velocity control
+    reference_signals = unit_step(degree=0.1, tp=tp, time_step=10, output_rad=True).reshape(1, -1)
 
     env = gym.make(
         'ComSatEnv-v0',
         number_time_steps=number_time_steps,
-        initial_state=[[0],[0],[0]],
+        initial_state=[[6371.0], [0.0], [0.001]],  # [rho (km), rho_dot (m/s), theta_dot (rad/s)]
         reference_signal=reference_signals,
     )
     state, info = env.reset()
     for _ in range(200):
-        action = np.array([[0.1]])
+        action = np.array([[0.1]])  # Tangential thrust u2
         state, reward, terminated, truncated, info = env.step(action)
         if terminated or truncated:
             break
@@ -182,18 +199,24 @@ Numerical matrices (example linearization):
     dt = 0.01
     number_time_steps = 200
 
-    x0 = np.array([0.0, 0.0, 0.0])  # [rho, theta, omega]
+    # Initial state: [rho (km), rho_dot (m/s), theta_dot (rad/s)]
+    x0 = np.array([6371.0, 0.0, 0.001])
 
     model = ComSat(
         x0=x0,
         number_time_steps=number_time_steps,
-        selected_state_output=["rho", "theta", "omega"],
+        selected_state_output=["rho", "rho_dot", "theta_dot"],
         dt=dt,
     )
 
     for t in range(number_time_steps - 1):
-        u = np.array([[0.05]])
+        u = np.array([[0.05]])  # Tangential thrust u2
         x_next = model.run_step(u)
+    
+    # Get state history
+    rho_history = model.get_state('rho')
+    rho_dot_history = model.get_state('rho_dot')
+    theta_dot_history = model.get_state('theta_dot')
     ```
 
 ## Python API

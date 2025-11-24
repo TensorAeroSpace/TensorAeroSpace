@@ -75,6 +75,7 @@ plugins:
               - Optimization: example/optimization/example_optimization.md
               - A2C-NARX: example/agent/a2c_narx/example-narx.md
               - MPC: example/agent/mpc/example_mpc.md
+              - MPC Stochastic: example/agent/mpc/example_mpc_stochastic.md
               - MPC Transformers: example/agent/mpc/example_transformers.md
               - IHDP Failure: example/failure/ihdp-failure.md
               - Simulink:
@@ -149,6 +150,7 @@ plugins:
               - Оптимизация: example/optimization/example_optimization.md
               - A2C-NARX: example/agent/a2c_narx/example-narx.md
               - MPC: example/agent/mpc/example_mpc.md
+              - MPC Стохастический: example/agent/mpc/example_mpc_stochastic.md
               - MPC Transformers: example/agent/mpc/example_transformers.md
               - IHDP отказы: example/failure/ihdp-failure.md
               - Simulink:

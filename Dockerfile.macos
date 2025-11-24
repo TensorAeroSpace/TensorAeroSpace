@@ -1,0 +1,40 @@
+# Base image tuned for Apple Silicon / macOS hosts running Docker Desktop (linux/arm64)
+FROM --platform=linux/arm64 python:3.11-slim AS base
+
+ENV POETRY_VERSION=2.2.1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1
+
+# Install system dependencies required for scientific Python stack
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+        build-essential \
+        curl \
+        git \
+        libgl1 \
+        libglib2.0-0 \
+        libhdf5-dev \
+        pkg-config \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN pip install "poetry==${POETRY_VERSION}"
+
+WORKDIR /app
+
+# Copy project metadata first to leverage Docker layer caching
+COPY pyproject.toml poetry.lock readme.md README.ru-ru.md ./ 
+
+# Install project dependencies (CPU-only stack)
+RUN poetry config virtualenvs.in-project true && \
+    poetry install --with jupyter --no-root
+
+# Copy source code and examples
+COPY tensoraerospace ./tensoraerospace
+COPY example ./example
+
+EXPOSE 8888
+
+CMD ["poetry", "run", "jupyter", "notebook", "--notebook-dir=/app", "--ip=0.0.0.0", "--no-browser", "--allow-root", "--port=8888", "--NotebookApp.token=''", "--NotebookApp.password=''"]
+
+
+

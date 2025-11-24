@@ -12,10 +12,7 @@ WORKDIR /app
 
 # Copy only required files
 COPY tensoraerospace ./tensoraerospace
-COPY pyproject.toml poetry.lock README.md start.sh ./
-
-# Modify permissions for the start script in the same layer where it's copied
-RUN chmod +x start.sh
+COPY pyproject.toml poetry.lock readme.md README.ru-ru.md ./ 
 
 # Install dependencies using poetry and remove cache within the same layer
 RUN pip3 install poetry && \
@@ -26,4 +23,4 @@ RUN pip3 install poetry && \
 EXPOSE 8888
 
 # Set the default command for the container
-ENTRYPOINT [ "poetry", "run", "jupyter", "notebook", "--notebook-dir=/app", "--ip=0.0.0.0", "--no-browser", "--allow-root", "--port=8888", "--NotebookApp.token=''", "--NotebookApp.password=''" ]
+ENTRYPOINT [ "poetry", "run", "jupyter", "notebook", "--notebook-dir=/app", "--ip=0.0.0.0", "--no-browser", "--allow-root", "--port=8888", "--NotebookApp.token=", "--NotebookApp.password=" ]

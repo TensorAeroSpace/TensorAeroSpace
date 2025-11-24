@@ -2,12 +2,12 @@
 
 This module contains a linearized communication satellite model for analysis
 and control of orbital motion. The model includes three states:
-altitude to Earth radius ratio, satellite position and angular rotation velocity.
+radial position, radial velocity and angular velocity.
 
 Main components:
     - ComSat: Communication satellite model class in longitudinal channel
     - Linearized state matrices A, B, C, D for orbital dynamics
-    - Control input constraints (engine thrust)
+    - Control input constraints (tangential thrust u₂)
     - Methods for orbital motion simulation and attitude control
 """
 
@@ -34,17 +34,17 @@ class ComSat(ModelBase):
         dt (float, optional): Discretization frequency. Defaults to 0.01.
 
     Action space:
-        thrust: engine thrust
+        u2: tangential thrust (N) - positive accelerates satellite, negative decelerates
 
     State space:
-        rho: ratio of flight altitude to Earth radius
-        theta: satellite position relative to Earth coordinate system [rad]
-        omega: satellite angular rotation velocity [rad/s]
+        rho: radial position - distance from Earth center [km]
+        rho_dot: radial velocity [m/s]
+        theta_dot: angular velocity [rad/s]
 
     Output space:
-        rho: ratio of flight altitude to Earth radius
-        theta: satellite position relative to Earth coordinate system [rad]
-        omega: satellite angular rotation velocity [rad/s]
+        rho: radial position - distance from Earth center [km]
+        rho_dot: radial velocity [m/s]
+        theta_dot: angular velocity [rad/s]
     """
 
     def __init__(
@@ -69,11 +69,11 @@ class ComSat(ModelBase):
         self.discretisation_time = dt
 
         # Selected data for the system
-        self.selected_states = ["rho", "theta", "omega"]
-        self.selected_output = ["rho", "theta", "omega"]
+        self.selected_states = ["rho", "rho_dot", "theta_dot"]
+        self.selected_output = ["rho", "rho_dot", "theta_dot"]
         self.list_state = self.selected_states
         self.selected_input = [
-            "thrust",
+            "u2",
         ]
         self.control_list = self.selected_input
 
@@ -104,12 +104,21 @@ class ComSat(ModelBase):
         self.initialise_system(x0, number_time_steps)
 
     def import_linear_system(self):
-        """Сохраненные линеаризованные матрицы"""
+        """Сохраненные линеаризованные матрицы
+
+        State vector: x = [x₁, x₃, x₄]ᵀ = [rho, rho_dot, theta_dot]ᵀ
+        Control: u = u₂ (tangential thrust)
+
+        Equations:
+        ẋ₁ = x₃  (radial position rate = radial velocity)
+        ẋ₃ = 0.01036·x₁ + 0.7753·x₄  (radial acceleration)
+        ẋ₄ = -0.01775·x₃ + 0.1513·u₂  (angular acceleration)
+        """
         self.A = np.array(
             [
                 [0.0, 1.0, 0.0],
-                [0.01036, 0, 0.7753],
-                [0, -0.1774, 0],
+                [0.01036, 0.0, 0.7753],
+                [0.0, -0.01775, 0.0],
             ]
         )
 
@@ -117,7 +126,7 @@ class ComSat(ModelBase):
             [
                 [0.0],
                 [0.0],
-                [0.1512],
+                [0.1513],
             ]
         )
 
@@ -249,7 +258,7 @@ class ComSat(ModelBase):
         Получить массив состояния
 
         Args:
-            state_name: Название состояния
+            state_name: Название состояния (rho, rho_dot, theta_dot)
             to_deg: Конвертировать в градусы
             to_rad: Конвертировать в радианы
 
@@ -258,15 +267,9 @@ class ComSat(ModelBase):
 
         Пример:
 
-        >>> state_hist = model.get_state('alpha', to_deg=True)
+        >>> state_hist = model.get_state('rho')
 
         """
-        if state_name == "wz":
-            state_name = "theta"
-        if state_name == "wx":
-            state_name = "p"
-        if state_name == "wy":
-            state_name = "r"
         if state_name not in self.selected_states:
             raise Exception(
                 f"{state_name} нет в списке состояний, доступные {self.selected_states}"
@@ -285,25 +288,18 @@ class ComSat(ModelBase):
         Получить массив сигнала управления
 
         Args:
-            control_name: Название сигнала управления
+            control_name: Название сигнала управления (u2)
             to_deg: Конвертировать в градусы
+            to_rad: Конвертировать в радианы
 
         Returns:
             np.ndarray: Массив истории выбранного сигнала управления
 
         Пример:
 
-        >>> state_hist = model.get_control('stab', to_deg=True)
+        >>> control_hist = model.get_control('u2')
         """
-        if control_name in ["stab", "ele"]:
-            control_name = "ele"
-        if control_name in ["rud", "dir"]:
-            control_name = "rud"
-        if control_name not in self.selected_input or control_name not in [
-            "ele",
-            "ail",
-            "rud",
-        ]:
+        if control_name not in self.selected_input:
             raise Exception(
                 f"{control_name} нет в списке сигналов управления, доступные {self.selected_input}"
             )

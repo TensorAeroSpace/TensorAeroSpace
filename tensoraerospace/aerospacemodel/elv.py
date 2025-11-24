@@ -14,22 +14,24 @@ class ELVRocket(ModelBase):
     Args:
         x0: Initial state of the control object.
         number_time_steps: Number of time steps.
-        selected_state_output (optional): Selected states of the control object. Defaults to None.
+        selected_state_output (optional): Selected states of the control
+            object. Defaults to None.
         t0 (int, optional): Initial time. Defaults to 0.
         dt (float, optional): Discretization frequency. Defaults to 0.01.
 
     Action space:
-        ele: elevator [deg]
+        ele: elevator [rad]
 
-    State space:
-        theta: Pitch [deg]
-        q: Pitch angular velocity [deg/s]
+    State space (order):
         w: Longitudinal aircraft velocity [m/s]
+        q: Pitch angular velocity [rad/s]
+        theta: Pitch [rad]
 
-    Output space:
-        theta: Pitch [deg]
-        q: Pitch angular velocity [deg/s]
+
+    Output space (order):
         w: Longitudinal aircraft velocity [m/s]
+        q: Pitch angular velocity [rad/s]
+        theta: Pitch [rad]
     """
 
     def __init__(
@@ -45,8 +47,8 @@ class ELVRocket(ModelBase):
         self.discretisation_time = dt
 
         # Selected data for the system
-        self.selected_states = ["theta", "q", "w"]
-        self.selected_output = ["theta", "q", "w"]
+        self.selected_states = ["w", "q", "theta"]
+        self.selected_output = ["w", "q", "theta"]
         self.list_state = self.selected_states
         self.selected_input = [
             "ele",
@@ -57,13 +59,13 @@ class ELVRocket(ModelBase):
 
         self.state_space = self.selected_states
         self.action_space = self.selected_input
-        # ele
+        # ele (radians)
         # Limitations of the system
         self.input_magnitude_limits = [
-            25,
+            float(np.deg2rad(25.0)),
         ]
         self.input_rate_limits = [
-            60,
+            float(np.deg2rad(60.0)),
         ]
 
         # Store the number of inputs, states and outputs
@@ -80,8 +82,18 @@ class ELVRocket(ModelBase):
         self.initialise_system(x0, number_time_steps)
 
     def import_linear_system(self) -> None:
-        """Сохраненные линеаризованные матрицы"""
-        self.A = np.array(
+        """Сохраненные линеаризованные матрицы.
+
+        Базовые матрицы заданы в старом порядке состояний [alpha, q, theta].
+        Здесь они приводятся к новому порядку [w, q, theta] с помощью
+        перестановочной матрицы P.
+
+        Старый порядок: x_old = [alpha, q, theta]
+        Новый порядок:  x_new = [w, q, theta]
+        где w ≈ alpha для малых углов в продольном канале.
+        """
+        # Old-order matrices: x_old = [alpha, q, theta]
+        A_old = np.array(
             [
                 [-100.858, 1, -0.1256],
                 [14.7805, 0, 0.01958],
@@ -89,7 +101,7 @@ class ELVRocket(ModelBase):
             ]
         )
 
-        self.B = np.array(
+        B_old = np.array(
             [
                 [20.42],
                 [3.4558],
@@ -97,21 +109,25 @@ class ELVRocket(ModelBase):
             ]
         )
 
-        self.C = np.array(
+        # Permutation from new -> old basis
+        # new = [w, q, theta] corresponds to old = [alpha, q, theta]
+        # so indices: old[0]=alpha->new[0]=w, old[1]=q->new[1]=q,
+        # old[2]=theta->new[2]=theta. P[i,j] = 1 if old[i] = new[j]
+        P = np.array(
             [
-                [1, 0, 0],
-                [0, 1, 0],
-                [0, 0, 1],
+                [1, 0, 0],  # alpha_old = w_new
+                [0, 1, 0],  # q_old = q_new
+                [0, 0, 1],  # theta_old = theta_new
             ]
         )
 
-        self.D = np.array(
-            [
-                [0],
-                [0],
-                [0],
-            ]
-        )
+        # Transform to new basis: A_new = P^T A_old P, B_new = P^T B_old
+        self.A = P.T @ A_old @ P
+        self.B = P.T @ B_old
+
+        # Identity output in new basis
+        self.C = np.eye(3)
+        self.D = np.zeros((3, 1))
 
     def initialise_system(self, x0, number_time_steps) -> None:
         """Инициализация системы

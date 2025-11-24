@@ -109,14 +109,41 @@ pip install tensoraerospace
 poetry install
 ```
 
-### 2. 🎯 Выбор примера
+### 2. 🔀 Выберите формат примера
 
-1. **Выберите интересующую категорию** из списка выше
-2. **Перейдите в соответствующую папку**
-3. **Откройте Jupyter Notebook** с примером
-4. **Следуйте инструкциям** в блокноте
+- **CLI-сценарии** — подойдут, если нужно быстро воспроизвести готовый результат или интегрировать пример в собственный пайплайн. Скрипты находятся в `example/**` и запускаются напрямую через `python` или `poetry run python`.
+- **Jupyter Notebook** — используйте для интерактивного изучения, пошаговых пояснений и экспериментов. Каждый раздел выше содержит ссылку на соответствующий ноутбук.
 
-### 3. 🏃‍♂️ Запуск примера
+### 3. 🏃‍♂️ Команды CLI для типовых сценариев
+
+Запускайте скрипты из корня репозитория (после установки зависимостей):
+
+- **F-16 baseline (general_examples/example.py)** — простейшая проверка среды `LinearLongitudinalF16-v0`.
+  ```bash
+  poetry run python example/general_examples/example.py
+  # или, если использовали pip/venv
+  python example/general_examples/example.py
+  ```
+
+- **DDPG Boeing 747 (reinforcement_learning/ddpg-b747-render.py)** — воспроизводит готового агента и при необходимости визуализирует траекторию.
+  ```bash
+  poetry run python example/reinforcement_learning/ddpg-b747-render.py \
+    --repo TensorAeroSpace/ddpg-b747 --dt 0.1 --tn 200 --render
+  # через pip/venv:
+  python example/reinforcement_learning/ddpg-b747-render.py \
+    --repo TensorAeroSpace/ddpg-b747 --dt 0.1 --tn 200 --render
+  ```
+  Ключи `--repo`, `--dt`, `--tn`, `--render/--no-render` настраивают источник весов, дискретизацию и визуализацию.
+
+- **GAIL Pendulum dataset (reinforcement_learning/gail_pendulum_generate_expert.py)** — собирает демонстрации маятника для дальнейшего обучения.
+  ```bash
+  poetry run python example/reinforcement_learning/gail_pendulum_generate_expert.py
+  # через pip/venv:
+  python example/reinforcement_learning/gail_pendulum_generate_expert.py
+  ```
+  Используйте флаг `--help`, чтобы уточнить параметры генерации (количество эпизодов, путь сохранения и т.д.).
+
+### 4. 📓 Запуск ноутбуков
 
 ```bash
 # Запуск Jupyter Lab

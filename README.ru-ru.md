@@ -32,15 +32,55 @@
 - 🧠 **RL алгоритмы**: Современные реализации обучения с подкреплением
 - 🔧 **Расширяемая архитектура**: Легко расширяется и настраивается под ваши конкретные потребности
 
+## 🧭 Направления прикладного использования
+
+Перечень сценариев, подтверждённых Заключением НТО:
+
+1. **Автоматическое управление самолётами и БПЛА** — стабилизация, следование траектории, управление по углам тангажа/скольжения для F‑16, B747, X‑15, Ultrastick.
+2. **Управление ракетно-космическими аппаратами** — линеаризованные модели ELV, Typical Rocket, геостационарные спутники, оптимизация фаз выведения.
+3. **Комбинированные контуры PID/MPC + RL** — настройка гибридных контроллеров, внедрение SAC/PPO/A3C в задачах продольного движения.
+4. **Оптимизация гиперпараметров и бенчмаркинг** — автоматизированный подбор IHDP/NARX‑агентов, проведение Bench-серий и визуализация метрик.
+5. **Интеграция с цифровыми полигонами** — Unity ML‑Agents, MATLAB/Simulink, экспорт в UnityAirplaneEnvironment и simulink-example.
+6. **Методы диагностики и устойчивости** — исследование отказов, оценка диапазонов управляемости, подготовка датасетов для GAIL/Benchmark.
+
+Каждый сценарий имеет рабочие примеры и документацию (см. раздел [📚 Примеры и руководства](#-примеры-и-руководства)).
+
 ## 🚀 Быстрый старт
 
+> 💡 **Интерактивный walkthrough**: откройте блокнот [quickstart.ipynb](./example/quickstart.ipynb), чтобы запустить SAC‑бенчмарк для B747 от начала до конца прямо в Jupyter/VS Code.
+
+### ✅ Минимальные технические требования
+
+| Компонент | Минимум | Рекомендовано |
+| --- | --- | --- |
+| **ОС** | Linux x86_64, Windows 10, macOS 13 | Ubuntu 22.04 LTS / Windows 11 |
+| **CPU** | 4 ядра, AVX | 8+ ядер, AVX2/FMA |
+| **RAM** | 8 ГБ | 16–32 ГБ для RL/Simulink |
+| **GPU** | Необязательно | NVIDIA RTX с ≥8 ГБ VRAM для SAC/PPO, поддержка CUDA 12.2 |
+| **Python** | 3.8–3.11 | 3.10/3.11 |
+| **Доп. ПО** | Git, Poetry или pip, Docker (опционально) | MATLAB/Simulink R2022b+ (для simulink-example), Unity 2021.3.5f1/2023.2.20f1 |
+
 ### 📦 Установка
+
+#### Установка Poetry (1 раз)
+
+```bash
+curl -sSL https://install.python-poetry.org | python3 -
+# Windows (PowerShell):
+(Invoke-WebRequest -Uri https://install.python-poetry.org -UseBasicParsing).Content | python -
+poetry --version   # проверка установки
+poetry self update --preview  # при необходимости обновления
+```
+
+После установки добавьте `$HOME/.local/bin` (Linux/macOS) или `%APPDATA%\Python\Scripts` (Windows) в `PATH`.
 
 #### Использование Poetry (Рекомендуется)
 ```bash
 git clone https://github.com/tensoraerospace/tensoraerospace.git
 cd tensoraerospace
 poetry install
+poetry shell        # активация виртуального окружения
+poetry run pytest   # быстрая проверка
 ```
 
 #### Использование pip
@@ -51,8 +91,17 @@ pip install tensoraerospace
 #### 🐳 Docker
 ```bash
 docker build -t tensoraerospace . --platform=linux/amd64
-docker run -v $(pwd)/example:/app/example -p 8888:8888 -it tensoraerospace
+docker run -v $(pwd)/example:/app/example \
+  -p 8888:8888 -it tensoraerospace \
+  jupyter lab --notebook-dir=/app --ip=0.0.0.0 --no-browser --allow-root
 ```
+> Откройте выданную ссылку (обычно `http://127.0.0.1:8888`) и перейдите к `example/quickstart.ipynb`, чтобы выполнить SAC walkthrough внутри контейнера.
+
+#### Рекомендуемые версии CUDA и cuDNN
+
+- **CUDA Toolkit**: 12.2.2 (совместим с базовым Docker-образом).
+- **cuDNN**: 8.9.x для CUDA 12 → [официальная документация](https://docs.nvidia.com/deeplearning/cudnn/latest).
+- Для Apple Silicon используйте `torch` с backend `mps` (CUDA не требуется).
 
 ### 🏃‍♂️ Быстрый пример
 
@@ -179,15 +228,29 @@ TensorAeroSpace легко интегрируется с Unity ML-Agents для 
 
 ## 📚 Примеры и руководства
 
-Изучите нашу обширную коллекцию примеров в директории [`./example`](./example/):
+Изучите нашу обширную коллекцию примеров в директории [`./example`](./example/) и на ReadTheDocs:
 
 | Категория | Описание | Блокноты |
 |-----------|----------|----------|
-| 🚀 **Быстрый старт** | Базовое использование и концепции | [`quickstart.ipynb`](./example/quickstart.ipynb) |
-| 🤖 **Обучение с подкреплением** | Реализации RL алгоритмов | [`reinforcement_learning/`](./example/reinforcement_learning/) |
-| 🎛️ **Системы управления** | PID, MPC контроллеры | [`pid_controllers/`](./example/pid_controllers/), [`mpc_controllers/`](./example/mpc_controllers/) |
-| ✈️ **Модели самолетов** | Примеры сред | [`environments/`](./example/environments/) |
-| 🔧 **Оптимизация** | Настройка гиперпараметров | [`optimization/`](./example/optimization/) |
+| 🚀 **Быстрый старт** | Базовое использование, экспорт моделей в HuggingFace | [`quickstart.ipynb`](./example/quickstart.ipynb) |
+| 🤖 **Обучение с подкреплением** | SAC/DDPG/PPO/GAIL скрипты и ноутбуки | [`reinforcement_learning/`](./example/reinforcement_learning/) |
+| 🎛️ **Системы управления** | PID/MPC, Transformers для MPC | [`pid_controllers/`](./example/pid_controllers/), [`mpc_controllers/`](./example/mpc_controllers/) |
+| ✈️ **Модели самолётов и ракет** | Линеаризованные среды, Unity, Simulink | [`environments/`](./example/environments/) |
+| 🔧 **Оптимизация** | Optuna/Benchmark, гиперпараметры IHDP/NARX | [`optimization/`](./example/optimization/), [`utilities/hyperparam_optimization.ipynb`](./example/utilities/hyperparam_optimization.ipynb) |
+
+> Быстрые команды запуска:
+>
+> ```bash
+> poetry run python example/reinforcement_learning/sac-b747-render.py --render --dt 0.1
+> poetry run python example/reinforcement_learning/ddpg-b747-render.py --repo TensorAeroSpace/ddpg-b747
+> poetry run python example/reinforcement_learning/gail_pendulum_generate_expert.py
+> poetry run python example/general_examples/example.py --env LinearLongitudinalF16-v0
+> ```
+>
+> Подробные walkthrough доступны в документации:  
+> - [Example SAC F-16](https://tensoraerospace.readthedocs.io/en/latest/example/agent/sac/example-sac-f16.html)  
+> - [Optuna optimization](https://tensoraerospace.readthedocs.io/en/latest/example/optimization/example_optimization.html)  
+> - [Unity Guide](https://tensoraerospace.readthedocs.io/en/latest/guide/unity_env.html)
 
 ## 🛠️ Разработка и участие
 

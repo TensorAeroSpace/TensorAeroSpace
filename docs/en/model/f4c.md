@@ -42,7 +42,7 @@ where:
 
 \[
  x = \begin{bmatrix} u & w & q & \theta \end{bmatrix}^{\top}, \quad
- u_{in} = \eta
+ u_{in} = \delta_e
 \]
 
 The typical matrix structure is:
@@ -63,7 +63,7 @@ m_u & m_w & m_q & m_{\theta} \\
 \end{bmatrix}
 \begin{bmatrix} u \\ w \\ q \\ \theta \end{bmatrix}
  +
-\begin{bmatrix} x_{\eta} \\ z_{\eta} \\ m_{\eta} \\ 0 \end{bmatrix} \eta
+\begin{bmatrix} x_{\delta_e} \\ z_{\delta_e} \\ m_{\delta_e} \\ 0 \end{bmatrix} \delta_e
 \]
 
 === "Variables"
@@ -72,14 +72,14 @@ m_u & m_w & m_q & m_{\theta} \\
     - **w**: vertical speed, m/s
     - **q**: pitch rate, rad/s
     - **θ**: pitch angle, rad
-    - **η**: stabilator control deflection, rad
+    - **δₑ**: elevator deflection, rad
 
 === "Coefficients"
 
     - **x_u, x_w, x_q, x_θ** — partial derivatives of longitudinal force \(X\) with respect to \(u, w, q, \theta\)
     - **z_u, z_w, z_q, z_θ** — partial derivatives of normal force \(Z\)
     - **m_u, m_w, m_q, m_θ** — partial derivatives of pitch moment \(M\)
-    - **x_η, z_η, m_η** — derivatives with respect to the control \(\eta\)
+    - **x_δₑ, z_δₑ, m_δₑ** — derivatives with respect to the control \(\delta_e\)
 
 !!! note "Units"
     Angles and angular rates are in radians. API methods can return values in degrees.
@@ -90,7 +90,39 @@ $$
 \dot{x} = A x + B u, \qquad y = C x + D u
 $$
 
-Numerical matrices (example linearization):
+The model is described by the standard state-space equation:
+
+$$
+\dot{x} = Ax + Bu
+$$
+
+where:
+
+- **x** — state vector, \(x = [u, w, q, \theta]^{\top}\), representing deviations of longitudinal velocity, vertical velocity, pitch rate, and pitch angle.
+- **u** — control vector, in this case \(u = [\delta_e]\), where \(\delta_e\) is the elevator deflection.
+- **A** — state matrix (or system matrix).
+- **B** — control matrix.
+
+### Units
+
+State vector \(x = [u, w, q, \theta]^{\top}\):
+
+- **u, w**: m/s (velocities)
+- **q**: rad/s (angular velocity)
+- **θ**: rad (angle)
+
+Control vector \(u = [\delta_e]\):
+
+- **δₑ**: rad (elevator deflection)
+
+### Flight Conditions
+
+The computed matrices **A** and **B** for the F-4C are provided for the following flight conditions:
+
+- **Mach number**: 0.6
+- **Altitude**: 35,000 feet
+
+### Numerical Matrices
 
 \[
 \begin{bmatrix}
@@ -101,9 +133,9 @@ Numerical matrices (example linearization):
 \end{bmatrix}
 =
 \begin{bmatrix}
--0.00679 & 0.00146 & 0 & -32.174 \\
-0.0110 & -0.4940 & 1469.7600 & 0 \\
-0.003410 & -0.019781184 & -0.4879811 & 0 \\
+7.6180 \times 10^{-4} & 4.7612 \times 10^{-3} & 0 & -9.8100 \\
+-6.6657 \times 10^{-2} & -2.8567 \times 10^{-1} & 1.8000 \times 10^{2} & 0 \\
+1.5124 \times 10^{-3} & -1.0083 \times 10^{-2} & -1.6384 \times 10^{-1} & 0 \\
 0 & 0 & 1 & 0 
 \end{bmatrix}
 \begin{bmatrix}
@@ -114,40 +146,40 @@ q \\
 \end{bmatrix}
  +
 \begin{bmatrix}
-0.0027 \\
--0.0584 \\
--0.0001309 \\
+2.6533 \times 10^{-3} \\
+-6.8562 \\
+-5.4446 \\
 0
 \end{bmatrix}
-\eta
+\delta_e
 \]
 
 ### Derivatives (numerical values)
 
 - **Matrix A (derivatives):**
 
-  | Коэффициент | Значение |
+  | Coefficient | Value |
   |-------------|----------|
-  | x_u | -0.00679 |
-  | x_w | 0.00146 |
+  | x_u | 7.6180 × 10⁻⁴ |
+  | x_w | 4.7612 × 10⁻³ |
   | x_q | 0.0 |
-  | x_θ | -32.174 |
-  | z_u | 0.0110 |
-  | z_w | -0.4940 |
-  | z_q | 1469.7600 |
+  | x_θ | -9.8100 |
+  | z_u | -6.6657 × 10⁻² |
+  | z_w | -2.8567 × 10⁻¹ |
+  | z_q | 1.8000 × 10² |
   | z_θ | 0 |
-  | m_u | 0.003410 |
-  | m_w | -0.019781184 |
-  | m_q | -0.4879811 |
+  | m_u | 1.5124 × 10⁻³ |
+  | m_w | -1.0083 × 10⁻² |
+  | m_q | -1.6384 × 10⁻¹ |
   | m_θ | 0 |
 
-- **Input η (column B):**
+- **Input δₑ (column B):**
 
-  | Коэффициент | Значение |
+  | Coefficient | Value |
   |-------------|----------|
-  | x_η | 0.0027 |
-  | z_η | -0.0584 |
-  | m_η | -0.0001309 |
+  | x_δₑ | 2.6533 × 10⁻³ |
+  | z_δₑ | -6.8562 |
+  | m_δₑ | -5.4446 |
 
 !!! tip "Actuator limits"
     The default control bounds are:

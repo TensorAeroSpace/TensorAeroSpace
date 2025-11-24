@@ -98,6 +98,17 @@ target/
 profile_default/
 ipython_config.py
 
+# TensorBoard
+tensorboard_logs/
+custom_logs/
+
+# Plans
+PLAN_FIXES.md
+feedback.md
+report.md
+CURRENT_ISSUES_copy.md
+CURRENT_ISSUES.md
+analysis_feedback.md
 # pyenv
 #   For a library or package, you might want to ignore these files since the code is
 #   intended to run in multiple environments; otherwise, check them in:

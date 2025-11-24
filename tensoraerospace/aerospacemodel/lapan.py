@@ -21,19 +21,19 @@ class LAPAN(ModelBase):
         dt (float, optional): Discretization frequency. Defaults to 0.01.
 
     Action space:
-        ele: elevator [deg]
+        ele: elevator [rad]
 
     State space:
         u: Longitudinal aircraft velocity [m/s]
         w: Normal aircraft velocity [m/s]
-        q: Pitch angular velocity [deg/s]
-        theta: Pitch [deg]
+        q: Pitch angular velocity [rad/s]
+        theta: Pitch [rad]
 
     Output space:
         u: Longitudinal aircraft velocity [m/s]
         w: Normal aircraft velocity [m/s]
-        q: Pitch angular velocity [deg/s]
-        theta: Pitch [deg]
+        q: Pitch angular velocity [rad/s]
+        theta: Pitch [rad]
     """
 
     def __init__(
@@ -71,12 +71,12 @@ class LAPAN(ModelBase):
         self.state_space = self.selected_states
         self.action_space = self.selected_input
         # ele
-        # Limitations of the system
+        # Limitations of the system (radians)
         self.input_magnitude_limits = [
-            25,
+            np.deg2rad(40),
         ]
         self.input_rate_limits = [
-            60,
+            np.deg2rad(300),
         ]
 
         # Store the number of inputs, states and outputs
