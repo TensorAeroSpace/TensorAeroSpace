@@ -18,7 +18,7 @@
 ## Импорты модели и среды
 
 ```python
-from tensoraerospace.agent.dqn.model import Model, PERAgent
+from tensoraerospace.agent.dqn.model import Model, DQNAgent
 from tensoraerospace.envs.unity_env import get_plane_env, unity_discrete_env
 ```
 
@@ -50,7 +50,7 @@ num_actions = env.action_space.n
 model = Model(num_actions)
 target_model = Model(num_actions)
 
-agent = PERAgent(model, target_model, env, train_nums=100)
+agent = DQNAgent(model, target_model, env, train_nums=100)
 agent.train()
 
 # Оценка после обучения

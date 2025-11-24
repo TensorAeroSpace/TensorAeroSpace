@@ -183,17 +183,31 @@ hide:
         --render \
         --dt 0.1 \
         --tn 200 \
-        --repo TensorAeroSpace/sac-b747
+        --repo TensorAeroSpace/sac-b747 \
+        --device cuda  # Optional: auto-detects GPU if available
     ```
 
     Or use the Python API:
 
     ```python
+    import torch
     from tensoraerospace.agent.sac import SAC
     from tensoraerospace.envs.b747 import ImprovedB747Env
 
+    # Auto-detect device (CUDA/MPS/CPU)
+    device = torch.device("cuda" if torch.cuda.is_available() else 
+                         ("mps" if hasattr(torch.backends, "mps") and 
+                          torch.backends.mps.is_available() else "cpu"))
+
     # Load pretrained agent from Hugging Face
     agent = SAC.from_pretrained("TensorAeroSpace/sac-b747")
+    
+    # Move agent to GPU if available
+    if agent.device != device:
+        agent.device = device
+        agent.critic = agent.critic.to(device)
+        agent.critic_target = agent.critic_target.to(device)
+        agent.policy = agent.policy.to(device)
 
     # Create environment
     env = ImprovedB747Env(dt=0.1, number_time_steps=200)

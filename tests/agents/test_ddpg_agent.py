@@ -365,9 +365,12 @@ class TestDDPGCollectGrads:
         env = _FakeEnv()
         agent = DDPG(env=env, value_lr=1e-3, policy_lr=1e-3, replay_buffer_size=100)
 
+        # Get device from model to ensure tensors are on the same device
+        device = next(agent.value_net.parameters()).device
+
         # Perform a dummy forward-backward pass
-        state = torch.randn(4, 3)
-        action = torch.randn(4, 1)
+        state = torch.randn(4, 3, device=device)
+        action = torch.randn(4, 1, device=device)
         q_values = agent.value_net(state, action)
         loss = q_values.mean()
         loss.backward()

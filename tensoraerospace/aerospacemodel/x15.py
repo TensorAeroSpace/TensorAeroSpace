@@ -73,10 +73,10 @@ class LongitudinalX15(ModelBase):
         # ele
         # Limitations of the system
         self.input_magnitude_limits = [
-            25,
+            np.deg2rad(25),
         ]
         self.input_rate_limits = [
-            60,
+            np.deg2rad(60),
         ]
 
         # Store the number of inputs, states and outputs

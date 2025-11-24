@@ -111,9 +111,10 @@ def test_narx_critic_forward():
         history_length=h,
         hidden_sizes=(32,),
     )
+    device = next(critic.model.parameters()).device
 
     feature_dim = h * (obs_dim + act_dim)
-    features = torch.randn(batch_size, feature_dim)
+    features = torch.randn(batch_size, feature_dim, device=device)
 
     values = critic(features)
 
@@ -151,9 +152,10 @@ def test_narx_critic_custom_activation():
         hidden_sizes=(8,),
         activation=torch.nn.ReLU,
     )
+    device = next(critic.model.parameters()).device
 
     feature_dim = h * (obs_dim + act_dim)
-    features = torch.randn(4, feature_dim)
+    features = torch.randn(4, feature_dim, device=device)
 
     values = critic(features)
 
@@ -169,9 +171,10 @@ def test_narx_critic_gradient_flow():
         history_length=h,
         hidden_sizes=(8,),
     )
+    device = next(critic.model.parameters()).device
 
     feature_dim = h * (obs_dim + act_dim)
-    features = torch.randn(4, feature_dim, requires_grad=True)
+    features = torch.randn(4, feature_dim, requires_grad=True, device=device)
 
     values = critic(features)
     loss = values.sum()

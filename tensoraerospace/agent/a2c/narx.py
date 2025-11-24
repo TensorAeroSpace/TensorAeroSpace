@@ -347,6 +347,15 @@ class Runner:
         self.prev_action = np.zeros(self.env.action_space.shape)
         self.writer = writer
 
+    @staticmethod
+    def _flatten_observation(observation):
+        """
+        Приводит состояние среды к вектору (n,) для совместимости с линейными слоями.
+        Gymnasium среды F16 возвращают столбцы (n, 1), что ломало умножение матриц
+        в Actor/Critic. Преобразуем состояние в одно измерение один раз.
+        """
+        return np.asarray(observation, dtype=np.float32).reshape(-1)
+
     def reset(self):
         """
         Сброс среды и внутренних переменных перед началом нового эпизода.
@@ -354,6 +363,7 @@ class Runner:
         self.episode_reward = 0
         self.done = False
         self.state, info = self.env.reset()
+        self.state = self._flatten_observation(self.state)
         # Reset previous action at the start of each episode
         self.prev_action = np.zeros(self.env.action_space.shape)
 
@@ -387,6 +397,7 @@ class Runner:
                 actions_clipped[0]
             )
             self.done = terminated or truncated
+            next_state = self._flatten_observation(next_state)
 
             # Here, instead of just the state, we store the state concatenated with the previous action
             memory.append((actions, reward, self.state, next_state, self.done))

@@ -9,16 +9,18 @@ from tensoraerospace.envs.comsat import (  # Import the environment from where i
 from tensoraerospace.signals.standart import unit_step
 from tensoraerospace.utils import convert_tp_to_sec_tp, generate_time_period
 
-INITIAL_STATE = [[0], [0], [0]]
+# Initial state: [rho (km), rho_dot (m/s), theta_dot (rad/s)]
+INITIAL_STATE = [[6371.0], [0.0], [0.001]]
 dt = 0.01  # Дискретизация
 tp = generate_time_period(tn=20, dt=dt)  # Временной периуд
 tps = convert_tp_to_sec_tp(tp, dt=dt)
 number_time_steps = len(tp)  # Количество временных шагов
+# Reference signal for angular velocity control
 REFERENCE_SIGNAL = np.reshape(
-    unit_step(degree=5, tp=tp, time_step=10, output_rad=True), [1, -1]
-)  # Заданный сигнал
+    unit_step(degree=0.1, tp=tp, time_step=10, output_rad=True), [1, -1]
+)  # Заданный сигнал угловой скорости
 NUMBER_TIME_STEPS = 1000
-INITIAL_STATE_ENV = np.array([0, 0])
+INITIAL_STATE_ENV = np.array([6371.0, 0.0, 0.001])
 
 
 @pytest.fixture

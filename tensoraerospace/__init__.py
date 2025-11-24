@@ -68,3 +68,44 @@ register(
     id="ComSat-v0",
     entry_point="tensoraerospace.envs:ComSatEnv",
 )
+
+# Improved environments registration
+register(
+    id="ImprovedB747-v0",
+    entry_point="tensoraerospace.envs:ImprovedB747Env",
+)
+
+register(
+    id="ImprovedComSat-v0",
+    entry_point="tensoraerospace.envs:ImprovedComSatEnv",
+)
+
+register(
+    id="ImprovedELV-v0",
+    entry_point="tensoraerospace.envs:ImprovedELVEnv",
+)
+
+register(
+    id="ImprovedLAPAN-v0",
+    entry_point="tensoraerospace.envs:ImprovedLAPANEnv",
+)
+
+register(
+    id="ImprovedMissile-v0",
+    entry_point="tensoraerospace.envs:ImprovedMissileEnv",
+)
+
+register(
+    id="ImprovedUltrastick-v0",
+    entry_point="tensoraerospace.envs:ImprovedUltrastickEnv",
+)
+
+register(
+    id="ImprovedX15-v0",
+    entry_point="tensoraerospace.envs:ImprovedX15Env",
+)
+
+register(
+    id="F4CPitchNormalized-v0",
+    entry_point="tensoraerospace.envs:F4CPitchEnvNormalized",
+)

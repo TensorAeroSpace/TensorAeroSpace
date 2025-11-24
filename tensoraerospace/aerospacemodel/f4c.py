@@ -21,19 +21,19 @@ class LongitudinalF4C(ModelBase):
         dt (float, optional): Discretization frequency. Defaults to 0.01.
 
     Action space:
-        ele: elevator [deg]
+        ele: elevator [rad]
 
     State space:
-        u: Longitudinal aircraft velocity [m/s]
-        w: Normal aircraft velocity [m/s]
-        q: Pitch angular velocity [deg/s]
-        theta: Pitch [deg]
+        u: Longitudinal aircraft velocity [ft/s]
+        w: Normal aircraft velocity [ft/s]
+        q: Pitch angular velocity [rad/s]
+        theta: Pitch angle [rad]
 
     Output space:
-        u: Longitudinal aircraft velocity [m/s]
-        w: Normal aircraft velocity [m/s]
-        q: Pitch angular velocity [deg/s]
-        theta: Pitch [deg]
+        u: Longitudinal aircraft velocity [ft/s]
+        w: Normal aircraft velocity [ft/s]
+        q: Pitch angular velocity [rad/s]
+        theta: Pitch angle [rad]
     """
 
     def __init__(
@@ -71,12 +71,13 @@ class LongitudinalF4C(ModelBase):
         self.state_space = self.selected_states
         self.action_space = self.selected_input
         # ele
-        # Limitations of the system
+        # Limitations of the system (model works in radians)
+        # Magnitude: ±20 deg -> radians; Rate: ±60 deg/s -> rad/s
         self.input_magnitude_limits = [
-            25,
+            float(np.deg2rad(20.0)),
         ]
         self.input_rate_limits = [
-            60,
+            float(np.deg2rad(60.0)),
         ]
 
         # Store the number of inputs, states and outputs
@@ -102,14 +103,14 @@ class LongitudinalF4C(ModelBase):
         """Сохраненные линеаризованные матрицы"""
         self.A = np.array(
             [
-                [-0.00679, 0.00146, 0, -32.174],
-                [0.0110, -0.4940, 1469.7600, 0],
-                [0.003410, -0.019781184, -0.4879811, 0],
-                [0, 0, 1, 0],
+                [7.6180e-04, 4.7612e-03, 0.0000e00, -9.8100e00],
+                [-6.6657e-02, -2.8567e-01, 1.8000e02, 0.0000e00],
+                [1.5124e-03, -1.0083e-02, -1.6384e-01, 0.0000e00],
+                [0.0000e00, 0.0000e00, 1.0000e00, 0.0000e00],
             ]
         )
 
-        self.B = np.array([[0.0027], [-0.0584], [-0.0001309], [0]])
+        self.B = np.array([[0.0026532701], [-6.8562], [-5.4446], [0.00000000]])
 
         self.C = np.array(
             [

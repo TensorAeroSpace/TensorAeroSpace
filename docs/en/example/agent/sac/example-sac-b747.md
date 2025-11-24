@@ -58,7 +58,7 @@ pip install -U tensoraerospace pygame torch
 
 ### Command-Line Execution
 
-Run the pretrained agent with default parameters:
+Run the pretrained agent with default parameters (auto-detects GPU):
 
 ```bash
 python example/reinforcement_learning/sac-b747-render.py \
@@ -66,6 +66,17 @@ python example/reinforcement_learning/sac-b747-render.py \
     --dt 0.1 \
     --tn 200 \
     --repo TensorAeroSpace/sac-b747
+```
+
+Or explicitly specify device:
+
+```bash
+python example/reinforcement_learning/sac-b747-render.py \
+    --render \
+    --dt 0.1 \
+    --tn 200 \
+    --repo TensorAeroSpace/sac-b747 \
+    --device cuda  # Use GPU (or 'mps' for Apple Silicon, 'cpu' for CPU)
 ```
 
 #### Command-Line Arguments
@@ -76,6 +87,8 @@ python example/reinforcement_learning/sac-b747-render.py \
 | `--dt` | Simulation time step (seconds) | `0.1` |
 | `--tn` | Number of time steps | `200` |
 | `--repo` | Hugging Face Hub repository | `TensorAeroSpace/sac-b747` |
+| `--device` | Device for computation (`cuda`, `mps`, `cpu`) | Auto-detects |
+| `--seed` | Random seed for reproducibility | `42` |
 
 ---
 
@@ -157,13 +170,37 @@ env.unwrapped.model.discretisation_time = dt
 ### Step 5: Load Pretrained Agent
 
 ```python
+import torch
+
+# Auto-detect device (CUDA/MPS/CPU)
+device = torch.device("cuda" if torch.cuda.is_available() else 
+                     ("mps" if hasattr(torch.backends, "mps") and 
+                      torch.backends.mps.is_available() else "cpu"))
+print(f"Using device: {device}")
+
 # Download and load the pretrained SAC agent from Hugging Face Hub
 agent = SAC.from_pretrained("TensorAeroSpace/sac-b747")
+
+# Move agent to the selected device (if different from saved device)
+if agent.device != device:
+    print(f"Moving agent from {agent.device} to {device}")
+    agent.device = device
+    agent.critic = agent.critic.to(device)
+    agent.critic_target = agent.critic_target.to(device)
+    agent.policy = agent.policy.to(device)
+    # Move log_alpha if it exists (for automatic entropy tuning)
+    if hasattr(agent, "log_alpha") and agent.log_alpha is not None:
+        agent.log_alpha = agent.log_alpha.to(device)
 ```
 
 <div class="admonition success">
 <p class="admonition-title">🤗 Hugging Face Integration</p>
 <p>The model is automatically downloaded from the Hub on first use and cached locally. No manual download required!</p>
+</div>
+
+<div class="admonition tip">
+<p class="admonition-title">🚀 GPU Support</p>
+<p>The script automatically detects and uses GPU (CUDA/MPS) if available. You can also explicitly specify the device using the <code>--device</code> command-line argument. The agent will be automatically moved to the selected device after loading.</p>
 </div>
 
 ### Step 6: Run Evaluation Loop
@@ -310,6 +347,44 @@ xvfb-run -a python your_script.py
 # Or comment out in code
 # env.render(mode="human")
 ```
+</details>
+
+<details>
+<summary><strong>GPU not being used / Model running on CPU</strong></summary>
+
+**Solution**: The script auto-detects GPU, but you can explicitly specify:
+```bash
+# Explicitly use CUDA
+python example/reinforcement_learning/sac-b747-render.py --device cuda
+
+# Use MPS (Apple Silicon)
+python example/reinforcement_learning/sac-b747-render.py --device mps
+
+# Force CPU
+python example/reinforcement_learning/sac-b747-render.py --device cpu
+```
+
+The script will automatically move the loaded model to the specified device. Check the console output for device information:
+```
+Using device: cuda
+CUDA device: NVIDIA GeForce RTX 3090
+CUDA memory: 24.00 GB
+Agent device: cuda
+Policy device: cuda
+Critic device: cuda
+```
+</details>
+
+<details>
+<summary><strong>Segmentation fault or black screen</strong></summary>
+
+**Solution**: This usually indicates rendering issues on headless systems:
+1. **Disable rendering**: Use `--no-render` flag
+2. **Check DISPLAY**: Ensure `DISPLAY` environment variable is set for X11
+3. **Use virtual display**: `xvfb-run -a python sac-b747-render.py`
+4. **Verify GPU**: Ensure GPU drivers are properly installed if using CUDA
+
+The script now includes automatic GPU detection and device management to prevent these issues.
 </details>
 
 ---

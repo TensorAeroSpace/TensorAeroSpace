@@ -52,10 +52,16 @@ pip install tensoraerospace
 #### 🐳 Docker
 ```bash
 docker build -t tensoraerospace . --platform=linux/amd64
-docker run -v $(pwd)/example:/app/example -p 8888:8888 -it tensoraerospace
+# launch Jupyter Lab inside the container so you can open example/quickstart.ipynb
+docker run -v $(pwd)/example:/app/example \
+  -p 8888:8888 -it tensoraerospace \
+  jupyter lab --notebook-dir=/app --ip=0.0.0.0 --no-browser --allow-root
 ```
+> Open the printed URL (default `http://127.0.0.1:8888`) and navigate to `example/quickstart.ipynb` to run the SAC walkthrough inside Docker.
 
 ### 🏃‍♂️ Quick Examples
+
+> 💡 **Interactive walkthrough**: open the [Quickstart notebook](./example/quickstart.ipynb) to run the SAC B747 benchmark flow end-to-end inside Jupyter/VS Code.
 
 #### 🚀 Pretrained SAC Agent (Boeing 747)
 
@@ -73,7 +79,8 @@ python example/reinforcement_learning/sac-b747-render.py \
     --render \
     --dt 0.1 \
     --tn 200 \
-    --repo TensorAeroSpace/sac-b747
+    --repo TensorAeroSpace/sac-b747 \
+    --device cuda  # Optional: 'cuda', 'mps', or 'cpu' (auto-detects if not specified)
 ```
 
 > 📖 **See full tutorial**: [SAC B747 Documentation](https://tensoraerospace.readthedocs.io/en/latest/example/agent/sac/example-sac-b747/)
