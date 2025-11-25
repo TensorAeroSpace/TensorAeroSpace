@@ -1,5 +1,5 @@
 # Base image tuned for Apple Silicon / macOS hosts running Docker Desktop (linux/arm64)
-FROM --platform=linux/arm64 python:3.11-slim AS base
+FROM --platform=linux/arm64 python:3.14-slim AS base
 
 ENV POETRY_VERSION=2.2.1 \
     PYTHONUNBUFFERED=1 \
