@@ -66,6 +66,7 @@ plugins:
               - Benchmark:
                 - Overview: benchmark/bench.md
                 - Metrics: benchmark/metrics.md
+                - ARM vs x64 Testing: benchmark/arm_testing.md
               - Signals: signals/signals.md
             - Examples:
               - Environments: example/enviroment/gymnasium.md
@@ -142,6 +143,7 @@ plugins:
               - Бенчмаркинг:
                 - Обзор: benchmark/bench.md
                 - Метрики: benchmark/metrics.md
+                - Тестирование ARM vs x64: benchmark/arm_testing.md
               - Сигналы: signals/signals.md
             - Примеры:
               - Окружения: example/enviroment/gymnasium.md

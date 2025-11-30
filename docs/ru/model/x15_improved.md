@@ -186,5 +186,5 @@ env.w_smooth = 0.02
 
 - [LinearLongitudinalX15](x15.md) - Базовая среда
 - [ImprovedB747Env](b747.md) - Похожая улучшенная среда для B747
-- [Пример](../../example/environments/example-env-x15-improved.py)
+- Пример скрипта: `example/environments/example-env-x15-improved.py`
 

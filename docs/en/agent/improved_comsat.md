@@ -230,6 +230,6 @@ env.w_jerk = 0.05       # High jitter suppression
 ## See Also
 
 - [ComSat Base Model](../model/comsat.md): Mathematical model description
-- [PPO Training Example](../../example/reinforcement_learning/example_ppo_comsat_improved.py): Complete training script
-- [ImprovedB747Env](improved_b747.md): Similar improved environment for aircraft
+- PPO Training Example: `example/reinforcement_learning/example_ppo_comsat_improved.py`
+- [ImprovedB747Env](../model/b747_imporove.md): Similar improved environment for aircraft
 
