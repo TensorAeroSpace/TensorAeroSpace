@@ -1,4 +1,5 @@
 """Tests for DQN SumTree data structure."""
+
 import numpy as np
 
 from tensoraerospace.agent.dqn import SumTree

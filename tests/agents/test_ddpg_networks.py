@@ -2,6 +2,7 @@
 
 Tests for ValueNetwork and PolicyNetwork classes.
 """
+
 import numpy as np
 import pytest
 import torch
