@@ -8,6 +8,7 @@ LAPAN Surveillance Aircraft (LSU)-05 NG.
 включая управление углом тангажа и угловой скоростью тангажа
 через стабилизаторы.
 """
+
 from typing import Any
 
 import gymnasium as gym

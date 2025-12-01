@@ -39,7 +39,7 @@
 - Access to the `UnityAirplaneEnvironment` repository
 
 !!! note "Version compatibility"
-    The examples rely on Unity 2021.3.5f1 + `gym-unity==0.28.0`. Check the ML‑Agents docs for other versions.
+    The examples rely on Unity 2021.3.5f1 + `mlagents==1.1.0`. Check the ML‑Agents docs for other versions.
 
 ---
 
@@ -62,7 +62,7 @@ cd UnityAirplaneEnvironment
 Install the packages that bridge Unity and Python:
 
 ```shell
-pip install gym==0.20.0 gym-unity==0.28.0 mlagents_envs==0.28.0
+pip install mlagents==1.1.0
 ```
 
 !!! tip "Isolated environment"
@@ -81,15 +81,15 @@ pip install gym==0.20.0 gym-unity==0.28.0 mlagents_envs==0.28.0
 1) Launch Unity Hub → "Open" → point to the project directory.  
 2) Select the project and open it.
 
-![Открыть проект](img/1.png){ width=800 }
-![Выбор директории](img/2.png){ width=800 }
-![Проект в списке](img/5.png){ width=800 }
+![Open project](img/1.png){ width=800 }
+![Select directory](img/2.png){ width=800 }
+![Project in list](img/5.png){ width=800 }
 
 ### 5) Choose a scene and run it
 
 In Unity Editor open `Assets/AlbLab3/Scenes/MLAgentsScenes` → e.g. `MLAgentsScene`.
 
-![Открыть сцену](img/6.png){ width=800 }
+![Open scene](img/6.png){ width=800 }
 
 Press ▶ (Play) — the scene should start without errors.
 
@@ -163,7 +163,7 @@ env.close()
 ## Common problems and solutions {#common-problems-and-solutions}
 
 - **Package version mismatch**  
-  Ensure you installed compatible versions: `gym==0.20.0`, `gym-unity==0.28.0`, `mlagents_envs==0.28.0`.
+  Ensure you installed compatible version: `mlagents==1.1.0`.
 
 - **Scene fails to run (Editor)**  
   Check the Unity console, the packages listed in `Packages/manifest.json`, and that the scene is added to Build Settings.
@@ -182,3 +182,8 @@ env.close()
 - Run TensorAeroSpace examples and agents (see the "Models" and "Agents" sections)
 - Integrate the Unity environment into benchmarks/training scripts
 - Build your own controllers and rewards, assemble scenes for your tasks
+
+## Related Examples
+
+- [Unity with DQN](../example/enviroment/unity_example.md) — train a DQN agent
+- [Unity with SAC](../example/agent/sac/example-sac-unity.md) — train a SAC agent (continuous control)

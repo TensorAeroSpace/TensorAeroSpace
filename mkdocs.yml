@@ -66,12 +66,14 @@ plugins:
               - Benchmark:
                 - Overview: benchmark/bench.md
                 - Metrics: benchmark/metrics.md
+                - ARM vs x64 Testing: benchmark/arm_testing.md
               - Signals: signals/signals.md
             - Examples:
               - Environments: example/enviroment/gymnasium.md
               - IHDP: example/agent/ihdp/example_ihdp.md
               - SAC F16: example/agent/sac/example-sac-f16.md
               - SAC B747: example/agent/sac/example-sac-b747.md
+              - SAC Unity: example/agent/sac/example-sac-unity.md
               - Optimization: example/optimization/example_optimization.md
               - A2C-NARX: example/agent/a2c_narx/example-narx.md
               - MPC: example/agent/mpc/example_mpc.md
@@ -142,11 +144,13 @@ plugins:
               - Бенчмаркинг:
                 - Обзор: benchmark/bench.md
                 - Метрики: benchmark/metrics.md
+                - Тестирование ARM vs x64: benchmark/arm_testing.md
               - Сигналы: signals/signals.md
             - Примеры:
               - Окружения: example/enviroment/gymnasium.md
               - IHDP: example/agent/ihdp/example_ihdp.md
               - SAC F16: example/agent/sac/example-sac-f16.md
+              - SAC Unity: example/agent/sac/example-sac-unity.md
               - Оптимизация: example/optimization/example_optimization.md
               - A2C-NARX: example/agent/a2c_narx/example-narx.md
               - MPC: example/agent/mpc/example_mpc.md

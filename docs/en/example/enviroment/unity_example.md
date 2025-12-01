@@ -4,7 +4,10 @@
 
 ## Lesson Overview
 
-Quick path: connect the Unity environment (Editor or standalone build), train a DQN agent, and interact via a random policy. For Unity setup follow “Unity Environment” — see [Unity Environment](../../guide/unity_env.md).
+Quick path: connect the Unity environment (Editor or standalone build), train a DQN agent, and interact via a random policy. For Unity setup follow "Unity Environment" — see [Unity Environment](../../guide/unity_env.md).
+
+!!! info "Unity Environment Repository"
+    The Unity environment source code is available at: [TensorAeroSpace/UnityAirplaneEnvironment](https://github.com/TensorAeroSpace/UnityAirplaneEnvironment)
 
 ## Goals and Requirements
 
@@ -13,7 +16,7 @@ Quick path: connect the Unity environment (Editor or standalone build), train a 
   - Launch DQN training and evaluation.
   - Test interaction with a random agent.
 - Requirements:
-  - Unity + ML-Agents, Python 3.8+, `gym`, `gym-unity`, `tensoraerospace`.
+  - Unity + ML-Agents (`mlagents==1.1.0`), Python 3.8+, `tensoraerospace`.
 
 ## Imports
 
@@ -110,7 +113,7 @@ Training on multiple GPUs speeds up experiments, allows richer models, and paral
 ```bash
 FROM tensorflow/tensorflow:2.4.0-gpu-jupyter
 
-RUN pip install gym==0.20.0 scipy==1.5.4 gym-unity==0.28.0
+RUN pip install mlagents==1.1.0 scipy==1.5.4
 RUN mkdir /tf/logs
 COPY a3c_example.py /tf
 
@@ -153,9 +156,15 @@ docker run \
 
 - Port 5004 busy: change it in the configuration or stop the conflicting process.
 - `allow_multiple_obs=True` warning: enable the flag or use the first observation stream.
-- `gym`/`gym-unity` version mismatch: ensure versions align with ML-Agents.
+- `mlagents` version mismatch: ensure version aligns with ML-Agents (`mlagents==1.1.0`).
 - Build does not start: verify `build_path` and execution permissions (Linux: `chmod +x`).
 
 ## Training Showcase
 
 ![Training Example](../../model/img/example_run.jpg){ width=800 }
+
+## Related Examples
+
+- [Unity with SAC](../agent/sac/example-sac-unity.md) — SAC agent for continuous control
+- [Unity Environment Setup](../../guide/unity_env.md) — complete setup guide
+- [Unity Environment Model](../../model/unity_env.md) — environment details and scenes

@@ -1,126 +1,126 @@
-# Setting up the Unity environment
+# Настройка Unity окружения
 
-> A quick, visual guide to launching the Unity environment and connecting from Python (TensorAeroSpace + ML‑Agents).
+> Быстрый визуальный гайд по запуску Unity-среды и подключению из Python (TensorAeroSpace + ML-Agents).
 
 <div class="grid cards" markdown>
 
--   :material-rocket-launch-outline: **Quick start**
+-   :material-rocket-launch-outline: **Быстрый старт**
 
-    Clone the project, install dependencies, open a scene, and run.
+    Клонируйте проект, установите зависимости, откройте сцену и запустите.
 
-    [:octicons-arrow-right-24: Jump in](#quick-start)
+    [:octicons-arrow-right-24: Перейти](#быстрый-старт)
 
--   :material-cube-outline: **Build the environment**
+-   :material-cube-outline: **Сборка окружения**
 
-    How to build a standalone player and launch in headless mode.
+    Как собрать standalone-приложение и запустить в headless-режиме.
 
-    [:octicons-arrow-right-24: Jump in](#build-the-environment)
+    [:octicons-arrow-right-24: Перейти](#сборка-окружения)
 
--   :material-connection: **Python connection**
+-   :material-connection: **Подключение из Python**
 
-    Example via `gym-unity`: build and (optionally) Editor.
+    Пример через `gym-unity`: билд и (опционально) Editor.
 
-    [:octicons-arrow-right-24: Jump in](#connect-from-python)
+    [:octicons-arrow-right-24: Перейти](#подключение-из-python)
 
--   :material-lifebuoy: **Troubleshooting**
+-   :material-lifebuoy: **Решение проблем**
 
-    Common problems and how to solve them.
+    Типичные проблемы и их решения.
 
-    [:octicons-arrow-right-24: Jump in](#common-problems-and-solutions)
+    [:octicons-arrow-right-24: Перейти](#типичные-проблемы-и-решения)
 
 </div>
 
 ---
 
-## Requirements
+## Требования
 
-- **Unity Hub** and **Unity 2021.3.5f1** (tested)
-- **Python 3.8+** (3.10–3.11 recommended) with `pip`
-- Access to the `UnityAirplaneEnvironment` repository
+- **Unity Hub** и **Unity 2021.3.5f1** (протестировано)
+- **Python 3.8+** (рекомендуется 3.10–3.11) с `pip`
+- Доступ к репозиторию `UnityAirplaneEnvironment`
 
-!!! note "Version compatibility"
-    The examples rely on Unity 2021.3.5f1 + `gym-unity==0.28.0`. Check the ML‑Agents docs for other versions.
+!!! note "Совместимость версий"
+    Примеры работают на Unity 2021.3.5f1 + `mlagents==1.1.0`. Для других версий проверьте документацию ML-Agents.
 
 ---
 
-## Quick start {#quick-start}
+## Быстрый старт {#быстрый-старт}
 
-### 1) Clone the repository
+### 1) Клонируйте репозиторий
 
 ```shell
 git clone git@github.com:tensoraerospace/UnityAirplaneEnvironment.git
 cd UnityAirplaneEnvironment
 ```
 
-!!! info "HTTPS alternative"
+!!! info "Альтернатива через HTTPS"
     ```shell
     git clone https://github.com/TensorAeroSpace/UnityAirplaneEnvironment.git
     ```
 
-### 2) Python dependencies
+### 2) Установка Python-зависимостей
 
-Install the packages that bridge Unity and Python:
+Установите пакеты для связи Unity и Python:
 
 ```shell
-pip install gym==0.20.0 gym-unity==0.28.0 mlagents_envs==0.28.0
+pip install mlagents==1.1.0
 ```
 
-!!! tip "Isolated environment"
-    Using `venv`/`conda` is recommended.
+!!! tip "Изолированное окружение"
+    Рекомендуется использовать `venv`/`conda`.
 
-### 3) Install Unity
+### 3) Установка Unity
 
-- Install Unity Hub: `https://unity.com/download`
-- In the Hub add the **Unity 2021.3.5f1** editor: `https://unity.com/releases/editor/archive`
+- Установите Unity Hub: `https://unity.com/download`
+- В Hub добавьте редактор **Unity 2021.3.5f1**: `https://unity.com/releases/editor/archive`
 
-!!! warning "Important"
-    Use the specified editor version. Mismatched versions can break packages/scenes.
+!!! warning "Важно"
+    Используйте указанную версию редактора. Несовпадение версий может сломать пакеты/сцены.
 
-### 4) Open the project in Unity Hub
+### 4) Откройте проект в Unity Hub
 
-1) Launch Unity Hub → "Open" → point to the project directory.  
-2) Select the project and open it.
+1) Запустите Unity Hub → "Open" → укажите директорию проекта.  
+2) Выберите проект и откройте его.
 
 ![Открыть проект](img/1.png){ width=800 }
 ![Выбор директории](img/2.png){ width=800 }
 ![Проект в списке](img/5.png){ width=800 }
 
-### 5) Choose a scene and run it
+### 5) Выберите сцену и запустите
 
-In Unity Editor open `Assets/AlbLab3/Scenes/MLAgentsScenes` → e.g. `MLAgentsScene`.
+В Unity Editor откройте `Assets/AlbLab3/Scenes/MLAgentsScenes` → например, `MLAgentsScene`.
 
 ![Открыть сцену](img/6.png){ width=800 }
 
-Press ▶ (Play) — the scene should start without errors.
+Нажмите ▶ (Play) — сцена должна запуститься без ошибок.
 
-!!! success "All set"
-    If Play runs and agents activate, you can proceed to the Python connection.
-
----
-
-## Build the environment {#build-the-environment}
-
-Recommended for stable runs and headless mode:
-
-1) In Unity go to File → Build Settings…  
-2) Select the platform (Windows/Mac/Linux) and add the scene to "Scenes In Build".  
-3) (Optional) Player Settings → enable "Run In Background".  
-4) Click "Build" and choose a path (e.g. `./Builds/AirplaneEnv/AirplaneEnv`).
-
-!!! note "Headless"
-    For servers and CI use a build without graphics and set `no_graphics=True` when initializing the environment from Python.
+!!! success "Готово"
+    Если Play запускается и агенты активируются, можно переходить к подключению из Python.
 
 ---
 
-## Connect from Python {#connect-from-python}
+## Сборка окружения {#сборка-окружения}
 
-=== "Build"
+Рекомендуется для стабильного запуска и headless-режима:
+
+1) В Unity откройте File → Build Settings…  
+2) Выберите платформу (Windows/Mac/Linux) и добавьте сцену в "Scenes In Build".  
+3) (Опционально) Player Settings → включите "Run In Background".  
+4) Нажмите "Build" и выберите путь (например, `./Builds/AirplaneEnv/AirplaneEnv`).
+
+!!! note "Headless-режим"
+    Для серверов и CI используйте сборку без графики и установите `no_graphics=True` при инициализации среды из Python.
+
+---
+
+## Подключение из Python {#подключение-из-python}
+
+=== "Билд"
 
 ```python
 from gym_unity.envs import UnityToGymWrapper
 from mlagents_envs.environment import UnityEnvironment
 
-# Path to the built environment
+# Путь к собранному окружению
 env_path = "./Builds/AirplaneEnv/AirplaneEnv"
 unity_env = UnityEnvironment(file_name=env_path, no_graphics=True)
 env = UnityToGymWrapper(unity_env, uint8_visual=False)
@@ -134,17 +134,17 @@ while not done:
     obs, reward, done, info = env.step(action)
     total_reward += reward
 
-print("Episode reward:", total_reward)
+print("Награда за эпизод:", total_reward)
 env.close()
 ```
 
-=== "Editor (optional)"
+=== "Editor (опционально)"
 
 ```python
 from gym_unity.envs import UnityToGymWrapper
 from mlagents_envs.environment import UnityEnvironment
 
-# Connect to the Editor: run the scene in Play mode and allow the connection
+# Подключение к Editor: запустите сцену в Play-режиме
 unity_env = UnityEnvironment(file_name=None)
 env = UnityToGymWrapper(unity_env, uint8_visual=False)
 
@@ -154,31 +154,36 @@ obs, reward, done, info = env.step(action)
 env.close()
 ```
 
-!!! info "Editor vs Build"
-    - Editor is convenient for debugging; the connection may not always be stable.  
-    - Build is preferable for experiments/servers (no graphics).
+!!! info "Editor vs Билд"
+    - Editor удобен для отладки; соединение может быть нестабильным.  
+    - Билд предпочтителен для экспериментов/серверов (без графики).
 
 ---
 
-## Common problems and solutions {#common-problems-and-solutions}
+## Типичные проблемы и решения {#типичные-проблемы-и-решения}
 
-- **Package version mismatch**  
-  Ensure you installed compatible versions: `gym==0.20.0`, `gym-unity==0.28.0`, `mlagents_envs==0.28.0`.
+- **Несовпадение версий пакетов**  
+  Убедитесь, что установлена совместимая версия: `mlagents==1.1.0`.
 
-- **Scene fails to run (Editor)**  
-  Check the Unity console, the packages listed in `Packages/manifest.json`, and that the scene is added to Build Settings.
+- **Сцена не запускается (Editor)**  
+  Проверьте консоль Unity, пакеты в `Packages/manifest.json` и что сцена добавлена в Build Settings.
 
-- **Python cannot find the environment**  
-  Verify the `file_name` path to the build (for Build) or that the Editor is in Play mode (for Editor).  
-  On Linux make sure the binary is executable (`chmod +x`).
+- **Python не находит окружение**  
+  Проверьте путь `file_name` к билду (для Build) или что Editor в Play-режиме (для Editor).  
+  На Linux убедитесь, что бинарник исполняемый (`chmod +x`).
 
-- **Port conflicts**  
-  If the port is busy, close other environment/Editor instances. Restart the Python process.
+- **Конфликт портов**  
+  Если порт занят, закройте другие экземпляры среды/Editor. Перезапустите Python-процесс.
 
 ---
 
-## What's next
+## Что дальше
 
-- Run TensorAeroSpace examples and agents (see the "Models" and "Agents" sections)
-- Integrate the Unity environment into benchmarks/training scripts
-- Build your own controllers and rewards, assemble scenes for your tasks
+- Запустите примеры TensorAeroSpace с агентами (см. разделы "Модели" и "Агенты")
+- Интегрируйте Unity-среду в бенчмарки и скрипты обучения
+- Создавайте собственные контроллеры и награды, собирайте сцены для ваших задач
+
+## Связанные примеры
+
+- [Unity с DQN](../example/enviroment/unity_example.md) — обучение DQN-агента
+- [Unity с SAC](../example/agent/sac/example-sac-unity.md) — обучение SAC-агента (непрерывное управление)

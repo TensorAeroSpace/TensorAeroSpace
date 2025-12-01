@@ -43,7 +43,7 @@ Components used to model aircraft motion:
 | FlapDown | Lower flaps | Toggle/pulse |
 
 !!! note
-    В дискретной обёртке `unity_discrete_env` семимерное действие кодируется как одно целое число: 3 значения на канал ⇒ всего 3^7 действий.
+    In the discrete wrapper `unity_discrete_env`, a seven-dimensional action is encoded as a single integer: 3 values per channel ⇒ 3^7 total actions.
 
 ## Unity scenes
 
@@ -93,7 +93,7 @@ Minimal example of acquiring the Unity `gym` wrapper with optional action discre
     # For separate process/server usage, enable server=True and a unique worker id
     env = get_plane_env(UNITY_BUILD_PATH, server=True, worker=0)
 
-    # Для дискретного пространства действий используйте обёртку
+    # For discrete action space, use the wrapper
     env = unity_discrete_env(env)
 
     obs = env.reset()
@@ -131,7 +131,7 @@ Example Dockerfile with dependencies and TensorBoard startup:
 ```dockerfile
 FROM tensorflow/tensorflow:2.4.0-gpu-jupyter
 
-RUN pip install gym==0.20.0 scipy==1.5.4 gym-unity==0.28.0
+RUN pip install mlagents==1.1.0 scipy==1.5.4
 RUN mkdir /tf/logs
 COPY a3c_example.py /tf
 
@@ -139,7 +139,7 @@ ENTRYPOINT tensorboard --logdir /tf/logs --port 8889 --host 0.0.0.0 & python a3c
 ```
 <!-- markdownlint-enable MD046 -->
 
-Скрипт обучения (A3C, несколько воркеров через `worker_id`):
+Training script (A3C, multiple workers via `worker_id`):
 
 <!-- markdownlint-disable MD046 -->
 ```python
@@ -193,3 +193,8 @@ Launch the container and mount the library and Unity build:
 ## Sample training run
 
 ![Sample training run](img/example_run.jpg)
+
+## Related Examples
+
+- [Unity with DQN](../example/enviroment/unity_example.md) — train a DQN agent (discrete actions)
+- [Unity with SAC](../example/agent/sac/example-sac-unity.md) — train a SAC agent (continuous control)

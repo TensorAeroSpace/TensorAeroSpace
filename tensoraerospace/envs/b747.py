@@ -1,5 +1,5 @@
 import os
-from typing import Any, Callable, Optional
+from typing import Any, Callable, Dict, Optional, Tuple
 
 import gymnasium as gym
 import numpy as np
@@ -242,7 +242,7 @@ class LinearLongitudinalB747(gym.Env):
             },
         )
 
-    def reset(self, seed=None, options=None):
+    def reset(self, seed=None, options=None) -> Tuple[np.ndarray, Dict[str, Any]]:
         """Reset simulation environment to initial conditions.
 
         Args:

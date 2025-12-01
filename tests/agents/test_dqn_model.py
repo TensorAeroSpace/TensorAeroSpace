@@ -1,4 +1,5 @@
 """Tests for DQN Model."""
+
 import numpy as np
 import torch
 
