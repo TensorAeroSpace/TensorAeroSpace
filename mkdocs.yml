@@ -73,6 +73,7 @@ plugins:
               - IHDP: example/agent/ihdp/example_ihdp.md
               - SAC F16: example/agent/sac/example-sac-f16.md
               - SAC B747: example/agent/sac/example-sac-b747.md
+              - SAC Unity: example/agent/sac/example-sac-unity.md
               - Optimization: example/optimization/example_optimization.md
               - A2C-NARX: example/agent/a2c_narx/example-narx.md
               - MPC: example/agent/mpc/example_mpc.md
@@ -149,6 +150,7 @@ plugins:
               - Окружения: example/enviroment/gymnasium.md
               - IHDP: example/agent/ihdp/example_ihdp.md
               - SAC F16: example/agent/sac/example-sac-f16.md
+              - SAC Unity: example/agent/sac/example-sac-unity.md
               - Оптимизация: example/optimization/example_optimization.md
               - A2C-NARX: example/agent/a2c_narx/example-narx.md
               - MPC: example/agent/mpc/example_mpc.md

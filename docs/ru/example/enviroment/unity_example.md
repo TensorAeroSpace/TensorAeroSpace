@@ -6,6 +6,9 @@
 
 Короткий путь: подключить Unity‑среду (через Editor или standalone‑билд), обучить DQN‑агента и проверить взаимодействие случайным агентом. Для подготовки Unity следуйте разделу «Настройка Unity среды» — см. страницу [Unity Environment](../../guide/unity_env.md).
 
+!!! info "Репозиторий Unity окружения"
+    Исходный код Unity окружения доступен по ссылке: [TensorAeroSpace/UnityAirplaneEnvironment](https://github.com/TensorAeroSpace/UnityAirplaneEnvironment)
+
 ## Цели и требования
 
 - Что вы сделаете:
@@ -13,7 +16,7 @@
   - Запустите DQN‑тренировку и оценку.
   - Проверите взаимодействие со случайным агентом.
 - Что потребуется:
-  - Установленные Unity + ML‑Agents, Python 3.8+, `gym`, `gym-unity`, `tensoraerospace`.
+  - Unity + ML-Agents (`mlagents==1.1.0`), Python 3.8+, `tensoraerospace`.
 
 ## Импорты модели и среды
 
@@ -110,7 +113,7 @@ print("After Training: %d out of 200" % rewards_sum)
 ```bash
 FROM tensorflow/tensorflow:2.4.0-gpu-jupyter
 
-RUN pip install gym==0.20.0 scipy==1.5.4 gym-unity==0.28.0
+RUN pip install mlagents==1.1.0 scipy==1.5.4
 RUN mkdir /tf/logs
 COPY a3c_example.py /tf
 
@@ -153,9 +156,15 @@ docker run \
 
 - Порт 5004 занят: измените порт в конфигурации или остановите конфликтующий процесс.
 - Лог `allow_multiple_obs=True`: либо включите параметр в обертке среды, либо используйте первый наблюдаемый канал.
-- Несоответствие версий `gym`/`gym-unity`: убедитесь, что версии совместимы с используемым ML‑Agents.
+- Несоответствие версий `mlagents`: убедитесь, что версия совместима с ML-Agents (`mlagents==1.1.0`).
 - Не подключается к билду: проверьте `build_path` и права на запуск (Linux: `chmod +x`).
 
 ## Пример запуска обучения модели
 
 ![Training Example](../../model/img/example_run.jpg){ width=800 }
+
+## Связанные примеры
+
+- [Unity с SAC](../agent/sac/example-sac-unity.md) — SAC-агент для непрерывного управления
+- [Настройка Unity окружения](../../guide/unity_env.md) — полный гайд по настройке
+- [Unity окружение](../../model/unity_env.md) — детали среды и сцены
