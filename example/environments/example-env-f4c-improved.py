@@ -124,9 +124,7 @@ def main():
             )
 
         if terminated:
-            print(
-                f"\n⚠️  Episode terminated at step {step} " f"(pitch exceeded limits)"
-            )
+            print(f"\n⚠️  Episode terminated at step {step} " f"(pitch exceeded limits)")
             break
 
         if truncated:

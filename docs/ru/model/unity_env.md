@@ -131,7 +131,7 @@ UnityAirplaneEnvironment — учебная Unity‑среда для задач
 ```dockerfile
 FROM tensorflow/tensorflow:2.4.0-gpu-jupyter
 
-RUN pip install gym==0.20.0 scipy==1.5.4 gym-unity==0.28.0
+RUN pip install mlagents==1.1.0 scipy==1.5.4
 RUN mkdir /tf/logs
 COPY a3c_example.py /tf
 
@@ -193,3 +193,8 @@ agent.train()
 ## Пример запуска обучения
 
 ![Пример запуска обучения](img/example_run.jpg)
+
+## Связанные примеры
+
+- [Unity с DQN](../example/enviroment/unity_example.md) — обучение DQN-агента (дискретные действия)
+- [Unity с SAC](../example/agent/sac/example-sac-unity.md) — обучение SAC-агента (непрерывное управление)

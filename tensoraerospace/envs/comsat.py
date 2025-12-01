@@ -6,7 +6,7 @@ for interaction with the satellite model, including control of radial position,
 radial velocity and angular velocity through tangential thrust.
 """
 
-from typing import Callable
+from typing import Any, Callable, Dict, Tuple
 
 import gymnasium as gym
 import numpy as np
@@ -325,7 +325,7 @@ class ImprovedComSatEnv(gym.Env):
         )
         return np.clip(obs, -1.0, 1.0)
 
-    def get_init_args(self):
+    def get_init_args(self) -> Dict[str, Any]:
         """Get initialization arguments as a dictionary.
 
         Returns:
@@ -336,7 +336,7 @@ class ImprovedComSatEnv(gym.Env):
         init_args.pop("__class__", None)
         return init_args
 
-    def reset(self, seed=None, options=None):
+    def reset(self, seed=None, options=None) -> Tuple[np.ndarray, Dict[str, Any]]:
         """Reset environment to initial state.
 
         Args:
@@ -355,7 +355,9 @@ class ImprovedComSatEnv(gym.Env):
         self._last_reward = 0.0
         return self._get_obs(), {}
 
-    def step(self, action: np.ndarray):
+    def step(
+        self, action: np.ndarray
+    ) -> Tuple[np.ndarray, float, bool, bool, Dict[str, Any]]:
         """Execute one simulation step.
 
         Args:

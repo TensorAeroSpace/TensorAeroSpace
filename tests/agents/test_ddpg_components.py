@@ -2,6 +2,7 @@
 
 Tests for RunningMeanStd, ReplayBuffer, and OUNoise classes.
 """
+
 import numpy as np
 import pytest
 
