@@ -36,15 +36,15 @@ jobs:
         
     
     - name: 📥 Checkout code
-      uses: actions/checkout@v4
+      uses: actions/checkout@v5
 
     - name: 🐍 Set up Python 3.10
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@v5
       with:
         python-version: '3.10'
 
     - name: 📦 Cache Poetry dependencies
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       with:
         path: |
           ~/.cache/pypoetry
@@ -186,15 +186,15 @@ jobs:
         
     
     - name: 📥 Checkout code
-      uses: actions/checkout@v4
+      uses: actions/checkout@v5
 
     - name: 🐍 Set up Python
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@v5
       with:
         python-version: '3.10'
 
     - name: 📦 Cache Poetry dependencies
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       with:
         path: |
           ~/.cache/pypoetry
@@ -301,10 +301,10 @@ jobs:
         sudo apt-get clean
     
     - name: 📥 Checkout code
-      uses: actions/checkout@v4
+      uses: actions/checkout@v5
 
     - name: 🐍 Set up Python
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@v5
       with:
         python-version: '3.10'
 
@@ -342,10 +342,10 @@ jobs:
         sudo apt-get clean
     
     - name: 📥 Checkout code
-      uses: actions/checkout@v4
+      uses: actions/checkout@v5
 
     - name: 🐍 Set up Python
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@v5
       with:
         python-version: '3.10'
 
@@ -374,7 +374,7 @@ jobs:
         poetry build
 
     - name: 📦 Upload build artifacts
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v5
       continue-on-error: true
       with:
         name: dist
@@ -391,13 +391,13 @@ jobs:
 
     steps:
     - name: 📥 Download build artifacts
-      uses: actions/download-artifact@v5
+      uses: actions/download-artifact@v6
       with:
         name: dist
         path: dist
 
     - name: 🐍 Set up Python
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@v5
       with:
         python-version: '3.10'
 
