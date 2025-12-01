@@ -355,7 +355,9 @@ class ImprovedComSatEnv(gym.Env):
         self._last_reward = 0.0
         return self._get_obs(), {}
 
-    def step(self, action: np.ndarray) -> Tuple[np.ndarray, float, bool, bool, Dict[str, Any]]:
+    def step(
+        self, action: np.ndarray
+    ) -> Tuple[np.ndarray, float, bool, bool, Dict[str, Any]]:
         """Execute one simulation step.
 
         Args:
