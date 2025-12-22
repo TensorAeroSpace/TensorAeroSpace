@@ -1,0 +1,124 @@
+import numpy as np
+import pytest
+from gymnasium import spaces
+
+from tensoraerospace.envs.x15 import ImprovedX15Env
+
+
+@pytest.fixture
+def x15_env_default():
+    # X15 model state order: [u, alpha, q, theta]
+    initial_state = np.array([500.0, 0.0, 0.0, 0.0], dtype=np.float32)
+    reference_signal = np.zeros((1, 20), dtype=np.float32)
+    return ImprovedX15Env(
+        initial_state=initial_state,
+        reference_signal=reference_signal,
+        number_time_steps=20,
+        dt=0.01,
+        initial_elevator_deg=0.0,
+        use_initial_action_on_first_step=False,
+    )
+
+
+def test_improved_x15_initialization(x15_env_default):
+    env = x15_env_default
+    assert isinstance(env.action_space, spaces.Box)
+    assert env.action_space.shape == (1,)
+    assert isinstance(env.observation_space, spaces.Box)
+    assert env.observation_space.shape == (4,)
+    assert env.current_step == 0
+
+
+def test_improved_x15_reset(x15_env_default):
+    env = x15_env_default
+    obs, info = env.reset()
+    assert isinstance(obs, np.ndarray)
+    assert obs.shape == (4,)
+    assert isinstance(info, dict)
+    assert env.current_step == 0
+
+
+def test_improved_x15_step_shapes_and_types(x15_env_default):
+    env = x15_env_default
+    env.reset()
+    obs, reward, terminated, truncated, info = env.step(np.array([0.5], dtype=np.float32))
+    assert isinstance(obs, np.ndarray)
+    assert obs.shape == (4,)
+    assert isinstance(reward, float)
+    assert isinstance(terminated, bool)
+    assert isinstance(truncated, bool)
+    assert isinstance(info, dict)
+
+
+def test_improved_x15_action_clamping(x15_env_default):
+    env = x15_env_default
+    env.reset()
+    env.step(np.array([2.0], dtype=np.float32))  # clamp to 1.0
+    assert env.previous_action == pytest.approx(1.0, abs=1e-6)
+
+
+def test_improved_x15_truncation_flag():
+    initial_state = np.array([500.0, 0.0, 0.0, 0.0], dtype=np.float32)
+    reference_signal = np.zeros((1, 3), dtype=np.float32)
+    env = ImprovedX15Env(
+        initial_state=initial_state,
+        reference_signal=reference_signal,
+        number_time_steps=3,
+        dt=0.01,
+        initial_elevator_deg=0.0,
+        use_initial_action_on_first_step=False,
+    )
+    env.reset()
+    _, _, _, truncated, _ = env.step(np.array([0.0], dtype=np.float32))
+    assert truncated is True
+
+
+def test_improved_x15_initial_action_override_on_first_step():
+    initial_state = np.array([500.0, 0.0, 0.0, 0.0], dtype=np.float32)
+    reference_signal = np.zeros((1, 20), dtype=np.float32)
+    env = ImprovedX15Env(
+        initial_state=initial_state,
+        reference_signal=reference_signal,
+        number_time_steps=20,
+        dt=0.01,
+        initial_elevator_deg=10.0,
+        use_initial_action_on_first_step=True,
+    )
+    env.reset()
+    env.step(np.array([-1.0], dtype=np.float32))
+    assert env.previous_action == pytest.approx(
+        10.0 / env.max_elevator_angle_deg, abs=1e-6
+    )
+
+
+def test_improved_x15_get_init_args(x15_env_default):
+    env = x15_env_default
+    d = env.get_init_args()
+    assert isinstance(d, dict)
+    assert "initial_state" in d
+    assert "reference_signal" in d
+    assert "number_time_steps" in d
+    assert "dt" in d
+    assert "initial_elevator_deg" in d
+    assert "use_initial_action_on_first_step" in d
+    assert "self" not in d
+    assert "__class__" not in d
+
+
+def test_improved_x15_termination_on_pitch_limit(monkeypatch, x15_env_default):
+    env = x15_env_default
+    env.reset()
+
+    def _forced_run_step(action):
+        # Return a state with theta beyond the allowed pitch envelope
+        return np.array([500.0, 0.0, 0.0, env.max_pitch_rad * 1.1], dtype=np.float32)
+
+    monkeypatch.setattr(env.model, "run_step", _forced_run_step)
+    _, reward, terminated, _, _ = env.step(np.array([0.0], dtype=np.float32))
+    assert terminated is True
+    assert reward == -100.0
+
+
+
+
+

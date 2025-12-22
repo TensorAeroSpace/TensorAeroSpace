@@ -489,16 +489,32 @@ class PolicyNetwork(nn.Module):
         self.linear3.weight.data.uniform_(-init_w, init_w)
         self.linear3.bias.data.uniform_(-init_w, init_w)
 
-        # Store action space bounds for automatic scaling
+        # Store action space bounds for automatic scaling.
+        #
+        # IMPORTANT: do not use the module-level `device` here. The network may be
+        # created on CPU even when CUDA is available (common in unit tests), and
+        # using a global device would split parameters (CPU) from these tensors
+        # (CUDA) causing device-mismatch errors. Buffers follow the module device
+        # when `.to(...)` is called.
+        param_device = self.linear1.weight.device
         if action_low is not None and action_high is not None:
-            scale = (action_high - action_low) / 2.0
-            self.action_scale = torch.FloatTensor(scale).to(device)
-            bias = (action_high + action_low) / 2.0
-            self.action_bias = torch.FloatTensor(bias).to(device)
+            low = np.asarray(action_low, dtype=np.float32)
+            high = np.asarray(action_high, dtype=np.float32)
+            scale = (high - low) / 2.0
+            bias = (high + low) / 2.0
+            action_scale = torch.tensor(scale, dtype=torch.float32, device=param_device)
+            action_bias = torch.tensor(bias, dtype=torch.float32, device=param_device)
         else:
             # Default to [-1, 1] if bounds not provided
-            self.action_scale = torch.FloatTensor([1.0]).to(device)
-            self.action_bias = torch.FloatTensor([0.0]).to(device)
+            action_scale = torch.ones(
+                (num_actions,), dtype=torch.float32, device=param_device
+            )
+            action_bias = torch.zeros(
+                (num_actions,), dtype=torch.float32, device=param_device
+            )
+
+        self.register_buffer("action_scale", action_scale)
+        self.register_buffer("action_bias", action_bias)
 
     def forward(self, state: torch.Tensor) -> torch.Tensor:
         """Forward pass to compute the action for a given state.
@@ -525,7 +541,8 @@ class PolicyNetwork(nn.Module):
         Returns:
             Action as numpy array, scaled to action space bounds.
         """
-        state = torch.FloatTensor(state).unsqueeze(0).to(device)
+        model_device = next(self.parameters()).device
+        state = torch.tensor(state, dtype=torch.float32, device=model_device).unsqueeze(0)
         with torch.no_grad():
             action = self.forward(state)
         return action.squeeze(0).cpu().numpy()

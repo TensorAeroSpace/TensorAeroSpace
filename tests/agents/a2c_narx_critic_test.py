@@ -196,4 +196,7 @@ def test_build_narx_features_device_consistency():
 
     features = build_narx_features(states, actions, history_length=h)
 
-    assert features.device == device
+    # `torch.device("cuda")` has no explicit index (None), while tensors are
+    # typically allocated on an indexed device (e.g. cuda:0). Compare to the
+    # actual input tensor device to avoid false negatives.
+    assert features.device == states.device

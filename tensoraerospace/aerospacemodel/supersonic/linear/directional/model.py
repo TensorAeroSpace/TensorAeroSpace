@@ -46,7 +46,12 @@ class DirectionalSuperSonic(ModelBase):
         self.selected_input = ["ail", "rud"]
         self.control_list = self.selected_input
 
-        self._initialize_selected_state_index(self.selected_states, self.list_state)
+        # ModelBase expects (selected_state_output, list_state). Here we want
+        # indices over *states* (for returning xt1 slices), not outputs.
+        self._initialize_selected_state_index(self.selected_state_output, self.selected_states)
+        # Restore lists that ModelBase resets during initialization.
+        self.list_state = self.selected_output
+        self.control_list = self.selected_input
 
         self.state_space = self.selected_states
         self.action_space = self.selected_input
@@ -155,9 +160,8 @@ class DirectionalSuperSonic(ModelBase):
             ut_1 = self.store_input[:, self.time_step - 1]
         else:
             ut_1 = ut_0
-        ut = [
-            0,
-        ]
+        # Allocate per-input command buffer
+        ut = [0] * int(self.number_inputs)
         for i in range(self.number_inputs):
             ut[i] = max(
                 min(
