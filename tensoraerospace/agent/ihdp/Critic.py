@@ -1,3 +1,8 @@
+"""Critic network for IHDP.
+
+This module defines the Critic component used by the IHDP agent.
+"""
+
 import random
 from typing import Any, Tuple
 
@@ -297,8 +302,8 @@ class Critic:
         output and derivative of neural network output with respect to weights and biases.
 
         Args:
-            dJt_dW (_type_): производная выхода NN по весам и смещениям
-            dE_dJ (_type_): производная функции потерь по выходу NN
+            dJt_dW (_type_): Derivative of NN output with respect to weights and biases.
+            dE_dJ (_type_): Derivative of loss function with respect to NN output.
         """
 
         if self.time_step > self.start_training:
@@ -346,16 +351,14 @@ class Critic:
     def run_train_critic_online_alpha_decay(
         self, xt: np.ndarray, xt_ref: np.ndarray
     ) -> np.ndarray:
-        """Функция, которая оценивает один раз критическую нейронную сеть и возвращает значение J(xt). В то же
-        время обучает аппроксиматор функции градиентным спуском. Скорость обучения падает с увеличением количества
-        временные шаги.
+        """Evaluate the critic once and update it with a decaying learning rate.
 
         Args:
-            xt (_type_): текущее состояние временного шага
-            xt_ref (_type_): Заданное состояния текущего временного шага для вычисления одношаговой функции стоимости
+            xt: Current state.
+            xt_ref: Reference state used to compute one-step cost.
 
         Returns:
-            Jt (_type_): оценка критика на текущем временном шаге
+            np.ndarray: Critic value estimate at the current time step.
         """
 
         # Safe the information in the replay attribute
@@ -401,15 +404,7 @@ class Critic:
         return self.Jt
 
     def train_critic_replay_adam(self, replay_size: int, iteration: int) -> None:
-        """Обучает критика по данным из буфера повторов (replay).
-
-        Args:
-            replay_size (int): Количество элементов из буфера, используемых для обучения.
-            iteration (int): Номер итерации обучения (используется в оптимизаторе Adam).
-
-        Returns:
-            None
-        """
+        """Train the critic using samples from the replay buffer (Adam)."""
 
         # Compute the number of data points used in the replay training
         replay_size = min(replay_size, len(self.replay))
@@ -448,16 +443,7 @@ class Critic:
     def compute_forward_pass(
         self, xt: np.ndarray, xt_ref: np.ndarray, replay: bool = False
     ) -> Tuple[Any, list[np.ndarray]]:
-        """Вычислите результат критика, а также производную от Jt по весам и смещениям сети.
-
-        Args:
-            xt (_type_): Состояние
-            xt_ref (_type_): Заданное состояние
-
-        Returns:
-            nn_input (_type_): форматированный ввод в нейронную сеть
-            dJt_dW (_type_): производная функции потерь по весам и смещениям
-        """
+        """Compute critic output and gradients with respect to weights/biases."""
         # If it is online, safe the input in the object
         if not replay:
             self.xt = xt
@@ -502,13 +488,7 @@ class Critic:
     def compute_loss_derivative(
         self, *args: Any
     ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
-        """Вычисляет производную функции потерь по Jt
-
-        Returns:
-            dE_dJ (_type_): производная функции потерь по Jt
-            ec_critic_before (_type_): ошибка сети перед тренировкой
-            EC_critic_before (_type_): функция потерь сети до обучения
-        """
+        """Compute derivative of the critic loss with respect to critic output."""
 
         # In the case that there are no inputs, obtain data from the object attributes
         if len(args) == 0:
@@ -552,11 +532,7 @@ class Critic:
         return dE_dJ, ec_critic_before, EC_critic_before
 
     def check_WB_limits(self, count):
-        """Проверка, не превышают ли какие-либо веса и смещения установленный предел (WB_limits), и насыщайте значения.
-
-        Args:
-            count (_type_): индекс в анализируемой модели model.trainable_variables
-        """
+        """Clamp weights/biases to the configured absolute limit (WB_limits)."""
         WB_variable = self.model.trainable_variables[count].numpy()
         WB_variable[WB_variable > self.WB_limits] = self.WB_limits
         WB_variable[WB_variable < -self.WB_limits] = -self.WB_limits
@@ -565,16 +541,7 @@ class Critic:
     def evaluate_critic(
         self, xt: np.ndarray, xt_ref: np.ndarray
     ) -> Tuple[np.ndarray, np.ndarray]:
-        """Функция, которая оценивает один раз критическую нейронную сеть и возвращает значение J(xt).
-
-        Args:
-            xt (_type_): Состояние
-            xt_ref (_type_): Заданное состояние
-
-        Returns:
-            Jt (_type_): оценка критика на текущем временном шаге
-            dJt_dxt (_type_): градиент функции стоимости по отношению к входу (xt)
-        """
+        """Evaluate critic and compute gradient with respect to the input."""
 
         tracked_states = np.reshape(xt[self.indices_tracking_states, :], [-1, 1])
         xt_error = np.reshape(tracked_states - xt_ref, [-1, 1])
@@ -590,11 +557,7 @@ class Critic:
         return Jt, dJt_dxt
 
     def c_computation(self) -> np.ndarray:
-        """Вычисление одношаговой функции стоимости с полученными реальным и эталонным состояниями.
-
-        Returns:
-            ct: Текущий временной шаг one-step cost функции
-        """
+        """Compute one-step cost for the current time step."""
 
         # Check if xt already contains only tracked states
         if self.xt.shape[0] == len(self.indices_tracking_states):
@@ -610,12 +573,7 @@ class Critic:
         return ct
 
     def targets_computation_online(self, *args: Any) -> np.ndarray:
-        """Вычисляет цель на текущем временном шаге с одношаговой функцией стоимости предыдущего
-        временной шаг и текущая функция стоимости.
-
-        Returns:
-            target: цель предыдущего временного шага.
-        """
+        """Compute the TD target used for critic training."""
 
         if len(args) == 0:
             target = np.reshape(-self.ct_1 - self.gamma * self.Jt, [-1, 1])
@@ -629,7 +587,7 @@ class Critic:
         return target
 
     def update_critic_attributes(self) -> None:
-        """Атрибуты, которые меняются с каждым временным шагом, обновляются"""
+        """Update time-dependent critic attributes after each step."""
         self.time_step += 1
         self.ct_1 = self.ct
         self.xt_1 = self.xt
@@ -642,11 +600,11 @@ class Critic:
             )
 
     def restart_time_step(self) -> None:
-        """Обнуление врменного шага"""
+        """Reset the time step counter to zero."""
         self.time_step = 0
 
     def restart_critic(self) -> None:
-        """Рестарт Критика."""
+        """Reset critic internal state and buffers."""
         # Declaration of attributes regarding the states and rewards
         self.time_step = 0
         self.xt = None

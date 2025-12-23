@@ -97,30 +97,30 @@ class LinearLongitudinalMissileModel(gym.Env):
 
     @staticmethod
     def reward(state, ref_signal, ts):
-        """Оценка управления
+        """Evaluate control performance.
 
         Args:
-            state (_type_): Текущее состояния
-            ref_signal (_type_): Заданное состояние
-            ts (_type_): Временное шаг
+            state (_type_): Current state.
+            ref_signal (_type_): Reference state.
+            ts (_type_): Time step.
 
         Returns:
-            reward (float): Оценка управления
+            reward (float): Control performance evaluation.
         """
         return np.abs(state[0] - ref_signal[:, ts])
 
     def step(self, action: np.ndarray):
-        """Выполнения шага моделирования
+        """Execute a simulation step.
 
         Args:
-            action (np.ndarray): Массив управляющего сигнала по выбранным
-                органам
+            action (np.ndarray): Array of control signals for selected
+                control surfaces.
 
         Returns:
-            next_state (np.ndarray): Следующие состояние объекта управления
-            reward (np.ndarray): Оценка действий алгоритма управления
-            done (bool): Статус моделирования, завершено или нет
-            logging (any): Дополнительная информацию (не используется)
+            next_state (np.ndarray): Next state of the control object.
+            reward (np.ndarray): Evaluation of control algorithm actions.
+            done (bool): Simulation status, whether completed or not.
+            logging (any): Additional information (not used).
         """
         if action[0] > self.max_action_value:
             action[0] = self.max_action_value
@@ -165,7 +165,8 @@ class LinearLongitudinalMissileModel(gym.Env):
         return observation, info
 
     def render(self):
-        """Визуальное отображение действий в среде. В статусе WIP
+        """Visual display of actions in the environment. Status: WIP.
+
         Raises:
             NotImplementedError
         """

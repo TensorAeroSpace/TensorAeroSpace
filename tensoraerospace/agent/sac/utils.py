@@ -1,18 +1,22 @@
+"""Utility functions for Soft Actor-Critic (SAC).
+
+This module contains small math helpers used by the SAC implementation.
+"""
+
 import numpy as np
 import torch
 
 
 def create_log_gaussian(mean, log_std, t):
-    """Вычисляет логарифм плотности вероятности для нормального распределения.
+    """Compute log probability density of a Gaussian.
 
-    Аргументы:
-        mean (torch.Tensor): Среднее значение распределения.
-        log_std (torch.Tensor): Логарифм стандартного отклонения распределения.
-        t (torch.Tensor): Входное значение.
+    Args:
+        mean (torch.Tensor): Mean of the Gaussian.
+        log_std (torch.Tensor): Log standard deviation.
+        t (torch.Tensor): Value to evaluate.
 
-    Возвращает:
-        log_p (torch.Tensor): Логарифм плотности вероятности.
-
+    Returns:
+        torch.Tensor: Log probability.
     """
     quadratic = -((0.5 * (t - mean) / (log_std.exp())).pow(2))
     length = mean.shape
@@ -24,16 +28,16 @@ def create_log_gaussian(mean, log_std, t):
 
 
 def logsumexp(inputs, dim=None, keepdim=False):
-    """Вычисляет логарифм от суммы экспонент.
+    """Compute log(sum(exp(inputs))) in a numerically stable way.
 
-    Аргументы:
-        inputs (torch.Tensor): Входные данные.
-        dim (int): Размерность для вычисления.
-        keepdim (bool): Флаг сохранения размерности.
+    Args:
+        inputs (torch.Tensor): Input tensor.
+        dim (int, optional): Dimension to reduce. If None, reduces over all
+            elements.
+        keepdim (bool): Whether to keep reduced dimension(s).
 
-    Возвращает:
-        outputs (torch.Tensor): Логарифм от суммы экспонент.
-
+    Returns:
+        torch.Tensor: Result tensor.
     """
     if dim is None:
         inputs = inputs.view(-1)
@@ -46,25 +50,18 @@ def logsumexp(inputs, dim=None, keepdim=False):
 
 
 def soft_update(target, source, tau):
-    """Мягкое обновление параметров модели target по параметрам модели source.
+    """Soft-update target parameters towards source parameters.
 
-    Аргументы:
-        target (torch.nn.Module): Целевая модель.
-        source (torch.nn.Module): Исходная модель.
-        tau (float): Коэффициент мягкого обновления.
-
+    Args:
+        target (torch.nn.Module): Target model to update.
+        source (torch.nn.Module): Source model to track.
+        tau (float): Interpolation factor in [0, 1]. ``tau=1`` copies weights.
     """
     for target_param, param in zip(target.parameters(), source.parameters()):
         target_param.data.copy_(target_param.data * (1.0 - tau) + param.data * tau)
 
 
 def hard_update(target, source):
-    """Жесткое обновление параметров модели target по параметрам модели source.
-
-    Аргументы:
-        target (torch.nn.Module): Целевая модель.
-        source (torch.nn.Module): Исходная модель.
-
-    """
+    """Copy parameters from source model to target model."""
     for target_param, param in zip(target.parameters(), source.parameters()):
         target_param.data.copy_(param.data)

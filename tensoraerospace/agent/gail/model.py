@@ -1,3 +1,9 @@
+"""Generative Adversarial Imitation Learning (GAIL) agent.
+
+This module contains the core GAIL implementation and supporting neural network
+components used for imitation learning within TensorAeroSpace.
+"""
+
 import math
 import random
 
@@ -14,11 +20,10 @@ device = torch.device("cuda" if use_cuda else "cpu")
 
 
 def init_weights(m):
-    """
-    Инициализирует веса и смещения (биасы) слоя с помощью нормального распределения.
+    """Initialize layer weights/biases with a normal distribution.
 
     Args:
-        m (nn.Linear): Слой нейронной сети, который будет инициализирован.
+        m (nn.Module): Layer/module to initialize.
     """
     if isinstance(m, nn.Linear):
         nn.init.normal_(m.weight, mean=0.0, std=0.1)
@@ -27,14 +32,13 @@ def init_weights(m):
 
 class ActorCritic(nn.Module):
     def __init__(self, num_inputs, num_outputs, hidden_size, std=0.0):
-        """
-        Инициализирует модуль актора - критика.
+        """Create actor-critic networks.
 
         Args:
-            num_inputs (int): Размерность входных данных.
-            num_outputs (int): Размерность выходных данных.
-            hidden_size (int): Размер скрытого слоя.
-            std (float, optional): стандартное отклонение
+            num_inputs (int): Input dimension.
+            num_outputs (int): Output/action dimension.
+            hidden_size (int): Hidden layer size.
+            std (float, optional): Initial log-std scale. Defaults to 0.0.
         """
         super(ActorCritic, self).__init__()
 
@@ -52,14 +56,13 @@ class ActorCritic(nn.Module):
         self.apply(init_weights)
 
     def forward(self, x):
-        """
-        Производит прямой проход сети.
+        """Forward pass.
 
         Args:
-            x (Tensor): Тензор входных данных.
+            x (Tensor): Input tensor.
 
         Returns:
-            (Distribution, Tensor): распределение по действиям и значение функции критика
+            tuple: ``(action_distribution, value)``.
         """
         value = self.critic(x)
         mu = self.actor(x)
@@ -69,19 +72,18 @@ class ActorCritic(nn.Module):
 
 
 def compute_gae(next_value, rewards, masks, values, gamma=0.99, tau=0.95):
-    """
-    Вычисляет значения advantage функции
+    """Compute Generalized Advantage Estimation (GAE).
 
     Args:
-        next_value (Tensor): Значение функции критика для последнего состояния.
-        rewards (Tensor): Значения наград.
-        masks (Tensor): Маски для терминальных состояний.
-        values (Tensor): Значение функции критика.
-        gamma (float, optional): константа гамма.
-        tau (foat, optional): константа тау.
+        next_value (Tensor): Value estimate for the last state.
+        rewards (Tensor): Rewards.
+        masks (Tensor): Terminal masks (0 for terminal, 1 otherwise).
+        values (Tensor): Value estimates.
+        gamma (float): Discount factor. Defaults to 0.99.
+        tau (float): GAE parameter. Defaults to 0.95.
 
     Returns:
-        Tensor: значения advantage функции
+        list: Advantage-weighted returns (as a list of tensors).
     """
     values = values + [next_value]
     gae = 0
@@ -94,19 +96,7 @@ def compute_gae(next_value, rewards, masks, values, gamma=0.99, tau=0.95):
 
 
 def ppo_iter(mini_batch_size, states, actions, log_probs, returns, advantage):
-    """
-    Итератор для алгоритма PPO
-    Args:
-        mini_batch_size (int): Размер мини-батча.
-        states (Tensor): Батч состояний.
-        actions (Tensor): Батч действий.
-        log_probs (Tensor): Батч логарифмов вероятностей действий.
-        returns (Tensor): Батч отложенных наград.
-        advantage (foat, optional): Батч значений advantage функции.
-
-    Returns:
-        Tensor: минибатч для итерации обновления PPO
-    """
+    """Mini-batch iterator used by PPO updates."""
     batch_size = states.size(0)
     for _ in range(batch_size // mini_batch_size):
         rand_ids = np.random.randint(0, batch_size, mini_batch_size)
@@ -117,12 +107,11 @@ def ppo_iter(mini_batch_size, states, actions, log_probs, returns, advantage):
 
 class Discriminator(nn.Module):
     def __init__(self, num_inputs, hidden_size):
-        """
-        Инициализирует модуль Дискриминатора.
+        """Create the discriminator network.
 
         Args:
-            num_inputs (int): Размерность входных данных.
-            hidden_size (int): Размер скрытого слоя.
+            num_inputs (int): Input dimension.
+            hidden_size (int): Hidden layer size.
         """
         super(Discriminator, self).__init__()
 
@@ -141,16 +130,15 @@ class Discriminator(nn.Module):
 
 class GAIL:
     def __init__(self, env, learning_rate, max_steps, mini_batch_size, epochs, data):
-        """
-        Инициализация алгоритма GAIL
-        Args:
-            env: объект окружения, с которым будет взаимодействовать агент.
-            learning_rate (float): learning rate.
-            max_steps (int): максимальное количество шагов в среде.
-            mini_batch_size (int): размер мини-батча.
-            epochs (int): количество эпох обучения.
-            data (Array): экспертные данные (состояния и выбранные действия).
+        """Initialize the GAIL algorithm.
 
+        Args:
+            env: Environment instance.
+            learning_rate (float): Learning rate.
+            max_steps (int): Maximum steps per rollout/episode.
+            mini_batch_size (int): Mini-batch size.
+            epochs (int): Number of training epochs.
+            data (Array): Expert demonstrations (states/actions).
         """
         self.env = env
         self.lr = learning_rate
@@ -172,24 +160,13 @@ class GAIL:
         self.optimizer_discrim = optim.Adam(self.discriminator.parameters(), lr=self.lr)
 
     def expert_reward(self, state, action):
-        """
-        Награда на основе экспертных данных
-        Args:
-            state (Tensor): состояние среды.
-            action (float): действие агента.
-        Returns:
-            int: награда дискриминатора.
-        """
+        """Compute imitation reward using the discriminator."""
         state = state.cpu().numpy()
         state_action = torch.FloatTensor(np.concatenate([state, action], 1)).to(device)
         return -np.log(self.discriminator(state_action).cpu().data.numpy())
 
     def test_env(self):
-        """
-        Функция для тестирования алгоритма на основе одного эпизода в среде.
-        Returns:
-            int: Награда за эпизод.
-        """
+        """Run one evaluation rollout and return total reward."""
         state = self.env.reset()[0].reshape(1, -1)
         done = False
         total_reward = 0
@@ -215,17 +192,17 @@ class GAIL:
         advantages,
         clip_param=0.2,
     ):
-        """
-        Функция для обновления PPO.
+        """PPO update function.
+
         Args:
-            ppo_epochs (int): количество эпох.
-            mini_batch_size (int): размер мини-батча.
-            states (Tensor): батч состояний.
-            actions (Tensor): батч действий.
-            log_probs (Tensor): батч логарифмов вероятностей действий.
-            returns (Tensor): батч отложенных наград.
-            advantages (Tensor): батч значений advantage функции.
-            clip_param (float, optional): константа для клиппинга.
+            ppo_epochs (int): Number of epochs.
+            mini_batch_size (int): Mini-batch size.
+            states (Tensor): Batch of states.
+            actions (Tensor): Batch of actions.
+            log_probs (Tensor): Batch of action log probabilities.
+            returns (Tensor): Batch of discounted rewards.
+            advantages (Tensor): Batch of advantage function values.
+            clip_param (float, optional): Clipping constant.
         """
         for _ in range(ppo_epochs):
             for state, action, old_log_probs, return_, advantage in ppo_iter(
@@ -251,11 +228,11 @@ class GAIL:
                 self.optimizer.step()
 
     def learn(self, max_frames, max_reward):
-        """
-        Функция обучения агента
+        """Agent training function.
+
         Args:
-            max_frames (int): максимальное количество шагов в среде.
-            max_reward (int): награда для прекращения обучения.
+            max_frames (int): Maximum number of steps in the environment.
+            max_reward (int): Reward threshold for stopping training.
         """
         self.max_frames = max_frames
 

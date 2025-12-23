@@ -8,29 +8,25 @@ from tensoraerospace.aerospacemodel.utils import state_to_latex_eng, state_to_la
 
 
 class DirectionalSuperSonic(ModelBase):
-    """
-    Сверхзвуковой самолет в изолированном боковом канале.
+    """Supersonic aircraft in isolated lateral channel.
 
-    Пространство действий:
-        * ele: руль высоты [град]
+    Action space:
+        * ail: ailerons [deg]
+        * rud: rudder [deg]
 
+    State space:
+        * v: Lateral velocity [m/s]
+        * p: Roll angular velocity [deg/s]
+        * r: Yaw angular velocity [deg/s]
+        * phi: Roll angle [deg]
+        * psi: Yaw angle [deg]
 
-    Пространство состояний:
-        * $v$ - Боковая скорость ЛА [м/с]
-        * $p$ - Угловая скорость Крена [град/с]
-        * $r$ - Угловая скорость Рысканью [град/с]
-        * $\varphi$ - угол Крен [град]
-        * $\varpsi$ - угол Рысканья [град]
-
-
-
-    Пространство выхода:
-        * $p$ - Угловая скорость Крена [град/с]
-        * $r$ - Нормальная скорость Рысканью [м/с]
-        * $\beta$ - Угол скольжения [град]
-        * $\varphi$ - угол Крен [град]
-        * $\varpsi$ - угол Рысканья [град]
-
+    Output space:
+        * p: Roll angular velocity [deg/s]
+        * r: Yaw angular velocity [deg/s]
+        * beta: Sideslip angle [deg]
+        * phi: Roll angle [deg]
+        * psi: Yaw angle [deg]
     """
 
     def __init__(
@@ -221,21 +217,18 @@ class DirectionalSuperSonic(ModelBase):
         self.time_step += 1
 
     def get_state(self, state_name: str, to_deg: bool = False, to_rad: bool = False):
-        """
-        Получить массив состояния
+        """Get state array history.
 
         Args:
-            state_name: Название состояния
-            to_deg: Конвертировать в градусы
-            to_rad: Конвертировать в радианы
+            state_name (str): State name.
+            to_deg (bool): Convert to degrees. Defaults to False.
+            to_rad (bool): Convert to radians. Defaults to False.
 
         Returns:
-            Массив истории выбранного состояния
+            np.ndarray: Array of selected state history.
 
-        Пример:
-
-        >>> state_hist = model.get_state('alpha', to_deg=True)
-
+        Example:
+            >>> state_hist = model.get_state('alpha', to_deg=True)
         """
         if state_name == "wz":
             state_name = "q"
@@ -257,19 +250,18 @@ class DirectionalSuperSonic(ModelBase):
     def get_control(
         self, control_name: str, to_deg: bool = False, to_rad: bool = False
     ):
-        """
-        Получить массив сигнала управления
+        """Get control signal array history.
 
         Args:
-            control_name: Название сигнала управления
-            to_deg: Конвертировать в градусы
+            control_name (str): Control signal name.
+            to_deg (bool): Convert to degrees. Defaults to False.
+            to_rad (bool): Convert to radians. Defaults to False.
 
         Returns:
-            Массив истории выбранного сигнала управления
+            np.ndarray: Array of selected control signal history.
 
-        Пример:
-
-        >>> state_hist = model.get_control('stab', to_deg=True)
+        Example:
+            >>> control_hist = model.get_control('stab', to_deg=True)
         """
         if control_name in ["stab", "ele"]:
             control_name = "ele"
@@ -291,18 +283,17 @@ class DirectionalSuperSonic(ModelBase):
         return self.store_input[index][: self.number_time_steps - 1]
 
     def get_output(self, state_name: str, to_deg: bool = False, to_rad: bool = False):
-        """
-        Получить массив выходного сигнала
+        """Get output signal array history.
 
         Args:
-            state_name (str): Название выходного сигнала
-            to_deg (bool): Конвертировать в градусы
-            to_rad (bool): Конвертировать в радианы
+            state_name (str): Output signal name.
+            to_deg (bool): Convert to degrees. Defaults to False.
+            to_rad (bool): Convert to radians. Defaults to False.
 
         Returns:
-            np.ndarray: Массив истории выбранного выходного сигнала
+            np.ndarray: Array of selected output signal history.
 
-        Пример:
+        Example:
             >>> output_hist = model.get_output('alpha', to_deg=True)
         """
         self.output_history = output2dict(self.store_outputs, self.selected_output)
@@ -321,24 +312,23 @@ class DirectionalSuperSonic(ModelBase):
         to_rad: bool = False,
         figsize: tuple = (10, 10),
     ):
-        """
-        Построить график выходного сигнала
+        """Plot output signal.
 
         Args:
-            output_name (str): Название выходного сигнала
-            time (np.ndarray): Массив времени
-            lang (str): Язык подписей ('rus' или 'eng')
-            to_deg (bool): Конвертировать в градусы
-            to_rad (bool): Конвертировать в радианы
-            figsize (tuple): Размер фигуры
+            output_name (str): Output signal name.
+            time (np.ndarray): Time array.
+            lang (str): Label language ('rus' or 'eng'). Defaults to "rus".
+            to_deg (bool): Convert to degrees. Defaults to False.
+            to_rad (bool): Convert to radians. Defaults to False.
+            figsize (tuple): Figure size. Defaults to (10, 10).
 
         Returns:
-            matplotlib.figure.Figure: Объект фигуры matplotlib
+            plt.Figure: Matplotlib figure object.
 
         Raises:
-            Exception: Если указаны одновременно to_rad и to_deg или неверное имя сигнала
+            Exception: If both to_rad and to_deg are specified, or if output_name is invalid.
 
-        Пример:
+        Example:
             >>> fig = model.plot_output('alpha', time_array, lang='rus', to_deg=True)
         """
         if output_name == "wz":

@@ -1,3 +1,8 @@
+"""Neural network models for Soft Actor-Critic (SAC).
+
+This module defines policy and Q-network architectures used by the SAC agent.
+"""
+
 from typing import Tuple, Union
 
 import torch
@@ -105,15 +110,14 @@ class QNetwork(nn.Module):
     def forward(
         self, state: torch.Tensor, action: torch.Tensor
     ) -> Tuple[torch.Tensor, torch.Tensor]:
-        """Прямой проход нейронной сети для оценки функции Q.
+        """Forward pass for Q-value estimation.
 
         Args:
-            state (torch.Tensor): Тензор входного состояния.
-            action (torch.Tensor): Тензор входного действия.
+            state (torch.Tensor): State tensor.
+            action (torch.Tensor): Action tensor.
 
         Returns:
-            Tuple[torch.Tensor, torch.Tensor]: Тензоры Q1 и Q2.
-
+            Tuple[torch.Tensor, torch.Tensor]: ``(Q1, Q2)`` tensors.
         """
         xu = torch.cat([state, action], 1)
 
@@ -129,21 +133,21 @@ class QNetwork(nn.Module):
 
 
 class GaussianPolicy(nn.Module):
-    """Гауссова политика для алгоритмов обучения с подкреплением.
+    """Gaussian policy used by SAC.
 
     Args:
-        num_inputs (int): Количество входных признаков.
-        num_actions (int): Количество действий.
-        hidden_dim (int): Размерность скрытых слоев.
-        action_space (Optional[gym.Space]): Пространство действий. По умолчанию None.
+        num_inputs (int): Number of input features.
+        num_actions (int): Number of actions.
+        hidden_dim (int): Hidden layer dimension.
+        action_space (Optional[gym.Space]): Action space. Defaults to None.
 
     Attributes:
-        linear1 (nn.Linear): Первый линейный слой.
-        linear2 (nn.Linear): Второй линейный слой.
-        mean_linear (nn.Linear): Линейный слой для среднего значения.
-        log_std_linear (nn.Linear): Линейный слой для логарифма стандартного отклонения.
-        action_scale (torch.Tensor): Масштаб действий.
-        action_bias (torch.Tensor): Смещение действий.
+        linear1 (nn.Linear): First linear layer.
+        linear2 (nn.Linear): Second linear layer.
+        mean_linear (nn.Linear): Linear layer for mean value.
+        log_std_linear (nn.Linear): Linear layer for log standard deviation.
+        action_scale (torch.Tensor): Action scale.
+        action_bias (torch.Tensor): Action bias.
 
     """
 
@@ -172,15 +176,7 @@ class GaussianPolicy(nn.Module):
             )
 
     def forward(self, state: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
-        """Прямой проход нейронной сети для генерации среднего значения и логарифма стандартного отклонения.
-
-        Args:
-            state (torch.Tensor): Тензор входного состояния.
-
-        Returns:
-            Tuple[torch.Tensor, torch.Tensor]: Тензоры среднего значения и логарифма стандартного отклонения.
-
-        """
+        """Compute mean and log standard deviation for a batch of states."""
         x = F.relu(self.linear1(state))
         x = F.relu(self.linear2(x))
         mean = self.mean_linear(x)
@@ -191,14 +187,10 @@ class GaussianPolicy(nn.Module):
     def sample(
         self, state: torch.Tensor
     ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
-        """Сэмплирование действия из гауссовой политики.
-
-        Args:
-            state (torch.Tensor): Тензор входного состояния.
+        """Sample an action using the reparameterization trick.
 
         Returns:
-            Tuple[torch.Tensor, torch.Tensor, torch.Tensor]: Тензор действия, логарифм вероятности и среднее значение.
-
+            Tuple[torch.Tensor, torch.Tensor, torch.Tensor]: ``(action, log_prob, mean)``.
         """
         mean, log_std = self.forward(state)
         std = log_std.exp()
@@ -214,37 +206,28 @@ class GaussianPolicy(nn.Module):
         return action, log_prob, mean
 
     def to(self, device: Union[str, torch.device]) -> "GaussianPolicy":
-        """Перемещение модели на указанное устройство.
-
-        Args:
-            device (Union[str, torch.device]): Устройство для перемещения модели.
-
-        Returns:
-            GaussianPolicy: Перемещенная модель.
-
-        """
+        """Move internal tensors to the given device."""
         self.action_scale = self.action_scale.to(device)
         self.action_bias = self.action_bias.to(device)
         return super(GaussianPolicy, self).to(device)
 
 
 class DeterministicPolicy(nn.Module):
-    """Детерминированная политика для алгоритмов обучения с подкреплением.
+    """Deterministic policy used by SAC (e.g., for evaluation).
 
     Args:
-        num_inputs (int): Количество входных признаков.
-        num_actions (int): Количество действий.
-        hidden_dim (int): Размерность скрытых слоев.
-        action_space (Optional[gym.Space]): Пространство действий. По умолчанию None.
+        num_inputs (int): Number of input features.
+        num_actions (int): Number of actions.
+        hidden_dim (int): Hidden layer dimension.
+        action_space (Optional[gym.Space]): Action space used to scale/bias actions.
 
     Attributes:
-        linear1 (nn.Linear): Первый линейный слой.
-        linear2 (nn.Linear): Второй линейный слой.
-        mean (nn.Linear): Линейный слой для среднего значения.
-        noise (torch.Tensor): Тензор для добавления шума.
-        action_scale (torch.Tensor): Масштаб действий.
-        action_bias (torch.Tensor): Смещение действий.
-
+        linear1 (nn.Linear): First linear layer.
+        linear2 (nn.Linear): Second linear layer.
+        mean (nn.Linear): Linear layer producing the mean action.
+        noise (torch.Tensor): Noise tensor for exploration.
+        action_scale (torch.Tensor | float): Action scaling factor.
+        action_bias (torch.Tensor | float): Action bias.
     """
 
     def __init__(
@@ -272,15 +255,7 @@ class DeterministicPolicy(nn.Module):
             )
 
     def forward(self, state: torch.Tensor) -> torch.Tensor:
-        """Прямой проход нейронной сети для генерации среднего значения.
-
-        Args:
-            state (torch.Tensor): Тензор входного состояния.
-
-        Returns:
-            torch.Tensor: Тензор среднего значения.
-
-        """
+        """Compute the deterministic action mean for a batch of states."""
         x = F.relu(self.linear1(state))
         x = F.relu(self.linear2(x))
         mean = torch.tanh(self.mean(x)) * self.action_scale + self.action_bias
@@ -289,14 +264,10 @@ class DeterministicPolicy(nn.Module):
     def sample(
         self, state: torch.Tensor
     ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
-        """Сэмплирование действия из детерминированной политики.
-
-        Args:
-            state (torch.Tensor): Тензор входного состояния.
+        """Sample an action by adding bounded Gaussian noise to the mean.
 
         Returns:
-            Tuple[torch.Tensor, torch.Tensor, torch.Tensor]: Тензор действия, фиктивное значение логарифма вероятности и среднее значение.
-
+            Tuple[torch.Tensor, torch.Tensor, torch.Tensor]: ``(action, log_prob, mean)``.
         """
         mean = self.forward(state)
         noise = self.noise.normal_(0.0, std=0.1)
@@ -305,15 +276,7 @@ class DeterministicPolicy(nn.Module):
         return action, torch.tensor(0.0), mean
 
     def to(self, device: Union[str, torch.device]) -> "DeterministicPolicy":
-        """Перемещение модели на указанное устройство.
-
-        Args:
-            device (Union[str, torch.device]): Устройство для перемещения модели.
-
-        Returns:
-            DeterministicPolicy: Перемещенная модель.
-
-        """
+        """Move internal tensors to the given device."""
         self.action_scale = self.action_scale.to(device)
         self.action_bias = self.action_bias.to(device)
         self.noise = self.noise.to(device)

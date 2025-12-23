@@ -1,3 +1,8 @@
+"""Actor network for IHDP.
+
+This module defines the Actor component used by the IHDP agent.
+"""
+
 import glob
 from typing import Any, Tuple
 
@@ -467,16 +472,7 @@ class Actor:
         critic: Any,
         xt_ref1: np.ndarray,
     ) -> None:
-        """Обучение Actor (актера) с помощью оптимизатора Adam.
-
-        Args:
-            Jt1 (_type_): оценка критика с предсказанием следующего временного шага инкрементной модели
-            dJt1_dxt1 (_type_): градиент критической сети по отношению к следующему прогнозу времени инкрементной модели
-            G (_type_): матрица распределения входных данных
-            incremental_model (_type_): инкрементная модель
-            critic (_type_): Критик
-            xt_ref1 (_type_): заданное состояния на следующем временном шаге
-        """
+        """Train the actor online using Adam updates."""
         if self.cascaded_actor:
             # Ec_actor_before = 0.5 * np.square(Jt1)
             # print("ACTOR LOSS xt1 before= ", Ec_actor_before)
@@ -565,16 +561,7 @@ class Actor:
     def train_actor_online_alpha_decay(
         self, Jt1, dJt1_dxt1, G, incremental_model, critic, xt_ref1
     ):
-        """Обучите актера со скоростью обучения, которая уменьшается с количеством временных шагов
-
-        Args:
-            Jt1 (_type_): оценка критика с предсказанием следующего временного шага инкрементной модели
-            dJt1_dxt1 (_type_): градиент критической сети по отношению к следующему прогнозу времени инкрементной модели
-            G (_type_): матрица распределения входных данных
-            incremental_model (_type_): инкрементная модель
-            critic (_type_): Критик
-            xt_ref1 (_type_): заданное состояния на следующем временном шаге
-        """
+        """Train the actor with a learning rate that decays over time."""
 
         if self.cascaded_actor:
             # Ec_actor_before = 0.5 * np.square(Jt1)
@@ -688,18 +675,7 @@ class Actor:
     def compute_Adam_update(
         self, count: int, gradient: np.ndarray, model: KModel, learning_rate: float
     ) -> Tuple[KModel, float]:
-        """Вычисляет обновление Adam и применяет его к обновлениям веса.
-
-        Args:
-            count (_type_): индекс анализируемой весовой матрицы
-            gradient (_type_): вычисленный градиент для каждого из весов
-            model (_type_): модель где обновляем веса
-            learning_rate (_type_): скорость обучения анализируемой модели
-
-        Returns:
-            model (_type_): обновленная модель
-            learning_rate (_type_): обновленная скорость обучения
-        """
+        """Compute an Adam-style weight update and apply it."""
 
         momentum = (
             self.beta_momentum * self.momentum_dict[count]
@@ -736,15 +712,7 @@ class Actor:
         return model, learning_rate
 
     def check_WB_limits(self, count: int, model: KModel) -> KModel:
-        """Проверка, не превышают ли какие-либо веса и смещения установленный предел (WB_limits), и насыщайте значения.
-
-        Args:
-            count (_type_): индекс в анализируемой модели model.trainable_variables
-            model (_type_): модель актера
-
-        Returns:
-            _type_: модель актера
-        """
+        """Clamp weights/biases that exceed the configured WB_limits."""
 
         WB_variable = model.trainable_variables[count].numpy()
         WB_variable[WB_variable > self.WB_limits] = self.WB_limits
@@ -753,11 +721,7 @@ class Actor:
         return model
 
     def compute_persistent_excitation(self, *args: int) -> float:
-        """Расчет постоянного возбуждения на каждом временном шаге.
-
-        Returns:
-            e0 (_type_): отклонение PE
-        """
+        """Compute the persistent excitation term for the current time step."""
         if len(args) == 1:
             t = args[0] + 1
         elif len(args) == 0:
@@ -788,7 +752,7 @@ class Actor:
         return float(e0)
 
     def update_actor_attributes(self) -> None:
-        """Атрибуты, которые меняются с каждым временным шагом, обновляются"""
+        """Update time-dependent actor attributes after each time step."""
         self.time_step += 1
         self.dut_dWb_1 = self.dut_dWb
 
@@ -804,17 +768,7 @@ class Actor:
                 )
 
     def evaluate_actor(self, *args: Any) -> np.ndarray:
-        """Оценка актора с учетом входных данных или атрибутов, хранящихся в объекте
-
-        Args:
-            args: реальное и эталонное состояния могут быть предоставлены в качестве входных данных для оценки или нет, если они уже сохранены
-
-        Raises:
-            Exception: _description_
-
-        Returns:
-            ut _type_: ввод в систему и инкрементную модель
-        """
+        """Evaluate the actor using provided or stored state/reference."""
         if len(args) == 0:
             xt = self.xt
             xt_ref = self.xt_ref
@@ -913,13 +867,11 @@ class Actor:
         return ut
 
     def restart_time_step(self):
-        """Перезапуск временного шага"""
+        """Reset the internal time-step counter to zero."""
         self.time_step = 0
 
     def restart_actor(self):
-        """
-        Перезапустите атрибуты актера
-        """
+        """Reset actor state and optimizer-related attributes."""
         self.time_step = 0
         self.xt = None
         self.xt_ref = None

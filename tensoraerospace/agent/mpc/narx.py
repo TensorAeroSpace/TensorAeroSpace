@@ -1,3 +1,9 @@
+"""NARX-style dynamics models for MPC.
+
+This module provides utilities for using NARX (autoregressive) representations
+within MPC components.
+"""
+
 import numpy as np
 import torch
 import torch.nn as nn
@@ -5,34 +11,32 @@ from tqdm import tqdm
 
 
 class NARX(nn.Module):
-    """
-    Нейронная сеть NARX (Nonlinear AutoRegressive with eXogenous inputs) для моделирования динамических систем.
+    """NARX neural network for learning system dynamics.
 
-    NARX сеть использует предыдущие значения состояний и управляющих воздействий для предсказания
-    будущих состояний системы.
+    The model uses lagged (historical) state and control inputs to predict the
+    next state.
 
     Args:
-        input_size (int): Размер входного слоя (общий размер лагированных состояний и управлений).
-        hidden_size (int): Размер скрытых слоев.
-        output_size (int): Размер выходного слоя (размерность предсказываемого состояния).
-        num_layers (int): Количество скрытых слоев.
-        state_lags (int): Количество лагов для состояний.
-        control_lags (int): Количество лагов для управляющих воздействий.
+        input_size: Input size (concatenated lagged states and controls).
+        hidden_size: Hidden layer size.
+        output_size: Output size (predicted state dimension).
+        num_layers: Number of hidden layers.
+        state_lags: Number of state lags used as input.
+        control_lags: Number of control lags used as input.
     """
 
     def __init__(
         self, input_size, hidden_size, output_size, num_layers, state_lags, control_lags
     ):
-        """
-        Инициализация NARX нейронной сети.
+        """Initialize the NARX network.
 
         Args:
-            input_size (int): Размер входного слоя.
-            hidden_size (int): Размер скрытых слоев.
-            output_size (int): Размер выходного слоя.
-            num_layers (int): Количество скрытых слоев.
-            state_lags (int): Количество лагов для состояний.
-            control_lags (int): Количество лагов для управляющих воздействий.
+            input_size: Input size.
+            hidden_size: Hidden layer size.
+            output_size: Output size.
+            num_layers: Number of hidden layers.
+            state_lags: Number of state lags.
+            control_lags: Number of control lags.
         """
         super(NARX, self).__init__()
         self.hidden_size = hidden_size
@@ -55,15 +59,14 @@ class NARX(nn.Module):
         self.activation = nn.Tanh()
 
     def forward(self, state: torch.Tensor, control: torch.Tensor) -> torch.Tensor:
-        """
-        Прямое распространение через NARX сеть.
+        """Run a forward pass.
 
         Args:
-            state (torch.Tensor): Тензор лагированных состояний.
-            control (torch.Tensor): Тензор лагированных управляющих воздействий.
+            state: Lagged state tensor.
+            control: Lagged control tensor.
 
         Returns:
-            torch.Tensor: Предсказанное следующее состояние системы.
+            torch.Tensor: Predicted next state.
         """
         # Concatenate lagged states and controls
         x = torch.cat((state, control), dim=1)

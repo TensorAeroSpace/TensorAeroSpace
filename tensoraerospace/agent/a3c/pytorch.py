@@ -1,3 +1,9 @@
+"""PyTorch-based A3C implementation.
+
+This module contains the core A3C (Asynchronous Advantage Actor-Critic)
+implementation, including network definitions and worker logic.
+"""
+
 from __future__ import annotations
 
 import numpy as np
@@ -18,25 +24,22 @@ from .utils import push_and_pull, record, set_init, v_wrap
 
 
 class Net(nn.Module):
-    """Нейронная сеть для аппроксимации политики и значения состояний
-    в задачах обучения с подкреплением.
+    """Neural network for policy and value function approximation in RL.
 
     Args:
-        s_dim (int): Размерность пространства состояний.
-        a_dim (int): Размерность пространства действий.
+        s_dim (int): State space dimension.
+        a_dim (int): Action space dimension.
 
     Attributes:
-        s_dim (int): Размерность пространства состояний.
-        a_dim (int): Размерность пространства действий.
-        a1 (torch.nn.Linear): Первый слой политики.
-        mu (torch.nn.Linear): Слой для среднего значения распределения
-            политики.
-        sigma (torch.nn.Linear): Слой для стандартного отклонения
-            распределения политики.
-        c1 (torch.nn.Linear): Первый слой функции значения.
-        v (torch.nn.Linear): Выход слоя функции значения.
-        distribution (torch.distributions.Distribution): Распределение для
-            моделирования действий агента.
+        s_dim (int): State space dimension.
+        a_dim (int): Action space dimension.
+        a1 (nn.Linear): First policy layer.
+        mu (nn.Linear): Mean layer of policy distribution.
+        sigma (nn.Linear): Standard deviation layer of policy distribution.
+        c1 (nn.Linear): First value function layer.
+        v (nn.Linear): Value function output layer.
+        distribution (torch.distributions.Distribution): Distribution for
+            modeling agent actions.
     """
 
     def __init__(self, s_dim: int, a_dim: int) -> None:
@@ -55,14 +58,14 @@ class Net(nn.Module):
     def forward(
         self, x: torch.Tensor
     ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
-        """Выполняет один шаг прямого распространения.
+        """Perform one forward pass.
 
         Args:
-            x (torch.Tensor): Входные данные, состояние среды.
+            x (torch.Tensor): Input data, environment state.
 
         Returns:
-            tuple: Возвращает предсказанные значения mu, sigma и value
-            для данного состояния.
+            Tuple[torch.Tensor, torch.Tensor, torch.Tensor]: Predicted mu, sigma,
+            and value for the given state.
         """
         a1 = F.relu6(self.a1(x))
         mu = 2 * F.tanh(self.mu(a1))
@@ -72,13 +75,13 @@ class Net(nn.Module):
         return mu, sigma, values
 
     def choose_action(self, s: torch.Tensor) -> np.ndarray:
-        """Выбор действия агента на основе текущего состояния.
+        """Select agent action based on current state.
 
         Args:
-            s (torch.Tensor): Текущее состояние среды.
+            s (torch.Tensor): Current environment state.
 
         Returns:
-            numpy.ndarray: Выбранное действие.
+            np.ndarray: Selected action.
         """
         self.eval()
         with torch.no_grad():
@@ -91,15 +94,15 @@ class Net(nn.Module):
     def loss_func(
         self, s: torch.Tensor, a: torch.Tensor, v_t: torch.Tensor
     ) -> torch.Tensor:
-        """Вычисляет функцию потерь для обучения сети.
+        """Compute loss function for network training.
 
         Args:
-            s (torch.Tensor): Состояния.
-            a (torch.Tensor): Действия.
-            v_t (torch.Tensor): Целевые значения функции состояния.
+            s (torch.Tensor): States.
+            a (torch.Tensor): Actions.
+            v_t (torch.Tensor): Target state value function values.
 
         Returns:
-            torch.Tensor: Значение функции потерь.
+            torch.Tensor: Loss function value.
         """
         self.train()
         mu, sigma, values = self.forward(s)
@@ -117,41 +120,42 @@ class Net(nn.Module):
 
 
 class Worker(mp.Process):
-    """Класс рабочего процесса для асинхронного обучения агента.
-
-    Attributes:
-        name (str): Уникальное имя процесса.
-        g_ep (multiprocessing.Value): Глобальный счётчик эпизодов.
-        g_ep_r (multiprocessing.Value): Глобальный счётчик суммарного
-            вознаграждения.
-        res_queue (multiprocessing.Queue): Очередь для результатов.
-        gnet (torch.nn.Module): Глобальная нейронная сеть.
-        opt (torch.optim.Optimizer): Оптимизатор для обновления глобальной
-            сети.
-        lnet (Net): Локальная нейронная сеть.
-        env (gym.Env): Среда OpenAI Gym.
-        gamma (float): Коэффициент дисконтирования.
-        max_ep (int): Максимальное количество эпизодов.
-        max_ep_step (int): Максимальное количество шагов в эпизоде.
-        update_global_iter (int): Частота обновления глобальной сети.
+    """Worker process class for asynchronous agent training.
 
     Args:
-        env (gym.Env): Среда для обучения агента.
-        gnet (torch.nn.Module): Глобальная модель для совместного обучения.
-        opt (torch.optim.Optimizer): Оптимизатор для глобальной сети.
-        global_ep (multiprocessing.Value): Счётчик общего количества эпизодов.
-        global_ep_r (multiprocessing.Value): Счётчик суммарного
-            вознаграждения по всем процессам.
-        res_queue (multiprocessing.Queue): Очередь для хранения
-            результатов.
-        name (int): Номер процесса.
-        num_actions (int): Количество возможных действий в среде.
-        num_observations (int): Количество наблюдений (переменных
-            состояния) в среде.
-        MAX_EP (int): Максимальное количество эпизодов.
-        MAX_EP_STEP (int): Максимальное количество шагов в каждом эпизоде.
-        GAMMA (float): Коэффициент дисконтирования будущих вознаграждений.
-        update_global_iter (int): Частота обновления глобальной модели.
+        env (gym.Env): Environment for agent training.
+        gnet (Net): Global model for shared training.
+        opt (SharedAdam): Optimizer for global network.
+        global_ep (mp.Value): Global episode counter.
+        global_ep_r (mp.Value): Global total reward counter across all processes.
+        res_queue (mp.Queue): Queue for storing results.
+        name (int): Process number.
+        num_actions (int): Number of possible actions in the environment.
+        num_observations (int): Number of observations (state variables) in the environment.
+        MAX_EP (int): Maximum number of episodes.
+        MAX_EP_STEP (int): Maximum number of steps per episode.
+        GAMMA (float): Discount factor for future rewards.
+        update_global_iter (int): Frequency of global model updates.
+        render (bool): Whether to render the environment. Defaults to False.
+        writer (Optional[SummaryWriter]): TensorBoard writer. Defaults to None.
+        global_step (Optional[mp.Value]): Global step counter. Defaults to None.
+
+    Attributes:
+        name (str): Unique process name.
+        g_ep (mp.Value): Global episode counter.
+        g_ep_r (mp.Value): Global total reward counter.
+        res_queue (mp.Queue): Results queue.
+        gnet (Net): Global neural network.
+        opt (SharedAdam): Optimizer for updating global network.
+        lnet (Net): Local neural network.
+        env (gym.Env): OpenAI Gym environment.
+        gamma (float): Discount factor.
+        max_ep (int): Maximum number of episodes.
+        max_ep_step (int): Maximum number of steps per episode.
+        update_global_iter (int): Frequency of global network updates.
+        render (bool): Whether to render the environment.
+        writer (Optional[SummaryWriter]): TensorBoard writer.
+        global_step (Optional[mp.Value]): Global step counter.
     """
 
     def __init__(
@@ -192,7 +196,7 @@ class Worker(mp.Process):
         self.global_step = global_step
 
     def run(self) -> None:
-        """Выполнение рабочего процесса, содержащего обучение агента."""
+        """Execute worker process containing agent training."""
         total_step = 1
         # initial sync from global to local to avoid stale params
         self.lnet.load_state_dict(self.gnet.state_dict())

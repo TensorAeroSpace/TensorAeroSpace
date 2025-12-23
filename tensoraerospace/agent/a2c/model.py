@@ -443,18 +443,18 @@ class A2C(BaseRLModel):
         self.critic.train()
 
     def run_episode(self, max_steps):
-        """Собирает опыт взаимодействия со средой на фиксированное количество шагов.
+        """Collect experience from environment interaction for a fixed number of steps.
 
-        Метод всегда собирает ровно max_steps шагов, автоматически начиная
-        новые эпизоды если предыдущие завершились. Это обеспечивает постоянный
-        размер батча для стабильного обучения A2C.
+        The method always collects exactly max_steps steps, automatically starting
+        new episodes if previous ones ended. This ensures a constant batch size
+        for stable A2C training.
 
         Args:
-            max_steps (int): Количество шагов для сбора опыта.
+            max_steps (int): Number of steps to collect experience.
 
         Returns:
-            list: Список кортежей (action, reward, state, next_state, done)
-                  представляющих опыт взаимодействия со средой.
+            list: List of tuples (action, reward, state, next_state, done)
+                  representing experience from environment interaction.
         """
         memory = []
 
@@ -518,16 +518,16 @@ class A2C(BaseRLModel):
         return memory
 
     def learn(self, memory, steps, discount_rewards=True):
-        """Обучает агента на основе собранного опыта.
+        """Train the agent based on collected experience.
 
-        Выполняет один шаг обучения актора и критика, используя
-        алгоритм Advantage Actor-Critic.
+        Performs one training step for actor and critic using the
+        Advantage Actor-Critic algorithm.
 
         Args:
-            memory (list): Список опыта взаимодействия со средой.
-            steps (int): Текущий номер шага для логирования.
-            discount_rewards (bool): Применять ли дисконтирование наград.
-                                   По умолчанию True.
+            memory (list): List of experience from environment interaction.
+            steps (int): Current step number for logging.
+            discount_rewards (bool): Whether to apply reward discounting.
+                                   Defaults to True.
         """
         actions, rewards, states, next_states, dones = process_memory(
             memory, self.gamma, discount_rewards, device=self.device
@@ -698,10 +698,10 @@ class A2C(BaseRLModel):
         self.close()
 
     def get_param_env(self):
-        """Получает параметры среды и агента для сохранения.
+        """Get environment and agent parameters for saving.
 
         Returns:
-            dict: Словарь с параметрами среды и политики агента.
+            dict: Dictionary with environment and agent policy parameters.
         """
         class_name = self.env.unwrapped.__class__.__name__
         module_name = self.env.unwrapped.__class__.__module__
@@ -860,15 +860,15 @@ class A2C(BaseRLModel):
 
     @classmethod
     def from_pretrained(cls, repo_name, access_token=None, version=None):
-        """Загружает предобученную модель из локального пути или Hugging Face Hub.
+        """Load a pretrained model from a local path or Hugging Face Hub.
 
         Args:
-            repo_name (str): Имя репозитория или локальный путь к модели.
-            access_token (str, optional): Токен доступа для Hugging Face Hub.
-            version (str, optional): Версия модели для загрузки.
+            repo_name (str): Repository name or local path to the model.
+            access_token (str, optional): Access token for Hugging Face Hub.
+            version (str, optional): Model version to load.
 
         Returns:
-            A2C: Загруженный экземпляр модели A2C.
+            A2C: Loaded A2C model instance.
         """
         path = Path(repo_name)
         if path.exists():

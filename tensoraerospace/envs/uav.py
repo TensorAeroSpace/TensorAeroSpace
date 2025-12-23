@@ -83,29 +83,31 @@ class LinearLongitudinalUAV(gym.Env):
 
     @staticmethod
     def reward(state, ref_signal, ts):
-        """Оценка управления
+        """Evaluate control performance.
 
         Args:
-            state (_type_): Текущее состояния
-            ref_signal (_type_): Заданное состояние
-            ts (_type_): Временное шаг
+            state (np.ndarray): Current state.
+            ref_signal (np.ndarray): Reference signal.
+            ts (int): Time step.
 
         Returns:
-            reward (float): Оценка управления
+            float: Control evaluation reward.
         """
         return np.abs(state[0] - ref_signal[:, ts])
 
     def step(self, action: np.ndarray):
-        """Выполнения шага моделирования
+        """Execute one simulation step.
 
         Args:
-            action (np.ndarray): Массив управляющего сигнала по выбранным органам
+            action (np.ndarray): Control signal array for selected actuators.
 
         Returns:
-            next_state (np.ndarray): Следующие состояние объекта управления
-            reward (np.ndarray): Оценка действий алгоритма управления
-            done (bool): Статус моделирования, завершено или нет
-            logging (any): Дополнительная информацию (не используется)
+            tuple: Tuple containing:
+                - next_state (np.ndarray): Next state of the control object.
+                - reward (np.ndarray): Evaluation of control algorithm actions.
+                - done (bool): Simulation status, whether completed or not.
+                - truncated (bool): Whether episode was truncated.
+                - info (dict): Additional information.
         """
         self.current_step += 1
         next_state = self.model.run_step(action)
@@ -120,11 +122,16 @@ class LinearLongitudinalUAV(gym.Env):
         return next_state.reshape([-1, 1]), reward, self.done, False, info
 
     def reset(self, seed=None, options=None):
-        """Восстановление среды моделирования в начальные условия
+        """Reset simulation environment to initial conditions.
 
         Args:
-            seed (int, optional): Seed для генератора случайных чисел
-            options (dict, optional): Дополнительные опции для инициализации
+            seed (int, optional): Random seed. Defaults to None.
+            options (dict, optional): Additional initialization options. Defaults to None.
+
+        Returns:
+            tuple: Tuple containing:
+                - observation (np.ndarray): Initial observation.
+                - info (dict): Additional information.
         """
         super().reset(seed=seed)
 
@@ -147,8 +154,9 @@ class LinearLongitudinalUAV(gym.Env):
         return observation, info
 
     def render(self):
-        """Визуальное отображение действий в среде. В статусе WIP
+        """Visual rendering of actions in the environment. Work in progress.
+
         Raises:
-            NotImplementedError
+            NotImplementedError: Rendering is not yet implemented.
         """
         raise NotImplementedError()

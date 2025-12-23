@@ -99,7 +99,7 @@ class LAPAN(ModelBase):
         self.initialise_system(x0, number_time_steps)
 
     def import_linear_system(self):
-        """Сохраненные линеаризованные матрицы"""
+        """Load (set) stored linearized system matrices."""
         self.A = np.array(
             [
                 [-0.00271615, 0.248462, 0, -9.81],
@@ -130,11 +130,11 @@ class LAPAN(ModelBase):
         )
 
     def initialise_system(self, x0, number_time_steps):
-        """Инициализация системы
+        """Initialize the system and allocate history buffers.
 
         Args:
-            x0 (_type_): Начальное состояние объекта управления
-            number_time_steps (_type_): количество временных шагов в итерации
+            x0: Initial state.
+            number_time_steps: Number of simulation steps.
         """
 
         # Import the stored system
@@ -163,13 +163,13 @@ class LAPAN(ModelBase):
         )
 
     def run_step(self, ut_0: np.ndarray) -> np.ndarray:
-        """Выполняет один временной шаг итерации.
+        """Run one discrete-time simulation step.
 
         Args:
-            ut_0 (np.ndarray): Вектор управления
+            ut_0 (np.ndarray): Control vector.
 
         Returns:
-            xt1 (np.ndarray): Состояние объекта управления на шаге t+1
+            np.ndarray: Next state at time t+1.
         """
         if self.time_step != 0:
             ut_1 = self.store_input[:, self.time_step - 1]
@@ -230,28 +230,22 @@ class LAPAN(ModelBase):
         return np.array(self.xt1)
 
     def update_system_attributes(self):
-        """Атрибуты, которые меняются с каждым временным шагом, обновляются"""
+        """Update time-dependent attributes after each simulation step."""
         self.xt = self.xt1
         self.time_step += 1
 
     def get_state(
         self, state_name: str, to_deg: bool = False, to_rad: bool = False
     ) -> np.ndarray:
-        """
-        Получить массив состояния
+        """Return the time history of a state.
 
         Args:
-            state_name: Название состояния
-            to_deg: Конвертировать в градусы
-            to_rad: Конвертировать в радианы
+            state_name: State name.
+            to_deg: Convert radians to degrees.
+            to_rad: Convert degrees to radians.
 
         Returns:
-            np.ndarray: Массив истории выбранного состояния
-
-        Пример:
-
-        >>> state_hist = model.get_state('alpha', to_deg=True)
-
+            np.ndarray: State history array.
         """
         if state_name == "wz":
             state_name = "q"
@@ -273,19 +267,15 @@ class LAPAN(ModelBase):
     def get_control(
         self, control_name: str, to_deg: bool = False, to_rad: bool = False
     ) -> np.ndarray:
-        """
-        Получить массив сигнала управления
+        """Return the time history of a control input.
 
         Args:
-            control_name: Название сигнала управления
-            to_deg: Конвертировать в градусы
+            control_name: Control signal name.
+            to_deg: Convert radians to degrees.
+            to_rad: Convert degrees to radians.
 
         Returns:
-            np.ndarray: Массив истории выбранного сигнала управления
-
-        Пример:
-
-        >>> state_hist = model.get_control('stab', to_deg=True)
+            np.ndarray: Control history array.
         """
         if control_name in ["stab", "ele"]:
             control_name = "ele"
@@ -309,19 +299,15 @@ class LAPAN(ModelBase):
     def get_output(
         self, state_name: str, to_deg: bool = False, to_rad: bool = False
     ) -> np.ndarray:
-        """
-        Получить массив выходного сигнала
+        """Return the time history of an output signal.
 
         Args:
-            state_name (str): Название выходного сигнала
-            to_deg (bool): Конвертировать в градусы
-            to_rad (bool): Конвертировать в радианы
+            state_name (str): Output name.
+            to_deg (bool): Convert radians to degrees.
+            to_rad (bool): Convert degrees to radians.
 
         Returns:
-            np.ndarray: Массив истории выбранного выходного сигнала
-
-        Пример:
-            >>> output_hist = model.get_output('alpha', to_deg=True)
+            np.ndarray: Output history array.
         """
         self.output_history = output2dict(self.store_outputs, self.selected_output)
         if to_deg:
@@ -339,25 +325,18 @@ class LAPAN(ModelBase):
         to_rad: bool = False,
         figsize: tuple = (10, 10),
     ) -> plt.Figure:
-        """
-        Построить график выходного сигнала
+        """Plot an output signal over time.
 
         Args:
-            output_name (str): Название выходного сигнала
-            time (np.ndarray): Массив времени
-            lang (str): Язык подписей ('rus' или 'eng')
-            to_deg (bool): Конвертировать в градусы
-            to_rad (bool): Конвертировать в радианы
-            figsize (tuple): Размер фигуры
+            output_name (str): Output name.
+            time (np.ndarray): Time vector.
+            lang (str): Axis label language ('rus' or 'eng').
+            to_deg (bool): Convert radians to degrees.
+            to_rad (bool): Convert degrees to radians.
+            figsize (tuple): Figure size.
 
         Returns:
-            matplotlib.figure.Figure: Объект фигуры matplotlib
-
-        Raises:
-            Exception: Если указаны одновременно to_rad и to_deg или неверное имя сигнала
-
-        Пример:
-            >>> fig = model.plot_output('alpha', time_array, lang='rus', to_deg=True)
+            matplotlib.figure.Figure: Figure object.
         """
         if to_rad and to_deg:
             raise Exception(

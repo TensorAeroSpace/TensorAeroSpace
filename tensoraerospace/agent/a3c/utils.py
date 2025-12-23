@@ -1,9 +1,8 @@
-"""
-Утилиты для алгоритма A3C (Asynchronous Advantage Actor-Critic).
+"""Utilities for A3C (Asynchronous Advantage Actor-Critic).
 
-Этот модуль содержит вспомогательные функции для реализации алгоритма A3C,
-включая функции для обработки данных, инициализации весов, синхронизации
-между процессами и записи результатов.
+This module contains helper functions used by the A3C implementation, such as
+tensor conversion helpers, layer initialization, local/global model syncing,
+and episodic logging.
 """
 
 import numpy as np
@@ -12,15 +11,14 @@ from torch import nn
 
 
 def v_wrap(np_array, dtype=np.float32):
-    """Преобразует numpy массив в PyTorch тензор.
+    """Convert a NumPy array to a PyTorch tensor.
 
     Args:
-        np_array (numpy.ndarray): Входной numpy массив.
-        dtype (numpy.dtype): Тип данных для преобразования.
-            По умолчанию np.float32.
+        np_array (numpy.ndarray): Input array.
+        dtype (numpy.dtype): Target dtype. Defaults to ``np.float32``.
 
     Returns:
-        torch.Tensor: Преобразованный PyTorch тензор.
+        torch.Tensor: Converted tensor (shares memory when possible).
     """
     if np_array.dtype != dtype:
         np_array = np_array.astype(dtype)
@@ -28,10 +26,11 @@ def v_wrap(np_array, dtype=np.float32):
 
 
 def set_init(layers):
-    """Инициализирует веса и смещения слоев нейронной сети.
+    """Initialize weights and biases for a list of layers.
 
     Args:
-        layers (list): Список слоев для инициализации.
+        layers (list): Layers to initialize. Each layer is expected to expose
+            ``weight`` and ``bias`` tensors.
     """
     for layer in layers:
         nn.init.normal_(layer.weight, mean=0.0, std=0.1)
@@ -39,25 +38,24 @@ def set_init(layers):
 
 
 def push_and_pull(opt, lnet, gnet, done, s_, bs, ba, br, gamma):
-    """Выполняет синхронизацию между локальной и глобальной сетями.
+    """Synchronize local and global networks and perform one optimization step.
 
-    Вычисляет градиенты на локальной сети и обновляет глобальную сеть,
-    затем копирует параметры глобальной сети в локальную.
+    Computes gradients on the local network, applies them to the global network,
+    then pulls updated global parameters back into the local network.
 
     Args:
-        opt (torch.optim.Optimizer): Оптимизатор для глобальной сети.
-        lnet (torch.nn.Module): Локальная нейронная сеть.
-        gnet (torch.nn.Module): Глобальная нейронная сеть.
-        done (bool): Флаг завершения эпизода.
-        s_ (numpy.ndarray): Следующее состояние.
-        bs (list): Буфер состояний.
-        ba (list): Буфер действий.
-        br (list): Буфер наград.
-        gamma (float): Коэффициент дисконтирования.
+        opt (torch.optim.Optimizer): Optimizer for the global network.
+        lnet (torch.nn.Module): Local network.
+        gnet (torch.nn.Module): Global network.
+        done (bool): Whether the episode has terminated.
+        s_ (numpy.ndarray): Next state.
+        bs (list): State buffer.
+        ba (list): Action buffer.
+        br (list): Reward buffer.
+        gamma (float): Discount factor.
 
     Returns:
-        dict: Словарь с метриками для логирования
-            (loss, value_loss, policy_loss, entropy).
+        dict: Logging metrics (loss, value_loss, policy_loss, entropy).
     """
     if done:
         v_s_ = 0.0  # terminal
@@ -115,17 +113,16 @@ def push_and_pull(opt, lnet, gnet, done, s_, bs, ba, br, gamma):
 
 
 def record(global_ep, global_ep_r, ep_r, res_queue, name, writer=None):
-    """Записывает результаты эпизода и обновляет глобальные счетчики.
+    """Record episode results and update global counters.
 
     Args:
-        global_ep (multiprocessing.Value): Глобальный счетчик эпизодов.
-        global_ep_r (multiprocessing.Value): Глобальная скользящая
-            средняя награды.
-        ep_r (float): Награда за текущий эпизод.
-        res_queue (multiprocessing.Queue): Очередь для результатов.
-        name (str): Имя процесса.
-        writer (torch.utils.tensorboard.SummaryWriter, optional):
-            TensorBoard writer для логирования.
+        global_ep (multiprocessing.Value): Global episode counter.
+        global_ep_r (multiprocessing.Value): Global moving-average reward.
+        ep_r (float): Episode reward.
+        res_queue (multiprocessing.Queue): Queue used to store the moving average.
+        name (str): Worker/process name (used for logging keys).
+        writer (torch.utils.tensorboard.SummaryWriter, optional): TensorBoard
+            writer. If not provided, nothing is written.
     """
     with global_ep.get_lock():
         global_ep.value += 1

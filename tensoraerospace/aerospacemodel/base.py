@@ -187,24 +187,21 @@ class ModelBase:
         to_rad: bool = False,
         figsize: tuple = (10, 10),
     ):
-        """
-        Графики состояний ОУ
+        """Plot control object states.
 
         Args:
-            state_name: Название состояния
-            to_deg: Конвертировать в градусы
-            to_rad: Конвертировать в радианы
-            time: Время на графике
-            lang: Язык обозначений на осях
-            figsize: Размер графика
+            state_name (str): State name.
+            to_deg (bool): Convert to degrees. Defaults to False.
+            to_rad (bool): Convert to radians. Defaults to False.
+            time (np.ndarray): Time array for plotting.
+            lang (str): Label language. Defaults to "rus".
+            figsize (tuple): Figure size. Defaults to (10, 10).
 
         Returns:
-            График выбранного состояния
+            plt.Figure: Plot of selected state.
 
-        Пример:
-
-        >>> plot = model.plot_by_state('alpha', time, to_deg=True, figsize=(5,4))
-
+        Example:
+            >>> plot = model.plot_by_state('alpha', time, to_deg=True, figsize=(5,4))
         """
         state_hist = self.get_state(state_name, to_deg, to_rad)
         if lang == "rus":
@@ -235,28 +232,26 @@ class ModelBase:
         xlim: list = [13, 20],
         ylim: list = [-3, 3],
     ):
-        """
-        График ошибки регулирования
+        """Plot control error.
 
         .. math:: \\epsilon = ref - state
 
         Args:
-            state_name: Название состояния
-            time: Время на графике
-            ref_signal: Заданный сигнал
-            to_deg: Конвертировать в градусы
-            to_rad: Конвертировать в радианы
-            lang: Язык обозначений на осях
-            figsize: Размер графика
+            state_name (str): State name.
+            time (np.ndarray): Time array for plotting.
+            ref_signal (np.ndarray): Reference signal.
+            to_deg (bool): Convert to degrees. Defaults to False.
+            to_rad (bool): Convert to radians. Defaults to False.
+            lang (str): Label language. Defaults to "rus".
+            figsize (tuple): Figure size. Defaults to (10, 10).
+            xlim (list): X-axis limits. Defaults to [13, 20].
+            ylim (list): Y-axis limits. Defaults to [-3, 3].
 
         Returns:
-            График переходного процесса
+            plt.Figure: Plot of transient process.
 
-
-        Пример:
-
-        >>> plot = model.plot_error('alpha', time, ref_signal, to_deg=True, figsize=(5,4))
-
+        Example:
+            >>> plot = model.plot_error('alpha', time, ref_signal, to_deg=True, figsize=(5,4))
         """
         state_hist = self.get_state(state_name, to_deg, to_rad)
         error = ref_signal[: self.time_step - 1] - state_hist[: self.time_step - 1]
@@ -291,25 +286,22 @@ class ModelBase:
         to_rad: bool = False,
         figsize: tuple = (10, 10),
     ):
-        """
-        Графики переходного процесса
+        """Plot transient process.
 
         Args:
-            state_name: Название состояния
-            time: Время на графике
-            ref_signal: Заданный сигнал
-            to_deg: Конвертировать в градусы
-            to_rad: Конвертировать в радианы
-            lang: Язык обозначений на осях
-            figsize: Размер графика
+            state_name (str): State name.
+            time (np.ndarray): Time array for plotting.
+            ref_signal (np.ndarray): Reference signal.
+            to_deg (bool): Convert to degrees. Defaults to False.
+            to_rad (bool): Convert to radians. Defaults to False.
+            lang (str): Label language. Defaults to "rus".
+            figsize (tuple): Figure size. Defaults to (10, 10).
 
         Returns:
-            График переходного процесса
+            plt.Figure: Plot of transient process.
 
-        Пример:
-
-        >>> plot = model.plot_transient_process('alpha', time, ref_signal, to_deg=True, figsize=(5,4))
-
+        Example:
+            >>> plot = model.plot_transient_process('alpha', time, ref_signal, to_deg=True, figsize=(5,4))
         """
         state_hist = self.get_state(state_name, to_deg, to_rad)
         if lang == "rus":
@@ -353,23 +345,21 @@ class ModelBase:
         to_rad: bool = False,
         figsize: tuple = (10, 10),
     ):
-        """
-        Графики управляющих сигналов
+        """Plot control signals.
 
         Args:
-            control_name: Название состояния
-            to_deg: Конвертировать в градусы
-            to_rad: Конвертировать в радианы
-            time: Время на графике
-            lang: Язык обозначений на осях
-            figsize: Размер графика
+            control_name (str): Control signal name.
+            to_deg (bool): Convert to degrees. Defaults to False.
+            to_rad (bool): Convert to radians. Defaults to False.
+            time (np.ndarray): Time array for plotting.
+            lang (str): Label language. Defaults to "rus".
+            figsize (tuple): Figure size. Defaults to (10, 10).
 
         Returns:
-            График выбранного состояния
+            plt.Figure: Plot of selected control signal.
 
-        Пример:
-
-        >>> plot = model.plot_by_control('stab', time, to_deg=True, figsize=(15,4))
+        Example:
+            >>> plot = model.plot_by_control('stab', time, to_deg=True, figsize=(15,4))
         """
         state_hist = self.get_control(control_name, to_deg, to_rad)
         if lang == "rus":

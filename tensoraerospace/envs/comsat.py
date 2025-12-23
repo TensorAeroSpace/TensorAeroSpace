@@ -85,30 +85,11 @@ class ComSatEnv(gym.Env):
 
     @staticmethod
     def reward(state, ref_signal, ts):
-        """Оценка управления
-
-        Args:
-            state (_type_): Текущее состояния
-            ref_signal (_type_): Заданное состояние
-            ts (_type_): Временное шаг
-
-        Returns:
-            reward (float): Оценка управления
-        """
+        """Compute tracking error used as reward."""
         return np.abs(state[0] - ref_signal[:, ts])
 
     def step(self, action: np.ndarray):
-        """Выполнения шага моделирования
-
-        Args:
-            action (np.ndarray): Массив управляющего сигнала по выбранным органам
-
-        Returns:
-            next_state (np.ndarray): Следующие состояние объекта управления
-            reward (np.ndarray): Оценка действий алгоритма управления
-            done (bool): Статус моделирования, завершено или нет
-            logging (any): Дополнительная информацию (не используется)
-        """
+        """Run one environment step (Gymnasium API)."""
         self.current_step += 1
         next_state = self.model.run_step(action)
         reward = self.reward_func(
@@ -122,12 +103,7 @@ class ComSatEnv(gym.Env):
         return next_state.reshape([-1, 1]), reward, self.done, False, info
 
     def reset(self, seed=None, options=None):
-        """Восстановление среды моделирования в начальные условия
-
-        Args:
-            seed (int, optional): Seed для генератора случайных чисел
-            options (dict, optional): Дополнительные опции для инициализации
-        """
+        """Reset environment to the initial state (Gymnasium API)."""
         super().reset(seed=seed)
 
         self.current_step = 0
@@ -151,10 +127,7 @@ class ComSatEnv(gym.Env):
         return observation, info
 
     def render(self):
-        """Визуальное отображение действий в среде. В статусе WIP
-        Raises:
-            NotImplementedError
-        """
+        """Render the environment (not implemented)."""
         raise NotImplementedError()
 
 

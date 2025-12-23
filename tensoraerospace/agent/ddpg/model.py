@@ -1,3 +1,9 @@
+"""Deep Deterministic Policy Gradient (DDPG) agent.
+
+This module implements a DDPG agent and supporting neural network components
+used for continuous-control problems in TensorAeroSpace environments.
+"""
+
 from __future__ import annotations
 
 import datetime

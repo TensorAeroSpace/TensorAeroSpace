@@ -1,3 +1,10 @@
+"""Shared optimizer utilities for multi-process A3C training.
+
+This module provides optimizer implementations or helpers that allow sharing
+optimizer state across multiple processes, which is commonly used in A3C-style
+training loops.
+"""
+
 from __future__ import annotations
 
 from typing import Iterable, Tuple
@@ -6,18 +13,20 @@ import torch
 
 
 class SharedAdam(torch.optim.Adam):
-    """Разделяемый оптимизатор Adam для многопроцессного обучения.
+    """Adam optimizer with shared state for multi-process training.
 
-    Расширяет стандартный оптимизатор Adam для работы в многопроцессной среде,
-    где состояние оптимизатора разделяется между процессами.
+    This optimizer stores its internal state tensors (step counter, exp_avg,
+    exp_avg_sq) in shared memory so multiple worker processes can update a
+    single set of parameters consistently.
 
     Args:
-        params: Параметры для оптимизации.
-        lr (float): Скорость обучения. По умолчанию 1e-3.
-        betas (tuple): Коэффициенты для вычисления скользящих средних градиента
-            и его квадрата. По умолчанию (0.9, 0.99).
-        eps (float): Термин для численной стабильности. По умолчанию 1e-8.
-        weight_decay (float): Коэффициент регуляризации весов. По умолчанию 0.
+        params: Parameters to optimize.
+        lr: Learning rate. Defaults to ``1e-3``.
+        betas: Coefficients used for computing running averages of gradient and
+            its square. Defaults to ``(0.9, 0.99)``.
+        eps: Term added to the denominator for numerical stability. Defaults to
+            ``1e-8``.
+        weight_decay: Weight decay (L2 penalty). Defaults to ``0``.
     """
 
     def __init__(

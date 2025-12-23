@@ -1,9 +1,7 @@
-"""
-Модуль для моделирования самолета F-16 Fighting Falcon.
+"""F-16 Fighting Falcon Gymnasium environments.
 
-Этот модуль содержит реализации различных моделей самолета F-16 для обучения
-агентов управления, включая продольную модель для управления углом тангажа
-и другими параметрами полета.
+This package bundles Gymnasium-compatible environments built on top of the
+F-16 models provided in :mod:`tensoraerospace.aerospacemodel`.
 """
 
 from tensoraerospace.envs.f16.linear_longitudial import (

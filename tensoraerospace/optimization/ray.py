@@ -1,3 +1,9 @@
+"""Ray Tune-based hyperparameter optimization backend.
+
+This module integrates `ray.tune` with TensorAeroSpace's optimization interface.
+It provides a thin wrapper to run a search and extract the best configuration.
+"""
+
 from __future__ import annotations
 
 from typing import Any, Callable, Optional
@@ -8,16 +14,19 @@ from .base import HyperParamOptimizationBase
 
 
 class HyperParamOptimizationRay(HyperParamOptimizationBase):
-    """
-    Поиск гиперпараметров модели
-    """
+    """Hyperparameter optimization using Ray Tune."""
 
     def __init__(self, direction: str, metric: Optional[str] = None) -> None:
-        """Инициализация поиска гиперпараметров
+        """Create a Ray Tune optimizer wrapper.
 
         Args:
-            direction (str): Направление поиска. Ex. minimize|maximize (или min|max)
-            metric (str, optional): Метрика для выбора лучшего результата (Ray Tune).
+            direction: Optimization direction. One of
+                ``'minimize'``, ``'maximize'``, ``'min'``, ``'max'``.
+            metric: Metric name used to choose the best result when Ray Tune
+                supports it.
+
+        Raises:
+            ValueError: If ``direction`` is not supported.
         """
         super().__init__()
         if direction in ("minimize", "min"):
@@ -26,7 +35,7 @@ class HyperParamOptimizationRay(HyperParamOptimizationBase):
             self.mode = "max"
         else:
             raise ValueError(
-                "Выберите один из вариантов minimize/maximize (или min/max)"
+                "direction must be one of: minimize/maximize (or min/max)"
             )
 
         self.metric = metric
@@ -40,12 +49,14 @@ class HyperParamOptimizationRay(HyperParamOptimizationBase):
         tune_config=None,
         **kwargs,
     ):
-        """Запуск поиска гиперпараметров
+        """Run a Ray Tune search.
 
         Args:
-            func (Callable): Функция поиска параметров
-            param_space (_type_): Переменные для поиска
-            tune_config (_type_, optional): Параметры оптимизации. Defaults to tune.TuneConfig(num_samples=5).
+            func: Trainable (callable) to execute. See Ray Tune docs.
+            param_space: Search space definition passed to Ray Tune.
+            tune_config: Optional Ray Tune configuration. Defaults to
+                ``tune.TuneConfig(num_samples=5)``.
+            **kwargs: Additional keyword arguments forwarded to ``tune.Tuner``.
         """
         if tune_config is None:
             tune_config = tune.TuneConfig(num_samples=5)
@@ -55,10 +66,14 @@ class HyperParamOptimizationRay(HyperParamOptimizationBase):
         self.results = self.tuner.fit()
 
     def get_best_param(self) -> dict:
-        """Получить лучшие гиперпараметры
+        """Return the best configuration from the latest Ray Tune run.
 
         Returns:
-            dict: Словарь с лучшими гиперпараметрами
+            dict: Best configuration dictionary.
+
+        Raises:
+            RuntimeError: If optimization has not been run yet or best result
+                cannot be determined.
         """
         if self.results is None:
             raise RuntimeError(
@@ -96,9 +111,9 @@ class HyperParamOptimizationRay(HyperParamOptimizationBase):
         return dict(params) if isinstance(params, dict) else {}
 
     def plot_parms(self):
-        """Построить график поиска гиперпараметров (WIP)
+        """Plot optimization history (not implemented yet).
 
         Raises:
-            NotImplementedError:  (WIP)
+            NotImplementedError: Always.
         """
         raise NotImplementedError()

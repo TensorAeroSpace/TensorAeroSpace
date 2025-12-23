@@ -422,22 +422,19 @@ class ControlBenchmark:
         dt: float,
         figsize: tuple = (1800, 1200),
     ):
-        """
-        Сравнивает несколько систем управления на интерактивном графике.
+        """Compare multiple control systems on a single interactive plot.
 
         Args:
-            systems_data (Dict[str, Dict]): Словарь с данными систем в формате:
-                {
-                    'Система 1': {
-                        'control_signal': np.ndarray,
-                        'system_signal': np.ndarray,
-                        'time': np.ndarray
-                    },
-                    ...
-                }
-            signal_val (float): Значение сигнала, с которого начинается функция перехода.
-            dt (float): Шаг дискретизации.
-            figsize (tuple): Размер графика в пикселях, по умолчанию (1800, 1200).
+            systems_data: Mapping from system name to a dictionary with keys:
+                - ``control_signal``: reference/command signal (np.ndarray)
+                - ``system_signal``: system response (np.ndarray)
+                - ``time``: time stamps for plotting (np.ndarray)
+            signal_val: Threshold value used to detect the step start.
+            dt: Discretization time step used for metric conversions.
+            figsize: Plot size in pixels. Defaults to ``(1800, 1200)``.
+
+        Returns:
+            Dict[str, Dict]: Mapping from system name to computed metrics.
         """
         # Создаем подграфики
         fig = make_subplots(
@@ -673,18 +670,17 @@ class ControlBenchmark:
         dt: float,
         system_name: str = "Система управления",
     ) -> str:
-        """
-        Генерирует текстовый отчет о качестве системы управления.
+        """Generate a formatted text report with control quality metrics.
 
         Args:
-            control_signal (numpy.ndarray): Сигнал управления системы.
-            system_signal (numpy.ndarray): Сигнал системы, на которую воздействует управление.
-            signal_val (float): Значение сигнала, с которого начинается функция перехода.
-            dt (float): Шаг дискретизации.
-            system_name (str): Название системы для отчета.
+            control_signal: Reference/command signal.
+            system_signal: System response signal.
+            signal_val: Threshold value used to detect the step start.
+            dt: Discretization time step.
+            system_name: Label used in the report header.
 
         Returns:
-            str: Форматированный текстовый отчет.
+            str: Formatted report string.
         """
         metrics = self.becnchmarking_one_step(
             control_signal, system_signal, signal_val, dt

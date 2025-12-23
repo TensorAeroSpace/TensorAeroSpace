@@ -1,23 +1,31 @@
+"""NARX neural network model.
+
+This module defines a NARX (Nonlinear AutoRegressive with eXogenous inputs)
+neural network model used for time-series prediction in some agents.
+"""
+
 import torch
 import torch.nn as nn
 
 
 class NARX(nn.Module):
-    """Модель нейронной сети NARX (Nonlinear AutoRegressive with eXogenous inputs),
-    основанная на полносвязных слоях для предсказания временных рядов.
+    """NARX (Nonlinear AutoRegressive with eXogenous inputs) MLP model.
+
+    This is a simple fully-connected NARX-style network for time-series
+    prediction that uses the current input and the previous output.
 
     Args:
-        input_size (int): Размер входного вектора.
-        hidden_size (int): Размер скрытого слоя.
-        output_size (int): Размер выходного вектора.
+        input_size (int): Input feature dimension.
+        hidden_size (int): Hidden layer size.
+        output_size (int): Output feature dimension.
 
     Attributes:
-        hidden_size (int): Размер скрытого слоя.
-        input_layer (nn.Linear): Полносвязный слой, принимающий на вход комбинацию
-                                 предыдущего выхода и текущего входа.
-        output_layer (nn.Linear): Полносвязный слой для получения предсказания выходного значения.
-        criterion (nn.MSELoss): Функция потерь среднеквадратичной ошибки.
-        optimizer (torch.optim.Adam): Оптимизатор Adam.
+        hidden_size (int): Hidden layer size.
+        input_layer (nn.Linear): Linear layer applied to concatenated input and
+            last output.
+        output_layer (nn.Linear): Output projection layer.
+        criterion (nn.MSELoss): Mean squared error loss.
+        optimizer (torch.optim.Adam): Adam optimizer.
     """
 
     def __init__(self, input_size, hidden_size, output_size):
@@ -29,14 +37,14 @@ class NARX(nn.Module):
         self.optimizer = torch.optim.Adam(self.parameters(), lr=0.01)
 
     def forward(self, input_tensor, last_output):
-        """Выполняет один шаг прямого распространения сигнала.
+        """Compute one forward step.
 
         Args:
-            input_tensor (Tensor): Тензор входных данных.
-            last_output (Tensor): Тензор последнего выходного значения модели.
+            input_tensor (Tensor): Current input tensor.
+            last_output (Tensor): Previous output tensor.
 
         Returns:
-            Tensor: Тензор выходных данных модели.
+            Tensor: Model output tensor.
         """
         combined = torch.cat((input_tensor, last_output), 0)
         hidden = torch.tanh(self.input_layer(combined))
@@ -44,15 +52,17 @@ class NARX(nn.Module):
         return output
 
     def train(self, predcit_tensor, target_tensor):
-        """Обучает модель, минимизируя функцию потерь между предсказанным и целевым тензором.
+        """Perform one gradient update step.
+
+        Note:
+            This method name shadows ``torch.nn.Module.train``.
 
         Args:
-            predict_tensor (Tensor): Тензор предсказаний модели.
-            target_tensor (Tensor): Тензор целевых значений.
+            predcit_tensor (Tensor): Predicted tensor.
+            target_tensor (Tensor): Target tensor.
 
         Returns:
-            float: Значение функции потерь после одного шага обучения.
-
+            float: Loss value after one update step.
         """
         loss = self.criterion(predcit_tensor, target_tensor)
         self.optimizer.zero_grad()

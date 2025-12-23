@@ -97,10 +97,17 @@ class LinearLongitudinalF16(gym.Env):
     def _build_model_initial_state(
         self, init_state: np.ndarray, state_names: list
     ) -> np.ndarray:
-        """Собирает начальный вектор состояния под порядок состояний модели MODEL_STATE_ORDER.
+        """Build initial state vector according to MODEL_STATE_ORDER.
 
-        Если init_state имеет меньшую размерность (например, только для выбранных state_names),
-        недостающие компоненты заполняются нулями.
+        If init_state has smaller dimension (e.g., only for selected state_names),
+        missing components are filled with zeros.
+
+        Args:
+            init_state (np.ndarray): Initial state values.
+            state_names (list): List of state names.
+
+        Returns:
+            np.ndarray: Initial state vector matching MODEL_STATE_ORDER.
         """
         # Плоский массив значений начального состояния
         vals = np.array(init_state, dtype=float).reshape(-1)
@@ -115,7 +122,11 @@ class LinearLongitudinalF16(gym.Env):
         return {}
 
     def get_init_args(self):
-        """Получаем аргументы инициализации в виде словаря."""
+        """Get initialization arguments as a dictionary.
+
+        Returns:
+            dict: Dictionary of initialization arguments.
+        """
         init_args = self.init_args.copy()
         init_args.pop(
             "self", None
@@ -127,16 +138,18 @@ class LinearLongitudinalF16(gym.Env):
         return init_args
 
     def step(self, action: np.ndarray):
-        """Выполнения шага моделирования
+        """Execute one simulation step.
 
         Args:
-            action (np.ndarray): Массив управляющего сигнала по выбранным органам
+            action (np.ndarray): Control signal array for selected actuators.
 
         Returns:
-            next_state (np.ndarray): Следующие состояние объекта управления
-            reward (np.ndarray): Оценка действий алгоритма управления
-            done (bool): Статус моделирования, завершено или нет
-            logging (any): Дополнительная информацию (не используется)
+            tuple: Tuple containing:
+                - next_state (np.ndarray): Next state of the control object.
+                - reward (np.ndarray): Evaluation of control algorithm actions.
+                - done (bool): Simulation status, whether completed or not.
+                - truncated (bool): Whether episode was truncated.
+                - info (dict): Additional information (not used).
         """
         if action[0] > self.max_action_value:
             action[0] = self.max_action_value
@@ -155,7 +168,17 @@ class LinearLongitudinalF16(gym.Env):
         return next_state.reshape([-1, 1]), reward, self.done, False, info
 
     def reset(self, seed=None, options=None):
-        """Восстановление среды моделирования в начальные условия"""
+        """Reset simulation environment to initial conditions.
+
+        Args:
+            seed (int, optional): Random seed. Defaults to None.
+            options (dict, optional): Reset options. Defaults to None.
+
+        Returns:
+            tuple: Tuple containing:
+                - observation (np.ndarray): Initial observation.
+                - info (dict): Additional information.
+        """
         super().reset(seed=seed)
         self.current_step = 0
         self.done = False
@@ -204,16 +227,15 @@ class LinearLongitudinalF16(gym.Env):
 
     @staticmethod
     def default_reward(state, ref_signal, ts):
-        """
-        Функция вознаграждения для RL среды в продольном управлении летательного аппарата.
+        """Reward function for RL environment in longitudinal aircraft control.
 
-        Аргументы:
-            state (float): Текущий угол атаки летательного аппарата.
-            ref_signal (float): Целевой угол атаки, за которым необходимо следить.
-            ts (float): Временной шаг между итерациями обновления состояния.
+        Args:
+            state (np.ndarray): Current aircraft state [theta, omega_z].
+            ref_signal (np.ndarray): Target pitch angle to track.
+            ts (int): Time step between state update iterations.
 
-        Возвращает:
-            float: Величина вознаграждения для данного шага.
+        Returns:
+            np.ndarray: Reward value for this step.
         """
 
         # Параметры для настройки функции вознаграждения

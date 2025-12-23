@@ -1,3 +1,10 @@
+"""Boeing 747 Gymnasium environments.
+
+This module provides Gymnasium-compatible environments based on a B747
+longitudinal dynamics model, including a classic linear environment and an
+improved normalized variant.
+"""
+
 import os
 from typing import Any, Callable, Dict, Optional, Tuple
 

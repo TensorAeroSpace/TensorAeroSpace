@@ -8,18 +8,17 @@ from tensoraerospace.utils import convert_tp_to_sec_tp, generate_time_period
 
 ## Запускает SimInTech с указанными параметрами
 def process():
-    """
-    Запускает SimInTech с указанными параметрами проекта
+    """Launch SimInTech with specified project parameters.
 
-    Функция выполняет запуск SimInTech с проектом lsu2.xprt в режиме выполнения
-    с автоматическим завершением после остановки симуляции.
+    The function launches SimInTech with the lsu2.xprt project in execution mode
+    with automatic termination after simulation stops.
 
     Raises:
-        subprocess.CalledProcessError: Если процесс SimInTech завершился с ошибкой
+        subprocess.CalledProcessError: If SimInTech process exited with an error.
 
     Note:
-        Требует наличия SimInTech в указанном пути и файла проекта lsu2.xprt
-        в текущей директории
+        Requires SimInTech to be available at the specified path and the project
+        file lsu2.xprt to be in the current directory.
     """
     PATH_SIT = r"D:\SimInTech64\bin\mmain"
     PATH_PRJ_FILE = r".\lsu2.xprt"

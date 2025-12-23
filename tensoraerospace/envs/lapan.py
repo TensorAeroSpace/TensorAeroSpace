@@ -1,12 +1,8 @@
-"""
-Модуль для моделирования самолета наблюдения
-LAPAN Surveillance Aircraft (LSU)-05 NG.
+"""LAPAN LSU-05 NG Gymnasium environments.
 
-Этот модуль содержит реализацию среды Gymnasium для обучения
-агентов управления продольным движением самолета LAPAN LSU-05 NG.
-Среда предоставляет интерфейс для взаимодействия с моделью самолета,
-включая управление углом тангажа и угловой скоростью тангажа
-через стабилизаторы.
+This module implements Gymnasium environments for longitudinal control of the
+LAPAN Surveillance Aircraft (LSU)-05 NG model, including a legacy environment
+(``LinearLongitudinalLAPAN``) and a normalized variant (``ImprovedLAPANEnv``).
 """
 
 from typing import Any
@@ -19,19 +15,17 @@ from tensoraerospace.aerospacemodel import LAPAN
 
 
 class LinearLongitudinalLAPAN(gym.Env):
-    """Моделирование объекта управления LAPAN Surveillance Aircraft (LSU)-05 NG
-    в среде моделирования OpenAI Gym для обучения агентов с искусственным
-    интеллектом
+    """Legacy LAPAN longitudinal-control environment.
 
     Args:
-        initial_state (any): Начальное состояние
-        reference_signal (any): Заданный сигнал
-        number_time_steps (any): Количество шагов моделирования
-        tracking_states (any): Отслеживаемые состояния
-        state_space (any): Пространства состояний
-        control_space (any): Пространство управления
-        output_space (any): Пространство полного выхода (с учетом помех)
-        reward_func (any): Функция вознаграждения (статус WIP)
+        initial_state: Initial state vector.
+        reference_signal: Reference (target) signal array.
+        number_time_steps: Number of simulation steps.
+        tracking_states: Names of tracked states used for reward computation.
+        state_space: Names of state variables exposed in observations.
+        control_space: Names of control inputs.
+        output_space: Names of model outputs returned by the plant.
+        reward_func: Optional custom reward function.
     """
 
     def __init__(
@@ -93,15 +87,15 @@ class LinearLongitudinalLAPAN(gym.Env):
 
     @staticmethod
     def reward(state, ref_signal, ts):
-        """Оценка управления
+        """Compute tracking reward for the current step.
 
         Args:
-            state (_type_): Текущее состояния
-            ref_signal (_type_): Заданное состояние
-            ts (_type_): Временное шаг
+            state: Current tracked state vector.
+            ref_signal: Reference signal array.
+            ts: Current time step index.
 
         Returns:
-            reward (float): Оценка управления
+            float: Reward value (lower is better in the legacy formulation).
         """
         return np.abs(state[0] - ref_signal[:, ts])
 
@@ -109,18 +103,14 @@ class LinearLongitudinalLAPAN(gym.Env):
         return {}
 
     def step(self, action: np.ndarray):
-        """Выполнения шага моделирования
+        """Run one simulation step.
 
         Args:
-            action (np.ndarray): Массив управляющего сигнала по
-                выбранным органам
+            action (np.ndarray): Control input(s).
 
         Returns:
-            next_state (np.ndarray): Следующие состояние объекта управления
-            reward (np.ndarray): Оценка действий алгоритма управления
-            done (bool): Статус моделирования, завершено или нет
-            logging (any): Дополнительная информацию
-                (не используется)
+            tuple: ``(observation, reward, terminated, truncated, info)`` in the
+            Gymnasium API format.
         """
         if action[0] > self.max_action_value:
             action[0] = self.max_action_value
@@ -138,11 +128,14 @@ class LinearLongitudinalLAPAN(gym.Env):
         return next_state.reshape([-1, 1]), reward, self.done, False, info
 
     def reset(self, seed=None, options=None):
-        """Восстановление среды моделирования в начальные условия
+        """Reset environment state to the initial conditions.
 
         Args:
-            seed (int, optional): Seed для генератора случайных чисел
-            options (dict, optional): Дополнительные опции для инициализации
+            seed: Random seed (Gymnasium).
+            options: Optional reset options (unused).
+
+        Returns:
+            tuple: ``(observation, info)``.
         """
         super().reset(seed=seed)
 
@@ -166,9 +159,10 @@ class LinearLongitudinalLAPAN(gym.Env):
         return observation, info
 
     def render(self):
-        """Визуальное отображение действий в среде. В статусе WIP
+        """Render the environment (not implemented).
+
         Raises:
-            NotImplementedError
+            NotImplementedError: Always.
         """
         raise NotImplementedError()
 

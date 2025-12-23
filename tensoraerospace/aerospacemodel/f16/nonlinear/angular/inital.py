@@ -54,16 +54,15 @@ initial_state_dict = {
 
 
 def set_initial_state(new_initial: dict):
-    """
-        Установка новых начальных параметров
+    """Set new initial parameters.
 
     Args:
-        new_initial: Словарь с новыми начальными состояниями
+        new_initial: Dictionary with new initial states.
 
     Returns:
-        Новые начальные состояния
+        New initial states.
 
-    Пример:
+    Example:
 
     >>> import numpy as np
     >>> set_initial_state({'alpha':np.deg2rad(10), 'beta':np.deg2rad(1)})

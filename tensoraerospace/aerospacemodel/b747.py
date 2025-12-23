@@ -101,10 +101,9 @@ class LongitudinalB747(ModelBase):
         self.initialise_system(x0, number_time_steps)
 
     def import_linear_system(self) -> None:
-        """Импортирует сохраненные линеаризованные матрицы системы.
+        """Load (set) stored linearized system matrices.
 
-        Устанавливает матрицы A, B, C, D для линейной модели Boeing 747
-        в продольном канале управления.
+        Sets A, B, C, D matrices for the Boeing 747 longitudinal linear model.
         """
         self.A = np.array(
             [
@@ -136,11 +135,11 @@ class LongitudinalB747(ModelBase):
         )
 
     def initialise_system(self, x0: np.ndarray, number_time_steps: int) -> None:
-        """Инициализация системы
+        """Initialize the system and allocate history buffers.
 
         Args:
-            x0: Начальное состояние объекта управления
-            number_time_steps: количество временных шагов в итерации
+            x0: Initial state.
+            number_time_steps: Number of simulation steps.
         """
 
         # Import the stored system
@@ -169,13 +168,13 @@ class LongitudinalB747(ModelBase):
         )
 
     def run_step(self, ut_0: np.ndarray) -> np.ndarray:
-        """Выполняет один временной шаг итерации.
+        """Run one discrete-time simulation step.
 
         Args:
-            ut_0 (np.ndarray): Вектор управления
+            ut_0 (np.ndarray): Control vector.
 
         Returns:
-            xt1 (np.ndarray): Состояние объекта управления на шаге t+1
+            np.ndarray: Next state at time t+1.
         """
         if self.time_step != 0:
             ut_1 = self.store_input[:, self.time_step - 1]
@@ -236,31 +235,22 @@ class LongitudinalB747(ModelBase):
         return np.array(self.xt1)
 
     def update_system_attributes(self) -> None:
-        """Обновляет атрибуты системы после каждого временного шага.
-
-        Обновляет текущее состояние и увеличивает счетчик временных шагов.
-        """
+        """Update internal state and step counter after each simulation step."""
         self.xt = self.xt1
         self.time_step += 1
 
     def get_state(
         self, state_name: str, to_deg: bool = False, to_rad: bool = False
     ) -> np.ndarray:
-        """
-        Получить массив состояния
+        """Return the time history of a state.
 
         Args:
-            state_name: Название состояния
-            to_deg: Конвертировать в градусы
-            to_rad: Конвертировать в радианы
+            state_name: State name.
+            to_deg: Convert radians to degrees.
+            to_rad: Convert degrees to radians.
 
         Returns:
-            Массив истории выбранного состояния
-
-        Пример:
-
-        >>> state_hist = model.get_state('alpha', to_deg=True)
-
+            np.ndarray: State history array.
         """
         if state_name == "wz":
             state_name = "q"
@@ -282,19 +272,15 @@ class LongitudinalB747(ModelBase):
     def get_control(
         self, control_name: str, to_deg: bool = False, to_rad: bool = False
     ) -> np.ndarray:
-        """
-        Получить массив сигнала управления
+        """Return the time history of a control input.
 
         Args:
-            control_name: Название сигнала управления
-            to_deg: Конвертировать в градусы
+            control_name: Control signal name.
+            to_deg: Convert radians to degrees.
+            to_rad: Convert degrees to radians.
 
         Returns:
-            Массив истории выбранного сигнала управления
-
-        Пример:
-
-        >>> state_hist = model.get_control('stab', to_deg=True)
+            np.ndarray: Control history array.
         """
         if control_name in ["stab", "ele"]:
             control_name = "ele"
@@ -318,15 +304,15 @@ class LongitudinalB747(ModelBase):
     def get_output(
         self, state_name: str, to_deg: bool = False, to_rad: bool = False
     ) -> np.ndarray:
-        """Получает выходные данные системы для указанного состояния.
+        """Return output time history for the specified output name.
 
         Args:
-            state_name (str): Название состояния.
-            to_deg (bool): Конвертировать в градусы.
-            to_rad (bool): Конвертировать в радианы.
+            state_name (str): Output name.
+            to_deg (bool): Convert radians to degrees.
+            to_rad (bool): Convert degrees to radians.
 
         Returns:
-            np.ndarray: Массив выходных данных для указанного состояния.
+            np.ndarray: Output history array.
         """
         self.output_history = output2dict(self.store_outputs, self.selected_output)
         if to_deg:
@@ -344,21 +330,21 @@ class LongitudinalB747(ModelBase):
         to_rad: bool = False,
         figsize: tuple = (10, 10),
     ) -> Figure:
-        """Строит график выходных данных системы.
+        """Plot an output signal over time.
 
         Args:
-            output_name (str): Название выходного сигнала.
-            time (np.ndarray): Временной массив.
-            lang (str): Язык обозначений на осях ('rus' или 'eng').
-            to_deg (bool): Конвертировать в градусы.
-            to_rad (bool): Конвертировать в радианы.
-            figsize (tuple): Размер графика.
+            output_name (str): Output name.
+            time (np.ndarray): Time vector.
+            lang (str): Axis label language ('rus' or 'eng').
+            to_deg (bool): Convert radians to degrees.
+            to_rad (bool): Convert degrees to radians.
+            figsize (tuple): Figure size.
 
         Returns:
-            matplotlib.figure.Figure: Объект графика.
+            matplotlib.figure.Figure: Figure object.
 
         Raises:
-            Exception: Если неверно указано форматирование или состояние не найдено.
+            Exception: If invalid formatting is requested or the signal is not found.
         """
         if to_rad and to_deg:
             raise Exception(
