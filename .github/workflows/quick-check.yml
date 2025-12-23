@@ -13,6 +13,25 @@ jobs:
     timeout-minutes: 10
 
     steps:
+    - name: 🧹 Free up disk space (diagnostic + cleanup)
+      run: |
+        set -euxo pipefail
+        echo "Disk usage before cleanup:"
+        df -h
+
+        # Remove large preinstalled components we don't need for Python tests
+        sudo rm -rf /usr/share/dotnet || true
+        sudo rm -rf /usr/local/lib/android || true
+        sudo rm -rf /opt/ghc || true
+        sudo rm -rf /opt/hostedtoolcache/CodeQL || true
+
+        # Best-effort cleanup
+        docker system prune -af --volumes || true
+        sudo apt-get clean || true
+
+        echo "Disk usage after cleanup:"
+        df -h
+
     - name: 📥 Checkout code
       uses: actions/checkout@v5
 
@@ -26,7 +45,6 @@ jobs:
       with:
         path: |
           ~/.cache/pypoetry
-          ~/.cache/pip
         key: ubuntu-latest-poetry-3.10-${{ hashFiles('**/poetry.lock') }}
         restore-keys: |
           ubuntu-latest-poetry-3.10-
@@ -71,6 +89,23 @@ jobs:
     timeout-minutes: 5
 
     steps:
+    - name: 🧹 Free up disk space (diagnostic + cleanup)
+      run: |
+        set -euxo pipefail
+        echo "Disk usage before cleanup:"
+        df -h
+
+        sudo rm -rf /usr/share/dotnet || true
+        sudo rm -rf /usr/local/lib/android || true
+        sudo rm -rf /opt/ghc || true
+        sudo rm -rf /opt/hostedtoolcache/CodeQL || true
+
+        docker system prune -af --volumes || true
+        sudo apt-get clean || true
+
+        echo "Disk usage after cleanup:"
+        df -h
+
     - name: 📥 Checkout code
       uses: actions/checkout@v5
 
@@ -94,7 +129,8 @@ jobs:
 
     - name: 📚 Install dependencies
       run: |
-        poetry install --with dev
+        # Only tooling is needed here (no heavy runtime deps)
+        poetry install --only dev
 
     - name: 🔍 Check code formatting with black
       run: |
@@ -114,6 +150,23 @@ jobs:
     timeout-minutes: 5
 
     steps:
+    - name: 🧹 Free up disk space (diagnostic + cleanup)
+      run: |
+        set -euxo pipefail
+        echo "Disk usage before cleanup:"
+        df -h
+
+        sudo rm -rf /usr/share/dotnet || true
+        sudo rm -rf /usr/local/lib/android || true
+        sudo rm -rf /opt/ghc || true
+        sudo rm -rf /opt/hostedtoolcache/CodeQL || true
+
+        docker system prune -af --volumes || true
+        sudo apt-get clean || true
+
+        echo "Disk usage after cleanup:"
+        df -h
+
     - name: 📥 Checkout code
       uses: actions/checkout@v5
 
