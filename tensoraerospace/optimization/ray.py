@@ -34,9 +34,7 @@ class HyperParamOptimizationRay(HyperParamOptimizationBase):
         elif direction in ("maximize", "max"):
             self.mode = "max"
         else:
-            raise ValueError(
-                "direction must be one of: minimize/maximize (or min/max)"
-            )
+            raise ValueError("direction must be one of: minimize/maximize (or min/max)")
 
         self.metric = metric
         self.tuner: Any = None
