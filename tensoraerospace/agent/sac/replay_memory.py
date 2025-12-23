@@ -1,3 +1,8 @@
+"""Replay buffer implementation for SAC.
+
+This module implements experience replay utilities used by the SAC agent.
+"""
+
 import os
 import pickle
 import random
@@ -7,20 +12,26 @@ import numpy as np
 
 
 class ReplayMemory:
-    """Хранилище повторных сэмплов для алгоритмов обучения с подкреплением.
+    """Replay buffer for off-policy reinforcement learning algorithms.
 
     Args:
-        capacity (int): Максимальная вместимость хранилища.
-        seed (int): Зерно для генерации случайных чисел.
+        capacity (int): Maximum number of transitions to store.
+        seed (int): Random seed used for sampling.
 
     Attributes:
-        capacity (int): Максимальная вместимость хранилища.
-        buffer (List): Буфер для хранения повторных сэмплов.
-        position (int): Текущая позиция в буфере.
+        capacity (int): Maximum capacity.
+        buffer (List): Stored transitions.
+        position (int): Current write position.
 
     """
 
     def __init__(self, capacity: int, seed: int):
+        """Initialize replay buffer with fixed capacity and seed.
+
+        Args:
+            capacity: Maximum number of transitions.
+            seed: Random seed for sampling.
+        """
         random.seed(seed)
         self.capacity = capacity
         self.buffer: List[Tuple] = []
@@ -34,14 +45,14 @@ class ReplayMemory:
         next_state: np.ndarray,
         done: Union[bool, float],
     ) -> None:
-        """Добавление повторного сэмпла в хранилище.
+        """Add a transition to the replay buffer.
 
         Args:
-            state: Входное состояние.
-            action: Действие.
-            reward: Награда.
-            next_state: Следующее состояние.
-            done: Маска окончания эпизода (True/False или 0.0/1.0).
+            state: Current state.
+            action: Action taken.
+            reward: Reward received.
+            next_state: Next state.
+            done: Episode termination flag (bool) or mask (0.0/1.0).
 
         """
         if len(self.buffer) < self.capacity:
@@ -52,14 +63,14 @@ class ReplayMemory:
     def sample(
         self, batch_size: int
     ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
-        """Сэмплирование пакета повторных сэмплов из хранилища.
+        """Sample a batch of transitions.
 
         Args:
-            batch_size (int): Размер пакета.
+            batch_size (int): Batch size.
 
         Returns:
-            Tuple: Кортеж с состояниями, действиями, наградами,
-            следующими состояниями и флагами окончания.
+            Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+            ``(state, action, reward, next_state, done)`` batch.
 
         """
         batch = random.sample(self.buffer, batch_size)
@@ -67,10 +78,10 @@ class ReplayMemory:
         return state, action, reward, next_state, done
 
     def __len__(self) -> int:
-        """Возвращает текущий размер хранилища.
+        """Return the current number of stored transitions.
 
         Returns:
-            int: Размер хранилища.
+            int: Buffer size.
 
         """
         return len(self.buffer)
@@ -78,12 +89,13 @@ class ReplayMemory:
     def save_buffer(
         self, env_name: str, suffix: str = "", save_path: str | None = None
     ) -> None:
-        """Сохранение буфера на диск.
+        """Save the replay buffer to disk.
 
         Args:
-            env_name (str): Название окружения.
-            suffix (str): Суффикс для имени файла. По умолчанию "".
-            save_path (str): Путь для сохранения файла. По умолчанию None.
+            env_name (str): Environment name used in the default path.
+            suffix (str): Optional filename suffix.
+            save_path (str): Optional explicit save path. If None, a default
+                path under ``checkpoints/`` is used.
 
         """
         if not os.path.exists("checkpoints/"):
@@ -97,10 +109,10 @@ class ReplayMemory:
             pickle.dump(self.buffer, f)
 
     def load_buffer(self, save_path: str) -> None:
-        """Загрузка буфера из файла.
+        """Load a replay buffer from disk.
 
         Args:
-            save_path (str): Путь к файлу для загрузки буфера.
+            save_path (str): Path to a previously saved buffer.
 
         """
         print("Loading buffer from {}".format(save_path))

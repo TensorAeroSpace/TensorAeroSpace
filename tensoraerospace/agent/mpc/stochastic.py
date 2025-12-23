@@ -1,3 +1,9 @@
+"""Stochastic MPC agents and training utilities.
+
+This module contains components used for stochastic MPC approaches in
+TensorAeroSpace, including training/evaluation helpers and logging utilities.
+"""
+
 import datetime
 import json
 import os
@@ -17,15 +23,18 @@ from ..base import BaseRLModel
 
 
 class Net(nn.Module):
-    """Создает нейронную сеть для моделирования динамики системы.
+    """Simple feed-forward dynamics model.
 
-    Сеть состоит из трех линейных слоев и функций активации ReLU между ними.
-    Входной слой принимает вектор из 3 элементов, представляющих состояния системы.
-    Второй и третий слои - это скрытые слои с 128 нейронами.
-    Выходной слой генерирует вектор из 2 элементов, представляющих предсказание следующего состояния системы.
+    The network is a small MLP with dropout that predicts the next state from a
+    concatenation of the current state and action.
+
+    Args:
+        num_action: Action dimension.
+        num_states: State dimension.
     """
 
     def __init__(self, num_action, num_states):
+        """Initialize stochastic dynamics model layers."""
         super(Net, self).__init__()
         self.fc1 = nn.Linear(
             num_action + num_states, 16
@@ -35,13 +44,13 @@ class Net(nn.Module):
         self.dropout = nn.Dropout(p=0.1)  # Dropout layer with a probability of 0.5
 
     def forward(self, x):
-        """Выполняет прямое распространение входных данных через сеть.
+        """Run a forward pass.
 
         Args:
-            x (torch.Tensor): Входные данные, представляющие состояния системы.
+            x (torch.Tensor): Input tensor (state-action features).
 
         Returns:
-            torch.Tensor: Предсказание следующего состояния системы.
+            torch.Tensor: Predicted next state.
         """
         x = torch.relu(self.fc1(x))
         x = self.dropout(x)
@@ -51,17 +60,23 @@ class Net(nn.Module):
 
 
 class MPCAgent(BaseRLModel):
-    """
-    Агент, использующий метод Модельно-Прогностического Управления (MPC) для оптимизации действий в среде.
+    """Stochastic MPC agent using a learned dynamics model.
 
-    Attributes:
-        gamma (float): Коэффициент дисконтирования.
-        action_dim (int): Размерность пространства действий.
-        observation_dim (int): Размерность пространства наблюдений.
-        model (torch.nn.Module): Модель для аппроксимации динамики среды.
-        cost_function (callable): Функция стоимости, используемая для оценки действий.
-        lr (float): Скорость обучения для оптимизатора модели.
-        criterion (torch.nn.modules.loss): Критерий потерь для обучения модели.
+    The agent samples candidate actions (or action sequences) from a distribution,
+    rolls them out through a learned system model, and selects the best action
+    according to a provided cost function.
+
+    Args:
+        gamma: Discount factor.
+        action_dim: Action space dimension.
+        observation_dim: Observation/state dimension.
+        model: Dynamics model approximator.
+        cost_function: Cost function used to evaluate rollouts.
+        env: Environment instance used for data collection/testing.
+        min_max_action_value: Tuple ``(min_action, max_action)`` used for sampling
+            actions in ``choose_action_ref``.
+        lr: Learning rate for the dynamics model optimizer.
+        criterion: Loss function used to train the dynamics model.
     """
 
     def __init__(
@@ -76,6 +91,19 @@ class MPCAgent(BaseRLModel):
         lr=1e-3,
         criterion=torch.nn.MSELoss(),
     ):
+        """Initialize stochastic MPC agent with learned dynamics.
+
+        Args:
+            gamma: Discount factor.
+            action_dim: Action dimension.
+            observation_dim: Observation dimension.
+            model: Dynamics model.
+            cost_function: Cost function for rollouts.
+            env: Environment instance.
+            min_max_action_value: Tuple of min/max action for sampling.
+            lr: Learning rate for dynamics optimizer.
+            criterion: Loss for model training.
+        """
         self.gamma = gamma
         self.action_dim = action_dim
         self.observation_dim = observation_dim
@@ -89,6 +117,17 @@ class MPCAgent(BaseRLModel):
         self.min_action, self.max_action = min_max_action_value
 
     def from_pretrained(self, repo_name, access_token=None, version=None):
+        """Load a pretrained dynamics model from the Hugging Face Hub.
+
+        Args:
+            repo_name: Repository name on the Hub.
+            access_token: Optional access token.
+            version: Optional revision/tag/commit.
+
+        Raises:
+            ValueError: If the environment name stored in the config does not match
+                the agent's current environment.
+        """
         folder_path = super().from_pretrained(repo_name, access_token, version)
         self.system_model = torch.load(
             os.path.join(folder_path, "model.pth"), weights_only=False
@@ -110,18 +149,14 @@ class MPCAgent(BaseRLModel):
         epochs: int = 100,
         batch_size: int = 64,
     ) -> None:
-        """
-        Обучает модель динамики среды, используя данные о состояниях, действиях и следующих состояниях.
+        """Train the dynamics model on (s, a) -> s' transitions.
 
         Args:
-            states (numpy.ndarray): Массив текущих состояний.
-            actions (numpy.ndarray): Массив действий, совершенных в этих состояниях.
-            next_states (numpy.ndarray): Массив следующих состояний после совершения действий.
-            epochs (int): Количество эпох обучения.
-            batch_size (int): Размер батча для обучения.
-
-        Returns:
-            None
+            states (np.ndarray): Current states.
+            actions (np.ndarray): Actions taken in those states.
+            next_states (np.ndarray): Next states observed after actions.
+            epochs (int): Number of training epochs. Defaults to ``100``.
+            batch_size (int): Mini-batch size. Defaults to ``64``.
         """
         for epoch in (pbar := tqdm(range(epochs))):
             permutation = np.random.permutation(states.shape[0])
@@ -147,14 +182,17 @@ class MPCAgent(BaseRLModel):
     def collect_data(
         self, num_episodes: int = 1000, control_exploration_signal=None
     ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
-        """
-        Собирает данные о состояниях, действиях и следующих состояниях, исполняя случайную политику в среде.
+        """Collect transition data by executing a policy in the environment.
+
+        If ``control_exploration_signal`` is provided, actions are taken from that
+        sequence; otherwise actions are sampled from the environment's action space.
 
         Args:
-            num_episodes (int): Количество эпизодов для сбора данных.
+            num_episodes (int): Number of episodes to collect.
+            control_exploration_signal: Optional sequence of actions to replay.
 
         Returns:
-            tuple: Возвращает кортеж из трех массивов (states, actions, next_states).
+            Tuple[np.ndarray, np.ndarray, np.ndarray]: ``(states, actions, next_states)``.
         """
         if control_exploration_signal is not None:
             states, actions, next_states = [], [], []
@@ -195,16 +233,15 @@ class MPCAgent(BaseRLModel):
     def choose_action(
         self, state: np.ndarray, rollout: int, horizon: int
     ) -> np.ndarray:
-        """
-        Выбирает оптимальное действие, используя модель для прогнозирования и оценки последствий действий.
+        """Choose an action by Monte-Carlo rollout using the learned model.
 
         Args:
-            state (numpy.ndarray): Текущее состояние среды.
-            rollout (int): Количество прогнозируемых траекторий для оценки.
-            horizon (int): Горизонт планирования (количество шагов вперед для оценки).
+            state (np.ndarray): Current environment state.
+            rollout (int): Number of sampled trajectories to evaluate.
+            horizon (int): Planning horizon (number of steps to roll out).
 
         Returns:
-            numpy.ndarray: Возвращает массив, содержащий выбранное действие.
+            np.ndarray: Selected action (as numpy array).
         """
         # state = torch.from_numpy(state, dtype=torch.float32)
         initial_state = torch.as_tensor(np.array([state]), dtype=torch.float32)
@@ -239,18 +276,17 @@ class MPCAgent(BaseRLModel):
         reference_signals: np.ndarray,
         step: int,
     ) -> Tuple[np.ndarray, float]:
-        """
-        Выбирает оптимальное действие с учетом эталонных сигналов.
+        """Choose an action using reference signals in the cost function.
 
         Args:
-            state (numpy.ndarray): Текущее состояние среды.
-            rollout (int): Количество прогнозируемых траекторий для оценки.
-            horizon (int): Горизонт планирования.
-            reference_signals (numpy.ndarray): Эталонные сигналы для оценки действий.
-            step (int): Текущий временной шаг в среде.
+            state (np.ndarray): Current environment state.
+            rollout (int): Number of sampled trajectories to evaluate.
+            horizon (int): Planning horizon.
+            reference_signals (np.ndarray): Reference signals used by the cost function.
+            step (int): Current time step index.
 
         Returns:
-            numpy.ndarray: Возвращает массив, содержащий выбранное действие.
+            Tuple[np.ndarray, float]: ``(best_action, best_value)``.
         """
         initial_state = torch.tensor([state], dtype=torch.float32)
         best_action = None
@@ -276,16 +312,15 @@ class MPCAgent(BaseRLModel):
     def test_model(
         self, num_episodes: int = 100, rollout: int = 10, horizon: int = 1
     ) -> List[float]:
-        """
-        Тестирует модель в среде, измеряя среднее вознаграждение за серию эпизодов.
+        """Evaluate the agent in the environment for a number of episodes.
 
         Args:
-            num_episodes (int): Количество эпизодов для тестирования.
-            rollout (int): Количество прогнозируемых траекторий для выбора действий.
-            horizon (int): Горизонт планирования для выбора действий.
+            num_episodes (int): Number of evaluation episodes.
+            rollout (int): Number of rollouts per decision step.
+            horizon (int): Planning horizon for action selection.
 
         Returns:
-            List[float]: Список суммарных вознаграждений за каждый эпизод.
+            List[float]: Total reward per episode.
         """
         total_rewards = (
             []
@@ -311,16 +346,12 @@ class MPCAgent(BaseRLModel):
     def test_network(
         self, states: np.ndarray, actions: np.ndarray, next_states: np.ndarray
     ) -> None:
-        """
-        Тестирует точность предсказаний модели на заданном наборе данных.
+        """Evaluate dynamics model prediction accuracy on a dataset.
 
         Args:
-            states (numpy.ndarray): Массив текущих состояний.
-            actions (numpy.ndarray): Массив действий.
-            next_states (numpy.ndarray): Массив следующих состояний.
-
-        Returns:
-            None
+            states (np.ndarray): Current states.
+            actions (np.ndarray): Actions.
+            next_states (np.ndarray): Ground-truth next states.
         """
         self.system_model.eval()  # Перевести модель в режим оценки
         with torch.no_grad():  # Отключить вычисление градиентов
@@ -344,7 +375,7 @@ class MPCAgent(BaseRLModel):
         self.system_model.train()  # Вернуть модель в режим обучения
 
     def get_param_env(self) -> Dict[str, Dict[str, Any]]:
-        """Получаем параметры параметров среды. Возвращает словарь с параметрами среды."""
+        """Return a serializable dictionary describing env/agent parameters."""
         env_name = self.env.unwrapped.__class__.__name__
         agent_name = self.__class__.__name__
         env_params = {}
@@ -381,15 +412,13 @@ class MPCAgent(BaseRLModel):
         }
 
     def save(self, path: str | os.PathLike | None = None) -> None:
-        """
-        Сохраняет модель PyTorch в указанной директории. Если путь не указан,
-        создает директорию с текущей датой и временем.
+        """Save the dynamics model and configuration to disk.
+
+        If ``path`` is not provided, uses the current working directory and
+        creates a timestamped subdirectory.
 
         Args:
-            path (str, optional): Путь, где будет сохранена модель. Если None, создается директория с текущей датой и временем.
-
-        Returns:
-            None
+            path: Directory to save into. If None, uses ``Path.cwd()``.
         """
         if path is None:
             path = Path.cwd()
@@ -411,15 +440,10 @@ class MPCAgent(BaseRLModel):
         torch.save(self.system_model, path)
 
     def load(self, path: str | os.PathLike) -> None:
-        """
-        Загружает модель из файла по указанному пути.
+        """Load a saved dynamics model from disk.
 
         Args:
-            path (str): Путь к файлу с моделью.
-
-        Returns:
-            None
-
+            path: Directory containing ``model.pth``.
         """
         path = Path(path)
         path = path / "model.pth"

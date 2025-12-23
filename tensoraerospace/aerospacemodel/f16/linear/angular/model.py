@@ -99,9 +99,9 @@ class AngularF16(ModelBase):
         self.initialise_system(x0, number_time_steps)
 
     def import_linear_system(self):
-        """
-        Извлекает сохраненные линеаризованные матрицы, полученные из Matlab
-        :return:
+        """Load stored linearized matrices from MATLAB files.
+
+        Loads matrices A, B, C, D from .mat files in the data folder.
         """
         x = loadmat(self.folder + "/A.mat")
         self.A = x["A_lo"]
@@ -116,8 +116,9 @@ class AngularF16(ModelBase):
         self.D = x["D_lo"]
 
     def simplify_system(self):
-        """
-        Функция, упрощающая матрицы F-16. Отфильтрованные матрицы хранятся как часть объекта
+        """Simplify F-16 matrices by selecting only relevant states/inputs/outputs.
+
+        Filtered matrices are stored as object attributes (filt_A, filt_B, filt_C, filt_D).
         """
 
         # Создавать словари с информацией из системы
@@ -147,14 +148,13 @@ class AngularF16(ModelBase):
         )
 
     def create_dictionary(self, file_name):
-        """
-        Создает словари из доступных состояний, входов и выходов
+        """Create dictionaries from available states, inputs, and outputs.
 
         Args:
-            file_name: имя файла для чтения
+            file_name (str): File name to read (e.g., "states", "input", "output").
 
         Returns:
-             rows --> словарь с используемыми строками векторов ввода / состояния / вывода
+            dict: Dictionary mapping state/input/output names to their row indices.
         """
         full_name = self.folder + "/keySet_" + file_name + ".txt"
         with open(full_name, "r") as f:
@@ -163,12 +163,11 @@ class AngularF16(ModelBase):
         return rows
 
     def initialise_system(self, x0, number_time_steps):
-        """
-        Инициализирует динамику самолета F-16
+        """Initialize F-16 aircraft dynamics.
 
         Args:
-            x0: начальные состояния
-            number_time_steps: количество временных шагов в итерации
+            x0: Initial states.
+            number_time_steps: Number of time steps in the iteration.
         """
         # Импортировать сохраненную систему
         self.import_linear_system()
@@ -200,14 +199,13 @@ class AngularF16(ModelBase):
         )
 
     def run_step(self, ut_0: np.ndarray):
-        """
-        Выполняет один временной шаг итерации.
+        """Execute one time step iteration.
 
         Args:
-            ut: вход в систему
+            ut_0 (np.ndarray): Control input vector.
 
         Returns:
-            xt1 --> состояние следующего временного шага
+            np.ndarray: State at the next time step.
         """
         if self.time_step != 0:
             ut_1 = self.store_input[:, self.time_step - 1]
@@ -262,29 +260,23 @@ class AngularF16(ModelBase):
         return np.array(self.xt1)
 
     def update_system_attributes(self):
-        """
-        Атрибуты, которые изменяются с каждым шагом, обновляются.
-        :return:
-        """
+        """Update attributes that change with each time step."""
         self.xt = self.xt1
         self.time_step += 1
 
     def get_state(self, state_name: str, to_deg: bool = False, to_rad: bool = False):
-        """
-        Получить массив состояния
+        """Get state array history.
 
         Args:
-            state_name: Название состояния
-            to_deg: Конвертировать в градусы
-            to_rad: Конвертировать в радианы
+            state_name (str): State name.
+            to_deg (bool): Convert to degrees. Defaults to False.
+            to_rad (bool): Convert to radians. Defaults to False.
 
         Returns:
-            Массив истории выбранного состояния
+            np.ndarray: Array of selected state history.
 
-        Пример:
-
-        >>> state_hist = model.get_state('alpha', to_deg=True)
-
+        Example:
+            >>> state_hist = model.get_state('alpha', to_deg=True)
         """
         if state_name == "wz":
             state_name = "q"
@@ -306,19 +298,18 @@ class AngularF16(ModelBase):
     def get_control(
         self, control_name: str, to_deg: bool = False, to_rad: bool = False
     ):
-        """
-        Получить массив сигнала управления
+        """Get control signal array history.
 
         Args:
-            control_name: Название сигнала управления
-            to_deg: Конвертировать в градусы
+            control_name (str): Control signal name.
+            to_deg (bool): Convert to degrees. Defaults to False.
+            to_rad (bool): Convert to radians. Defaults to False.
 
         Returns:
-            Массив истории выбранного сигнала управления
+            np.ndarray: Array of selected control signal history.
 
-        Пример:
-
-        >>> state_hist = model.get_control('stab', to_deg=True)
+        Example:
+            >>> control_hist = model.get_control('stab', to_deg=True)
         """
         if control_name in ["stab", "ele"]:
             control_name = "ele"

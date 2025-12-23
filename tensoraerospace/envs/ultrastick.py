@@ -39,6 +39,7 @@ class LinearLongitudinalUltrastick(gym.Env):
         output_space: Optional[List[str]] = None,
         reward_func: Optional[Callable] = None,
     ) -> None:
+        """Initialize legacy Ultrastick environment."""
         self.max_action_value = 25.0
         self.initial_state = initial_state
         self.number_time_steps = number_time_steps
@@ -109,6 +110,7 @@ class LinearLongitudinalUltrastick(gym.Env):
         return float(abs(float(state[0]) - ref_val))
 
     def _get_info(self):
+        """Return auxiliary info for Gym API (currently empty)."""
         return {}
 
     def step(self, action: np.ndarray):
@@ -223,6 +225,7 @@ class ImprovedUltrastickEnv(gym.Env):
         initial_throttle: float = 0.0,
         use_initial_action_on_first_step: bool = True,
     ) -> None:
+        """Initialize improved Ultrastick environment."""
         super().__init__()
 
         # Physical constraints and normalization parameters
@@ -294,11 +297,13 @@ class ImprovedUltrastickEnv(gym.Env):
     # Helper indices
     @property
     def _idx_q(self) -> int:
+        """Index of pitch rate state."""
         # Ultrastick C matrix output order: [Va, alpha, theta, q, h]
         return 3
 
     @property
     def _idx_theta(self) -> int:
+        """Index of pitch angle state."""
         # Ultrastick C matrix output order: [Va, alpha, theta, q, h]
         return 2
 
@@ -344,6 +349,7 @@ class ImprovedUltrastickEnv(gym.Env):
         return arr.astype(np.float32)
 
     def _get_obs(self) -> np.ndarray:
+        """Return normalized observation vector."""
         y = self.state.reshape(-1)
         theta = float(y[self._idx_theta])
         q = float(y[self._idx_q])
@@ -376,6 +382,7 @@ class ImprovedUltrastickEnv(gym.Env):
         )
 
     def reset(self, seed: Optional[int] = None, options: Optional[dict] = None):
+        """Reset environment state and action history."""
         super().reset(seed=seed)
         self.model.initialise_system(
             self.initial_state,
@@ -401,6 +408,7 @@ class ImprovedUltrastickEnv(gym.Env):
         return self._get_obs(), {}
 
     def step(self, action: np.ndarray):
+        """Apply normalized elevator/throttle action and advance simulation."""
         # Normalize input (robust to nested/ragged actions)
         action = self._to_norm_action(action)
 

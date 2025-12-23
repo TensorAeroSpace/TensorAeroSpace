@@ -1,10 +1,8 @@
-"""
-Модуль определений типов данных для интеграции с Simulink/MATLAB.
+"""RTW/Simulink-compatible type definitions.
 
-Этот модуль содержит определения типов данных, совместимых с Real-Time Workshop (RTW)
-и Simulink Coder, используемых для генерации C-кода из моделей Simulink.
-Включает базовые типы данных фиксированной ширины, комплексные числа и структуры
-для обмена данными с моделями Simulink.
+This module defines fixed-width numeric types and ctypes structures compatible
+with Simulink Coder / Real-Time Workshop (RTW) generated code. It is used by
+some models shipped with TensorAeroSpace.
 """
 
 import ctypes
@@ -51,12 +49,7 @@ char_T = ctypes.c_byte
 
 
 class creal32_T(ctypes.Structure):
-    """
-    Комплексное число с 32-битными компонентами
-
-    Структура для представления комплексного числа с действительной
-    и мнимой частями типа real32_T (32-битное число с плавающей точкой).
-    """
+    """Complex number with 32-bit floating point components."""
 
     _fields_ = [
         ("re", real32_T),
@@ -65,12 +58,7 @@ class creal32_T(ctypes.Structure):
 
 
 class creal64_T(ctypes.Structure):
-    """
-    Комплексное число с 64-битными компонентами
-
-    Структура для представления комплексного числа с действительной
-    и мнимой частями типа real64_T (64-битное число с плавающей точкой).
-    """
+    """Complex number with 64-bit floating point components."""
 
     _fields_ = [
         ("re", real64_T),
@@ -79,12 +67,7 @@ class creal64_T(ctypes.Structure):
 
 
 class creal_T(ctypes.Structure):
-    """
-    Комплексное число с компонентами типа real_T
-
-    Структура для представления комплексного числа с действительной
-    и мнимой частями типа real_T (double precision).
-    """
+    """Complex number with components of type ``real_T`` (double precision)."""
 
     _fields_ = [
         ("re", real_T),
@@ -93,12 +76,7 @@ class creal_T(ctypes.Structure):
 
 
 class cint8_T(ctypes.Structure):
-    """
-    Комплексное число с 8-битными знаковыми целыми компонентами
-
-    Структура для представления комплексного числа с действительной
-    и мнимой частями типа int8_T (8-битное знаковое целое).
-    """
+    """Complex number with 8-bit signed integer components."""
 
     _fields_ = [
         ("re", int8_T),
@@ -107,12 +85,7 @@ class cint8_T(ctypes.Structure):
 
 
 class cuint8_T(ctypes.Structure):
-    """
-    Комплексное число с 8-битными беззнаковыми целыми компонентами
-
-    Структура для представления комплексного числа с действительной
-    и мнимой частями типа uint8_T (8-битное беззнаковое целое).
-    """
+    """Complex number with 8-bit unsigned integer components."""
 
     _fields_ = [
         ("re", uint8_T),
@@ -121,12 +94,7 @@ class cuint8_T(ctypes.Structure):
 
 
 class cint16_T(ctypes.Structure):
-    """
-    Комплексное число с 16-битными знаковыми целыми компонентами
-
-    Структура для представления комплексного числа с действительной
-    и мнимой частями типа int16_T (16-битное знаковое целое).
-    """
+    """Complex number with 16-bit signed integer components."""
 
     _fields_ = [
         ("re", int16_T),
@@ -135,12 +103,7 @@ class cint16_T(ctypes.Structure):
 
 
 class cuint16_T(ctypes.Structure):
-    """
-    Комплексное число с 16-битными беззнаковыми целыми компонентами
-
-    Структура для представления комплексного числа с действительной
-    и мнимой частями типа uint16_T (16-битное беззнаковое целое).
-    """
+    """Complex number with 16-bit unsigned integer components."""
 
     _fields_ = [
         ("re", uint16_T),
@@ -149,12 +112,7 @@ class cuint16_T(ctypes.Structure):
 
 
 class cint32_T(ctypes.Structure):
-    """
-    Комплексное число с 32-битными знаковыми целыми компонентами
-
-    Структура для представления комплексного числа с действительной
-    и мнимой частями типа int32_T (32-битное знаковое целое).
-    """
+    """Complex number with 32-bit signed integer components."""
 
     _fields_ = [
         ("re", int32_T),
@@ -163,12 +121,7 @@ class cint32_T(ctypes.Structure):
 
 
 class cuint32_T(ctypes.Structure):
-    """
-    Комплексное число с 32-битными беззнаковыми целыми компонентами
-
-    Структура для представления комплексного числа с действительной
-    и мнимой частями типа uint32_T (32-битное беззнаковое целое).
-    """
+    """Complex number with 32-bit unsigned integer components."""
 
     _fields_ = [
         ("re", uint32_T),
@@ -177,12 +130,7 @@ class cuint32_T(ctypes.Structure):
 
 
 class cint64_T(ctypes.Structure):
-    """
-    Комплексное число с 64-битными знаковыми целыми компонентами
-
-    Структура для представления комплексного числа с действительной
-    и мнимой частями типа int64_T (64-битное знаковое целое).
-    """
+    """Complex number with 64-bit signed integer components."""
 
     _fields_ = [
         ("re", int64_T),
@@ -191,12 +139,7 @@ class cint64_T(ctypes.Structure):
 
 
 class cuint64_T(ctypes.Structure):
-    """
-    Комплексное число с 64-битными беззнаковыми целыми компонентами
-
-    Структура для представления комплексного числа с действительной
-    и мнимой частями типа uint64_T (64-битное беззнаковое целое).
-    """
+    """Complex number with 64-bit unsigned integer components."""
 
     _fields_ = [
         ("re", uint64_T),

@@ -45,28 +45,25 @@ class LongitudinalF16(ModelBase):
         )
 
     def get_param(self):
-        """
-            Получить параметры объекта управления
+        """Get control object parameters.
 
         Returns:
-            Параметры объекта управления
+            Control object parameters.
         """
         return self.param
 
     def set_param(self, new_param):
-        """
-           Установка новых параметров объекта управления
+        """Set new control object parameters.
 
         Args:
-           new_param: параметры объекта управления
+           new_param: Control object parameters.
         """
         self.param = new_param
 
     def run_step(self, u: matlab.double):
-        """
-        Расчет состояния объекта управления
+        """Calculate control object state.
 
-        Управляющий сигнал имеет вид:
+        Control signal format:
 
         >>> stab_act = 0
         >>> [
@@ -74,12 +71,12 @@ class LongitudinalF16(ModelBase):
         >>> ]
 
         Args:
-            u: управляющий сигнал
+            u: Control signal.
 
         Returns:
-            Состояние объекта управления
+            Control object state.
 
-        Пример использования:
+        Usage example:
 
         >>> from tensoraerospace.aerospacemodel.f16.nonlinear.longitudinal import initial_state, LongitudinalF16
         >>> model = LongitudinalF16(initial_state)

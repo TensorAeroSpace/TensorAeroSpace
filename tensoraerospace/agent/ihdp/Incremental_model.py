@@ -1,3 +1,9 @@
+"""Incremental model component for IHDP.
+
+This module contains the incremental model used for online system
+identification within the IHDP algorithm.
+"""
+
 from typing import Tuple
 
 import numpy as np
@@ -27,6 +33,16 @@ class IncrementalModel:
         input_magnitude_limits: float = 25,
         input_rate_limits: float = 60,
     ) -> None:
+        """Initialize incremental model buffers and limits.
+
+        Args:
+            selected_states: Names of states.
+            selected_input: Names of control inputs.
+            number_time_steps: Horizon length.
+            discretisation_time: Sampling period.
+            input_magnitude_limits: Max control magnitude.
+            input_rate_limits: Max control rate change.
+        """
         # Define the inputs to the incremental model
         self.xt_1 = None
         self.xt = None
@@ -60,14 +76,14 @@ class IncrementalModel:
         self.input_rate_limits = input_rate_limits
 
     def save_matrix(self):
-        """Сохранить матрицы"""
+        """Save identification matrices to disk (NumPy .npy files)."""
         np.save("./incremental_model/g", self.G)
         np.save("./incremental_model/f", self.F)
         np.save("./incremental_model/delta_ut", self.delta_ut)
         np.save("./incremental_model/delta_xt", self.delta_xt)
 
     def load_matrix(self):
-        """Загрузить матрицы"""
+        """Load identification matrices from disk (NumPy .npy files)."""
         self.G = np.load(
             "./incremental_model/g.npy",
         )
@@ -82,11 +98,7 @@ class IncrementalModel:
         )
 
     def build_A_LS_matrix(self) -> np.ndarray:
-        """Строит матрицу А, необходимую для онлайн-метода идентификации методом наименьших квадратов.
-
-        Returns:
-            A_LS_matrix: Матрица наименьших квадратов
-        """
+        """Build the least-squares A matrix used for online identification."""
 
         if self.time_step >= self.L:
             x_component = np.flip(
@@ -107,11 +119,7 @@ class IncrementalModel:
         return A_LS_matrix
 
     def build_x_LS_vector(self) -> np.ndarray:
-        """Строит вектор x, требуемый в методе наименьших квадратов онлайн-идентификации системы.
-
-        Returns:
-            x_LS_vector: x вектор который в требуется в наименьших квадратах
-        """
+        """Build the least-squares x vector used for online identification."""
         if self.time_step == 0:
             self.xt_1 = self.xt
 
@@ -141,15 +149,7 @@ class IncrementalModel:
     def identify_incremental_model_LS(
         self, xt: np.ndarray, ut_0: np.ndarray
     ) -> np.ndarray:
-        """Вычисляет матрицы F и G идентификации системы
-
-        Args:
-            xt (_type_): текущее состояние на временном шаге t
-            ut_0 (_type_): входной сигнал на текущем временном шаге
-
-        Returns:
-            G (_type_): матрица распределения входных данных
-        """
+        """Estimate F and G matrices for the incremental model (least squares)."""
         # Verifying that the inputs meets the platforms constraints
         if self.time_step == 0:
             self.ut_1 = ut_0
@@ -203,10 +203,10 @@ class IncrementalModel:
         return self.G
 
     def evaluate_incremental_model(self, *args) -> np.ndarray:
-        """Оценивает состояния следующего временного шага
+        """Estimate states for the next time step.
 
         Returns:
-            xt1_est (_type_): оценка состояния следующего временного шага
+            xt1_est (_type_): Estimated state for the next time step.
         """
 
         if len(args) == 0:
@@ -305,7 +305,7 @@ class IncrementalModel:
             return xt1_est
 
     def update_incremental_model_attributes(self) -> None:
-        """Атрибуты, которые меняются с каждым временным шагом, обновляются"""
+        """Update attributes that change with each time step."""
 
         # Update the object state and input variables
         self.xt_1 = self.xt
@@ -313,11 +313,11 @@ class IncrementalModel:
         self.time_step += 1
 
     def restart_time_step(self) -> None:
-        """Обнуление временного шага"""
+        """Reset time step to zero."""
         self.time_step = 0
 
     def restart_incremental_model(self) -> None:
-        """Перезапускает инкрементную модель."""
+        """Restart the incremental model."""
         self.time_step = 0
         self.store_delta_xt = np.zeros((self.number_states, self.number_time_steps))
         self.store_delta_ut = np.zeros((self.number_inputs, self.number_time_steps))

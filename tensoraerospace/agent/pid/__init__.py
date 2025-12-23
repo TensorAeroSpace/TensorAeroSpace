@@ -1,3 +1,9 @@
+"""PID-based control baselines.
+
+This module provides utilities for running classic PID controllers and logging
+their performance in TensorAeroSpace environments.
+"""
+
 import datetime
 import json
 from pathlib import Path
@@ -12,36 +18,35 @@ from ..base import (
 
 
 class PID(BaseRLModel):
-    """
-    Класс PIDController реализует ПИД-регулятор для систем управления.
+    """PID controller implementation for control systems.
 
-    Этот класс предназначен для создания и использования ПИД-регулятора в системах
-    автоматического управления. ПИД-регулятор использует пропорциональный (P), интегральный (I)
-    и дифференциальный (D) компоненты для вычисления управляющего сигнала.
-
-    Атрибуты:
-        kp (float): Коэффициент пропорциональной составляющей.
-        ki (float): Коэффициент интегральной составляющей.
-        kd (float): Коэффициент дифференциальной составляющей.
-        dt (float): Шаг времени (разница времени между последовательными обновлениями).
-        integral (float): Накопленное значение интегральной составляющей.
-        prev_error (float): Предыдущее значение ошибки для вычисления дифференциальной составляющей.
-
-    Методы:
-        update(setpoint, measurement): Вычисляет и возвращает управляющий сигнал на основе заданного значения и текущего измерения.
+    This class implements a PID (Proportional-Integral-Derivative) controller
+    for automatic control systems. The PID controller uses proportional (P),
+    integral (I), and derivative (D) components to compute the control signal.
 
     Args:
-        kp (float): Коэффициент пропорциональной составляющей.
-        ki (float): Коэффициент интегральной составляющей.
-        kd (float): Коэффициент дифференциальной составляющей.
-        dt (float): Шаг времени (разница времени между последовательными обновлениями).
+        env: Gymnasium environment. Defaults to None.
+        kp (float): Proportional gain. Defaults to 1.
+        ki (float): Integral gain. Defaults to 1.
+        kd (float): Derivative gain. Defaults to 0.5.
+        dt (float): Time step (time difference between consecutive updates). Defaults to 0.01.
 
-    Пример:
-        >>> pid = PIDController(0.1, 0.01, 0.05, 1)
-        >>> control_signal = pid.update(10, 7)
+    Attributes:
+        kp (float): Proportional gain.
+        ki (float): Integral gain.
+        kd (float): Derivative gain.
+        dt (float): Time step.
+        integral (float): Accumulated integral value.
+        prev_error (float): Previous error value for derivative computation.
+        env: Gymnasium environment.
+
+    Example:
+        >>> pid = PID(env=env, kp=0.1, ki=0.01, kd=0.05, dt=1)
+        >>> control_signal = pid.select_action(10, 7)
     """
 
     def __init__(self, env=None, kp=1, ki=1, kd=0.5, dt=0.01):
+        """Initialize PID controller parameters."""
         self.kp = kp
         self.ki = ki
         self.kd = kd
@@ -51,22 +56,21 @@ class PID(BaseRLModel):
         self.env = env
 
     def select_action(self, setpoint, measurement):
-        """
-        Вычисляет и возвращает управляющий сигнал на основе заданного значения (setpoint) и текущего измерения.
+        """Compute and return control signal based on setpoint and measurement.
 
-        Этот метод использует текущее измерение и заданное значение для вычисления ошибки,
-        затем применяет ПИД-алгоритм для вычисления управляющего сигнала.
+        This method uses the current measurement and setpoint to compute the error,
+        then applies the PID algorithm to compute the control signal.
 
         Args:
-            setpoint (float): Заданное значение, к которому должна стремиться система.
-            measurement (float): Текущее измеренное значение.
+            setpoint (float): Desired value that the system should reach.
+            measurement (float): Current measured value.
 
         Returns:
-            float: Управляющий сигнал, вычисленный на основе ПИД-регулятора.
+            float: Control signal computed by the PID controller.
 
-        Пример:
-            >>> pid = PIDController(0.1, 0.01, 0.05, 1)
-            >>> control_signal = pid.update(10, 7)
+        Example:
+            >>> pid = PID(env=env, kp=0.1, ki=0.01, kd=0.05, dt=1)
+            >>> control_signal = pid.select_action(10, 7)
             >>> print(control_signal)
         """
         error = setpoint - measurement
@@ -77,10 +81,10 @@ class PID(BaseRLModel):
         return output
 
     def get_param_env(self):
-        """Получает параметры среды и агента для сохранения.
+        """Get environment and agent parameters for saving.
 
         Returns:
-            dict: Словарь с параметрами среды и политики агента.
+            dict: Dictionary with environment and agent policy parameters.
         """
         class_name = self.env.unwrapped.__class__.__name__
         module_name = self.env.unwrapped.__class__.__module__
@@ -119,16 +123,16 @@ class PID(BaseRLModel):
         }
 
     def save(self, path=None):
-        """Сохраняет модель PID в указанной директории.
+        """Save PID model to the specified directory.
 
-        Если путь не указан, создает директорию с текущей датой и временем.
+        If path is not specified, creates a directory with current date and time.
 
         Args:
-            path (str, optional): Путь, где будет сохранена модель. Если None,
-                                создается директория с текущей датой и временем.
+            path (str, optional): Path where the model will be saved. If None,
+                creates a directory with current date and time.
 
         Returns:
-            Path: Путь к директории с сохраненной моделью.
+            Path: Path to the directory with saved model.
         """
         if path is None:
             path = Path.cwd()
@@ -153,16 +157,16 @@ class PID(BaseRLModel):
 
     @classmethod
     def __load(cls, path):
-        """Загружает модель PID из указанной директории.
+        """Load PID model from the specified directory.
 
         Args:
-            path (str or Path): Путь к директории с сохраненной моделью.
+            path (str or Path): Path to directory with saved model.
 
         Returns:
-            PID: Загруженный экземпляр модели PID.
+            PID: Loaded PID model instance.
 
         Raises:
-            TheEnvironmentDoesNotMatch: Если тип агента не соответствует ожидаемому.
+            TheEnvironmentDoesNotMatch: If agent type does not match expected.
         """
         path = Path(path)
         config_path = path / "config.json"
@@ -186,15 +190,15 @@ class PID(BaseRLModel):
 
     @classmethod
     def from_pretrained(cls, repo_name, access_token=None, version=None):
-        """Загружает предобученную модель из локального пути или Hugging Face Hub.
+        """Load pretrained model from local path or Hugging Face Hub.
 
         Args:
-            repo_name (str): Имя репозитория или локальный путь к модели.
-            access_token (str, optional): Токен доступа для Hugging Face Hub.
-            version (str, optional): Версия модели для загрузки.
+            repo_name (str): Repository name or local path to model.
+            access_token (str, optional): Access token for Hugging Face Hub.
+            version (str, optional): Model version to load.
 
         Returns:
-            PID: Загруженный экземпляр модели PID.
+            PID: Loaded PID model instance.
         """
         path = Path(repo_name)
         # Проверяем существование пути (включая относительные пути)

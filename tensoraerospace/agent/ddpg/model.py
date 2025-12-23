@@ -1,3 +1,9 @@
+"""Deep Deterministic Policy Gradient (DDPG) agent.
+
+This module implements a DDPG agent and supporting neural network components
+used for continuous-control problems in TensorAeroSpace environments.
+"""
+
 from __future__ import annotations
 
 import datetime
@@ -28,22 +34,30 @@ try:
 except Exception:
     # Fallback no-op tqdm if not available
     def tqdm(iterable=None, total=None, desc=None):
+        """Lightweight tqdm fallback that behaves as a pass-through iterator."""
         if iterable is None:
 
             class _Dummy:
+                """Context manager emulating tqdm when library is unavailable."""
+
                 def __enter__(self):
+                    """Enter dummy context."""
                     return self
 
                 def __exit__(self, exc_type, exc, tb):
+                    """Exit dummy context."""
                     return False
 
                 def update(self, n=1):
+                    """No-op update placeholder."""
                     pass
 
                 def set_postfix(self, **kwargs):
+                    """No-op postfix setter placeholder."""
                     pass
 
                 def write(self, s):
+                    """Print a message in absence of real tqdm."""
                     print(s)
 
             return _Dummy()
@@ -58,19 +72,26 @@ try:
 except Exception:
 
     class SummaryWriter:  # type: ignore
+        """Fallback SummaryWriter when tensorboard is unavailable."""
+
         def __init__(self, *args, **kwargs):
+            """Fallback SummaryWriter that stores nothing when tensorboard is absent."""
             pass
 
         def add_scalar(self, *args, **kwargs):
+            """No-op scalar logging."""
             pass
 
         def add_histogram(self, *args, **kwargs):
+            """No-op histogram logging."""
             pass
 
         def flush(self):
+            """No-op flush."""
             pass
 
         def close(self):
+            """No-op close."""
             pass
 
 
@@ -489,16 +510,32 @@ class PolicyNetwork(nn.Module):
         self.linear3.weight.data.uniform_(-init_w, init_w)
         self.linear3.bias.data.uniform_(-init_w, init_w)
 
-        # Store action space bounds for automatic scaling
+        # Store action space bounds for automatic scaling.
+        #
+        # IMPORTANT: do not use the module-level `device` here. The network may be
+        # created on CPU even when CUDA is available (common in unit tests), and
+        # using a global device would split parameters (CPU) from these tensors
+        # (CUDA) causing device-mismatch errors. Buffers follow the module device
+        # when `.to(...)` is called.
+        param_device = self.linear1.weight.device
         if action_low is not None and action_high is not None:
-            scale = (action_high - action_low) / 2.0
-            self.action_scale = torch.FloatTensor(scale).to(device)
-            bias = (action_high + action_low) / 2.0
-            self.action_bias = torch.FloatTensor(bias).to(device)
+            low = np.asarray(action_low, dtype=np.float32)
+            high = np.asarray(action_high, dtype=np.float32)
+            scale = (high - low) / 2.0
+            bias = (high + low) / 2.0
+            action_scale = torch.tensor(scale, dtype=torch.float32, device=param_device)
+            action_bias = torch.tensor(bias, dtype=torch.float32, device=param_device)
         else:
             # Default to [-1, 1] if bounds not provided
-            self.action_scale = torch.FloatTensor([1.0]).to(device)
-            self.action_bias = torch.FloatTensor([0.0]).to(device)
+            action_scale = torch.ones(
+                (num_actions,), dtype=torch.float32, device=param_device
+            )
+            action_bias = torch.zeros(
+                (num_actions,), dtype=torch.float32, device=param_device
+            )
+
+        self.register_buffer("action_scale", action_scale)
+        self.register_buffer("action_bias", action_bias)
 
     def forward(self, state: torch.Tensor) -> torch.Tensor:
         """Forward pass to compute the action for a given state.
@@ -525,7 +562,10 @@ class PolicyNetwork(nn.Module):
         Returns:
             Action as numpy array, scaled to action space bounds.
         """
-        state = torch.FloatTensor(state).unsqueeze(0).to(device)
+        model_device = next(self.parameters()).device
+        state = torch.tensor(state, dtype=torch.float32, device=model_device).unsqueeze(
+            0
+        )
         with torch.no_grad():
             action = self.forward(state)
         return action.squeeze(0).cpu().numpy()
@@ -1131,6 +1171,15 @@ class DDPG:
         path: Union[str, Path],
         load_gradients: bool = False,
     ) -> "DDPG":
+        """Load a DDPG agent from disk.
+
+        Args:
+            path: Folder containing saved weights and config.json.
+            load_gradients: Whether to restore optimizer states.
+
+        Returns:
+            DDPG: Reconstructed agent instance.
+        """
         path = Path(path)
         config_path = path / "config.json"
         policy_path = path / "policy.pth"

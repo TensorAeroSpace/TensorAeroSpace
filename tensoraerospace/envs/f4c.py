@@ -41,6 +41,7 @@ class LinearLongitudinalF4C(gym.Env):
         output_space: Optional[list[str]] = None,
         reward_func: Optional[Callable] = None,
     ) -> None:
+        """Initialize F-4C longitudinal environment."""
         self.initial_state = initial_state
         self.number_time_steps = number_time_steps
         self.tracking_states = (
@@ -97,33 +98,34 @@ class LinearLongitudinalF4C(gym.Env):
         self.done = False
 
     def _get_info(self):
+        """Return auxiliary info for Gym API (currently empty)."""
         return {}
 
     @staticmethod
     def reward(state, ref_signal, ts):
-        """Оценка управления
+        """Evaluate control performance.
 
         Args:
-            state (_type_): Текущее состояния
-            ref_signal (_type_): Заданное состояние
-            ts (_type_): Временное шаг
+            state (_type_): Current state.
+            ref_signal (_type_): Reference state.
+            ts (_type_): Time step.
 
         Returns:
-            reward (float): Оценка управления
+            reward (float): Control performance evaluation.
         """
         return float(np.abs(state[0] - ref_signal[:, ts]).item())
 
     def step(self, action: np.ndarray):
-        """Выполнения шага моделирования
+        """Execute a simulation step.
 
         Args:
-            action (np.ndarray): Массив управляющего сигнала по выбранным органам
+            action (np.ndarray): Array of control signals for selected control surfaces.
 
         Returns:
-            next_state (np.ndarray): Следующие состояние объекта управления
-            reward (np.ndarray): Оценка действий алгоритма управления
-            done (bool): Статус моделирования, завершено или нет
-            logging (any): Дополнительная информацию (не используется)
+            next_state (np.ndarray): Next state of the control object.
+            reward (np.ndarray): Evaluation of control algorithm actions.
+            done (bool): Simulation status, whether completed or not.
+            logging (any): Additional information (not used).
         """
         self.current_step += 1
         # Clamp incoming action(s) in degrees and convert to radians for the model
@@ -176,7 +178,8 @@ class LinearLongitudinalF4C(gym.Env):
         return observation, info
 
     def render(self):
-        """Визуальное отображение действий в среде. В статусе WIP
+        """Visual display of actions in the environment. Status: WIP.
+
         Raises:
             NotImplementedError
         """
@@ -818,6 +821,7 @@ class F4CPitchEnvNormalized(gym.Env):
         sin_a = np.sin(theta_rad)
 
         def rotate_point(px, py):
+            """Rotate a point around aircraft center by theta_rad."""
             dx = px - cx
             dy = py - cy
             return (cx + dx * cos_a - dy * sin_a, cy + dx * sin_a + dy * cos_a)

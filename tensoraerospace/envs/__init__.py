@@ -1,3 +1,11 @@
+"""Gymnasium environments shipped with TensorAeroSpace.
+
+This package exposes a set of Gymnasium-compatible environments for aerospace
+control tasks (aircraft, rockets, satellites). Environments are re-exported
+here for convenience, and are also registered in the top-level
+``tensoraerospace`` package.
+"""
+
 from .b747 import ImprovedB747Env as ImprovedB747Env  # noqa: F401
 from .b747 import LinearLongitudinalB747 as LinearLongitudinalB747
 from .comsat import ComSatEnv as ComSatEnv  # noqa: F401

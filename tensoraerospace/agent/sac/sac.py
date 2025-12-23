@@ -76,6 +76,7 @@ class SAC(BaseRLModel):
         verbose_histogram: bool = False,
         seed: int = 42,
     ) -> None:
+        """Initialize SAC agent, networks, replay buffer, and optimizers."""
         super().__init__()
         self.gamma = gamma
         self.tau = tau
@@ -280,6 +281,7 @@ class SAC(BaseRLModel):
         )
 
     def train(self, *args, **kwargs) -> None:
+        """Train SAC for the given number of episodes."""
         num_episodes = (
             int(args[0]) if len(args) > 0 else int(kwargs.get("num_episodes", 1))
         )
@@ -336,6 +338,7 @@ class SAC(BaseRLModel):
                 )
 
     def get_param_env(self) -> Dict[str, Dict[str, Any]]:
+        """Return serializable configuration of environment and policy."""
         class_name = self.env.unwrapped.__class__.__name__
         module_name = self.env.unwrapped.__class__.__module__
         env_name = f"{module_name}.{class_name}"
@@ -459,6 +462,7 @@ class SAC(BaseRLModel):
         path: Union[str, Path],
         load_gradients: bool = False,
     ) -> "SAC":
+        """Load a SAC agent from checkpoint folder."""
         path = Path(path)
         config_path = path / "config.json"
         critic_path = path / "critic.pth"

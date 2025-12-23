@@ -1,3 +1,9 @@
+"""Neural-network dynamics models for MPC.
+
+This module defines neural network models used to approximate system dynamics
+for model predictive control in TensorAeroSpace.
+"""
+
 import numpy as np
 import torch
 import torch.nn as nn
@@ -217,29 +223,28 @@ class DynamicsNN:
         val_split: float = 0.2,
         verbose_epoch: int = 10,
     ) -> None:
-        """
-        Обучение и валидация модели на предоставленных данных.
+        """Train and validate the model on provided data.
 
-        Параметры:
+        Args:
             states: torch.Tensor
-                Входные состояния системы.
+                Input system states.
             controls: torch.Tensor
-                Управляющие воздействия.
+                Control inputs.
             next_states: torch.Tensor
-                Целевые состояния системы.
-            epochs: int, по умолчанию 5
-                Количество эпох обучения.
-            batch_size: int, по умолчанию 1024
-                Размер батча для обучения.
-            val_split: float, по умолчанию 0.2
-                Доля данных для валидации.
-            verbose_epoch: int, по умолчанию 10
-                Частота вывода информации об обучении.
+                Target system states.
+            epochs: int, default 5
+                Number of training epochs.
+            batch_size: int, default 1024
+                Batch size for training.
+            val_split: float, default 0.2
+                Fraction of data for validation.
+            verbose_epoch: int, default 10
+                Frequency of training information output.
 
-        Возвращает:
+        Returns:
             None
 
-        Сохраняет лучшую модель в файл 'best_model.pth'.
+        Saves the best model to 'best_model.pth'.
         """
         # Разделение на обучающую и валидационную выборки
         val_size = int(len(states) * val_split)
@@ -306,18 +311,17 @@ class DynamicsNN:
     def predict(
         self, state: np.ndarray | torch.Tensor, control: np.ndarray | torch.Tensor
     ) -> np.ndarray:
-        """
-        Предсказание следующего состояния системы на основе текущего состояния и управления.
+        """Predict next system state based on current state and control.
 
-        Параметры:
-            state: array-like или torch.Tensor
-                Текущее состояние системы.
-            control: array-like или torch.Tensor
-                Управляющее воздействие.
+        Args:
+            state: array-like or torch.Tensor
+                Current system state.
+            control: array-like or torch.Tensor
+                Control input.
 
-        Возвращает:
+        Returns:
             numpy.ndarray:
-                Предсказанное следующее состояние системы.
+                Predicted next system state.
         """
         with torch.no_grad():
             state_tensor = torch.tensor(state, dtype=torch.float32)
