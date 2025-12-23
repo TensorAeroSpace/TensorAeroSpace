@@ -1,3 +1,9 @@
+"""IHDP agent wrapper.
+
+This module defines the high-level IHDPAgent class that composes Actor, Critic,
+and IncrementalModel components.
+"""
+
 import numpy as np
 
 from .Actor import Actor
@@ -30,6 +36,18 @@ class IHDPAgent(object):
         number_time_steps: int,
         indices_tracking_states: list[int],
     ) -> None:
+        """Compose IHDP agent components.
+
+        Args:
+            actor_settings: Configuration for Actor.
+            critic_settings: Configuration for Critic.
+            incremental_settings: Configuration for IncrementalModel.
+            tracking_states: Tracked state names.
+            selected_states: State variable names.
+            selected_input: Control input names.
+            number_time_steps: Episode length.
+            indices_tracking_states: Indices of tracked states.
+        """
         actor_keys = [
             "start_training",
             "layers",
@@ -133,15 +151,15 @@ class IHDPAgent(object):
     def predict(
         self, xt: np.ndarray, reference_signals: np.ndarray, time_step: int
     ) -> np.ndarray:
-        """Сделать предикт и получить следующи сигналы управления
+        """Make prediction and get next control signals.
 
         Args:
-            xt (_type_): Текущее состояния объекта управления на шаге t
-            reference_signals (_type_): Заданный сигнал управления
-            time_step (_type_): Текущий сигнал управления
+            xt (_type_): Current state of the control object at step t.
+            reference_signals (_type_): Reference control signal.
+            time_step (_type_): Current time step.
 
         Returns:
-            ut (_type_): Сигнал управления на шаге t+1
+            ut (_type_): Control signal at step t+1.
         """
         # Обработка входных состояний для совместимости с новой моделью F16
         xt = self._process_state_input(xt)
@@ -186,13 +204,13 @@ class IHDPAgent(object):
         return ut
 
     def _process_state_input(self, xt: np.ndarray | list) -> np.ndarray:
-        """Обработка входных состояний для совместимости с новой моделью F16
+        """Process input states for compatibility with the new F16 model.
 
         Args:
-            xt: Входное состояние (может быть различных форматов)
+            xt: Input state (can be in various formats)
 
         Returns:
-            Обработанное состояние в правильном формате
+            Processed state in the correct format.
         """
         # Конвертация в numpy array если необходимо
         if not isinstance(xt, np.ndarray):

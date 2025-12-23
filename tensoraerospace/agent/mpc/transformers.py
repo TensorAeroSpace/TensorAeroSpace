@@ -1,3 +1,9 @@
+"""Transformer components used by MPC agents.
+
+This module provides building blocks such as positional encoding and
+transformer-based sequence models used in some MPC-related implementations.
+"""
+
 import math
 
 import torch
@@ -5,25 +11,24 @@ import torch.nn as nn
 
 
 class PositionalEncoding(nn.Module):
-    """
-    Модуль позиционного кодирования для трансформерных моделей.
+    """Sinusoidal positional encoding for transformer models.
 
-    Добавляет позиционную информацию к входным эмбеддингам, используя синусоидальные функции.
+    Adds positional information to input embeddings using sinusoidal functions,
+    as described in the original Transformer paper.
 
     Args:
-        d_model (int): Размерность модели (размер эмбеддингов).
-        dropout (float): Вероятность dropout. По умолчанию 0.1.
-        max_len (int): Максимальная длина последовательности. По умолчанию 5000.
+        d_model (int): Embedding dimension.
+        dropout (float): Dropout probability. Defaults to ``0.1``.
+        max_len (int): Maximum sequence length. Defaults to ``5000``.
     """
 
     def __init__(self, d_model: int, dropout: float = 0.1, max_len: int = 5000):
-        """
-        Инициализация модуля позиционного кодирования.
+        """Initialize the positional encoding module.
 
         Args:
-            d_model (int): Размерность модели.
-            dropout (float): Вероятность dropout.
-            max_len (int): Максимальная длина последовательности.
+            d_model (int): Embedding dimension.
+            dropout (float): Dropout probability.
+            max_len (int): Maximum sequence length.
         """
         super(PositionalEncoding, self).__init__()
         self.dropout = nn.Dropout(p=dropout)
@@ -39,35 +44,34 @@ class PositionalEncoding(nn.Module):
         self.register_buffer("pe", pe)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        """
-        Применяет позиционное кодирование к входным данным.
+        """Apply positional encoding.
 
         Args:
-            x (torch.Tensor): Входной тензор размерности (seq_len, batch_size, d_model).
+            x (torch.Tensor): Input tensor of shape
+                ``(seq_len, batch_size, d_model)``.
 
         Returns:
-            torch.Tensor: Тензор с добавленным позиционным кодированием.
+            torch.Tensor: Tensor with positional encoding applied.
         """
         x = x + self.pe[: x.size(0), :]
         return self.dropout(x)
 
 
 class TransformerDynamicsModel(nn.Module):
-    """
-    Трансформерная модель для моделирования динамики системы.
+    """Transformer-based model for learning system dynamics.
 
-    Использует архитектуру трансформера для предсказания следующего состояния системы
-    на основе текущего состояния и управляющего воздействия.
+    Predicts the next system state from a sequence of state+action inputs using
+    a Transformer encoder.
 
     Args:
-        input_dim (int): Размерность входных данных (состояние + управление).
-        output_dim (int): Размерность выходных данных (следующее состояние).
-        d_model (int): Размерность модели трансформера. По умолчанию 64.
-        nhead (int): Количество голов внимания. По умолчанию 4.
-        num_encoder_layers (int): Количество слоев энкодера. По умолчанию 2.
-        dim_feedforward (int): Размерность feed-forward сети. По умолчанию 256.
-        dropout (float): Вероятность dropout. По умолчанию 0.1.
-        seq_len (int): Длина последовательности. По умолчанию 1.
+        input_dim (int): Input dimension (state + control).
+        output_dim (int): Output dimension (next state).
+        d_model (int): Transformer model dimension. Defaults to ``64``.
+        nhead (int): Number of attention heads. Defaults to ``4``.
+        num_encoder_layers (int): Number of encoder layers. Defaults to ``2``.
+        dim_feedforward (int): Feed-forward layer dimension. Defaults to ``256``.
+        dropout (float): Dropout probability. Defaults to ``0.1``.
+        seq_len (int): Sequence length. Defaults to ``1``.
     """
 
     def __init__(
@@ -81,18 +85,17 @@ class TransformerDynamicsModel(nn.Module):
         dropout=0.1,
         seq_len=1,
     ):
-        """
-        Инициализация трансформерной модели динамики.
+        """Initialize the transformer dynamics model.
 
         Args:
-            input_dim (int): Размерность входных данных.
-            output_dim (int): Размерность выходных данных.
-            d_model (int): Размерность модели трансформера.
-            nhead (int): Количество голов внимания.
-            num_encoder_layers (int): Количество слоев энкодера.
-            dim_feedforward (int): Размерность feed-forward сети.
-            dropout (float): Вероятность dropout.
-            seq_len (int): Длина последовательности.
+            input_dim: Input dimension.
+            output_dim: Output dimension.
+            d_model: Model dimension.
+            nhead: Number of attention heads.
+            num_encoder_layers: Number of encoder layers.
+            dim_feedforward: Feed-forward dimension.
+            dropout: Dropout probability.
+            seq_len: Sequence length.
         """
         super(TransformerDynamicsModel, self).__init__()
 
@@ -114,14 +117,13 @@ class TransformerDynamicsModel(nn.Module):
         self.fc_out = nn.Linear(d_model, output_dim)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        """
-        Прямое распространение через трансформерную модель.
+        """Forward pass through transformer model.
 
         Args:
-            x (torch.Tensor): Входной тензор размерности (batch_size, input_dim).
+            x (torch.Tensor): Input tensor of shape (batch_size, input_dim).
 
         Returns:
-            torch.Tensor: Предсказанное следующее состояние размерности (batch_size, output_dim).
+            torch.Tensor: Predicted next state of shape (batch_size, output_dim).
         """
         # x: (batch_size, input_dim)
 

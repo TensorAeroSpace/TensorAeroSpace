@@ -1,3 +1,9 @@
+"""A2C training utilities with NARX-style features.
+
+This module provides helper classes and functions used to train A2C agents with
+NARX (Nonlinear AutoRegressive with eXogenous inputs) representations.
+"""
+
 import numpy as np
 import torch
 from torch import nn
@@ -6,15 +12,12 @@ from torch.utils.tensorboard import SummaryWriter
 
 
 def clip_grad_norm_(module, max_grad_norm):
-    """
-    Обрезает градиенты параметров модуля для предотвращения "взрыва градиентов".
+    """Clip gradients to prevent exploding gradients.
 
     Args:
-        module (torch.nn.Module): Модуль, градиенты параметров которого необходимо обрезать.
-        max_grad_norm (float): Максимальная норма градиента.
-
-    Returns:
-        None
+        module (torch.optim.Optimizer): Optimizer whose parameter gradients will
+            be clipped.
+        max_grad_norm (float): Maximum gradient norm.
     """
     nn.utils.clip_grad_norm_(
         [p for g in module.param_groups for p in g["params"]], max_grad_norm
@@ -22,67 +25,39 @@ def clip_grad_norm_(module, max_grad_norm):
 
 
 def mish(input):
-    """
-    Применяет функцию активации Mish к входным данным.
-
-    Args:
-        input (Tensor): Входные данные для функции активации.
-
-    Returns:
-        Tensor: Результат применения функции активации Mish.
-    """
+    """Apply the Mish activation function."""
     return input * torch.tanh(F.softplus(input))
 
 
 class Mish(nn.Module):
-    """
-    Модуль PyTorch, реализующий функцию активации Mish.
-    """
+    """PyTorch module implementing the Mish activation."""
 
     def __init__(self):
+        """Initialize Mish activation module."""
         super().__init__()
 
     def forward(self, input):
-        """
-        Выполняет прямой проход функции активации Mish.
-
-        Args:
-            input (torch.Tensor): Входной тензор для применения функции активации.
-
-        Returns:
-            torch.Tensor: Результат применения функции активации Mish к входному тензору.
-        """
+        """Forward pass."""
         return mish(input)
 
 
 def t(x):
-    """
-    Преобразует входные данные в тензор PyTorch типа float.
-
-    Args:
-        x (array-like или torch.Tensor): Входные данные для преобразования.
-
-    Returns:
-        torch.Tensor: Преобразованный тензор PyTorch.
-    """
+    """Convert input to a float PyTorch tensor."""
     x = np.array(x) if not isinstance(x, np.ndarray) else x
     return torch.from_numpy(x).float()
 
 
 class Actor(nn.Module):
-    """
-    Модуль PyTorch, реализующий актора для алгоритмов актор-критик.
+    """Actor network for an actor-critic algorithm.
 
     Args:
-        state_dim (int): Размерность пространства состояний.
-        n_actions (int): Количество действий.
-        activation (torch.nn.Module): Функция активации.
+        state_dim (int): State dimension.
+        n_actions (int): Action dimension.
+        activation (torch.nn.Module): Activation class (e.g., ``nn.Tanh``).
     """
 
     def __init__(self, state_dim, n_actions, activation=nn.Tanh):
-        """
-        Инициализирует экземпляр класса Actor.
-        """
+        """Initialize the actor network."""
         super().__init__()
         self.n_actions = n_actions
         self.model = nn.Sequential(
@@ -97,15 +72,7 @@ class Actor(nn.Module):
         self.register_parameter("logstds", logstds_param)
 
     def forward(self, X):
-        """
-        Выполняет прямой проход модели актора.
-
-        Args:
-            X (Tensor): Входные данные, представляющие состояние среды.
-
-        Returns:
-            torch.distributions.Normal: Нормальное распределение, представляющее политику действий.
-        """
+        """Compute an action distribution for a batch of states."""
         means = self.model(X)
         stds = torch.clamp(self.logstds.exp(), 1e-3, 50)
 
@@ -113,15 +80,20 @@ class Actor(nn.Module):
 
 
 class Critic(nn.Module):
-    """
-    Модуль PyTorch, реализующий критика для алгоритмов актор-критик.
+    """Critic network for an actor-critic algorithm.
 
     Args:
-        state_dim (int): Размерность пространства состояний.
-        activation (torch.nn.Module): Функция активации.
+        state_dim (int): State dimension.
+        activation (torch.nn.Module): Activation class (e.g., ``nn.Tanh``).
     """
 
     def __init__(self, state_dim, activation=nn.Tanh):
+        """Build critic network layers.
+
+        Args:
+            state_dim: State dimension.
+            activation: Activation module class.
+        """
         super().__init__()
         self.model = nn.Sequential(
             nn.Linear(state_dim + state_dim, 64),
@@ -132,30 +104,12 @@ class Critic(nn.Module):
         )
 
     def forward(self, X):
-        """
-        Выполняет прямой проход модели критика.
-
-        Args:
-            X (Tensor): Входные данные, представляющие состояние среды.
-
-        Returns:
-            Tensor: Оценка значения состояния.
-        """
+        """Estimate state value for input features."""
         return self.model(X)
 
 
 def discounted_rewards(rewards, dones, gamma):
-    """
-    Расчет дисконтированных вознаграждений для последовательности вознаграждений с учетом фактора завершения эпизода.
-
-    Args:
-        rewards (list[float]): Список полученных вознаграждений.
-        dones (list[bool]): Список булевых значений, указывающих, является ли соответствующее вознаграждение последним в эпизоде.
-        gamma (float): Коэффициент дисконтирования.
-
-    Returns:
-        list[float]: Список дисконтированных вознаграждений.
-    """
+    """Compute discounted returns for a sequence of rewards."""
     ret = 0
     discounted = []
     for reward, done in zip(rewards[::-1], dones[::-1]):
@@ -166,17 +120,19 @@ def discounted_rewards(rewards, dones, gamma):
 
 
 def process_memory_narx(memory, gamma=0.99, discount_rewards=True):
-    """
-    Обработка памяти для агента с использованием модели NARX (Nonlinear AutoRegressive with eXogenous inputs).
-    Преобразует сохраненные в памяти взаимодействия в формат, подходящий для обучения модели.
+    """Convert collected transitions into tensors suitable for training.
+
+    The function also builds an augmented critic input that concatenates the
+    current state with a lagged state (previous step) to mimic a NARX-style
+    representation.
 
     Args:
-        memory (list[tuple]): Список кортежей вида (действие, вознаграждение, состояние, следующее состояние, завершено).
-        gamma (float, optional): Коэффициент дисконтирования для расчета дисконтированных вознаграждений. По умолчанию 0.99.
-        discount_rewards (bool, optional): Флаг, указывающий на необходимость дисконтирования вознаграждений. По умолчанию True.
+        memory (list[tuple]): Tuples ``(action, reward, state, next_state, done)``.
+        gamma (float): Discount factor. Defaults to ``0.99``.
+        discount_rewards (bool): If True, uses discounted returns. Defaults to True.
 
     Returns:
-        tuple: Кортеж, содержащий обработанные действия, вознаграждения, состояния, следующие состояния, флаги завершения и критические состояния.
+        tuple: ``(actions, rewards, states, next_states, dones, critic_states)``.
     """
     actions = []
     states = []
@@ -214,18 +170,7 @@ def process_memory_narx(memory, gamma=0.99, discount_rewards=True):
 
 
 class A2CLearner:
-    """
-    Класс, реализующий процесс обучения агента с использованием алгоритма Actor-Critic с функцией преимущества (A2C).
-
-    Args:
-        actor (torch.nn.Module): модель актера, определяющая политику действий агента.
-        critic (torch.nn.Module): модель критика, оценивающая стоимость состояний.
-        gamma (float, optional): коэффициент дисконтирования. По умолчанию равен 0.9.
-        entropy_beta (float, optional): коэффициент для регулирования энтропии в функции потерь актера. По умолчанию равен 0.01.
-        actor_lr (float, optional): скорость обучения для оптимизатора актера. По умолчанию равна 4e-4.
-        critic_lr (float, optional): скорость обучения для оптимизатора критика. По умолчанию равна 4e-3.
-        max_grad_norm (float, optional): максимальная норма градиента для обрезки. По умолчанию равна 0.5.
-    """
+    """Learner implementing Advantage Actor-Critic (A2C) updates."""
 
     def __init__(
         self,
@@ -237,6 +182,17 @@ class A2CLearner:
         critic_lr=4e-3,
         max_grad_norm=0.5,
     ):
+        """Initialize learner with optimizers and hyperparameters.
+
+        Args:
+            actor: Policy network.
+            critic: Value network.
+            gamma: Discount factor.
+            entropy_beta: Entropy regularization weight.
+            actor_lr: Learning rate for actor.
+            critic_lr: Learning rate for critic.
+            max_grad_norm: Gradient clipping norm.
+        """
         self.gamma = gamma
         self.max_grad_norm = max_grad_norm
         self.actor = actor
@@ -247,13 +203,12 @@ class A2CLearner:
         self.writer = SummaryWriter()
 
     def learn(self, memory, steps, discount_rewards=True):
-        """
-        Функция обучения, использующая собранные в памяти взаимодействия для обновления моделей актера и критика.
+        """Update actor/critic using a batch of collected transitions.
 
         Args:
-            memory (list): список взаимодействий среды, содержащих состояния, действия, вознаграждения и т.д.
-            steps (int): текущий шаг обучения, используется для логирования.
-            discount_rewards (bool, optional): флаг для использования дисконтированных вознаграждений. По умолчанию True.
+            memory (list): Collected transitions.
+            steps (int): Global step index used for logging.
+            discount_rewards (bool): If True, uses discounted returns as TD target.
         """
         (
             actions,
@@ -326,16 +281,16 @@ class A2CLearner:
 
 
 class Runner:
-    """
-    Класс для выполнения взаимодействия агента с средой и сбора данных обучения.
-
-    Args:
-        env (gym.Env): среда, с которой взаимодействует агент.
-        actor (torch.nn.Module): модель актера, используемая для выбора действий.
-        writer (SummaryWriter): объект для логирования в TensorBoard.
-    """
+    """Environment interaction loop used to collect training data."""
 
     def __init__(self, env, actor, writer):
+        """Create runner for data collection.
+
+        Args:
+            env: Environment instance.
+            actor: Policy network used to select actions.
+            writer: TensorBoard writer for logging rewards.
+        """
         self.env = env
         self.actor = actor
         self.state = None
@@ -349,17 +304,11 @@ class Runner:
 
     @staticmethod
     def _flatten_observation(observation):
-        """
-        Приводит состояние среды к вектору (n,) для совместимости с линейными слоями.
-        Gymnasium среды F16 возвращают столбцы (n, 1), что ломало умножение матриц
-        в Actor/Critic. Преобразуем состояние в одно измерение один раз.
-        """
+        """Flatten environment observations to shape ``(n,)``."""
         return np.asarray(observation, dtype=np.float32).reshape(-1)
 
     def reset(self):
-        """
-        Сброс среды и внутренних переменных перед началом нового эпизода.
-        """
+        """Reset environment and episode state."""
         self.episode_reward = 0
         self.done = False
         self.state, info = self.env.reset()
@@ -368,15 +317,14 @@ class Runner:
         self.prev_action = np.zeros(self.env.action_space.shape)
 
     def run(self, max_steps, memory=None) -> list:
-        """
-        Выполнение заданного числа шагов в среде для сбора данных обучения.
+        """Run the environment for a fixed number of steps and collect transitions.
 
         Args:
-            max_steps (int): максимальное количество шагов в среде за один вызов функции.
-            memory (list, optional): список для сохранения взаимодействий. Если None, будет создан новый список.
+            max_steps (int): Number of environment steps to execute.
+            memory (list, optional): Existing list to append transitions to.
 
         Returns:
-            list: собранные взаимодействия среды.
+            list: Collected transitions.
         """
         if not memory:
             memory = []

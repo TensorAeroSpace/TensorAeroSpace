@@ -237,21 +237,21 @@ def rise_time(
     low_threshold: float = 0.1,
     high_threshold: float = 0.9,
 ) -> Optional[float]:
-    """
-    Рассчитывает время нарастания (время перехода от 10% до 90% установившегося значения).
+    """Compute rise time between two relative thresholds.
+
+    Rise time is defined as the time (in samples) required for the system
+    response to go from ``low_threshold`` to ``high_threshold`` of the final
+    (steady-state) value.
 
     Args:
-        control_signal: numpy.ndarray
-            Сигнал управления системы.
-        system_signal: numpy.ndarray
-            Сигнал системы, на которую воздействует управление.
-        low_threshold: float, optional (default: 0.1)
-            Нижний порог (10% от установившегося значения).
-        high_threshold: float, optional (default: 0.9)
-            Верхний порог (90% от установившегося значения).
+        control_signal: Reference/command signal.
+        system_signal: System response signal.
+        low_threshold: Lower fraction of the final value. Defaults to ``0.1``.
+        high_threshold: Upper fraction of the final value. Defaults to ``0.9``.
 
     Returns:
-        Optional[float]: Время нарастания в индексах массива или None, если не удалось определить.
+        Optional[float]: Rise time expressed in array indices (samples). Returns
+        ``None`` if thresholds cannot be detected.
     """
     # Установившееся значение
     y_final = np.mean(control_signal[int(0.9 * len(control_signal)) :])
@@ -271,15 +271,14 @@ def rise_time(
 
 
 def peak_time(system_signal: np.ndarray) -> Optional[int]:
-    """
-    Рассчитывает время достижения первого максимума (пикового времени).
+    """Return the sample index of the first peak in the response.
 
     Args:
-        system_signal: numpy.ndarray
-            Сигнал системы, на которую воздействует управление.
+        system_signal: System response signal.
 
     Returns:
-        Optional[int]: Индекс времени достижения первого максимума или None.
+        Optional[int]: Index of the first detected peak. If no peaks are
+        detected, returns the index of the maximum value.
     """
     peaks, _ = find_peaks(system_signal)
 
@@ -291,17 +290,14 @@ def peak_time(system_signal: np.ndarray) -> Optional[int]:
 
 
 def maximum_deviation(control_signal: np.ndarray, system_signal: np.ndarray) -> float:
-    """
-    Рассчитывает максимальное отклонение от установившегося значения.
+    """Compute maximum absolute deviation from the steady-state reference.
 
     Args:
-        control_signal: numpy.ndarray
-            Сигнал управления системы.
-        system_signal: numpy.ndarray
-            Сигнал системы, на которую воздействует управление.
+        control_signal: Reference/command signal.
+        system_signal: System response signal.
 
     Returns:
-        float: Максимальное отклонение от установившегося значения.
+        float: Maximum absolute deviation from the steady-state value.
     """
     y_final = np.mean(control_signal[int(0.9 * len(control_signal)) :])
     return np.max(np.abs(system_signal - y_final))
@@ -310,17 +306,14 @@ def maximum_deviation(control_signal: np.ndarray, system_signal: np.ndarray) -> 
 def integral_absolute_error(
     control_signal: np.ndarray, system_signal: np.ndarray
 ) -> float:
-    """
-    Рассчитывает интегральную абсолютную ошибку (IAE).
+    """Compute the Integral Absolute Error (IAE).
 
     Args:
-        control_signal: numpy.ndarray
-            Сигнал управления системы.
-        system_signal: numpy.ndarray
-            Сигнал системы, на которую воздействует управление.
+        control_signal: Reference/command signal.
+        system_signal: System response signal.
 
     Returns:
-        float: Значение интегральной абсолютной ошибки.
+        float: IAE value, computed as sum(abs(r - y)).
     """
     error = control_signal - system_signal
     return np.sum(np.abs(error))
@@ -329,17 +322,14 @@ def integral_absolute_error(
 def integral_squared_error(
     control_signal: np.ndarray, system_signal: np.ndarray
 ) -> float:
-    """
-    Рассчитывает интегральную квадратичную ошибку (ISE).
+    """Compute the Integral Squared Error (ISE).
 
     Args:
-        control_signal: numpy.ndarray
-            Сигнал управления системы.
-        system_signal: numpy.ndarray
-            Сигнал системы, на которую воздействует управление.
+        control_signal: Reference/command signal.
+        system_signal: System response signal.
 
     Returns:
-        float: Значение интегральной квадратичной ошибки.
+        float: ISE value, computed as sum((r - y)**2).
     """
     error = control_signal - system_signal
     return np.sum(error**2)
@@ -348,19 +338,15 @@ def integral_squared_error(
 def integral_time_absolute_error(
     control_signal: np.ndarray, system_signal: np.ndarray, dt: float = 1.0
 ) -> float:
-    """
-    Рассчитывает интегральную абсолютную ошибку, взвешенную по времени (ITAE).
+    """Compute the Integral Time Absolute Error (ITAE).
 
     Args:
-        control_signal: numpy.ndarray
-            Сигнал управления системы.
-        system_signal: numpy.ndarray
-            Сигнал системы, на которую воздействует управление.
-        dt: float, optional (default: 1.0)
-            Шаг дискретизации по времени.
+        control_signal: Reference/command signal.
+        system_signal: System response signal.
+        dt: Time step used to weight the error by time. Defaults to ``1.0``.
 
     Returns:
-        float: Значение ITAE.
+        float: ITAE value, computed as sum(t * abs(r - y)).
     """
     error = np.abs(control_signal - system_signal)
     time_weights = np.arange(len(error)) * dt
@@ -368,17 +354,17 @@ def integral_time_absolute_error(
 
 
 def oscillation_count(system_signal: np.ndarray, threshold: float = 0.01) -> int:
-    """
-    Подсчитывает количество колебаний в переходном процессе.
+    """Estimate number of oscillations in the transient response.
+
+    The function counts peaks and valleys above ``threshold`` and estimates the
+    number of full oscillation cycles.
 
     Args:
-        system_signal: numpy.ndarray
-            Сигнал системы, на которую воздействует управление.
-        threshold: float, optional (default: 0.01)
-            Минимальная амплитуда колебания для учета.
+        system_signal: System response signal.
+        threshold: Minimum peak magnitude to be considered. Defaults to ``0.01``.
 
     Returns:
-        int: Количество колебаний.
+        int: Estimated oscillation count.
     """
     # Находим пики и впадины
     peaks, _ = find_peaks(system_signal, height=threshold)
@@ -392,17 +378,15 @@ def oscillation_count(system_signal: np.ndarray, threshold: float = 0.01) -> int
 
 
 def steady_state_value(control_signal: np.ndarray, percentage: float = 0.1) -> float:
-    """
-    Рассчитывает установившееся значение сигнала.
+    """Estimate steady-state value from the tail of a signal.
 
     Args:
-        control_signal: numpy.ndarray
-            Сигнал управления системы.
-        percentage: float, optional (default: 0.1)
-            Процент от конца сигнала для усреднения (10% по умолчанию).
+        control_signal: Signal to summarize.
+        percentage: Fraction of the tail used for averaging. Defaults to ``0.1``
+            (last 10% of samples).
 
     Returns:
-        float: Установившееся значение.
+        float: Estimated steady-state value.
     """
     start_idx = int((1 - percentage) * len(control_signal))
     return np.mean(control_signal[start_idx:])
@@ -411,19 +395,18 @@ def steady_state_value(control_signal: np.ndarray, percentage: float = 0.1) -> f
 def performance_index(
     control_signal: np.ndarray, system_signal: np.ndarray, dt: float = 1.0
 ) -> float:
-    """
-    Рассчитывает комплексный индекс качества переходного процесса.
+    """Compute a composite transient-quality index (lower is better).
+
+    The current implementation combines several criteria with fixed weights:
+    ISE, ITAE, and overshoot.
 
     Args:
-        control_signal: numpy.ndarray
-            Сигнал управления системы.
-        system_signal: numpy.ndarray
-            Сигнал системы, на которую воздействует управление.
-        dt: float, optional (default: 1.0)
-            Шаг дискретизации по времени.
+        control_signal: Reference/command signal.
+        system_signal: System response signal.
+        dt: Time step used by the time-weighted error term. Defaults to ``1.0``.
 
     Returns:
-        float: Комплексный индекс качества (чем меньше, тем лучше).
+        float: Composite quality index (lower is better).
     """
     # Комбинируем различные критерии качества
     ise = integral_squared_error(control_signal, system_signal)

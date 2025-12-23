@@ -165,13 +165,13 @@ class LongitudinalX15(ModelBase):
         )
 
     def run_step(self, ut_0: np.ndarray) -> np.ndarray:
-        """Выполняет один временной шаг итерации.
+        """Execute one time step iteration.
 
         Args:
-            ut_0 (np.ndarray): Вектор управления
+            ut_0 (np.ndarray): Control vector.
 
         Returns:
-            xt1 (np.ndarray): Состояние объекта управления на шаге t+1
+            np.ndarray: Control object state at step t+1.
         """
         if self.time_step != 0:
             ut_1 = self.store_input[:, self.time_step - 1]
@@ -232,28 +232,25 @@ class LongitudinalX15(ModelBase):
         return np.array(self.xt1)
 
     def update_system_attributes(self):
-        """Атрибуты, которые меняются с каждым временным шагом, обновляются"""
+        """Update attributes that change with each time step."""
         self.xt = self.xt1
         self.time_step += 1
 
     def get_state(
         self, state_name: str, to_deg: bool = False, to_rad: bool = False
     ) -> np.ndarray:
-        """
-        Получить массив состояния
+        """Get state array history.
 
         Args:
-            state_name: Название состояния
-            to_deg: Конвертировать в градусы
-            to_rad: Конвертировать в радианы
+            state_name (str): State name.
+            to_deg (bool): Convert to degrees. Defaults to False.
+            to_rad (bool): Convert to radians. Defaults to False.
 
         Returns:
-            np.ndarray: Массив истории выбранного состояния
+            np.ndarray: Array of selected state history.
 
-        Пример:
-
-        >>> state_hist = model.get_state('alpha', to_deg=True)
-
+        Example:
+            >>> state_hist = model.get_state('alpha', to_deg=True)
         """
         if state_name == "wz":
             state_name = "q"
@@ -275,19 +272,18 @@ class LongitudinalX15(ModelBase):
     def get_control(
         self, control_name: str, to_deg: bool = False, to_rad: bool = False
     ) -> np.ndarray:
-        """
-        Получить массив сигнала управления
+        """Get control signal array history.
 
         Args:
-            control_name: Название сигнала управления
-            to_deg: Конвертировать в градусы
+            control_name (str): Control signal name.
+            to_deg (bool): Convert to degrees. Defaults to False.
+            to_rad (bool): Convert to radians. Defaults to False.
 
         Returns:
-            np.ndarray: Массив истории выбранного сигнала управления
+            np.ndarray: Array of selected control signal history.
 
-        Пример:
-
-        >>> state_hist = model.get_control('stab', to_deg=True)
+        Example:
+            >>> control_hist = model.get_control('stab', to_deg=True)
         """
         if control_name in ["stab", "ele"]:
             control_name = "ele"
@@ -311,18 +307,17 @@ class LongitudinalX15(ModelBase):
     def get_output(
         self, state_name: str, to_deg: bool = False, to_rad: bool = False
     ) -> np.ndarray:
-        """
-        Получить массив выходного сигнала
+        """Get output signal array history.
 
         Args:
-            state_name (str): Название выходного сигнала
-            to_deg (bool): Конвертировать в градусы
-            to_rad (bool): Конвертировать в радианы
+            state_name (str): Output signal name.
+            to_deg (bool): Convert to degrees. Defaults to False.
+            to_rad (bool): Convert to radians. Defaults to False.
 
         Returns:
-            np.ndarray: Массив истории выбранного выходного сигнала
+            np.ndarray: Array of selected output signal history.
 
-        Пример:
+        Example:
             >>> output_hist = model.get_output('alpha', to_deg=True)
         """
         self.output_history = output2dict(self.store_outputs, self.selected_output)
@@ -341,24 +336,23 @@ class LongitudinalX15(ModelBase):
         to_rad: bool = False,
         figsize: tuple = (10, 10),
     ) -> plt.Figure:
-        """
-        Построить график выходного сигнала
+        """Plot output signal.
 
         Args:
-            output_name (str): Название выходного сигнала
-            time (np.ndarray): Массив времени
-            lang (str): Язык подписей ('rus' или 'eng')
-            to_deg (bool): Конвертировать в градусы
-            to_rad (bool): Конвертировать в радианы
-            figsize (tuple): Размер фигуры
+            output_name (str): Output signal name.
+            time (np.ndarray): Time array.
+            lang (str): Label language ('rus' or 'eng'). Defaults to "rus".
+            to_deg (bool): Convert to degrees. Defaults to False.
+            to_rad (bool): Convert to radians. Defaults to False.
+            figsize (tuple): Figure size. Defaults to (10, 10).
 
         Returns:
-            matplotlib.figure.Figure: Объект фигуры matplotlib
+            plt.Figure: Matplotlib figure object.
 
         Raises:
-            Exception: Если указаны одновременно to_rad и to_deg или неверное имя сигнала
+            Exception: If both to_rad and to_deg are specified, or if output_name is invalid.
 
-        Пример:
+        Example:
             >>> fig = model.plot_output('alpha', time_array, lang='rus', to_deg=True)
         """
         if to_rad and to_deg:

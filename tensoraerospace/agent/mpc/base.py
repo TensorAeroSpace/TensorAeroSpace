@@ -1,3 +1,9 @@
+"""Base classes and utilities for MPC agents.
+
+This module defines core MPC interfaces and shared helpers used across MPC
+agents in TensorAeroSpace.
+"""
+
 from typing import Callable, Dict, Tuple
 
 import numpy as np
@@ -76,16 +82,15 @@ class AircraftMPC:
     def cost_function(
         self, X: np.ndarray, U: np.ndarray, theta_ref_np: np.ndarray
     ) -> float:
-        """
-        Вычисляет значение целевой функции.
+        """Compute cost function value.
 
         Args:
-            X: Массив состояний (horizon+1, state_dim)
-            U: Массив управлений (horizon, control_dim)
-            theta_ref_np: Опорная траектория (horizon+1,)
+            X (np.ndarray): State array (horizon+1, state_dim).
+            U (np.ndarray): Control array (horizon, control_dim).
+            theta_ref_np (np.ndarray): Reference trajectory (horizon+1,).
 
         Returns:
-            Значение целевой функции.
+            float: Cost function value.
         """
         cost = 0
         # Ошибка отслеживания
@@ -98,14 +103,13 @@ class AircraftMPC:
         return float(cost)
 
     def penalty_function(self, U: np.ndarray) -> float:
-        """
-        Вычисляет значение штрафной функции для ограничений.
+        """Compute penalty function value for constraints.
 
         Args:
-            U: Массив управлений (horizon, control_dim)
+            U (np.ndarray): Control array (horizon, control_dim).
 
         Returns:
-            Значение штрафной функции.
+            float: Penalty function value.
         """
         penalty = 0
         # Ограничения на управление
@@ -119,16 +123,15 @@ class AircraftMPC:
     def total_cost(
         self, U: np.ndarray, x0: np.ndarray, theta_ref_np: np.ndarray
     ) -> float:
-        """
-        Вычисляет полное значение целевой функции с учётом штрафов.
+        """Compute total cost function value including penalties.
 
         Args:
-            U: Массив управлений (horizon, control_dim) - векторизованное представление
-            x0: Начальное состояние
-            theta_ref_np: Опорная траектория
+            U (np.ndarray): Control array (horizon, control_dim) - vectorized representation.
+            x0 (np.ndarray): Initial state.
+            theta_ref_np (np.ndarray): Reference trajectory.
 
         Returns:
-            Полное значение целевой функции.
+            float: Total cost function value.
         """
         U_reshaped = U.reshape((self.horizon, self.control_dim))
         X = self.predict_trajectory(x0, U_reshaped)
@@ -137,15 +140,14 @@ class AircraftMPC:
         ) + self.penalty_weight * self.penalty_function(U_reshaped)
 
     def predict_trajectory(self, x0: np.ndarray, U: np.ndarray) -> np.ndarray:
-        """
-        Прогнозирует траекторию состояний на основе модели динамики.
+        """Predict state trajectory based on dynamics model.
 
         Args:
-            x0: Начальное состояние
-            U: Массив управлений (horizon, control_dim)
+            x0 (np.ndarray): Initial state.
+            U (np.ndarray): Control array (horizon, control_dim).
 
         Returns:
-            Массив состояний (horizon+1, state_dim)
+            np.ndarray: State array (horizon+1, state_dim).
         """
         X = np.zeros((self.horizon + 1, self.state_dim))
         X[0] = x0
@@ -169,17 +171,16 @@ class AircraftMPC:
     def optimize_control(
         self, x0: np.ndarray, theta_ref: np.ndarray
     ) -> Tuple[np.ndarray, np.ndarray]:
-        """
-        Оптимизирует последовательность управления с использованием градиентного спуска.
+        """Optimize control sequence using gradient descent.
 
         Args:
-            x0: Начальное состояние системы размерности state_dim.
-            theta_ref: Опорная траектория размерности horizon+1.
+            x0 (np.ndarray): Initial system state of dimension state_dim.
+            theta_ref (np.ndarray): Reference trajectory of dimension horizon+1.
 
         Returns:
-            tuple:
-                - np.ndarray: Оптимальное управление на первом шаге (control_dim,).
-                - np.ndarray: Прогнозируемая траектория состояний размерности (horizon, state_dim).
+            Tuple[np.ndarray, np.ndarray]: Tuple containing:
+                - Optimal control at first step (control_dim,).
+                - Predicted state trajectory of dimension (horizon, state_dim).
         """
         theta_ref_np = np.array(theta_ref, dtype=np.float32)
 

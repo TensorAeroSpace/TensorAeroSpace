@@ -1,7 +1,7 @@
-"""Модуль аэрокосмических моделей TensorAeroSpace.
+"""Aerospace vehicle and spacecraft models used by TensorAeroSpace.
 
-Содержит коллекцию математических моделей различных ЛА и космических объектов
-для задач управления, моделирования и обучения с подкреплением.
+This package contains a collection of mathematical models of aircraft, rockets,
+and satellites used for control tasks, simulation, and reinforcement learning.
 """
 
 from .b747 import LongitudinalB747 as LongitudinalB747

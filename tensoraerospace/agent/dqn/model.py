@@ -1,3 +1,9 @@
+"""Deep Q-Network (DQN) implementation and utilities.
+
+This module implements a DQN agent and supporting data structures (e.g., replay
+buffer helpers) used in TensorAeroSpace.
+"""
+
 import json
 import time
 from pathlib import Path
@@ -31,12 +37,18 @@ class Model(nn.Module):
     """
 
     def __init__(self, num_actions: int) -> None:
+        """Initialize network layers.
+
+        Args:
+            num_actions: Number of discrete actions.
+        """
         super().__init__()
         self.fc1 = nn.LazyLinear(32)
         self.fc2 = nn.Linear(32, 32)
         self.out = nn.Linear(32, num_actions)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """Compute Q-values for a batch of observations."""
         x = F.relu(self.fc1(x))
         x = F.relu(self.fc2(x))
         return self.out(x)
@@ -105,6 +117,11 @@ class SumTree:
     """
 
     def __init__(self, capacity: int) -> None:
+        """Initialize sum tree for prioritized replay.
+
+        Args:
+            capacity: Maximum number of transitions to store.
+        """
         # buffer size; number of leaves in sum tree
         self.capacity = capacity
         # number of nodes in sum tree
@@ -240,6 +257,28 @@ class DQNAgent:
         log_dir: str | None = None,
         verbose_histogram: bool = False,
     ) -> None:
+        """Initialize DQN agent and replay buffer.
+
+        Args:
+            model: Online Q-network.
+            target_model: Target Q-network.
+            env: Gym/Gymnasium environment.
+            learning_rate: Optimizer learning rate.
+            epsilon: Initial epsilon for exploration.
+            epsilon_dacay: Multiplicative epsilon decay.
+            min_epsilon: Minimum epsilon value.
+            gamma: Discount factor.
+            batch_size: Training batch size.
+            target_update_iter: Steps between target updates.
+            train_nums: Total training steps to run.
+            buffer_size: Replay buffer capacity.
+            replay_period: Sampling period from buffer.
+            alpha: PER priority exponent.
+            beta: PER importance sampling exponent.
+            beta_increment_per_sample: Increment for beta per sample.
+            log_dir: Directory for TensorBoard logs.
+            verbose_histogram: Whether to log histograms extensively.
+        """
         # Models and optimizer
         self.device = _DEVICE
         self.model = model.to(self.device)
@@ -501,38 +540,19 @@ class DQNAgent:
         next_state: np.ndarray,
         done: bool,
     ) -> None:
-        """Сохранение перехода в буфере
-
-        Args:
-            priority (int): приоритет
-            obs (_type_): наблюдение
-            action (int): действие
-            reward (float): награда
-            next_state (_type_): следующее наблюдение
-            done: выполнено ли задание или нет
-
-        Returns:
-            ep_reward (float): суммарная награда за эпизод
-        """
+        """Store a transition in the replay buffer."""
 
         transition = [obs, action, reward, next_state, done]
         self.replay_buffer.add(priority, transition)
 
     # rank-based prioritization sampling
     def rand_based_sample(self, k):
+        """Placeholder for rank-based prioritized sampling (not implemented)."""
         pass
 
     # e-greedy
     def get_action(self, best_action: int) -> int:
-        """жадная функция стратегии.
-        Возвращает случайное действие если происходит исследование среды
-
-        Args:
-            best_action (int): лучшее действие
-
-        Returns:
-            action (float): принятое согласно стратегии действие
-        """
+        """Epsilon-greedy action selection."""
 
         if np.random.rand() < self.epsilon:
             return int(self.env.action_space.sample())
@@ -547,11 +567,7 @@ class DQNAgent:
         self.writer.add_scalar("Target/Update", 1, self.global_step)
 
     def get_target_value(self, obs: np.ndarray) -> np.ndarray:
-        """Функция получения q значений целевой нейросети
-
-        Returns:
-            q_values (float): q значения целевой сети
-        """
+        """Compute Q-values using the target network."""
         return cast(np.ndarray, self.target_model.predict(obs))
 
     def e_decay(self) -> None:
@@ -651,6 +667,28 @@ class PERNARXAgent:
         log_dir: str | None = None,
         verbose_histogram: bool = False,
     ) -> None:
+        """Initialize PER-NARX agent and buffers.
+
+        Args:
+            model: Online Q-network.
+            target_model: Target Q-network.
+            env: Gym/Gymnasium environment.
+            learning_rate: Optimizer learning rate.
+            epsilon: Initial epsilon for exploration.
+            epsilon_dacay: Multiplicative epsilon decay.
+            min_epsilon: Minimum epsilon value.
+            gamma: Discount factor.
+            batch_size: Training batch size.
+            target_update_iter: Steps between target updates.
+            train_nums: Total training steps to run.
+            buffer_size: Replay buffer capacity.
+            replay_period: Sampling period from buffer.
+            alpha: PER priority exponent.
+            beta: PER importance sampling exponent.
+            beta_increment_per_sample: Increment for beta per sample.
+            log_dir: Directory for TensorBoard logs.
+            verbose_histogram: Whether to log histograms extensively.
+        """
         self.device = _DEVICE
         self.model = model.to(self.device)
         self.target_model = target_model.to(self.device)
@@ -864,11 +902,11 @@ class PERNARXAgent:
         """Get batch for training.
 
         Args:
-            env (_type_): среда
-            render (bool, optional): визуализировать ли среду или нет
+            env (_type_): Environment.
+            render (bool, optional): Whether to visualize the environment or not.
 
         Returns:
-            ep_reward (float): суммарная награда за эпизод
+            ep_reward (float): Total reward for the episode.
         """
 
         obs_info = env.reset()
@@ -914,18 +952,18 @@ class PERNARXAgent:
         next_state: np.ndarray,
         done: bool,
     ) -> None:
-        """Сохранение перехода в буфере
+        """Store transition in replay buffer.
 
         Args:
-            priority (int): приоритет
-            obs (_type_): наблюдение
-            action (int): действие
-            reward (float): награда
-            next_state (_type_): следующее наблюдение
-            done: выполнено ли задание или нет
+            priority (int): Priority of the transition.
+            obs (_type_): Current observation.
+            action (int): Action taken.
+            reward (float): Reward received.
+            next_state (_type_): Next observation.
+            done: Whether the episode is finished or not.
 
         Returns:
-            ep_reward (float): суммарная награда за эпизод
+            ep_reward (float): Total reward for the episode.
         """
 
         transition = [obs, action, reward, next_state, done]
@@ -933,15 +971,18 @@ class PERNARXAgent:
 
     # rank-based prioritization sampling
     def rand_based_sample(self, k):
+        """Placeholder for rank-based prioritized sampling (not implemented)."""
         pass
 
     # e-greedy
     def get_action(self, best_action: int) -> int:
-        """жадная функция стратегии. Возвращает случайное действие если происходит исследование среды
+        """Epsilon-greedy strategy function. Returns random action if exploration occurs.
+
         Args:
-            best_action (int): лучшее действие
+            best_action (int): Best action according to the policy.
+
         Returns:
-            action (float): принятое согласно стратегии действие
+            action (float): Action chosen according to the strategy.
         """
 
         if np.random.rand() < self.epsilon:
@@ -955,10 +996,10 @@ class PERNARXAgent:
         self.target_model.load_state_dict(self.model.state_dict())
 
     def get_target_value(self, obs: np.ndarray) -> np.ndarray:
-        """Функция получения q значений целевой нейросети
+        """Get Q-values from target neural network.
 
         Returns:
-            q_values (float): q значения целевой сети
+            q_values (float): Q-values from the target network.
         """
         return cast(np.ndarray, self.target_model.predict(obs))
 

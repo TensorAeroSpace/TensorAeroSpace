@@ -152,6 +152,7 @@ def serialize_env(env):
 
     # Рекурсивно преобразуем все numpy массивы в списки
     def convert_numpy_to_list(obj):
+        """Recursively convert numpy arrays inside env data to Python lists."""
         if isinstance(obj, np.ndarray):
             return obj.tolist()
         elif isinstance(obj, dict):
@@ -177,6 +178,7 @@ def deserialize_env_params(env_params):
 
     # Рекурсивно преобразуем списки в numpy массивы для известных параметров
     def convert_list_to_numpy(obj, key=None):
+        """Recursively convert lists back to numpy arrays for known keys."""
         if isinstance(obj, list) and key in [
             "reference_signal",
             "initial_state",

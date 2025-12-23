@@ -7,41 +7,39 @@ from tensoraerospace.aerospacemodel.base import ModelBase
 
 
 class AngularF16(ModelBase):
-    """
+    """High-maneuverability F-16 aircraft control object in angular coordinates.
 
-    Объект управления высокомоневренный самолет F-16 ✈ в угловых координатах.
+    Action space:
+        * stab_act: Elevator [rad]
+        * ail_act: Ailerons [rad]
+        * dir_act: Rudder [rad]
 
-    Пространство действий:
-        * stab_act: руль высоты [рад]
-        * ail_act: элероны [рад]
-        * dir_act: руль направления [рад]
+    State space:
+        * alpha: Angle of attack [rad]
+        * beta: Sideslip angle [rad]
+        * wx: Roll angular velocity [rad/s]
+        * wy: Yaw angular velocity [rad/s]
+        * wz: Pitch angular velocity [rad/s]
+        * gamma: Roll angle [rad]
+        * psi: Yaw angle [rad]
+        * theta: Pitch angle [rad]
+        * stab: Elevator position [rad]
+        * ail: Aileron position [rad]
+        * dir: Rudder position [rad]
+        * dstab: Elevator angular velocity [rad/s]
+        * dail: Aileron angular velocity [rad/s]
+        * ddir: Rudder angular velocity [rad/s]
 
-    Пространство состояний:
-        * alpha: угол атаки [рад]
-        * beta: угол скольжения [рад]
-        * wx: угловая скорость крена [рад/с]
-        * wy: угловая скорость рысканья [рад/с]
-        * wz: угловая скорость тангажа [рад/с]
-        * gamma: крен [рад]
-        * psi: рысканье [рад]
-        * theta: тангаж [рад]
-        * stab: полжение руля высоты [рад]
-        * ail: полжение элеронов [рад]
-        * dir: положение руля направления [рад]
-        * dstab: угловая скорость руля высоты [рад/с]
-        * dail: угловая скорость элеронов [рад/с]
-        * ddir: угловая скорость руля направления [рад/с]
-
-    Пример использования:
+    Usage example:
 
     >>> from aerospacemodel.model.f16.nonlinear.angular import initial_state
     >>> model = AngularF16(initial_state)
     >>> x_t = model.run_step([ [0], [0], [0] ])
 
     Args:
-        x0: Начальное состояние
-        t0: (Optional) Начальное время
-        x0: (Optional) Шаг дискетизации
+        x0: Initial state.
+        t0: (Optional) Initial time.
+        dt: (Optional) Discretization step.
 
     """
 
@@ -77,28 +75,25 @@ class AngularF16(ModelBase):
         )
 
     def get_param(self):
-        """
-            Получить параметры объекта управления
+        """Get control object parameters.
 
         Returns:
-            Параметры объекта управления
+            Control object parameters.
         """
         return self.param
 
     def set_param(self, new_param):
-        """
-           Установка новых параметров объекта управления
+        """Set new control object parameters.
 
         Args:
-           new_param: параметры объекта управления
+           new_param: Control object parameters.
         """
         self.param = new_param
 
     def run_step(self, u: matlab.double):
-        """
-        Расчет состояния объекта управления
+        """Calculate control object state.
 
-        Управляющий сигнал имеет вид:
+        Control signal format:
 
         >>> stab_act, ail_act, dir_act = 0,0,0
         >>> [
@@ -108,12 +103,12 @@ class AngularF16(ModelBase):
         >>> ]
 
         Args:
-            u: управляющий сигнал
+            u: Control signal.
 
         Returns:
-            Состояние объекта управления
+            Control object state.
 
-        Пример использования:
+        Usage example:
         >>> from aerospacemodel.model.f16.nonlinear.angular import initial_state
         >>> model = AngularF16(initial_state)
         >>> xt = model.run_step([ [0], [0], [0] ])
