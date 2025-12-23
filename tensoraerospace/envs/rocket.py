@@ -41,6 +41,7 @@ class LinearLongitudinalMissileModel(gym.Env):
         output_space: Optional[list[str]] = None,
         reward_func: Optional[Callable] = None,
     ) -> None:
+        """Initialize linear missile model environment."""
         self.max_action_value = 25.0
         self.initial_state = initial_state
         self.number_time_steps = number_time_steps
@@ -93,6 +94,7 @@ class LinearLongitudinalMissileModel(gym.Env):
         self.done = False
 
     def _get_info(self):
+        """Return auxiliary info for Gym API (currently empty)."""
         return {}
 
     @staticmethod
@@ -197,6 +199,7 @@ class ImprovedMissileEnv(gym.Env):
         initial_elevator_deg: float = 0.0,
         use_initial_action_on_first_step: bool = True,
     ) -> None:
+        """Initialize improved missile environment with normalized action/obs."""
         super().__init__()
 
         # Physical/normalization limits
@@ -260,13 +263,16 @@ class ImprovedMissileEnv(gym.Env):
 
     @property
     def _idx_q(self) -> int:
+        """Index of pitch rate state."""
         return 2  # [u, w, q, theta]
 
     @property
     def _idx_theta(self) -> int:
+        """Index of pitch angle state."""
         return 3  # [u, w, q, theta]
 
     def _get_obs(self) -> np.ndarray:
+        """Return normalized observation vector."""
         theta = float(self.state[self._idx_theta])
         q = float(self.state[self._idx_q])
         idx = int(np.clip(self.current_step, 0, self.reference_signal.shape[1] - 1))
@@ -284,12 +290,14 @@ class ImprovedMissileEnv(gym.Env):
         )
 
     def get_init_args(self):
+        """Return initialization arguments for reproducibility."""
         init_args = self.init_args.copy()
         init_args.pop("self", None)
         init_args.pop("__class__", None)
         return init_args
 
     def reset(self, seed=None, options=None):
+        """Reset environment state and counters."""
         super().reset(seed=seed)
         self.model.initialise_system(self.initial_state, self.number_time_steps)
         self.state = np.array(self.initial_state, dtype=float).reshape(-1)
@@ -300,6 +308,7 @@ class ImprovedMissileEnv(gym.Env):
         return self._get_obs(), {}
 
     def step(self, action: np.ndarray):
+        """Apply normalized action and advance simulation by one step."""
         # action in [-1, 1]
         action = np.asarray(action, dtype=np.float32).reshape(-1)
         action = np.clip(action, -1.0, 1.0)
@@ -384,8 +393,9 @@ class ImprovedMissileEnv(gym.Env):
         )
 
     def render(self, mode: str = "human"):
-        # Optional: visualization can be added later
+        """Rendering not implemented for missile environment."""
         return
 
     def close(self):
+        """Close environment resources."""
         return

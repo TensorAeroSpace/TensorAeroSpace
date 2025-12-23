@@ -25,6 +25,16 @@ def initialize_tensor(
     min_val: float | None = None,
     max_val: float | None = None,
 ) -> torch.Tensor:
+    """Create a trainable tensor with optional clipping bounds.
+
+    Args:
+        size: Desired tensor shape.
+        min_val: Optional lower bound.
+        max_val: Optional upper bound.
+
+    Returns:
+        Initialized tensor with gradients enabled.
+    """
     # Handle None values and prevent division by zero
     if min_val is None and max_val is None:
         # Default initialization with standard normal distribution
@@ -67,6 +77,7 @@ class Net(nn.Module):
     """
 
     def __init__(self):
+        """Initialize small MLP dynamics model."""
         super(Net, self).__init__()
         self.fc1 = nn.Linear(3, 128)  # 3 states + 1 action = 4
         self.fc2 = nn.Linear(128, 128)
@@ -112,6 +123,19 @@ class MPCOptimizationAgent(BaseRLModel):
         criterion=torch.nn.MSELoss(),
         optimization_lr=1,
     ):
+        """Initialize gradient-based MPC agent.
+
+        Args:
+            gamma: Discount factor.
+            action_dim: Action dimension.
+            observation_dim: Observation dimension.
+            model: Differentiable dynamics model.
+            cost_function: Callable cost function.
+            env: Environment instance.
+            lr: Learning rate for dynamics optimizer.
+            criterion: Loss used to fit dynamics.
+            optimization_lr: Step size for action optimization.
+        """
         self.gamma = gamma
         self.action_dim = action_dim
         self.observation_dim = observation_dim
@@ -125,6 +149,7 @@ class MPCOptimizationAgent(BaseRLModel):
         self.optimization_lr = optimization_lr
 
     def from_pretrained(self, repo_name, access_token=None, version=None):
+        """Load pretrained dynamics model from local path or Hub."""
         folder_path = super().from_pretrained(repo_name, access_token, version)
         self.system_model = torch.load(
             os.path.join(folder_path, "model.pth"), weights_only=False

@@ -40,6 +40,7 @@ class LinearLongitudinalUAV(gym.Env):
         output_space: tuple[float, float] = ["theta", "q"],
         reward_func: Callable | None = None,
     ) -> None:
+        """Initialize UAV longitudinal environment."""
         self.initial_state = initial_state
         self.number_time_steps = number_time_steps
         self.selected_state_output = output_space
@@ -79,6 +80,7 @@ class LinearLongitudinalUAV(gym.Env):
         self.done = False
 
     def _get_info(self):
+        """Return auxiliary info for Gym API (currently empty)."""
         return {}
 
     @staticmethod

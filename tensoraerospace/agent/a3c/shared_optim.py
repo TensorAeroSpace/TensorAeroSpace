@@ -37,6 +37,15 @@ class SharedAdam(torch.optim.Adam):
         eps: float = 1e-8,
         weight_decay: float = 0,
     ) -> None:
+        """Initialize shared Adam optimizer.
+
+        Args:
+            params: Iterable of parameters to optimize.
+            lr: Learning rate.
+            betas: Beta coefficients for Adam moments.
+            eps: Numerical stability term.
+            weight_decay: L2 weight decay.
+        """
         super(SharedAdam, self).__init__(
             params, lr=lr, betas=betas, eps=eps, weight_decay=weight_decay
         )

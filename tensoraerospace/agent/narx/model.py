@@ -29,6 +29,13 @@ class NARX(nn.Module):
     """
 
     def __init__(self, input_size, hidden_size, output_size):
+        """Initialize NARX MLP.
+
+        Args:
+            input_size: Input feature dimension.
+            hidden_size: Hidden layer width.
+            output_size: Output feature dimension.
+        """
         super(NARX, self).__init__()
         self.hidden_size = hidden_size
         self.input_layer = nn.Linear(input_size + output_size, hidden_size)

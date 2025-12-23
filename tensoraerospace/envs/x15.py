@@ -91,6 +91,7 @@ class LinearLongitudinalX15(gym.Env):
         self.done = False
 
     def _get_info(self):
+        """Return auxiliary info for Gym API (currently empty)."""
         return {}
 
     @staticmethod

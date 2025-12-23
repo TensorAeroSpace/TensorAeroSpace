@@ -31,6 +31,7 @@ def init_weights(m):
 
 
 class ActorCritic(nn.Module):
+    """Combined policy/value network used by GAIL."""
     def __init__(self, num_inputs, num_outputs, hidden_size, std=0.0):
         """Create actor-critic networks.
 
@@ -106,6 +107,7 @@ def ppo_iter(mini_batch_size, states, actions, log_probs, returns, advantage):
 
 
 class Discriminator(nn.Module):
+    """Binary classifier distinguishing expert vs. policy trajectories."""
     def __init__(self, num_inputs, hidden_size):
         """Create the discriminator network.
 
@@ -122,6 +124,7 @@ class Discriminator(nn.Module):
         self.linear3.bias.data.mul_(0.0)
 
     def forward(self, x):
+        """Compute discriminator probability for state-action pairs."""
         x = F.tanh(self.linear1(x))
         x = F.tanh(self.linear2(x))
         prob = F.sigmoid(self.linear3(x))
@@ -129,6 +132,7 @@ class Discriminator(nn.Module):
 
 
 class GAIL:
+    """Generative Adversarial Imitation Learning trainer."""
     def __init__(self, env, learning_rate, max_steps, mini_batch_size, epochs, data):
         """Initialize the GAIL algorithm.
 

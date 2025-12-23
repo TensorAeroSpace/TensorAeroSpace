@@ -45,6 +45,7 @@ class LinearLongitudinalELVRocket(gym.Env):
         reward_func: Optional[Callable] = None,
         dt: float = 0.01,
     ) -> None:
+        """Initialize ELV longitudinal environment."""
         self.max_action_value = float(np.deg2rad(25.0))  # radians
         self.dt = dt
         self.initial_state = initial_state
@@ -99,6 +100,7 @@ class LinearLongitudinalELVRocket(gym.Env):
         self.done = False
 
     def _get_info(self):
+        """Return auxiliary info for Gym API (currently empty)."""
         return {}
 
     @staticmethod
@@ -206,6 +208,7 @@ class ImprovedELVEnv(gym.Env):
         initial_elevator_deg: float = 0.0,
         use_initial_action_on_first_step: bool = True,
     ) -> None:
+        """Initialize improved ELV environment with normalized spaces."""
         super().__init__()
 
         # Physical/normalization limits
@@ -269,17 +272,21 @@ class ImprovedELVEnv(gym.Env):
     # Helper indices based on ELV state order [w, q, theta]
     @property
     def _idx_w(self) -> int:
+        """Index of longitudinal velocity state."""
         return 0
 
     @property
     def _idx_q(self) -> int:
+        """Index of pitch rate state."""
         return 1
 
     @property
     def _idx_theta(self) -> int:
+        """Index of pitch angle state."""
         return 2
 
     def _get_obs(self) -> np.ndarray:
+        """Return normalized observation vector."""
         theta = float(self.state[self._idx_theta])
         q = float(self.state[self._idx_q])
         idx = int(np.clip(self.current_step, 0, self.reference_signal.shape[1] - 1))
@@ -297,12 +304,14 @@ class ImprovedELVEnv(gym.Env):
         )
 
     def get_init_args(self):
+        """Return initialization arguments for reproducibility."""
         init_args = self.init_args.copy()
         init_args.pop("self", None)
         init_args.pop("__class__", None)
         return init_args
 
     def reset(self, seed=None, options=None):
+        """Reset environment state and internal buffers."""
         super().reset(seed=seed)
         self.model.initialise_system(self.initial_state, self.number_time_steps)
         self.state = np.array(self.initial_state, dtype=float).reshape(-1)
@@ -313,6 +322,7 @@ class ImprovedELVEnv(gym.Env):
         return self._get_obs(), {}
 
     def step(self, action: np.ndarray):
+        """Apply action and advance simulation by one step."""
         # action in [-1, 1]
         action = np.asarray(action, dtype=np.float32).reshape(-1)
         action = np.clip(action, -1.0, 1.0)
@@ -394,8 +404,10 @@ class ImprovedELVEnv(gym.Env):
         )
 
     def render(self, mode: str = "human"):
+        """Rendering not implemented for ELV environment."""
         # Visualization not implemented for ELV
         return
 
     def close(self):
+        """Close environment resources."""
         return

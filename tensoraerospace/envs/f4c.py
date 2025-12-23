@@ -41,6 +41,7 @@ class LinearLongitudinalF4C(gym.Env):
         output_space: Optional[list[str]] = None,
         reward_func: Optional[Callable] = None,
     ) -> None:
+        """Initialize F-4C longitudinal environment."""
         self.initial_state = initial_state
         self.number_time_steps = number_time_steps
         self.tracking_states = (
@@ -97,6 +98,7 @@ class LinearLongitudinalF4C(gym.Env):
         self.done = False
 
     def _get_info(self):
+        """Return auxiliary info for Gym API (currently empty)."""
         return {}
 
     @staticmethod
@@ -819,6 +821,7 @@ class F4CPitchEnvNormalized(gym.Env):
         sin_a = np.sin(theta_rad)
 
         def rotate_point(px, py):
+            """Rotate a point around aircraft center by theta_rad."""
             dx = px - cx
             dy = py - cy
             return (cx + dx * cos_a - dy * sin_a, cy + dx * sin_a + dy * cos_a)

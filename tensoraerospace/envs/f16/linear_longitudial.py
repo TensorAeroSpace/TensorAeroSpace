@@ -119,6 +119,7 @@ class LinearLongitudinalF16(gym.Env):
         return x0
 
     def _get_info(self):
+        """Return auxiliary info for Gym API (currently empty)."""
         return {}
 
     def get_init_args(self):
@@ -204,6 +205,7 @@ class LinearLongitudinalF16(gym.Env):
         )
 
     def close(self):
+        """Release resources (no-op placeholder)."""
         # Implement cleanup logic here
         pass
 

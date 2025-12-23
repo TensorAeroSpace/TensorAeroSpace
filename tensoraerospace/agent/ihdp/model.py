@@ -36,6 +36,18 @@ class IHDPAgent(object):
         number_time_steps: int,
         indices_tracking_states: list[int],
     ) -> None:
+        """Compose IHDP agent components.
+
+        Args:
+            actor_settings: Configuration for Actor.
+            critic_settings: Configuration for Critic.
+            incremental_settings: Configuration for IncrementalModel.
+            tracking_states: Tracked state names.
+            selected_states: State variable names.
+            selected_input: Control input names.
+            number_time_steps: Episode length.
+            indices_tracking_states: Indices of tracked states.
+        """
         actor_keys = [
             "start_training",
             "layers",

@@ -39,6 +39,7 @@ class GeoSatEnv(gym.Env):
         output_space: tuple[float, float] = ["rho", "theta", "omega"],
         reward_func: Callable | None = None,
     ) -> None:
+        """Initialize geostationary satellite environment."""
         self.initial_state = initial_state
         self.number_time_steps = number_time_steps
         self.selected_state_output = output_space
@@ -79,6 +80,7 @@ class GeoSatEnv(gym.Env):
         self.done = False
 
     def _get_info(self):
+        """Return auxiliary info for Gym API (currently empty)."""
         return {}
 
     @staticmethod

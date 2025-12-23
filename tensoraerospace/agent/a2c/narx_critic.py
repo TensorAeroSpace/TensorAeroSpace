@@ -107,6 +107,15 @@ class NARXCritic(nn.Module):
         hidden_sizes: Sequence[int] = (128, 128),
         activation: type[nn.Module] = nn.Tanh,
     ) -> None:
+        """Initialize NARX critic network.
+
+        Args:
+            observation_dim: Dimension of observation vector.
+            action_dim: Dimension of action vector.
+            history_length: Number of past steps to include in features.
+            hidden_sizes: Sizes of hidden layers.
+            activation: Activation module class to use.
+        """
         super().__init__()
         self.observation_dim = observation_dim
         self.action_dim = action_dim

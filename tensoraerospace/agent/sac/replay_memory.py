@@ -26,6 +26,12 @@ class ReplayMemory:
     """
 
     def __init__(self, capacity: int, seed: int):
+        """Initialize replay buffer with fixed capacity and seed.
+
+        Args:
+            capacity: Maximum number of transitions.
+            seed: Random seed for sampling.
+        """
         random.seed(seed)
         self.capacity = capacity
         self.buffer: List[Tuple] = []

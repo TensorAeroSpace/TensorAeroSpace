@@ -33,6 +33,16 @@ class IncrementalModel:
         input_magnitude_limits: float = 25,
         input_rate_limits: float = 60,
     ) -> None:
+        """Initialize incremental model buffers and limits.
+
+        Args:
+            selected_states: Names of states.
+            selected_input: Names of control inputs.
+            number_time_steps: Horizon length.
+            discretisation_time: Sampling period.
+            input_magnitude_limits: Max control magnitude.
+            input_rate_limits: Max control rate change.
+        """
         # Define the inputs to the incremental model
         self.xt_1 = None
         self.xt = None

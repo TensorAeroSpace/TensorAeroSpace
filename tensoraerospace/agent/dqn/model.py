@@ -37,12 +37,18 @@ class Model(nn.Module):
     """
 
     def __init__(self, num_actions: int) -> None:
+        """Initialize network layers.
+
+        Args:
+            num_actions: Number of discrete actions.
+        """
         super().__init__()
         self.fc1 = nn.LazyLinear(32)
         self.fc2 = nn.Linear(32, 32)
         self.out = nn.Linear(32, num_actions)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """Compute Q-values for a batch of observations."""
         x = F.relu(self.fc1(x))
         x = F.relu(self.fc2(x))
         return self.out(x)
@@ -111,6 +117,11 @@ class SumTree:
     """
 
     def __init__(self, capacity: int) -> None:
+        """Initialize sum tree for prioritized replay.
+
+        Args:
+            capacity: Maximum number of transitions to store.
+        """
         # buffer size; number of leaves in sum tree
         self.capacity = capacity
         # number of nodes in sum tree
@@ -246,6 +257,28 @@ class DQNAgent:
         log_dir: str | None = None,
         verbose_histogram: bool = False,
     ) -> None:
+        """Initialize DQN agent and replay buffer.
+
+        Args:
+            model: Online Q-network.
+            target_model: Target Q-network.
+            env: Gym/Gymnasium environment.
+            learning_rate: Optimizer learning rate.
+            epsilon: Initial epsilon for exploration.
+            epsilon_dacay: Multiplicative epsilon decay.
+            min_epsilon: Minimum epsilon value.
+            gamma: Discount factor.
+            batch_size: Training batch size.
+            target_update_iter: Steps between target updates.
+            train_nums: Total training steps to run.
+            buffer_size: Replay buffer capacity.
+            replay_period: Sampling period from buffer.
+            alpha: PER priority exponent.
+            beta: PER importance sampling exponent.
+            beta_increment_per_sample: Increment for beta per sample.
+            log_dir: Directory for TensorBoard logs.
+            verbose_histogram: Whether to log histograms extensively.
+        """
         # Models and optimizer
         self.device = _DEVICE
         self.model = model.to(self.device)
@@ -514,6 +547,7 @@ class DQNAgent:
 
     # rank-based prioritization sampling
     def rand_based_sample(self, k):
+        """Placeholder for rank-based prioritized sampling (not implemented)."""
         pass
 
     # e-greedy
@@ -633,6 +667,28 @@ class PERNARXAgent:
         log_dir: str | None = None,
         verbose_histogram: bool = False,
     ) -> None:
+        """Initialize PER-NARX agent and buffers.
+
+        Args:
+            model: Online Q-network.
+            target_model: Target Q-network.
+            env: Gym/Gymnasium environment.
+            learning_rate: Optimizer learning rate.
+            epsilon: Initial epsilon for exploration.
+            epsilon_dacay: Multiplicative epsilon decay.
+            min_epsilon: Minimum epsilon value.
+            gamma: Discount factor.
+            batch_size: Training batch size.
+            target_update_iter: Steps between target updates.
+            train_nums: Total training steps to run.
+            buffer_size: Replay buffer capacity.
+            replay_period: Sampling period from buffer.
+            alpha: PER priority exponent.
+            beta: PER importance sampling exponent.
+            beta_increment_per_sample: Increment for beta per sample.
+            log_dir: Directory for TensorBoard logs.
+            verbose_histogram: Whether to log histograms extensively.
+        """
         self.device = _DEVICE
         self.model = model.to(self.device)
         self.target_model = target_model.to(self.device)
@@ -915,6 +971,7 @@ class PERNARXAgent:
 
     # rank-based prioritization sampling
     def rand_based_sample(self, k):
+        """Placeholder for rank-based prioritized sampling (not implemented)."""
         pass
 
     # e-greedy

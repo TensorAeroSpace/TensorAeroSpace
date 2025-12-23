@@ -46,6 +46,7 @@ class PID(BaseRLModel):
     """
 
     def __init__(self, env=None, kp=1, ki=1, kd=0.5, dt=0.01):
+        """Initialize PID controller parameters."""
         self.kp = kp
         self.ki = ki
         self.kd = kd

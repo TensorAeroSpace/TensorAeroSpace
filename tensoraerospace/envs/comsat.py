@@ -40,6 +40,7 @@ class ComSatEnv(gym.Env):
         output_space: tuple[float, float] = ["rho", "rho_dot", "theta_dot"],
         reward_func: Callable | None = None,
     ) -> None:
+        """Initialize communication satellite environment."""
         self.max_action_value = 25.0
         self.initial_state = initial_state
         self.number_time_steps = number_time_steps
@@ -81,6 +82,7 @@ class ComSatEnv(gym.Env):
         self.done = False
 
     def _get_info(self):
+        """Return extra diagnostic info (none for now)."""
         return {}
 
     @staticmethod

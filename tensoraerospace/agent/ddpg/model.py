@@ -34,22 +34,30 @@ try:
 except Exception:
     # Fallback no-op tqdm if not available
     def tqdm(iterable=None, total=None, desc=None):
+        """Lightweight tqdm fallback that behaves as a pass-through iterator."""
         if iterable is None:
 
             class _Dummy:
+                """Context manager emulating tqdm when library is unavailable."""
+
                 def __enter__(self):
+                    """Enter dummy context."""
                     return self
 
                 def __exit__(self, exc_type, exc, tb):
+                    """Exit dummy context."""
                     return False
 
                 def update(self, n=1):
+                    """No-op update placeholder."""
                     pass
 
                 def set_postfix(self, **kwargs):
+                    """No-op postfix setter placeholder."""
                     pass
 
                 def write(self, s):
+                    """Print a message in absence of real tqdm."""
                     print(s)
 
             return _Dummy()
@@ -64,19 +72,26 @@ try:
 except Exception:
 
     class SummaryWriter:  # type: ignore
+        """Fallback SummaryWriter when tensorboard is unavailable."""
+
         def __init__(self, *args, **kwargs):
+            """Fallback SummaryWriter that stores nothing when tensorboard is absent."""
             pass
 
         def add_scalar(self, *args, **kwargs):
+            """No-op scalar logging."""
             pass
 
         def add_histogram(self, *args, **kwargs):
+            """No-op histogram logging."""
             pass
 
         def flush(self):
+            """No-op flush."""
             pass
 
         def close(self):
+            """No-op close."""
             pass
 
 
@@ -1156,6 +1171,15 @@ class DDPG:
         path: Union[str, Path],
         load_gradients: bool = False,
     ) -> "DDPG":
+        """Load a DDPG agent from disk.
+
+        Args:
+            path: Folder containing saved weights and config.json.
+            load_gradients: Whether to restore optimizer states.
+
+        Returns:
+            DDPG: Reconstructed agent instance.
+        """
         path = Path(path)
         config_path = path / "config.json"
         policy_path = path / "policy.pth"

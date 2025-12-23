@@ -18,6 +18,7 @@ class unity_discrete_env(gym.Wrapper):
     """
 
     def __init__(self, env):
+        """Wrap Unity environment exposing a discrete action space."""
         super().__init__(env)
         self.action_space = Discrete(3**7)
         self.env = env

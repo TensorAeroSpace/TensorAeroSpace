@@ -43,6 +43,12 @@ class Net(nn.Module):
     """
 
     def __init__(self, s_dim: int, a_dim: int) -> None:
+        """Create network layers.
+
+        Args:
+            s_dim: State dimension.
+            a_dim: Action dimension.
+        """
         super(Net, self).__init__()
         self.s_dim = s_dim
         self.a_dim = a_dim
@@ -177,6 +183,26 @@ class Worker(mp.Process):
         writer: Optional["torch.utils.tensorboard.SummaryWriter"] = None,
         global_step: Optional[mp.Value] = None,
     ) -> None:
+        """Initialize worker process.
+
+        Args:
+            env: Environment instance.
+            gnet: Global shared network.
+            opt: Shared optimizer.
+            global_ep: Shared episode counter.
+            global_ep_r: Shared reward accumulator.
+            res_queue: Queue for results.
+            name: Worker id.
+            num_actions: Action dimension.
+            num_observations: Observation dimension.
+            MAX_EP: Max episodes to run.
+            MAX_EP_STEP: Max steps per episode.
+            GAMMA: Discount factor.
+            update_global_iter: Steps between syncs with global net.
+            render: Whether to render (only worker 0 typically).
+            writer: TensorBoard writer for metrics.
+            global_step: Shared global step counter.
+        """
         super(Worker, self).__init__()
         self.name = "w%i" % name
         self.g_ep, self.g_ep_r, self.res_queue = (
@@ -355,6 +381,20 @@ class Agent:
         run_in_main: bool = False,
         log_dir: str = "runs/a3c",
     ) -> None:
+        """Configure A3C agent wrapper.
+
+        Args:
+            env_function: Factory returning an environment per worker id.
+            gamma: Discount factor.
+            n_workers: Number of worker processes; defaults to CPU count.
+            lr: Learning rate for optimizer.
+            max_episodes: Total episodes to run.
+            max_ep_step: Max steps per episode.
+            update_global_iter: Sync frequency for global net updates.
+            render: Whether to render from worker 0.
+            run_in_main: If True, run worker inline for debugging/tests.
+            log_dir: TensorBoard log directory.
+        """
         self.env_function = env_function
         self.gamma = gamma
         self.n_workers = (
@@ -398,6 +438,7 @@ class Agent:
             pass
 
     def train(self) -> None:
+        """Launch training across worker processes (or single-process mode)."""
         workers = []
         if self.run_in_main:
             # run a single worker in current process (useful for tests)

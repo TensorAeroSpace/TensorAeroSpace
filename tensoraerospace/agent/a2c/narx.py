@@ -33,6 +33,7 @@ class Mish(nn.Module):
     """PyTorch module implementing the Mish activation."""
 
     def __init__(self):
+        """Initialize Mish activation module."""
         super().__init__()
 
     def forward(self, input):
@@ -87,6 +88,12 @@ class Critic(nn.Module):
     """
 
     def __init__(self, state_dim, activation=nn.Tanh):
+        """Build critic network layers.
+
+        Args:
+            state_dim: State dimension.
+            activation: Activation module class.
+        """
         super().__init__()
         self.model = nn.Sequential(
             nn.Linear(state_dim + state_dim, 64),
@@ -175,6 +182,17 @@ class A2CLearner:
         critic_lr=4e-3,
         max_grad_norm=0.5,
     ):
+        """Initialize learner with optimizers and hyperparameters.
+
+        Args:
+            actor: Policy network.
+            critic: Value network.
+            gamma: Discount factor.
+            entropy_beta: Entropy regularization weight.
+            actor_lr: Learning rate for actor.
+            critic_lr: Learning rate for critic.
+            max_grad_norm: Gradient clipping norm.
+        """
         self.gamma = gamma
         self.max_grad_norm = max_grad_norm
         self.actor = actor
@@ -266,6 +284,13 @@ class Runner:
     """Environment interaction loop used to collect training data."""
 
     def __init__(self, env, actor, writer):
+        """Create runner for data collection.
+
+        Args:
+            env: Environment instance.
+            actor: Policy network used to select actions.
+            writer: TensorBoard writer for logging rewards.
+        """
         self.env = env
         self.actor = actor
         self.state = None

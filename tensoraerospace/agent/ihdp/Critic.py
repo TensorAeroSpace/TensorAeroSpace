@@ -59,6 +59,24 @@ class Critic:
         NN_initial: int | None = None,
         model_path: str | None = None,
     ) -> None:
+        """Initialize IHDP Critic network and buffers.
+
+        Args:
+            Q_weights: Diagonal weights for Q matrix.
+            selected_states: State variable names.
+            tracking_states: Tracked states for cost.
+            indices_tracking_states: Indices of tracked states.
+            number_time_steps: Total steps in episode.
+            start_training: Step index to start training.
+            gamma: Discount factor.
+            learning_rate: Optimizer learning rate.
+            learning_rate_exponent_limit: Exponent limit for LR decay.
+            layers: Hidden layer sizes.
+            activations: Activation functions per layer.
+            WB_limits: Weight/bias clipping limit.
+            NN_initial: Optional weight initializer seed.
+            model_path: Optional path to load/save model.
+        """
         # Declaration of attributes regarding the states and rewards
         self.number_states = len(selected_states)
         self.number_tracking_states = len(tracking_states)

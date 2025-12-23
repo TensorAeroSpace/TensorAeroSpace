@@ -93,6 +93,13 @@ class QNetwork(nn.Module):
     """
 
     def __init__(self, num_inputs: int, num_actions: int, hidden_dim: int):
+        """Initialize twin Q-network architecture.
+
+        Args:
+            num_inputs: State dimension.
+            num_actions: Action dimension.
+            hidden_dim: Hidden layer width.
+        """
         super(QNetwork, self).__init__()
 
         # Q1 арха
@@ -154,6 +161,14 @@ class GaussianPolicy(nn.Module):
     def __init__(
         self, num_inputs: int, num_actions: int, hidden_dim: int, action_space=None
     ):
+        """Initialize Gaussian policy network and action scaling.
+
+        Args:
+            num_inputs: State dimension.
+            num_actions: Action dimension.
+            hidden_dim: Hidden layer width.
+            action_space: Optional gym space to derive scaling/bias.
+        """
         super(GaussianPolicy, self).__init__()
 
         self.linear1 = nn.Linear(num_inputs, hidden_dim)
@@ -233,6 +248,14 @@ class DeterministicPolicy(nn.Module):
     def __init__(
         self, num_inputs: int, num_actions: int, hidden_dim: int, action_space=None
     ):
+        """Initialize deterministic policy network for SAC evaluation.
+
+        Args:
+            num_inputs: State dimension.
+            num_actions: Action dimension.
+            hidden_dim: Hidden layer width.
+            action_space: Optional gym space to derive scaling/bias.
+        """
         super(DeterministicPolicy, self).__init__()
         self.linear1 = nn.Linear(num_inputs, hidden_dim)
         self.linear2 = nn.Linear(hidden_dim, hidden_dim)

@@ -881,17 +881,41 @@ class A2C(BaseRLModel):
 
 
 class A2CWithNARXCritic(A2C):
+    """A2C variant that uses a NARX critic with history-aware features."""
+
     def __init__(self, *args, history_length: int = 4, **kwargs):
+        """Initialize NARX-enhanced A2C agent.
+
+        Args:
+            *args: Forwarded to base A2C constructor.
+            history_length: Number of past steps to include in critic features.
+            **kwargs: Forwarded to base A2C constructor.
+        """
         super().__init__(*args, **kwargs)
         self.history_length = history_length
 
     def _build_narx_batch(
         self, states: torch.Tensor, actions: torch.Tensor
     ) -> torch.Tensor:
-        # states: (T, state_dim), actions: (T, action_dim)
+        """Create stacked NARX features from trajectories.
+
+        Args:
+            states: Tensor of shape (T, state_dim).
+            actions: Tensor of shape (T, action_dim).
+
+        Returns:
+            Tensor with concatenated history features for critic input.
+        """
         return build_narx_features(states, actions, self.history_length)
 
     def learn(self, memory, steps, discount_rewards=True):
+        """Train actor and NARX critic on a batch of transitions.
+
+        Args:
+            memory: Replay buffer slice produced by runner.
+            steps: Global step index for logging.
+            discount_rewards: Whether to use discounted returns for TD target.
+        """
         actions, rewards, states, next_states, dones = process_memory(
             memory, self.gamma, discount_rewards, device=self.device
         )

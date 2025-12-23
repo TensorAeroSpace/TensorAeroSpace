@@ -34,6 +34,7 @@ class Net(nn.Module):
     """
 
     def __init__(self, num_action, num_states):
+        """Initialize stochastic dynamics model layers."""
         super(Net, self).__init__()
         self.fc1 = nn.Linear(
             num_action + num_states, 16
@@ -90,6 +91,19 @@ class MPCAgent(BaseRLModel):
         lr=1e-3,
         criterion=torch.nn.MSELoss(),
     ):
+        """Initialize stochastic MPC agent with learned dynamics.
+
+        Args:
+            gamma: Discount factor.
+            action_dim: Action dimension.
+            observation_dim: Observation dimension.
+            model: Dynamics model.
+            cost_function: Cost function for rollouts.
+            env: Environment instance.
+            min_max_action_value: Tuple of min/max action for sampling.
+            lr: Learning rate for dynamics optimizer.
+            criterion: Loss for model training.
+        """
         self.gamma = gamma
         self.action_dim = action_dim
         self.observation_dim = observation_dim

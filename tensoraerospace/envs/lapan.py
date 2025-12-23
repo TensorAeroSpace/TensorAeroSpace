@@ -39,6 +39,7 @@ class LinearLongitudinalLAPAN(gym.Env):
         output_space=None,
         reward_func: Any = None,
     ):
+        """Initialize legacy LAPAN longitudinal environment."""
         self.max_action_value = 25.0
         self.initial_state = initial_state
         self.number_time_steps = number_time_steps
@@ -100,6 +101,7 @@ class LinearLongitudinalLAPAN(gym.Env):
         return np.abs(state[0] - ref_signal[:, ts])
 
     def _get_info(self):
+        """Return auxiliary info for Gym API (currently empty)."""
         return {}
 
     def step(self, action: np.ndarray):
@@ -181,6 +183,7 @@ class ImprovedLAPANEnv(gym.Env):
         initial_elevator_deg: float = 0.0,
         use_initial_action_on_first_step: bool = True,
     ) -> None:
+        """Initialize normalized LAPAN environment."""
         super().__init__()
 
         # Physical/normalization limits
@@ -253,13 +256,16 @@ class ImprovedLAPANEnv(gym.Env):
     # Helper indices based on LAPAN state order [u, w, q, theta]
     @property
     def _idx_q(self) -> int:
+        """Index of pitch rate state."""
         return 2
 
     @property
     def _idx_theta(self) -> int:
+        """Index of pitch angle state."""
         return 3
 
     def _get_obs(self) -> np.ndarray:
+        """Return normalized observation vector."""
         # Model provides theta, q in radians now
         theta_rad = float(self.state[self._idx_theta])
         q_rad_s = float(self.state[self._idx_q])
@@ -278,12 +284,14 @@ class ImprovedLAPANEnv(gym.Env):
         )
 
     def get_init_args(self):
+        """Return initialization arguments for reproducibility."""
         init_args = self.init_args.copy()
         init_args.pop("self", None)
         init_args.pop("__class__", None)
         return init_args
 
     def reset(self, seed=None, options=None):
+        """Reset environment state and counters."""
         super().reset(seed=seed)
         self.model.initialise_system(
             self.initial_state,
@@ -297,6 +305,7 @@ class ImprovedLAPANEnv(gym.Env):
         return self._get_obs(), {}
 
     def step(self, action: np.ndarray):
+        """Apply normalized action and advance simulation by one step."""
         # action in [-1, 1]
         action = np.asarray(action, dtype=np.float32).reshape(-1)
         action = np.clip(action, -1.0, 1.0)
@@ -380,8 +389,9 @@ class ImprovedLAPANEnv(gym.Env):
         )
 
     def render(self, mode: str = "human"):
-        # Visualization not implemented for LAPAN
+        """Rendering not implemented for LAPAN environment."""
         return
 
     def close(self):
+        """Close environment resources."""
         return

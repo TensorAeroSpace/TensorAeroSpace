@@ -73,6 +73,31 @@ class Actor:
         cascade_tracking_state: list[str] = ["alpha", "wz"],
         model_path: str | None = None,
     ) -> None:
+        """Initialize IHDP Actor network and hyperparameters.
+
+        Args:
+            selected_inputs: Control input names.
+            selected_states: State variable names.
+            tracking_states: Tracked states for reward.
+            indices_tracking_states: Indices of tracked states in state vector.
+            number_time_steps: Total time steps in episode.
+            start_training: Step index to start training.
+            layers: Hidden layer sizes.
+            activations: Activations per layer.
+            learning_rate: Base learning rate.
+            learning_rate_cascaded: Learning rate for cascaded mode.
+            learning_rate_exponent_limit: Exponent limit for LR decay.
+            type_PE: Persistent excitation pattern.
+            amplitude_3211: Amplitude for 3211 signal.
+            pulse_length_3211: Pulse length for 3211 signal.
+            WB_limits: Weight/bias clipping limit.
+            maximum_input: Max control magnitude.
+            maximum_q_rate: Max pitch rate.
+            cascaded_actor: Whether to use cascaded network.
+            NN_initial: Optional weight initializer seed.
+            cascade_tracking_state: Tracking states for cascade mode.
+            model_path: Path to load/save model weights.
+        """
         self.number_inputs = len(selected_inputs)
         self.selected_states = selected_states
         self.cascade_tracking_state = cascade_tracking_state
