@@ -41,7 +41,9 @@ def test_improved_missile_reset(missile_env_default):
 def test_improved_missile_step_shapes_and_types(missile_env_default):
     env = missile_env_default
     env.reset()
-    obs, reward, terminated, truncated, info = env.step(np.array([0.5], dtype=np.float32))
+    obs, reward, terminated, truncated, info = env.step(
+        np.array([0.5], dtype=np.float32)
+    )
     assert isinstance(obs, np.ndarray)
     assert obs.shape == (4,)
     assert isinstance(reward, float)
@@ -116,8 +118,3 @@ def test_improved_missile_termination_on_pitch_limit(monkeypatch, missile_env_de
     _, reward, terminated, _, _ = env.step(np.array([0.0], dtype=np.float32))
     assert terminated is True
     assert reward == -100.0
-
-
-
-
-

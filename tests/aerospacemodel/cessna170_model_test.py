@@ -6,7 +6,9 @@ from tensoraerospace.aerospacemodel.cessna170 import LongitudinalCessna170
 
 def test_cessna170_init_and_param_override():
     x0 = [55.0, 0.0, 0.0, 0.0]
-    m = LongitudinalCessna170(x0=x0, number_time_steps=10, dt=0.05, aero_params={"m": 900.0})
+    m = LongitudinalCessna170(
+        x0=x0, number_time_steps=10, dt=0.05, aero_params={"m": 900.0}
+    )
 
     p = m.get_param()
     assert isinstance(p, dict)
@@ -76,7 +78,3 @@ def test_cessna170_selected_state_output_returns_subset():
     )
     y = m.run_step([0.0, 0.5])
     assert y.shape == (2,)
-
-
-
-

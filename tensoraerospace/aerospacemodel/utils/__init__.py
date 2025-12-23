@@ -26,8 +26,3 @@ __all__ = [
     "control_to_latex_eng",
     "control_to_latex_rus",
 ]
-
-
-
-
-

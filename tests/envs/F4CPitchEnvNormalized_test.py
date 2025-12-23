@@ -41,7 +41,9 @@ def test_f4c_pitch_env_normalized_reset(f4c_env_default):
 def test_f4c_pitch_env_normalized_step_shapes_and_types(f4c_env_default):
     env = f4c_env_default
     env.reset()
-    obs, reward, terminated, truncated, info = env.step(np.array([0.5], dtype=np.float32))
+    obs, reward, terminated, truncated, info = env.step(
+        np.array([0.5], dtype=np.float32)
+    )
     assert isinstance(obs, np.ndarray)
     assert obs.shape == (4,)
     assert isinstance(reward, float)
@@ -106,7 +108,9 @@ def test_f4c_pitch_env_normalized_get_init_args(f4c_env_default):
     assert "__class__" not in d
 
 
-def test_f4c_pitch_env_normalized_termination_on_pitch_limit(monkeypatch, f4c_env_default):
+def test_f4c_pitch_env_normalized_termination_on_pitch_limit(
+    monkeypatch, f4c_env_default
+):
     env = f4c_env_default
     env.reset()
 
@@ -117,8 +121,3 @@ def test_f4c_pitch_env_normalized_termination_on_pitch_limit(monkeypatch, f4c_en
     _, reward, terminated, _, _ = env.step(np.array([0.0], dtype=np.float32))
     assert terminated is True
     assert reward == -100.0
-
-
-
-
-

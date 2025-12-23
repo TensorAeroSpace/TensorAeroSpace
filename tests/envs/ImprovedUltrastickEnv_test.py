@@ -2,7 +2,10 @@ import numpy as np
 import pytest
 from gymnasium import spaces
 
-from tensoraerospace.envs.ultrastick import ImprovedUltrastickEnv, LinearLongitudinalUltrastick
+from tensoraerospace.envs.ultrastick import (
+    ImprovedUltrastickEnv,
+    LinearLongitudinalUltrastick,
+)
 
 
 class _StubUltrastickModel:
@@ -14,7 +17,9 @@ class _StubUltrastickModel:
 
     selected_states = ["Va", "alpha", "theta", "q", "h"]
 
-    def __init__(self, initial_state, number_time_steps, selected_state_output, t0, dt=0.01):  # noqa: ARG002
+    def __init__(
+        self, initial_state, number_time_steps, selected_state_output, t0, dt=0.01
+    ):  # noqa: ARG002
         self._state = np.array(initial_state, dtype=float).reshape(-1)
         self.last_action = None
 
@@ -103,7 +108,9 @@ def test_improved_ultrastick_step_rate_limit_and_throttle_mapping(ultra_env_defa
     env.reset()
 
     # command max elevator and max throttle
-    obs, reward, terminated, truncated, info = env.step(np.array([1.0, 1.0], dtype=np.float32))
+    obs, reward, terminated, truncated, info = env.step(
+        np.array([1.0, 1.0], dtype=np.float32)
+    )
     assert obs.shape == (5,)
     assert isinstance(reward, float)
     assert isinstance(terminated, bool)
@@ -189,8 +196,3 @@ def test_linear_ultrastick_render_raises(monkeypatch):
     )
     with pytest.raises(NotImplementedError):
         env.render()
-
-
-
-
-

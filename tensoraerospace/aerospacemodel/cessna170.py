@@ -36,7 +36,9 @@ class LongitudinalCessna170(ModelBase):
         # bookkeeping arrays but also resets `list_state`/`control_list`.
         # This model's run_step relies on `control_list`, so we restore them
         # after the call.
-        self._initialize_selected_state_index(self.selected_state_output, self.list_state)
+        self._initialize_selected_state_index(
+            self.selected_state_output, self.list_state
+        )
         self.list_state = self.selected_states
         self.control_list = ["ele", "throttle"]
 

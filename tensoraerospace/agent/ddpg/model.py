@@ -542,7 +542,9 @@ class PolicyNetwork(nn.Module):
             Action as numpy array, scaled to action space bounds.
         """
         model_device = next(self.parameters()).device
-        state = torch.tensor(state, dtype=torch.float32, device=model_device).unsqueeze(0)
+        state = torch.tensor(state, dtype=torch.float32, device=model_device).unsqueeze(
+            0
+        )
         with torch.no_grad():
             action = self.forward(state)
         return action.squeeze(0).cpu().numpy()

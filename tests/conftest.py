@@ -85,9 +85,3 @@ def _isolate_cwd(
     monkeypatch.setenv("TENSORBOARD_LOGDIR", str(workdir / "runs"))
     monkeypatch.setenv("RAY_TMPDIR", str(workdir / "ray_tmp"))
     return workdir
-
-
-
-
-
-                

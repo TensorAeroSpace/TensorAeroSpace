@@ -21,7 +21,9 @@ class _DummyResultGrid:
 
 
 class _DummyTuner:
-    def __init__(self, func, param_space=None, tune_config=None, **kwargs):  # noqa: ARG002
+    def __init__(
+        self, func, param_space=None, tune_config=None, **kwargs
+    ):  # noqa: ARG002
         self.func = func
         self.param_space = param_space
         self.tune_config = tune_config
@@ -51,8 +53,3 @@ def test_ray_hpo_get_best_param_requires_run():
     hpo = HyperParamOptimizationRay(direction="maximize")
     with pytest.raises(RuntimeError, match="run_optimization"):
         hpo.get_best_param()
-
-
-
-
-

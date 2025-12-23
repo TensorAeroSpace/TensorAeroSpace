@@ -41,7 +41,9 @@ def test_improved_lapan_reset(lapan_env_default):
 def test_improved_lapan_step_shapes_and_types(lapan_env_default):
     env = lapan_env_default
     env.reset()
-    obs, reward, terminated, truncated, info = env.step(np.array([0.5], dtype=np.float32))
+    obs, reward, terminated, truncated, info = env.step(
+        np.array([0.5], dtype=np.float32)
+    )
     assert isinstance(obs, np.ndarray)
     assert obs.shape == (4,)
     assert isinstance(reward, float)
@@ -117,8 +119,3 @@ def test_improved_lapan_termination_on_pitch_limit(monkeypatch, lapan_env_defaul
     _, reward, terminated, _, _ = env.step(np.array([0.0], dtype=np.float32))
     assert terminated is True
     assert reward == -100.0
-
-
-
-
-

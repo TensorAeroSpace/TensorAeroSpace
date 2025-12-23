@@ -25,7 +25,9 @@ class HyperParamOptimizationRay(HyperParamOptimizationBase):
         elif direction in ("maximize", "max"):
             self.mode = "max"
         else:
-            raise ValueError("Выберите один из вариантов minimize/maximize (или min/max)")
+            raise ValueError(
+                "Выберите один из вариантов minimize/maximize (или min/max)"
+            )
 
         self.metric = metric
         self.tuner: Any = None
@@ -59,7 +61,9 @@ class HyperParamOptimizationRay(HyperParamOptimizationBase):
             dict: Словарь с лучшими гиперпараметрами
         """
         if self.results is None:
-            raise RuntimeError("Optimization has not been run yet. Call run_optimization() first.")
+            raise RuntimeError(
+                "Optimization has not been run yet. Call run_optimization() first."
+            )
 
         grid = self.results
         best = None
@@ -79,7 +83,9 @@ class HyperParamOptimizationRay(HyperParamOptimizationBase):
             try:
                 best = next(iter(grid))
             except Exception as e:
-                raise RuntimeError("Unable to determine best result from Ray Tune results.") from e
+                raise RuntimeError(
+                    "Unable to determine best result from Ray Tune results."
+                ) from e
 
         cfg = getattr(best, "config", None)
         if isinstance(cfg, dict):
