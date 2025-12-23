@@ -21,6 +21,23 @@ jobs:
     runs-on: ubuntu-latest
     
     steps:
+    - name: 🧹 Free up disk space (diagnostic + cleanup)
+      run: |
+        set -euxo pipefail
+        echo "Disk usage before cleanup:"
+        df -h
+
+        sudo rm -rf /usr/share/dotnet || true
+        sudo rm -rf /usr/local/lib/android || true
+        sudo rm -rf /opt/ghc || true
+        sudo rm -rf /opt/hostedtoolcache/CodeQL || true
+
+        docker system prune -af --volumes || true
+        sudo apt-get clean || true
+
+        echo "Disk usage after cleanup:"
+        df -h
+
     - name: 📥 Checkout code
       uses: actions/checkout@v5
 
@@ -76,6 +93,23 @@ jobs:
     environment: pypi
 
     steps:
+    - name: 🧹 Free up disk space (diagnostic + cleanup)
+      run: |
+        set -euxo pipefail
+        echo "Disk usage before cleanup:"
+        df -h
+
+        sudo rm -rf /usr/share/dotnet || true
+        sudo rm -rf /usr/local/lib/android || true
+        sudo rm -rf /opt/ghc || true
+        sudo rm -rf /opt/hostedtoolcache/CodeQL || true
+
+        docker system prune -af --volumes || true
+        sudo apt-get clean || true
+
+        echo "Disk usage after cleanup:"
+        df -h
+
     - name: 📥 Checkout code
       uses: actions/checkout@v5
 
