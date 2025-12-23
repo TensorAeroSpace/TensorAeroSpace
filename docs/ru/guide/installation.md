@@ -144,18 +144,38 @@ for t in range(N - 1):
 
 Сборка образа:
 
-```bash
-docker build -t tensoraerospace .
-```
+=== "Ubuntu / Linux (bash)"
 
-Запустите контейнер, пробросив директорию с примерами и порт Jupyter (если нужно):
+    ```bash
+    docker build -t tensoraerospace . --platform=linux/amd64
+    ```
 
-```bash
-docker run --rm -it \
-  -p 8888:8888 \
-  -v "$(pwd)/example:/app/example" \
-  --name tas tensoraerospace
-```
+=== "Windows (PowerShell)"
+
+    ```powershell
+    docker build -t tensoraerospace . --platform=linux/amd64
+    ```
+
+Запустите контейнер (образ **по умолчанию поднимает JupyterLab**) и примонтируйте директорию с примерами:
+
+=== "Ubuntu / Linux (bash)"
+
+    ```bash
+    docker run --rm -it -p 8888:8888 \
+      -v "$(pwd)/example:/app/example" \
+      --name tas tensoraerospace
+    ```
+
+=== "Windows (PowerShell)"
+
+    ```powershell
+    docker run --rm -it -p 8888:8888 `
+      -v "${PWD}\example:/app/example" `
+      --name tas tensoraerospace
+    ```
+
+!!! tip
+    Чтобы включить NVIDIA GPU внутри контейнера, добавьте `--gpus all` (на Ubuntu/Linux требуется NVIDIA Container Toolkit; на Windows — Docker Desktop + поддержка GPU в WSL2).
 
 !!! tip
     Примонтируйте нужные директории флагом `-v <host>:<container>`, чтобы сохранять результаты вне контейнера.

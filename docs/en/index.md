@@ -8,10 +8,10 @@ hide:
   <h1>TensorAeroSpace</h1>
   <p class="tagline">Realistic aerospace environments and RL algorithms for training control systems</p>
   <p>
-    <a href="guide/installation.md" class="md-button md-button--primary">Installation</a>
-    <a href="lesson/0intro.md" class="md-button">Tutorials</a>
-    <a href="agent/sac.md" class="md-button">Algorithms</a>
-    <a href="model/f16.md" class="md-button">Models</a>
+    <a href="guide/installation/" class="md-button md-button--primary">Installation</a>
+    <a href="lesson/0intro/" class="md-button">Tutorials</a>
+    <a href="agent/sac/" class="md-button">Algorithms</a>
+    <a href="model/f16/" class="md-button">Models</a>
   </p>
   <p>
     <a href="https://github.com/TensorAeroSpace/TensorAeroSpace"><img alt="GitHub" src="https://img.shields.io/badge/GitHub-TensorAeroSpace-000?logo=github"></a>
@@ -324,6 +324,6 @@ Need help? Open an issue on GitHub or check the tutorials section.
 </div>
 
 <div style="text-align:center; margin: 1.2rem 0 0.2rem;">
-  <a href="guide/installation.md" class="md-button md-button--primary">Get started</a>
-  <a href="example/enviroment/gymnasium.md" class="md-button">View examples</a>
+  <a href="guide/installation/" class="md-button md-button--primary">Get started</a>
+  <a href="example/enviroment/gymnasium/" class="md-button">View examples</a>
 </div>

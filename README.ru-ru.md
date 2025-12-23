@@ -89,11 +89,34 @@ pip install tensoraerospace
 ```
 
 #### 🐳 Docker
+Образ **по умолчанию запускает JupyterLab** (см. `Dockerfile`).
+
+**Ubuntu / Linux (bash):**
+
 ```bash
 docker build -t tensoraerospace . --platform=linux/amd64
-docker run -v $(pwd)/example:/app/example \
-  -p 8888:8888 -it tensoraerospace \
-  jupyter lab --notebook-dir=/app --ip=0.0.0.0 --no-browser --allow-root
+docker run --rm -it -p 8888:8888 \
+  -v "$(pwd)/example:/app/example" \
+  tensoraerospace
+
+# Опционально: включить GPU (NVIDIA) внутри контейнера
+docker run --rm -it --gpus all -p 8888:8888 \
+  -v "$(pwd)/example:/app/example" \
+  tensoraerospace
+```
+
+**Windows (PowerShell):**
+
+```powershell
+docker build -t tensoraerospace . --platform=linux/amd64
+docker run --rm -it -p 8888:8888 `
+  -v "${PWD}\example:/app/example" `
+  tensoraerospace
+
+# Опционально: включить GPU (NVIDIA) внутри контейнера
+docker run --rm -it --gpus all -p 8888:8888 `
+  -v "${PWD}\example:/app/example" `
+  tensoraerospace
 ```
 > Откройте выданную ссылку (обычно `http://127.0.0.1:8888`) и перейдите к `example/quickstart.ipynb`, чтобы выполнить SAC walkthrough внутри контейнера.
 

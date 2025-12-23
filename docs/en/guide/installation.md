@@ -142,20 +142,40 @@ for t in range(N - 1):
 !!! info
     :material-docker: Docker is the recommended way to get a unified environment on Linux/Windows/macOS.
 
-Сборка образа:
+Build the image:
 
-```bash
-docker build -t tensoraerospace .
-```
+=== "Ubuntu / Linux (bash)"
 
-Run the container exposing the examples directory and the Jupyter port (if needed):
+    ```bash
+    docker build -t tensoraerospace . --platform=linux/amd64
+    ```
 
-```bash
-docker run --rm -it \
-  -p 8888:8888 \
-  -v "$(pwd)/example:/app/example" \
-  --name tas tensoraerospace
-```
+=== "Windows (PowerShell)"
+
+    ```powershell
+    docker build -t tensoraerospace . --platform=linux/amd64
+    ```
+
+Run the container (the image starts **JupyterLab by default**) and mount the examples directory:
+
+=== "Ubuntu / Linux (bash)"
+
+    ```bash
+    docker run --rm -it -p 8888:8888 \
+      -v "$(pwd)/example:/app/example" \
+      --name tas tensoraerospace
+    ```
+
+=== "Windows (PowerShell)"
+
+    ```powershell
+    docker run --rm -it -p 8888:8888 `
+      -v "${PWD}\example:/app/example" `
+      --name tas tensoraerospace
+    ```
+
+!!! tip
+    To enable an NVIDIA GPU inside the container, add `--gpus all` (requires NVIDIA Container Toolkit on Ubuntu/Linux and Docker Desktop + WSL2 GPU support on Windows).
 
 !!! tip
     Mount any required directories with `-v <host>:<container>` to keep results outside the container.

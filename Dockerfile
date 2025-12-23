@@ -22,5 +22,8 @@ RUN pip3 install poetry && \
 # Expose the port the app runs on
 EXPOSE 8888
 
-# Set the default command for the container
-ENTRYPOINT [ "poetry", "run", "jupyter", "notebook", "--notebook-dir=/app", "--ip=0.0.0.0", "--no-browser", "--allow-root", "--port=8888", "--NotebookApp.token=", "--NotebookApp.password=" ]
+# Default: run JupyterLab. Keep ENTRYPOINT minimal so `docker run ... <cmd>`
+# does not accidentally append a second Jupyter command/args (which previously
+# caused duplicate root_dir errors).
+ENTRYPOINT ["poetry", "run"]
+CMD ["jupyter", "lab", "--notebook-dir=/app", "--ip=0.0.0.0", "--no-browser", "--allow-root", "--port=8888", "--ServerApp.token=", "--ServerApp.password="]

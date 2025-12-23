@@ -33,7 +33,29 @@
 - 🧠 **RL Algorithms**: State-of-the-art reinforcement learning implementations
 - 🔧 **Extensible Architecture**: Easy to extend and customize for your specific needs
 
+## 🧭 Applied use cases
+
+The list below is kept **identical** to `README.ru-ru.md#-направления-прикладного-использования` and the Conclusion section of `report.md`.
+
+1. **Автоматическое управление самолётами и БПЛА** — стабилизация, следование траектории, управление по углам тангажа/скольжения для F‑16, B747, X‑15, Ultrastick.
+2. **Управление ракетно-космическими аппаратами** — линеаризованные модели ELV, Typical Rocket, геостационарные спутники, оптимизация фаз выведения.
+3. **Комбинированные контуры PID/MPC + RL** — настройка гибридных контроллеров, внедрение SAC/PPO/A3C в задачах продольного движения.
+4. **Оптимизация гиперпараметров и бенчмаркинг** — автоматизированный подбор IHDP/NARX‑агентов, проведение Bench-серий и визуализация метрик.
+5. **Интеграция с цифровыми полигонами** — Unity ML‑Agents, MATLAB/Simulink, экспорт в UnityAirplaneEnvironment и simulink-example.
+6. **Методы диагностики и устойчивости** — исследование отказов, оценка диапазонов управляемости, подготовка датасетов для GAIL/Benchmark.
+
 ## 🚀 Quick Start
+
+### ✅ Минимальные технические требования
+
+| Компонент | Минимум | Рекомендовано |
+| --- | --- | --- |
+| **ОС** | Linux x86_64, Windows 10, macOS 13 | Ubuntu 22.04 LTS / Windows 11 |
+| **CPU** | 4 ядра, AVX | 8+ ядер, AVX2/FMA |
+| **RAM** | 8 ГБ | 16–32 ГБ для RL/Simulink |
+| **GPU** | Необязательно | NVIDIA RTX с ≥8 ГБ VRAM для SAC/PPO, поддержка CUDA 12.2 |
+| **Python** | 3.8–3.11 | 3.10/3.11 |
+| **Доп. ПО** | Git, Poetry или pip, Docker (опционально) | MATLAB/Simulink R2022b+ (для simulink-example), Unity 2021.3.5f1/2023.2.20f1 |
 
 ### 📦 Installation
 
@@ -50,12 +72,34 @@ pip install tensoraerospace
 ```
 
 #### 🐳 Docker
+The image starts **JupyterLab by default** (see `Dockerfile` CMD).
+
+**Ubuntu / Linux (bash):**
+
 ```bash
 docker build -t tensoraerospace . --platform=linux/amd64
-# launch Jupyter Lab inside the container so you can open example/quickstart.ipynb
-docker run -v $(pwd)/example:/app/example \
-  -p 8888:8888 -it tensoraerospace \
-  jupyter lab --notebook-dir=/app --ip=0.0.0.0 --no-browser --allow-root
+docker run --rm -it -p 8888:8888 \
+  -v "$(pwd)/example:/app/example" \
+  tensoraerospace
+
+# Optional: enable NVIDIA GPU inside the container
+docker run --rm -it --gpus all -p 8888:8888 \
+  -v "$(pwd)/example:/app/example" \
+  tensoraerospace
+```
+
+**Windows (PowerShell):**
+
+```powershell
+docker build -t tensoraerospace . --platform=linux/amd64
+docker run --rm -it -p 8888:8888 `
+  -v "${PWD}\example:/app/example" `
+  tensoraerospace
+
+# Optional: enable NVIDIA GPU inside the container
+docker run --rm -it --gpus all -p 8888:8888 `
+  -v "${PWD}\example:/app/example" `
+  tensoraerospace
 ```
 > Open the printed URL (default `http://127.0.0.1:8888`) and navigate to `example/quickstart.ipynb` to run the SAC walkthrough inside Docker.
 
