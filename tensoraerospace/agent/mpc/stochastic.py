@@ -156,6 +156,7 @@ class MPCAgent(BaseRLModel):
             epochs (int): Number of training epochs. Defaults to ``100``.
             batch_size (int): Mini-batch size. Defaults to ``64``.
         """
+
         def _to_2d(arr: np.ndarray) -> np.ndarray:
             """Convert batch arrays to 2D (batch, features) representation."""
             arr = np.asarray(arr)
@@ -340,13 +341,15 @@ class MPCAgent(BaseRLModel):
             total_cost = torch.tensor(0.0, dtype=torch.float32)
 
             for h in range(horizon):
-                action = torch.empty((1, self.action_dim), dtype=torch.float32).uniform_(
-                    float(self.min_action), float(self.max_action)
-                )
+                action = torch.empty(
+                    (1, self.action_dim), dtype=torch.float32
+                ).uniform_(float(self.min_action), float(self.max_action))
                 if h == 0:
                     first_action = action
 
-                next_state = self.system_model(torch.cat([rollout_state, action], dim=-1))
+                next_state = self.system_model(
+                    torch.cat([rollout_state, action], dim=-1)
+                )
 
                 # Important: advance reference index with horizon step
                 cost = self.cost_function(
@@ -363,7 +366,9 @@ class MPCAgent(BaseRLModel):
                 best_action = first_action
 
         if best_action is None:
-            raise RuntimeError("Failed to sample a valid action in `choose_action_ref`.")
+            raise RuntimeError(
+                "Failed to sample a valid action in `choose_action_ref`."
+            )
 
         return best_action.detach().cpu().numpy(), float(best_cost)
 
@@ -414,14 +419,20 @@ class MPCAgent(BaseRLModel):
         self.system_model.eval()  # Перевести модель в режим оценки
         with torch.no_grad():  # Отключить вычисление градиентов
             # Подготовка данных
-            states_2d = np.asarray(states).reshape(states.shape[0], -1).astype(np.float32)
+            states_2d = (
+                np.asarray(states).reshape(states.shape[0], -1).astype(np.float32)
+            )
             actions_2d = np.asarray(actions)
             if actions_2d.ndim == 1:
                 actions_2d = actions_2d.reshape(-1, 1)
             else:
                 actions_2d = actions_2d.reshape(actions_2d.shape[0], -1)
             actions_2d = actions_2d.astype(np.float32)
-            next_states_2d = np.asarray(next_states).reshape(next_states.shape[0], -1).astype(np.float32)
+            next_states_2d = (
+                np.asarray(next_states)
+                .reshape(next_states.shape[0], -1)
+                .astype(np.float32)
+            )
 
             inputs = np.concatenate((states_2d, actions_2d), axis=1)
             inputs = torch.tensor(inputs, dtype=torch.float32)

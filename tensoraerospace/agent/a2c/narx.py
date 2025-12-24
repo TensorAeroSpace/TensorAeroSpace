@@ -239,7 +239,9 @@ class A2CLearner:
             next_states,
             dones,
             critic_states,
-        ) = process_memory_narx(memory, self.gamma, discount_rewards, device=self.device)
+        ) = process_memory_narx(
+            memory, self.gamma, discount_rewards, device=self.device
+        )
 
         if discount_rewards:
             td_target = rewards
