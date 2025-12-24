@@ -36,9 +36,7 @@ class Net(nn.Module):
     def __init__(self, num_action, num_states):
         """Initialize stochastic dynamics model layers."""
         super(Net, self).__init__()
-        self.fc1 = nn.Linear(
-            num_action + num_states, 16
-        )  # 3 состояния + 1 действие = 4
+        self.fc1 = nn.Linear(num_action + num_states, 16)
         self.fc2 = nn.Linear(16, 16)
         self.fc3 = nn.Linear(16, num_states)  # Предсказание следующего состояния
         self.dropout = nn.Dropout(p=0.1)  # Dropout layer with a probability of 0.5
@@ -158,6 +156,17 @@ class MPCAgent(BaseRLModel):
             epochs (int): Number of training epochs. Defaults to ``100``.
             batch_size (int): Mini-batch size. Defaults to ``64``.
         """
+        def _to_2d(arr: np.ndarray) -> np.ndarray:
+            """Convert batch arrays to 2D (batch, features) representation."""
+            arr = np.asarray(arr)
+            if arr.ndim == 0:
+                raise ValueError("Expected an array-like with a batch dimension.")
+            if arr.ndim == 1:
+                # (batch,) -> (batch, 1)
+                return arr.reshape(-1, 1)
+            # (batch, ..., ...) -> (batch, features)
+            return arr.reshape(arr.shape[0], -1)
+
         for epoch in (pbar := tqdm(range(epochs))):
             permutation = np.random.permutation(states.shape[0])
             for i in range(0, states.shape[0], batch_size):
@@ -167,9 +176,33 @@ class MPCAgent(BaseRLModel):
                     actions[indices],
                     next_states[indices],
                 )
-                inputs = np.hstack((batch_states, batch_actions.reshape(-1, 1)))
+
+                batch_states_2d = _to_2d(batch_states).astype(np.float32)
+                batch_actions_2d = _to_2d(batch_actions).astype(np.float32)
+                batch_next_states_2d = _to_2d(batch_next_states).astype(np.float32)
+
+                inputs = np.concatenate((batch_states_2d, batch_actions_2d), axis=1)
+
+                expected_in = int(self.observation_dim) + int(self.action_dim)
+                if inputs.shape[1] != expected_in:
+                    raise RuntimeError(
+                        "Invalid (state, action) feature shape for the dynamics model. "
+                        f"Got inputs.shape={inputs.shape} but expected feature_dim="
+                        f"(observation_dim + action_dim)={expected_in} "
+                        f"(observation_dim={self.observation_dim}, action_dim={self.action_dim}). "
+                        "Make sure you build `Net(num_states=observation_dim, num_action=action_dim)` "
+                        "and keep `actions` shaped as (N, action_dim) (or (N,) if action_dim=1)."
+                    )
+
+                if batch_next_states_2d.shape[1] != int(self.observation_dim):
+                    raise RuntimeError(
+                        "Invalid `next_states` shape for model training. "
+                        f"Got next_states.shape={batch_next_states_2d.shape} but expected "
+                        f"(batch, observation_dim) with observation_dim={self.observation_dim}."
+                    )
+
                 inputs = torch.tensor(inputs, dtype=torch.float32)
-                targets = torch.tensor(batch_next_states, dtype=torch.float32)
+                targets = torch.tensor(batch_next_states_2d, dtype=torch.float32)
                 self.system_model_optimizer.zero_grad()
                 outputs = self.system_model(inputs)
                 loss = self.criterion(outputs, targets)
@@ -288,26 +321,51 @@ class MPCAgent(BaseRLModel):
         Returns:
             Tuple[np.ndarray, float]: ``(best_action, best_value)``.
         """
-        initial_state = torch.tensor([state], dtype=torch.float32)
-        best_action = None
-        max_trajectory_value = float("inf")
-        action_distribution = Uniform(self.min_action, self.max_action)
-        for trajectory in range(rollout):
-            state = initial_state
-            trajectory_value = 0
+        if rollout <= 0:
+            raise ValueError("`rollout` must be a positive integer.")
+        if horizon <= 0:
+            raise ValueError("`horizon` must be a positive integer.")
+
+        # Ensure state is shaped as (1, observation_dim)
+        initial_state = torch.as_tensor(state, dtype=torch.float32).reshape(1, -1)
+
+        # We *minimize* total cost across the horizon and apply the first action
+        best_cost = float("inf")
+        best_action: torch.Tensor | None = None
+
+        # Sample candidate actions uniformly within configured bounds
+        # Shape: (1, action_dim)
+        for _ in range(rollout):
+            rollout_state = initial_state
+            total_cost = torch.tensor(0.0, dtype=torch.float32)
+
             for h in range(horizon):
-                action = torch.Tensor([[action_distribution.sample()]])
+                action = torch.empty((1, self.action_dim), dtype=torch.float32).uniform_(
+                    float(self.min_action), float(self.max_action)
+                )
                 if h == 0:
                     first_action = action
-                next_state = self.system_model(torch.cat([state, action], dim=-1))
-                costs = self.cost_function(next_state, action, reference_signals, step)
-                trajectory_value += -costs
 
-                state = next_state
-            if trajectory_value < max_trajectory_value:
-                max_trajectory_value = trajectory_value
+                next_state = self.system_model(torch.cat([rollout_state, action], dim=-1))
+
+                # Important: advance reference index with horizon step
+                cost = self.cost_function(
+                    next_state, action, reference_signals, int(step) + int(h)
+                )
+                cost_t = torch.as_tensor(cost, dtype=torch.float32).mean()
+                total_cost = total_cost + cost_t
+
+                rollout_state = next_state
+
+            total_cost_value = float(total_cost.detach().cpu().item())
+            if total_cost_value < best_cost:
+                best_cost = total_cost_value
                 best_action = first_action
-        return best_action.numpy(), max_trajectory_value
+
+        if best_action is None:
+            raise RuntimeError("Failed to sample a valid action in `choose_action_ref`.")
+
+        return best_action.detach().cpu().numpy(), float(best_cost)
 
     def test_model(
         self, num_episodes: int = 100, rollout: int = 10, horizon: int = 1
@@ -356,9 +414,18 @@ class MPCAgent(BaseRLModel):
         self.system_model.eval()  # Перевести модель в режим оценки
         with torch.no_grad():  # Отключить вычисление градиентов
             # Подготовка данных
-            inputs = np.hstack((states, actions.reshape(-1, 1)))
+            states_2d = np.asarray(states).reshape(states.shape[0], -1).astype(np.float32)
+            actions_2d = np.asarray(actions)
+            if actions_2d.ndim == 1:
+                actions_2d = actions_2d.reshape(-1, 1)
+            else:
+                actions_2d = actions_2d.reshape(actions_2d.shape[0], -1)
+            actions_2d = actions_2d.astype(np.float32)
+            next_states_2d = np.asarray(next_states).reshape(next_states.shape[0], -1).astype(np.float32)
+
+            inputs = np.concatenate((states_2d, actions_2d), axis=1)
             inputs = torch.tensor(inputs, dtype=torch.float32)
-            true_next_states = torch.tensor(next_states, dtype=torch.float32)
+            true_next_states = torch.tensor(next_states_2d, dtype=torch.float32)
 
             # Получение предсказаний от модели
             predicted_next_states = self.system_model(inputs)

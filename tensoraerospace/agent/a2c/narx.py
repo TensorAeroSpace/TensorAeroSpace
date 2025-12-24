@@ -41,10 +41,18 @@ class Mish(nn.Module):
         return mish(input)
 
 
-def t(x):
-    """Convert input to a float PyTorch tensor."""
+def t(x, device: torch.device | str | None = None) -> torch.Tensor:
+    """Convert input to a float PyTorch tensor.
+
+    Args:
+        x: Array-like input.
+        device: Target device. If None, tensor stays on default device (CPU).
+    """
     x = np.array(x) if not isinstance(x, np.ndarray) else x
-    return torch.from_numpy(x).float()
+    out = torch.from_numpy(x).float()
+    if device is not None:
+        out = out.to(device)
+    return out
 
 
 class Actor(nn.Module):
@@ -119,7 +127,12 @@ def discounted_rewards(rewards, dones, gamma):
     return discounted[::-1]
 
 
-def process_memory_narx(memory, gamma=0.99, discount_rewards=True):
+def process_memory_narx(
+    memory,
+    gamma: float = 0.99,
+    discount_rewards: bool = True,
+    device: torch.device | str | None = None,
+):
     """Convert collected transitions into tensors suitable for training.
 
     The function also builds an augmented critic input that concatenates the
@@ -159,12 +172,12 @@ def process_memory_narx(memory, gamma=0.99, discount_rewards=True):
     if discount_rewards:
         rewards = discounted_rewards(rewards, dones, gamma)
 
-    actions = t(actions).view(-1, 1)
-    states = t(states)
-    next_states = t(next_states)
-    rewards = t(rewards).view(-1, 1)
-    dones = t(dones).view(-1, 1)
-    critic_states = t(critic_states)  # Преобразование списка в тензор
+    actions = t(actions, device=device).view(-1, 1)
+    states = t(states, device=device)
+    next_states = t(next_states, device=device)
+    rewards = t(rewards, device=device).view(-1, 1)
+    dones = t(dones, device=device).view(-1, 1)
+    critic_states = t(critic_states, device=device)  # Преобразование списка в тензор
 
     return actions, rewards, states, next_states, dones, critic_states
 
@@ -181,6 +194,7 @@ class A2CLearner:
         actor_lr=4e-4,
         critic_lr=4e-3,
         max_grad_norm=0.5,
+        device: torch.device | str | None = None,
     ):
         """Initialize learner with optimizers and hyperparameters.
 
@@ -197,6 +211,14 @@ class A2CLearner:
         self.max_grad_norm = max_grad_norm
         self.actor = actor
         self.critic = critic
+        self.device = (
+            torch.device(device)
+            if device is not None
+            else next(self.actor.parameters()).device
+        )
+        # Ensure networks are on the same device as the learner
+        self.actor.to(self.device)
+        self.critic.to(self.device)
         self.entropy_beta = entropy_beta
         self.actor_optim = torch.optim.Adam(actor.parameters(), lr=actor_lr)
         self.critic_optim = torch.optim.Adam(critic.parameters(), lr=critic_lr)
@@ -217,7 +239,7 @@ class A2CLearner:
             next_states,
             dones,
             critic_states,
-        ) = process_memory_narx(memory, self.gamma, discount_rewards)
+        ) = process_memory_narx(memory, self.gamma, discount_rewards, device=self.device)
 
         if discount_rewards:
             td_target = rewards
@@ -238,14 +260,20 @@ class A2CLearner:
         actor_loss.backward()
 
         clip_grad_norm_(self.actor_optim, self.max_grad_norm)
-        self.writer.add_histogram(
-            "gradients/actor",
-            torch.cat([p.grad.view(-1) for p in self.actor.parameters()]),
-            global_step=steps,
-        )
+        actor_grads = [
+            p.grad.view(-1) for p in self.actor.parameters() if p.grad is not None
+        ]
+        if actor_grads:
+            self.writer.add_histogram(
+                "gradients/actor",
+                torch.cat(actor_grads).detach().cpu(),
+                global_step=steps,
+            )
         self.writer.add_histogram(
             "parameters/actor",
-            torch.cat([p.data.view(-1) for p in self.actor.parameters()]),
+            torch.cat([p.data.view(-1) for p in self.actor.parameters()])
+            .detach()
+            .cpu(),
             global_step=steps,
         )
         self.actor_optim.step()
@@ -255,14 +283,20 @@ class A2CLearner:
         self.critic_optim.zero_grad()
         critic_loss.backward()
         clip_grad_norm_(self.critic_optim, self.max_grad_norm)
-        self.writer.add_histogram(
-            "gradients/critic",
-            torch.cat([p.grad.view(-1) for p in self.critic.parameters()]),
-            global_step=steps,
-        )
+        critic_grads = [
+            p.grad.view(-1) for p in self.critic.parameters() if p.grad is not None
+        ]
+        if critic_grads:
+            self.writer.add_histogram(
+                "gradients/critic",
+                torch.cat(critic_grads).detach().cpu(),
+                global_step=steps,
+            )
         self.writer.add_histogram(
             "parameters/critic",
-            torch.cat([p.data.view(-1) for p in self.critic.parameters()]),
+            torch.cat([p.data.view(-1) for p in self.critic.parameters()])
+            .detach()
+            .cpu(),
             global_step=steps,
         )
         self.critic_optim.step()
@@ -301,6 +335,7 @@ class Runner:
         # Initialize previous action as zeros; adjust the size based on your action space
         self.prev_action = np.zeros(self.env.action_space.shape)
         self.writer = writer
+        self.device = next(self.actor.parameters()).device
 
     @staticmethod
     def _flatten_observation(observation):
@@ -333,10 +368,11 @@ class Runner:
             if self.done:
                 self.reset()
 
-            dists = self.actor(
-                torch.tensor(self.state, dtype=torch.float32).unsqueeze(0)
-            )
-            actions = dists.sample().detach().numpy()
+            state_t = torch.as_tensor(
+                self.state, dtype=torch.float32, device=self.device
+            ).unsqueeze(0)
+            dists = self.actor(state_t)
+            actions = dists.sample().detach().cpu().numpy()
             actions_clipped = np.clip(
                 actions, self.env.action_space.low, self.env.action_space.high
             )

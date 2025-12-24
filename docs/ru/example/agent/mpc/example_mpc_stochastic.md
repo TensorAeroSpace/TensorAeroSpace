@@ -139,7 +139,7 @@
 ------------------------------------------
 
 После обучения модель используется в MPC-цикле: на каждом шаге случайно
-генерируются ``rollout=64`` траекторий длиной ``horizon=3``, выбирается действие
+генерируются ``rollout=64`` траекторий длиной ``horizon=5``, выбирается действие
 с минимальной стоимостью и применяется в среде:
 
 .. code:: ipython3
@@ -152,18 +152,23 @@
     state, _ = env.reset()
     mpc_states.append(state.reshape(-1))
 
-    max_steps = min(env.number_time_steps - 3, reference_signal.shape[1] - 3)
+    MPC_ROLLOUT = 64
+    MPC_HORIZON = 5
+
+    max_steps = min(env.unwrapped.number_time_steps - 3, reference_signal.shape[1] - 3)
 
     for step in tqdm(range(max_steps), desc="MPC rollout"):
         action, _ = agent.choose_action_ref(
             state.reshape(-1),
-            rollout=64,
-            horizon=3,
+            rollout=MPC_ROLLOUT,
+            horizon=MPC_HORIZON,
             reference_signals=reference_signal,
             step=step,
         )
-        next_state, reward, terminated, truncated, _ = env.step(action[0])
-        mpc_actions.append(float(action[0]))
+        # `action` is returned as shape (1, action_dim); env expects (action_dim,)
+        action_1d = np.asarray(action, dtype=np.float32).reshape(-1)
+        next_state, reward, terminated, truncated, _ = env.step(action_1d)
+        mpc_actions.append(float(action_1d[0]))
         mpc_states.append(next_state.reshape(-1))
         state = next_state
         if terminated or truncated:
