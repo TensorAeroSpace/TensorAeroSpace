@@ -136,7 +136,9 @@ class PID(BaseRLModel):
         self.prev_error = 0
 
     @staticmethod
-    def _check_state_space_available(env) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    def _check_state_space_available(
+        env,
+    ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
         """Check if environment has state-space matrices and return them.
 
         Args:
@@ -294,7 +296,10 @@ class PID(BaseRLModel):
         # Compute DC gain for sign determination
         try:
             # DC gain = -C @ inv(A) @ B (for stable systems)
-            dc_gain = float(-C[track_state_idx:track_state_idx+1, :] @ np.linalg.solve(A, B[:, 0:1]))
+            dc_gain = float(
+                -C[track_state_idx : track_state_idx + 1, :]
+                @ np.linalg.solve(A, B[:, 0:1])
+            )
         except np.linalg.LinAlgError:
             dc_gain = -1.0  # Default for unstable systems
 
@@ -323,7 +328,9 @@ class PID(BaseRLModel):
 
                     cost = 0.0
                     cost += settling_time * 2.0  # Settling time weight
-                    cost += max(0, overshoot_val - target_overshoot) * 10.0  # Overshoot penalty
+                    cost += (
+                        max(0, overshoot_val - target_overshoot) * 10.0
+                    )  # Overshoot penalty
                     cost += abs(static_error) * 100.0  # Static error penalty
                     cost += ise * 0.001  # ISE contribution
                 else:
@@ -347,7 +354,9 @@ class PID(BaseRLModel):
                     cost += settling_time_val * 0.5  # Still care about settling
 
                     # Penalize extreme gains (cause instability)
-                    cost += max(0, abs(kd) - 10.0) * 2.0  # Limit Kd to prevent oscillations
+                    cost += (
+                        max(0, abs(kd) - 10.0) * 2.0
+                    )  # Limit Kd to prevent oscillations
                     cost += max(0, abs(ki) - 5.0) * 1.0  # Don't completely remove Ki
 
                 return cost
@@ -457,7 +466,9 @@ class PID(BaseRLModel):
             else:
                 print(f"   RMSE: {rmse:.4f}")
                 print(f"   IAE: {final_metrics['iae']:.4f}")
-                print(f"   Overshoot: {final_metrics['overshoot']:.2f}% (stability check)")
+                print(
+                    f"   Overshoot: {final_metrics['overshoot']:.2f}% (stability check)"
+                )
                 print(f"   Settling time: {final_metrics['settling_time']:.2f}s")
 
         return tune_result
@@ -492,7 +503,11 @@ class PID(BaseRLModel):
         dt = getattr(unwrapped, "dt", self.dt)
 
         # Get number of steps
-        n_steps = reference_signal.shape[1] if reference_signal.ndim > 1 else len(reference_signal)
+        n_steps = (
+            reference_signal.shape[1]
+            if reference_signal.ndim > 1
+            else len(reference_signal)
+        )
         n_steps = min(n_steps, getattr(unwrapped, "number_time_steps", n_steps) - 2)
 
         # Initialize PID state
@@ -513,7 +528,9 @@ class PID(BaseRLModel):
         for step in range(n_steps):
             # Get reference value
             if reference_signal.ndim > 1:
-                ref_val = float(reference_signal[0, min(step, reference_signal.shape[1] - 1)])
+                ref_val = float(
+                    reference_signal[0, min(step, reference_signal.shape[1] - 1)]
+                )
             else:
                 ref_val = float(reference_signal[min(step, len(reference_signal) - 1)])
 
@@ -572,7 +589,7 @@ class PID(BaseRLModel):
 
         # ISE - Integral Squared Error
         error = response - reference
-        ise = float(np.sum(error ** 2) * dt)
+        ise = float(np.sum(error**2) * dt)
 
         # IAE - Integral Absolute Error
         iae = float(np.sum(np.abs(error)) * dt)
