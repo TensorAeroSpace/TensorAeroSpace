@@ -330,6 +330,7 @@ class PPO(BaseRLModel):
         critic_hidden_dim: int = 256,
         eval_freq: int = 10,
         seed: int = 336699,
+        device: Union[str, torch.device, None] = None,
     ) -> None:
         """Initialize agent with given environment and discount coefficient.
 
@@ -353,17 +354,28 @@ class PPO(BaseRLModel):
             critic_hidden_dim: Hidden layer size for critic network.
             eval_freq: Frequency (in episodes) for evaluation.
             seed: Random seed.
+            device: Torch device to run the training on. If None, the agent will
+                auto-select CUDA (if available), else MPS (if available), else CPU.
         """
         self.gamma = gamma
         self.env = env
+        self.device = (
+            torch.device(
+                "cuda"
+                if torch.cuda.is_available()
+                else ("mps" if torch.backends.mps.is_available() else "cpu")
+            )
+            if device is None
+            else torch.device(device)
+        )
         self.actor = Actor(
             env.observation_space.shape[0],
             env.action_space.shape[0],
             hidden_dim=actor_hidden_dim,
-        )
+        ).to(self.device)
         self.critic = Critic(
             env.observation_space.shape[0], hidden_dim=critic_hidden_dim
-        )
+        ).to(self.device)
         self.actor_lr = actor_lr
         self.critic_lr = critic_lr
         self.seed = seed
@@ -424,20 +436,38 @@ class PPO(BaseRLModel):
         Returns:
             tuple: Tuple containing action, mean action and log probability.
         """
+        action_t, mean_action_t, log_prob_t = self._act_tensor(
+            state=state, deterministic=deterministic
+        )
+
+        # Public API (tests + notebooks) expects CPU tensors for action/log_prob
+        # so that `.numpy()` works without manual `.cpu()`.
+        return (
+            action_t.detach().cpu(),
+            mean_action_t.detach().cpu().numpy(),
+            log_prob_t.detach().cpu(),
+        )
+
+    def _act_tensor(
+        self, state: np.ndarray, deterministic: bool = False
+    ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+        """Internal version of `act()` that keeps tensors on `self.device`.
+
+        Returns:
+            (action_t, mean_action_t, log_prob_t) on `self.device`.
+        """
         if self.normalize_obs:
             state = self._normalize_obs(state)
-        state_t = torch.as_tensor(np.array([state]), dtype=torch.float32)
-        with torch.no_grad():
-            action, dist = self.actor(state_t)
-            log_prob = dist.log_prob(action).sum(dim=-1, keepdim=True)
-            mean_action = dist.mean
-            if deterministic:
-                action = mean_action
-        return (
-            action.detach(),
-            mean_action.detach().cpu().numpy(),
-            log_prob.detach(),
+        state_t = torch.as_tensor(
+            np.array([state]), dtype=torch.float32, device=self.device
         )
+        with torch.no_grad():
+            action_t, dist = self.actor(state_t)
+            mean_action_t = dist.mean
+            if deterministic:
+                action_t = mean_action_t
+            log_prob_t = dist.log_prob(action_t).sum(dim=-1, keepdim=True)
+        return action_t, mean_action_t, log_prob_t
 
     def actor_loss(
         self,
@@ -490,6 +520,16 @@ class PPO(BaseRLModel):
         Returns:
             dict: Dictionary with training metrics.
         """
+        # Tests may pass CPU tensors even if agent is on CUDA.
+        # Always move the full mini-batch to the agent device.
+        states = states.to(self.device)
+        actions = actions.to(self.device)
+        adv = adv.to(self.device)
+        old_probs = old_probs.to(self.device)
+        discnt_rewards = discnt_rewards.to(self.device)
+        rewards = rewards.to(self.device)
+        old_values = old_values.to(self.device)
+
         self.a_opt.zero_grad()
         self.c_opt.zero_grad()
         new_actions, new_distr = self.actor(states)
@@ -603,8 +643,8 @@ class PPO(BaseRLModel):
         """
 
         # Use environment observation dimension instead of a hardcoded value
-        states2 = torch.cat(states).view(-1, self.env.observation_space.shape[0])
-        actions2 = torch.cat(actions).detach()
+        states2 = torch.stack(states)
+        actions2 = torch.stack(actions).detach()
         rewards2 = torch.cat(rewards)
         dones2 = torch.cat(dones)
         values2 = torch.cat(values).flatten()
@@ -675,13 +715,19 @@ class PPO(BaseRLModel):
             rollout_states = []  # For obs normalization update
             for step in range(self.rollout_len):
                 rollout_states.append(state)
-                action, mu, prob = self.act(state)
+                action, mu, prob = self._act_tensor(state)
                 # Normalize state for value function if needed
                 state_normalized = (
                     self._normalize_obs(state) if self.normalize_obs else state
                 )
                 with torch.no_grad():
-                    value = self.critic(torch.FloatTensor(np.array([state_normalized])))
+                    value = self.critic(
+                        torch.as_tensor(
+                            np.array([state_normalized]),
+                            dtype=torch.float32,
+                            device=self.device,
+                        )
+                    )
                 # Clip action to environment bounds to avoid invalid controls
                 env_action = action.detach().cpu().numpy()[0]
                 try:
@@ -702,12 +748,24 @@ class PPO(BaseRLModel):
                 score += reward
                 curr_ep_len += 1
                 dones.append(
-                    torch.FloatTensor(np.reshape(done, (1, -1)).astype(np.float64))
+                    torch.as_tensor(
+                        np.reshape(done, (1, -1)),
+                        dtype=torch.float32,
+                        device=self.device,
+                    )
                 )
                 rewards.append(
-                    torch.FloatTensor(np.reshape(reward, (1, -1)).astype(np.float64))
+                    torch.as_tensor(
+                        np.reshape(reward, (1, -1)),
+                        dtype=torch.float32,
+                        device=self.device,
+                    )
                 )
-                states.append(torch.FloatTensor(state_normalized))
+                states.append(
+                    torch.as_tensor(
+                        state_normalized, dtype=torch.float32, device=self.device
+                    )
+                )
                 actions.append(action[0])
                 probs.append(prob)
                 values.append(value)
@@ -734,15 +792,19 @@ class PPO(BaseRLModel):
             )
             with torch.no_grad():
                 next_value = self.critic(
-                    torch.FloatTensor(np.array([next_state_normalized]))
+                    torch.as_tensor(
+                        np.array([next_state_normalized]),
+                        dtype=torch.float32,
+                        device=self.device,
+                    )
                 )
             values.append(next_value)
 
             _, _, returns, _, _, _ = self.preprocess1(
                 states, actions, rewards, dones, values, probs, self.gamma
             )
-            states = torch.cat(states).view(-1, self.env.observation_space.shape[0])
-            actions = torch.cat(actions).view(-1, 1)
+            states = torch.stack(states)
+            actions = torch.stack(actions)
             rewards = torch.cat(rewards)
             returns = torch.cat(returns).detach()
             values = torch.cat(values).detach()
