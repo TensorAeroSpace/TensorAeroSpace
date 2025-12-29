@@ -36,7 +36,7 @@ jobs:
         
     
     - name: 📥 Checkout code
-      uses: actions/checkout@v5
+      uses: actions/checkout@v6
 
     - name: 🐍 Set up Python 3.10
       uses: actions/setup-python@v6
@@ -186,7 +186,7 @@ jobs:
         
     
     - name: 📥 Checkout code
-      uses: actions/checkout@v5
+      uses: actions/checkout@v6
 
     - name: 🐍 Set up Python
       uses: actions/setup-python@v6
@@ -301,7 +301,7 @@ jobs:
         sudo apt-get clean
     
     - name: 📥 Checkout code
-      uses: actions/checkout@v5
+      uses: actions/checkout@v6
 
     - name: 🐍 Set up Python
       uses: actions/setup-python@v6
@@ -342,7 +342,7 @@ jobs:
         sudo apt-get clean
     
     - name: 📥 Checkout code
-      uses: actions/checkout@v5
+      uses: actions/checkout@v6
 
     - name: 🐍 Set up Python
       uses: actions/setup-python@v6
