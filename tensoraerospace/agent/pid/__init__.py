@@ -196,7 +196,8 @@ class PID(BaseRLModel):
 
         # Only B747 linear env converts q/theta observations to degrees (see envs/b747.py)
         if (
-            getattr(unwrapped.__class__, "__module__", "") == "tensoraerospace.envs.b747"
+            getattr(unwrapped.__class__, "__module__", "")
+            == "tensoraerospace.envs.b747"
             and getattr(unwrapped.__class__, "__name__", "") == "LinearLongitudinalB747"
         ):
             names = getattr(unwrapped, "output_space", None) or getattr(
@@ -209,7 +210,10 @@ class PID(BaseRLModel):
 
     @staticmethod
     def _make_step_reference(
-        reference_signal: np.ndarray, dt: float, n_steps: int, step_at_ratio: float = 0.2
+        reference_signal: np.ndarray,
+        dt: float,
+        n_steps: int,
+        step_at_ratio: float = 0.2,
     ) -> np.ndarray:
         """Create a step reference matching scale of a given reference signal."""
         ref = np.asarray(reference_signal, dtype=float)
@@ -616,7 +620,12 @@ class PID(BaseRLModel):
         self.kd = kd_opt
 
         # Compute RMSE for tracking mode
-        rmse = float(np.sqrt(final_primary["ise"] / max(1e-12, float(dt) * max(1, int(final_primary.get("n_points", 1))))))
+        rmse = float(
+            np.sqrt(
+                final_primary["ise"]
+                / max(1e-12, float(dt) * max(1, int(final_primary.get("n_points", 1))))
+            )
+        )
 
         method_name = f"MATLAB-Style ({mode_desc})"
         tune_result = MATLABTuneResult(
@@ -633,15 +642,25 @@ class PID(BaseRLModel):
             print(f"\n   ✅ Optimization completed!")
             print(f"   Kp={kp_opt:.4f}, Ki={ki_opt:.4f}, Kd={kd_opt:.4f}")
             if mode == "step_response":
-                print(f"   [Primary step] Settling time: {final_primary['settling_time']:.2f}s")
+                print(
+                    f"   [Primary step] Settling time: {final_primary['settling_time']:.2f}s"
+                )
                 print(f"   [Primary step] Overshoot: {final_primary['overshoot']:.2f}%")
-                print(f"   [Primary step] Static error: {final_primary['static_error']:.4f}")
-                print(f"   [Secondary sine] RMSE: {_rmse_from_metrics(final_secondary):.4f}")
+                print(
+                    f"   [Primary step] Static error: {final_primary['static_error']:.4f}"
+                )
+                print(
+                    f"   [Secondary sine] RMSE: {_rmse_from_metrics(final_secondary):.4f}"
+                )
             else:
                 print(f"   [Primary tracking] RMSE: {rmse:.4f}")
                 print(f"   [Primary tracking] IAE: {final_primary['iae']:.4f}")
-                print(f"   [Secondary step] Overshoot: {final_secondary['overshoot']:.2f}%")
-                print(f"   [Secondary step] Settling time: {final_secondary['settling_time']:.2f}s")
+                print(
+                    f"   [Secondary step] Overshoot: {final_secondary['overshoot']:.2f}%"
+                )
+                print(
+                    f"   [Secondary step] Settling time: {final_secondary['settling_time']:.2f}s"
+                )
 
         return tune_result
 
@@ -745,7 +764,9 @@ class PID(BaseRLModel):
                     sat_count += 1
                     # anti-windup: do not integrate if saturated
                     integral_candidate = integral
-                    control_unsat = kp * error + ki * integral_candidate + kd * derivative
+                    control_unsat = (
+                        kp * error + ki * integral_candidate + kd * derivative
+                    )
                     control = float(np.clip(control_unsat, low, high))
 
             integral = float(integral_candidate)
@@ -783,7 +804,11 @@ class PID(BaseRLModel):
                 dcontrol_rms = float(np.sqrt(np.mean(dctrl**2)))
             else:
                 dcontrol_rms = 0.0
-            sat_frac = float(sat_count) / float(max(1, ctrl.size)) if (low is not None and high is not None) else 0.0
+            sat_frac = (
+                float(sat_count) / float(max(1, ctrl.size))
+                if (low is not None and high is not None)
+                else 0.0
+            )
         else:
             control_rms = 0.0
             control_max = 0.0
