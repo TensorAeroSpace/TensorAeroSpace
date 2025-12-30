@@ -51,6 +51,7 @@ plugins:
               - Unity Environment: model/unity_env.md
               
             - Agents:
+              - PID: agent/pid.md
               - IHDP:
                 - Description: agent/ihdp.md
                 - Example with LinearLongitudinalF16‑v0: agent/ihdp/example.md
@@ -129,6 +130,7 @@ plugins:
               - SUAV: model/suav.md
               - Unity окружение: model/unity_env.md
             - Алгоритмы управления:
+              - PID: agent/pid.md
               - IHDP:
                 - Описание: agent/ihdp.md
                 - Пример LinearLongitudinalF16‑v0: agent/ihdp/example.md
