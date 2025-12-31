@@ -6,7 +6,12 @@ and the main PPO agent class for aerospace system control.
 """
 
 import datetime
+import inspect
 import json
+import os
+import copy
+import queue
+import threading
 from pathlib import Path
 from typing import Any, Dict, Generator, Optional, Tuple, Union
 
@@ -20,9 +25,194 @@ from tqdm import tqdm
 from ..base import (
     BaseRLModel,
     TheEnvironmentDoesNotMatch,
+    deserialize_env_params,
     get_class_from_string,
     serialize_env,
 )
+
+
+def _state_dict_cpu(module: torch.nn.Module) -> Dict[str, torch.Tensor]:
+    """Snapshot a module state_dict into CPU tensors (safe for async saving)."""
+    out: Dict[str, torch.Tensor] = {}
+    for k, v in module.state_dict().items():
+        # Clone to decouple from the live parameters/buffers.
+        out[k] = v.detach().cpu().clone()
+    return out
+
+
+def _to_cpu_detached(obj: Any) -> Any:
+    """Recursively convert torch tensors to detached CPU clones."""
+    if torch.is_tensor(obj):
+        return obj.detach().cpu().clone()
+    if isinstance(obj, dict):
+        return {k: _to_cpu_detached(v) for k, v in obj.items()}
+    if isinstance(obj, list):
+        return [_to_cpu_detached(v) for v in obj]
+    if isinstance(obj, tuple):
+        return tuple(_to_cpu_detached(v) for v in obj)
+    return obj
+
+
+def _optimizer_state_dict_cpu(opt: torch.optim.Optimizer) -> Dict[str, Any]:
+    """Snapshot optimizer state_dict into CPU tensors (safe for async saving)."""
+    sd = copy.deepcopy(opt.state_dict())
+    # Convert any tensor values inside optimizer state to CPU clones
+    sd["state"] = _to_cpu_detached(sd.get("state", {}))
+    return sd
+
+
+def _optimizer_state_to_device(opt: torch.optim.Optimizer, device: torch.device) -> None:
+    """Move optimizer state tensors to a target device after load_state_dict()."""
+    for state in opt.state.values():
+        for k, v in state.items():
+            if torch.is_tensor(v):
+                state[k] = v.to(device)
+
+
+def _atomic_write_json(path: Path, data: Dict[str, Any]) -> None:
+    """Write JSON atomically via a temp file + os.replace()."""
+    tmp_path = Path(str(path) + ".tmp")
+    with open(tmp_path, "w", encoding="utf-8") as f:
+        json.dump(data, f)
+    os.replace(tmp_path, path)
+
+
+def _atomic_torch_save(path: Path, obj: Any) -> None:
+    """torch.save atomically via a temp file + os.replace()."""
+    tmp_path = Path(str(path) + ".tmp")
+    torch.save(obj, tmp_path)
+    os.replace(tmp_path, path)
+
+
+def _atomic_np_savez(path: Path, **kwargs: Any) -> None:
+    """np.savez atomically via a temp file + os.replace()."""
+    tmp_path = Path(str(path) + ".tmp")
+    with open(tmp_path, "wb") as f:
+        np.savez(f, **kwargs)
+    os.replace(tmp_path, path)
+
+
+class _AsyncBestCheckpointSaver:
+    """Background writer for best-model checkpoints (non-blocking training).
+
+    Uses a single daemon thread and a queue of size 1. If a newer checkpoint
+    arrives while a previous one is pending, the older one is dropped (safe,
+    because "best" is monotonic by definition).
+    """
+
+    def __init__(self) -> None:
+        self._q: "queue.Queue[Optional[dict[str, Any]]]" = queue.Queue(maxsize=1)
+        self._stop = threading.Event()
+        self._thread = threading.Thread(
+            target=self._worker, name="ppo-best-checkpoint-saver", daemon=True
+        )
+        self._thread.start()
+
+    def submit(self, job: dict[str, Any]) -> None:
+        """Submit a checkpoint save job without blocking the caller."""
+        try:
+            self._q.put_nowait(job)
+        except queue.Full:
+            # Drop the older pending job and enqueue the newer one.
+            try:
+                _ = self._q.get_nowait()
+                self._q.task_done()
+            except queue.Empty:
+                pass
+            try:
+                self._q.put_nowait(job)
+            except queue.Full:
+                # If still full, drop (training must never block here).
+                return
+
+    def flush(self, timeout: Optional[float] = None) -> None:
+        """Wait until all queued save jobs are completed."""
+        # queue.join() has no timeout; approximate via polling.
+        if timeout is None:
+            self._q.join()
+            return
+        end = float(timeout) + float(datetime.datetime.now().timestamp())
+        while True:
+            if self._q.unfinished_tasks == 0:
+                return
+            if float(datetime.datetime.now().timestamp()) >= end:
+                return
+            # Avoid tight loop
+            self._stop.wait(0.05)
+
+    def close(self, timeout: Optional[float] = 5.0) -> None:
+        """Stop the worker thread (best-effort)."""
+        self._stop.set()
+        # Wake the worker if it's waiting.
+        try:
+            self._q.put_nowait(None)
+        except queue.Full:
+            try:
+                _ = self._q.get_nowait()
+                self._q.task_done()
+            except queue.Empty:
+                pass
+            try:
+                self._q.put_nowait(None)
+            except queue.Full:
+                pass
+        self._thread.join(timeout=timeout)
+
+    def _worker(self) -> None:
+        while not self._stop.is_set():
+            job = None
+            try:
+                job = self._q.get(timeout=0.2)
+            except queue.Empty:
+                continue
+
+            try:
+                if job is None:
+                    self._q.task_done()
+                    break
+
+                model_dir = Path(job["model_dir"])
+                model_dir.mkdir(parents=True, exist_ok=True)
+
+                _atomic_write_json(model_dir / "config.json", job["config"])
+                _atomic_torch_save(model_dir / "actor.pth", job["actor_state"])
+                _atomic_torch_save(model_dir / "critic.pth", job["critic_state"])
+                if job.get("actor_opt_state") is not None:
+                    _atomic_torch_save(
+                        model_dir / "actor_opt.pth", job["actor_opt_state"]
+                    )
+                if job.get("critic_opt_state") is not None:
+                    _atomic_torch_save(
+                        model_dir / "critic_opt.pth", job["critic_opt_state"]
+                    )
+                if job.get("train_state") is not None:
+                    _atomic_write_json(model_dir / "train_state.json", job["train_state"])
+
+                if job.get("obs_rms") is not None:
+                    d = job["obs_rms"]
+                    _atomic_np_savez(
+                        model_dir / "obs_rms.npz",
+                        mean=d["mean"],
+                        var=d["var"],
+                        count=d["count"],
+                    )
+                if job.get("ret_rms") is not None:
+                    d = job["ret_rms"]
+                    _atomic_np_savez(
+                        model_dir / "ret_rms.npz",
+                        mean=d["mean"],
+                        var=d["var"],
+                        count=d["count"],
+                    )
+
+                # Extra metadata (optional)
+                if job.get("meta") is not None:
+                    _atomic_write_json(model_dir / "best_meta.json", job["meta"])
+            except Exception:
+                # Never crash training due to background saving.
+                pass
+            finally:
+                self._q.task_done()
 
 
 class RunningMeanStd:
@@ -331,6 +521,9 @@ class PPO(BaseRLModel):
         eval_freq: int = 10,
         seed: int = 336699,
         device: Union[str, torch.device, None] = None,
+        save_best_model: bool = True,
+        best_model_dir: Union[str, Path, None] = None,
+        save_best_async: bool = True,
     ) -> None:
         """Initialize agent with given environment and discount coefficient.
 
@@ -356,6 +549,11 @@ class PPO(BaseRLModel):
             seed: Random seed.
             device: Torch device to run the training on. If None, the agent will
                 auto-select CUDA (if available), else MPS (if available), else CPU.
+            save_best_model: Whether to save the best checkpoint during training.
+            best_model_dir: Directory for the best checkpoint (config.json + weights).
+                If None, defaults to "{cwd}/best_model_PPO/".
+            save_best_async: If True, save best checkpoint in a background thread
+                (recommended to avoid slowing training).
         """
         self.gamma = gamma
         self.env = env
@@ -400,6 +598,17 @@ class PPO(BaseRLModel):
         self.best_reward = float("-inf")
         self.avg_rewards_list: list = []
         self.writer = SummaryWriter()
+
+        # Best-checkpoint saving (optional, async by default)
+        self.save_best_model = bool(save_best_model)
+        self.best_model_dir = (
+            Path(best_model_dir)
+            if best_model_dir is not None
+            else (Path.cwd() / "best_model_PPO")
+        )
+        self.save_best_async = bool(save_best_async)
+        # Lazy-init background saver only when a new best checkpoint is found.
+        self._best_saver: Optional[_AsyncBestCheckpointSaver] = None
 
         # Observation and reward normalization
         if self.normalize_obs:
@@ -495,6 +704,102 @@ class PPO(BaseRLModel):
         # Encourage higher entropy (exploration)
         loss = -torch.min(surr1, surr2).mean() - self.entropy_coef * entropy
         return loss
+
+    def _save_best_checkpoint(self, eval_reward: float, episode: int) -> None:
+        """Save best checkpoint (async if enabled).
+
+        This is designed to have minimal impact on training speed: a small CPU
+        snapshot is created in the training thread, and disk I/O happens in a
+        background thread when `save_best_async=True`.
+        """
+        if not bool(self.save_best_model):
+            return
+
+        model_dir = Path(self.best_model_dir)
+        # Build a stable, loadable checkpoint directory.
+        model_dir.mkdir(parents=True, exist_ok=True)
+
+        # Snapshot weights + stats (CPU) to avoid races with ongoing training.
+        actor_state = _state_dict_cpu(self.actor)
+        critic_state = _state_dict_cpu(self.critic)
+        actor_opt_state = _optimizer_state_dict_cpu(self.a_opt)
+        critic_opt_state = _optimizer_state_dict_cpu(self.c_opt)
+
+        obs_rms = None
+        if self.normalize_obs and hasattr(self, "obs_rms"):
+            obs_rms = {
+                "mean": np.array(self.obs_rms.mean, copy=True),
+                "var": np.array(self.obs_rms.var, copy=True),
+                "count": float(self.obs_rms.count),
+            }
+        ret_rms = None
+        if self.normalize_reward and hasattr(self, "ret_rms"):
+            ret_rms = {
+                "mean": np.array(self.ret_rms.mean, copy=True),
+                "var": np.array(self.ret_rms.var, copy=True),
+                "count": float(self.ret_rms.count),
+            }
+
+        meta = {
+            "eval_reward": float(eval_reward),
+            "episode": int(episode),
+            "saved_at": datetime.datetime.now().isoformat(),
+        }
+        train_state = {
+            "best_reward": float(self.best_reward),
+            "last_eval_reward": float(eval_reward),
+            "episode": int(episode),
+            "saved_at": meta["saved_at"],
+        }
+
+        job = {
+            "model_dir": str(model_dir),
+            "config": self.get_param_env(),
+            "actor_state": actor_state,
+            "critic_state": critic_state,
+            "actor_opt_state": actor_opt_state,
+            "critic_opt_state": critic_opt_state,
+            "obs_rms": obs_rms,
+            "ret_rms": ret_rms,
+            "train_state": train_state,
+            "meta": meta,
+        }
+
+        # Prefer async saving (minimal impact on training loop).
+        if self.save_best_async and self._best_saver is None:
+            self._best_saver = _AsyncBestCheckpointSaver()
+
+        if self._best_saver is not None:
+            self._best_saver.submit(job)
+            return
+
+        # Synchronous fallback (still atomic, but will block).
+        _atomic_write_json(model_dir / "config.json", job["config"])
+        _atomic_torch_save(model_dir / "actor.pth", actor_state)
+        _atomic_torch_save(model_dir / "critic.pth", critic_state)
+        if obs_rms is not None:
+            _atomic_np_savez(
+                model_dir / "obs_rms.npz",
+                mean=obs_rms["mean"],
+                var=obs_rms["var"],
+                count=obs_rms["count"],
+            )
+        if ret_rms is not None:
+            _atomic_np_savez(
+                model_dir / "ret_rms.npz",
+                mean=ret_rms["mean"],
+                var=ret_rms["var"],
+                count=ret_rms["count"],
+            )
+        _atomic_write_json(model_dir / "best_meta.json", meta)
+
+    def close(self) -> None:
+        """Flush and stop background saver (safe to call multiple times)."""
+        if self._best_saver is not None:
+            # Ensure the last best checkpoint is fully written.
+            self._best_saver.flush(timeout=30.0)
+            self._best_saver.close(timeout=5.0)
+            self._best_saver = None
 
     def learn(
         self,
@@ -685,235 +990,252 @@ class PPO(BaseRLModel):
             All metrics are logged to TensorBoard including actor/critic losses,
             rewards, entropy, KL divergence, clip fraction, and explained variance.
         """
-        for episode in tqdm(range(self.max_episodes)):
-            # print("Episode", episode)
-            if self.target:
-                break
+        try:
+            for episode in tqdm(range(self.max_episodes)):
+                # print("Episode", episode)
+                if self.target:
+                    break
 
-            reset_return = self.env.reset()
-            if type(reset_return) is tuple:
-                state, info = reset_return
-            else:
-                state = reset_return
-            done = False
-            all_aloss = []
-            all_entropies = []
-            episode_lengths = []
-            all_closs = []
-            rewards = []
-            states = []
-            actions = []
-            probs = []
-            # mus = []
-            # deltas = []
-            dones = []
-            values = []
-            scores = []
-            score = 0
+                reset_return = self.env.reset()
+                if type(reset_return) is tuple:
+                    state, info = reset_return
+                else:
+                    state = reset_return
+                done = False
+                all_aloss = []
+                all_entropies = []
+                episode_lengths = []
+                all_closs = []
+                rewards = []
+                states = []
+                actions = []
+                probs = []
+                # mus = []
+                # deltas = []
+                dones = []
+                values = []
+                scores = []
+                score = 0
 
-            curr_ep_len = 0
-            rollout_states = []  # For obs normalization update
-            for step in range(self.rollout_len):
-                rollout_states.append(state)
-                action, mu, prob = self._act_tensor(state)
-                # Normalize state for value function if needed
-                state_normalized = (
-                    self._normalize_obs(state) if self.normalize_obs else state
-                )
-                with torch.no_grad():
-                    value = self.critic(
+                curr_ep_len = 0
+                rollout_states = []  # For obs normalization update
+                for step in range(self.rollout_len):
+                    rollout_states.append(state)
+                    action, mu, prob = self._act_tensor(state)
+                    # Normalize state for value function if needed
+                    state_normalized = (
+                        self._normalize_obs(state) if self.normalize_obs else state
+                    )
+                    with torch.no_grad():
+                        value = self.critic(
+                            torch.as_tensor(
+                                np.array([state_normalized]),
+                                dtype=torch.float32,
+                                device=self.device,
+                            )
+                        )
+                    # Clip action to environment bounds to avoid invalid controls
+                    env_action = action.detach().cpu().numpy()[0]
+                    try:
+                        low, high = (
+                            self.env.action_space.low,
+                            self.env.action_space.high,
+                        )
+                        env_action = np.clip(env_action, low, high)
+                    except Exception:
+                        pass
+                    step_return = self.env.step(env_action)
+                    if len(step_return) > 4:
+                        next_state, reward, terminated, trunkated, info = step_return
+                        done = terminated or trunkated
+                    else:
+                        next_state, reward, terminated, info = step_return
+                        done = terminated
+                    score += reward
+                    curr_ep_len += 1
+                    dones.append(
                         torch.as_tensor(
-                            np.array([state_normalized]),
+                            np.reshape(done, (1, -1)),
                             dtype=torch.float32,
                             device=self.device,
                         )
                     )
-                # Clip action to environment bounds to avoid invalid controls
-                env_action = action.detach().cpu().numpy()[0]
-                try:
-                    low, high = (
-                        self.env.action_space.low,
-                        self.env.action_space.high,
+                    rewards.append(
+                        torch.as_tensor(
+                            np.reshape(reward, (1, -1)),
+                            dtype=torch.float32,
+                            device=self.device,
+                        )
                     )
-                    env_action = np.clip(env_action, low, high)
-                except Exception:
-                    pass
-                step_return = self.env.step(env_action)
-                if len(step_return) > 4:
-                    next_state, reward, terminated, trunkated, info = step_return
-                    done = terminated or trunkated
-                else:
-                    next_state, reward, terminated, info = step_return
-                    done = terminated
-                score += reward
-                curr_ep_len += 1
-                dones.append(
-                    torch.as_tensor(
-                        np.reshape(done, (1, -1)),
-                        dtype=torch.float32,
-                        device=self.device,
+                    states.append(
+                        torch.as_tensor(
+                            state_normalized, dtype=torch.float32, device=self.device
+                        )
                     )
+                    actions.append(action[0])
+                    probs.append(prob)
+                    values.append(value)
+
+                    state = next_state
+                    if done:
+                        scores.append(score)
+                        episode_lengths.append(curr_ep_len)
+                        score = 0
+                        curr_ep_len = 0
+                        reset_return = self.env.reset()
+                        if type(reset_return) is tuple:
+                            state, info = reset_return
+                        else:
+                            state = reset_return
+
+                # Update observation normalization statistics
+                if self.normalize_obs:
+                    self.obs_rms.update(np.array(rollout_states))
+
+                # Calculate next state value for the terminal state
+                next_state_normalized = (
+                    self._normalize_obs(next_state)
+                    if self.normalize_obs
+                    else next_state
                 )
-                rewards.append(
-                    torch.as_tensor(
-                        np.reshape(reward, (1, -1)),
-                        dtype=torch.float32,
-                        device=self.device,
+                with torch.no_grad():
+                    next_value = self.critic(
+                        torch.as_tensor(
+                            np.array([next_state_normalized]),
+                            dtype=torch.float32,
+                            device=self.device,
+                        )
                     )
+                values.append(next_value)
+
+                _, _, returns, _, _, _ = self.preprocess1(
+                    states, actions, rewards, dones, values, probs, self.gamma
                 )
-                states.append(
-                    torch.as_tensor(
-                        state_normalized, dtype=torch.float32, device=self.device
+                states = torch.stack(states)
+                actions = torch.stack(actions)
+                rewards = torch.cat(rewards)
+                returns = torch.cat(returns).detach()
+                values = torch.cat(values).detach()
+                probs = torch.cat(probs).detach()
+
+                # Reward normalization (normalize returns)
+                if self.normalize_reward:
+                    returns_np = returns.cpu().numpy().flatten()
+                    self.ret_rms.update(returns_np)
+                    returns = torch.clamp(
+                        (returns - self.ret_rms.mean)
+                        / np.sqrt(self.ret_rms.var + 1e-8),
+                        -10.0,
+                        10.0,
                     )
-                )
-                actions.append(action[0])
-                probs.append(prob)
-                values.append(value)
 
-                state = next_state
-                if done:
-                    scores.append(score)
-                    episode_lengths.append(curr_ep_len)
-                    score = 0
-                    curr_ep_len = 0
-                    reset_return = self.env.reset()
-                    if type(reset_return) is tuple:
-                        state, info = reset_return
-                    else:
-                        state = reset_return
+                advantages = returns - values[:-1]
+                # Store old values for clipped value loss
+                old_values = values[:-1].clone()
 
-            # Update observation normalization statistics
-            if self.normalize_obs:
-                self.obs_rms.update(np.array(rollout_states))
+                # Calculate explained variance (quality of value function)
+                with torch.no_grad():
+                    y_pred = values[:-1]
+                    y_true = returns
+                    var_y = torch.var(y_true)
+                    explained_var = (
+                        1 - torch.var(y_true - y_pred) / (var_y + 1e-8)
+                    ).item()
 
-            # Calculate next state value for the terminal state
-            next_state_normalized = (
-                self._normalize_obs(next_state) if self.normalize_obs else next_state
-            )
-            with torch.no_grad():
-                next_value = self.critic(
-                    torch.as_tensor(
-                        np.array([next_state_normalized]),
-                        dtype=torch.float32,
-                        device=self.device,
-                    )
-                )
-            values.append(next_value)
-
-            _, _, returns, _, _, _ = self.preprocess1(
-                states, actions, rewards, dones, values, probs, self.gamma
-            )
-            states = torch.stack(states)
-            actions = torch.stack(actions)
-            rewards = torch.cat(rewards)
-            returns = torch.cat(returns).detach()
-            values = torch.cat(values).detach()
-            probs = torch.cat(probs).detach()
-
-            # Reward normalization (normalize returns)
-            if self.normalize_reward:
-                returns_np = returns.cpu().numpy().flatten()
-                self.ret_rms.update(returns_np)
-                returns = torch.clamp(
-                    (returns - self.ret_rms.mean) / np.sqrt(self.ret_rms.var + 1e-8),
-                    -10.0,
-                    10.0,
+                # Normalize advantages for stability
+                advantages = (advantages - advantages.mean()) / (
+                    advantages.std() + 1e-8
                 )
 
-            advantages = returns - values[:-1]
-            # Store old values for clipped value loss
-            old_values = values[:-1].clone()
-
-            # Calculate explained variance (quality of value function)
-            with torch.no_grad():
-                y_pred = values[:-1]
-                y_true = returns
-                var_y = torch.var(y_true)
-                explained_var = (1 - torch.var(y_true - y_pred) / (var_y + 1e-8)).item()
-
-            # Normalize advantages for stability
-            advantages = (advantages - advantages.mean()) / (advantages.std() + 1e-8)
-
-            # Train for a number of epochs with KL early stopping
-            all_approx_kl = []
-            all_clip_fractions = []
-            for epoch in range(self.num_epochs):
-                epoch_kls = []
-                for (
-                    state,
-                    action,
-                    old_log_prob,
-                    return_,
-                    adv,
-                    reward,
-                    old_val,
-                ) in ppo_iter(
-                    epoch=1,  # Inner loop already handles epochs
-                    mini_batch_size=self.batch_size,
-                    states=states,
-                    actions=actions,
-                    log_probs=probs,
-                    returns=returns,
-                    advantages=advantages,
-                    rewards=rewards,
-                    values=old_values,
-                ):
-                    metrics = self.learn(
+                # Train for a number of epochs with KL early stopping
+                all_approx_kl = []
+                all_clip_fractions = []
+                for epoch in range(self.num_epochs):
+                    epoch_kls = []
+                    for (
                         state,
                         action,
-                        adv,
                         old_log_prob,
                         return_,
+                        adv,
                         reward,
                         old_val,
-                    )
-                    all_aloss.append(metrics["actor_loss"])
-                    all_closs.append(metrics["critic_loss"])
-                    all_entropies.append(metrics["entropy"])
-                    all_approx_kl.append(metrics["approx_kl"])
-                    all_clip_fractions.append(metrics["clip_fraction"])
-                    epoch_kls.append(metrics["approx_kl"])
+                    ) in ppo_iter(
+                        epoch=1,  # Inner loop already handles epochs
+                        mini_batch_size=self.batch_size,
+                        states=states,
+                        actions=actions,
+                        log_probs=probs,
+                        returns=returns,
+                        advantages=advantages,
+                        rewards=rewards,
+                        values=old_values,
+                    ):
+                        metrics = self.learn(
+                            state,
+                            action,
+                            adv,
+                            old_log_prob,
+                            return_,
+                            reward,
+                            old_val,
+                        )
+                        all_aloss.append(metrics["actor_loss"])
+                        all_closs.append(metrics["critic_loss"])
+                        all_entropies.append(metrics["entropy"])
+                        all_approx_kl.append(metrics["approx_kl"])
+                        all_clip_fractions.append(metrics["clip_fraction"])
+                        epoch_kls.append(metrics["approx_kl"])
 
-                # KL early stopping
-                if self.target_kl is not None:
-                    if np.mean(epoch_kls) > self.target_kl:
-                        break
+                    # KL early stopping
+                    if self.target_kl is not None:
+                        if np.mean(epoch_kls) > self.target_kl:
+                            break
 
-            avg_reward = np.mean(scores) if scores else 0.0
-            avg_aloss = np.mean(all_aloss)
-            avg_closs = np.mean(all_closs)
-            avg_entropy = np.mean(all_entropies)
-            avg_episode_length = np.mean(episode_lengths) if episode_lengths else 0.0
-            avg_approx_kl = np.mean(all_approx_kl)
-            avg_clip_fraction = np.mean(all_clip_fractions)
+                avg_reward = np.mean(scores) if scores else 0.0
+                avg_aloss = np.mean(all_aloss)
+                avg_closs = np.mean(all_closs)
+                avg_entropy = np.mean(all_entropies)
+                avg_episode_length = (
+                    np.mean(episode_lengths) if episode_lengths else 0.0
+                )
+                avg_approx_kl = np.mean(all_approx_kl)
+                avg_clip_fraction = np.mean(all_clip_fractions)
 
-            # Log to TensorBoard
-            self.writer.add_scalar("Loss/Actor", avg_aloss, episode)
-            self.writer.add_scalar("Loss/Critic", avg_closs, episode)
-            self.writer.add_scalar("Performance/Reward", avg_reward, episode)
-            self.writer.add_scalar("Performance/Entropy", avg_entropy, episode)
-            self.writer.add_scalar(
-                "Performance/Episode Length", avg_episode_length, episode
-            )
-            self.writer.add_scalar("Diagnostics/Approx KL", avg_approx_kl, episode)
-            self.writer.add_scalar(
-                "Diagnostics/Clip Fraction", avg_clip_fraction, episode
-            )
-            self.writer.add_scalar(
-                "Diagnostics/Explained Variance", explained_var, episode
-            )
+                # Log to TensorBoard
+                self.writer.add_scalar("Loss/Actor", avg_aloss, episode)
+                self.writer.add_scalar("Loss/Critic", avg_closs, episode)
+                self.writer.add_scalar("Performance/Reward", avg_reward, episode)
+                self.writer.add_scalar("Performance/Entropy", avg_entropy, episode)
+                self.writer.add_scalar(
+                    "Performance/Episode Length", avg_episode_length, episode
+                )
+                self.writer.add_scalar("Diagnostics/Approx KL", avg_approx_kl, episode)
+                self.writer.add_scalar(
+                    "Diagnostics/Clip Fraction", avg_clip_fraction, episode
+                )
+                self.writer.add_scalar(
+                    "Diagnostics/Explained Variance", explained_var, episode
+                )
 
-            # Periodic evaluation
-            if (episode + 1) % self.eval_freq == 0:
-                eval_reward = self.test_reward()
-                self.writer.add_scalar("Evaluation/Reward", eval_reward, episode)
-                # Save best model
-                if eval_reward > self.best_reward:
-                    self.best_reward = eval_reward
-                    print(
-                        f"\nNew best model! Reward: {eval_reward:.2f} "
-                        f"(episode {episode + 1})"
-                    )
+                # Periodic evaluation
+                if (episode + 1) % self.eval_freq == 0:
+                    eval_reward = self.test_reward()
+                    self.writer.add_scalar("Evaluation/Reward", eval_reward, episode)
+                    # Save best model
+                    if eval_reward > self.best_reward:
+                        self.best_reward = eval_reward
+                        print(
+                            f"\nNew best model! Reward: {eval_reward:.2f} "
+                            f"(episode {episode + 1})"
+                        )
+                        self._save_best_checkpoint(
+                            eval_reward=float(eval_reward),
+                            episode=int(episode + 1),
+                        )
+        finally:
+            # Ensure any pending best-checkpoint write is completed.
+            self.close()
 
         # print("Training completed. Average rewards list:", self.avg_rewards_list)
 
@@ -982,6 +1304,9 @@ class PPO(BaseRLModel):
             "critic_hidden_dim": self.critic.d1.out_features,
             "eval_freq": self.eval_freq,
             "seed": self.seed,
+            "save_best_model": self.save_best_model,
+            "best_model_dir": str(self.best_model_dir),
+            "save_best_async": self.save_best_async,
         }
         return {
             "env": {"name": env_name, "params": env_params},
@@ -995,6 +1320,9 @@ class PPO(BaseRLModel):
             - Configuration file (config.json) with hyperparameters
             - Actor network weights (actor.pth)
             - Critic network weights (critic.pth)
+            - Actor optimizer state (actor_opt.pth) for resuming training
+            - Critic optimizer state (critic_opt.pth) for resuming training
+            - Training state (train_state.json): best_reward, timestamps, etc.
             - Observation normalization statistics (obs_rms.npz, if enabled)
             - Return normalization statistics (ret_rms.npz, if enabled)
 
@@ -1018,31 +1346,43 @@ class PPO(BaseRLModel):
         date_str = date_str + "_" + self.__class__.__name__
         # Create path in current directory with date and time
 
-        config_path = path / date_str / "config.json"
-        actor_path = path / date_str / "actor.pth"
-        critic_path = path / date_str / "critic.pth"
-        obs_rms_path = path / date_str / "obs_rms.npz"
-        ret_rms_path = path / date_str / "ret_rms.npz"
+        model_dir = path / date_str
+        config_path = model_dir / "config.json"
+        actor_path = model_dir / "actor.pth"
+        critic_path = model_dir / "critic.pth"
+        actor_opt_path = model_dir / "actor_opt.pth"
+        critic_opt_path = model_dir / "critic_opt.pth"
+        train_state_path = model_dir / "train_state.json"
+        obs_rms_path = model_dir / "obs_rms.npz"
+        ret_rms_path = model_dir / "ret_rms.npz"
 
         # Create directory if it doesn't exist
-        actor_path.parent.mkdir(parents=True, exist_ok=True)
-        # Save model
+        model_dir.mkdir(parents=True, exist_ok=True)
+        # Save model (atomic, CPU snapshots for portability)
         config = self.get_param_env()
-        with open(config_path, "w") as outfile:
-            json.dump(config, outfile)
-        torch.save(self.actor.state_dict(), actor_path)
-        torch.save(self.critic.state_dict(), critic_path)
+        _atomic_write_json(config_path, config)
+        _atomic_torch_save(actor_path, _state_dict_cpu(self.actor))
+        _atomic_torch_save(critic_path, _state_dict_cpu(self.critic))
+        _atomic_torch_save(actor_opt_path, _optimizer_state_dict_cpu(self.a_opt))
+        _atomic_torch_save(critic_opt_path, _optimizer_state_dict_cpu(self.c_opt))
+        _atomic_write_json(
+            train_state_path,
+            {
+                "best_reward": float(self.best_reward),
+                "saved_at": datetime.datetime.now().isoformat(),
+            },
+        )
 
         # Save normalization statistics
         if self.normalize_obs:
-            np.savez(
+            _atomic_np_savez(
                 obs_rms_path,
                 mean=self.obs_rms.mean,
                 var=self.obs_rms.var,
                 count=self.obs_rms.count,
             )
         if self.normalize_reward:
-            np.savez(
+            _atomic_np_savez(
                 ret_rms_path,
                 mean=self.ret_rms.mean,
                 var=self.ret_rms.var,
@@ -1075,6 +1415,9 @@ class PPO(BaseRLModel):
         config_path = path / "config.json"
         critic_path = path / "critic.pth"
         actor_path = path / "actor.pth"
+        actor_opt_path = path / "actor_opt.pth"
+        critic_opt_path = path / "critic_opt.pth"
+        train_state_path = path / "train_state.json"
         obs_rms_path = path / "obs_rms.npz"
         ret_rms_path = path / "ret_rms.npz"
 
@@ -1086,18 +1429,68 @@ class PPO(BaseRLModel):
 
         if config["policy"]["name"] != agent_name:
             raise TheEnvironmentDoesNotMatch
+
+        def _filter_kwargs_for_init(target_cls, kwargs: Dict[str, Any]) -> Dict[str, Any]:
+            """Drop unexpected kwargs that older checkpoints may contain.
+
+            Some older `config.json` files may include fields like `action_space`
+            or `observation_space` inside `env.params` for informational purposes.
+            These are not valid `__init__` parameters for most environments.
+            """
+            try:
+                sig = inspect.signature(target_cls.__init__)
+            except (TypeError, ValueError):
+                return dict(kwargs)
+
+            # If constructor accepts **kwargs, pass everything through.
+            for p in sig.parameters.values():
+                if p.kind == inspect.Parameter.VAR_KEYWORD:
+                    return dict(kwargs)
+
+            allowed = {name for name in sig.parameters.keys() if name != "self"}
+            return {k: v for k, v in kwargs.items() if k in allowed}
+
         if "tensoraerospace" in config["env"]["name"]:
-            env = get_class_from_string(config["env"]["name"])(
-                **config["env"]["params"]
-            )
+            env_cls = get_class_from_string(config["env"]["name"])
+            raw_params = dict(config.get("env", {}).get("params", {}) or {})
+            env_params = deserialize_env_params(raw_params)
+            env_params = _filter_kwargs_for_init(env_cls, env_params)
+            env = env_cls(**env_params)
         else:
             env = get_class_from_string(config["env"]["name"])()
         new_agent = cls(env=env, **config["policy"]["params"])
         # Load weights
-        critic_state = torch.load(critic_path)
-        actor_state = torch.load(actor_path)
+        critic_state = torch.load(critic_path, map_location="cpu")
+        actor_state = torch.load(actor_path, map_location="cpu")
         new_agent.critic.load_state_dict(critic_state)
         new_agent.actor.load_state_dict(actor_state)
+        # Move nets to correct device (load_state_dict may keep CPU tensors)
+        new_agent.actor.to(new_agent.device)
+        new_agent.critic.to(new_agent.device)
+
+        # Load optimizer states if present (resume training)
+        try:
+            if actor_opt_path.exists():
+                a_opt_state = torch.load(actor_opt_path, map_location="cpu")
+                new_agent.a_opt.load_state_dict(a_opt_state)
+                _optimizer_state_to_device(new_agent.a_opt, new_agent.device)
+            if critic_opt_path.exists():
+                c_opt_state = torch.load(critic_opt_path, map_location="cpu")
+                new_agent.c_opt.load_state_dict(c_opt_state)
+                _optimizer_state_to_device(new_agent.c_opt, new_agent.device)
+        except Exception:
+            # Keep default fresh optimizers if checkpoint is incompatible.
+            pass
+
+        # Load training state (best_reward, etc.) if present
+        if train_state_path.exists():
+            try:
+                with open(train_state_path, "r", encoding="utf-8") as f:
+                    train_state = json.load(f)
+                if "best_reward" in train_state:
+                    new_agent.best_reward = float(train_state["best_reward"])
+            except Exception:
+                pass
 
         # Load normalization statistics if they exist
         if new_agent.normalize_obs and obs_rms_path.exists():

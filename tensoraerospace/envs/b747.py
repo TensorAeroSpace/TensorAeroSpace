@@ -401,6 +401,61 @@ class ImprovedB747Env(gym.Env):
         self.w_smooth = 0.01  # Smoothness (|Δu|)
         self.w_jerk = 0.001  # Jitter suppression (|Δ²u|)
 
+        # ------------------------------------------------------------------
+        # Step-response reward shaping (settling time, steady-state error,
+        # oscillations, overshoot <= 10%).
+        #
+        # The base LQR-like cost remains, but we add:
+        # - time-in-band incentive (short transient)
+        # - linear (absolute) error penalty (reduce steady-state error)
+        # - oscillation penalty (repeat sign-changes of error)
+        # - overshoot penalty above 10% of the commanded step
+        # ------------------------------------------------------------------
+        self.k_progress = 0.05  # error-reduction shaping (dense)
+
+        # Reference change detection (treat as a new "step" segment)
+        self.ref_change_threshold_rad = float(np.deg2rad(0.1))
+        self.min_step_amp_rad = float(np.deg2rad(0.5))  # ignore tiny steps for overshoot metrics
+
+        # Settling band: max(1% of step amplitude, 0.05 deg)
+        # (tighter band -> near-zero steady-state error)
+        self.settle_band_ratio = 0.01
+        self.settle_band_min_rad = float(np.deg2rad(0.05))
+        self.q_settle_rad_s = float(
+            np.deg2rad(0.25)
+        )  # small pitch-rate requirement for "no oscillations"
+        # Require staying inside the band for ~1.0 s
+        self.settle_steps_required = int(max(1, np.ceil(1.0 / float(self.dt))))
+        self.settle_time_target_s = 1.5  # rewarded if settled faster than this
+
+        # Overshoot constraint (<= 5% of commanded step amplitude)
+        self.overshoot_limit_ratio = 0.05
+
+        # Clip unrealistic reference derivatives (e.g. step jumps) used for damping term
+        # in the base LQR-like cost. Keeps training stable for step references.
+        self.ref_theta_dot_clip_rad_s = float(self.max_pitch_rate_rad_s)
+
+        # Additional shaping weights (added to cost)
+        self.w_abs = 0.6  # |e_theta| (helps reduce steady-state error)
+        self.w_time = 0.6  # penalty while outside settling band (reduces settling time)
+        self.w_osc = 1.0  # penalty for repeated crossings (oscillations)
+        self.w_overshoot = 300.0  # penalty for overshoot beyond limit
+        self.w_settle_bonus = 4.0  # one-time bonus when settled, scaled by how fast
+
+        # Internal shaping state (reset in reset())
+        self._prev_e_theta = 0.0
+        self._prev_e_q_rel = 0.0
+        self._prev_target_theta = 0.0
+        self._seg_start_step = 0
+        self._seg_amp = 0.0
+        self._seg_sign = 0.0
+        self._seg_max_err_dir = 0.0
+        self._settle_count = 0
+        self._is_settled = False
+        self._settle_time_s: Optional[float] = None
+        self._prev_error_sign = 0
+        self._sign_changes = 0
+
         # Store initialization arguments for serialization
         self.init_args = locals()
 
@@ -518,6 +573,28 @@ class ImprovedB747Env(gym.Env):
         self.previous_action = float(self.initial_action_norm)
         self.pre_previous_action = float(self.initial_action_norm)
         self._last_reward = 0.0
+
+        # Reset step-response tracking for shaped reward
+        try:
+            idx0 = int(np.clip(0, 0, self.reference_signal.shape[1] - 1))
+            target0 = float(self.reference_signal[0, idx0])
+        except Exception:  # noqa: BLE001
+            ref_flat = np.asarray(self.reference_signal, dtype=float).reshape(-1)
+            target0 = float(ref_flat[0]) if ref_flat.size > 0 else 0.0
+
+        self._prev_e_theta = 0.0
+        self._prev_e_q_rel = 0.0
+        self._prev_target_theta = float(target0)
+        self._seg_start_step = 0
+        self._seg_amp = 0.0
+        self._seg_sign = 0.0
+        self._seg_max_err_dir = 0.0
+        self._settle_count = 0
+        self._is_settled = False
+        self._settle_time_s = None
+        self._prev_error_sign = 0
+        self._sign_changes = 0
+
         return self._get_obs(), {}
 
     def step(self, action: np.ndarray):
@@ -566,8 +643,17 @@ class ImprovedB747Env(gym.Env):
         else:
             ref_theta_prev = target_theta
         ref_theta_dot = float((target_theta - ref_theta_prev) / self.dt)
+        # For discontinuous references (steps), the raw derivative can be extremely
+        # large and destabilize learning. Clip it to a physically meaningful range.
+        ref_theta_dot = float(
+            np.clip(
+                ref_theta_dot,
+                -float(self.ref_theta_dot_clip_rad_s),
+                float(self.ref_theta_dot_clip_rad_s),
+            )
+        )
 
-        # Quadratic cost (LQR-like) with cross-term
+        # Base quadratic cost (LQR-like)
         e_theta = float((theta - target_theta) / self.max_pitch_rad)
         e_q_rel = float((q - ref_theta_dot) / self.max_pitch_rate_rad_s)
         # Normalized actually applied action
@@ -582,7 +668,7 @@ class ImprovedB747Env(gym.Env):
             + float(self.pre_previous_action)
         )
 
-        cost = (
+        cost_base = float(
             self.w_pitch * (e_theta**2)
             + self.w_q * (e_q_rel**2)
             + self.w_action * (u**2)
@@ -590,28 +676,138 @@ class ImprovedB747Env(gym.Env):
             + self.w_jerk * (ddu**2)
         )
 
-        reward = float(-cost)
-        # Scale reward to stable range
-        reward *= float(self.reward_scale)
+        # Progress shaping (encourage faster decay of tracking errors)
+        progress = float(
+            self.k_progress
+            * (
+                (self._prev_e_theta**2 + self._prev_e_q_rel**2)
+                - (e_theta**2 + e_q_rel**2)
+            )
+        )
+        self._prev_e_theta = float(e_theta)
+        self._prev_e_q_rel = float(e_q_rel)
+
+        # Detect a new reference "segment" (step) to measure overshoot/settling
+        ref_delta = float(target_theta - float(self._prev_target_theta))
+        if abs(ref_delta) > float(self.ref_change_threshold_rad):
+            self._seg_start_step = int(self.current_step)
+            self._seg_amp = float(ref_delta)
+            self._seg_sign = float(np.sign(ref_delta))
+            self._seg_max_err_dir = 0.0
+            self._settle_count = 0
+            self._is_settled = False
+            self._settle_time_s = None
+            self._prev_error_sign = 0
+            self._sign_changes = 0
+        self._prev_target_theta = float(target_theta)
+
+        # Step-response metrics
+        amp_abs = abs(float(self._seg_amp))
+        if amp_abs >= float(self.min_step_amp_rad):
+            band_rad = float(
+                max(float(self.settle_band_ratio) * amp_abs, float(self.settle_band_min_rad))
+            )
+        else:
+            band_rad = float(self.settle_band_min_rad)
+
+        err_theta = float(theta - target_theta)  # rad
+        inside_band = bool(
+            (abs(err_theta) <= band_rad) and (abs(q) <= float(self.q_settle_rad_s))
+        )
+
+        if inside_band:
+            self._settle_count += 1
+        else:
+            self._settle_count = 0
+
+        just_settled = False
+        if (not bool(self._is_settled)) and (int(self._settle_count) >= int(self.settle_steps_required)):
+            self._is_settled = True
+            just_settled = True
+            self._settle_time_s = float(
+                max(0, int(self.current_step) - int(self._seg_start_step)) * float(self.dt)
+            )
+
+        # Overshoot ratio (only meaningful for step-like changes)
+        overshoot_ratio = 0.0
+        overshoot_excess = 0.0
+        if amp_abs >= float(self.min_step_amp_rad) and float(self._seg_sign) != 0.0:
+            err_dir = float(err_theta * float(self._seg_sign))
+            self._seg_max_err_dir = float(max(float(self._seg_max_err_dir), err_dir))
+            overshoot = float(max(0.0, float(self._seg_max_err_dir)))
+            overshoot_ratio = float(overshoot / amp_abs) if amp_abs > 0.0 else 0.0
+            overshoot_excess = float(
+                max(0.0, overshoot_ratio - float(self.overshoot_limit_ratio))
+            )
+
+        # Oscillations: penalize repeat crossings (more than 1 sign change)
+        osc_event = 0.0
+        if abs(err_theta) > band_rad:
+            sgn = int(np.sign(err_theta))
+            if sgn != 0:
+                if int(self._prev_error_sign) != 0 and sgn != int(self._prev_error_sign):
+                    self._sign_changes += 1
+                    if int(self._sign_changes) > 1:
+                        osc_event = 1.0
+                self._prev_error_sign = int(sgn)
+
+        # Additional costs (added to base cost)
+        cost_abs = float(self.w_abs * abs(e_theta))
+        cost_time = float(self.w_time * (0.0 if inside_band else 1.0))
+        cost_osc = float(self.w_osc * float(osc_event))
+        cost_overshoot = float(self.w_overshoot * (overshoot_excess**2))
+        cost_total = float(cost_base + cost_abs + cost_time + cost_osc + cost_overshoot)
+
+        # One-time settling bonus (larger if settled sooner than target time)
+        settle_bonus = 0.0
+        if just_settled and self._settle_time_s is not None and float(self.settle_time_target_s) > 0.0:
+            speed_factor = float(
+                max(0.0, 1.0 - float(self._settle_time_s) / float(self.settle_time_target_s))
+            )
+            settle_bonus = float(self.w_settle_bonus * speed_factor)
+
+        reward = float(-cost_total) * float(self.reward_scale) + float(progress) + float(settle_bonus)
 
         self.pre_previous_action = float(self.previous_action)
         self.previous_action = float(u_applied_norm)
-        self._last_reward = float(reward)
 
         # Termination conditions
-        terminated = False
-        if abs(theta) > self.max_pitch_rad:
+        terminated = bool(abs(theta) > self.max_pitch_rad)
+        if terminated:
             reward = -100.0
-            terminated = True
 
         truncated = self.current_step >= self.number_time_steps - 2
+
+        self._last_reward = float(reward)
+
+        info: dict[str, Any] = {
+            "theta_rad": float(theta),
+            "target_theta_rad": float(target_theta),
+            "err_theta_rad": float(err_theta),
+            "band_rad": float(band_rad),
+            "inside_band": bool(inside_band),
+            "settled": bool(self._is_settled),
+            "settle_time_s": float(self._settle_time_s) if self._settle_time_s is not None else -1.0,
+            "overshoot_ratio": float(overshoot_ratio),
+            "overshoot_excess": float(overshoot_excess),
+            "sign_changes": int(self._sign_changes),
+            "cost_base": float(cost_base),
+            "cost_abs": float(cost_abs),
+            "cost_time": float(cost_time),
+            "cost_osc": float(cost_osc),
+            "cost_overshoot": float(cost_overshoot),
+            "cost_total": float(cost_total),
+            "progress": float(progress),
+            "settle_bonus": float(settle_bonus),
+            "u_norm": float(u_applied_norm),
+        }
 
         return (
             self._get_obs(),
             float(reward),
             bool(terminated),
             bool(truncated),
-            {},
+            info,
         )
 
     def _push_history(
