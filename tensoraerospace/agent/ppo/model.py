@@ -13,7 +13,7 @@ import copy
 import queue
 import threading
 from pathlib import Path
-from typing import Any, Dict, Generator, Optional, Tuple, Union
+from typing import Any, Dict, Generator, Optional, Tuple, Union, overload
 
 import numpy as np
 import torch
@@ -168,7 +168,6 @@ class _AsyncBestCheckpointSaver:
 
             try:
                 if job is None:
-                    self._q.task_done()
                     break
 
                 model_dir = Path(job["model_dir"])
@@ -521,6 +520,7 @@ class PPO(BaseRLModel):
         eval_freq: int = 10,
         seed: int = 336699,
         device: Union[str, torch.device, None] = None,
+        log_dir: Union[str, Path, None] = None,
         save_best_model: bool = True,
         best_model_dir: Union[str, Path, None] = None,
         save_best_async: bool = True,
@@ -597,7 +597,12 @@ class PPO(BaseRLModel):
         self.target = False
         self.best_reward = float("-inf")
         self.avg_rewards_list: list = []
-        self.writer = SummaryWriter()
+        self.log_dir = Path(log_dir) if log_dir is not None else None
+        self.writer = (
+            SummaryWriter(log_dir=str(self.log_dir))
+            if self.log_dir is not None
+            else SummaryWriter()
+        )
 
         # Best-checkpoint saving (optional, async by default)
         self.save_best_model = bool(save_best_model)
@@ -634,7 +639,7 @@ class PPO(BaseRLModel):
         return obs
 
     def act(
-        self, state: np.ndarray, deterministic: bool = False
+        self, state: np.ndarray | torch.Tensor, deterministic: bool = False
     ) -> Tuple[torch.Tensor, np.ndarray, torch.Tensor]:
         """Select action for given state.
 
@@ -645,8 +650,25 @@ class PPO(BaseRLModel):
         Returns:
             tuple: Tuple containing action, mean action and log probability.
         """
+        # Support both single states (obs_dim,) and batched states (N, obs_dim)
+        if torch.is_tensor(state):
+            is_batched = state.ndim == 2
+        else:
+            is_batched = np.asarray(state).ndim == 2
+
+        if is_batched:
+            action_t, mean_action_t, log_prob_t = self._act_tensor_batch(
+                state=state, deterministic=deterministic
+            )
+            # Return CPU outputs to match existing public API
+            return (
+                action_t.detach().cpu(),
+                mean_action_t.detach().cpu().numpy(),
+                log_prob_t.detach().cpu(),
+            )
+
         action_t, mean_action_t, log_prob_t = self._act_tensor(
-            state=state, deterministic=deterministic
+            state=np.asarray(state, dtype=np.float32), deterministic=deterministic
         )
 
         # Public API (tests + notebooks) expects CPU tensors for action/log_prob
@@ -677,6 +699,267 @@ class PPO(BaseRLModel):
                 action_t = mean_action_t
             log_prob_t = dist.log_prob(action_t).sum(dim=-1, keepdim=True)
         return action_t, mean_action_t, log_prob_t
+
+    def _act_tensor_batch(
+        self, state: np.ndarray | torch.Tensor, deterministic: bool = False
+    ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+        """Batched version of _act_tensor for vectorized envs."""
+        if torch.is_tensor(state):
+            state_t = state.to(self.device, dtype=torch.float32)
+        else:
+            state_t = torch.as_tensor(state, dtype=torch.float32, device=self.device)
+
+        # Optional obs normalization (rarely needed for already-normalized envs)
+        if self.normalize_obs:
+            # Convert running stats to torch on the correct device
+            mean_t = torch.as_tensor(self.obs_rms.mean, dtype=torch.float32, device=self.device)
+            var_t = torch.as_tensor(self.obs_rms.var, dtype=torch.float32, device=self.device)
+            state_t = torch.clamp((state_t - mean_t) / torch.sqrt(var_t + 1e-8), -10.0, 10.0)
+
+        with torch.no_grad():
+            action_t, dist = self.actor(state_t)
+            mean_action_t = dist.mean
+            if deterministic:
+                action_t = mean_action_t
+            log_prob_t = dist.log_prob(action_t).sum(dim=-1, keepdim=True)
+        return action_t, mean_action_t, log_prob_t
+
+    def _is_vector_env(self, obs: Any) -> bool:
+        try:
+            if hasattr(self.env, "num_envs") and int(getattr(self.env, "num_envs")) > 1:
+                return True
+        except Exception:
+            pass
+        if torch.is_tensor(obs):
+            return obs.ndim == 2
+        try:
+            return np.asarray(obs).ndim == 2
+        except Exception:
+            return False
+
+    def _to_tensor(self, x: Any, *, dtype: torch.dtype = torch.float32) -> torch.Tensor:
+        if torch.is_tensor(x):
+            return x.to(self.device, dtype=dtype)
+        return torch.as_tensor(x, dtype=dtype, device=self.device)
+
+    def _train_vector(self, initial_obs: Any) -> None:
+        """Training loop for vectorized environments (batched obs/action)."""
+        # Force batched initial obs
+        obs = self._to_tensor(initial_obs, dtype=torch.float32)
+        n_envs = int(obs.shape[0])
+
+        # Precompute action bounds for clamping on device
+        try:
+            low = torch.as_tensor(self.env.action_space.low, device=self.device, dtype=torch.float32)
+            high = torch.as_tensor(self.env.action_space.high, device=self.device, dtype=torch.float32)
+        except Exception:
+            low = torch.full((self.env.action_space.shape[0],), -1.0, device=self.device, dtype=torch.float32)
+            high = torch.full((self.env.action_space.shape[0],), 1.0, device=self.device, dtype=torch.float32)
+
+        for episode in tqdm(range(self.max_episodes)):
+            if self.target:
+                break
+
+            # For vector env we assume env.reset() already returns batched obs
+            reset_return = self.env.reset()
+            if type(reset_return) is tuple:
+                obs, info = reset_return
+            else:
+                obs = reset_return
+            obs = self._to_tensor(obs, dtype=torch.float32)
+
+            # Rollout buffers (time-major)
+            buf_states: list[torch.Tensor] = []
+            buf_actions: list[torch.Tensor] = []
+            buf_logp: list[torch.Tensor] = []
+            buf_rewards: list[torch.Tensor] = []
+            buf_dones: list[torch.Tensor] = []
+            buf_values: list[torch.Tensor] = []
+
+            # Episode bookkeeping for logging
+            ep_ret = torch.zeros((n_envs,), device=self.device, dtype=torch.float32)
+            ep_len = torch.zeros((n_envs,), device=self.device, dtype=torch.int64)
+            scores: list[float] = []
+            episode_lengths: list[int] = []
+
+            for _ in range(self.rollout_len):
+                # Critic value
+                with torch.no_grad():
+                    value = self.critic(obs)
+                    action, dist = self.actor(obs)
+                    logp = dist.log_prob(action).sum(dim=-1, keepdim=True)
+
+                env_action = torch.clamp(action, low, high)
+                step_return = self.env.step(env_action)
+                if len(step_return) > 4:
+                    next_obs, reward, terminated, truncated, info = step_return
+                    terminated_t = self._to_tensor(
+                        terminated, dtype=torch.float32
+                    ).view(-1, 1)
+                    truncated_t = self._to_tensor(
+                        truncated, dtype=torch.float32
+                    ).view(-1, 1)
+                    done_t = torch.clamp(terminated_t + truncated_t, 0.0, 1.0)
+                else:
+                    next_obs, reward, terminated, info = step_return
+                    done_t = self._to_tensor(terminated, dtype=torch.float32).view(-1, 1)
+
+                next_obs_t = self._to_tensor(next_obs, dtype=torch.float32)
+                reward_t = self._to_tensor(reward, dtype=torch.float32).view(-1, 1)
+
+                buf_states.append(obs)
+                buf_actions.append(action)
+                buf_logp.append(logp)
+                buf_rewards.append(reward_t)
+                buf_dones.append(done_t)
+                buf_values.append(value)
+
+                # Logging accumulation
+                ep_ret = ep_ret + reward_t.view(-1)
+                ep_len = ep_len + 1
+                done_mask = done_t.view(-1) > 0.5
+                if torch.any(done_mask):
+                    done_idx = torch.where(done_mask)[0]
+                    scores.extend(ep_ret[done_idx].detach().cpu().numpy().tolist())
+                    episode_lengths.extend(ep_len[done_idx].detach().cpu().numpy().tolist())
+                    ep_ret[done_idx] = 0.0
+                    ep_len[done_idx] = 0
+
+                obs = next_obs_t
+
+            # Bootstrap value for last state
+            with torch.no_grad():
+                next_value = self.critic(obs)
+
+            # Stack buffers
+            states = torch.stack(buf_states, dim=0)  # (T, N, obs_dim)
+            actions = torch.stack(buf_actions, dim=0)  # (T, N, act_dim)
+            old_logp = torch.stack(buf_logp, dim=0)  # (T, N, 1)
+            rewards = torch.stack(buf_rewards, dim=0)  # (T, N, 1)
+            dones = torch.stack(buf_dones, dim=0)  # (T, N, 1)
+            values = torch.stack(buf_values + [next_value], dim=0)  # (T+1, N, 1)
+
+            # GAE advantages
+            T = rewards.shape[0]
+            gae = torch.zeros((n_envs, 1), device=self.device, dtype=torch.float32)
+            adv = torch.zeros((T, n_envs, 1), device=self.device, dtype=torch.float32)
+            for t in reversed(range(T)):
+                delta = rewards[t] + self.gamma * values[t + 1] * (1.0 - dones[t]) - values[t]
+                gae = delta + self.gamma * self.gae_lambda * (1.0 - dones[t]) * gae
+                adv[t] = gae
+            returns = adv + values[:-1]
+
+            # Reward normalization (normalize returns) — keep consistent with the
+            # non-vector training loop.
+            if self.normalize_reward and hasattr(self, "ret_rms"):
+                returns_np = returns.detach().cpu().numpy().reshape(-1)
+                self.ret_rms.update(returns_np)
+                mean_t = torch.as_tensor(
+                    self.ret_rms.mean, dtype=torch.float32, device=self.device
+                )
+                var_t = torch.as_tensor(
+                    self.ret_rms.var, dtype=torch.float32, device=self.device
+                )
+                returns = torch.clamp(
+                    (returns - mean_t) / torch.sqrt(var_t + 1e-8),
+                    -10.0,
+                    10.0,
+                )
+
+            # Advantages (GAE) from (possibly normalized) returns
+            adv = returns - values[:-1]
+
+            # Explained variance (diagnostic for critic quality)
+            with torch.no_grad():
+                y_true = returns
+                y_pred = values[:-1]
+                var_y = torch.var(y_true)
+                explained_var = (
+                    1.0 - torch.var(y_true - y_pred) / (var_y + 1e-8)
+                ).detach().cpu().item()
+
+            # Flatten time and env dims for SGD
+            states_f = states.reshape(T * n_envs, -1)
+            actions_f = actions.reshape(T * n_envs, -1)
+            old_logp_f = old_logp.reshape(T * n_envs, 1)
+            returns_f = returns.reshape(T * n_envs, 1).detach()
+            adv_f = adv.reshape(T * n_envs, 1).detach()
+            rewards_f = rewards.reshape(T * n_envs, 1)
+            old_values_f = values[:-1].reshape(T * n_envs, 1).detach()
+
+            # Advantage normalization
+            adv_f = (adv_f - adv_f.mean()) / (adv_f.std() + 1e-8)
+
+            # Train epochs
+            all_aloss = []
+            all_closs = []
+            all_entropies = []
+            all_approx_kl = []
+            all_clip_fractions = []
+            for _ in range(self.num_epochs):
+                epoch_kls = []
+                for (
+                    mb_states,
+                    mb_actions,
+                    mb_old_logp,
+                    mb_returns,
+                    mb_adv,
+                    mb_rewards,
+                    mb_old_values,
+                ) in ppo_iter(
+                    epoch=1,
+                    mini_batch_size=self.batch_size,
+                    states=states_f,
+                    actions=actions_f,
+                    log_probs=old_logp_f,
+                    returns=returns_f,
+                    advantages=adv_f,
+                    rewards=rewards_f,
+                    values=old_values_f,
+                ):
+                    metrics = self.learn(
+                        mb_states,
+                        mb_actions,
+                        mb_adv,
+                        mb_old_logp,
+                        mb_returns,
+                        mb_rewards,
+                        mb_old_values,
+                    )
+                    all_aloss.append(metrics["actor_loss"])
+                    all_closs.append(metrics["critic_loss"])
+                    all_entropies.append(metrics["entropy"])
+                    all_approx_kl.append(metrics["approx_kl"])
+                    all_clip_fractions.append(metrics["clip_fraction"])
+                    epoch_kls.append(metrics["approx_kl"])
+
+                if self.target_kl is not None and len(epoch_kls) > 0:
+                    if float(np.mean(epoch_kls)) > float(self.target_kl):
+                        break
+
+            avg_reward = float(np.mean(scores)) if scores else float(rewards_f.mean().detach().cpu().item())
+            avg_aloss = float(np.mean(all_aloss)) if all_aloss else 0.0
+            avg_closs = float(np.mean(all_closs)) if all_closs else 0.0
+            avg_entropy = float(np.mean(all_entropies)) if all_entropies else 0.0
+            avg_episode_length = float(np.mean(episode_lengths)) if episode_lengths else 0.0
+            avg_kl = float(np.mean(all_approx_kl)) if all_approx_kl else 0.0
+            avg_clipfrac = float(np.mean(all_clip_fractions)) if all_clip_fractions else 0.0
+
+            # Log
+            self.writer.add_scalar("Loss/Actor", avg_aloss, episode)
+            self.writer.add_scalar("Loss/Critic", avg_closs, episode)
+            self.writer.add_scalar("Performance/Reward", avg_reward, episode)
+            self.writer.add_scalar("Performance/Entropy", avg_entropy, episode)
+            self.writer.add_scalar("Performance/Episode Length", avg_episode_length, episode)
+            self.writer.add_scalar("Diagnostics/Approx KL", avg_kl, episode)
+            self.writer.add_scalar("Diagnostics/Clip Fraction", avg_clipfrac, episode)
+            self.writer.add_scalar("Diagnostics/Explained Variance", float(explained_var), episode)
+
+            # Save best using avg_reward (cheaper than extra eval rollouts)
+            if avg_reward > self.best_reward:
+                self.best_reward = float(avg_reward)
+                self._save_best_checkpoint(eval_reward=float(avg_reward), episode=int(episode + 1))
+
 
     def actor_loss(
         self,
@@ -991,6 +1274,17 @@ class PPO(BaseRLModel):
             rewards, entropy, KL divergence, clip fraction, and explained variance.
         """
         try:
+            # Detect vector env and use batched training loop
+            reset_return = self.env.reset()
+            if type(reset_return) is tuple:
+                state0, _info0 = reset_return
+            else:
+                state0 = reset_return
+            if self._is_vector_env(state0):
+                self._train_vector(initial_obs=state0)
+                return
+
+            # Non-vector env fallback (original loop)
             for episode in tqdm(range(self.max_episodes)):
                 # print("Episode", episode)
                 if self.target:
@@ -1304,6 +1598,7 @@ class PPO(BaseRLModel):
             "critic_hidden_dim": self.critic.d1.out_features,
             "eval_freq": self.eval_freq,
             "seed": self.seed,
+            "log_dir": str(self.log_dir) if self.log_dir is not None else None,
             "save_best_model": self.save_best_model,
             "best_model_dir": str(self.best_model_dir),
             "save_best_async": self.save_best_async,
