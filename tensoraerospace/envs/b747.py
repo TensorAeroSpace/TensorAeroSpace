@@ -336,6 +336,7 @@ class ImprovedB747Env(gym.Env):
         dt: float = 0.01,
         initial_elevator_deg: float = 0.0,
         use_initial_action_on_first_step: bool = True,
+        reward_mode: str = "step_response",
     ):
         """Initialize ImprovedB747Env environment.
 
@@ -354,7 +355,20 @@ class ImprovedB747Env(gym.Env):
                 initial_elevator_deg value on the first step instead of
                 the agent's action to ensure smooth control
                 initialization. Defaults to True.
+            reward_mode (str): Reward calculation mode. Options:
+                - "tracking": Universal reward for any signal type.
+                  Uses only base quadratic cost (pitch error, rate error,
+                  control effort, smoothness, jerk) plus progress shaping.
+                  Step-response metrics are computed but NOT included
+                  in reward — only returned in info dict for evaluation.
+                - "step_response": Full reward with step-specific penalties
+                  (overshoot, settling time, oscillations). Best for
+                  training on step references. Default.
         """
+        if reward_mode not in ("tracking", "step_response"):
+            raise ValueError(
+                f"reward_mode must be 'tracking' or 'step_response', got {reward_mode!r}"
+            )
         super().__init__()
 
         # Normalization parameters and physical constraints
@@ -390,6 +404,8 @@ class ImprovedB747Env(gym.Env):
         self.previous_action = float(self.initial_action_norm)
         self.pre_previous_action = 0.0
         self._last_reward = 0.0
+        # Reward mode: "tracking" (universal) or "step_response" (with step-specific penalties)
+        self.reward_mode = str(reward_mode)
         # Reward scale for Q-value range stability
         self.reward_scale = 0.1
 
@@ -415,7 +431,9 @@ class ImprovedB747Env(gym.Env):
 
         # Reference change detection (treat as a new "step" segment)
         self.ref_change_threshold_rad = float(np.deg2rad(0.1))
-        self.min_step_amp_rad = float(np.deg2rad(0.5))  # ignore tiny steps for overshoot metrics
+        self.min_step_amp_rad = float(
+            np.deg2rad(0.5)
+        )  # ignore tiny steps for overshoot metrics
 
         # Settling band: max(1% of step amplitude, 0.05 deg)
         # (tighter band -> near-zero steady-state error)
@@ -705,7 +723,10 @@ class ImprovedB747Env(gym.Env):
         amp_abs = abs(float(self._seg_amp))
         if amp_abs >= float(self.min_step_amp_rad):
             band_rad = float(
-                max(float(self.settle_band_ratio) * amp_abs, float(self.settle_band_min_rad))
+                max(
+                    float(self.settle_band_ratio) * amp_abs,
+                    float(self.settle_band_min_rad),
+                )
             )
         else:
             band_rad = float(self.settle_band_min_rad)
@@ -721,11 +742,14 @@ class ImprovedB747Env(gym.Env):
             self._settle_count = 0
 
         just_settled = False
-        if (not bool(self._is_settled)) and (int(self._settle_count) >= int(self.settle_steps_required)):
+        if (not bool(self._is_settled)) and (
+            int(self._settle_count) >= int(self.settle_steps_required)
+        ):
             self._is_settled = True
             just_settled = True
             self._settle_time_s = float(
-                max(0, int(self.current_step) - int(self._seg_start_step)) * float(self.dt)
+                max(0, int(self.current_step) - int(self._seg_start_step))
+                * float(self.dt)
             )
 
         # Overshoot ratio (only meaningful for step-like changes)
@@ -745,28 +769,52 @@ class ImprovedB747Env(gym.Env):
         if abs(err_theta) > band_rad:
             sgn = int(np.sign(err_theta))
             if sgn != 0:
-                if int(self._prev_error_sign) != 0 and sgn != int(self._prev_error_sign):
+                if int(self._prev_error_sign) != 0 and sgn != int(
+                    self._prev_error_sign
+                ):
                     self._sign_changes += 1
                     if int(self._sign_changes) > 1:
                         osc_event = 1.0
                 self._prev_error_sign = int(sgn)
 
-        # Additional costs (added to base cost)
+        # Step-response specific costs (always computed for metrics, but only
+        # added to reward in "step_response" mode)
         cost_abs = float(self.w_abs * abs(e_theta))
         cost_time = float(self.w_time * (0.0 if inside_band else 1.0))
         cost_osc = float(self.w_osc * float(osc_event))
         cost_overshoot = float(self.w_overshoot * (overshoot_excess**2))
-        cost_total = float(cost_base + cost_abs + cost_time + cost_osc + cost_overshoot)
 
         # One-time settling bonus (larger if settled sooner than target time)
         settle_bonus = 0.0
-        if just_settled and self._settle_time_s is not None and float(self.settle_time_target_s) > 0.0:
+        if (
+            just_settled
+            and self._settle_time_s is not None
+            and float(self.settle_time_target_s) > 0.0
+        ):
             speed_factor = float(
-                max(0.0, 1.0 - float(self._settle_time_s) / float(self.settle_time_target_s))
+                max(
+                    0.0,
+                    1.0 - float(self._settle_time_s) / float(self.settle_time_target_s),
+                )
             )
             settle_bonus = float(self.w_settle_bonus * speed_factor)
 
-        reward = float(-cost_total) * float(self.reward_scale) + float(progress) + float(settle_bonus)
+        # Compute reward based on mode
+        if self.reward_mode == "tracking":
+            # Universal tracking reward: only base LQR-like cost + progress shaping
+            # Step-response metrics are NOT included in reward (but returned in info)
+            cost_total = float(cost_base)
+            reward = float(-cost_total) * float(self.reward_scale) + float(progress)
+        else:  # "step_response"
+            # Full reward with step-specific penalties
+            cost_total = float(
+                cost_base + cost_abs + cost_time + cost_osc + cost_overshoot
+            )
+            reward = (
+                float(-cost_total) * float(self.reward_scale)
+                + float(progress)
+                + float(settle_bonus)
+            )
 
         self.pre_previous_action = float(self.previous_action)
         self.previous_action = float(u_applied_norm)
@@ -781,16 +829,22 @@ class ImprovedB747Env(gym.Env):
         self._last_reward = float(reward)
 
         info: dict[str, Any] = {
+            # Current state
             "theta_rad": float(theta),
             "target_theta_rad": float(target_theta),
             "err_theta_rad": float(err_theta),
+            "u_norm": float(u_applied_norm),
+            # Step-response metrics (always computed for evaluation)
             "band_rad": float(band_rad),
             "inside_band": bool(inside_band),
             "settled": bool(self._is_settled),
-            "settle_time_s": float(self._settle_time_s) if self._settle_time_s is not None else -1.0,
+            "settle_time_s": (
+                float(self._settle_time_s) if self._settle_time_s is not None else -1.0
+            ),
             "overshoot_ratio": float(overshoot_ratio),
             "overshoot_excess": float(overshoot_excess),
             "sign_changes": int(self._sign_changes),
+            # Cost breakdown (for debugging/analysis)
             "cost_base": float(cost_base),
             "cost_abs": float(cost_abs),
             "cost_time": float(cost_time),
@@ -799,7 +853,8 @@ class ImprovedB747Env(gym.Env):
             "cost_total": float(cost_total),
             "progress": float(progress),
             "settle_bonus": float(settle_bonus),
-            "u_norm": float(u_applied_norm),
+            # Reward mode info
+            "reward_mode": str(self.reward_mode),
         }
 
         return (

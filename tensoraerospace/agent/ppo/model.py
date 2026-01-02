@@ -5,11 +5,11 @@ including actor and critic neural networks, batch iteration functions
 and the main PPO agent class for aerospace system control.
 """
 
+import copy
 import datetime
 import inspect
 import json
 import os
-import copy
 import queue
 import threading
 from pathlib import Path
@@ -61,7 +61,9 @@ def _optimizer_state_dict_cpu(opt: torch.optim.Optimizer) -> Dict[str, Any]:
     return sd
 
 
-def _optimizer_state_to_device(opt: torch.optim.Optimizer, device: torch.device) -> None:
+def _optimizer_state_to_device(
+    opt: torch.optim.Optimizer, device: torch.device
+) -> None:
     """Move optimizer state tensors to a target device after load_state_dict()."""
     for state in opt.state.values():
         for k, v in state.items():
@@ -185,7 +187,9 @@ class _AsyncBestCheckpointSaver:
                         model_dir / "critic_opt.pth", job["critic_opt_state"]
                     )
                 if job.get("train_state") is not None:
-                    _atomic_write_json(model_dir / "train_state.json", job["train_state"])
+                    _atomic_write_json(
+                        model_dir / "train_state.json", job["train_state"]
+                    )
 
                 if job.get("obs_rms") is not None:
                     d = job["obs_rms"]
@@ -357,7 +361,15 @@ class Actor(nn.Module):
         log_std_max: Maximum allowed log std value.
     """
 
-    def __init__(self, input_dim: int, out_dim: int, hidden_dim: int = 256):
+    def __init__(
+        self,
+        input_dim: int,
+        out_dim: int,
+        hidden_dim: int = 256,
+        *,
+        log_std_min: float = -20.0,
+        log_std_max: float = 0.0,
+    ):
         """Initialize actor network.
 
         Args:
@@ -374,8 +386,13 @@ class Actor(nn.Module):
         # Log std of the action distribution
         self.delta = nn.Linear(hidden_dim, out_dim)
         self.delta = init_layer_uniform(self.delta)
-        self.log_std_min = -20
-        self.log_std_max = 0
+        # NOTE:
+        # The original implementation used (-20, 0) which can make std extremely small
+        # (e.g. exp(-10) ~ 4e-5 at init), causing near-deterministic policies and
+        # stalled PPO updates (KL ~ 0, clip_fraction ~ 0). We keep the defaults for
+        # backwards compatibility but allow PPO to override them.
+        self.log_std_min = float(log_std_min)
+        self.log_std_max = float(log_std_max)
 
     def forward(
         self,
@@ -517,6 +534,8 @@ class PPO(BaseRLModel):
         normalize_reward: bool = False,
         actor_hidden_dim: int = 256,
         critic_hidden_dim: int = 256,
+        actor_log_std_min: float = -20.0,
+        actor_log_std_max: float = 0.0,
         eval_freq: int = 10,
         seed: int = 336699,
         device: Union[str, torch.device, None] = None,
@@ -570,6 +589,8 @@ class PPO(BaseRLModel):
             env.observation_space.shape[0],
             env.action_space.shape[0],
             hidden_dim=actor_hidden_dim,
+            log_std_min=actor_log_std_min,
+            log_std_max=actor_log_std_max,
         ).to(self.device)
         self.critic = Critic(
             env.observation_space.shape[0], hidden_dim=critic_hidden_dim
@@ -692,13 +713,20 @@ class PPO(BaseRLModel):
         state_t = torch.as_tensor(
             np.array([state]), dtype=torch.float32, device=self.device
         )
+        low = torch.as_tensor(
+            self.env.action_space.low, device=self.device, dtype=torch.float32
+        )
+        high = torch.as_tensor(
+            self.env.action_space.high, device=self.device, dtype=torch.float32
+        )
         with torch.no_grad():
             action_t, dist = self.actor(state_t)
             mean_action_t = dist.mean
             if deterministic:
                 action_t = mean_action_t
-            log_prob_t = dist.log_prob(action_t).sum(dim=-1, keepdim=True)
-        return action_t, mean_action_t, log_prob_t
+            action_exec_t = torch.clamp(action_t, low, high)
+            log_prob_t = dist.log_prob(action_exec_t).sum(dim=-1, keepdim=True)
+        return action_exec_t, mean_action_t, log_prob_t
 
     def _act_tensor_batch(
         self, state: np.ndarray | torch.Tensor, deterministic: bool = False
@@ -712,17 +740,30 @@ class PPO(BaseRLModel):
         # Optional obs normalization (rarely needed for already-normalized envs)
         if self.normalize_obs:
             # Convert running stats to torch on the correct device
-            mean_t = torch.as_tensor(self.obs_rms.mean, dtype=torch.float32, device=self.device)
-            var_t = torch.as_tensor(self.obs_rms.var, dtype=torch.float32, device=self.device)
-            state_t = torch.clamp((state_t - mean_t) / torch.sqrt(var_t + 1e-8), -10.0, 10.0)
+            mean_t = torch.as_tensor(
+                self.obs_rms.mean, dtype=torch.float32, device=self.device
+            )
+            var_t = torch.as_tensor(
+                self.obs_rms.var, dtype=torch.float32, device=self.device
+            )
+            state_t = torch.clamp(
+                (state_t - mean_t) / torch.sqrt(var_t + 1e-8), -10.0, 10.0
+            )
 
+        low = torch.as_tensor(
+            self.env.action_space.low, device=self.device, dtype=torch.float32
+        )
+        high = torch.as_tensor(
+            self.env.action_space.high, device=self.device, dtype=torch.float32
+        )
         with torch.no_grad():
             action_t, dist = self.actor(state_t)
             mean_action_t = dist.mean
             if deterministic:
                 action_t = mean_action_t
-            log_prob_t = dist.log_prob(action_t).sum(dim=-1, keepdim=True)
-        return action_t, mean_action_t, log_prob_t
+            action_exec_t = torch.clamp(action_t, low, high)
+            log_prob_t = dist.log_prob(action_exec_t).sum(dim=-1, keepdim=True)
+        return action_exec_t, mean_action_t, log_prob_t
 
     def _is_vector_env(self, obs: Any) -> bool:
         try:
@@ -750,11 +791,25 @@ class PPO(BaseRLModel):
 
         # Precompute action bounds for clamping on device
         try:
-            low = torch.as_tensor(self.env.action_space.low, device=self.device, dtype=torch.float32)
-            high = torch.as_tensor(self.env.action_space.high, device=self.device, dtype=torch.float32)
+            low = torch.as_tensor(
+                self.env.action_space.low, device=self.device, dtype=torch.float32
+            )
+            high = torch.as_tensor(
+                self.env.action_space.high, device=self.device, dtype=torch.float32
+            )
         except Exception:
-            low = torch.full((self.env.action_space.shape[0],), -1.0, device=self.device, dtype=torch.float32)
-            high = torch.full((self.env.action_space.shape[0],), 1.0, device=self.device, dtype=torch.float32)
+            low = torch.full(
+                (self.env.action_space.shape[0],),
+                -1.0,
+                device=self.device,
+                dtype=torch.float32,
+            )
+            high = torch.full(
+                (self.env.action_space.shape[0],),
+                1.0,
+                device=self.device,
+                dtype=torch.float32,
+            )
 
         for episode in tqdm(range(self.max_episodes)):
             if self.target:
@@ -781,34 +836,40 @@ class PPO(BaseRLModel):
             ep_len = torch.zeros((n_envs,), device=self.device, dtype=torch.int64)
             scores: list[float] = []
             episode_lengths: list[int] = []
+            term_events = 0.0
+            trunc_events = 0.0
 
             for _ in range(self.rollout_len):
                 # Critic value
                 with torch.no_grad():
                     value = self.critic(obs)
                     action, dist = self.actor(obs)
-                    logp = dist.log_prob(action).sum(dim=-1, keepdim=True)
-
-                env_action = torch.clamp(action, low, high)
+                    env_action = torch.clamp(action, low, high)
+                    logp = dist.log_prob(env_action).sum(dim=-1, keepdim=True)
                 step_return = self.env.step(env_action)
                 if len(step_return) > 4:
                     next_obs, reward, terminated, truncated, info = step_return
                     terminated_t = self._to_tensor(
                         terminated, dtype=torch.float32
                     ).view(-1, 1)
-                    truncated_t = self._to_tensor(
-                        truncated, dtype=torch.float32
-                    ).view(-1, 1)
+                    truncated_t = self._to_tensor(truncated, dtype=torch.float32).view(
+                        -1, 1
+                    )
                     done_t = torch.clamp(terminated_t + truncated_t, 0.0, 1.0)
+                    # For diagnostics: how often we crash vs truncate
+                    term_events += float(terminated_t.sum().detach().cpu().item())
+                    trunc_events += float(truncated_t.sum().detach().cpu().item())
                 else:
                     next_obs, reward, terminated, info = step_return
-                    done_t = self._to_tensor(terminated, dtype=torch.float32).view(-1, 1)
+                    done_t = self._to_tensor(terminated, dtype=torch.float32).view(
+                        -1, 1
+                    )
 
                 next_obs_t = self._to_tensor(next_obs, dtype=torch.float32)
                 reward_t = self._to_tensor(reward, dtype=torch.float32).view(-1, 1)
 
                 buf_states.append(obs)
-                buf_actions.append(action)
+                buf_actions.append(env_action)
                 buf_logp.append(logp)
                 buf_rewards.append(reward_t)
                 buf_dones.append(done_t)
@@ -821,7 +882,9 @@ class PPO(BaseRLModel):
                 if torch.any(done_mask):
                     done_idx = torch.where(done_mask)[0]
                     scores.extend(ep_ret[done_idx].detach().cpu().numpy().tolist())
-                    episode_lengths.extend(ep_len[done_idx].detach().cpu().numpy().tolist())
+                    episode_lengths.extend(
+                        ep_len[done_idx].detach().cpu().numpy().tolist()
+                    )
                     ep_ret[done_idx] = 0.0
                     ep_len[done_idx] = 0
 
@@ -844,7 +907,11 @@ class PPO(BaseRLModel):
             gae = torch.zeros((n_envs, 1), device=self.device, dtype=torch.float32)
             adv = torch.zeros((T, n_envs, 1), device=self.device, dtype=torch.float32)
             for t in reversed(range(T)):
-                delta = rewards[t] + self.gamma * values[t + 1] * (1.0 - dones[t]) - values[t]
+                delta = (
+                    rewards[t]
+                    + self.gamma * values[t + 1] * (1.0 - dones[t])
+                    - values[t]
+                )
                 gae = delta + self.gamma * self.gae_lambda * (1.0 - dones[t]) * gae
                 adv[t] = gae
             returns = adv + values[:-1]
@@ -875,8 +942,11 @@ class PPO(BaseRLModel):
                 y_pred = values[:-1]
                 var_y = torch.var(y_true)
                 explained_var = (
-                    1.0 - torch.var(y_true - y_pred) / (var_y + 1e-8)
-                ).detach().cpu().item()
+                    (1.0 - torch.var(y_true - y_pred) / (var_y + 1e-8))
+                    .detach()
+                    .cpu()
+                    .item()
+                )
 
             # Flatten time and env dims for SGD
             states_f = states.reshape(T * n_envs, -1)
@@ -937,29 +1007,69 @@ class PPO(BaseRLModel):
                     if float(np.mean(epoch_kls)) > float(self.target_kl):
                         break
 
-            avg_reward = float(np.mean(scores)) if scores else float(rewards_f.mean().detach().cpu().item())
+            avg_reward = (
+                float(np.mean(scores))
+                if scores
+                else float(rewards_f.mean().detach().cpu().item())
+            )
             avg_aloss = float(np.mean(all_aloss)) if all_aloss else 0.0
             avg_closs = float(np.mean(all_closs)) if all_closs else 0.0
             avg_entropy = float(np.mean(all_entropies)) if all_entropies else 0.0
-            avg_episode_length = float(np.mean(episode_lengths)) if episode_lengths else 0.0
+            avg_episode_length = (
+                float(np.mean(episode_lengths)) if episode_lengths else 0.0
+            )
             avg_kl = float(np.mean(all_approx_kl)) if all_approx_kl else 0.0
-            avg_clipfrac = float(np.mean(all_clip_fractions)) if all_clip_fractions else 0.0
+            avg_clipfrac = (
+                float(np.mean(all_clip_fractions)) if all_clip_fractions else 0.0
+            )
+
+            # Robust reward statistics (reduces "jumpiness" in what's considered "best")
+            if scores:
+                s = np.asarray(scores, dtype=np.float64)
+                reward_median = float(np.median(s))
+                reward_p10 = float(np.percentile(s, 10))
+                reward_p90 = float(np.percentile(s, 90))
+            else:
+                reward_median = float(avg_reward)
+                reward_p10 = float(avg_reward)
+                reward_p90 = float(avg_reward)
 
             # Log
             self.writer.add_scalar("Loss/Actor", avg_aloss, episode)
             self.writer.add_scalar("Loss/Critic", avg_closs, episode)
             self.writer.add_scalar("Performance/Reward", avg_reward, episode)
+            self.writer.add_scalar("Performance/RewardMedian", reward_median, episode)
+            self.writer.add_scalar("Performance/RewardP10", reward_p10, episode)
+            self.writer.add_scalar("Performance/RewardP90", reward_p90, episode)
             self.writer.add_scalar("Performance/Entropy", avg_entropy, episode)
-            self.writer.add_scalar("Performance/Episode Length", avg_episode_length, episode)
+            self.writer.add_scalar(
+                "Performance/Episode Length", avg_episode_length, episode
+            )
             self.writer.add_scalar("Diagnostics/Approx KL", avg_kl, episode)
             self.writer.add_scalar("Diagnostics/Clip Fraction", avg_clipfrac, episode)
-            self.writer.add_scalar("Diagnostics/Explained Variance", float(explained_var), episode)
+            self.writer.add_scalar(
+                "Diagnostics/Explained Variance", float(explained_var), episode
+            )
+            self.writer.add_scalar("Diagnostics/TerminatedCount", term_events, episode)
+            self.writer.add_scalar("Diagnostics/TruncatedCount", trunc_events, episode)
 
-            # Save best using avg_reward (cheaper than extra eval rollouts)
-            if avg_reward > self.best_reward:
-                self.best_reward = float(avg_reward)
-                self._save_best_checkpoint(eval_reward=float(avg_reward), episode=int(episode + 1))
-
+            # Periodic "evaluation" for vector env:
+            # We don't run a separate single-env rollout here (would require an eval env).
+            # Instead we use mean episodic return observed during rollout collection.
+            if (episode + 1) % int(self.eval_freq) == 0:
+                # Use median as a more stable evaluation metric than mean (robust to rare crashes)
+                eval_reward = float(reward_median)
+                self.writer.add_scalar("Evaluation/Reward", eval_reward, episode)
+                if eval_reward > self.best_reward:
+                    self.best_reward = float(eval_reward)
+                    print(
+                        f"\nNew best model! Reward: {eval_reward:.2f} "
+                        f"(episode {episode + 1})"
+                    )
+                    self._save_best_checkpoint(
+                        eval_reward=float(eval_reward),
+                        episode=int(episode + 1),
+                    )
 
     def actor_loss(
         self,
@@ -1596,6 +1706,8 @@ class PPO(BaseRLModel):
             "normalize_reward": self.normalize_reward,
             "actor_hidden_dim": self.actor.d1.out_features,
             "critic_hidden_dim": self.critic.d1.out_features,
+            "actor_log_std_min": float(getattr(self.actor, "log_std_min", -20.0)),
+            "actor_log_std_max": float(getattr(self.actor, "log_std_max", 0.0)),
             "eval_freq": self.eval_freq,
             "seed": self.seed,
             "log_dir": str(self.log_dir) if self.log_dir is not None else None,
@@ -1725,7 +1837,9 @@ class PPO(BaseRLModel):
         if config["policy"]["name"] != agent_name:
             raise TheEnvironmentDoesNotMatch
 
-        def _filter_kwargs_for_init(target_cls, kwargs: Dict[str, Any]) -> Dict[str, Any]:
+        def _filter_kwargs_for_init(
+            target_cls, kwargs: Dict[str, Any]
+        ) -> Dict[str, Any]:
             """Drop unexpected kwargs that older checkpoints may contain.
 
             Some older `config.json` files may include fields like `action_space`

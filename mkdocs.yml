@@ -68,6 +68,8 @@ plugins:
                 - Overview: benchmark/bench.md
                 - Metrics: benchmark/metrics.md
                 - ARM vs x64 Testing: benchmark/arm_testing.md
+              - Comparison:
+                - PPO vs PID (B747): comparison/ppo_vs_pid_b747.md
               - Signals: signals/signals.md
             - Examples:
               - Environments: example/enviroment/gymnasium.md
@@ -147,6 +149,8 @@ plugins:
                 - Обзор: benchmark/bench.md
                 - Метрики: benchmark/metrics.md
                 - Тестирование ARM vs x64: benchmark/arm_testing.md
+              - Сравнения:
+                - PPO vs PID (B747): comparison/ppo_vs_pid_b747.md
               - Сигналы: signals/signals.md
             - Примеры:
               - Окружения: example/enviroment/gymnasium.md
