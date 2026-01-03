@@ -8,7 +8,9 @@ and various policy types for aerospace system control.
 import datetime
 import json
 from pathlib import Path
-from typing import Any, Dict, Optional, Tuple, Union, cast
+import inspect
+from collections import deque
+from typing import Any, Deque, Dict, Optional, Tuple, Union, cast
 
 import numpy as np
 import torch
@@ -75,6 +77,8 @@ class SAC(BaseRLModel):
         device: Union[str, torch.device] = "cpu",
         verbose_histogram: bool = False,
         seed: int = 42,
+        log_dir: Union[str, Path, None] = None,
+        log_every_updates: int = 1,
     ) -> None:
         """Initialize SAC agent, networks, replay buffer, and optimizers."""
         super().__init__()
@@ -95,7 +99,15 @@ class SAC(BaseRLModel):
         action_space = self.env.action_space
         num_inputs = self.env.observation_space.shape[0]
         self.device = torch.device(device)
-        self.writer = SummaryWriter()
+        self.log_dir = Path(log_dir) if log_dir is not None else None
+        self.writer = (
+            SummaryWriter(log_dir=str(self.log_dir))
+            if self.log_dir is not None
+            else SummaryWriter()
+        )
+        self.log_every_updates = int(log_every_updates)
+        if self.log_every_updates < 1:
+            raise ValueError("log_every_updates must be >= 1")
         self.critic = QNetwork(num_inputs, action_space.shape[0], hidden_size).to(
             device=self.device
         )
@@ -116,7 +128,15 @@ class SAC(BaseRLModel):
                 self.target_entropy = -torch.prod(
                     torch.Tensor(action_space.shape).to(self.device)
                 ).item()
+                # Initialize log_alpha from provided alpha for stable warm-start.
+                # This prevents sudden jumps (e.g., alpha->1.0) on the first update.
+                init_alpha = float(self.alpha)
+                if not np.isfinite(init_alpha) or init_alpha <= 0.0:
+                    init_alpha = 0.2
                 self.log_alpha = torch.zeros(1, requires_grad=True, device=self.device)
+                with torch.no_grad():
+                    self.log_alpha.fill_(float(np.log(init_alpha)))
+                self.alpha = float(init_alpha)
                 self.alpha_optim = Adam([self.log_alpha], lr=lr)
 
             self.policy = GaussianPolicy(
@@ -152,6 +172,44 @@ class SAC(BaseRLModel):
             _, _, action_t = self.policy.sample(state_t)
         action_np = cast(np.ndarray, action_t.detach().cpu().numpy()[0])
         return action_np
+
+    def select_action_batch(
+        self,
+        states: Union[np.ndarray, torch.Tensor],
+        *,
+        evaluate: bool = False,
+        return_tensor: bool = False,
+    ) -> Union[np.ndarray, torch.Tensor]:
+        """Select actions for a batch of states.
+
+        This is the recommended API for vectorized environments.
+
+        Args:
+            states: Batch of states of shape (N, obs_dim). Can be numpy or torch.
+            evaluate: If True, use deterministic evaluation action.
+            return_tensor: If True, return a torch Tensor on agent device, else numpy.
+
+        Returns:
+            Actions with shape (N, act_dim).
+        """
+        if torch.is_tensor(states):
+            state_t = states.to(self.device, dtype=torch.float32)
+        else:
+            state_t = torch.as_tensor(states, dtype=torch.float32, device=self.device)
+        if state_t.ndim != 2:
+            raise ValueError(
+                f"states must have shape (N, obs_dim). Got shape={tuple(state_t.shape)}"
+            )
+
+        with torch.no_grad():
+            if evaluate:
+                _, _, action_t = self.policy.sample(state_t)
+            else:
+                action_t, _, _ = self.policy.sample(state_t)
+
+        if return_tensor:
+            return action_t
+        return cast(np.ndarray, action_t.detach().cpu().numpy())
 
     def update_parameters(
         self, memory: ReplayMemory, batch_size: int, updates: int
@@ -259,18 +317,19 @@ class SAC(BaseRLModel):
         if updates % self.target_update_interval == 0:
             soft_update(self.critic_target, self.critic, self.tau)
 
-        self.writer.add_scalar("Loss/QF1", qf1_loss.item(), updates)
-        self.writer.add_scalar("Loss/QF2", qf2_loss.item(), updates)
-        self.writer.add_scalar("Loss/Policy", policy_loss.item(), updates)
-        self.writer.add_scalar("Loss/Alpha", alpha_loss.item(), updates)
-        self.writer.add_scalar("Alpha/value", alpha_tlogs.item(), updates)
+        if (updates % int(self.log_every_updates)) == 0:
+            self.writer.add_scalar("Loss/QF1", qf1_loss.item(), updates)
+            self.writer.add_scalar("Loss/QF2", qf2_loss.item(), updates)
+            self.writer.add_scalar("Loss/Policy", policy_loss.item(), updates)
+            self.writer.add_scalar("Loss/Alpha", alpha_loss.item(), updates)
+            self.writer.add_scalar("Alpha/value", alpha_tlogs.item(), updates)
 
-        if self.verbose_histogram:
-            for name, param in self.critic.named_parameters():
-                self.writer.add_histogram(f"Critic/{name}", param, updates)
+            if self.verbose_histogram:
+                for name, param in self.critic.named_parameters():
+                    self.writer.add_histogram(f"Critic/{name}", param, updates)
 
-            for name, param in self.policy.named_parameters():
-                self.writer.add_histogram(f"Policy/{name}", param, updates)
+                for name, param in self.policy.named_parameters():
+                    self.writer.add_histogram(f"Policy/{name}", param, updates)
 
         return (
             qf1_loss.item(),
@@ -325,6 +384,7 @@ class SAC(BaseRLModel):
                 state = next_state
                 done = done_env
             self.writer.add_scalar("Performance/Reward", episode_reward, i_episode)
+            self.writer.add_scalar("Performance/EpisodeLength", episode_steps, i_episode)
             if save_best and episode_reward > best_reward:
                 best_reward = episode_reward
                 self.save(
@@ -336,6 +396,171 @@ class SAC(BaseRLModel):
                     best_reward,
                     i_episode,
                 )
+
+    def train_vector(
+        self,
+        *,
+        total_steps: int,
+        warmup_steps: int = 10_000,
+        log_every: int = 2_000,
+        reward_window: int = 200,
+        save_best: bool = False,
+        save_path: Union[str, Path, None] = None,
+        save_best_with_gradients: bool = False,
+    ) -> None:
+        """Train SAC on a vectorized (batched) environment.
+
+        Expected env API (Gymnasium-like, batched):
+            reset() -> (obs[N, obs_dim], info)
+            step(action[N, act_dim]) -> (obs, reward[N], terminated[N], truncated[N], info)
+
+        Notes:
+            - If env has auto_reset=True, it may reset done envs internally.
+              We still use terminated/truncated from the current step for episode accounting.
+            - For replay bootstrap we use terminated only (not truncated), consistent with train().
+        """
+        total_steps = int(total_steps)
+        warmup_steps = int(warmup_steps)
+        log_every = int(log_every)
+        reward_window = int(reward_window)
+        if total_steps < 1:
+            raise ValueError("total_steps must be >= 1")
+        if warmup_steps < 0:
+            raise ValueError("warmup_steps must be >= 0")
+
+        obs, _ = self.env.reset()
+        if not torch.is_tensor(obs):
+            raise TypeError(
+                "train_vector expects env.reset() to return a torch Tensor observation"
+            )
+        if obs.ndim != 2:
+            raise ValueError(
+                f"train_vector expects obs of shape (N, obs_dim). Got {tuple(obs.shape)}"
+            )
+
+        num_envs = int(obs.shape[0])
+        act_dim = int(getattr(self.env.action_space, "shape", (1,))[0])
+
+        # Episode accounting
+        ep_returns = np.zeros((num_envs,), dtype=np.float32)
+        ep_lengths = np.zeros((num_envs,), dtype=np.int32)
+        returns_window: Deque[float] = deque(maxlen=max(1, reward_window))
+        episodes_done = 0
+
+        updates = 0
+        best_mean_return = float("-inf")
+        auto_reset = bool(getattr(self.env, "auto_reset", False))
+
+        pbar = tqdm(range(total_steps), desc="SAC train_vector", unit="step")
+        for step in pbar:
+            # Action selection
+            if step < warmup_steps:
+                actions_t = (2.0 * torch.rand((num_envs, act_dim), device=self.device) - 1.0).to(
+                    dtype=torch.float32
+                )
+            else:
+                actions_t = cast(
+                    torch.Tensor,
+                    self.select_action_batch(obs, evaluate=False, return_tensor=True),
+                )
+
+            next_obs, reward, terminated, truncated, _info = self.env.step(actions_t)
+            if not (torch.is_tensor(next_obs) and torch.is_tensor(reward)):
+                raise TypeError("train_vector expects env.step() to return torch tensors")
+
+            # Convert tensors to numpy once per step for replay + metrics
+            obs_np = cast(np.ndarray, obs.detach().cpu().numpy())
+            next_obs_np = cast(np.ndarray, next_obs.detach().cpu().numpy())
+            actions_np = cast(np.ndarray, actions_t.detach().cpu().numpy())
+            reward_np = cast(np.ndarray, reward.detach().cpu().numpy()).reshape(-1)
+            terminated_np = (
+                cast(np.ndarray, terminated.detach().cpu().numpy()).reshape(-1).astype(bool)
+            )
+            truncated_np = (
+                cast(np.ndarray, truncated.detach().cpu().numpy()).reshape(-1).astype(bool)
+            )
+            done_np = np.logical_or(terminated_np, truncated_np)
+            # IMPORTANT:
+            # - For plain (non-auto-reset) envs, time-limit bootstrapping is valid:
+            #   use terminated only.
+            # - For auto-reset vector envs, next_obs for done envs is already reset,
+            #   so bootstrapping would mix episodes. Treat all done as terminal.
+            done_bootstrap_np = (
+                done_np.astype(np.float32) if auto_reset else terminated_np.astype(np.float32)
+            )
+
+            # Store transitions
+            for i in range(num_envs):
+                self.memory.push(
+                    obs_np[i],
+                    actions_np[i],
+                    float(reward_np[i]),
+                    next_obs_np[i],
+                    float(done_bootstrap_np[i]),
+                )
+
+            # SAC updates
+            if len(self.memory) >= self.batch_size and step >= warmup_steps:
+                for _ in range(int(self.updates_per_step)):
+                    self.update_parameters(self.memory, self.batch_size, updates)
+                    updates += 1
+
+            # Episode bookkeeping (based on current step's done flags)
+            ep_returns += reward_np
+            ep_lengths += 1
+            for i, done in enumerate(done_np):
+                if done:
+                    r = float(ep_returns[i])
+                    l = int(ep_lengths[i])
+                    returns_window.append(r)
+                    self.writer.add_scalar("Performance/EpisodeReward", r, episodes_done)
+                    self.writer.add_scalar("Performance/EpisodeLength", l, episodes_done)
+                    ep_returns[i] = 0.0
+                    ep_lengths[i] = 0
+                    episodes_done += 1
+
+            # Periodic summary
+            if (step + 1) % log_every == 0:
+                mean_r = float(np.mean(returns_window)) if len(returns_window) else 0.0
+                self.writer.add_scalar(
+                    f"Performance/MeanReward{reward_window}",
+                    mean_r,
+                    step + 1,
+                )
+                self.writer.add_scalar("Train/ReplaySize", len(self.memory), step + 1)
+                self.writer.add_scalar("Train/Updates", updates, step + 1)
+                pbar.set_postfix(
+                    {
+                        "mean_R": f"{mean_r:.3f}",
+                        "episodes": episodes_done,
+                        "updates": updates,
+                        "replay": len(self.memory),
+                    }
+                )
+
+                if save_best and mean_r > best_mean_return and episodes_done > 0:
+                    best_mean_return = mean_r
+                    self.save(path=save_path, save_gradients=save_best_with_gradients)
+                    self.writer.add_scalar(
+                        "Performance/BestMeanReward",
+                        best_mean_return,
+                        step + 1,
+                    )
+
+            obs = next_obs
+
+        self.writer.flush()
+
+    def close(self) -> None:
+        """Flush and close TensorBoard writer."""
+        try:
+            self.writer.flush()
+        except Exception:
+            pass
+        try:
+            self.writer.close()
+        except Exception:
+            pass
 
     def get_param_env(self) -> Dict[str, Dict[str, Any]]:
         """Return serializable configuration of environment and policy."""
@@ -383,7 +608,6 @@ class SAC(BaseRLModel):
             "device": self.device.type,
             "lr": self.critic_optim.defaults["lr"],
         }
-        print(policy_params)
 
         return {
             "env": {"name": env_name, "params": env_params},
@@ -456,6 +680,35 @@ class SAC(BaseRLModel):
             except Exception as exc:  # protect against unexpected write errors
                 raise RuntimeError(f"Error saving optimizer states: {exc}") from exc
 
+    @staticmethod
+    def _filter_kwargs_for_init(env_cls: type, kwargs: Dict[str, Any]) -> Dict[str, Any]:
+        """Filter kwargs to those accepted by env_cls.__init__.
+
+        This makes checkpoint loading robust against extra fields stored in configs
+        (e.g., action_space/observation_space metadata).
+        """
+        try:
+            sig = inspect.signature(env_cls.__init__)
+        except (TypeError, ValueError):
+            return kwargs
+
+        # If __init__ accepts **kwargs, keep everything
+        for p in sig.parameters.values():
+            if p.kind == inspect.Parameter.VAR_KEYWORD:
+                return kwargs
+
+        allowed: set[str] = set()
+        for name, p in sig.parameters.items():
+            if name == "self":
+                continue
+            if p.kind in (
+                inspect.Parameter.POSITIONAL_OR_KEYWORD,
+                inspect.Parameter.KEYWORD_ONLY,
+            ):
+                allowed.add(name)
+
+        return {k: v for k, v in kwargs.items() if k in allowed}
+
     @classmethod
     def __load(
         cls,
@@ -482,12 +735,32 @@ class SAC(BaseRLModel):
         if config["policy"]["name"] != agent_name:
             raise TheEnvironmentDoesNotMatch
         if "tensoraerospace" in config["env"]["name"]:
-            env = get_class_from_string(config["env"]["name"])(
-                **config["env"]["params"]
-            )
+            env_cls = get_class_from_string(config["env"]["name"])
+            env_params = dict(config["env"].get("params", {}) or {})
+            env_params = cls._filter_kwargs_for_init(env_cls, env_params)
+
+            # Device fallback for env creation (avoid requesting cuda/mps when unavailable)
+            if "device" in env_params:
+                dev = str(env_params["device"])
+                if dev == "cuda" and not torch.cuda.is_available():
+                    env_params["device"] = "cpu"
+                if dev == "mps" and not (
+                    hasattr(torch.backends, "mps") and torch.backends.mps.is_available()
+                ):
+                    env_params["device"] = "cpu"
+
+            env = env_cls(**env_params)
         else:
             env = get_class_from_string(config["env"]["name"])()
         new_agent = cls(env=env, **config["policy"]["params"])
+
+        # If checkpoint was saved with CUDA but CUDA is not available now,
+        # force CPU load to avoid torch.load failures.
+        if new_agent.device.type == "cuda" and not torch.cuda.is_available():
+            new_agent.device = torch.device("cpu")
+        if new_agent.device.type == "mps":
+            if not (hasattr(torch.backends, "mps") and torch.backends.mps.is_available()):
+                new_agent.device = torch.device("cpu")
 
         # Load models
         new_agent.critic = torch.load(
@@ -499,6 +772,14 @@ class SAC(BaseRLModel):
         new_agent.critic_target = torch.load(
             critic_target_path, map_location=new_agent.device, weights_only=False
         )
+
+        # Ensure modules live on new_agent.device
+        try:
+            new_agent.critic = new_agent.critic.to(new_agent.device)
+            new_agent.policy = new_agent.policy.to(new_agent.device)
+            new_agent.critic_target = new_agent.critic_target.to(new_agent.device)
+        except Exception:
+            pass
 
         # Restore log_alpha if available
         if (
