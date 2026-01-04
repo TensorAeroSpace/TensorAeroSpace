@@ -428,7 +428,9 @@ class ImprovedB747Env(gym.Env):
         self.survival_bonus = float(survival_bonus)
         self.completion_bonus = float(completion_bonus)
         self.early_termination_penalty = float(early_termination_penalty)
-        self.early_termination_penalty_per_step = float(early_termination_penalty_per_step)
+        self.early_termination_penalty_per_step = float(
+            early_termination_penalty_per_step
+        )
         if self.survival_bonus < 0:
             raise ValueError("survival_bonus must be >= 0")
         if self.completion_bonus < 0:

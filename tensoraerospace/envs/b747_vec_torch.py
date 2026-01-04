@@ -107,7 +107,9 @@ class ImprovedB747VecEnvTorch:
         self.survival_bonus = float(survival_bonus)
         self.completion_bonus = float(completion_bonus)
         self.early_termination_penalty = float(early_termination_penalty)
-        self.early_termination_penalty_per_step = float(early_termination_penalty_per_step)
+        self.early_termination_penalty_per_step = float(
+            early_termination_penalty_per_step
+        )
         if self.survival_bonus < 0:
             raise ValueError("survival_bonus must be >= 0")
         if self.completion_bonus < 0:
@@ -724,12 +726,16 @@ class ImprovedB747VecEnvTorch:
                 (int(self.number_time_steps - 2) - self.step_count).to(torch.float32),
                 min=0.0,
             )
-            term_val = term_val - float(self.early_termination_penalty_per_step) * remaining
+            term_val = (
+                term_val - float(self.early_termination_penalty_per_step) * remaining
+            )
             reward = torch.where(terminated, term_val, reward)
         else:
             reward = torch.where(terminated, torch.full_like(reward, term_val), reward)
         if self.survival_bonus != 0.0:
-            reward = reward + float(self.survival_bonus) * (~terminated).to(torch.float32)
+            reward = reward + float(self.survival_bonus) * (~terminated).to(
+                torch.float32
+            )
         if self.completion_bonus != 0.0:
             reward = reward + float(self.completion_bonus) * (
                 truncated & (~terminated)

@@ -60,7 +60,9 @@ class IQNCritic(nn.Module):
             nn.Linear(hidden_layers[-1], 1),
         )
 
-    def forward(self, state: torch.Tensor, action: torch.Tensor, quantile: torch.Tensor) -> torch.Tensor:
+    def forward(
+        self, state: torch.Tensor, action: torch.Tensor, quantile: torch.Tensor
+    ) -> torch.Tensor:
         # state: (B,S), action: (B,A), quantile: (B,Q,1)
         state = state.view(state.size(0), -1)
         action = action.view(action.size(0), -1)
@@ -104,4 +106,3 @@ class QuantileTwin(nn.Module):
         self, state: torch.Tensor, action: torch.Tensor, quantile: torch.Tensor
     ) -> Tuple[torch.Tensor, torch.Tensor]:
         return self.q1(state, action, quantile), self.q2(state, action, quantile)
-

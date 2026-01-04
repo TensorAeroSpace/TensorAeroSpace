@@ -6,10 +6,10 @@ and various policy types for aerospace system control.
 """
 
 import datetime
-import json
-from pathlib import Path
 import inspect
+import json
 from collections import deque
+from pathlib import Path
 from typing import Any, Deque, Dict, Optional, Tuple, Union, cast
 
 import numpy as np
@@ -384,7 +384,9 @@ class SAC(BaseRLModel):
                 state = next_state
                 done = done_env
             self.writer.add_scalar("Performance/Reward", episode_reward, i_episode)
-            self.writer.add_scalar("Performance/EpisodeLength", episode_steps, i_episode)
+            self.writer.add_scalar(
+                "Performance/EpisodeLength", episode_steps, i_episode
+            )
             if save_best and episode_reward > best_reward:
                 best_reward = episode_reward
                 self.save(
@@ -455,9 +457,9 @@ class SAC(BaseRLModel):
         for step in pbar:
             # Action selection
             if step < warmup_steps:
-                actions_t = (2.0 * torch.rand((num_envs, act_dim), device=self.device) - 1.0).to(
-                    dtype=torch.float32
-                )
+                actions_t = (
+                    2.0 * torch.rand((num_envs, act_dim), device=self.device) - 1.0
+                ).to(dtype=torch.float32)
             else:
                 actions_t = cast(
                     torch.Tensor,
@@ -466,7 +468,9 @@ class SAC(BaseRLModel):
 
             next_obs, reward, terminated, truncated, _info = self.env.step(actions_t)
             if not (torch.is_tensor(next_obs) and torch.is_tensor(reward)):
-                raise TypeError("train_vector expects env.step() to return torch tensors")
+                raise TypeError(
+                    "train_vector expects env.step() to return torch tensors"
+                )
 
             # Convert tensors to numpy once per step for replay + metrics
             obs_np = cast(np.ndarray, obs.detach().cpu().numpy())
@@ -474,10 +478,14 @@ class SAC(BaseRLModel):
             actions_np = cast(np.ndarray, actions_t.detach().cpu().numpy())
             reward_np = cast(np.ndarray, reward.detach().cpu().numpy()).reshape(-1)
             terminated_np = (
-                cast(np.ndarray, terminated.detach().cpu().numpy()).reshape(-1).astype(bool)
+                cast(np.ndarray, terminated.detach().cpu().numpy())
+                .reshape(-1)
+                .astype(bool)
             )
             truncated_np = (
-                cast(np.ndarray, truncated.detach().cpu().numpy()).reshape(-1).astype(bool)
+                cast(np.ndarray, truncated.detach().cpu().numpy())
+                .reshape(-1)
+                .astype(bool)
             )
             done_np = np.logical_or(terminated_np, truncated_np)
             # IMPORTANT:
@@ -486,7 +494,9 @@ class SAC(BaseRLModel):
             # - For auto-reset vector envs, next_obs for done envs is already reset,
             #   so bootstrapping would mix episodes. Treat all done as terminal.
             done_bootstrap_np = (
-                done_np.astype(np.float32) if auto_reset else terminated_np.astype(np.float32)
+                done_np.astype(np.float32)
+                if auto_reset
+                else terminated_np.astype(np.float32)
             )
 
             # Store transitions
@@ -513,8 +523,12 @@ class SAC(BaseRLModel):
                     r = float(ep_returns[i])
                     l = int(ep_lengths[i])
                     returns_window.append(r)
-                    self.writer.add_scalar("Performance/EpisodeReward", r, episodes_done)
-                    self.writer.add_scalar("Performance/EpisodeLength", l, episodes_done)
+                    self.writer.add_scalar(
+                        "Performance/EpisodeReward", r, episodes_done
+                    )
+                    self.writer.add_scalar(
+                        "Performance/EpisodeLength", l, episodes_done
+                    )
                     ep_returns[i] = 0.0
                     ep_lengths[i] = 0
                     episodes_done += 1
@@ -681,7 +695,9 @@ class SAC(BaseRLModel):
                 raise RuntimeError(f"Error saving optimizer states: {exc}") from exc
 
     @staticmethod
-    def _filter_kwargs_for_init(env_cls: type, kwargs: Dict[str, Any]) -> Dict[str, Any]:
+    def _filter_kwargs_for_init(
+        env_cls: type, kwargs: Dict[str, Any]
+    ) -> Dict[str, Any]:
         """Filter kwargs to those accepted by env_cls.__init__.
 
         This makes checkpoint loading robust against extra fields stored in configs
@@ -759,7 +775,9 @@ class SAC(BaseRLModel):
         if new_agent.device.type == "cuda" and not torch.cuda.is_available():
             new_agent.device = torch.device("cpu")
         if new_agent.device.type == "mps":
-            if not (hasattr(torch.backends, "mps") and torch.backends.mps.is_available()):
+            if not (
+                hasattr(torch.backends, "mps") and torch.backends.mps.is_available()
+            ):
                 new_agent.device = torch.device("cpu")
 
         # Load models

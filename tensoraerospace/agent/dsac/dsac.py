@@ -6,13 +6,13 @@ loss. Works with existing TensorAeroSpace environments (e.g., B747).
 """
 
 import datetime
+from copy import deepcopy
 from pathlib import Path
 from typing import Any, Dict, Optional, Tuple, Union, cast
 
 import numpy as np
 import torch
 import torch.nn.functional as F
-from copy import deepcopy
 from torch.optim import Adam
 from torch.utils.tensorboard import SummaryWriter
 from tqdm import tqdm
@@ -156,10 +156,14 @@ class DSAC(BaseRLModel):
         if self.policy_type == "Gaussian":
             if self.automatic_entropy_tuning:
                 base_target_entropy = -torch.prod(
-                    torch.tensor(action_space.shape, device=self.device, dtype=torch.float32)
+                    torch.tensor(
+                        action_space.shape, device=self.device, dtype=torch.float32
+                    )
                 ).item()
                 # More exploration: increase magnitude (e.g., scale=2.0)
-                self.target_entropy = float(base_target_entropy) * float(self.target_entropy_scale)
+                self.target_entropy = float(base_target_entropy) * float(
+                    self.target_entropy_scale
+                )
                 init_alpha = float(self.alpha) if self.alpha > 0 else 0.2
                 self.log_alpha = torch.zeros(1, requires_grad=True, device=self.device)
                 with torch.no_grad():
@@ -184,15 +188,21 @@ class DSAC(BaseRLModel):
         self.policy_target = deepcopy(self.policy).to(self.device)
 
     def select_action(self, state: np.ndarray, evaluate: bool = False) -> np.ndarray:
-        state_t = torch.as_tensor(state, dtype=torch.float32, device=self.device).view(1, -1)
+        state_t = torch.as_tensor(state, dtype=torch.float32, device=self.device).view(
+            1, -1
+        )
         with torch.no_grad():
             if evaluate:
                 _, _, action_t = self.policy.sample(state_t)
             else:
                 action_t, _, _ = self.policy.sample(state_t)
                 if self.exploration_noise_std > 0.0:
-                    action_t = action_t + torch.randn_like(action_t) * float(self.exploration_noise_std)
-                    action_t = torch.max(torch.min(action_t, self._action_high_t), self._action_low_t)
+                    action_t = action_t + torch.randn_like(action_t) * float(
+                        self.exploration_noise_std
+                    )
+                    action_t = torch.max(
+                        torch.min(action_t, self._action_high_t), self._action_low_t
+                    )
         return cast(np.ndarray, action_t.cpu().numpy()[0])
 
     def select_action_batch(
@@ -207,7 +217,9 @@ class DSAC(BaseRLModel):
         else:
             state_t = torch.as_tensor(states, dtype=torch.float32, device=self.device)
         if state_t.ndim < 2:
-            raise ValueError(f"states must be at least 2-D. Got shape={tuple(state_t.shape)}")
+            raise ValueError(
+                f"states must be at least 2-D. Got shape={tuple(state_t.shape)}"
+            )
         if state_t.ndim > 2:
             state_t = state_t.view(state_t.shape[0], -1)
         with torch.no_grad():
@@ -216,8 +228,12 @@ class DSAC(BaseRLModel):
             else:
                 action_t, _, _ = self.policy.sample(state_t)
                 if self.exploration_noise_std > 0.0:
-                    action_t = action_t + torch.randn_like(action_t) * float(self.exploration_noise_std)
-                    action_t = torch.max(torch.min(action_t, self._action_high_t), self._action_low_t)
+                    action_t = action_t + torch.randn_like(action_t) * float(
+                        self.exploration_noise_std
+                    )
+                    action_t = torch.max(
+                        torch.min(action_t, self._action_high_t), self._action_low_t
+                    )
         if return_tensor:
             return action_t
         return cast(np.ndarray, action_t.cpu().numpy())
@@ -228,19 +244,29 @@ class DSAC(BaseRLModel):
             p.requires_grad_(requires_grad)
 
     @staticmethod
-    def _generate_quantiles(batch_size: int, num_quantiles: int, device: torch.device) -> torch.Tensor:
+    def _generate_quantiles(
+        batch_size: int, num_quantiles: int, device: torch.device
+    ) -> torch.Tensor:
         # Uniform samples U(0,1), shape (B,Q,1)
         return torch.rand((batch_size, num_quantiles, 1), device=device)
 
     def _quantile_huber_loss(
-        self, pred: torch.Tensor, target: torch.Tensor, taus: torch.Tensor, threshold: float = 1.0
+        self,
+        pred: torch.Tensor,
+        target: torch.Tensor,
+        taus: torch.Tensor,
+        threshold: float = 1.0,
     ) -> torch.Tensor:
         """Quantile Huber regression loss (HybridRL style)."""
         # pred/target: (B,Q); taus: (B,Q,1)
         td_error = pred - target
-        huber_loss = F.huber_loss(pred, target, reduction="none", delta=threshold)  # (B,Q)
+        huber_loss = F.huber_loss(
+            pred, target, reduction="none", delta=threshold
+        )  # (B,Q)
         quantile_huber_loss = (
-            torch.abs(taus.squeeze(-1) - (td_error.detach() < 0).float()) * huber_loss / threshold
+            torch.abs(taus.squeeze(-1) - (td_error.detach() < 0).float())
+            * huber_loss
+            / threshold
         )
         return quantile_huber_loss.sum(dim=1).mean()
 
@@ -256,10 +282,18 @@ class DSAC(BaseRLModel):
         ) = memory.sample(batch_size=batch_size)
 
         state_t = torch.as_tensor(state_batch, dtype=torch.float32, device=self.device)
-        next_state_t = torch.as_tensor(next_state_batch, dtype=torch.float32, device=self.device)
-        action_t = torch.as_tensor(action_batch, dtype=torch.float32, device=self.device)
-        reward_t = torch.as_tensor(reward_batch, dtype=torch.float32, device=self.device).unsqueeze(1)
-        done_t = torch.as_tensor(done_batch, dtype=torch.float32, device=self.device).unsqueeze(1)
+        next_state_t = torch.as_tensor(
+            next_state_batch, dtype=torch.float32, device=self.device
+        )
+        action_t = torch.as_tensor(
+            action_batch, dtype=torch.float32, device=self.device
+        )
+        reward_t = torch.as_tensor(
+            reward_batch, dtype=torch.float32, device=self.device
+        ).unsqueeze(1)
+        done_t = torch.as_tensor(
+            done_batch, dtype=torch.float32, device=self.device
+        ).unsqueeze(1)
         mask_t = 1.0 - done_t
 
         batch_size = state_t.shape[0]
@@ -272,7 +306,9 @@ class DSAC(BaseRLModel):
             z_next = torch.min(z1_next, z2_next)
             # next_log_pi from our GaussianPolicy has shape (B, 1).
             # Broadcasting with z_next (B, Q) should produce (B, Q) — do NOT unsqueeze.
-            target = reward_t + mask_t * self.gamma * (z_next - self.alpha * next_log_pi)
+            target = reward_t + mask_t * self.gamma * (
+                z_next - self.alpha * next_log_pi
+            )
 
             # Safety: catch accidental broadcasting bugs early
             if target.ndim != 2 or target.shape != z_next.shape:
@@ -282,14 +318,16 @@ class DSAC(BaseRLModel):
                 )
 
         z1, z2 = self.critic(state_t, action_t, tau_j)
-        critic_loss = self._quantile_huber_loss(z1, target, tau_j, threshold=self.huber_threshold) + self._quantile_huber_loss(
-            z2, target, tau_j, threshold=self.huber_threshold
-        )
+        critic_loss = self._quantile_huber_loss(
+            z1, target, tau_j, threshold=self.huber_threshold
+        ) + self._quantile_huber_loss(z2, target, tau_j, threshold=self.huber_threshold)
 
         self.critic_optim.zero_grad()
         critic_loss.backward()
         if self.max_grad_norm is not None:
-            torch.nn.utils.clip_grad_norm_(self.critic.parameters(), max_norm=self.max_grad_norm)
+            torch.nn.utils.clip_grad_norm_(
+                self.critic.parameters(), max_norm=self.max_grad_norm
+            )
         self.critic_optim.step()
         # Avoid carrying critic grads into actor backward and save compute
         self.critic_optim.zero_grad(set_to_none=True)
@@ -299,9 +337,13 @@ class DSAC(BaseRLModel):
         pi, log_pi, _ = self.policy.sample(state_t)
         with torch.no_grad():
             a_tp1, _logp_tp1, _ = self.policy.sample(next_state_t)
-        tau_actor = self._generate_quantiles(batch_size, self.num_quantiles, self.device)
+        tau_actor = self._generate_quantiles(
+            batch_size, self.num_quantiles, self.device
+        )
         z1_pi, z2_pi = self.critic(state_t, pi, tau_actor)
-        q_pi = torch.min(z1_pi.mean(dim=1, keepdim=True), z2_pi.mean(dim=1, keepdim=True))
+        q_pi = torch.min(
+            z1_pi.mean(dim=1, keepdim=True), z2_pi.mean(dim=1, keepdim=True)
+        )
 
         # CAPS spatial smoothness
         lambda_smooth = self.caps_lambda_smoothness
@@ -318,7 +360,9 @@ class DSAC(BaseRLModel):
         self.policy_optim.zero_grad()
         policy_loss.backward()
         if self.max_grad_norm is not None:
-            torch.nn.utils.clip_grad_norm_(self.policy.parameters(), max_norm=self.max_grad_norm)
+            torch.nn.utils.clip_grad_norm_(
+                self.policy.parameters(), max_norm=self.max_grad_norm
+            )
         self.policy_optim.step()
         self._set_requires_grad(self.critic, True)
 
@@ -351,11 +395,21 @@ class DSAC(BaseRLModel):
             # Diagnostics: decompose policy loss drivers
             try:
                 self.writer.add_scalar("Train/Q_pi_mean", q_pi.mean().item(), updates)
-                self.writer.add_scalar("Train/LogPi_mean", log_pi.mean().item(), updates)
-                self.writer.add_scalar("Train/Entropy_mean", (-log_pi).mean().item(), updates)
-                self.writer.add_scalar("Train/CAPS_spatial", loss_spatial.item(), updates)
-                self.writer.add_scalar("Train/CAPS_temporal", loss_temporal.item(), updates)
-                self.writer.add_scalar("Train/ActionAbsMean", pi.abs().mean().item(), updates)
+                self.writer.add_scalar(
+                    "Train/LogPi_mean", log_pi.mean().item(), updates
+                )
+                self.writer.add_scalar(
+                    "Train/Entropy_mean", (-log_pi).mean().item(), updates
+                )
+                self.writer.add_scalar(
+                    "Train/CAPS_spatial", loss_spatial.item(), updates
+                )
+                self.writer.add_scalar(
+                    "Train/CAPS_temporal", loss_temporal.item(), updates
+                )
+                self.writer.add_scalar(
+                    "Train/ActionAbsMean", pi.abs().mean().item(), updates
+                )
             except Exception:
                 pass
 
@@ -375,7 +429,9 @@ class DSAC(BaseRLModel):
 
     # Training loops follow SAC structure with calls to update_parameters
     def train(self, *args, **kwargs) -> None:
-        num_episodes = int(args[0]) if len(args) > 0 else int(kwargs.get("num_episodes", 1))
+        num_episodes = (
+            int(args[0]) if len(args) > 0 else int(kwargs.get("num_episodes", 1))
+        )
         save_best = bool(kwargs.get("save_best", False))
         save_path = kwargs.get("save_path", None)
         save_best_with_gradients = bool(kwargs.get("save_best_with_gradients", False))
@@ -396,10 +452,16 @@ class DSAC(BaseRLModel):
                     # flight dynamics and flood the replay buffer with "crash" transitions.
                     # Scale them down during warmup for stability.
                     action = cast(np.ndarray, self.env.action_space.sample())
-                    action = np.asarray(action, dtype=np.float32) * float(self.warmup_action_scale)
+                    action = np.asarray(action, dtype=np.float32) * float(
+                        self.warmup_action_scale
+                    )
                     # Keep within action bounds
                     try:
-                        action = np.clip(action, self.env.action_space.low, self.env.action_space.high)
+                        action = np.clip(
+                            action,
+                            self.env.action_space.low,
+                            self.env.action_space.high,
+                        )
                     except Exception:
                         action = np.clip(action, -1.0, 1.0)
                 else:
@@ -425,7 +487,9 @@ class DSAC(BaseRLModel):
                 done = done_env
 
             self.writer.add_scalar("Performance/Reward", episode_reward, i_episode)
-            self.writer.add_scalar("Performance/EpisodeLength", episode_steps, i_episode)
+            self.writer.add_scalar(
+                "Performance/EpisodeLength", episode_steps, i_episode
+            )
             self.writer.add_scalar("Train/ReplaySize", len(self.memory), i_episode)
             self.writer.add_scalar("Train/Updates", updates, i_episode)
             self.writer.add_scalar("Train/TotalSteps", total_numsteps, i_episode)
@@ -459,7 +523,9 @@ class DSAC(BaseRLModel):
 
         obs, _ = self.env.reset()
         if not torch.is_tensor(obs):
-            raise TypeError("train_vector expects env.reset() to return a torch Tensor observation")
+            raise TypeError(
+                "train_vector expects env.reset() to return a torch Tensor observation"
+            )
         if obs.ndim != 2:
             raise ValueError(
                 f"train_vector expects obs of shape (N, obs_dim). Got {tuple(obs.shape)}"
@@ -498,14 +564,20 @@ class DSAC(BaseRLModel):
 
             next_obs, reward, terminated, truncated, _info = self.env.step(actions_t)
             if not (torch.is_tensor(next_obs) and torch.is_tensor(reward)):
-                raise TypeError("train_vector expects env.step() to return torch tensors")
+                raise TypeError(
+                    "train_vector expects env.step() to return torch tensors"
+                )
 
             obs_np = cast(np.ndarray, obs.cpu().numpy())
             next_obs_np = cast(np.ndarray, next_obs.cpu().numpy())
             actions_np = cast(np.ndarray, actions_t.cpu().numpy())
             reward_np = cast(np.ndarray, reward.cpu().numpy()).reshape(-1)
-            terminated_np = cast(np.ndarray, terminated.cpu().numpy()).reshape(-1).astype(bool)
-            truncated_np = cast(np.ndarray, truncated.cpu().numpy()).reshape(-1).astype(bool)
+            terminated_np = (
+                cast(np.ndarray, terminated.cpu().numpy()).reshape(-1).astype(bool)
+            )
+            truncated_np = (
+                cast(np.ndarray, truncated.cpu().numpy()).reshape(-1).astype(bool)
+            )
             if self.reward_clip is not None:
                 # Clip only non-terminal rewards (keep -100 termination penalties)
                 reward_np = np.where(
@@ -516,8 +588,10 @@ class DSAC(BaseRLModel):
             done_np = np.logical_or(terminated_np, truncated_np)
             term_count += int(np.sum(terminated_np))
             trunc_count += int(np.sum(truncated_np))
-            done_bootstrap_np = done_np.astype(np.float32) if auto_reset else terminated_np.astype(
-                np.float32
+            done_bootstrap_np = (
+                done_np.astype(np.float32)
+                if auto_reset
+                else terminated_np.astype(np.float32)
             )
 
             for i in range(num_envs):
@@ -545,8 +619,12 @@ class DSAC(BaseRLModel):
                     l = int(ep_lengths[i])
                     returns_window[returns_ptr % len(returns_window)] = r
                     returns_ptr += 1
-                    self.writer.add_scalar("Performance/EpisodeReward", r, episodes_done)
-                    self.writer.add_scalar("Performance/EpisodeLength", l, episodes_done)
+                    self.writer.add_scalar(
+                        "Performance/EpisodeReward", r, episodes_done
+                    )
+                    self.writer.add_scalar(
+                        "Performance/EpisodeLength", l, episodes_done
+                    )
                     ep_returns[i] = 0.0
                     ep_lengths[i] = 0
                     episodes_done += 1
@@ -560,27 +638,43 @@ class DSAC(BaseRLModel):
                     p90_r = 0.0
                     mean_len = 0.0
                 else:
-                    w = returns_window[: min(returns_ptr, len(returns_window))].astype(np.float64)
+                    w = returns_window[: min(returns_ptr, len(returns_window))].astype(
+                        np.float64
+                    )
                     mean_r = float(np.mean(w))
                     median_r = float(np.median(w))
                     p10_r = float(np.percentile(w, 10))
                     p90_r = float(np.percentile(w, 90))
                     # Approx: mean current ep length for running envs (not just completed)
                     mean_len = float(np.mean(ep_lengths))
-                self.writer.add_scalar(f"Performance/MeanReward{reward_window}", mean_r, global_step)
+                self.writer.add_scalar(
+                    f"Performance/MeanReward{reward_window}", mean_r, global_step
+                )
                 self.writer.add_scalar(
                     f"Performance/RewardMedian{reward_window}", median_r, global_step
                 )
-                self.writer.add_scalar(f"Performance/RewardP10{reward_window}", p10_r, global_step)
-                self.writer.add_scalar(f"Performance/RewardP90{reward_window}", p90_r, global_step)
                 self.writer.add_scalar(
-                    f"Performance/MeanEpisodeLength{reward_window}", mean_len, global_step
+                    f"Performance/RewardP10{reward_window}", p10_r, global_step
                 )
-                self.writer.add_scalar("Train/ReplaySize", len(self.memory), global_step)
+                self.writer.add_scalar(
+                    f"Performance/RewardP90{reward_window}", p90_r, global_step
+                )
+                self.writer.add_scalar(
+                    f"Performance/MeanEpisodeLength{reward_window}",
+                    mean_len,
+                    global_step,
+                )
+                self.writer.add_scalar(
+                    "Train/ReplaySize", len(self.memory), global_step
+                )
                 self.writer.add_scalar("Train/Updates", updates, global_step)
                 self.writer.add_scalar("Train/TotalSteps", step + 1, global_step)
-                self.writer.add_scalar("Diagnostics/TerminatedCount", term_count, global_step)
-                self.writer.add_scalar("Diagnostics/TruncatedCount", trunc_count, global_step)
+                self.writer.add_scalar(
+                    "Diagnostics/TerminatedCount", term_count, global_step
+                )
+                self.writer.add_scalar(
+                    "Diagnostics/TruncatedCount", trunc_count, global_step
+                )
                 pbar.set_postfix(
                     {
                         "mean_R": f"{mean_r:.3f}",
@@ -656,7 +750,10 @@ class DSAC(BaseRLModel):
 
         return {
             "env": {"name": env_name, "params": env_params},
-            "policy": {"name": f"{self.__class__.__module__}.{self.__class__.__name__}", "params": policy_params},
+            "policy": {
+                "name": f"{self.__class__.__module__}.{self.__class__.__name__}",
+                "params": policy_params,
+            },
         }
 
     def save(

@@ -33,7 +33,9 @@ from tensoraerospace.envs import ImprovedB747VecEnvTorch
 from tensoraerospace.envs.b747 import ImprovedB747Env
 
 
-def load_dsac_checkpoint(folder: Path, env: ImprovedB747Env, *, device: str = "cpu") -> DSAC:
+def load_dsac_checkpoint(
+    folder: Path, env: ImprovedB747Env, *, device: str = "cpu"
+) -> DSAC:
     """Minimal loader to warm-start from a previous best_eval checkpoint."""
     folder = Path(folder)
     config_path = folder / "config.json"
@@ -49,9 +51,15 @@ def load_dsac_checkpoint(folder: Path, env: ImprovedB747Env, *, device: str = "c
     agent = DSAC(env=env, **params)
 
     # Weights
-    agent.critic = torch.load(folder / "critic.pth", map_location=device, weights_only=False)
-    agent.policy = torch.load(folder / "policy.pth", map_location=device, weights_only=False)
-    agent.critic_target = torch.load(folder / "critic_target.pth", map_location=device, weights_only=False)
+    agent.critic = torch.load(
+        folder / "critic.pth", map_location=device, weights_only=False
+    )
+    agent.policy = torch.load(
+        folder / "policy.pth", map_location=device, weights_only=False
+    )
+    agent.critic_target = torch.load(
+        folder / "critic_target.pth", map_location=device, weights_only=False
+    )
     agent.critic = agent.critic.to(device)
     agent.policy = agent.policy.to(device)
     agent.critic_target = agent.critic_target.to(device)
@@ -59,19 +67,27 @@ def load_dsac_checkpoint(folder: Path, env: ImprovedB747Env, *, device: str = "c
     # Alpha
     log_alpha_path = folder / "log_alpha.pth"
     if getattr(agent, "automatic_entropy_tuning", False) and log_alpha_path.exists():
-        loaded_alpha = torch.load(log_alpha_path, map_location=device, weights_only=False)
+        loaded_alpha = torch.load(
+            log_alpha_path, map_location=device, weights_only=False
+        )
         if isinstance(loaded_alpha, dict) and "log_alpha" in loaded_alpha:
             agent.log_alpha.data.copy_(loaded_alpha["log_alpha"].to(agent.device))
             agent.alpha = float(agent.log_alpha.exp().item())
 
     # Validate shapes: policy_target and policy must align; same for critics.
     def _same_shapes(m1: torch.nn.Module, m2: torch.nn.Module) -> bool:
-        return all(p1.shape == p2.shape for p1, p2 in zip(m1.parameters(), m2.parameters()))
+        return all(
+            p1.shape == p2.shape for p1, p2 in zip(m1.parameters(), m2.parameters())
+        )
 
     if not _same_shapes(agent.policy_target, agent.policy):
-        raise ValueError("Loaded policy and policy_target shapes differ; likely incompatible checkpoint.")
+        raise ValueError(
+            "Loaded policy and policy_target shapes differ; likely incompatible checkpoint."
+        )
     if not _same_shapes(agent.critic_target, agent.critic):
-        raise ValueError("Loaded critic and critic_target shapes differ; likely incompatible checkpoint.")
+        raise ValueError(
+            "Loaded critic and critic_target shapes differ; likely incompatible checkpoint."
+        )
 
     agent.policy.eval()
     agent.critic.eval()
@@ -80,7 +96,9 @@ def load_dsac_checkpoint(folder: Path, env: ImprovedB747Env, *, device: str = "c
 
 
 def find_latest_metrics(runs_root: Path) -> Path | None:
-    candidates = sorted(runs_root.glob("dsac_b747_step_response_*/best_eval/metrics.json"))
+    candidates = sorted(
+        runs_root.glob("dsac_b747_step_response_*/best_eval/metrics.json")
+    )
     if not candidates:
         return None
     return max(candidates, key=lambda p: p.stat().st_mtime)
@@ -89,7 +107,10 @@ def find_latest_metrics(runs_root: Path) -> Path | None:
 def pick_device() -> str:
     if torch.cuda.is_available():
         return "cuda"
-    if getattr(torch.backends, "mps", None) is not None and torch.backends.mps.is_available():
+    if (
+        getattr(torch.backends, "mps", None) is not None
+        and torch.backends.mps.is_available()
+    ):
         return "mps"
     return "cpu"
 
@@ -147,7 +168,9 @@ def save_eval_best(agent: DSAC, best_root: Path, metrics: dict) -> Path:
     agent.save(path=best_root, save_gradients=False)
     subdirs = [p for p in best_root.iterdir() if p.is_dir()]
     if not subdirs:
-        raise RuntimeError(f"Expected a checkpoint folder under {best_root}, but found none.")
+        raise RuntimeError(
+            f"Expected a checkpoint folder under {best_root}, but found none."
+        )
     saved_dir = max(subdirs, key=lambda p: p.stat().st_mtime)
 
     payload = dict(metrics)
@@ -177,7 +200,9 @@ def main() -> None:
     # --------------------------
     # Shaping to discourage "finish early" hacks (applies only on termination).
     completion_bonus = 5.0
-    early_term_penalty_per_step = 1.0  # increase to 2..5 if agent still terminates early
+    early_term_penalty_per_step = (
+        1.0  # increase to 2..5 if agent still terminates early
+    )
 
     env_train = ImprovedB747VecEnvTorch(
         num_envs=num_envs,
@@ -239,7 +264,9 @@ def main() -> None:
     agent = None
     if resume_checkpoint_dir is not None and resume_checkpoint_dir.exists():
         try:
-            agent = load_dsac_checkpoint(resume_checkpoint_dir, env_train, device=device)
+            agent = load_dsac_checkpoint(
+                resume_checkpoint_dir, env_train, device=device
+            )
             print("Loaded agent weights from previous best_eval checkpoint.")
         except Exception as exc:
             print(f"Failed to load previous best_eval checkpoint: {exc}")
@@ -338,5 +365,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-
-
