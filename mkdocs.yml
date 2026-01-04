@@ -61,6 +61,7 @@ plugins:
               - A2C-NARX: agent/a2c_narx.md
               - PPO: agent/ppo.md
               - SAC: agent/sac.md
+              - DSAC: agent/dsac.md
               - DDPG: agent/ddpg.md
               - GAIL: agent/gail.md
               - Optimization: optimization/optuna_based.md
@@ -76,6 +77,7 @@ plugins:
               - IHDP: example/agent/ihdp/example_ihdp.md
               - SAC F16: example/agent/sac/example-sac-f16.md
               - SAC B747: example/agent/sac/example-sac-b747.md
+              - DSAC B747: example/agent/dsac/example-dsac-b747.md
               - SAC Unity: example/agent/sac/example-sac-unity.md
               - Optimization: example/optimization/example_optimization.md
               - A2C-NARX: example/agent/a2c_narx/example-narx.md
@@ -142,6 +144,7 @@ plugins:
               - A2C-NARX: agent/a2c_narx.md
               - PPO: agent/ppo.md
               - SAC: agent/sac.md
+              - DSAC: agent/dsac.md
               - DDPG: agent/ddpg.md
               - GAIL: agent/gail.md
               - Оптимизация: optimization/optuna_based.md
@@ -156,6 +159,7 @@ plugins:
               - Окружения: example/enviroment/gymnasium.md
               - IHDP: example/agent/ihdp/example_ihdp.md
               - SAC F16: example/agent/sac/example-sac-f16.md
+              - DSAC B747: example/agent/dsac/example-dsac-b747.md
               - SAC Unity: example/agent/sac/example-sac-unity.md
               - Оптимизация: example/optimization/example_optimization.md
               - A2C-NARX: example/agent/a2c_narx/example-narx.md

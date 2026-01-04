@@ -89,6 +89,10 @@ class ImprovedB747VecEnvTorch:
         auto_reset: bool = True,
         step_randomization: Optional[StepRandomization | dict[str, Any]] = None,
         reward_mode: str = "step_response",
+        survival_bonus: float = 0.0,
+        completion_bonus: float = 0.0,
+        early_termination_penalty: float = 0.0,
+        early_termination_penalty_per_step: float = 0.0,
     ) -> None:
         self.num_envs = int(num_envs)
         if self.num_envs < 1:
@@ -100,6 +104,18 @@ class ImprovedB747VecEnvTorch:
                 f"reward_mode must be 'tracking' or 'step_response', got {reward_mode!r}"
             )
         self.reward_mode = str(reward_mode)
+        self.survival_bonus = float(survival_bonus)
+        self.completion_bonus = float(completion_bonus)
+        self.early_termination_penalty = float(early_termination_penalty)
+        self.early_termination_penalty_per_step = float(early_termination_penalty_per_step)
+        if self.survival_bonus < 0:
+            raise ValueError("survival_bonus must be >= 0")
+        if self.completion_bonus < 0:
+            raise ValueError("completion_bonus must be >= 0")
+        if self.early_termination_penalty < 0:
+            raise ValueError("early_termination_penalty must be >= 0")
+        if self.early_termination_penalty_per_step < 0:
+            raise ValueError("early_termination_penalty_per_step must be >= 0")
 
         self.dt = float(dt)
         self.tn = float(tn)
@@ -228,6 +244,12 @@ class ImprovedB747VecEnvTorch:
                 "min_step_amp_rad": float(self.step_rand.min_step_amp_rad),
             },
             "reward_mode": str(self.reward_mode),
+            "survival_bonus": float(self.survival_bonus),
+            "completion_bonus": float(self.completion_bonus),
+            "early_termination_penalty": float(self.early_termination_penalty),
+            "early_termination_penalty_per_step": float(
+                self.early_termination_penalty_per_step
+            ),
         }
         self.reset()
 
@@ -691,8 +713,27 @@ class ImprovedB747VecEnvTorch:
         terminated = torch.abs(theta) > float(self.max_pitch_rad)
         truncated = self.step_count >= int(self.number_time_steps - 2)
         done = terminated | truncated
-        # Large penalty on termination
-        reward = torch.where(terminated, torch.full_like(reward, -100.0), reward)
+        # --------------------------------------------------------------
+        # Survival shaping (optional):
+        # - discourage early termination
+        # - encourage finishing the full time horizon
+        # --------------------------------------------------------------
+        term_val = float(-100.0 - float(self.early_termination_penalty))
+        if self.early_termination_penalty_per_step != 0.0:
+            remaining = torch.clamp(
+                (int(self.number_time_steps - 2) - self.step_count).to(torch.float32),
+                min=0.0,
+            )
+            term_val = term_val - float(self.early_termination_penalty_per_step) * remaining
+            reward = torch.where(terminated, term_val, reward)
+        else:
+            reward = torch.where(terminated, torch.full_like(reward, term_val), reward)
+        if self.survival_bonus != 0.0:
+            reward = reward + float(self.survival_bonus) * (~terminated).to(torch.float32)
+        if self.completion_bonus != 0.0:
+            reward = reward + float(self.completion_bonus) * (
+                truncated & (~terminated)
+            ).to(torch.float32)
 
         if self.auto_reset and torch.any(done):
             self._reset_done(done)

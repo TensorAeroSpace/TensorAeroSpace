@@ -337,6 +337,10 @@ class ImprovedB747Env(gym.Env):
         initial_elevator_deg: float = 0.0,
         use_initial_action_on_first_step: bool = True,
         reward_mode: str = "step_response",
+        survival_bonus: float = 0.0,
+        completion_bonus: float = 0.0,
+        early_termination_penalty: float = 0.0,
+        early_termination_penalty_per_step: float = 0.0,
     ):
         """Initialize ImprovedB747Env environment.
 
@@ -364,6 +368,21 @@ class ImprovedB747Env(gym.Env):
                 - "step_response": Full reward with step-specific penalties
                   (overshoot, settling time, oscillations). Best for
                   training on step references. Default.
+            survival_bonus (float): Additive reward per step **only if**
+                the episode is not terminated. This can encourage the agent
+                to keep the system within constraints for the full horizon.
+                Defaults to 0.0 (disabled).
+            completion_bonus (float): Additive reward on the final step when
+                the episode ends by time limit (``truncated=True``) and was
+                **not** terminated. Defaults to 0.0 (disabled).
+            early_termination_penalty (float): Extra penalty added when the
+                episode terminates early (in addition to the base -100.0).
+                Defaults to 0.0 (disabled).
+            early_termination_penalty_per_step (float): Extra penalty per
+                remaining time step when the episode terminates early.
+                This strongly discourages the agent from \"ending\" the episode
+                quickly to avoid accumulating negative rewards.
+                Defaults to 0.0 (disabled).
         """
         if reward_mode not in ("tracking", "step_response"):
             raise ValueError(
@@ -406,6 +425,18 @@ class ImprovedB747Env(gym.Env):
         self._last_reward = 0.0
         # Reward mode: "tracking" (universal) or "step_response" (with step-specific penalties)
         self.reward_mode = str(reward_mode)
+        self.survival_bonus = float(survival_bonus)
+        self.completion_bonus = float(completion_bonus)
+        self.early_termination_penalty = float(early_termination_penalty)
+        self.early_termination_penalty_per_step = float(early_termination_penalty_per_step)
+        if self.survival_bonus < 0:
+            raise ValueError("survival_bonus must be >= 0")
+        if self.completion_bonus < 0:
+            raise ValueError("completion_bonus must be >= 0")
+        if self.early_termination_penalty < 0:
+            raise ValueError("early_termination_penalty must be >= 0")
+        if self.early_termination_penalty_per_step < 0:
+            raise ValueError("early_termination_penalty_per_step must be >= 0")
         # Reward scale for Q-value range stability
         self.reward_scale = 0.1
 
@@ -821,10 +852,30 @@ class ImprovedB747Env(gym.Env):
 
         # Termination conditions
         terminated = bool(abs(theta) > self.max_pitch_rad)
-        if terminated:
-            reward = -100.0
-
         truncated = self.current_step >= self.number_time_steps - 2
+
+        # --------------------------------------------------------------
+        # Survival shaping (optional):
+        # - discourage early termination
+        # - encourage finishing the full time horizon
+        # --------------------------------------------------------------
+        if terminated:
+            # Extra penalty proportional to remaining steps (prevents \"terminate early\" hacks)
+            remaining_steps = float(
+                max(
+                    0,
+                    int(self.number_time_steps - 2) - int(self.current_step),
+                )
+            )
+            reward = float(-100.0 - self.early_termination_penalty) - float(
+                self.early_termination_penalty_per_step * remaining_steps
+            )
+        else:
+            # per-step alive bonus
+            reward = float(reward) + float(self.survival_bonus)
+            # completion bonus only when finishing by time limit (not terminated)
+            if truncated:
+                reward = float(reward) + float(self.completion_bonus)
 
         self._last_reward = float(reward)
 
@@ -855,6 +906,13 @@ class ImprovedB747Env(gym.Env):
             "settle_bonus": float(settle_bonus),
             # Reward mode info
             "reward_mode": str(self.reward_mode),
+            # Survival shaping (debug)
+            "survival_bonus": float(self.survival_bonus),
+            "completion_bonus": float(self.completion_bonus),
+            "early_termination_penalty": float(self.early_termination_penalty),
+            "early_termination_penalty_per_step": float(
+                self.early_termination_penalty_per_step
+            ),
         }
 
         return (

@@ -17,3 +17,4 @@ from .mpc.base import AircraftMPC as AircraftMPC  # noqa: F401
 from .mpc.dynamics import DynamicsNN as DynamicsNN  # noqa: F401
 from .ppo.model import PPO as PPO  # noqa: F401
 from .sac.sac import SAC as SAC  # noqa: F401
+from .dsac.dsac import DSAC as DSAC  # noqa: F401
