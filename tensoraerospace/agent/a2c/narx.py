@@ -4,14 +4,18 @@ This module provides helper classes and functions used to train A2C agents with
 NARX (Nonlinear AutoRegressive with eXogenous inputs) representations.
 """
 
+from collections.abc import Sequence
+from typing import Iterable
+
 import numpy as np
 import torch
+from gymnasium import Env
 from torch import nn
 from torch.nn import functional as F
 from torch.utils.tensorboard import SummaryWriter
 
 
-def clip_grad_norm_(module, max_grad_norm):
+def clip_grad_norm_(module: torch.optim.Optimizer, max_grad_norm: float) -> None:
     """Clip gradients to prevent exploding gradients.
 
     Args:
@@ -24,7 +28,7 @@ def clip_grad_norm_(module, max_grad_norm):
     )
 
 
-def mish(input):
+def mish(input: torch.Tensor) -> torch.Tensor:
     """Apply the Mish activation function."""
     return input * torch.tanh(F.softplus(input))
 
@@ -36,7 +40,7 @@ class Mish(nn.Module):
         """Initialize Mish activation module."""
         super().__init__()
 
-    def forward(self, input):
+    def forward(self, input: torch.Tensor) -> torch.Tensor:
         """Forward pass."""
         return mish(input)
 
@@ -64,7 +68,12 @@ class Actor(nn.Module):
         activation (torch.nn.Module): Activation class (e.g., ``nn.Tanh``).
     """
 
-    def __init__(self, state_dim, n_actions, activation=nn.Tanh):
+    def __init__(
+        self,
+        state_dim: int,
+        n_actions: int,
+        activation: type[nn.Module] = nn.Tanh,
+    ):
         """Initialize the actor network."""
         super().__init__()
         self.n_actions = n_actions
@@ -79,7 +88,7 @@ class Actor(nn.Module):
         logstds_param = nn.Parameter(torch.full((n_actions,), 0.1))
         self.register_parameter("logstds", logstds_param)
 
-    def forward(self, X):
+    def forward(self, X: torch.Tensor) -> torch.distributions.Normal:
         """Compute an action distribution for a batch of states."""
         means = self.model(X)
         stds = torch.clamp(self.logstds.exp(), 1e-3, 50)
@@ -95,7 +104,7 @@ class Critic(nn.Module):
         activation (torch.nn.Module): Activation class (e.g., ``nn.Tanh``).
     """
 
-    def __init__(self, state_dim, activation=nn.Tanh):
+    def __init__(self, state_dim: int, activation: type[nn.Module] = nn.Tanh):
         """Build critic network layers.
 
         Args:
@@ -111,12 +120,14 @@ class Critic(nn.Module):
             nn.Linear(64, 1),
         )
 
-    def forward(self, X):
+    def forward(self, X: torch.Tensor) -> torch.Tensor:
         """Estimate state value for input features."""
         return self.model(X)
 
 
-def discounted_rewards(rewards, dones, gamma):
+def discounted_rewards(
+    rewards: Sequence[float], dones: Sequence[float], gamma: float
+) -> list[float]:
     """Compute discounted returns for a sequence of rewards."""
     ret = 0
     discounted = []
@@ -128,11 +139,18 @@ def discounted_rewards(rewards, dones, gamma):
 
 
 def process_memory_narx(
-    memory,
+    memory: Sequence[tuple[np.ndarray, float, np.ndarray, np.ndarray, bool]],
     gamma: float = 0.99,
     discount_rewards: bool = True,
     device: torch.device | str | None = None,
-):
+) -> tuple[
+    torch.Tensor,
+    torch.Tensor,
+    torch.Tensor,
+    torch.Tensor,
+    torch.Tensor,
+    torch.Tensor,
+]:
     """Convert collected transitions into tensors suitable for training.
 
     The function also builds an augmented critic input that concatenates the
@@ -187,13 +205,13 @@ class A2CLearner:
 
     def __init__(
         self,
-        actor,
-        critic,
-        gamma=0.9,
-        entropy_beta=0.01,
-        actor_lr=4e-4,
-        critic_lr=4e-3,
-        max_grad_norm=0.5,
+        actor: nn.Module,
+        critic: nn.Module,
+        gamma: float = 0.9,
+        entropy_beta: float = 0.01,
+        actor_lr: float = 4e-4,
+        critic_lr: float = 4e-3,
+        max_grad_norm: float = 0.5,
         device: torch.device | str | None = None,
     ):
         """Initialize learner with optimizers and hyperparameters.
@@ -224,7 +242,12 @@ class A2CLearner:
         self.critic_optim = torch.optim.Adam(critic.parameters(), lr=critic_lr)
         self.writer = SummaryWriter()
 
-    def learn(self, memory, steps, discount_rewards=True):
+    def learn(
+        self,
+        memory: Sequence[tuple[np.ndarray, float, np.ndarray, np.ndarray, bool]],
+        steps: int,
+        discount_rewards: bool = True,
+    ) -> None:
         """Update actor/critic using a batch of collected transitions.
 
         Args:
@@ -319,7 +342,7 @@ class A2CLearner:
 class Runner:
     """Environment interaction loop used to collect training data."""
 
-    def __init__(self, env, actor, writer):
+    def __init__(self, env: Env, actor: nn.Module, writer: SummaryWriter):
         """Create runner for data collection.
 
         Args:
@@ -340,11 +363,11 @@ class Runner:
         self.device = next(self.actor.parameters()).device
 
     @staticmethod
-    def _flatten_observation(observation):
+    def _flatten_observation(observation: np.ndarray | Iterable[float]) -> np.ndarray:
         """Flatten environment observations to shape ``(n,)``."""
         return np.asarray(observation, dtype=np.float32).reshape(-1)
 
-    def reset(self):
+    def reset(self) -> None:
         """Reset environment and episode state."""
         self.episode_reward = 0
         self.done = False
@@ -353,7 +376,14 @@ class Runner:
         # Reset previous action at the start of each episode
         self.prev_action = np.zeros(self.env.action_space.shape)
 
-    def run(self, max_steps, memory=None) -> list:
+    def run(
+        self,
+        max_steps: int,
+        memory: list[
+            tuple[np.ndarray, float, np.ndarray, np.ndarray, bool]
+        ]
+        | None = None,
+    ) -> list[tuple[np.ndarray, float, np.ndarray, np.ndarray, bool]]:
         """Run the environment for a fixed number of steps and collect transitions.
 
         Args:

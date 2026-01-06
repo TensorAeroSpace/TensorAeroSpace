@@ -118,11 +118,11 @@ class LinearLongitudinalF16(gym.Env):
                 x0[MODEL_STATE_ORDER.index(name)] = vals[i] if i < len(vals) else 0.0
         return x0
 
-    def _get_info(self):
+    def _get_info(self) -> dict[str, float]:
         """Return auxiliary info for Gym API (currently empty)."""
         return {}
 
-    def get_init_args(self):
+    def get_init_args(self) -> dict[str, object]:
         """Get initialization arguments as a dictionary.
 
         Returns:
@@ -138,7 +138,9 @@ class LinearLongitudinalF16(gym.Env):
         init_args.pop("model_x0", None)  # Удаление внутренней переменной model_x0
         return init_args
 
-    def step(self, action: np.ndarray):
+    def step(
+        self, action: np.ndarray
+    ) -> tuple[np.ndarray, float, bool, bool, dict[str, float]]:
         """Execute one simulation step.
 
         Args:
@@ -158,7 +160,7 @@ class LinearLongitudinalF16(gym.Env):
             action[0] = self.max_action_value * -1
         self.current_step += 1
         next_state = self.model.run_step(action)
-        reward = 1
+        reward = 1.0
         if self.use_reward:
             reward = self.reward_func(
                 next_state, self.reference_signal, self.current_step
@@ -166,9 +168,19 @@ class LinearLongitudinalF16(gym.Env):
         self.done = self.current_step >= self.number_time_steps - 2
         info = self._get_info()
 
-        return next_state.reshape([-1, 1]), reward, self.done, False, info
+        reward_value = float(np.asarray(reward, dtype=float).squeeze())
 
-    def reset(self, seed=None, options=None):
+        return (
+            next_state.reshape([-1, 1]),
+            reward_value,
+            self.done,
+            False,
+            info,
+        )
+
+    def reset(
+        self, seed: int | None = None, options: dict | None = None
+    ) -> tuple[np.ndarray, dict[str, float]]:
         """Reset simulation environment to initial conditions.
 
         Args:
@@ -228,7 +240,9 @@ class LinearLongitudinalF16(gym.Env):
     #     return reward
 
     @staticmethod
-    def default_reward(state, ref_signal, ts):
+    def default_reward(
+        state: np.ndarray, ref_signal: np.ndarray, ts: int
+    ) -> np.ndarray:
         """Reward function for RL environment in longitudinal aircraft control.
 
         Args:

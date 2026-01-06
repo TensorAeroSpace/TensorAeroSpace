@@ -26,8 +26,14 @@ class NARX(nn.Module):
     """
 
     def __init__(
-        self, input_size, hidden_size, output_size, num_layers, state_lags, control_lags
-    ):
+        self,
+        input_size: int,
+        hidden_size: int,
+        output_size: int,
+        num_layers: int,
+        state_lags: int,
+        control_lags: int,
+    ) -> None:
         """Initialize the NARX network.
 
         Args:

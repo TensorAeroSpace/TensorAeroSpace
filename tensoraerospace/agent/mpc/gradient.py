@@ -8,7 +8,7 @@ import datetime
 import json
 import os
 from pathlib import Path
-from typing import Any, Dict, List, Tuple
+from typing import Any, Callable, Dict, List, Tuple
 
 import numpy as np
 import torch
@@ -113,15 +113,15 @@ class MPCOptimizationAgent(BaseRLModel):
 
     def __init__(
         self,
-        gamma,
-        action_dim,
-        observation_dim,
-        model,
-        cost_function,
-        env,
-        lr=1e-3,
-        criterion=torch.nn.MSELoss(),
-        optimization_lr=1,
+        gamma: float,
+        action_dim: int,
+        observation_dim: int,
+        model: nn.Module,
+        cost_function: Callable[..., torch.Tensor],
+        env: Any,
+        lr: float = 1e-3,
+        criterion: nn.Module = torch.nn.MSELoss(),
+        optimization_lr: float = 1,
     ):
         """Initialize gradient-based MPC agent.
 
@@ -284,7 +284,9 @@ class MPCOptimizationAgent(BaseRLModel):
             pbar.set_description(f"Avg Loss {avg_epoch_loss:.4f}")
 
     def collect_data(
-        self, num_episodes: int = 1000, control_exploration_signal=None
+        self,
+        num_episodes: int = 1000,
+        control_exploration_signal: np.ndarray | List[float] | None = None,
     ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
         """
         Collect data about states, actions and next states by executing random policy in environment.

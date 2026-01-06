@@ -187,15 +187,15 @@ agent.train_vector(
 
 ## Документация API
 
-:::: tensoraerospace.agent.dsac.dsac.DSAC
+::: tensoraerospace.agent.dsac.dsac.DSAC
 
-:::: tensoraerospace.agent.dsac.flight_critic.ZNet
+::: tensoraerospace.agent.dsac.flight_critic.ZNet
 
-:::: tensoraerospace.agent.dsac.flight_critic.IQN
+::: tensoraerospace.agent.dsac.flight_critic.IQN
 
-:::: tensoraerospace.agent.dsac.flight_actor.NormalPolicyNet
+::: tensoraerospace.agent.dsac.flight_actor.NormalPolicyNet
 
-:::: tensoraerospace.agent.dsac.risk_distortions
+::: tensoraerospace.agent.dsac.risk_distortions
 
 ## Благодарности
 

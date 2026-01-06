@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 """PID-based control baselines.
 
 This module provides utilities for running classic PID controllers and logging
@@ -8,9 +10,10 @@ import datetime
 import json
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, Optional, Tuple
+from typing import Any, Dict, Optional, Tuple
 
 import numpy as np
+from gymnasium import Env
 
 from ..base import (
     BaseRLModel,
@@ -91,7 +94,14 @@ class PID(BaseRLModel):
         >>> control_signal = pid.select_action(10, 7)
     """
 
-    def __init__(self, env=None, kp=1, ki=1, kd=0.5, dt=0.01):
+    def __init__(
+        self,
+        env: Env | None = None,
+        kp: float = 1.0,
+        ki: float = 1.0,
+        kd: float = 0.5,
+        dt: float = 0.01,
+    ) -> None:
         """Initialize PID controller parameters."""
         self.kp = kp
         self.ki = ki
@@ -103,7 +113,7 @@ class PID(BaseRLModel):
         self.prev_measurement = 0
         self.env = env
 
-    def select_action(self, setpoint, measurement):
+    def select_action(self, setpoint: float, measurement: float) -> float:
         """Compute and return control signal based on setpoint and measurement.
 
         This method uses the current measurement and setpoint to compute the error,
@@ -167,7 +177,7 @@ class PID(BaseRLModel):
         self.prev_measurement = float(measurement)
         return float(output)
 
-    def reset(self):
+    def reset(self) -> None:
         """Reset PID controller internal state.
 
         Resets integral accumulator and previous error to zero.
@@ -179,7 +189,7 @@ class PID(BaseRLModel):
 
     @staticmethod
     def _align_reference_to_observation_units(
-        env, reference_signal: np.ndarray, track_state_idx: int
+        env: Env, reference_signal: np.ndarray, track_state_idx: int
     ) -> np.ndarray:
         """Align reference signal units to environment observation units.
 
@@ -272,7 +282,7 @@ class PID(BaseRLModel):
 
     @staticmethod
     def _check_state_space_available(
-        env,
+        env: Env,
     ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
         """Check if environment has state-space matrices and return them.
 
@@ -900,7 +910,7 @@ class PID(BaseRLModel):
             "iae": iae,
         }
 
-    def get_param_env(self):
+    def get_param_env(self) -> Dict[str, Dict[str, Any]]:
         """Get environment and agent parameters for saving.
 
         Returns:
@@ -942,7 +952,7 @@ class PID(BaseRLModel):
             "policy": {"name": agent_name, "params": policy_params},
         }
 
-    def save(self, path=None):
+    def save(self, path: str | Path | None = None) -> Path:
         """Save PID model to the specified directory.
 
         If path is not specified, creates a directory with current date and time.
@@ -976,7 +986,7 @@ class PID(BaseRLModel):
         return save_dir
 
     @classmethod
-    def __load(cls, path):
+    def __load(cls, path: str | Path) -> "PID":
         """Load PID model from the specified directory.
 
         Args:
@@ -1009,7 +1019,12 @@ class PID(BaseRLModel):
         return new_agent
 
     @classmethod
-    def from_pretrained(cls, repo_name, access_token=None, version=None):
+    def from_pretrained(
+        cls,
+        repo_name: str,
+        access_token: str | None = None,
+        version: str | None = None,
+    ) -> "PID":
         """Load pretrained model from local path or Hugging Face Hub.
 
         Args:

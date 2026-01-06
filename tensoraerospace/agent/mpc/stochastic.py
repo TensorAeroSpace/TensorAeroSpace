@@ -8,7 +8,7 @@ import datetime
 import json
 import os
 from pathlib import Path
-from typing import Any, Dict, List, Tuple
+from typing import Any, Callable, Dict, List, Tuple
 
 import numpy as np
 import torch
@@ -79,15 +79,15 @@ class MPCAgent(BaseRLModel):
 
     def __init__(
         self,
-        gamma,
-        action_dim,
-        observation_dim,
-        model,
-        cost_function,
-        env,
-        min_max_action_value=(-0.5, 0.5),
-        lr=1e-3,
-        criterion=torch.nn.MSELoss(),
+        gamma: float,
+        action_dim: int,
+        observation_dim: int,
+        model: nn.Module,
+        cost_function: Callable[..., torch.Tensor],
+        env: Any,
+        min_max_action_value: tuple[float, float] = (-0.5, 0.5),
+        lr: float = 1e-3,
+        criterion: nn.Module = torch.nn.MSELoss(),
     ):
         """Initialize stochastic MPC agent with learned dynamics.
 
@@ -114,7 +114,12 @@ class MPCAgent(BaseRLModel):
         self.env = env
         self.min_action, self.max_action = min_max_action_value
 
-    def from_pretrained(self, repo_name, access_token=None, version=None):
+    def from_pretrained(
+        self,
+        repo_name: str,
+        access_token: str | None = None,
+        version: str | None = None,
+    ) -> None:
         """Load a pretrained dynamics model from the Hugging Face Hub.
 
         Args:
@@ -214,7 +219,9 @@ class MPCAgent(BaseRLModel):
             pbar.set_description(f"Loss {loss.item()}")
 
     def collect_data(
-        self, num_episodes: int = 1000, control_exploration_signal=None
+        self,
+        num_episodes: int = 1000,
+        control_exploration_signal: np.ndarray | List[float] | None = None,
     ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
         """Collect transition data by executing a policy in the environment.
 

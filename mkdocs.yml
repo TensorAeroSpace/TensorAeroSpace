@@ -78,7 +78,11 @@ plugins:
               - IHDP: example/agent/ihdp/example_ihdp.md
               - SAC F16: example/agent/sac/example-sac-f16.md
               - SAC B747: example/agent/sac/example-sac-b747.md
-              - DSAC B747: example/agent/dsac/example-dsac-b747.md
+              - DSAC B747:
+                - Training (Step Response): example/agent/dsac/example-dsac-b747.md
+                - Training Script (Step Response): example/agent/dsac/train-dsac-b747-step-response.md
+                - Training Script (Sine Tracking): example/agent/dsac/train-dsac-b747-tracking.md
+                - Evaluation Notebook: example/agent/dsac/eval-dsac-b747.md
               - SAC Unity: example/agent/sac/example-sac-unity.md
               - Optimization: example/optimization/example_optimization.md
               - A2C-NARX: example/agent/a2c_narx/example-narx.md
@@ -161,7 +165,11 @@ plugins:
               - Окружения: example/enviroment/gymnasium.md
               - IHDP: example/agent/ihdp/example_ihdp.md
               - SAC F16: example/agent/sac/example-sac-f16.md
-              - DSAC B747: example/agent/dsac/example-dsac-b747.md
+              - DSAC B747:
+                - Обучение (ступенчатое воздействие): example/agent/dsac/example-dsac-b747.md
+                - Скрипт обучения (ступенчатое): example/agent/dsac/train-dsac-b747-step-response.md
+                - Скрипт обучения (синусоида): example/agent/dsac/train-dsac-b747-tracking.md
+                - Ноутбук оценки: example/agent/dsac/eval-dsac-b747.md
               - SAC Unity: example/agent/sac/example-sac-unity.md
               - Оптимизация: example/optimization/example_optimization.md
               - A2C-NARX: example/agent/a2c_narx/example-narx.md
