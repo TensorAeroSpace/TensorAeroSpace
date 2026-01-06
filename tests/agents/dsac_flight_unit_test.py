@@ -69,7 +69,9 @@ def test_quantile_huber_loss_reduces_and_finite():
     target = torch.zeros((4, 6))
     prediction = torch.ones((4, 6)) * 0.5
     taus = torch.rand((4, 6))
-    loss = quantile_huber_loss(target=target, prediction=prediction, taus=taus, kappa=1.0)
+    loss = quantile_huber_loss(
+        target=target, prediction=prediction, taus=taus, kappa=1.0
+    )
     assert loss.dim() == 0
     assert float(loss) >= 0.0
     assert torch.isfinite(loss)
@@ -127,4 +129,3 @@ def test_select_action_batch_rejects_rank1_input():
     except ValueError:
         return
     assert False, "Expected ValueError for rank-1 states"
-

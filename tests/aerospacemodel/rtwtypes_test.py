@@ -45,4 +45,3 @@ def test_ext_structs_have_expected_fields_and_defaults():
     yr = rt.ExtY_T_r()
     assert hasattr(yr, "w") and hasattr(yr, "time")
     assert float(yr.time) == 0.0
-

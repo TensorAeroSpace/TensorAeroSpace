@@ -6,12 +6,12 @@ from tensoraerospace.agent.dsac.flight_actor import (
     LOG_STD_MIN,
     NormalPolicyNet,
 )
-from tensoraerospace.agent.dsac.flight_mlp import make_mlp
 from tensoraerospace.agent.dsac.flight_critic import ZNet
+from tensoraerospace.agent.dsac.flight_mlp import make_mlp
 from tensoraerospace.agent.dsac.model import IQNCritic, QuantileTwin
 from tensoraerospace.agent.dsac.risk_distortions import (
-    distortion_functions,
     cpw,
+    distortion_functions,
     normal_cdf,
     normal_inverse_cdf,
     wang,
@@ -76,7 +76,11 @@ def test_normal_policy_net_clamps_log_std_extremes():
     with torch.no_grad():
         net.log_std_layer.bias.fill_(100.0)
     stds_hi = net.get_std(states)
-    assert torch.allclose(stds_hi, torch.full_like(stds_hi, float(torch.exp(torch.tensor(LOG_STD_MAX)))), atol=1e-4)
+    assert torch.allclose(
+        stds_hi,
+        torch.full_like(stds_hi, float(torch.exp(torch.tensor(LOG_STD_MAX)))),
+        atol=1e-4,
+    )
 
     with torch.no_grad():
         net.log_std_layer.bias.fill_(-100.0)
@@ -153,4 +157,3 @@ def test_cpw_monotonic_in_tau():
     out = cpw(tau, xi=0.8)
     diff = torch.diff(out)
     assert torch.all(diff >= -1e-6)
-

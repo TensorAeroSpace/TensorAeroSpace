@@ -38,7 +38,9 @@ def test_find_step_function_slices_and_validates():
         find_step_function(np.array([0, 1]), np.array([0, 1, 2]), signal_val=0)
 
     # No step found -> returns original arrays
-    c3, s3 = find_step_function(np.array([0, 0], dtype=float), np.array([5, 6], dtype=float), signal_val=1.0)
+    c3, s3 = find_step_function(
+        np.array([0, 0], dtype=float), np.array([5, 6], dtype=float), signal_val=1.0
+    )
     assert np.array_equal(c3, np.array([0, 0], dtype=float))
     assert np.array_equal(s3, np.array([5, 6], dtype=float))
 

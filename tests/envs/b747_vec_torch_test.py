@@ -2,8 +2,11 @@ import numpy as np
 import pytest
 import torch
 
-from tensoraerospace.envs.b747_vec_torch import ImprovedB747VecEnvTorch
-from tensoraerospace.envs.b747_vec_torch import _make_signal_randomization, SignalRandomization
+from tensoraerospace.envs.b747_vec_torch import (
+    ImprovedB747VecEnvTorch,
+    SignalRandomization,
+    _make_signal_randomization,
+)
 
 
 def test_init_validations():
@@ -223,7 +226,9 @@ def test_include_reference_in_obs_on_step_and_action_vector():
 
 
 def test_reset_done_resets_only_masked_envs():
-    env = ImprovedB747VecEnvTorch(num_envs=3, dt=0.1, tn=1.0, device="cpu", auto_reset=False)
+    env = ImprovedB747VecEnvTorch(
+        num_envs=3, dt=0.1, tn=1.0, device="cpu", auto_reset=False
+    )
     env.reset()
     env.step_count = torch.tensor([5, 6, 7])
     env.prev_action = torch.tensor([0.1, 0.2, 0.3])
@@ -357,4 +362,3 @@ def test_reset_done_all_false():
     done_mask = torch.tensor([False, False])
     env._reset_done(done_mask)
     assert torch.all(env.step_count == 5)
-

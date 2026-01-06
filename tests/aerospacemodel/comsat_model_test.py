@@ -4,7 +4,6 @@ import pytest
 
 from tensoraerospace.aerospacemodel.comsat import ComSat
 
-
 matplotlib.use("Agg")
 
 
@@ -45,6 +44,8 @@ def test_get_output_smoke():
     out = env.get_output("rho_dot")
     assert out.shape[0] == env.time_step - 1
     # plot_output skipped: ComSat states not in state_to_latex_* dicts
+
+
 import numpy as np
 
 from tensoraerospace.aerospacemodel.comsat import ComSat

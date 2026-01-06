@@ -9,7 +9,9 @@ from tensoraerospace.aerospacemodel.base import ModelBase
 
 class _DummyModel(ModelBase):
     def __init__(self):
-        super().__init__(x0=np.array([0.0, 0.0]), selected_state_output=None, t0=0, dt=0.1)
+        super().__init__(
+            x0=np.array([0.0, 0.0]), selected_state_output=None, t0=0, dt=0.1
+        )
         # Keep control name also in list_state because base checks list_state for controls
         self.list_state = ["alpha", "theta", "ele"]
         self.control_list = ["ele"]

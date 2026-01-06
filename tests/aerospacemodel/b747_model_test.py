@@ -113,6 +113,7 @@ def test_b747_selected_state_output():
 def test_b747_plot_output_validation_errors():
     """Cover plot_output validation (lines 363-368)."""
     import matplotlib
+
     matplotlib.use("Agg")
 
     model = LongitudinalB747(x0=np.zeros(4), number_time_steps=5, dt=0.01)
@@ -139,7 +140,11 @@ def test_b747_plot_output_smoke_mocked():
     model.run_step(np.array([1.0]))
     model.list_state = model.selected_states
 
-    t = np.linspace(0, (model.number_time_steps - 1) * model.discretisation_time, model.number_time_steps)
+    t = np.linspace(
+        0,
+        (model.number_time_steps - 1) * model.discretisation_time,
+        model.number_time_steps,
+    )
 
     mock_fig = MagicMock()
     with patch("tensoraerospace.aerospacemodel.b747.plt") as mock_plt:

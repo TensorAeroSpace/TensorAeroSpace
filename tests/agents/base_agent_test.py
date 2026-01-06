@@ -4,10 +4,10 @@ from unittest.mock import MagicMock, patch
 
 from tensoraerospace.agent.base import (
     BaseRLModel,
+    TheEnvironmentDoesNotMatch,
+    deserialize_env_params,
     get_class_from_string,
     serialize_env,
-    deserialize_env_params,
-    TheEnvironmentDoesNotMatch,
 )
 
 
@@ -56,4 +56,3 @@ def test_exception_message():
     """Cover TheEnvironmentDoesNotMatch exception."""
     exc = TheEnvironmentDoesNotMatch()
     assert "does not match" in exc.message
-

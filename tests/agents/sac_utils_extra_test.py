@@ -30,4 +30,3 @@ def test_logsumexp_none_dim_matches_manual():
     # compare with torch.logsumexp over all elements
     ref = torch.logsumexp(x.view(-1), dim=0)
     assert torch.allclose(out, ref)
-

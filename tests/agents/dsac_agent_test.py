@@ -138,4 +138,3 @@ def test_dsac_eval_and_to_device_cpu_noop():
     agent.eval()
     assert not agent.policy.training
     assert not agent.Z1.training
-

@@ -4,7 +4,6 @@ import pytest
 
 from tensoraerospace.optimization import base
 
-
 matplotlib.use("Agg")
 
 
@@ -72,4 +71,3 @@ def test_plot_parms_runs(monkeypatch):
     fig = plt.gcf()
     ax = fig.axes[0]
     assert len(ax.get_xticks()) == len(dummy.trials)
-

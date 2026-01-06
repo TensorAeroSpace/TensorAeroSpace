@@ -15,4 +15,3 @@ def test_set_initial_state_updates_and_returns_list():
 def test_set_initial_state_invalid_key():
     with pytest.raises(Exception):
         initial.set_initial_state({"bad": 1.0})
-

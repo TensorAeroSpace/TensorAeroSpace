@@ -21,4 +21,3 @@ def test_set_initial_state_no_matlab_dependency():
     # ensure module import/export works without matlab installed (function returns list)
     out = initial.set_initial_state({})
     assert isinstance(out, list)
-

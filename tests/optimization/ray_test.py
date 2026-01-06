@@ -90,6 +90,8 @@ def test_plot_parms_not_implemented():
     opt = ray_opt.HyperParamOptimizationRay(direction="min")
     with pytest.raises(NotImplementedError):
         opt.plot_parms()
+
+
 import pytest
 
 from tensoraerospace.optimization.ray import HyperParamOptimizationRay
