@@ -33,29 +33,27 @@
 - 🧠 **RL Algorithms**: State-of-the-art reinforcement learning implementations
 - 🔧 **Extensible Architecture**: Easy to extend and customize for your specific needs
 
-## 🧭 Applied use cases
+## 🧭 Applied Use Cases
 
-The list below is kept **identical** to `README.ru-ru.md#-направления-прикладного-использования` and the Conclusion section of `report.md`.
-
-1. **Автоматическое управление самолётами и БПЛА** — стабилизация, следование траектории, управление по углам тангажа/скольжения для F‑16, B747, X‑15, Ultrastick.
-2. **Управление ракетно-космическими аппаратами** — линеаризованные модели ELV, Typical Rocket, геостационарные спутники, оптимизация фаз выведения.
-3. **Комбинированные контуры PID/MPC + RL** — настройка гибридных контроллеров, внедрение SAC/PPO/A3C в задачах продольного движения.
-4. **Оптимизация гиперпараметров и бенчмаркинг** — автоматизированный подбор IHDP/NARX‑агентов, проведение Bench-серий и визуализация метрик.
-5. **Интеграция с цифровыми полигонами** — Unity ML‑Agents, MATLAB/Simulink, экспорт в UnityAirplaneEnvironment и simulink-example.
-6. **Методы диагностики и устойчивости** — исследование отказов, оценка диапазонов управляемости, подготовка датасетов для GAIL/Benchmark.
+1. **Automatic Aircraft & UAV Control** — stabilization, trajectory tracking, pitch/yaw angle control for F‑16, B747, X‑15, Ultrastick.
+2. **Rocket & Spacecraft Control** — linearized models of ELV, Typical Rocket, geostationary satellites, launch phase optimization.
+3. **Hybrid PID/MPC + RL Controllers** — tuning hybrid controllers, integrating SAC/DSAC/PPO/A3C for longitudinal motion tasks.
+4. **Hyperparameter Optimization & Benchmarking** — automated tuning of IHDP/NARX agents, running benchmark series, and metrics visualization.
+5. **Digital Twin Integration** — Unity ML‑Agents, MATLAB/Simulink, export to UnityAirplaneEnvironment and simulink-example.
+6. **Diagnostics & Robustness Methods** — fault analysis, controllability range assessment, dataset preparation for GAIL/Benchmark.
 
 ## 🚀 Quick Start
 
-### ✅ Минимальные технические требования
+### ✅ Minimum Technical Requirements
 
-| Компонент | Минимум | Рекомендовано |
+| Component | Minimum | Recommended |
 | --- | --- | --- |
-| **ОС** | Linux x86_64, Windows 10, macOS 13 | Ubuntu 22.04 LTS / Windows 11 |
-| **CPU** | 4 ядра, AVX | 8+ ядер, AVX2/FMA |
-| **RAM** | 8 ГБ | 16–32 ГБ для RL/Simulink |
-| **GPU** | Необязательно | NVIDIA RTX с ≥8 ГБ VRAM для SAC/PPO, поддержка CUDA 12.2 |
+| **OS** | Linux x86_64, Windows 10, macOS 13 | Ubuntu 22.04 LTS / Windows 11 |
+| **CPU** | 4 cores, AVX | 8+ cores, AVX2/FMA |
+| **RAM** | 8 GB | 16–32 GB for RL/Simulink |
+| **GPU** | Optional | NVIDIA RTX with ≥8 GB VRAM for SAC/DSAC/PPO, CUDA 12.2 support |
 | **Python** | 3.8–3.11 | 3.10/3.11 |
-| **Доп. ПО** | Git, Poetry или pip, Docker (опционально) | MATLAB/Simulink R2022b+ (для simulink-example), Unity 2021.3.5f1/2023.2.20f1 |
+| **Additional** | Git, Poetry or pip, Docker (optional) | MATLAB/Simulink R2022b+ (for simulink-example), Unity 2021.3.5f1/2023.2.20f1 |
 
 ### 📦 Installation
 
@@ -188,6 +186,7 @@ for t in range(N - 1):
 | **DQN** | Deep Q-Learning | ❌ | ✅ |
 | **DDPG** | Deep Deterministic Policy Gradient | ❌ | ✅ |
 | **SAC** | Soft Actor-Critic | ✅ | ✅ |
+| **DSAC** | Distributional Soft Actor-Critic | ✅ | ✅ |
 | **A3C** | Asynchronous Advantage Actor-Critic | ❌ | ✅ |
 | **PPO** | Proximal Policy Optimization | ✅ | ✅ |
 | **GAIL** | Imitation Learning (Adversarial) | ❌ | ✅ |
@@ -233,7 +232,7 @@ for t in range(N - 1):
 
 <div align="center">
 
-![Unity Demo](./docs/example/env/img/img_demo_unity.gif)
+![Unity Demo](./docs/en/example/env/img/img_demo_unity.gif)
 
 </div>
 
@@ -248,7 +247,7 @@ TensorAeroSpace seamlessly integrates with Unity ML-Agents for immersive 3D simu
 
 ### 🔧 MATLAB Simulink Support
 
-![Simulink Model](docs/example/simulink/img/model.png)
+![Simulink Model](docs/en/example/simulink/img/model.png)
 
 - 📐 **Model Import**: Convert Simulink models to Python
 - ⚡ **High Performance**: Compiled C++ integration
