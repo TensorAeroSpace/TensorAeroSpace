@@ -87,6 +87,7 @@ class ImprovedB747VecEnvTorch:
         device: Optional[torch.device | str] = None,
         seed: Optional[int] = None,
         auto_reset: bool = True,
+        include_reference_in_obs: bool = False,
         step_randomization: Optional[StepRandomization | dict[str, Any]] = None,
         reward_mode: str = "step_response",
         survival_bonus: float = 0.0,
@@ -129,6 +130,7 @@ class ImprovedB747VecEnvTorch:
             else torch.device("cpu" if device is None else device)
         )
         self.auto_reset = bool(auto_reset)
+        self.include_reference_in_obs = bool(include_reference_in_obs)
 
         # RNG for reference sampling (torch generator on selected device)
         self._gen = torch.Generator(device=self.device)
@@ -151,8 +153,9 @@ class ImprovedB747VecEnvTorch:
 
         # Spaces (single-env shapes)
         self.action_space = spaces.Box(low=-1.0, high=1.0, shape=(1,), dtype=np.float32)
+        obs_dim = 6 if self.include_reference_in_obs else 4
         self.observation_space = spaces.Box(
-            low=-1.0, high=1.0, shape=(4,), dtype=np.float32
+            low=-1.0, high=1.0, shape=(obs_dim,), dtype=np.float32
         )
 
         # Discrete-time system matrices (computed once, then moved to torch)
@@ -228,6 +231,7 @@ class ImprovedB747VecEnvTorch:
             "device": str(self.device),
             "seed": int(seed) if seed is not None else None,
             "auto_reset": bool(self.auto_reset),
+            "include_reference_in_obs": bool(self.include_reference_in_obs),
             "step_randomization": {
                 "signal_type": str(getattr(self.step_rand, "signal_type", "step")),
                 "amplitude_deg_range": tuple(self.step_rand.amplitude_deg_range),
@@ -474,8 +478,12 @@ class ImprovedB747VecEnvTorch:
         theta = self.state[:, self._idx_theta]
         q = self.state[:, self._idx_q]
         idx = torch.clamp(self.step_count, 0, self.number_time_steps - 1)
+        idx_prev = torch.clamp(self.step_count - 1, 0, self.number_time_steps - 1)
         target = self.reference_signal[
             torch.arange(self.num_envs, device=self.device), idx
+        ]
+        target_prev = self.reference_signal[
+            torch.arange(self.num_envs, device=self.device), idx_prev
         ]
 
         pitch_error = target - theta
@@ -483,8 +491,31 @@ class ImprovedB747VecEnvTorch:
         norm_q = torch.clamp(q / self.max_pitch_rate_rad_s, -1.0, 1.0)
         norm_theta = torch.clamp(theta / self.max_pitch_rad, -1.0, 1.0)
         norm_prev_action = torch.clamp(self.prev_action, -1.0, 1.0)
+        if not self.include_reference_in_obs:
+            return torch.stack(
+                [norm_pitch_error, norm_q, norm_theta, norm_prev_action], dim=-1
+            )
+
+        ref_theta_dot = (target - target_prev) / float(self.dt)
+        ref_theta_dot = torch.clamp(
+            ref_theta_dot,
+            -float(self.ref_theta_dot_clip_rad_s),
+            float(self.ref_theta_dot_clip_rad_s),
+        )
+        norm_target_theta = torch.clamp(target / self.max_pitch_rad, -1.0, 1.0)
+        norm_ref_theta_dot = torch.clamp(
+            ref_theta_dot / self.max_pitch_rate_rad_s, -1.0, 1.0
+        )
         return torch.stack(
-            [norm_pitch_error, norm_q, norm_theta, norm_prev_action], dim=-1
+            [
+                norm_pitch_error,
+                norm_q,
+                norm_theta,
+                norm_prev_action,
+                norm_target_theta,
+                norm_ref_theta_dot,
+            ],
+            dim=-1,
         )
 
     def _reset_done(self, done: torch.Tensor) -> None:

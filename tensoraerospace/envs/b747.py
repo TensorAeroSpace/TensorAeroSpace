@@ -341,6 +341,7 @@ class ImprovedB747Env(gym.Env):
         completion_bonus: float = 0.0,
         early_termination_penalty: float = 0.0,
         early_termination_penalty_per_step: float = 0.0,
+        include_reference_in_obs: bool = False,
     ):
         """Initialize ImprovedB747Env environment.
 
@@ -397,8 +398,10 @@ class ImprovedB747Env(gym.Env):
 
         # Gymnasium spaces
         self.action_space = spaces.Box(low=-1.0, high=1.0, shape=(1,), dtype=np.float32)
+        self.include_reference_in_obs = bool(include_reference_in_obs)
+        obs_dim = 6 if self.include_reference_in_obs else 4
         self.observation_space = spaces.Box(
-            low=-1.0, high=1.0, shape=(4,), dtype=np.float32
+            low=-1.0, high=1.0, shape=(obs_dim,), dtype=np.float32
         )
 
         # Simulation parameters
@@ -562,8 +565,11 @@ class ImprovedB747Env(gym.Env):
         """Build normalized observation.
 
         Returns:
-            np.ndarray: Array of shape (4,), dtype float32:
-                [norm_pitch_error, norm_q, norm_theta, norm_prev_action]
+            np.ndarray: dtype float32.
+                If include_reference_in_obs=False (default), shape (4,):
+                    [norm_pitch_error, norm_q, norm_theta, norm_prev_action]
+                If include_reference_in_obs=True, shape (6,):
+                    [..., norm_theta_ref, norm_theta_ref_dot]
         """
         theta = float(self.state[self._idx_theta])
         q = float(self.state[self._idx_q])
@@ -586,8 +592,40 @@ class ImprovedB747Env(gym.Env):
         # 4) Previous action (already in [-1, 1])
         norm_prev_action = float(self.previous_action)
 
+        if not self.include_reference_in_obs:
+            return np.array(
+                [norm_pitch_error, norm_q, norm_theta, norm_prev_action],
+                dtype=np.float32,
+            )
+
+        # Reference theta and reference theta-dot (normalized)
+        idx_prev = int(
+            np.clip(self.current_step - 1, 0, self.reference_signal.shape[1] - 1)
+        )
+        target_theta_prev = float(self.reference_signal[0, idx_prev])
+        ref_theta_dot = float((target_theta - target_theta_prev) / float(self.dt))
+        ref_theta_dot = float(
+            np.clip(
+                ref_theta_dot,
+                -float(self.ref_theta_dot_clip_rad_s),
+                float(self.ref_theta_dot_clip_rad_s),
+            )
+        )
+        norm_target_theta = float(
+            np.clip(target_theta / float(self.max_pitch_rad), -1.0, 1.0)
+        )
+        norm_ref_theta_dot = float(
+            np.clip(ref_theta_dot / float(self.max_pitch_rate_rad_s), -1.0, 1.0)
+        )
         return np.array(
-            [norm_pitch_error, norm_q, norm_theta, norm_prev_action],
+            [
+                norm_pitch_error,
+                norm_q,
+                norm_theta,
+                norm_prev_action,
+                norm_target_theta,
+                norm_ref_theta_dot,
+            ],
             dtype=np.float32,
         )
 

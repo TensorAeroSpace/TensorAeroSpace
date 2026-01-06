@@ -1,0 +1,209 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1100 750">
+  <defs>
+    <linearGradient id="actorGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#4CAF50;stop-opacity:0.9" />
+      <stop offset="100%" style="stop-color:#2E7D32;stop-opacity:0.9" />
+    </linearGradient>
+    <linearGradient id="criticGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#2196F3;stop-opacity:0.9" />
+      <stop offset="100%" style="stop-color:#1565C0;stop-opacity:0.9" />
+    </linearGradient>
+    <linearGradient id="iqnGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#9C27B0;stop-opacity:0.9" />
+      <stop offset="100%" style="stop-color:#6A1B9A;stop-opacity:0.9" />
+    </linearGradient>
+    <linearGradient id="replayGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#FF9800;stop-opacity:0.9" />
+      <stop offset="100%" style="stop-color:#E65100;stop-opacity:0.9" />
+    </linearGradient>
+    <linearGradient id="envGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#607D8B;stop-opacity:0.9" />
+      <stop offset="100%" style="stop-color:#37474F;stop-opacity:0.9" />
+    </linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="3" dy="3" stdDeviation="3" flood-opacity="0.3"/>
+    </filter>
+    <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#333"/>
+    </marker>
+  </defs>
+  
+  <!-- Background -->
+  <rect width="1100" height="750" fill="#f8f9fa"/>
+  
+  <!-- Title -->
+  <text x="550" y="40" font-family="Segoe UI, Arial, sans-serif" font-size="26" font-weight="bold" fill="#1a237e" text-anchor="middle">
+    Distributional Soft Actor-Critic (DSAC) Architecture
+  </text>
+  
+  <!-- Environment Box -->
+  <rect x="30" y="280" width="160" height="140" rx="10" fill="url(#envGrad)" filter="url(#shadow)"/>
+  <text x="110" y="320" font-family="Segoe UI, Arial, sans-serif" font-size="16" font-weight="bold" fill="white" text-anchor="middle">Environment</text>
+  <text x="110" y="345" font-family="Segoe UI, Arial, sans-serif" font-size="12" fill="#e0e0e0" text-anchor="middle">(Aircraft Dynamics)</text>
+  <text x="110" y="375" font-family="Segoe UI, Arial, sans-serif" font-size="11" fill="#b0bec5" text-anchor="middle">State: s</text>
+  <text x="110" y="395" font-family="Segoe UI, Arial, sans-serif" font-size="11" fill="#b0bec5" text-anchor="middle">Reward: r</text>
+
+  <!-- Actor (Policy) Network -->
+  <g transform="translate(250, 80)">
+    <rect x="0" y="0" width="240" height="200" rx="12" fill="url(#actorGrad)" filter="url(#shadow)"/>
+    <text x="120" y="30" font-family="Segoe UI, Arial, sans-serif" font-size="18" font-weight="bold" fill="white" text-anchor="middle">Actor (Policy π)</text>
+    <text x="120" y="50" font-family="Segoe UI, Arial, sans-serif" font-size="12" fill="#c8e6c9" text-anchor="middle">NormalPolicyNet</text>
+    
+    <!-- MLP layers -->
+    <rect x="20" y="65" width="200" height="30" rx="5" fill="#81C784"/>
+    <text x="120" y="85" font-family="Segoe UI, Arial, sans-serif" font-size="11" fill="white" text-anchor="middle">Shared MLP + LayerNorm + ReLU</text>
+    
+    <rect x="20" y="105" width="90" height="35" rx="5" fill="#66BB6A"/>
+    <text x="65" y="120" font-family="Segoe UI, Arial, sans-serif" font-size="11" fill="white" text-anchor="middle">μ(s)</text>
+    <text x="65" y="135" font-family="Segoe UI, Arial, sans-serif" font-size="9" fill="#c8e6c9" text-anchor="middle">mean</text>
+    
+    <rect x="130" y="105" width="90" height="35" rx="5" fill="#66BB6A"/>
+    <text x="175" y="120" font-family="Segoe UI, Arial, sans-serif" font-size="11" fill="white" text-anchor="middle">log σ(s)</text>
+    <text x="175" y="135" font-family="Segoe UI, Arial, sans-serif" font-size="9" fill="#c8e6c9" text-anchor="middle">log std</text>
+    
+    <rect x="50" y="155" width="140" height="30" rx="5" fill="#43A047"/>
+    <text x="120" y="175" font-family="Segoe UI, Arial, sans-serif" font-size="11" fill="white" text-anchor="middle">a = tanh(μ + σ·ε)</text>
+  </g>
+
+  <!-- Critic Networks (IQN Twin) -->
+  <g transform="translate(550, 80)">
+    <rect x="0" y="0" width="280" height="200" rx="12" fill="url(#criticGrad)" filter="url(#shadow)"/>
+    <text x="140" y="30" font-family="Segoe UI, Arial, sans-serif" font-size="18" font-weight="bold" fill="white" text-anchor="middle">Twin IQN Critics</text>
+    <text x="140" y="50" font-family="Segoe UI, Arial, sans-serif" font-size="12" fill="#90CAF9" text-anchor="middle">Z₁, Z₂ (Distributional Q)</text>
+    
+    <!-- Twin networks visualization -->
+    <rect x="15" y="65" width="115" height="120" rx="5" fill="#1976D2"/>
+    <text x="72" y="85" font-family="Segoe UI, Arial, sans-serif" font-size="12" fill="white" text-anchor="middle">Z₁(s,a,τ)</text>
+    <rect x="25" y="100" width="95" height="25" rx="3" fill="#42A5F5"/>
+    <text x="72" y="117" font-family="Segoe UI, Arial, sans-serif" font-size="10" fill="white" text-anchor="middle">IQN Network</text>
+    <rect x="25" y="135" width="95" height="40" rx="3" fill="#64B5F6"/>
+    <text x="72" y="150" font-family="Segoe UI, Arial, sans-serif" font-size="9" fill="white" text-anchor="middle">Quantile Output</text>
+    <text x="72" y="165" font-family="Segoe UI, Arial, sans-serif" font-size="9" fill="#bbdefb" text-anchor="middle">(B, N) values</text>
+    
+    <rect x="150" y="65" width="115" height="120" rx="5" fill="#1976D2"/>
+    <text x="207" y="85" font-family="Segoe UI, Arial, sans-serif" font-size="12" fill="white" text-anchor="middle">Z₂(s,a,τ)</text>
+    <rect x="160" y="100" width="95" height="25" rx="3" fill="#42A5F5"/>
+    <text x="207" y="117" font-family="Segoe UI, Arial, sans-serif" font-size="10" fill="white" text-anchor="middle">IQN Network</text>
+    <rect x="160" y="135" width="95" height="40" rx="3" fill="#64B5F6"/>
+    <text x="207" y="150" font-family="Segoe UI, Arial, sans-serif" font-size="9" fill="white" text-anchor="middle">Quantile Output</text>
+    <text x="207" y="165" font-family="Segoe UI, Arial, sans-serif" font-size="9" fill="#bbdefb" text-anchor="middle">(B, N) values</text>
+  </g>
+
+  <!-- Target Networks -->
+  <g transform="translate(880, 110)">
+    <rect x="0" y="0" width="180" height="140" rx="10" fill="#455A64" filter="url(#shadow)"/>
+    <text x="90" y="25" font-family="Segoe UI, Arial, sans-serif" font-size="14" font-weight="bold" fill="white" text-anchor="middle">Target Networks</text>
+    <rect x="15" y="45" width="150" height="35" rx="5" fill="#546E7A"/>
+    <text x="90" y="68" font-family="Segoe UI, Arial, sans-serif" font-size="11" fill="white" text-anchor="middle">Z₁_target, Z₂_target</text>
+    <rect x="15" y="95" width="150" height="30" rx="5" fill="#607D8B"/>
+    <text x="90" y="115" font-family="Segoe UI, Arial, sans-serif" font-size="10" fill="white" text-anchor="middle">Soft update: τ=0.005</text>
+  </g>
+
+  <!-- Replay Buffer -->
+  <g transform="translate(250, 320)">
+    <rect x="0" y="0" width="200" height="100" rx="10" fill="url(#replayGrad)" filter="url(#shadow)"/>
+    <text x="100" y="30" font-family="Segoe UI, Arial, sans-serif" font-size="16" font-weight="bold" fill="white" text-anchor="middle">Replay Buffer</text>
+    <text x="100" y="55" font-family="Segoe UI, Arial, sans-serif" font-size="11" fill="#ffe0b2" text-anchor="middle">(s, a, r, s', done)</text>
+    <text x="100" y="80" font-family="Segoe UI, Arial, sans-serif" font-size="10" fill="#ffcc80" text-anchor="middle">Capacity: 500K transitions</text>
+  </g>
+
+  <!-- CAPS Regularization Box -->
+  <g transform="translate(500, 320)">
+    <rect x="0" y="0" width="220" height="100" rx="10" fill="url(#iqnGrad)" filter="url(#shadow)"/>
+    <text x="110" y="25" font-family="Segoe UI, Arial, sans-serif" font-size="14" font-weight="bold" fill="white" text-anchor="middle">CAPS Regularization</text>
+    <text x="110" y="50" font-family="Segoe UI, Arial, sans-serif" font-size="10" fill="#e1bee7" text-anchor="middle">Spatial: ||μ(s) - μ(s+ε)||²</text>
+    <text x="110" y="70" font-family="Segoe UI, Arial, sans-serif" font-size="10" fill="#e1bee7" text-anchor="middle">Temporal: ||a_t - a_{t+1}||²</text>
+    <text x="110" y="90" font-family="Segoe UI, Arial, sans-serif" font-size="10" fill="#ce93d8" text-anchor="middle">→ Smooth control signals</text>
+  </g>
+
+  <!-- Temperature (Alpha) -->
+  <g transform="translate(770, 320)">
+    <rect x="0" y="0" width="170" height="100" rx="10" fill="#E91E63" filter="url(#shadow)"/>
+    <text x="85" y="25" font-family="Segoe UI, Arial, sans-serif" font-size="14" font-weight="bold" fill="white" text-anchor="middle">Temperature α</text>
+    <text x="85" y="50" font-family="Segoe UI, Arial, sans-serif" font-size="10" fill="#f8bbd9" text-anchor="middle">Automatic tuning</text>
+    <text x="85" y="70" font-family="Segoe UI, Arial, sans-serif" font-size="10" fill="#f8bbd9" text-anchor="middle">Target entropy: -dim(A)</text>
+    <text x="85" y="90" font-family="Segoe UI, Arial, sans-serif" font-size="10" fill="#f48fb1" text-anchor="middle">Exploration ↔ Exploit</text>
+  </g>
+
+  <!-- Loss Functions Box -->
+  <g transform="translate(250, 470)">
+    <rect x="0" y="0" width="690" height="130" rx="12" fill="#263238" filter="url(#shadow)"/>
+    <text x="345" y="30" font-family="Segoe UI, Arial, sans-serif" font-size="16" font-weight="bold" fill="white" text-anchor="middle">Loss Functions</text>
+    
+    <!-- Critic Loss -->
+    <rect x="20" y="50" width="200" height="60" rx="5" fill="#37474F"/>
+    <text x="120" y="70" font-family="Segoe UI, Arial, sans-serif" font-size="11" font-weight="bold" fill="#90CAF9" text-anchor="middle">Critic (Quantile Huber)</text>
+    <text x="120" y="90" font-family="Segoe UI, Arial, sans-serif" font-size="10" fill="#b0bec5" text-anchor="middle">L = Σᵢ ρ_τ(δ) / N</text>
+    <text x="120" y="105" font-family="Segoe UI, Arial, sans-serif" font-size="9" fill="#78909c" text-anchor="middle">δ = Z_target - Z_pred</text>
+    
+    <!-- Policy Loss -->
+    <rect x="245" y="50" width="200" height="60" rx="5" fill="#37474F"/>
+    <text x="345" y="70" font-family="Segoe UI, Arial, sans-serif" font-size="11" font-weight="bold" fill="#81C784" text-anchor="middle">Policy (Actor)</text>
+    <text x="345" y="90" font-family="Segoe UI, Arial, sans-serif" font-size="10" fill="#b0bec5" text-anchor="middle">L = α·log π - Q + CAPS</text>
+    <text x="345" y="105" font-family="Segoe UI, Arial, sans-serif" font-size="9" fill="#78909c" text-anchor="middle">Q = min(Z₁, Z₂).mean()</text>
+    
+    <!-- Alpha Loss -->
+    <rect x="470" y="50" width="200" height="60" rx="5" fill="#37474F"/>
+    <text x="570" y="70" font-family="Segoe UI, Arial, sans-serif" font-size="11" font-weight="bold" fill="#F48FB1" text-anchor="middle">Temperature (α)</text>
+    <text x="570" y="90" font-family="Segoe UI, Arial, sans-serif" font-size="10" fill="#b0bec5" text-anchor="middle">L = -α(log π + H_target)</text>
+    <text x="570" y="105" font-family="Segoe UI, Arial, sans-serif" font-size="9" fill="#78909c" text-anchor="middle">H_target = -action_dim</text>
+  </g>
+
+  <!-- Arrows / Connections -->
+  <!-- Environment to Replay -->
+  <path d="M190 350 L245 370" stroke="#333" stroke-width="2" fill="none" marker-end="url(#arrowhead)"/>
+  <text x="200" y="340" font-family="Segoe UI, Arial, sans-serif" font-size="10" fill="#666">(s,a,r,s')</text>
+  
+  <!-- Actor output to Environment -->
+  <path d="M370 285 L370 310 L200 310 L200 280" stroke="#4CAF50" stroke-width="2" fill="none" marker-end="url(#arrowhead)"/>
+  <text x="285" y="300" font-family="Segoe UI, Arial, sans-serif" font-size="10" fill="#4CAF50">action</text>
+  
+  <!-- Environment state to Actor -->
+  <path d="M190 320 L230 320 L230 160 L250 160" stroke="#607D8B" stroke-width="2" fill="none" marker-end="url(#arrowhead)"/>
+  <text x="200" y="240" font-family="Segoe UI, Arial, sans-serif" font-size="10" fill="#607D8B">state</text>
+  
+  <!-- Replay to Critic -->
+  <path d="M400 320 L550 280" stroke="#FF9800" stroke-width="2" fill="none" marker-end="url(#arrowhead)"/>
+  <text x="475" y="290" font-family="Segoe UI, Arial, sans-serif" font-size="9" fill="#FF9800">batch</text>
+  
+  <!-- Actor to Critic -->
+  <path d="M490 180 L545 180" stroke="#333" stroke-width="2" fill="none" marker-end="url(#arrowhead)"/>
+  <text x="505" y="170" font-family="Segoe UI, Arial, sans-serif" font-size="9" fill="#666">a ~ π</text>
+  
+  <!-- Critic to Target -->
+  <path d="M830 180 L875 180" stroke="#333" stroke-width="2" stroke-dasharray="5,5" fill="none" marker-end="url(#arrowhead)"/>
+  
+  <!-- Key Features -->
+  <g transform="translate(30, 470)">
+    <rect x="0" y="0" width="190" height="130" rx="8" fill="#E8EAF6"/>
+    <text x="95" y="25" font-family="Segoe UI, Arial, sans-serif" font-size="14" font-weight="bold" fill="#1a237e" text-anchor="middle">Key Features</text>
+    <text x="15" y="50" font-family="Segoe UI, Arial, sans-serif" font-size="10" fill="#333">• IQN quantile critics</text>
+    <text x="15" y="70" font-family="Segoe UI, Arial, sans-serif" font-size="10" fill="#333">• Distributional Q-learning</text>
+    <text x="15" y="90" font-family="Segoe UI, Arial, sans-serif" font-size="10" fill="#333">• CAPS smoothness</text>
+    <text x="15" y="110" font-family="Segoe UI, Arial, sans-serif" font-size="10" fill="#333">• Risk-sensitive control</text>
+  </g>
+
+  <!-- Legend -->
+  <g transform="translate(30, 630)">
+    <rect x="0" y="0" width="1040" height="50" rx="5" fill="#ECEFF1"/>
+    <text x="20" y="30" font-family="Segoe UI, Arial, sans-serif" font-size="11" fill="#333">
+      <tspan font-weight="bold">Legend:</tspan>
+    </text>
+    <rect x="100" y="15" width="20" height="20" rx="3" fill="url(#actorGrad)"/>
+    <text x="130" y="30" font-family="Segoe UI, Arial, sans-serif" font-size="10" fill="#333">Actor Network</text>
+    <rect x="230" y="15" width="20" height="20" rx="3" fill="url(#criticGrad)"/>
+    <text x="260" y="30" font-family="Segoe UI, Arial, sans-serif" font-size="10" fill="#333">IQN Critic Networks</text>
+    <rect x="390" y="15" width="20" height="20" rx="3" fill="url(#iqnGrad)"/>
+    <text x="420" y="30" font-family="Segoe UI, Arial, sans-serif" font-size="10" fill="#333">CAPS Regularization</text>
+    <rect x="560" y="15" width="20" height="20" rx="3" fill="url(#replayGrad)"/>
+    <text x="590" y="30" font-family="Segoe UI, Arial, sans-serif" font-size="10" fill="#333">Replay Buffer</text>
+    <rect x="700" y="15" width="20" height="20" rx="3" fill="url(#envGrad)"/>
+    <text x="730" y="30" font-family="Segoe UI, Arial, sans-serif" font-size="10" fill="#333">Environment</text>
+    <rect x="830" y="15" width="20" height="20" rx="3" fill="#E91E63"/>
+    <text x="860" y="30" font-family="Segoe UI, Arial, sans-serif" font-size="10" fill="#333">Temperature α</text>
+  </g>
+  
+  <!-- TensorAeroSpace branding -->
+  <text x="980" y="720" font-family="Segoe UI, Arial, sans-serif" font-size="10" fill="#9e9e9e" text-anchor="end">TensorAeroSpace</text>
+</svg>
+

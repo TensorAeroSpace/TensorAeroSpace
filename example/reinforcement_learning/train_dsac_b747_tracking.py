@@ -1,18 +1,14 @@
-"""DSAC training on ImprovedB747 for step response.
+"""DSAC training on ImprovedB747 for sine tracking (+/-1 deg), dt=0.1s,
+f=0.05 Hz.
 
-This script is a practical alternative to the notebook when you want stable,
-repeatable training runs.
-
-Key ideas (mirrors what worked for PPO):
-- Bootstrap with easier reward, then switch to full *step_response* reward.
-- Use vectorized environment (ImprovedB747VecEnvTorch) to decorrelate data.
-- Use curriculum: start with moderate steps, then widen to the eval difficulty.
-- Prevent the "terminate early to avoid negative rewards" hack:
-  - Keep terminal penalties un-clipped in DSAC (implemented in the agent).
-  - Add an early-termination penalty per remaining step in the env.
+What this does:
+- Builds a fixed sinusoid in [-1 deg, 1 deg] (dt=0.1 s, f=0.05 Hz).
+- Saves a reference preview (reference_signal.png) before training starts.
+- Trains DSAC in tracking mode on a vectorized sine environment.
+- Evaluates on the fixed sine and saves best checkpoint in log_dir/best_eval.
 
 Run:
-    python example/reinforcement_learning/train_dsac_b747_step_response.py
+    python example/reinforcement_learning/train_dsac_b747_tracking.py
 
 TensorBoard:
     tensorboard --logdir runs
@@ -27,12 +23,13 @@ from pathlib import Path
 
 import numpy as np
 import torch
+from matplotlib import pyplot as plt
+
+from typing import Any
 
 from tensoraerospace.agent import DSAC
-from tensoraerospace.agent.sac.replay_memory import ReplayMemory
 from tensoraerospace.envs import ImprovedB747VecEnvTorch
 from tensoraerospace.envs.b747 import ImprovedB747Env
-from typing import Any
 
 
 def load_dsac_checkpoint(
@@ -102,7 +99,9 @@ def load_dsac_checkpoint(
 
 def find_latest_metrics(runs_root: Path) -> Path | None:
     candidates = sorted(
-        runs_root.glob("dsac_b747_step_response_*/best_eval/metrics.json")
+        runs_root.glob(
+            "dsac_b747_sine_tracking_refobs_*/best_eval/metrics.json"
+        )
     )
     if not candidates:
         return None
@@ -120,19 +119,54 @@ def pick_device() -> str:
     return "cpu"
 
 
-def make_reference(
+def make_sine_reference(
     *,
     dt: float,
     tn: float,
-    step_deg: float,
-    step_time_sec: float,
+    amplitude_deg: float,
+    frequency_hz: float,
+    phase_deg: float = 0.0,
 ) -> np.ndarray:
-    """Step reference in radians, shape (1, T)."""
+    """Sine reference in radians, shape (1, T)."""
     num_steps = int(tn / dt) + 1
-    ref = np.zeros((1, num_steps), dtype=np.float32)
-    step_idx = int(np.clip(round(step_time_sec / dt), 0, num_steps - 1))
-    ref[:, step_idx:] = np.deg2rad(step_deg)
-    return ref
+    t = np.arange(num_steps, dtype=np.float32) * float(dt)
+    amp_rad = np.deg2rad(float(amplitude_deg))
+    phase_rad = np.deg2rad(float(phase_deg))
+    ref = amp_rad * np.sin(2.0 * np.pi * float(frequency_hz) * t + phase_rad)
+    return np.asarray(ref, dtype=np.float32).reshape(1, -1)
+
+
+def save_reference_plot(ref_rad: np.ndarray, dt: float, path: Path) -> Path:
+    """Save a quick preview of the reference signal in degrees."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    t = np.arange(ref_rad.shape[1]) * float(dt)
+    ref_deg = np.rad2deg(ref_rad.squeeze(0))
+    plt.figure(figsize=(8, 3))
+    plt.plot(t, ref_deg, label="theta_ref (deg)")
+    plt.xlabel("Time (s)")
+    plt.ylabel("Pitch (deg)")
+    plt.grid(True, ls="--", alpha=0.5)
+    plt.title("Sine reference (tracking)")
+    plt.legend()
+    plt.tight_layout()
+    plt.savefig(path, dpi=150)
+    plt.close()
+    return path
+
+
+def show_reference_plot(ref_rad: np.ndarray, dt: float) -> None:
+    """Display the reference plot and block until the window is closed."""
+    t = np.arange(ref_rad.shape[1]) * float(dt)
+    ref_deg = np.rad2deg(ref_rad.squeeze(0))
+    plt.figure(figsize=(8, 3))
+    plt.plot(t, ref_deg, label="theta_ref (deg)")
+    plt.xlabel("Time (s)")
+    plt.ylabel("Pitch (deg)")
+    plt.grid(True, ls="--", alpha=0.5)
+    plt.title("Sine reference (tracking)")
+    plt.legend()
+    plt.tight_layout()
+    plt.show()
 
 
 def eval_one_episode(agent: DSAC, env: ImprovedB747Env) -> dict:
@@ -188,12 +222,13 @@ def save_eval_best(agent: DSAC, best_root: Path, metrics: dict) -> Path:
 
 def main() -> None:
     # --------------------------
-    # Global config (PPO-like)
+    # Global config
     # --------------------------
     seed = 0
     dt = 0.1
-    tn = 20.0
-    step_time_sec = 5.0
+    tn = 20.0  # 1 period at 0.05 Hz
+    sine_amplitude_deg = 1.0
+    sine_frequency_hz = 0.05
     num_envs = 128
 
     device = pick_device()
@@ -201,14 +236,41 @@ def main() -> None:
     np.random.seed(seed)
 
     # --------------------------
-    # Train env (vectorized) — start in tracking mode, then switch to step_response
+    # DSAC agent / logging
     # --------------------------
-    # Shaping to discourage "finish early" hacks (applies only on termination).
-    completion_bonus = 5.0
-    early_term_penalty_per_step = (
-        1.0  # increase to 2..5 if agent still terminates early
+    run_name = (
+        f"dsac_b747_sine_tracking_refobs_{time.strftime('%Y%m%d_%H%M%S')}"
     )
+    log_dir = Path("runs") / run_name
+    log_dir.mkdir(parents=True, exist_ok=True)
+    best_dir = log_dir / "best_checkpoints"
+    best_dir.mkdir(parents=True, exist_ok=True)
+    eval_best_dir = log_dir / "best_eval"
+    eval_best = float("-inf")
 
+    # Reference (fixed) + preview
+    reference_eval = make_sine_reference(
+        dt=dt,
+        tn=tn,
+        amplitude_deg=sine_amplitude_deg,
+        frequency_hz=sine_frequency_hz,
+    )
+    plot_path = save_reference_plot(
+        reference_eval, dt, log_dir / "reference_signal.png"
+    )
+    print(
+        f"Reference preview saved to {plot_path.resolve()} "
+        f"(+/-{sine_amplitude_deg} deg, "
+        f"f={sine_frequency_hz} Hz, dt={dt}s, T={tn}s)"
+    )
+    # Block here until the user closes the preview window
+    show_reference_plot(reference_eval, dt)
+
+    # --------------------------
+    # Train env (vectorized)
+    # --------------------------
+    train_amp_stage1_deg = 1.0
+    train_amp_stage2_deg = 1.0
     env_train = ImprovedB747VecEnvTorch(
         num_envs=num_envs,
         dt=dt,
@@ -218,53 +280,33 @@ def main() -> None:
         seed=seed,
         auto_reset=True,
         include_reference_in_obs=True,
-        reward_mode="tracking",  # Stage 0: start with tracking for stability
-        early_termination_penalty=0.0,
+        reward_mode="tracking",
         survival_bonus=0.0,
-        completion_bonus=0.0,  # off for tracking
-        early_termination_penalty_per_step=0.0,  # off for tracking
+        completion_bonus=0.0,
+        early_termination_penalty=0.0,
+        early_termination_penalty_per_step=0.0,
         step_randomization={
-            # Stage 0: pure tracking uses sine; these are placeholders, will switch later
-            "amplitude_deg_range": (-5.0, 5.0),
-            "min_abs_amplitude_deg": 0.1,
-            "step_time_sec_range": (1, 15),
+            "signal_type": "sine",
+            "amplitude_deg_range": (
+                -train_amp_stage1_deg,
+                train_amp_stage1_deg,
+            ),
+            "min_abs_amplitude_deg": 0.5 * train_amp_stage1_deg,
+            "frequency_hz_range": (sine_frequency_hz, sine_frequency_hz),
         },
     )
 
     # --------------------------
-    # Eval envs (single, fixed)
+    # Eval env (single, fixed)
     # --------------------------
-    env_eval_tracking = ImprovedB747Env(
+    env_eval = ImprovedB747Env(
         initial_state=np.array([0.0, 0.0, 0.0, 0.0], dtype=float),
-        reference_signal=make_reference(
-            dt=dt, tn=tn, step_deg=0.0, step_time_sec=0.0
-        ),  # will be overridden by tracking sine via include_reference
+        reference_signal=reference_eval,
         number_time_steps=int(tn / dt) + 1,
         dt=dt,
+        include_reference_in_obs=True,
         reward_mode="tracking",
-        include_reference_in_obs=True,
     )
-    env_eval_step = ImprovedB747Env(
-        initial_state=np.array([0.0, 0.0, 0.0, 0.0], dtype=float),
-        reference_signal=make_reference(
-            dt=dt, tn=tn, step_deg=1.0, step_time_sec=step_time_sec
-        ),
-        number_time_steps=int(tn / dt) + 1,
-        dt=dt,
-        reward_mode="step_response",
-        include_reference_in_obs=True,
-    )
-
-    # --------------------------
-    # DSAC agent
-    # --------------------------
-    run_name = f"dsac_b747_step_response_{time.strftime('%Y%m%d_%H%M%S')}"
-    log_dir = Path("runs") / run_name
-    log_dir.mkdir(parents=True, exist_ok=True)
-    best_dir = log_dir / "best_checkpoints"
-    best_dir.mkdir(parents=True, exist_ok=True)
-    eval_best_dir = log_dir / "best_eval"
-    eval_best = float("-inf")
 
     # Optional: warm start from previous best_eval checkpoint
     resume_metrics = find_latest_metrics(Path("runs"))
@@ -292,35 +334,35 @@ def main() -> None:
     if agent is None:
         agent = DSAC(
             env_train,
-            # Replay / updates
+            # Params aligned with dsac-flight/config.toml
             batch_size=256,
-            memory_capacity=1_000_000,
-            # Delay updates for stability on harsh step_response reward
-            learning_starts=100_000,
+            memory_capacity=500_000,
+            # dsac-flight starts updates once replay >= batch_size
+            learning_starts=256,
             updates_per_step=4,
             lr=4.4e-4,
             policy_lr=4.4e-4,
-            gamma=0.995,
-            tau=0.005,
-            # IQN params (dsac-flight defaults)
+            gamma=0.99,
+            tau=0.005,  # polyak_step_size=0.995 -> tau=0.005
+            # IQN params
             num_quantiles=8,
             num_quantiles_exp=8,
-            embedding_dim=64,
+            embedding_dim=64,  # n_cos
             hidden_layers=[64, 64],
             huber_threshold=1.0,
             # Entropy / temperature
             automatic_entropy_tuning=True,
             target_entropy_scale=1.0,
             min_alpha=0.0,
-            # Helps on step_response with large penalties
-            reward_clip=50.0,
-            # No extra exploration noise
+            # No extra exploration noise in dsac-flight
             exploration_noise_std=0.0,
+            # No reward clipping in dsac-flight
+            reward_clip=None,
             # CAPS: env already penalizes u/du/ddu for B747 -> keep off
             caps_lambda_smoothness=0.0,
             caps_lambda_temporal=0.0,
             caps_noise_std=0.05,
-            # Risk distortion: keep neutral for now
+            # Risk distortion: start neutral for tracking stability
             risk_distortion="neutral",
             # Misc
             device=device,
@@ -328,91 +370,22 @@ def main() -> None:
             log_every_updates=200,
             seed=seed,
         )
-    else:
-        # If we resumed from an old checkpoint, redirect TensorBoard to this run's log_dir
-        try:
-            agent.writer.close()
-        except Exception:
-            pass
-        from torch.utils.tensorboard import SummaryWriter
-
-        agent.log_dir = log_dir
-        agent.writer = SummaryWriter(log_dir=str(log_dir))
 
     # --------------------------
-    # Training curriculum
+    # Training
     # --------------------------
     print(f"Device: {device}")
     print(f"Log dir: {log_dir.resolve()}")
     print(f"Best checkpoints dir: {best_dir.resolve()}")
-    print("Stage 0: tracking reward (bootstrap, sine-like behavior via ref in obs)")
-    env_train.reward_mode = "tracking"
-    env_train.completion_bonus = 0.0
-    env_train.early_termination_penalty_per_step = 0.0
-    env_train.early_termination_penalty = 0.0
-    agent.train_vector(
-        total_steps=10_000,
-        warmup_steps=0,
-        log_every=1_000,
-        reward_window=200,
-        save_best=True,
-        save_path=best_dir,
+    print(
+        "Training on sine: "
+        f"+/-{sine_amplitude_deg} deg @ {sine_frequency_hz} Hz, "
+        f"dt={dt}s, T={tn}s"
     )
-    m0 = eval_one_episode(agent, env_eval_tracking)
-    print("Eval after Stage 0:", m0)
-    if float(m0["return_sum"]) > float(eval_best):
-        eval_best = float(m0["return_sum"])
-        saved = save_eval_best(agent, eval_best_dir, metrics=m0)
-        print("Saved new eval-best checkpoint to:", saved.resolve())
-
-    # IMPORTANT: switching reward changes the MDP;
-    # drop old replay to avoid mixing
-    print("Resetting replay buffer before step_response...")
-    agent.memory = ReplayMemory(agent.memory.capacity, seed=seed)
-    # Tame outliers from step_response penalties
-    agent.reward_clip = 20.0
-
-    # Stage 1: step_response reward (lite -> full)
-    print("Stage 1a: step_response (lite penalties, looser band)")
-    env_train.reward_mode = "step_response"
-    env_train.completion_bonus = float(completion_bonus)
-    env_train.early_termination_penalty_per_step = float(early_term_penalty_per_step)
-    # Loosen step-response targets to reduce reward discontinuities early on
-    env_train.overshoot_limit_ratio = 0.2
-    env_train.settle_band_ratio = 0.05
-    env_train.settle_band_min_rad = float(np.deg2rad(0.2))
-    env_train.w_abs = 0.2
-    env_train.w_time = 0.2
-    env_train.w_osc = 0.2
-    env_train.w_overshoot = 50.0
-
-    env_train.step_rand.amplitude_deg_range = (-5.0, 5.0)
-    env_train.step_rand.min_abs_amplitude_deg = 0.5
-    env_train.step_rand.step_time_sec_range = (1.0, 15.0)
-    agent.train_vector(
-        total_steps=10_000,
-        warmup_steps=0,
-        log_every=1_000,
-        reward_window=200,
-        save_best=True,
-        save_path=best_dir,
+    # Stage 1: bigger sine to learn control authority
+    print(
+        f"Stage 1: sine +/-{train_amp_stage1_deg} deg"
     )
-
-    m1a = eval_one_episode(agent, env_eval_step)
-    print("Eval after Stage 1a:", m1a)
-    if float(m1a["return_sum"]) > float(eval_best):
-        eval_best = float(m1a["return_sum"])
-        saved = save_eval_best(agent, eval_best_dir, metrics=m1a)
-        print("Saved new eval-best checkpoint to:", saved.resolve())
-
-    print("Stage 1b: step_response (full penalties)")
-    env_train.overshoot_limit_ratio = 0.05
-    env_train.settle_band_ratio = 0.01
-    env_train.settle_band_min_rad = float(np.deg2rad(0.05))
-    env_train.w_abs = 0.6
-    env_train.w_time = 0.6
-    env_train.w_osc = 1.0
-    env_train.w_overshoot = 300.0
     agent.train_vector(
         total_steps=20_000,
         warmup_steps=0,
@@ -421,40 +394,59 @@ def main() -> None:
         save_best=True,
         save_path=best_dir,
     )
-
-    m1b = eval_one_episode(agent, env_eval_step)
-    print("Eval after Stage 1b:", m1b)
-    if float(m1b["return_sum"]) > float(eval_best):
-        eval_best = float(m1b["return_sum"])
-        saved = save_eval_best(agent, eval_best_dir, metrics=m1b)
+    m1 = eval_one_episode(agent, env_eval)
+    print("Eval after Stage 1 (fixed sine +/-1deg):", m1)
+    if float(m1["return_sum"]) > float(eval_best):
+        eval_best = float(m1["return_sum"])
+        saved = save_eval_best(agent, eval_best_dir, metrics=m1)
         print("Saved new eval-best checkpoint to:", saved.resolve())
 
-    # Stage 2: step_response without extra completion/early penalties (robustness)
-    print("Stage 2: step_response without completion/early penalties")
-    env_train.completion_bonus = 0.0
-    env_train.early_termination_penalty_per_step = 0.0
-    env_train.early_termination_penalty = 0.0
-    agent.reward_clip = 20.0
+    # Stage 2: match eval amplitude
+    env_train.step_rand.amplitude_deg_range = (
+        -train_amp_stage2_deg,
+        train_amp_stage2_deg,
+    )
+    env_train.step_rand.min_abs_amplitude_deg = 0.5 * train_amp_stage2_deg
+    print(
+        f"Stage 2: sine +/-{train_amp_stage2_deg} deg"
+    )
     agent.train_vector(
-        total_steps=30_000,
+        total_steps=40_000,
         warmup_steps=0,
         log_every=1_000,
         reward_window=200,
         save_best=True,
         save_path=best_dir,
     )
-
-    m2 = eval_one_episode(agent, env_eval_step)
-    print("Eval after Stage 2:", m2)
+    m2 = eval_one_episode(agent, env_eval)
+    print("Eval after Stage 2 (fixed sine +/-1deg):", m2)
     if float(m2["return_sum"]) > float(eval_best):
         eval_best = float(m2["return_sum"])
         saved = save_eval_best(agent, eval_best_dir, metrics=m2)
         print("Saved new eval-best checkpoint to:", saved.resolve())
 
+    # Stage 3: fine-tune without extra exploration noise
+    agent.exploration_noise_std = 0.0
+    print("Stage 3: exploration_noise_std set to 0.0 (fine-tune)")
+    agent.train_vector(
+        total_steps=20_000,
+        warmup_steps=0,
+        log_every=1_000,
+        reward_window=200,
+        save_best=True,
+        save_path=best_dir,
+    )
+    m_eval = eval_one_episode(agent, env_eval)
+    print("Eval on fixed sine:", m_eval)
+    if float(m_eval["return_sum"]) > float(eval_best):
+        eval_best = float(m_eval["return_sum"])
+        saved = save_eval_best(agent, eval_best_dir, metrics=m_eval)
+        print("Saved new eval-best checkpoint to:", saved.resolve())
+
     agent.close()
 
     print("\nDone.")
-    print("Tip: open TensorBoard and watch Performance/RewardMedian200.")
+    print("Tip: open TensorBoard; watch Performance/RewardMedian200.")
 
 
 if __name__ == "__main__":
