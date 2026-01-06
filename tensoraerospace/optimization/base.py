@@ -77,9 +77,7 @@ class HyperParamOptimizationOptuna(HyperParamOptimizationBase):
         """
         return self.study.best_trial.params
 
-    def plot_parms(
-        self, figsize: tuple[float, float] = (15.0, 5.0)
-    ) -> None:
+    def plot_parms(self, figsize: tuple[float, float] = (15.0, 5.0)) -> None:
         """Plot trial values over the optimization history.
 
         Args:

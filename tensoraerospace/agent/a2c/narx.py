@@ -379,10 +379,9 @@ class Runner:
     def run(
         self,
         max_steps: int,
-        memory: list[
-            tuple[np.ndarray, float, np.ndarray, np.ndarray, bool]
-        ]
-        | None = None,
+        memory: (
+            list[tuple[np.ndarray, float, np.ndarray, np.ndarray, bool]] | None
+        ) = None,
     ) -> list[tuple[np.ndarray, float, np.ndarray, np.ndarray, bool]]:
         """Run the environment for a fixed number of steps and collect transitions.
 
