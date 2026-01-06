@@ -247,7 +247,9 @@ class DSAC(BaseRLModel):
             )
         self.risk_distortion = str(risk_distortion)
         self.risk_measure = float(risk_measure)
-        self.risk_distortion_fn: DistortionFn = distortion_functions[self.risk_distortion]
+        self.risk_distortion_fn: DistortionFn = distortion_functions[
+            self.risk_distortion
+        ]
 
         # Temperature / entropy coefficient
         self.automatic_entropy_tuning = bool(automatic_entropy_tuning)
@@ -426,9 +428,7 @@ class DSAC(BaseRLModel):
         q2_r = z2_r.mean(dim=1)
         Q = torch.min(q1_r, q2_r)
 
-        policy_loss = -torch.mean(
-            Q - alpha_t * log_pi - loss_spatial - loss_temporal
-        )
+        policy_loss = -torch.mean(Q - alpha_t * log_pi - loss_spatial - loss_temporal)
 
         self.policy_optim.zero_grad()
         policy_loss.backward()
@@ -628,17 +628,23 @@ class DSAC(BaseRLModel):
 
             next_obs, reward, terminated, truncated, _info = self.env.step(actions_t)
             if not (torch.is_tensor(next_obs) and torch.is_tensor(reward)):
-                raise TypeError("train_vector expects env.step() to return torch tensors")
+                raise TypeError(
+                    "train_vector expects env.step() to return torch tensors"
+                )
 
             obs_np = cast(np.ndarray, obs.detach().cpu().numpy())
             next_obs_np = cast(np.ndarray, next_obs.detach().cpu().numpy())
             actions_np = cast(np.ndarray, actions_t.detach().cpu().numpy())
             reward_np = cast(np.ndarray, reward.detach().cpu().numpy()).reshape(-1)
             terminated_np = (
-                cast(np.ndarray, terminated.detach().cpu().numpy()).reshape(-1).astype(bool)
+                cast(np.ndarray, terminated.detach().cpu().numpy())
+                .reshape(-1)
+                .astype(bool)
             )
             truncated_np = (
-                cast(np.ndarray, truncated.detach().cpu().numpy()).reshape(-1).astype(bool)
+                cast(np.ndarray, truncated.detach().cpu().numpy())
+                .reshape(-1)
+                .astype(bool)
             )
 
             if self.reward_clip is not None:
@@ -653,7 +659,9 @@ class DSAC(BaseRLModel):
             trunc_count += int(np.sum(truncated_np))
 
             done_bootstrap_np = (
-                done_np.astype(np.float32) if auto_reset else terminated_np.astype(np.float32)
+                done_np.astype(np.float32)
+                if auto_reset
+                else terminated_np.astype(np.float32)
             )
 
             for i in range(num_envs):
@@ -703,7 +711,9 @@ class DSAC(BaseRLModel):
                 self.writer.add_scalar(
                     f"Performance/MeanReward{reward_window}", mean_r, global_step
                 )
-                self.writer.add_scalar("Train/ReplaySize", len(self.memory), global_step)
+                self.writer.add_scalar(
+                    "Train/ReplaySize", len(self.memory), global_step
+                )
                 self.writer.add_scalar("Train/Updates", updates, global_step)
                 self.writer.add_scalar("Train/TotalSteps", step + 1, global_step)
                 self.writer.add_scalar(
@@ -807,7 +817,9 @@ class DSAC(BaseRLModel):
             json.dump(config, f, indent=2)
 
         torch.save(self.policy.state_dict(), policy_path)
-        torch.save({"Z1": self.Z1.state_dict(), "Z2": self.Z2.state_dict()}, critic_path)
+        torch.save(
+            {"Z1": self.Z1.state_dict(), "Z2": self.Z2.state_dict()}, critic_path
+        )
         torch.save(
             {
                 "Z1_target": self.Z1_target.state_dict(),
@@ -868,7 +880,9 @@ class DSAC(BaseRLModel):
         return self
 
     @staticmethod
-    def _filter_kwargs_for_init(env_cls: type, kwargs: Dict[str, Any]) -> Dict[str, Any]:
+    def _filter_kwargs_for_init(
+        env_cls: type, kwargs: Dict[str, Any]
+    ) -> Dict[str, Any]:
         """Drop unexpected kwargs so env construction is resilient to config changes."""
         try:
             sig = inspect.signature(env_cls.__init__)
@@ -891,9 +905,7 @@ class DSAC(BaseRLModel):
         return {k: v for k, v in kwargs.items() if k in allowed}
 
     @classmethod
-    def __load(
-        cls, path: Union[str, Path], load_gradients: bool = False
-    ) -> "DSAC":
+    def __load(cls, path: Union[str, Path], load_gradients: bool = False) -> "DSAC":
         path = Path(path)
         config_path = path / "config.json"
         policy_path = path / "policy.pth"
@@ -1028,7 +1040,9 @@ class DSAC(BaseRLModel):
         pathlike_prefixes = ("./", "../", "/", "~")
         if str(repo_name).startswith(pathlike_prefixes):
             if not p.exists() or not p.is_dir():
-                msg = f"Local directory not found: '{repo_name}'. Please check the path."
+                msg = (
+                    f"Local directory not found: '{repo_name}'. Please check the path."
+                )
                 raise FileNotFoundError(msg)
             return cls.__load(p, load_gradients=load_gradients)
 
@@ -1065,5 +1079,3 @@ class DSAC(BaseRLModel):
             self.writer.close()
         except Exception:
             pass
-
-

@@ -20,21 +20,18 @@ import json
 import shutil
 import time
 from pathlib import Path
+from typing import Any
 
 import numpy as np
 import torch
 from matplotlib import pyplot as plt
-
-from typing import Any
 
 from tensoraerospace.agent import DSAC
 from tensoraerospace.envs import ImprovedB747VecEnvTorch
 from tensoraerospace.envs.b747 import ImprovedB747Env
 
 
-def load_dsac_checkpoint(
-    folder: Path, env: Any, *, device: str = "cpu"
-) -> DSAC:
+def load_dsac_checkpoint(folder: Path, env: Any, *, device: str = "cpu") -> DSAC:
     """Minimal loader to warm-start from a previous best_eval checkpoint."""
     folder = Path(folder)
     config_path = folder / "config.json"
@@ -73,10 +70,7 @@ def load_dsac_checkpoint(
 
     # Alpha
     log_alpha_path = folder / "log_alpha.pth"
-    if (
-        getattr(agent, "automatic_entropy_tuning", False)
-        and log_alpha_path.exists()
-    ):
+    if getattr(agent, "automatic_entropy_tuning", False) and log_alpha_path.exists():
         loaded_alpha = torch.load(
             log_alpha_path, map_location=device, weights_only=False
         )
@@ -99,9 +93,7 @@ def load_dsac_checkpoint(
 
 def find_latest_metrics(runs_root: Path) -> Path | None:
     candidates = sorted(
-        runs_root.glob(
-            "dsac_b747_sine_tracking_refobs_*/best_eval/metrics.json"
-        )
+        runs_root.glob("dsac_b747_sine_tracking_refobs_*/best_eval/metrics.json")
     )
     if not candidates:
         return None
@@ -238,9 +230,7 @@ def main() -> None:
     # --------------------------
     # DSAC agent / logging
     # --------------------------
-    run_name = (
-        f"dsac_b747_sine_tracking_refobs_{time.strftime('%Y%m%d_%H%M%S')}"
-    )
+    run_name = f"dsac_b747_sine_tracking_refobs_{time.strftime('%Y%m%d_%H%M%S')}"
     log_dir = Path("runs") / run_name
     log_dir.mkdir(parents=True, exist_ok=True)
     best_dir = log_dir / "best_checkpoints"
@@ -383,9 +373,7 @@ def main() -> None:
         f"dt={dt}s, T={tn}s"
     )
     # Stage 1: bigger sine to learn control authority
-    print(
-        f"Stage 1: sine +/-{train_amp_stage1_deg} deg"
-    )
+    print(f"Stage 1: sine +/-{train_amp_stage1_deg} deg")
     agent.train_vector(
         total_steps=20_000,
         warmup_steps=0,
@@ -407,9 +395,7 @@ def main() -> None:
         train_amp_stage2_deg,
     )
     env_train.step_rand.min_abs_amplitude_deg = 0.5 * train_amp_stage2_deg
-    print(
-        f"Stage 2: sine +/-{train_amp_stage2_deg} deg"
-    )
+    print(f"Stage 2: sine +/-{train_amp_stage2_deg} deg")
     agent.train_vector(
         total_steps=40_000,
         warmup_steps=0,

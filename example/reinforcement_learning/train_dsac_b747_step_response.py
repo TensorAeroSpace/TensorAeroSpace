@@ -24,6 +24,7 @@ import json
 import shutil
 import time
 from pathlib import Path
+from typing import Any
 
 import numpy as np
 import torch
@@ -32,12 +33,9 @@ from tensoraerospace.agent import DSAC
 from tensoraerospace.agent.sac.replay_memory import ReplayMemory
 from tensoraerospace.envs import ImprovedB747VecEnvTorch
 from tensoraerospace.envs.b747 import ImprovedB747Env
-from typing import Any
 
 
-def load_dsac_checkpoint(
-    folder: Path, env: Any, *, device: str = "cpu"
-) -> DSAC:
+def load_dsac_checkpoint(folder: Path, env: Any, *, device: str = "cpu") -> DSAC:
     """Minimal loader to warm-start from a previous best_eval checkpoint."""
     folder = Path(folder)
     config_path = folder / "config.json"
@@ -76,10 +74,7 @@ def load_dsac_checkpoint(
 
     # Alpha
     log_alpha_path = folder / "log_alpha.pth"
-    if (
-        getattr(agent, "automatic_entropy_tuning", False)
-        and log_alpha_path.exists()
-    ):
+    if getattr(agent, "automatic_entropy_tuning", False) and log_alpha_path.exists():
         loaded_alpha = torch.load(
             log_alpha_path, map_location=device, weights_only=False
         )

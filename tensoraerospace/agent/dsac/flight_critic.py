@@ -40,7 +40,9 @@ class ZNet(nn.Module):
         with torch.no_grad():
             return torch.rand(int(batch_size), int(n_taus), device=device)
 
-    def forward(self, s: torch.Tensor, a: torch.Tensor, taus: torch.Tensor) -> torch.Tensor:
+    def forward(
+        self, s: torch.Tensor, a: torch.Tensor, taus: torch.Tensor
+    ) -> torch.Tensor:
         x = torch.cat([s, a], dim=1)
         taus = taus.unsqueeze(-1)  # (B, N, 1)
         z = self.iqn(x, taus)  # (B, N, 1)
@@ -74,9 +76,9 @@ class IQN(nn.Module):
             nn.ReLU(),
         )
 
-        self.const_pi_vec = torch.arange(
-            start=0, end=self.C, device=self.device
-        ) * torch.pi
+        self.const_pi_vec = (
+            torch.arange(start=0, end=self.C, device=self.device) * torch.pi
+        )
         self.embedding_layer = nn.Sequential(
             nn.Linear(self.C, self.H),
             nn.LayerNorm(self.H),
@@ -112,5 +114,3 @@ class IQN(nn.Module):
         out = self.hidden_layers(h)  # (B*N, A)
         out = out.view(B, N, self.A)  # (B, N, A)
         return out
-
-

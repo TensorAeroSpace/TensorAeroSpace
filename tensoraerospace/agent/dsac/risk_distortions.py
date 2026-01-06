@@ -10,9 +10,7 @@ import torch
 DistortionFn = Callable[[torch.Tensor, float], torch.Tensor]
 
 
-def normal_cdf(
-    tau: torch.Tensor, mean: float = 0.0, std: float = 1.0
-) -> torch.Tensor:
+def normal_cdf(tau: torch.Tensor, mean: float = 0.0, std: float = 1.0) -> torch.Tensor:
     """CDF of the normal distribution."""
     return 0.5 * (1 + torch.erf((tau - mean) / std / np.sqrt(2)))
 
@@ -52,5 +50,3 @@ distortion_functions: Dict[str, DistortionFn] = {
     "cpw": cpw,
     "wang": wang,
 }
-
-
