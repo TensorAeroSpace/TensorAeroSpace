@@ -43,9 +43,7 @@ def _slice_and_pad_1d(arr: np.ndarray, start: int, length: int) -> np.ndarray:
     chunk = arr[start:end]
     if chunk.size >= length:
         return chunk.astype(np.float32, copy=False)
-    pad_val = float(
-        chunk[-1] if chunk.size > 0 else (arr[-1] if arr.size else 0.0)
-    )
+    pad_val = float(chunk[-1] if chunk.size > 0 else (arr[-1] if arr.size else 0.0))
     pad = np.full((length - chunk.size,), pad_val, dtype=np.float32)
     return np.concatenate([chunk.astype(np.float32, copy=False), pad], axis=0)
 
@@ -82,9 +80,7 @@ class Args:
 
 
 class MLPDynamics(nn.Module):
-    def __init__(
-        self, state_dim: int = 4, action_dim: int = 1, hidden: int = 128
-    ):
+    def __init__(self, state_dim: int = 4, action_dim: int = 1, hidden: int = 128):
         super().__init__()
         self.net = nn.Sequential(
             nn.Linear(state_dim + action_dim, hidden),
@@ -125,9 +121,7 @@ def make_env(dt: float, tn: int, step_deg: float, step_time_s: float):
     return env
 
 
-def collect_transitions(
-    env, *, episodes: int, max_steps: int, action_range_deg: float
-):
+def collect_transitions(env, *, episodes: int, max_steps: int, action_range_deg: float):
     xs: list[np.ndarray] = []
     us: list[float] = []
     xns: list[np.ndarray] = []
@@ -135,17 +129,11 @@ def collect_transitions(
     for _ in range(int(episodes)):
         env.reset()
         for _step in range(int(max_steps)):
-            x_t = np.asarray(
-                env.unwrapped.model.xt, dtype=np.float32
-            ).reshape(-1)
-            u_deg = float(
-                np.random.uniform(-action_range_deg, action_range_deg)
-            )
+            x_t = np.asarray(env.unwrapped.model.xt, dtype=np.float32).reshape(-1)
+            u_deg = float(np.random.uniform(-action_range_deg, action_range_deg))
             action = np.array([u_deg], dtype=np.float32)
             _obs, _reward, terminated, truncated, _info = env.step(action)
-            x_tp1 = np.asarray(
-                env.unwrapped.model.xt, dtype=np.float32
-            ).reshape(-1)
+            x_tp1 = np.asarray(env.unwrapped.model.xt, dtype=np.float32).reshape(-1)
 
             xs.append(x_t)
             us.append(float(np.deg2rad(u_deg)))
@@ -210,9 +198,7 @@ def train_dynamics(
         model.eval()
         with torch.no_grad():
             pred_v = model(X_v.to(device), U_v.to(device))
-            val_loss = float(
-                loss_fn(pred_v, XN_v.to(device)).detach().cpu().item()
-            )
+            val_loss = float(loss_fn(pred_v, XN_v.to(device)).detach().cpu().item())
         if epoch % 5 == 0 or epoch == int(args.epochs) - 1:
             print(
                 "epoch="
@@ -235,9 +221,7 @@ def run_mpc(env, model: nn.Module, *, args: Args):
     du_max = rate_lim * dt
 
     weights = TorchMPCWeights(
-        Q_diag=np.array(
-            [args.w_u, args.w_w, args.w_q, args.w_theta], dtype=np.float32
-        ),
+        Q_diag=np.array([args.w_u, args.w_w, args.w_q, args.w_theta], dtype=np.float32),
         R_diag=np.array([args.w_action], dtype=np.float32),
         S_diag=np.array([args.w_delta_action], dtype=np.float32),
         terminal_weight=float(args.terminal_weight),
@@ -276,15 +260,11 @@ def run_mpc(env, model: nn.Module, *, args: Args):
     hist_u_deg: list[float] = []
 
     max_steps = int(env.unwrapped.number_time_steps - 2)
-    ref = np.asarray(env.unwrapped.reference_signal, dtype=np.float32).reshape(
-        1, -1
-    )
+    ref = np.asarray(env.unwrapped.reference_signal, dtype=np.float32).reshape(1, -1)
 
     for step in range(max_steps):
         x0 = np.asarray(env.unwrapped.model.xt, dtype=np.float32).reshape(-1)
-        theta_ref = _slice_and_pad_1d(
-            ref[0], start=step, length=int(args.horizon) + 1
-        )
+        theta_ref = _slice_and_pad_1d(ref[0], start=step, length=int(args.horizon) + 1)
         x_ref = np.zeros((int(args.horizon) + 1, 4), dtype=np.float32)
         x_ref[:, 3] = theta_ref
 
@@ -312,12 +292,8 @@ def main():
     p = argparse.ArgumentParser()
     p.add_argument("--dt", type=float, default=Args.dt)
     p.add_argument("--tn", type=int, default=Args.tn)
-    p.add_argument(
-        "--collect-episodes", type=int, default=Args.collect_episodes
-    )
-    p.add_argument(
-        "--collect-max-steps", type=int, default=Args.collect_max_steps
-    )
+    p.add_argument("--collect-episodes", type=int, default=Args.collect_episodes)
+    p.add_argument("--collect-max-steps", type=int, default=Args.collect_max_steps)
     p.add_argument("--epochs", type=int, default=Args.epochs)
     p.add_argument("--horizon", type=int, default=Args.horizon)
     ns = p.parse_args()

@@ -128,7 +128,9 @@ class NARXDynamicsModel(nn.Module):
         if self.state_lags <= 0 or self.control_lags <= 0:
             raise ValueError("state_lags/control_lags must be positive")
 
-        input_size = self.state_dim * self.state_lags + self.action_dim * self.control_lags
+        input_size = (
+            self.state_dim * self.state_lags + self.action_dim * self.control_lags
+        )
         self.net = NARX(
             input_size=int(input_size),
             hidden_size=int(hidden_size),

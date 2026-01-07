@@ -159,5 +159,3 @@ def test_torch_mpc_agent_collect_and_train_smoke():
     x_ref = np.zeros((agent.mpc.horizon + 1, agent.state_dim), dtype=np.float32)
     act = agent.select_action(state, x_ref=x_ref)
     assert act.shape == (agent.action_dim,)
-
-

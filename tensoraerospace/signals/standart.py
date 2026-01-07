@@ -126,14 +126,10 @@ def sinusoid_vertical_shift(
         ...     t, frequency=0.5, amplitude=2.0, vertical_shift=5.0)
         >>> # Signal oscillates between 3.0 and 7.0
     """
-    return np.asarray(
-        amplitude * np.sin(2 * np.pi * frequency * tp) + vertical_shift
-    )
+    return np.asarray(amplitude * np.sin(2 * np.pi * frequency * tp) + vertical_shift)
 
 
-def ramp(
-    tp: np.ndarray, slope: float = 1.0, time_start: float = 0.0
-) -> np.ndarray:
+def ramp(tp: np.ndarray, slope: float = 1.0, time_start: float = 0.0) -> np.ndarray:
     """Generate ramp (linearly increasing) signal.
 
     Creates a ramp signal for testing the tracking capability of control
@@ -360,9 +356,7 @@ def doublet(
         ...                       time_start=3.0, width=1.0)
         >>> # 5-degree doublet maneuver starting at t=3s
     """
-    positive_pulse = amplitude * (
-        (tp >= time_start) & (tp < time_start + width)
-    )
+    positive_pulse = amplitude * ((tp >= time_start) & (tp < time_start + width))
     negative_pulse = -amplitude * (
         (tp >= time_start + width) & (tp < time_start + 2 * width)
     )
@@ -398,9 +392,7 @@ def multi_step(tp: np.ndarray, step_times: list, step_values: list) -> np.ndarra
         >>> # Signal: 0→1 at t=2, 1→3 at t=5, 3→2 at t=10, 2→5 at t=15
     """
     if len(step_times) != len(step_values):
-        raise ValueError(
-            "step_times and step_values must have the same length"
-        )
+        raise ValueError("step_times and step_values must have the same length")
 
     signal = np.zeros_like(tp)
     for time, value in zip(step_times, step_values):
@@ -477,9 +469,7 @@ def gaussian_pulse(
         >>> gauss = gaussian_pulse(t, amplitude=5.0, center=10.0, width=1.5)
         >>> # Gaussian pulse centered at t=10s with σ=1.5s
     """
-    return np.asarray(
-        amplitude * np.exp(-((tp - center) ** 2) / (2 * width**2))
-    )
+    return np.asarray(amplitude * np.exp(-((tp - center) ** 2) / (2 * width**2)))
 
 
 def multisine(
@@ -521,9 +511,7 @@ def multisine(
         >>> # Sum of three sinusoids at 0.5, 1.0, and 2.0 Hz
     """
     if len(frequencies) != len(amplitudes):
-        raise ValueError(
-            "frequencies and amplitudes must have the same length"
-        )
+        raise ValueError("frequencies and amplitudes must have the same length")
 
     if phases is None:
         phases = [0.0] * len(frequencies)

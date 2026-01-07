@@ -22,7 +22,6 @@ from tqdm import tqdm  # type: ignore[import-untyped]
 from ..base import BaseRLModel
 from ..sac.replay_memory import ReplayMemory
 
-
 TensorLike = Union[np.ndarray, torch.Tensor]
 ExtraCostFn = Callable[
     [torch.Tensor, torch.Tensor, Optional[torch.Tensor]], torch.Tensor
@@ -166,9 +165,7 @@ class TorchMPCSolveResult:
     iters: int
 
 
-def _to_2d(
-    x: TensorLike, *, dtype: torch.dtype, device: torch.device
-) -> torch.Tensor:
+def _to_2d(x: TensorLike, *, dtype: torch.dtype, device: torch.device) -> torch.Tensor:
     xt = torch.as_tensor(x, dtype=dtype, device=device)
     if xt.ndim == 1:
         return xt.unsqueeze(0)
@@ -178,9 +175,7 @@ def _to_2d(
     return xt.reshape(xt.shape[0], -1)
 
 
-def _to_1d(
-    x: TensorLike, *, dtype: torch.dtype, device: torch.device
-) -> torch.Tensor:
+def _to_1d(x: TensorLike, *, dtype: torch.dtype, device: torch.device) -> torch.Tensor:
     xt = torch.as_tensor(x, dtype=dtype, device=device)
     return xt.reshape(-1)
 
@@ -262,30 +257,22 @@ class TorchMPC:
         self._u_min = (
             None
             if self.constraints.u_min is None
-            else _to_1d(
-                self.constraints.u_min, dtype=self.dtype, device=self.device
-            )
+            else _to_1d(self.constraints.u_min, dtype=self.dtype, device=self.device)
         )
         self._u_max = (
             None
             if self.constraints.u_max is None
-            else _to_1d(
-                self.constraints.u_max, dtype=self.dtype, device=self.device
-            )
+            else _to_1d(self.constraints.u_max, dtype=self.dtype, device=self.device)
         )
         self._du_min = (
             None
             if self.constraints.du_min is None
-            else _to_1d(
-                self.constraints.du_min, dtype=self.dtype, device=self.device
-            )
+            else _to_1d(self.constraints.du_min, dtype=self.dtype, device=self.device)
         )
         self._du_max = (
             None
             if self.constraints.du_max is None
-            else _to_1d(
-                self.constraints.du_max, dtype=self.dtype, device=self.device
-            )
+            else _to_1d(self.constraints.du_max, dtype=self.dtype, device=self.device)
         )
 
         for name, bound in [
@@ -334,9 +321,7 @@ class TorchMPC:
                 ut_proj = prev + du
                 # Re-apply magnitude bounds after rate projection (important)
                 if self._u_min is not None or self._u_max is not None:
-                    ut_proj = torch.clamp(
-                        ut_proj, min=self._u_min, max=self._u_max
-                    )
+                    ut_proj = torch.clamp(ut_proj, min=self._u_min, max=self._u_max)
                 seq.append(ut_proj)
                 prev = ut_proj
             u = torch.stack(seq, dim=0)
@@ -466,26 +451,16 @@ class TorchMPC:
             if self._S is not None:
                 if u_prev_t is None:
                     du = u_proj[1:] - u_proj[:-1]
-                    cost_t = (
-                        cost_t + (du.pow(2) * self._S.reshape(1, -1)).sum()
-                    )
+                    cost_t = cost_t + (du.pow(2) * self._S.reshape(1, -1)).sum()
                 else:
                     u_prev_row = u_prev_t.reshape(1, -1)
                     du0 = u_proj[0:1] - u_prev_row
                     du_rest = u_proj[1:] - u_proj[:-1]
-                    cost_t = (
-                        cost_t + (du0.pow(2) * self._S.reshape(1, -1)).sum()
-                    )
-                    cost_t = (
-                        cost_t
-                        + (du_rest.pow(2) * self._S.reshape(1, -1)).sum()
-                    )
+                    cost_t = cost_t + (du0.pow(2) * self._S.reshape(1, -1)).sum()
+                    cost_t = cost_t + (du_rest.pow(2) * self._S.reshape(1, -1)).sum()
 
             # terminal cost (same Q diag, scaled)
-            if (
-                x_ref_t is not None
-                and float(self.weights.terminal_weight) != 0.0
-            ):
+            if x_ref_t is not None and float(self.weights.terminal_weight) != 0.0:
                 terr = x_seq[-1] - x_ref_t[-1]
                 cost_t = cost_t + float(self.weights.terminal_weight) * (
                     (terr.pow(2) * self._Q).sum()
@@ -521,9 +496,7 @@ class TorchMPC:
 
         if best_u is None or best_x is None:
             # Defensive: should never happen.
-            raise RuntimeError(
-                "MPC solve failed to produce a candidate solution."
-            )
+            raise RuntimeError("MPC solve failed to produce a candidate solution.")
 
         self._u_warm = best_u.detach().clone()
 
@@ -564,9 +537,7 @@ class TorchMPCStandardScaler:
         eps: float = 1e-6,
     ) -> "TorchMPCStandardScaler":
         if x.ndim != 2:
-            raise ValueError(
-                f"fit expects a 2-D tensor (N, D). Got {tuple(x.shape)}"
-            )
+            raise ValueError(f"fit expects a 2-D tensor (N, D). Got {tuple(x.shape)}")
         mean = x.mean(dim=0)
         std = x.std(dim=0, unbiased=False)
         std = torch.where(std < float(eps), torch.ones_like(std), std)
@@ -612,9 +583,7 @@ class OneStepMLP(nn.Module):
             raise ValueError("hidden_layers must be non-empty")
         hs = [int(h) for h in hidden_layers]
         if any(h <= 0 for h in hs):
-            raise ValueError(
-                f"hidden_layers must be positive, got {hidden_layers}"
-            )
+            raise ValueError(f"hidden_layers must be positive, got {hidden_layers}")
 
         if activation == "relu":
             act: nn.Module = nn.ReLU()
@@ -663,8 +632,7 @@ class TorchMPCAgent(BaseRLModel):
         constraints: TorchMPCConstraints | None = None,
         tracking_type: Literal["tracking", "step_response"] = "tracking",
         tracking_config: TorchMPCTrackingExtraCostConfig | None = None,
-        step_response_config: TorchMPCStepResponseExtraCostConfig
-        | None = None,
+        step_response_config: TorchMPCStepResponseExtraCostConfig | None = None,
         extra_cost_fn: ExtraCostFn | None = None,
         iters: int = 60,
         mpc_lr: float = 0.05,
@@ -710,9 +678,7 @@ class TorchMPCAgent(BaseRLModel):
         self._mpc_warm_start = bool(warm_start)
 
         # Tracking mode configuration
-        self.tracking_type: Literal["tracking", "step_response"] = (
-            tracking_type
-        )
+        self.tracking_type: Literal["tracking", "step_response"] = tracking_type
         self.tracking_config = (
             TorchMPCTrackingExtraCostConfig()
             if tracking_config is None
@@ -770,11 +736,7 @@ class TorchMPCAgent(BaseRLModel):
                 "Pass state_dim=... and action_dim=... explicitly."
             )
 
-        if (
-            env_obs_dim > 0
-            and self.state_dim != env_obs_dim
-            and obs_to_state is None
-        ):
+        if env_obs_dim > 0 and self.state_dim != env_obs_dim and obs_to_state is None:
             raise ValueError(
                 "state_dim differs from env.observation_space. "
                 f"state_dim={self.state_dim}, env_obs_dim={env_obs_dim}. "
@@ -803,12 +765,8 @@ class TorchMPCAgent(BaseRLModel):
         self._a_low_env: np.ndarray | None = None
         self._a_high_env: np.ndarray | None = None
         try:
-            low = np.asarray(
-                self.env.action_space.low, dtype=np.float32
-            ).reshape(-1)
-            high = np.asarray(
-                self.env.action_space.high, dtype=np.float32
-            ).reshape(-1)
+            low = np.asarray(self.env.action_space.low, dtype=np.float32).reshape(-1)
+            high = np.asarray(self.env.action_space.high, dtype=np.float32).reshape(-1)
             if low.size == self.action_dim and high.size == self.action_dim:
                 self._a_low_env = low
                 self._a_high_env = high
@@ -834,9 +792,7 @@ class TorchMPCAgent(BaseRLModel):
             lr=float(dynamics_lr),
             weight_decay=float(weight_decay),
         )
-        self.grad_clip_norm = (
-            None if grad_clip_norm is None else float(grad_clip_norm)
-        )
+        self.grad_clip_norm = None if grad_clip_norm is None else float(grad_clip_norm)
 
         # --- Normalizers (identity until fitted) ---
         self.x_scaler = TorchMPCStandardScaler.identity(
@@ -968,9 +924,7 @@ class TorchMPCAgent(BaseRLModel):
         def _as_bound(x: TensorLike | None) -> torch.Tensor | None:
             if x is None:
                 return None
-            t = torch.as_tensor(
-                x, device=self.device, dtype=self.dtype
-            ).reshape(-1)
+            t = torch.as_tensor(x, device=self.device, dtype=self.dtype).reshape(-1)
             if t.numel() == 1:
                 t = t.repeat(int(self.action_dim))
             return t
@@ -1007,9 +961,7 @@ class TorchMPCAgent(BaseRLModel):
     def _make_extra_cost_fn(self) -> ExtraCostFn | None:
         if self.tracking_type == "step_response":
             assert self.step_response_config is not None
-            return self._make_step_response_extra_cost(
-                self.step_response_config
-            )
+            return self._make_step_response_extra_cost(self.step_response_config)
         return self._make_tracking_extra_cost(self.tracking_config)
 
     def set_tracking_type(
@@ -1017,8 +969,7 @@ class TorchMPCAgent(BaseRLModel):
         tracking_type: Literal["tracking", "step_response"],
         *,
         tracking_config: TorchMPCTrackingExtraCostConfig | None = None,
-        step_response_config: TorchMPCStepResponseExtraCostConfig
-        | None = None,
+        step_response_config: TorchMPCStepResponseExtraCostConfig | None = None,
     ) -> None:
         """Switch extra-cost mode (tracking vs step_response)."""
 
@@ -1112,9 +1063,7 @@ class TorchMPCAgent(BaseRLModel):
 
             theta_ref = x_ref[:, tracked_idx]
             baseline = theta_ref[0]
-            changed = torch.abs(theta_ref - baseline) > float(
-                cfg.ref_change_threshold
-            )
+            changed = torch.abs(theta_ref - baseline) > float(cfg.ref_change_threshold)
             if not torch.any(changed):
                 return cost
 
@@ -1132,13 +1081,9 @@ class TorchMPCAgent(BaseRLModel):
                 x_seq.new_tensor(float(cfg.settle_band)),
                 amp_abs * float(cfg.settle_band_ratio),
             )
-            band = torch.maximum(
-                band, x_seq.new_tensor(float(cfg.settle_band_min))
-            )
+            band = torch.maximum(band, x_seq.new_tensor(float(cfg.settle_band_min)))
 
-            theta_exceed = torch.relu(torch.abs(err) - band) * post_step.to(
-                x_seq.dtype
-            )
+            theta_exceed = torch.relu(torch.abs(err) - band) * post_step.to(x_seq.dtype)
             deadline = step_idx + int(settle_steps)
 
             w_settle = x_seq.new_tensor(float(cfg.w_settle))
@@ -1167,13 +1112,9 @@ class TorchMPCAgent(BaseRLModel):
             if err_post.numel() >= 2:
                 prod = err_post[1:] * err_post[:-1]
                 sign_change = torch.relu(-prod) / (band.pow(2) + 1e-9)
-                out_w = torch.sigmoid(
-                    20.0 * (torch.abs(err_post) - band)
-                )
+                out_w = torch.sigmoid(20.0 * (torch.abs(err_post) - band))
                 out_pair = out_w[1:] * out_w[:-1]
-                cost = cost + float(cfg.w_osc) * (
-                    sign_change * out_pair
-                ).sum()
+                cost = cost + float(cfg.w_osc) * (sign_change * out_pair).sum()
 
             # Overshoot penalty (only if step is "big enough")
             if float(amp_abs.detach().cpu().item()) >= float(cfg.min_step_amp):
@@ -1185,9 +1126,7 @@ class TorchMPCAgent(BaseRLModel):
                 overshoot_excess = torch.relu(
                     err_dir - float(cfg.overshoot_limit)
                 ) * post_step.to(x_seq.dtype)
-                cost = cost + float(cfg.w_overshoot) * overshoot_excess.pow(
-                    2
-                ).sum()
+                cost = cost + float(cfg.w_overshoot) * overshoot_excess.pow(2).sum()
 
             # Extra smoothing after "deadline" (steady-state)
             deadline_u = int(max(0, int(deadline) - 1))
@@ -1195,17 +1134,13 @@ class TorchMPCAgent(BaseRLModel):
                 du_u = u_norm[1:] - u_norm[:-1]
                 tu = torch.arange(u_norm.shape[0], device=x_seq.device)
                 w_du = (tu[1:] >= deadline_u).to(x_seq.dtype).reshape(-1, 1)
-                cost = cost + float(cfg.w_du_steady) * (
-                    w_du * du_u.pow(2)
-                ).sum()
+                cost = cost + float(cfg.w_du_steady) * (w_du * du_u.pow(2)).sum()
                 if du_u.shape[0] >= 2:
                     ddu_u = du_u[1:] - du_u[:-1]
-                    w_ddu = (tu[2:] >= deadline_u).to(x_seq.dtype).reshape(
-                        -1, 1
+                    w_ddu = (tu[2:] >= deadline_u).to(x_seq.dtype).reshape(-1, 1)
+                    cost = (
+                        cost + float(cfg.w_jerk_steady) * (w_ddu * ddu_u.pow(2)).sum()
                     )
-                    cost = cost + float(cfg.w_jerk_steady) * (
-                        w_ddu * ddu_u.pow(2)
-                    ).sum()
 
             return cost
 
@@ -1278,9 +1213,7 @@ class TorchMPCAgent(BaseRLModel):
     def _action_env_from_internal(self, u: np.ndarray) -> np.ndarray:
         u = np.asarray(u, dtype=np.float32).reshape(-1)
         if u.size != self.action_dim:
-            raise ValueError(
-                f"Action must have size {self.action_dim}, got {u.size}"
-            )
+            raise ValueError(f"Action must have size {self.action_dim}, got {u.size}")
         if self._action_to_env is not None:
             a = self._action_to_env(u)
         else:
@@ -1288,8 +1221,7 @@ class TorchMPCAgent(BaseRLModel):
         a = np.asarray(a, dtype=np.float32).reshape(-1)
         if a.size != self.action_dim:
             raise ValueError(
-                f"action_to_env returned size {a.size}, "
-                f"expected {self.action_dim}"
+                f"action_to_env returned size {a.size}, " f"expected {self.action_dim}"
             )
         if self._a_low_env is not None and self._a_high_env is not None:
             a = np.clip(a, self._a_low_env, self._a_high_env)
@@ -1299,8 +1231,7 @@ class TorchMPCAgent(BaseRLModel):
         a_env = np.asarray(a_env, dtype=np.float32).reshape(-1)
         if a_env.size != self.action_dim:
             raise ValueError(
-                f"Env action must have size {self.action_dim}, "
-                f"got {a_env.size}"
+                f"Env action must have size {self.action_dim}, " f"got {a_env.size}"
             )
         if self._action_from_env is not None:
             u = self._action_from_env(a_env)
@@ -1328,9 +1259,7 @@ class TorchMPCAgent(BaseRLModel):
         """Compute action (env units) using MPC over learned dynamics."""
         state = np.asarray(state, dtype=np.float32).reshape(-1)
         if state.size != self.state_dim:
-            raise ValueError(
-                f"state must have size {self.state_dim}, got {state.size}"
-            )
+            raise ValueError(f"state must have size {self.state_dim}, got {state.size}")
 
         u_prev = None if self._u_prev is None else self._u_prev
         res = self.mpc.solve(x0=state, x_ref=x_ref, u_prev=u_prev)
@@ -1383,14 +1312,10 @@ class TorchMPCAgent(BaseRLModel):
 
             if dt is None:
                 dt = float(
-                    getattr(
-                        self.env.unwrapped, "dt", getattr(self.env, "dt", 0.01)
-                    )
+                    getattr(self.env.unwrapped, "dt", getattr(self.env, "dt", 0.01))
                 )
             dt = float(dt)
-            tp = (np.arange(max_steps, dtype=np.float32) * dt).astype(
-                np.float32
-            )
+            tp = (np.arange(max_steps, dtype=np.float32) * dt).astype(np.float32)
 
             if signal_kinds is None:
                 signal_kinds = (
@@ -1446,9 +1371,7 @@ class TorchMPCAgent(BaseRLModel):
                         * float(np.random.uniform(0.3, 1.0))
                         * amp
                     )
-                    time_step = float(np.random.uniform(0.05, 0.35)) * max(
-                        dt, t_end
-                    )
+                    time_step = float(np.random.uniform(0.05, 0.35)) * max(dt, t_end)
                     return ta_signals.unit_step(
                         tp, degree=a, time_step=time_step, output_rad=False
                     ).astype(np.float32)
@@ -1456,9 +1379,7 @@ class TorchMPCAgent(BaseRLModel):
                 if kind == "multi_step":
                     n_steps = int(np.random.randint(2, 7))
                     times = np.sort(
-                        np.random.uniform(
-                            0.05 * t_end, 0.95 * t_end, size=(n_steps,)
-                        )
+                        np.random.uniform(0.05 * t_end, 0.95 * t_end, size=(n_steps,))
                     ).tolist()
                     inc = (
                         np.random.uniform(-1.0, 1.0, size=(n_steps,))
@@ -1503,14 +1424,8 @@ class TorchMPCAgent(BaseRLModel):
 
                 if kind == "multisine":
                     n_comp = int(np.random.randint(1, 8))
-                    freqs = [
-                        float(np.random.uniform(0.01, 2.2))
-                        for _ in range(n_comp)
-                    ]
-                    amps = [
-                        float(np.random.uniform(0.2, 1.0))
-                        for _ in range(n_comp)
-                    ]
+                    freqs = [float(np.random.uniform(0.01, 2.2)) for _ in range(n_comp)]
+                    amps = [float(np.random.uniform(0.2, 1.0)) for _ in range(n_comp)]
                     phases = [
                         float(np.random.uniform(0.0, 2.0 * np.pi))
                         for _ in range(n_comp)
@@ -1558,15 +1473,13 @@ class TorchMPCAgent(BaseRLModel):
 
                 if kind == "sawtooth":
                     f = float(np.random.uniform(0.01, 1.8))
-                    return ta_signals.sawtooth(
-                        tp, frequency=f, amplitude=amp
-                    ).astype(np.float32)
+                    return ta_signals.sawtooth(tp, frequency=f, amplitude=amp).astype(
+                        np.float32
+                    )
 
                 if kind == "doublet":
                     width = float(np.random.uniform(1.0, 25.0)) * dt
-                    time_start = float(
-                        np.random.uniform(0.05 * t_end, 0.35 * t_end)
-                    )
+                    time_start = float(np.random.uniform(0.05 * t_end, 0.35 * t_end))
                     a = (
                         float(np.random.choice([-1.0, 1.0]))
                         * float(np.random.uniform(0.5, 1.0))
@@ -1578,9 +1491,7 @@ class TorchMPCAgent(BaseRLModel):
 
                 if kind == "pulse":
                     width = float(np.random.uniform(1.0, 20.0)) * dt
-                    time_start = float(
-                        np.random.uniform(0.05 * t_end, 0.8 * t_end)
-                    )
+                    time_start = float(np.random.uniform(0.05 * t_end, 0.8 * t_end))
                     a = (
                         float(np.random.choice([-1.0, 1.0]))
                         * float(np.random.uniform(0.3, 1.0))
@@ -1591,9 +1502,7 @@ class TorchMPCAgent(BaseRLModel):
                     ).astype(np.float32)
 
                 if kind == "gaussian_pulse":
-                    center = float(
-                        np.random.uniform(0.05 * t_end, 0.95 * t_end)
-                    )
+                    center = float(np.random.uniform(0.05 * t_end, 0.95 * t_end))
                     width = float(np.random.uniform(0.05, 0.6))
                     a = (
                         float(np.random.choice([-1.0, 1.0]))
@@ -1646,17 +1555,12 @@ class TorchMPCAgent(BaseRLModel):
 
             if exploration == "signals":
                 # one signal per action dimension (independent)
-                u_seq = np.zeros(
-                    (max_steps, self.action_dim), dtype=np.float32
-                )
+                u_seq = np.zeros((max_steps, self.action_dim), dtype=np.float32)
                 for j in range(self.action_dim):
                     kind = str(np.random.choice(kinds))
                     u_seq[:, j] = gen_1d(kind)[:max_steps]
                 # clip to env bounds if known
-                if (
-                    self._a_low_env is not None
-                    and self._a_high_env is not None
-                ):
+                if self._a_low_env is not None and self._a_high_env is not None:
                     u_seq = np.clip(
                         u_seq,
                         self._a_low_env.reshape(1, -1),
@@ -1681,16 +1585,14 @@ class TorchMPCAgent(BaseRLModel):
                 # (may differ from env action)
                 u_internal = self._action_internal_from_env(a_env)
 
-                next_obs, _reward, terminated, truncated, _info = (
-                    self.env.step(self._action_env_from_internal(u_internal))
+                next_obs, _reward, terminated, truncated, _info = self.env.step(
+                    self._action_env_from_internal(u_internal)
                 )
                 next_state = self._state_from_obs(next_obs)
 
                 done_env = bool(terminated or truncated)
                 done_bootstrap = float(bool(terminated))
-                self.memory.push(
-                    state, u_internal, 0.0, next_state, done_bootstrap
-                )
+                self.memory.push(state, u_internal, 0.0, next_state, done_bootstrap)
 
                 state = next_state
                 done = done_env
@@ -1708,15 +1610,9 @@ class TorchMPCAgent(BaseRLModel):
             raise ValueError("Not enough samples to fit normalizers.")
         s, a, _r, ns, _d = self.memory.sample(batch_size=n)
 
-        s_t = torch.as_tensor(s, device=self.device, dtype=self.dtype).view(
-            n, -1
-        )
-        a_t = torch.as_tensor(a, device=self.device, dtype=self.dtype).view(
-            n, -1
-        )
-        ns_t = torch.as_tensor(ns, device=self.device, dtype=self.dtype).view(
-            n, -1
-        )
+        s_t = torch.as_tensor(s, device=self.device, dtype=self.dtype).view(n, -1)
+        a_t = torch.as_tensor(a, device=self.device, dtype=self.dtype).view(n, -1)
+        ns_t = torch.as_tensor(ns, device=self.device, dtype=self.dtype).view(n, -1)
 
         if s_t.shape[1] != self.state_dim or a_t.shape[1] != self.action_dim:
             raise ValueError(
@@ -1770,9 +1666,7 @@ class TorchMPCAgent(BaseRLModel):
         steps_per_epoch = int(steps_per_epoch)
 
         if loss == "mse":
-            loss_fn: Callable[[torch.Tensor, torch.Tensor], torch.Tensor] = (
-                nn.MSELoss()
-            )
+            loss_fn: Callable[[torch.Tensor, torch.Tensor], torch.Tensor] = nn.MSELoss()
         elif loss == "huber":
             loss_fn = nn.SmoothL1Loss()
         else:
@@ -1785,15 +1679,15 @@ class TorchMPCAgent(BaseRLModel):
         running = 0.0
         for _ in pbar:
             s, a, _r, ns, _d = self.memory.sample(batch_size=batch_size)
-            s_t = torch.as_tensor(
-                s, device=self.device, dtype=self.dtype
-            ).view(batch_size, -1)
-            a_t = torch.as_tensor(
-                a, device=self.device, dtype=self.dtype
-            ).view(batch_size, -1)
-            ns_t = torch.as_tensor(
-                ns, device=self.device, dtype=self.dtype
-            ).view(batch_size, -1)
+            s_t = torch.as_tensor(s, device=self.device, dtype=self.dtype).view(
+                batch_size, -1
+            )
+            a_t = torch.as_tensor(a, device=self.device, dtype=self.dtype).view(
+                batch_size, -1
+            )
+            ns_t = torch.as_tensor(ns, device=self.device, dtype=self.dtype).view(
+                batch_size, -1
+            )
 
             if self.model_predict_delta:
                 y_t = ns_t - s_t
@@ -1820,9 +1714,7 @@ class TorchMPCAgent(BaseRLModel):
                 )
             self.model_opt.step()
 
-            running = 0.98 * running + 0.02 * float(
-                train_loss.detach().cpu().item()
-            )
+            running = 0.98 * running + 0.02 * float(train_loss.detach().cpu().item())
             pbar.set_postfix(loss=float(running))
 
         self.model.eval()
@@ -1840,9 +1732,7 @@ class TorchMPCAgent(BaseRLModel):
         run_dir.mkdir(parents=True, exist_ok=True)
 
         torch.save(self.model.state_dict(), str(run_dir / "dynamics_model.pt"))
-        torch.save(
-            self.model_opt.state_dict(), str(run_dir / "dynamics_optim.pt")
-        )
+        torch.save(self.model_opt.state_dict(), str(run_dir / "dynamics_optim.pt"))
 
         np.savez(
             str(run_dir / "normalizers.npz"),
@@ -1860,9 +1750,7 @@ class TorchMPCAgent(BaseRLModel):
             raise ValueError("load() requires a checkpoint directory path.")
         path = Path(path)
         self.model.load_state_dict(
-            torch.load(
-                str(path / "dynamics_model.pt"), map_location=self.device
-            )
+            torch.load(str(path / "dynamics_model.pt"), map_location=self.device)
         )
         opt_path = path / "dynamics_optim.pt"
         if opt_path.exists():
