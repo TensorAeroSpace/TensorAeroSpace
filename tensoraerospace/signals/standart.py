@@ -12,8 +12,8 @@ import numpy as np
 
 def unit_step(
     tp: np.ndarray,
-    degree: int,
-    time_step: int = 10,
+    degree: float,
+    time_step: float = 10.0,
     dt: float = 0.01,
     output_rad: bool = False,
 ) -> np.ndarray:
@@ -28,7 +28,7 @@ def unit_step(
         degree: Step amplitude (deflection angle in degrees if
             output_rad=False, or will be converted to radians if
             output_rad=True).
-        time_step: Time at which the step occurs, in seconds. Defaults to 10.
+        time_step: Time at which the step occurs, in seconds. Defaults to 10.0.
         dt: Discretization time step, in seconds. Defaults to 0.01.
             (Note: This parameter is not currently used in the function).
         output_rad: If True, converts degree to radians. Defaults to False.
@@ -42,10 +42,11 @@ def unit_step(
         >>> step = unit_step(t, degree=5, time_step=5.0, output_rad=False)
         >>> # Creates a step of amplitude 5 starting at t=5s
     """
+    _ = dt  # kept for backward-compatibility
+    mask = (tp >= time_step).astype(float)
     if output_rad:
-        return np.deg2rad(degree) * (tp >= time_step)
-    else:
-        return degree * (tp >= time_step)
+        return np.asarray(np.deg2rad(degree) * mask)
+    return np.asarray(float(degree) * mask)
 
 
 def sinusoid(tp: np.ndarray, frequency: float, amplitude: int) -> np.ndarray:
@@ -71,7 +72,7 @@ def sinusoid(tp: np.ndarray, frequency: float, amplitude: int) -> np.ndarray:
         >>> t = np.linspace(0, 10, 1000)
         >>> sine = sinusoid(t, frequency=1.0, amplitude=1.0)
     """
-    return np.sin(tp * amplitude) * frequency
+    return np.asarray(np.sin(tp * amplitude) * frequency)
 
 
 def constant_line(tp: np.ndarray, value_state: float = 2) -> np.ndarray:
@@ -125,10 +126,14 @@ def sinusoid_vertical_shift(
         ...     t, frequency=0.5, amplitude=2.0, vertical_shift=5.0)
         >>> # Signal oscillates between 3.0 and 7.0
     """
-    return amplitude * np.sin(2 * np.pi * frequency * tp) + vertical_shift
+    return np.asarray(
+        amplitude * np.sin(2 * np.pi * frequency * tp) + vertical_shift
+    )
 
 
-def ramp(tp: np.ndarray, slope: float = 1.0, time_start: float = 0.0) -> np.ndarray:
+def ramp(
+    tp: np.ndarray, slope: float = 1.0, time_start: float = 0.0
+) -> np.ndarray:
     """Generate ramp (linearly increasing) signal.
 
     Creates a ramp signal for testing the tracking capability of control
@@ -266,7 +271,7 @@ def triangular_wave(
         >>> # Triangular wave oscillating between -3.0 and +3.0
     """
     phase = (tp * frequency) % 1.0
-    return amplitude * (2 * np.abs(2 * phase - 1) - 1)
+    return np.asarray(amplitude * (2 * np.abs(2 * phase - 1) - 1))
 
 
 def chirp(
@@ -319,7 +324,7 @@ def chirp(
     else:
         raise ValueError("method must be 'linear' or 'exponential'")
 
-    return amplitude * np.sin(phase)
+    return np.asarray(amplitude * np.sin(phase))
 
 
 def doublet(
@@ -355,7 +360,9 @@ def doublet(
         ...                       time_start=3.0, width=1.0)
         >>> # 5-degree doublet maneuver starting at t=3s
     """
-    positive_pulse = amplitude * ((tp >= time_start) & (tp < time_start + width))
+    positive_pulse = amplitude * (
+        (tp >= time_start) & (tp < time_start + width)
+    )
     negative_pulse = -amplitude * (
         (tp >= time_start + width) & (tp < time_start + 2 * width)
     )
@@ -391,7 +398,9 @@ def multi_step(tp: np.ndarray, step_times: list, step_values: list) -> np.ndarra
         >>> # Signal: 0→1 at t=2, 1→3 at t=5, 3→2 at t=10, 2→5 at t=15
     """
     if len(step_times) != len(step_values):
-        raise ValueError("step_times and step_values must have the same length")
+        raise ValueError(
+            "step_times and step_values must have the same length"
+        )
 
     signal = np.zeros_like(tp)
     for time, value in zip(step_times, step_values):
@@ -433,7 +442,9 @@ def exponential(
         >>> # Exponential rise from 0 to 10 with τ=2s, starting at t=1s
     """
     t_shifted = np.maximum(tp - time_start, 0)
-    return amplitude * (1 - np.exp(-t_shifted / time_constant)) * (tp >= time_start)
+    return np.asarray(
+        amplitude * (1 - np.exp(-t_shifted / time_constant)) * (tp >= time_start)
+    )
 
 
 def gaussian_pulse(
@@ -466,7 +477,9 @@ def gaussian_pulse(
         >>> gauss = gaussian_pulse(t, amplitude=5.0, center=10.0, width=1.5)
         >>> # Gaussian pulse centered at t=10s with σ=1.5s
     """
-    return amplitude * np.exp(-((tp - center) ** 2) / (2 * width**2))
+    return np.asarray(
+        amplitude * np.exp(-((tp - center) ** 2) / (2 * width**2))
+    )
 
 
 def multisine(
@@ -508,7 +521,9 @@ def multisine(
         >>> # Sum of three sinusoids at 0.5, 1.0, and 2.0 Hz
     """
     if len(frequencies) != len(amplitudes):
-        raise ValueError("frequencies and amplitudes must have the same length")
+        raise ValueError(
+            "frequencies and amplitudes must have the same length"
+        )
 
     if phases is None:
         phases = [0.0] * len(frequencies)
@@ -562,7 +577,7 @@ def damped_sinusoid(
     """
     t_shifted = np.maximum(tp - time_start, 0)
     envelope = np.exp(-damping * t_shifted)
-    return (
+    return np.asarray(
         amplitude
         * envelope
         * np.sin(2 * np.pi * frequency * t_shifted)

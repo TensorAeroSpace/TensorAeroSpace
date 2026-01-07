@@ -88,3 +88,68 @@ class NARX(nn.Module):
         x = self.fc_out(x)
 
         return x
+
+
+class NARXDynamicsModel(nn.Module):
+    """TorchMPCAgent-compatible NARX dynamics model.
+
+    `TorchMPCAgent` expects learned dynamics modules with signature:
+
+        y = model(xu), where xu = concat([x, u])
+
+    This wrapper builds an internal :class:`~tensoraerospace.agent.mpc.narx.NARX`
+    and provides the required `forward(xu)` interface.
+
+    Notes:
+        - For the current MPC pipeline, this is typically used with
+          ``state_lags=1`` and ``control_lags=1`` (one-step model).
+        - If you want true NARX with lags > 1, you must provide an augmented
+          state/action history vector as input to MPC (not handled implicitly).
+    """
+
+    def __init__(
+        self,
+        *,
+        state_dim: int,
+        action_dim: int,
+        hidden_size: int = 256,
+        num_layers: int = 2,
+        state_lags: int = 1,
+        control_lags: int = 1,
+    ) -> None:
+        super().__init__()
+        self.state_dim = int(state_dim)
+        self.action_dim = int(action_dim)
+        self.state_lags = int(state_lags)
+        self.control_lags = int(control_lags)
+
+        if self.state_dim <= 0 or self.action_dim <= 0:
+            raise ValueError("state_dim/action_dim must be positive")
+        if self.state_lags <= 0 or self.control_lags <= 0:
+            raise ValueError("state_lags/control_lags must be positive")
+
+        input_size = self.state_dim * self.state_lags + self.action_dim * self.control_lags
+        self.net = NARX(
+            input_size=int(input_size),
+            hidden_size=int(hidden_size),
+            output_size=int(self.state_dim),
+            num_layers=int(num_layers),
+            state_lags=self.state_lags,
+            control_lags=self.control_lags,
+        )
+
+    def forward(self, xu: torch.Tensor) -> torch.Tensor:  # noqa: D401
+        """Forward pass.
+
+        Args:
+            xu: Concatenated input of shape (B, state_dim*state_lags + action_dim*control_lags).
+
+        Returns:
+            Predicted next-state (or delta-state) of shape (B, state_dim).
+        """
+        if xu.ndim != 2:
+            xu = xu.view(xu.shape[0], -1)
+        s_end = int(self.state_dim * self.state_lags)
+        state = xu[:, :s_end]
+        control = xu[:, s_end:]
+        return self.net(state, control)
