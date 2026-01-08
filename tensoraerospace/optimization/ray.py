@@ -43,10 +43,10 @@ class HyperParamOptimizationRay(HyperParamOptimizationBase):
     def run_optimization(
         self,
         func: Callable,
-        param_space,
-        tune_config=None,
-        **kwargs,
-    ):
+        param_space: Any,
+        tune_config: tune.TuneConfig | None = None,
+        **kwargs: Any,
+    ) -> None:
         """Run a Ray Tune search.
 
         Args:

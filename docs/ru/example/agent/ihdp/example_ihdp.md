@@ -104,7 +104,7 @@ env.model.plot_transient_process('alpha', tps, reference_signals[0], to_deg=True
 ![alpha](img/output_9_0.png)
 
 ```python
-env.model.plot_state('wz', tps, reference_signals[0], to_deg=True, figsize=(15,4))
+env.model.plot_state('wz', tps, to_deg=True, figsize=(15,4))
 ```
 
 ![wz](img/output_10_1.png)

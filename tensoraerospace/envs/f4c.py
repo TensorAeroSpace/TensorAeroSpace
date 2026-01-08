@@ -181,9 +181,9 @@ class LinearLongitudinalF4C(gym.Env):
         """Visual display of actions in the environment. Status: WIP.
 
         Raises:
-            NotImplementedError
+            NotImplementedError: Rendering is not implemented for this environment.
         """
-        raise NotImplementedError()
+        raise NotImplementedError("Rendering is not implemented for F4CEnv.")
 
 
 class F4CPitchEnvNormalized(gym.Env):

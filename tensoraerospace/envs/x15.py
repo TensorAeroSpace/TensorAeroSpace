@@ -163,9 +163,9 @@ class LinearLongitudinalX15(gym.Env):
         """Visual display of actions in the environment. Status: WIP.
 
         Raises:
-            NotImplementedError
+            NotImplementedError: Rendering is not available.
         """
-        raise NotImplementedError()
+        raise NotImplementedError("Rendering is not implemented for X15Env.")
 
 
 class ImprovedX15Env(gym.Env):

@@ -1,0 +1,226 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 650">
+  <defs>
+    <linearGradient id="inputGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#00BCD4;stop-opacity:0.95" />
+      <stop offset="100%" style="stop-color:#00838F;stop-opacity:0.95" />
+    </linearGradient>
+    <linearGradient id="cosGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#9C27B0;stop-opacity:0.95" />
+      <stop offset="100%" style="stop-color:#6A1B9A;stop-opacity:0.95" />
+    </linearGradient>
+    <linearGradient id="hiddenGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#3F51B5;stop-opacity:0.95" />
+      <stop offset="100%" style="stop-color:#283593;stop-opacity:0.95" />
+    </linearGradient>
+    <linearGradient id="outputGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#4CAF50;stop-opacity:0.95" />
+      <stop offset="100%" style="stop-color:#2E7D32;stop-opacity:0.95" />
+    </linearGradient>
+    <linearGradient id="quantileGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#E91E63;stop-opacity:0.9" />
+      <stop offset="50%" style="stop-color:#9C27B0;stop-opacity:0.9" />
+      <stop offset="100%" style="stop-color:#3F51B5;stop-opacity:0.9" />
+    </linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="2" dy="2" stdDeviation="2" flood-opacity="0.25"/>
+    </filter>
+    <marker id="arrow" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#455A64"/>
+    </marker>
+    <marker id="arrowBlue" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#3F51B5"/>
+    </marker>
+    <marker id="arrowPurple" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#9C27B0"/>
+    </marker>
+  </defs>
+  
+  <!-- Background -->
+  <rect width="900" height="650" fill="#fafafa"/>
+  
+  <!-- Title -->
+  <text x="450" y="35" font-family="Segoe UI, Arial, sans-serif" font-size="24" font-weight="bold" fill="#1a237e" text-anchor="middle">
+    Implicit Quantile Network (IQN) Critic
+  </text>
+  <text x="450" y="58" font-family="Segoe UI, Arial, sans-serif" font-size="14" fill="#5c6bc0" text-anchor="middle">
+    Cosine Embedding for Quantile Conditioning
+  </text>
+
+  <!-- Input Section -->
+  <g transform="translate(30, 90)">
+    <!-- State Input -->
+    <rect x="0" y="0" width="120" height="80" rx="8" fill="url(#inputGrad)" filter="url(#shadow)"/>
+    <text x="60" y="30" font-family="Segoe UI, Arial, sans-serif" font-size="14" font-weight="bold" fill="white" text-anchor="middle">State s</text>
+    <text x="60" y="50" font-family="Segoe UI, Arial, sans-serif" font-size="11" fill="#b2ebf2" text-anchor="middle">(B, obs_dim)</text>
+    <text x="60" y="68" font-family="Segoe UI, Arial, sans-serif" font-size="10" fill="#80deea" text-anchor="middle">e.g., [θ, q, α, V]</text>
+    
+    <!-- Action Input -->
+    <rect x="0" y="100" width="120" height="80" rx="8" fill="url(#inputGrad)" filter="url(#shadow)"/>
+    <text x="60" y="130" font-family="Segoe UI, Arial, sans-serif" font-size="14" font-weight="bold" fill="white" text-anchor="middle">Action a</text>
+    <text x="60" y="150" font-family="Segoe UI, Arial, sans-serif" font-size="11" fill="#b2ebf2" text-anchor="middle">(B, act_dim)</text>
+    <text x="60" y="168" font-family="Segoe UI, Arial, sans-serif" font-size="10" fill="#80deea" text-anchor="middle">e.g., [δ_e]</text>
+  </g>
+
+  <!-- Concatenate -->
+  <g transform="translate(175, 130)">
+    <rect x="0" y="0" width="60" height="50" rx="25" fill="#546E7A" filter="url(#shadow)"/>
+    <text x="30" y="30" font-family="Segoe UI, Arial, sans-serif" font-size="20" font-weight="bold" fill="white" text-anchor="middle">⊕</text>
+  </g>
+  <text x="205" y="200" font-family="Segoe UI, Arial, sans-serif" font-size="10" fill="#78909c" text-anchor="middle">concat</text>
+
+  <!-- State-Action MLP -->
+  <g transform="translate(260, 100)">
+    <rect x="0" y="0" width="150" height="110" rx="10" fill="url(#hiddenGrad)" filter="url(#shadow)"/>
+    <text x="75" y="25" font-family="Segoe UI, Arial, sans-serif" font-size="13" font-weight="bold" fill="white" text-anchor="middle">Input Layer</text>
+    <rect x="15" y="38" width="120" height="22" rx="4" fill="#5C6BC0"/>
+    <text x="75" y="53" font-family="Segoe UI, Arial, sans-serif" font-size="10" fill="white" text-anchor="middle">Linear(S+A, H)</text>
+    <rect x="15" y="65" width="120" height="18" rx="4" fill="#7986CB"/>
+    <text x="75" y="77" font-family="Segoe UI, Arial, sans-serif" font-size="9" fill="white" text-anchor="middle">LayerNorm + ReLU</text>
+    <text x="75" y="100" font-family="Segoe UI, Arial, sans-serif" font-size="10" fill="#c5cae9" text-anchor="middle">x ∈ (B, H)</text>
+  </g>
+
+  <!-- Quantile Tau Input -->
+  <g transform="translate(30, 280)">
+    <rect x="0" y="0" width="120" height="100" rx="8" fill="#E91E63" filter="url(#shadow)"/>
+    <text x="60" y="25" font-family="Segoe UI, Arial, sans-serif" font-size="14" font-weight="bold" fill="white" text-anchor="middle">Quantiles τ</text>
+    <text x="60" y="45" font-family="Segoe UI, Arial, sans-serif" font-size="11" fill="#f8bbd9" text-anchor="middle">(B, N, 1)</text>
+    <text x="60" y="65" font-family="Segoe UI, Arial, sans-serif" font-size="10" fill="#f48fb1" text-anchor="middle">τ ~ U(0,1)</text>
+    <text x="60" y="85" font-family="Segoe UI, Arial, sans-serif" font-size="10" fill="#f48fb1" text-anchor="middle">N=8...64 samples</text>
+  </g>
+
+  <!-- Cosine Embedding -->
+  <g transform="translate(175, 260)">
+    <rect x="0" y="0" width="235" height="140" rx="10" fill="url(#cosGrad)" filter="url(#shadow)"/>
+    <text x="117" y="25" font-family="Segoe UI, Arial, sans-serif" font-size="14" font-weight="bold" fill="white" text-anchor="middle">Cosine Embedding</text>
+    
+    <!-- Formula -->
+    <rect x="15" y="40" width="205" height="50" rx="5" fill="#7B1FA2"/>
+    <text x="117" y="58" font-family="Segoe UI, Arial, sans-serif" font-size="11" fill="white" text-anchor="middle">φ(τ)ᵢ = cos(π · i · τ)</text>
+    <text x="117" y="78" font-family="Segoe UI, Arial, sans-serif" font-size="10" fill="#e1bee7" text-anchor="middle">i = 0, 1, ..., C-1  (C = embedding_dim)</text>
+    
+    <!-- Layer -->
+    <rect x="15" y="100" width="205" height="30" rx="4" fill="#8E24AA"/>
+    <text x="117" y="120" font-family="Segoe UI, Arial, sans-serif" font-size="10" fill="white" text-anchor="middle">Linear(C, H) + LayerNorm + Sigmoid</text>
+  </g>
+  <text x="295" y="420" font-family="Segoe UI, Arial, sans-serif" font-size="10" fill="#7b1fa2" text-anchor="middle">cos_embed ∈ (B, N, H)</text>
+
+  <!-- Hadamard Product -->
+  <g transform="translate(450, 210)">
+    <rect x="0" y="0" width="80" height="70" rx="35" fill="#FF5722" filter="url(#shadow)"/>
+    <text x="40" y="35" font-family="Segoe UI, Arial, sans-serif" font-size="24" font-weight="bold" fill="white" text-anchor="middle">⊙</text>
+    <text x="40" y="55" font-family="Segoe UI, Arial, sans-serif" font-size="10" fill="#ffccbc" text-anchor="middle">element</text>
+  </g>
+  <text x="490" y="300" font-family="Segoe UI, Arial, sans-serif" font-size="11" font-weight="bold" fill="#bf360c" text-anchor="middle">Hadamard</text>
+  <text x="490" y="315" font-family="Segoe UI, Arial, sans-serif" font-size="10" fill="#bf360c" text-anchor="middle">Product</text>
+  <text x="490" y="335" font-family="Segoe UI, Arial, sans-serif" font-size="10" fill="#ff8a65" text-anchor="middle">h = x · cos_embed</text>
+
+  <!-- Hidden Layers -->
+  <g transform="translate(560, 160)">
+    <rect x="0" y="0" width="150" height="150" rx="10" fill="url(#hiddenGrad)" filter="url(#shadow)"/>
+    <text x="75" y="25" font-family="Segoe UI, Arial, sans-serif" font-size="13" font-weight="bold" fill="white" text-anchor="middle">Hidden MLP</text>
+    
+    <rect x="15" y="40" width="120" height="22" rx="4" fill="#5C6BC0"/>
+    <text x="75" y="55" font-family="Segoe UI, Arial, sans-serif" font-size="9" fill="white" text-anchor="middle">Linear(H, H)</text>
+    
+    <rect x="15" y="67" width="120" height="18" rx="4" fill="#7986CB"/>
+    <text x="75" y="79" font-family="Segoe UI, Arial, sans-serif" font-size="9" fill="white" text-anchor="middle">LayerNorm + ReLU</text>
+    
+    <rect x="15" y="90" width="120" height="22" rx="4" fill="#5C6BC0"/>
+    <text x="75" y="105" font-family="Segoe UI, Arial, sans-serif" font-size="9" fill="white" text-anchor="middle">Linear(H, H)</text>
+    
+    <rect x="15" y="117" width="120" height="22" rx="4" fill="#9FA8DA"/>
+    <text x="75" y="132" font-family="Segoe UI, Arial, sans-serif" font-size="9" fill="white" text-anchor="middle">ReLU (final)</text>
+  </g>
+
+  <!-- Output Layer -->
+  <g transform="translate(740, 180)">
+    <rect x="0" y="0" width="130" height="110" rx="10" fill="url(#outputGrad)" filter="url(#shadow)"/>
+    <text x="65" y="25" font-family="Segoe UI, Arial, sans-serif" font-size="13" font-weight="bold" fill="white" text-anchor="middle">Output</text>
+    <rect x="15" y="40" width="100" height="25" rx="4" fill="#66BB6A"/>
+    <text x="65" y="57" font-family="Segoe UI, Arial, sans-serif" font-size="10" fill="white" text-anchor="middle">Linear(H, 1)</text>
+    <text x="65" y="85" font-family="Segoe UI, Arial, sans-serif" font-size="11" font-weight="bold" fill="#c8e6c9" text-anchor="middle">Z(s,a,τ)</text>
+    <text x="65" y="102" font-family="Segoe UI, Arial, sans-serif" font-size="10" fill="#a5d6a7" text-anchor="middle">(B, N, 1)</text>
+  </g>
+
+  <!-- Arrows -->
+  <!-- Inputs to concat -->
+  <path d="M150 130 L175 155" stroke="#00838F" stroke-width="2" fill="none" marker-end="url(#arrow)"/>
+  <path d="M150 190 L175 165" stroke="#00838F" stroke-width="2" fill="none" marker-end="url(#arrow)"/>
+  
+  <!-- Concat to Input Layer -->
+  <path d="M235 155 L260 155" stroke="#546E7A" stroke-width="2" fill="none" marker-end="url(#arrow)"/>
+  
+  <!-- Input Layer to Hadamard (x branch) -->
+  <path d="M410 155 L430 155 L430 235 L450 245" stroke="#3F51B5" stroke-width="2" fill="none" marker-end="url(#arrowBlue)"/>
+  <text x="420" y="200" font-family="Segoe UI, Arial, sans-serif" font-size="9" fill="#3F51B5">x (broadcast)</text>
+  
+  <!-- Tau to Cosine -->
+  <path d="M150 330 L175 330" stroke="#E91E63" stroke-width="2" fill="none" marker-end="url(#arrow)"/>
+  
+  <!-- Cosine to Hadamard -->
+  <path d="M410 330 L430 330 L430 260 L450 255" stroke="#9C27B0" stroke-width="2" fill="none" marker-end="url(#arrowPurple)"/>
+  <text x="418" y="295" font-family="Segoe UI, Arial, sans-serif" font-size="9" fill="#9C27B0">cos_embed</text>
+  
+  <!-- Hadamard to Hidden -->
+  <path d="M530 245 L560 235" stroke="#FF5722" stroke-width="2" fill="none" marker-end="url(#arrow)"/>
+  
+  <!-- Hidden to Output -->
+  <path d="M710 235 L740 235" stroke="#3F51B5" stroke-width="2" fill="none" marker-end="url(#arrow)"/>
+
+  <!-- Quantile Distribution Visualization -->
+  <g transform="translate(180, 450)">
+    <rect x="0" y="0" width="530" height="150" rx="10" fill="#ECEFF1" filter="url(#shadow)"/>
+    <text x="265" y="25" font-family="Segoe UI, Arial, sans-serif" font-size="14" font-weight="bold" fill="#37474f" text-anchor="middle">Quantile Distribution Output</text>
+    
+    <!-- X-axis -->
+    <line x1="40" y1="120" x2="490" y2="120" stroke="#546E7A" stroke-width="2"/>
+    <text x="265" y="145" font-family="Segoe UI, Arial, sans-serif" font-size="11" fill="#546E7A" text-anchor="middle">τ ∈ [0, 1] (Quantile levels)</text>
+    
+    <!-- Y-axis -->
+    <line x1="40" y1="40" x2="40" y2="120" stroke="#546E7A" stroke-width="2"/>
+    <text x="25" y="80" font-family="Segoe UI, Arial, sans-serif" font-size="11" fill="#546E7A" text-anchor="middle" transform="rotate(-90, 25, 80)">Z(s,a,τ)</text>
+    
+    <!-- Quantile bars -->
+    <rect x="60" y="95" width="25" height="25" fill="url(#quantileGrad)" rx="2"/>
+    <rect x="100" y="85" width="25" height="35" fill="url(#quantileGrad)" rx="2"/>
+    <rect x="140" y="75" width="25" height="45" fill="url(#quantileGrad)" rx="2"/>
+    <rect x="180" y="68" width="25" height="52" fill="url(#quantileGrad)" rx="2"/>
+    <rect x="220" y="60" width="25" height="60" fill="url(#quantileGrad)" rx="2"/>
+    <rect x="260" y="55" width="25" height="65" fill="url(#quantileGrad)" rx="2"/>
+    <rect x="300" y="52" width="25" height="68" fill="url(#quantileGrad)" rx="2"/>
+    <rect x="340" y="48" width="25" height="72" fill="url(#quantileGrad)" rx="2"/>
+    <rect x="380" y="46" width="25" height="74" fill="url(#quantileGrad)" rx="2"/>
+    <rect x="420" y="44" width="25" height="76" fill="url(#quantileGrad)" rx="2"/>
+    <rect x="460" y="42" width="25" height="78" fill="url(#quantileGrad)" rx="2"/>
+    
+    <!-- Labels -->
+    <text x="72" y="135" font-family="Segoe UI, Arial, sans-serif" font-size="8" fill="#78909c" text-anchor="middle">τ₁</text>
+    <text x="265" y="135" font-family="Segoe UI, Arial, sans-serif" font-size="8" fill="#78909c" text-anchor="middle">τ_N/2</text>
+    <text x="472" y="135" font-family="Segoe UI, Arial, sans-serif" font-size="8" fill="#78909c" text-anchor="middle">τ_N</text>
+  </g>
+
+  <!-- Info Box -->
+  <g transform="translate(730, 340)">
+    <rect x="0" y="0" width="150" height="120" rx="8" fill="#E3F2FD"/>
+    <text x="75" y="22" font-family="Segoe UI, Arial, sans-serif" font-size="12" font-weight="bold" fill="#1565c0" text-anchor="middle">Key Insight</text>
+    <text x="10" y="45" font-family="Segoe UI, Arial, sans-serif" font-size="9" fill="#333">Different τ values</text>
+    <text x="10" y="60" font-family="Segoe UI, Arial, sans-serif" font-size="9" fill="#333">→ Different quantiles</text>
+    <text x="10" y="80" font-family="Segoe UI, Arial, sans-serif" font-size="9" fill="#333">Full return distribution</text>
+    <text x="10" y="95" font-family="Segoe UI, Arial, sans-serif" font-size="9" fill="#333">→ Better uncertainty</text>
+    <text x="10" y="110" font-family="Segoe UI, Arial, sans-serif" font-size="9" fill="#333">estimation</text>
+  </g>
+
+  <!-- Formula Box -->
+  <g transform="translate(730, 470)">
+    <rect x="0" y="0" width="150" height="130" rx="8" fill="#FFF3E0"/>
+    <text x="75" y="22" font-family="Segoe UI, Arial, sans-serif" font-size="12" font-weight="bold" fill="#e65100" text-anchor="middle">Quantile Huber</text>
+    <text x="75" y="50" font-family="Segoe UI, Arial, sans-serif" font-size="10" fill="#333" text-anchor="middle">ρ_τ(δ) = |τ - 𝟙(δ&lt;0)|</text>
+    <text x="75" y="70" font-family="Segoe UI, Arial, sans-serif" font-size="10" fill="#333" text-anchor="middle">× L_κ(δ) / κ</text>
+    <text x="75" y="95" font-family="Segoe UI, Arial, sans-serif" font-size="9" fill="#666" text-anchor="middle">L_κ = Huber loss</text>
+    <text x="75" y="115" font-family="Segoe UI, Arial, sans-serif" font-size="9" fill="#666" text-anchor="middle">κ = threshold (1.0)</text>
+  </g>
+
+  <!-- TensorAeroSpace branding -->
+  <text x="870" y="635" font-family="Segoe UI, Arial, sans-serif" font-size="10" fill="#9e9e9e" text-anchor="end">TensorAeroSpace</text>
+</svg>
+

@@ -76,15 +76,15 @@ class TransformerDynamicsModel(nn.Module):
 
     def __init__(
         self,
-        input_dim,
-        output_dim,
-        d_model=64,
-        nhead=4,
-        num_encoder_layers=2,
-        dim_feedforward=256,
-        dropout=0.1,
-        seq_len=1,
-    ):
+        input_dim: int,
+        output_dim: int,
+        d_model: int = 64,
+        nhead: int = 4,
+        num_encoder_layers: int = 2,
+        dim_feedforward: int = 256,
+        dropout: float = 0.1,
+        seq_len: int = 1,
+    ) -> None:
         """Initialize the transformer dynamics model.
 
         Args:

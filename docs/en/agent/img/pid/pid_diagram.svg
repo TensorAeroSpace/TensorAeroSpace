@@ -1,0 +1,104 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 320">
+  <defs>
+    <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#333"/>
+    </marker>
+    <style>
+      .box { fill: #f8f9fa; stroke: #333; stroke-width: 2; rx: 8; }
+      .pid-box { fill: #e3f2fd; stroke: #1976d2; stroke-width: 2; rx: 8; }
+      .sum-circle { fill: #fff; stroke: #333; stroke-width: 2; }
+      .text { font-family: 'Segoe UI', Arial, sans-serif; font-size: 14px; fill: #333; }
+      .text-bold { font-family: 'Segoe UI', Arial, sans-serif; font-size: 14px; fill: #333; font-weight: bold; }
+      .text-small { font-family: 'Segoe UI', Arial, sans-serif; font-size: 12px; fill: #666; }
+      .text-formula { font-family: 'Times New Roman', serif; font-size: 13px; fill: #333; font-style: italic; }
+      .arrow { stroke: #333; stroke-width: 2; fill: none; marker-end: url(#arrowhead); }
+      .title { font-family: 'Segoe UI', Arial, sans-serif; font-size: 18px; fill: #1976d2; font-weight: bold; }
+    </style>
+  </defs>
+  
+  <!-- Background -->
+  <rect width="800" height="320" fill="#ffffff"/>
+  
+  <!-- Title -->
+  <text x="400" y="30" class="title" text-anchor="middle">PID Controller Block Diagram</text>
+  
+  <!-- Reference input r(t) -->
+  <text x="30" y="150" class="text-bold">r(t)</text>
+  <text x="25" y="168" class="text-small">Reference</text>
+  
+  <!-- Arrow to summing junction -->
+  <line x1="60" y1="145" x2="100" y2="145" class="arrow"/>
+  
+  <!-- Summing junction -->
+  <circle cx="120" cy="145" r="18" class="sum-circle"/>
+  <text x="120" y="150" class="text-bold" text-anchor="middle">Σ</text>
+  <text x="108" y="138" class="text-small">+</text>
+  <text x="108" y="162" class="text-small">−</text>
+  
+  <!-- Arrow to PID -->
+  <line x1="138" y1="145" x2="180" y2="145" class="arrow"/>
+  <text x="158" y="135" class="text-small">e(t)</text>
+  
+  <!-- PID Controller Block -->
+  <rect x="180" y="80" width="200" height="130" class="pid-box"/>
+  <text x="280" y="105" class="text-bold" text-anchor="middle">PID Controller</text>
+  
+  <!-- P block -->
+  <rect x="195" y="115" width="50" height="35" class="box"/>
+  <text x="220" y="137" class="text" text-anchor="middle">Kp</text>
+  
+  <!-- I block -->
+  <rect x="255" y="115" width="50" height="35" class="box"/>
+  <text x="280" y="133" class="text-formula" text-anchor="middle">Ki∫</text>
+  
+  <!-- D block -->
+  <rect x="315" y="115" width="50" height="35" class="box"/>
+  <text x="340" y="133" class="text-formula" text-anchor="middle">Kd d/dt</text>
+  
+  <!-- Sum inside PID -->
+  <circle cx="280" cy="180" r="12" class="sum-circle"/>
+  <text x="280" y="184" class="text" text-anchor="middle">+</text>
+  
+  <!-- Internal connections -->
+  <line x1="220" y1="150" x2="220" y2="168" stroke="#666" stroke-width="1.5"/>
+  <line x1="220" y1="168" x2="268" y2="168" stroke="#666" stroke-width="1.5"/>
+  <line x1="280" y1="150" x2="280" y2="168" stroke="#666" stroke-width="1.5"/>
+  <line x1="340" y1="150" x2="340" y2="168" stroke="#666" stroke-width="1.5"/>
+  <line x1="340" y1="168" x2="292" y2="168" stroke="#666" stroke-width="1.5"/>
+  
+  <!-- Arrow from PID to Plant -->
+  <line x1="380" y1="145" x2="430" y2="145" class="arrow"/>
+  <text x="405" y="135" class="text-small">u(t)</text>
+  
+  <!-- Plant Block -->
+  <rect x="430" y="115" width="120" height="60" class="box"/>
+  <text x="490" y="140" class="text-bold" text-anchor="middle">Plant</text>
+  <text x="490" y="158" class="text-small" text-anchor="middle">(Aircraft Model)</text>
+  
+  <!-- Arrow to output -->
+  <line x1="550" y1="145" x2="620" y2="145" class="arrow"/>
+  
+  <!-- Output y(t) -->
+  <text x="630" y="150" class="text-bold">y(t)</text>
+  <text x="625" y="168" class="text-small">Output</text>
+  
+  <!-- Feedback path -->
+  <line x1="600" y1="145" x2="600" y2="250" stroke="#333" stroke-width="2"/>
+  <line x1="600" y1="250" x2="120" y2="250" stroke="#333" stroke-width="2"/>
+  <line x1="120" y1="250" x2="120" y2="163" stroke="#333" stroke-width="2" marker-end="url(#arrowhead)"/>
+  
+  <!-- Feedback label -->
+  <text x="360" y="270" class="text-small" text-anchor="middle">Feedback (measurement)</text>
+  
+  <!-- Anti-windup annotation -->
+  <rect x="195" y="195" width="170" height="25" fill="#fff3e0" stroke="#ff9800" stroke-width="1" rx="4"/>
+  <text x="280" y="212" class="text-small" text-anchor="middle" fill="#e65100">Anti-windup + Derivative on measurement</text>
+  
+  <!-- Legend -->
+  <rect x="640" y="220" width="140" height="80" fill="#fafafa" stroke="#ddd" stroke-width="1" rx="4"/>
+  <text x="710" y="240" class="text-small" text-anchor="middle" font-weight="bold">Legend</text>
+  <text x="660" y="260" class="text-small">e(t) = r(t) − y(t)</text>
+  <text x="660" y="278" class="text-small">u(t) = control signal</text>
+  <text x="660" y="296" class="text-small">y(t) = system output</text>
+</svg>
+

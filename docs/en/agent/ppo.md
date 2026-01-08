@@ -119,6 +119,25 @@ agent.save('./runs')
 - Balance `clip_pram` (typically 0.1–0.3) and `entropy_coef` for exploration
 - Multiple epochs (`num_epochs`) with smaller `batch_size` help convergence—watch for overfitting
 
+## Auxiliary Tasks {#auxiliary-tasks}
+
+The PPO implementation includes an optional **auxiliary task** mechanism for reward prediction. This auxiliary head helps the agent learn better state representations by predicting expected rewards alongside the main policy optimization.
+
+### How it works
+
+- The `Actor` network includes an additional output layer `self.r` that predicts the reward
+- The auxiliary loss is computed as MSE between predicted and actual rewards
+- This loss can be added to the main PPO loss via the `auxillary_task` method in the `Agent` class
+
+### Usage
+
+```python
+# Auxiliary task is computed separately from main training
+aux_loss = agent.auxillary_task(states, rewards)
+```
+
+The auxiliary task encourages the network to encode reward-relevant features in its hidden representations, potentially improving sample efficiency and generalization.
+
 ## API reference
 
 ::: tensoraerospace.agent.ppo.model.PPO

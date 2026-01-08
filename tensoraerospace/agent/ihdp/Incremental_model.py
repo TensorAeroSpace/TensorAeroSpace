@@ -150,6 +150,21 @@ class IncrementalModel:
         self, xt: np.ndarray, ut_0: np.ndarray
     ) -> np.ndarray:
         """Estimate F and G matrices for the incremental model (least squares)."""
+        # Normalize state shape to a column vector and validate dimensionality early.
+        # This prevents hard-to-debug NumPy broadcasting errors later when storing
+        # state deltas into fixed-size buffers.
+        xt_arr = np.asarray(xt)
+        if xt_arr.ndim == 1:
+            xt_arr = xt_arr.reshape([-1, 1])
+        elif xt_arr.ndim == 2 and xt_arr.shape[1] != 1:
+            xt_arr = xt_arr.reshape([-1, 1])
+
+        if xt_arr.shape[0] != self.number_states:
+            raise ValueError(
+                f"xt has shape {xt_arr.shape}, but incremental model expects "
+                f"({self.number_states}, 1)."
+            )
+
         # Verifying that the inputs meets the platforms constraints
         if self.time_step == 0:
             self.ut_1 = ut_0
@@ -184,7 +199,7 @@ class IncrementalModel:
         )
 
         # Store the input variables
-        self.xt = xt
+        self.xt = xt_arr
         self.ut = ut
         self.store_input[:, self.time_step] = np.reshape(ut, [ut.shape[0]])
 

@@ -90,7 +90,7 @@ docs/build/
 # PyBuilder
 .pybuilder/
 target/
-
+FAILURES.md
 # Jupyter Notebook
 .ipynb_checkpoints
 
@@ -109,6 +109,7 @@ report.md
 CURRENT_ISSUES_copy.md
 CURRENT_ISSUES.md
 analysis_feedback.md
+big_feedback.md
 # pyenv
 #   For a library or package, you might want to ignore these files since the code is
 #   intended to run in multiple environments; otherwise, check them in:

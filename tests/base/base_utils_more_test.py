@@ -33,3 +33,11 @@ def test_serialize_deserialize_env():
     restored = deserialize_env_params(data)
     assert isinstance(restored["reference_signal"], np.ndarray)
     assert isinstance(restored["alpha_states"], np.ndarray)
+
+
+def test_deserialize_env_params_leaves_unknown_keys_as_lists():
+    env = _DummyEnv()
+    data = serialize_env(env)
+    data["custom_list"] = [1, 2, 3]
+    restored = deserialize_env_params(data)
+    assert restored["custom_list"] == [1, 2, 3]

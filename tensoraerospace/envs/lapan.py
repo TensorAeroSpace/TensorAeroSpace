@@ -5,7 +5,7 @@ LAPAN Surveillance Aircraft (LSU)-05 NG model, including a legacy environment
 (``LinearLongitudinalLAPAN``) and a normalized variant (``ImprovedLAPANEnv``).
 """
 
-from typing import Any
+from typing import Any, Callable
 
 import gymnasium as gym
 import numpy as np
@@ -30,15 +30,15 @@ class LinearLongitudinalLAPAN(gym.Env):
 
     def __init__(
         self,
-        initial_state: Any,
-        reference_signal: Any,
-        number_time_steps: Any,
-        tracking_states=None,
-        state_space=None,
-        control_space=None,
-        output_space=None,
-        reward_func: Any = None,
-    ):
+        initial_state: np.ndarray,
+        reference_signal: np.ndarray,
+        number_time_steps: int,
+        tracking_states: list[str] | None = None,
+        state_space: list[str] | None = None,
+        control_space: list[str] | None = None,
+        output_space: list[str] | None = None,
+        reward_func: Callable[[np.ndarray, np.ndarray, int], float] | None = None,
+    ) -> None:
         """Initialize legacy LAPAN longitudinal environment."""
         self.max_action_value = 25.0
         self.initial_state = initial_state
@@ -87,7 +87,7 @@ class LinearLongitudinalLAPAN(gym.Env):
         self.done = False
 
     @staticmethod
-    def reward(state, ref_signal, ts):
+    def reward(state: np.ndarray, ref_signal: np.ndarray, ts: int) -> float:
         """Compute tracking reward for the current step.
 
         Args:
@@ -98,13 +98,15 @@ class LinearLongitudinalLAPAN(gym.Env):
         Returns:
             float: Reward value (lower is better in the legacy formulation).
         """
-        return np.abs(state[0] - ref_signal[:, ts])
+        return float(np.abs(state[0] - ref_signal[:, ts]))
 
-    def _get_info(self):
+    def _get_info(self) -> dict[str, float]:
         """Return auxiliary info for Gym API (currently empty)."""
         return {}
 
-    def step(self, action: np.ndarray):
+    def step(
+        self, action: np.ndarray
+    ) -> tuple[np.ndarray, float, bool, bool, dict[str, float]]:
         """Run one simulation step.
 
         Args:
@@ -127,9 +129,17 @@ class LinearLongitudinalLAPAN(gym.Env):
         )
         self.done = self.current_step >= self.number_time_steps - 2
         info = self._get_info()
-        return next_state.reshape([-1, 1]), reward, self.done, False, info
+        return (
+            next_state.reshape([-1, 1]),
+            float(reward),
+            self.done,
+            False,
+            info,
+        )
 
-    def reset(self, seed=None, options=None):
+    def reset(
+        self, seed: int | None = None, options: dict | None = None
+    ) -> tuple[np.ndarray, dict[str, float]]:
         """Reset environment state to the initial conditions.
 
         Args:
@@ -160,13 +170,13 @@ class LinearLongitudinalLAPAN(gym.Env):
         ].reshape([-1, 1])
         return observation, info
 
-    def render(self):
+    def render(self) -> None:
         """Render the environment (not implemented).
 
         Raises:
-            NotImplementedError: Always.
+            NotImplementedError: Rendering is not available.
         """
-        raise NotImplementedError()
+        raise NotImplementedError("Rendering is not implemented for LAPAN env.")
 
 
 class ImprovedLAPANEnv(gym.Env):

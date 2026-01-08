@@ -79,12 +79,12 @@ class LinearLongitudinalUAV(gym.Env):
         self.current_step = 0
         self.done = False
 
-    def _get_info(self):
+    def _get_info(self) -> dict[str, float]:
         """Return auxiliary info for Gym API (currently empty)."""
         return {}
 
     @staticmethod
-    def reward(state, ref_signal, ts):
+    def reward(state: np.ndarray, ref_signal: np.ndarray, ts: int) -> float:
         """Evaluate control performance.
 
         Args:
@@ -95,9 +95,11 @@ class LinearLongitudinalUAV(gym.Env):
         Returns:
             float: Control evaluation reward.
         """
-        return np.abs(state[0] - ref_signal[:, ts])
+        return float(np.abs(state[0] - ref_signal[:, ts]))
 
-    def step(self, action: np.ndarray):
+    def step(
+        self, action: np.ndarray
+    ) -> tuple[np.ndarray, float, bool, bool, dict[str, float]]:
         """Execute one simulation step.
 
         Args:
@@ -121,9 +123,17 @@ class LinearLongitudinalUAV(gym.Env):
         self.done = self.current_step >= self.number_time_steps - 2
         info = self._get_info()
 
-        return next_state.reshape([-1, 1]), reward, self.done, False, info
+        return (
+            next_state.reshape([-1, 1]),
+            float(reward),
+            self.done,
+            False,
+            info,
+        )
 
-    def reset(self, seed=None, options=None):
+    def reset(
+        self, seed: int | None = None, options: dict | None = None
+    ) -> tuple[np.ndarray, dict[str, float]]:
         """Reset simulation environment to initial conditions.
 
         Args:
@@ -155,10 +165,10 @@ class LinearLongitudinalUAV(gym.Env):
         ].reshape([-1, 1])
         return observation, info
 
-    def render(self):
+    def render(self) -> None:
         """Visual rendering of actions in the environment. Work in progress.
 
         Raises:
             NotImplementedError: Rendering is not yet implemented.
         """
-        raise NotImplementedError()
+        raise NotImplementedError("Rendering is not implemented for UAVEnv.")

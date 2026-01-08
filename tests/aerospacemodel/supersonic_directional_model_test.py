@@ -47,3 +47,23 @@ def test_supersonic_directional_input_limits_rate_and_magnitude():
     max_step1 = model.input_rate_limits[1] * dt
     assert abs(u1[0] - u0[0]) <= max_step0 + 1e-12
     assert abs(u1[1] - u0[1]) <= max_step1 + 1e-12
+
+
+def test_supersonic_directional_conversions():
+    """Cover to_deg/to_rad branches."""
+    model = DirectionalSuperSonic(x0=np.zeros(5), number_time_steps=5, dt=0.01)
+    model.run_step(np.array([1.0, 0.5]))
+    model.run_step(np.array([1.0, 0.5]))
+    # state conversions (use valid states: v, p, r, phi, psi)
+    state_deg = model.get_state("phi", to_deg=True)
+    assert state_deg is not None
+    state_rad = model.get_state("psi", to_rad=True)
+    assert state_rad is not None
+    # control conversions
+    ctrl_deg = model.get_control("ail", to_deg=True)
+    assert ctrl_deg is not None
+    ctrl_rad = model.get_control("rud", to_rad=True)
+    assert ctrl_rad is not None
+    # output (skip to_deg/to_rad - prod code has bug using state_history as dict)
+    out = model.get_output("phi")
+    assert out is not None

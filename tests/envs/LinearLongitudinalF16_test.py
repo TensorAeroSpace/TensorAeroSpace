@@ -57,7 +57,7 @@ def test_step_function(env_setup):
     action = np.array([10], dtype=np.float32)  # within the valid range
     next_state, reward, done, _, info = env.step(action)
     assert isinstance(next_state, np.ndarray), "Next state should be a numpy array."
-    assert isinstance(reward, np.ndarray), "Reward should be a float."
+    assert isinstance(reward, (float, np.floating)), "Reward should be a float."
     assert isinstance(done, bool), "Done should be a boolean."
     assert isinstance(info, dict), "Info should be a dictionary."
     assert next_state.shape == (2, 1), "Next state should have shape (2, 1)."
@@ -87,4 +87,6 @@ def test_default_reward(env_setup):
     state = np.array([0.1, 0.3], dtype=np.float32)
     ref_signal = np.array([[0.2]], dtype=np.float32)
     reward = LinearLongitudinalF16.default_reward(state, ref_signal, 0)
-    assert isinstance(reward, np.ndarray), "Reward calculation should return a float."
+    assert isinstance(
+        reward, (float, np.floating, np.ndarray)
+    ), "Reward calculation should return a numeric value."

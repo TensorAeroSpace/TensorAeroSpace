@@ -51,6 +51,7 @@ plugins:
               - Unity Environment: model/unity_env.md
               
             - Agents:
+              - PID: agent/pid.md
               - IHDP:
                 - Description: agent/ihdp.md
                 - Example with LinearLongitudinalF16‑v0: agent/ihdp/example.md
@@ -60,6 +61,7 @@ plugins:
               - A2C-NARX: agent/a2c_narx.md
               - PPO: agent/ppo.md
               - SAC: agent/sac.md
+              - DSAC: agent/dsac.md
               - DDPG: agent/ddpg.md
               - GAIL: agent/gail.md
               - Optimization: optimization/optuna_based.md
@@ -67,18 +69,28 @@ plugins:
                 - Overview: benchmark/bench.md
                 - Metrics: benchmark/metrics.md
                 - ARM vs x64 Testing: benchmark/arm_testing.md
+              - Comparison:
+                - PPO vs PID (B747): comparison/ppo_vs_pid_b747.md
+                - DSAC vs PID (B747): comparison/dsac_vs_pid_b747.md
+                - DSAC vs PPO vs MPC vs PID (B747): comparison/all_vs_pid_b747.md
               - Signals: signals/signals.md
             - Examples:
               - Environments: example/enviroment/gymnasium.md
               - IHDP: example/agent/ihdp/example_ihdp.md
               - SAC F16: example/agent/sac/example-sac-f16.md
               - SAC B747: example/agent/sac/example-sac-b747.md
+              - DSAC B747:
+                - Training (Step Response): example/agent/dsac/example-dsac-b747.md
+                - Training Script (Step Response): example/agent/dsac/train-dsac-b747-step-response.md
+                - Training Script (Sine Tracking): example/agent/dsac/train-dsac-b747-tracking.md
+                - Evaluation Notebook: example/agent/dsac/eval-dsac-b747.md
               - SAC Unity: example/agent/sac/example-sac-unity.md
               - Optimization: example/optimization/example_optimization.md
               - A2C-NARX: example/agent/a2c_narx/example-narx.md
-              - MPC: example/agent/mpc/example_mpc.md
-              - MPC Stochastic: example/agent/mpc/example_mpc_stochastic.md
-              - MPC Transformers: example/agent/mpc/example_transformers.md
+              - MPC:
+                - MPC + MLP (B747): example/agent/mpc/example-mpc-b747-torch-mpc-mlp.md
+                - MPC + NARX (B747): example/agent/mpc/example-mpc-b747-torch-mpc-narx.md
+                - MPC + Transformer (B747): example/agent/mpc/example-mpc-b747-torch-mpc-transformer.md
               - IHDP Failure: example/failure/ihdp-failure.md
               - Simulink:
                 - Simulink to Python: example/simulink/sim_pyth.md
@@ -129,6 +141,7 @@ plugins:
               - SUAV: model/suav.md
               - Unity окружение: model/unity_env.md
             - Алгоритмы управления:
+              - PID: agent/pid.md
               - IHDP:
                 - Описание: agent/ihdp.md
                 - Пример LinearLongitudinalF16‑v0: agent/ihdp/example.md
@@ -138,6 +151,7 @@ plugins:
               - A2C-NARX: agent/a2c_narx.md
               - PPO: agent/ppo.md
               - SAC: agent/sac.md
+              - DSAC: agent/dsac.md
               - DDPG: agent/ddpg.md
               - GAIL: agent/gail.md
               - Оптимизация: optimization/optuna_based.md
@@ -145,17 +159,27 @@ plugins:
                 - Обзор: benchmark/bench.md
                 - Метрики: benchmark/metrics.md
                 - Тестирование ARM vs x64: benchmark/arm_testing.md
+              - Сравнения:
+                - PPO vs PID (B747): comparison/ppo_vs_pid_b747.md
+                - DSAC vs PID (B747): comparison/dsac_vs_pid_b747.md
+                - DSAC vs PPO vs MPC vs PID (B747): comparison/all_vs_pid_b747.md
               - Сигналы: signals/signals.md
             - Примеры:
               - Окружения: example/enviroment/gymnasium.md
               - IHDP: example/agent/ihdp/example_ihdp.md
               - SAC F16: example/agent/sac/example-sac-f16.md
+              - DSAC B747:
+                - Обучение (ступенчатое воздействие): example/agent/dsac/example-dsac-b747.md
+                - Скрипт обучения (ступенчатое): example/agent/dsac/train-dsac-b747-step-response.md
+                - Скрипт обучения (синусоида): example/agent/dsac/train-dsac-b747-tracking.md
+                - Ноутбук оценки: example/agent/dsac/eval-dsac-b747.md
               - SAC Unity: example/agent/sac/example-sac-unity.md
               - Оптимизация: example/optimization/example_optimization.md
               - A2C-NARX: example/agent/a2c_narx/example-narx.md
-              - MPC: example/agent/mpc/example_mpc.md
-              - MPC Стохастический: example/agent/mpc/example_mpc_stochastic.md
-              - MPC Transformers: example/agent/mpc/example_transformers.md
+              - MPC:
+                - MPC + MLP (B747): example/agent/mpc/example-mpc-b747-torch-mpc-mlp.md
+                - MPC + NARX (B747): example/agent/mpc/example-mpc-b747-torch-mpc-narx.md
+                - MPC + Transformer (B747): example/agent/mpc/example-mpc-b747-torch-mpc-transformer.md
               - IHDP отказы: example/failure/ihdp-failure.md
               - Simulink:
                 - Simulink в Python: example/simulink/sim_pyth.md

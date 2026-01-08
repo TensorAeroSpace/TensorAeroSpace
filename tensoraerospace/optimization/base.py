@@ -33,7 +33,7 @@ class HyperParamOptimizationBase(ABC):
         """
         pass
 
-    def plot_parms(self, fig_size):
+    def plot_parms(self, fig_size: tuple[float, float]) -> None:
         """Plot optimization history.
 
         Args:
@@ -77,7 +77,7 @@ class HyperParamOptimizationOptuna(HyperParamOptimizationBase):
         """
         return self.study.best_trial.params
 
-    def plot_parms(self, figsize=(15, 5)):
+    def plot_parms(self, figsize: tuple[float, float] = (15.0, 5.0)) -> None:
         """Plot trial values over the optimization history.
 
         Args:

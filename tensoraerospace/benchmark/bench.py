@@ -421,7 +421,7 @@ class ControlBenchmark:
         signal_val: float,
         dt: float,
         figsize: tuple = (1800, 1200),
-    ):
+    ) -> Dict[str, Dict]:
         """Compare multiple control systems on a single interactive plot.
 
         Args:

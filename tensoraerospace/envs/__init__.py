@@ -8,6 +8,9 @@ here for convenience, and are also registered in the top-level
 
 from .b747 import ImprovedB747Env as ImprovedB747Env  # noqa: F401
 from .b747 import LinearLongitudinalB747 as LinearLongitudinalB747
+from .b747_vec_torch import (  # noqa: F401
+    ImprovedB747VecEnvTorch as ImprovedB747VecEnvTorch,
+)
 from .comsat import ComSatEnv as ComSatEnv  # noqa: F401
 from .comsat import ImprovedComSatEnv as ImprovedComSatEnv  # noqa: F401
 from .elv import ImprovedELVEnv as ImprovedELVEnv
@@ -36,6 +39,7 @@ from .x15 import LinearLongitudinalX15 as LinearLongitudinalX15
 
 __all__ = [
     "ImprovedB747Env",
+    "ImprovedB747VecEnvTorch",
     "LinearLongitudinalB747",
     "ComSatEnv",
     "ImprovedComSatEnv",

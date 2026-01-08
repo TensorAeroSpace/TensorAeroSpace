@@ -1,4 +1,5 @@
 import numpy as np
+import pytest
 
 from tensoraerospace.benchmark.function import (
     damping_degree,
@@ -33,6 +34,16 @@ def test_find_step_function_slices_and_validates():
     assert np.array_equal(c2, np.array([1, 1], dtype=float))
     assert np.array_equal(s2, np.array([12, 13], dtype=float))
 
+    with pytest.raises(ValueError):
+        find_step_function(np.array([0, 1]), np.array([0, 1, 2]), signal_val=0)
+
+    # No step found -> returns original arrays
+    c3, s3 = find_step_function(
+        np.array([0, 0], dtype=float), np.array([5, 6], dtype=float), signal_val=1.0
+    )
+    assert np.array_equal(c3, np.array([0, 0], dtype=float))
+    assert np.array_equal(s3, np.array([5, 6], dtype=float))
+
 
 def test_overshoot_simple():
     control = np.ones(100, dtype=float)
@@ -50,11 +61,23 @@ def test_settling_time_enters_and_stays():
     assert idx == 30
 
 
+def test_settling_time_returns_length_when_never_enters():
+    control = np.ones(20, dtype=float)
+    system = np.zeros(20, dtype=float)  # never within 5%
+    idx = settling_time(control, system, threshold=0.05)
+    assert idx == len(system)
+
+
 def test_damping_degree_from_peaks():
     # Peaks at 1.0, 0.8, 0.64 -> ratios 0.8/1.0 and 0.64/0.8 both 0.8 -> damping 0.2
     system = np.array([0.0, 1.0, 0.0, 0.8, 0.0, 0.64, 0.0], dtype=float)
     dd = damping_degree(system)
     assert np.isclose(dd, 0.2)
+
+
+def test_damping_degree_with_single_peak_returns_zero():
+    system = np.array([0.0, 1.0, 0.0, 0.0], dtype=float)
+    assert damping_degree(system) == 0.0
 
 
 def test_static_error_difference_of_final_means():
@@ -76,6 +99,12 @@ def test_rise_time_between_thresholds():
     system[5:] = np.linspace(0.0, 1.0, 15)
     rt = rise_time(control, system, low_threshold=0.1, high_threshold=0.9)
     assert rt is None or rt > 0
+
+
+def test_rise_time_returns_none_when_no_crossing():
+    control = np.ones(10, dtype=float)
+    system = np.zeros(10, dtype=float)  # never crosses thresholds
+    assert rise_time(control, system, low_threshold=0.1, high_threshold=0.9) is None
 
 
 def test_peak_time_returns_first_peak_or_argmax():
@@ -103,6 +132,17 @@ def test_integral_errors_and_oscillation_count_and_steady_state_value():
     control2 = np.arange(10, dtype=float)
     expected_mean = np.mean(control2[8:])
     assert np.isclose(steady_state_value(control2, percentage=0.2), expected_mean)
+
+
+def test_oscillation_count_zero_when_no_extrema_and_performance_index_nonnegative():
+    system = np.linspace(0.0, 1.0, 10)
+    assert oscillation_count(system, threshold=0.5) == 0
+
+    control = np.ones(20, dtype=float)
+    system = control * 1.1  # negative overshoot scenario
+    val = performance_index(control, system, dt=0.1)
+    assert isinstance(val, float)
+    assert val >= 0.0
 
 
 def test_performance_index_returns_scalar():

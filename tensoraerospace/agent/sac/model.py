@@ -5,6 +5,7 @@ This module defines policy and Q-network architectures used by the SAC agent.
 
 from typing import Tuple, Union
 
+import gymnasium as gym
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -159,7 +160,11 @@ class GaussianPolicy(nn.Module):
     """
 
     def __init__(
-        self, num_inputs: int, num_actions: int, hidden_dim: int, action_space=None
+        self,
+        num_inputs: int,
+        num_actions: int,
+        hidden_dim: int,
+        action_space: gym.Space | None = None,
     ):
         """Initialize Gaussian policy network and action scaling.
 
@@ -246,7 +251,11 @@ class DeterministicPolicy(nn.Module):
     """
 
     def __init__(
-        self, num_inputs: int, num_actions: int, hidden_dim: int, action_space=None
+        self,
+        num_inputs: int,
+        num_actions: int,
+        hidden_dim: int,
+        action_space: gym.Space | None = None,
     ):
         """Initialize deterministic policy network for SAC evaluation.
 

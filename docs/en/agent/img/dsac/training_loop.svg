@@ -1,0 +1,225 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 800">
+  <defs>
+    <linearGradient id="stepGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#2196F3;stop-opacity:0.95" />
+      <stop offset="100%" style="stop-color:#1565C0;stop-opacity:0.95" />
+    </linearGradient>
+    <linearGradient id="updateGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#4CAF50;stop-opacity:0.95" />
+      <stop offset="100%" style="stop-color:#2E7D32;stop-opacity:0.95" />
+    </linearGradient>
+    <linearGradient id="lossGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#FF5722;stop-opacity:0.95" />
+      <stop offset="100%" style="stop-color:#BF360C;stop-opacity:0.95" />
+    </linearGradient>
+    <linearGradient id="alphaGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#E91E63;stop-opacity:0.95" />
+      <stop offset="100%" style="stop-color:#880E4F;stop-opacity:0.95" />
+    </linearGradient>
+    <linearGradient id="targetGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#9C27B0;stop-opacity:0.95" />
+      <stop offset="100%" style="stop-color:#6A1B9A;stop-opacity:0.95" />
+    </linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="2" dy="2" stdDeviation="3" flood-opacity="0.25"/>
+    </filter>
+    <marker id="arrowBlack" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#37474F"/>
+    </marker>
+    <marker id="arrowGreen" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#2E7D32"/>
+    </marker>
+    <marker id="arrowBlue" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#1565C0"/>
+    </marker>
+  </defs>
+  
+  <!-- Background -->
+  <rect width="1000" height="800" fill="#fafafa"/>
+  
+  <!-- Title -->
+  <text x="500" y="35" font-family="Segoe UI, Arial, sans-serif" font-size="24" font-weight="bold" fill="#1a237e" text-anchor="middle">
+    DSAC Training Loop
+  </text>
+  <text x="500" y="58" font-family="Segoe UI, Arial, sans-serif" font-size="14" fill="#5c6bc0" text-anchor="middle">
+    update_parameters() — One Training Step
+  </text>
+
+  <!-- Step Numbers -->
+  <g transform="translate(30, 80)">
+    <!-- Step 1: Sample Batch -->
+    <circle cx="30" cy="30" r="25" fill="url(#stepGrad)" filter="url(#shadow)"/>
+    <text x="30" y="36" font-family="Segoe UI, Arial, sans-serif" font-size="16" font-weight="bold" fill="white" text-anchor="middle">1</text>
+    
+    <rect x="70" y="5" width="280" height="80" rx="10" fill="#E3F2FD" filter="url(#shadow)"/>
+    <text x="210" y="30" font-family="Segoe UI, Arial, sans-serif" font-size="14" font-weight="bold" fill="#1565C0" text-anchor="middle">Sample Mini-Batch</text>
+    <text x="210" y="50" font-family="Segoe UI, Arial, sans-serif" font-size="11" fill="#333" text-anchor="middle">(s, a, r, s', done) ← ReplayBuffer</text>
+    <text x="210" y="70" font-family="Segoe UI, Arial, sans-serif" font-size="10" fill="#666" text-anchor="middle">batch_size = 256</text>
+  </g>
+
+  <!-- Step 2: Compute Target -->
+  <g transform="translate(400, 80)">
+    <circle cx="30" cy="30" r="25" fill="url(#stepGrad)" filter="url(#shadow)"/>
+    <text x="30" y="36" font-family="Segoe UI, Arial, sans-serif" font-size="16" font-weight="bold" fill="white" text-anchor="middle">2</text>
+    
+    <rect x="70" y="5" width="500" height="80" rx="10" fill="#E8F5E9" filter="url(#shadow)"/>
+    <text x="320" y="28" font-family="Segoe UI, Arial, sans-serif" font-size="14" font-weight="bold" fill="#2E7D32" text-anchor="middle">Compute Target (no gradients)</text>
+    <text x="320" y="50" font-family="Segoe UI, Arial, sans-serif" font-size="11" fill="#333" text-anchor="middle">a' ~ π(s') ; Z_target = min(Z₁_target(s',a'), Z₂_target(s',a'))</text>
+    <text x="320" y="70" font-family="Segoe UI, Arial, sans-serif" font-size="11" fill="#333" text-anchor="middle">target = r + γ(1-done)(Z_target - α·log π(a'|s'))</text>
+  </g>
+
+  <!-- Step 3: Critic Update -->
+  <g transform="translate(30, 190)">
+    <circle cx="30" cy="50" r="25" fill="url(#lossGrad)" filter="url(#shadow)"/>
+    <text x="30" y="56" font-family="Segoe UI, Arial, sans-serif" font-size="16" font-weight="bold" fill="white" text-anchor="middle">3</text>
+    
+    <rect x="70" y="5" width="400" height="120" rx="10" fill="#FFF3E0" filter="url(#shadow)"/>
+    <text x="270" y="30" font-family="Segoe UI, Arial, sans-serif" font-size="14" font-weight="bold" fill="#E65100" text-anchor="middle">Update Twin Critics Z₁, Z₂</text>
+    
+    <!-- Critic 1 -->
+    <rect x="85" y="45" width="175" height="30" rx="5" fill="#FF8A65"/>
+    <text x="172" y="65" font-family="Segoe UI, Arial, sans-serif" font-size="10" fill="white" text-anchor="middle">L_Z1 = QuantileHuber(target, Z₁)</text>
+    
+    <!-- Critic 2 -->
+    <rect x="280" y="45" width="175" height="30" rx="5" fill="#FF8A65"/>
+    <text x="367" y="65" font-family="Segoe UI, Arial, sans-serif" font-size="10" fill="white" text-anchor="middle">L_Z2 = QuantileHuber(target, Z₂)</text>
+    
+    <text x="270" y="100" font-family="Segoe UI, Arial, sans-serif" font-size="11" fill="#333" text-anchor="middle">Z1_optim.step() ; Z2_optim.step()</text>
+    <text x="270" y="118" font-family="Segoe UI, Arial, sans-serif" font-size="10" fill="#666" text-anchor="middle">Gradient clipping: ±1.0</text>
+  </g>
+
+  <!-- Step 4: Freeze Critics -->
+  <g transform="translate(500, 190)">
+    <circle cx="30" cy="50" r="25" fill="#78909C" filter="url(#shadow)"/>
+    <text x="30" y="56" font-family="Segoe UI, Arial, sans-serif" font-size="16" font-weight="bold" fill="white" text-anchor="middle">4</text>
+    
+    <rect x="70" y="20" width="380" height="80" rx="10" fill="#CFD8DC" filter="url(#shadow)"/>
+    <text x="260" y="45" font-family="Segoe UI, Arial, sans-serif" font-size="14" font-weight="bold" fill="#455A64" text-anchor="middle">Freeze Critic Parameters</text>
+    <text x="260" y="68" font-family="Segoe UI, Arial, sans-serif" font-size="11" fill="#333" text-anchor="middle">for p in Z1.parameters(): p.requires_grad = False</text>
+    <text x="260" y="88" font-family="Segoe UI, Arial, sans-serif" font-size="10" fill="#666" text-anchor="middle">Prevents critic updates during actor optimization</text>
+  </g>
+
+  <!-- Step 5: Actor Update with CAPS -->
+  <g transform="translate(30, 340)">
+    <circle cx="30" cy="70" r="25" fill="url(#updateGrad)" filter="url(#shadow)"/>
+    <text x="30" y="76" font-family="Segoe UI, Arial, sans-serif" font-size="16" font-weight="bold" fill="white" text-anchor="middle">5</text>
+    
+    <rect x="70" y="5" width="480" height="160" rx="10" fill="#E8F5E9" filter="url(#shadow)"/>
+    <text x="310" y="30" font-family="Segoe UI, Arial, sans-serif" font-size="14" font-weight="bold" fill="#2E7D32" text-anchor="middle">Update Actor (Policy) with CAPS Regularization</text>
+    
+    <!-- Sample action -->
+    <rect x="85" y="45" width="200" height="25" rx="4" fill="#81C784"/>
+    <text x="185" y="62" font-family="Segoe UI, Arial, sans-serif" font-size="10" fill="white" text-anchor="middle">a_new, log_π ← sample(s, reparameterize)</text>
+    
+    <!-- CAPS Spatial -->
+    <rect x="300" y="45" width="235" height="25" rx="4" fill="#66BB6A"/>
+    <text x="417" y="62" font-family="Segoe UI, Arial, sans-serif" font-size="10" fill="white" text-anchor="middle">L_spatial = λ_s ||μ(s) - μ(s+ε)||² / B</text>
+    
+    <!-- CAPS Temporal -->
+    <rect x="85" y="78" width="200" height="25" rx="4" fill="#66BB6A"/>
+    <text x="185" y="95" font-family="Segoe UI, Arial, sans-serif" font-size="10" fill="white" text-anchor="middle">L_temporal = λ_t ||a_new - a_next||² / B</text>
+    
+    <!-- Q computation -->
+    <rect x="300" y="78" width="235" height="25" rx="4" fill="#A5D6A7"/>
+    <text x="417" y="95" font-family="Segoe UI, Arial, sans-serif" font-size="10" fill="white" text-anchor="middle">Q = min(Z₁(s,a).mean, Z₂(s,a).mean)</text>
+    
+    <!-- Policy Loss -->
+    <rect x="85" y="115" width="450" height="35" rx="5" fill="#43A047"/>
+    <text x="310" y="130" font-family="Segoe UI, Arial, sans-serif" font-size="11" fill="white" text-anchor="middle">L_policy = -(Q - α·log_π - L_spatial - L_temporal).mean()</text>
+    <text x="310" y="145" font-family="Segoe UI, Arial, sans-serif" font-size="10" fill="#c8e6c9" text-anchor="middle">policy_optim.step()</text>
+  </g>
+
+  <!-- Step 6: Unfreeze Critics -->
+  <g transform="translate(580, 340)">
+    <circle cx="30" cy="70" r="25" fill="#78909C" filter="url(#shadow)"/>
+    <text x="30" y="76" font-family="Segoe UI, Arial, sans-serif" font-size="16" font-weight="bold" fill="white" text-anchor="middle">6</text>
+    
+    <rect x="70" y="35" width="300" height="70" rx="10" fill="#CFD8DC" filter="url(#shadow)"/>
+    <text x="220" y="60" font-family="Segoe UI, Arial, sans-serif" font-size="14" font-weight="bold" fill="#455A64" text-anchor="middle">Unfreeze Critics</text>
+    <text x="220" y="85" font-family="Segoe UI, Arial, sans-serif" font-size="11" fill="#333" text-anchor="middle">p.requires_grad = True</text>
+  </g>
+
+  <!-- Step 7: Temperature Update -->
+  <g transform="translate(30, 530)">
+    <circle cx="30" cy="40" r="25" fill="url(#alphaGrad)" filter="url(#shadow)"/>
+    <text x="30" y="46" font-family="Segoe UI, Arial, sans-serif" font-size="16" font-weight="bold" fill="white" text-anchor="middle">7</text>
+    
+    <rect x="70" y="5" width="400" height="100" rx="10" fill="#FCE4EC" filter="url(#shadow)"/>
+    <text x="270" y="28" font-family="Segoe UI, Arial, sans-serif" font-size="14" font-weight="bold" fill="#C2185B" text-anchor="middle">Update Temperature α (if automatic)</text>
+    
+    <rect x="85" y="45" width="370" height="25" rx="4" fill="#F48FB1"/>
+    <text x="270" y="62" font-family="Segoe UI, Arial, sans-serif" font-size="10" fill="white" text-anchor="middle">L_α = -log_α · (log_π + H_target).detach().mean()</text>
+    
+    <text x="270" y="90" font-family="Segoe UI, Arial, sans-serif" font-size="11" fill="#333" text-anchor="middle">α = exp(log_α) ; clamp(log_α, min=log(min_α))</text>
+  </g>
+
+  <!-- Step 8: Soft Update Targets -->
+  <g transform="translate(500, 530)">
+    <circle cx="30" cy="40" r="25" fill="url(#targetGrad)" filter="url(#shadow)"/>
+    <text x="30" y="46" font-family="Segoe UI, Arial, sans-serif" font-size="16" font-weight="bold" fill="white" text-anchor="middle">8</text>
+    
+    <rect x="70" y="5" width="380" height="100" rx="10" fill="#F3E5F5" filter="url(#shadow)"/>
+    <text x="260" y="28" font-family="Segoe UI, Arial, sans-serif" font-size="14" font-weight="bold" fill="#7B1FA2" text-anchor="middle">Soft Update Target Networks</text>
+    
+    <rect x="85" y="45" width="350" height="25" rx="4" fill="#BA68C8"/>
+    <text x="260" y="62" font-family="Segoe UI, Arial, sans-serif" font-size="10" fill="white" text-anchor="middle">θ_target = τ·θ + (1-τ)·θ_target  (τ=0.005)</text>
+    
+    <text x="260" y="90" font-family="Segoe UI, Arial, sans-serif" font-size="11" fill="#333" text-anchor="middle">if updates % target_update_interval == 0</text>
+  </g>
+
+  <!-- Flow Arrows -->
+  <path d="M360 130 L400 130" stroke="#1565C0" stroke-width="2" fill="none" marker-end="url(#arrowBlue)"/>
+  <path d="M500 165 L500 190" stroke="#2E7D32" stroke-width="2" fill="none" marker-end="url(#arrowGreen)"/>
+  <path d="M270 320 L270 340" stroke="#E65100" stroke-width="2" fill="none" marker-end="url(#arrowBlack)"/>
+  <path d="M480 270 L530 270" stroke="#78909C" stroke-width="2" fill="none" marker-end="url(#arrowBlack)"/>
+  <path d="M690 280 L690 340" stroke="#78909C" stroke-width="2" fill="none" marker-end="url(#arrowBlack)"/>
+  <path d="M310 510 L310 530" stroke="#2E7D32" stroke-width="2" fill="none" marker-end="url(#arrowGreen)"/>
+  <path d="M560 420 L560 530" stroke="#78909C" stroke-width="2" fill="none" marker-end="url(#arrowBlack)"/>
+  <path d="M480 580 L530 580" stroke="#C2185B" stroke-width="2" fill="none" marker-end="url(#arrowBlack)"/>
+
+  <!-- Hyperparameters Box -->
+  <g transform="translate(30, 660)">
+    <rect x="0" y="0" width="450" height="110" rx="10" fill="#ECEFF1" filter="url(#shadow)"/>
+    <text x="225" y="25" font-family="Segoe UI, Arial, sans-serif" font-size="14" font-weight="bold" fill="#37474f" text-anchor="middle">Key Hyperparameters</text>
+    
+    <text x="20" y="50" font-family="Segoe UI, Arial, sans-serif" font-size="10" fill="#333">• batch_size: 256</text>
+    <text x="20" y="68" font-family="Segoe UI, Arial, sans-serif" font-size="10" fill="#333">• γ (gamma): 0.99</text>
+    <text x="20" y="86" font-family="Segoe UI, Arial, sans-serif" font-size="10" fill="#333">• τ (soft update): 0.005</text>
+    <text x="20" y="104" font-family="Segoe UI, Arial, sans-serif" font-size="10" fill="#333">• learning_rate: 4.4e-4</text>
+    
+    <text x="170" y="50" font-family="Segoe UI, Arial, sans-serif" font-size="10" fill="#333">• num_quantiles: 8-64</text>
+    <text x="170" y="68" font-family="Segoe UI, Arial, sans-serif" font-size="10" fill="#333">• huber_threshold: 1.0</text>
+    <text x="170" y="86" font-family="Segoe UI, Arial, sans-serif" font-size="10" fill="#333">• caps_lambda_smoothness: 400</text>
+    <text x="170" y="104" font-family="Segoe UI, Arial, sans-serif" font-size="10" fill="#333">• caps_lambda_temporal: 400</text>
+
+    <text x="350" y="50" font-family="Segoe UI, Arial, sans-serif" font-size="10" fill="#333">• caps_noise_std: 0.05</text>
+    <text x="350" y="68" font-family="Segoe UI, Arial, sans-serif" font-size="10" fill="#333">• target_entropy: -dim(A)</text>
+    <text x="350" y="86" font-family="Segoe UI, Arial, sans-serif" font-size="10" fill="#333">• updates_per_step: 1</text>
+    <text x="350" y="104" font-family="Segoe UI, Arial, sans-serif" font-size="10" fill="#333">• warmup_steps: 10000</text>
+  </g>
+
+  <!-- Risk Distortion Box -->
+  <g transform="translate(510, 660)">
+    <rect x="0" y="0" width="460" height="110" rx="10" fill="#FFF8E1" filter="url(#shadow)"/>
+    <text x="230" y="25" font-family="Segoe UI, Arial, sans-serif" font-size="14" font-weight="bold" fill="#F57C00" text-anchor="middle">Risk Distortion Functions</text>
+    
+    <rect x="15" y="40" width="100" height="25" rx="4" fill="#FFE082"/>
+    <text x="65" y="57" font-family="Segoe UI, Arial, sans-serif" font-size="10" fill="#333" text-anchor="middle">neutral</text>
+    
+    <rect x="125" y="40" width="100" height="25" rx="4" fill="#FFE082"/>
+    <text x="175" y="57" font-family="Segoe UI, Arial, sans-serif" font-size="10" fill="#333" text-anchor="middle">CVaR</text>
+    
+    <rect x="235" y="40" width="100" height="25" rx="4" fill="#FFE082"/>
+    <text x="285" y="57" font-family="Segoe UI, Arial, sans-serif" font-size="10" fill="#333" text-anchor="middle">CPW</text>
+    
+    <rect x="345" y="40" width="100" height="25" rx="4" fill="#FFE082"/>
+    <text x="395" y="57" font-family="Segoe UI, Arial, sans-serif" font-size="10" fill="#333" text-anchor="middle">Wang</text>
+    
+    <text x="230" y="85" font-family="Segoe UI, Arial, sans-serif" font-size="10" fill="#666" text-anchor="middle">Distorts τ distribution for risk-sensitive policy optimization</text>
+    <text x="230" y="102" font-family="Segoe UI, Arial, sans-serif" font-size="10" fill="#666" text-anchor="middle">Used in actor update: Q = Z(s, a, distort(τ)).mean()</text>
+  </g>
+
+  <!-- TensorAeroSpace branding -->
+  <text x="970" y="785" font-family="Segoe UI, Arial, sans-serif" font-size="10" fill="#9e9e9e" text-anchor="end">TensorAeroSpace</text>
+</svg>
+
