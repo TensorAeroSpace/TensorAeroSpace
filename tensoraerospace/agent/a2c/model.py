@@ -14,7 +14,6 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from torch.utils.tensorboard import SummaryWriter
 from tqdm import tqdm
 
 from ..base import (
@@ -23,6 +22,7 @@ from ..base import (
     get_class_from_string,
     serialize_env,
 )
+from ..metrics import create_metric_writer
 from .narx_critic import build_narx_features
 
 
@@ -350,7 +350,7 @@ class A2C(BaseRLModel):
             self.critic.parameters(), lr=self.critic_lr
         )
 
-        self.writer = SummaryWriter()
+        self.writer = create_metric_writer()
 
         print(f"A2C initialized on device: {self.device}")
 

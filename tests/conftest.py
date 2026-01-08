@@ -20,6 +20,12 @@ from pathlib import Path
 
 import pytest
 
+# Ensure the repository root is importable even when tests change cwd to /tmp
+# and/or when pytest uses importlib import mode.
+_REPO_ROOT = Path(__file__).resolve().parents[1]
+if str(_REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(_REPO_ROOT))
+
 
 def _tmp_root_prefer_tmp() -> Path:
     """Prefer /tmp when available (Linux CI/local), otherwise fallback."""
