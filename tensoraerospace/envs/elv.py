@@ -176,9 +176,9 @@ class LinearLongitudinalELVRocket(gym.Env):
         """Visual display of actions in the environment. Status: WIP.
 
         Raises:
-            NotImplementedError
+            NotImplementedError: Rendering is not implemented for this environment.
         """
-        raise NotImplementedError()
+        raise NotImplementedError("Rendering is not implemented for ELVEnv.")
 
 
 class ImprovedELVEnv(gym.Env):

@@ -124,7 +124,9 @@ class GeoSat(ModelBase):
             ]
         )
 
-    def initialise_system(self, x0, number_time_steps):
+    def initialise_system(
+        self, x0: np.ndarray | list[float], number_time_steps: int
+    ) -> None:
         """Initialize the system and allocate history buffers.
 
         Args:

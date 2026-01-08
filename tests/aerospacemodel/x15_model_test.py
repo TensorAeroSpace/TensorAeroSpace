@@ -1,4 +1,5 @@
 import numpy as np
+import pytest
 
 from tensoraerospace.aerospacemodel.x15 import LongitudinalX15
 
@@ -18,3 +19,45 @@ def test_x15_initialization_and_run_step():
     assert model.get_state("theta").shape[0] == steps - 1
     assert model.get_control("ele").shape[0] == steps - 1
     assert model.get_output("q").shape[0] == model.time_step - 1
+
+
+def test_x15_multiple_steps():
+    """Cover time_step != 0 branch."""
+    model = LongitudinalX15(x0=np.zeros(4), number_time_steps=5, dt=0.01)
+    model.run_step(np.array([5.0]))
+    x2 = model.run_step(np.array([50.0]))
+    assert x2.shape[0] == 4
+    assert model.time_step == 2
+
+
+def test_x15_get_state_conversions():
+    """Cover to_deg/to_rad branches and aliases."""
+    model = LongitudinalX15(x0=np.zeros(4), number_time_steps=5, dt=0.01)
+    model.run_step(np.array([1.0]))
+    model.run_step(np.array([1.0]))
+    state_deg = model.get_state("wz", to_deg=True)
+    assert state_deg is not None
+    state_rad = model.get_state("theta", to_rad=True)
+    assert state_rad is not None
+
+
+def test_x15_get_control_conversions():
+    """Cover to_deg/to_rad and alias branches."""
+    model = LongitudinalX15(x0=np.zeros(4), number_time_steps=5, dt=0.01)
+    model.run_step(np.array([1.0]))
+    model.run_step(np.array([1.0]))
+    ctrl_deg = model.get_control("stab", to_deg=True)
+    assert ctrl_deg is not None
+    ctrl_rad = model.get_control("ele", to_rad=True)
+    assert ctrl_rad is not None
+
+
+def test_x15_get_output_conversions():
+    """Cover to_deg/to_rad branches in get_output."""
+    model = LongitudinalX15(x0=np.zeros(4), number_time_steps=5, dt=0.01)
+    model.run_step(np.array([1.0]))
+    model.run_step(np.array([1.0]))
+    out_deg = model.get_output("q", to_deg=True)
+    assert out_deg is not None
+    out_rad = model.get_output("theta", to_rad=True)
+    assert out_rad is not None

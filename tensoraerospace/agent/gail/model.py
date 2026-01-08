@@ -136,7 +136,15 @@ class Discriminator(nn.Module):
 class GAIL:
     """Generative Adversarial Imitation Learning trainer."""
 
-    def __init__(self, env, learning_rate, max_steps, mini_batch_size, epochs, data):
+    def __init__(
+        self,
+        env: gym.Env,
+        learning_rate: float,
+        max_steps: int,
+        mini_batch_size: int,
+        epochs: int,
+        data: np.ndarray,
+    ):
         """Initialize the GAIL algorithm.
 
         Args:
@@ -166,13 +174,13 @@ class GAIL:
         self.optimizer = optim.Adam(self.model.parameters(), lr=self.lr)
         self.optimizer_discrim = optim.Adam(self.discriminator.parameters(), lr=self.lr)
 
-    def expert_reward(self, state, action):
+    def expert_reward(self, state: torch.Tensor, action: np.ndarray) -> np.ndarray:
         """Compute imitation reward using the discriminator."""
         state = state.cpu().numpy()
         state_action = torch.FloatTensor(np.concatenate([state, action], 1)).to(device)
         return -np.log(self.discriminator(state_action).cpu().data.numpy())
 
-    def test_env(self):
+    def test_env(self) -> float:
         """Run one evaluation rollout and return total reward."""
         state = self.env.reset()[0].reshape(1, -1)
         done = False
@@ -190,15 +198,15 @@ class GAIL:
 
     def ppo_update(
         self,
-        ppo_epochs,
-        mini_batch_size,
-        states,
-        actions,
-        log_probs,
-        returns,
-        advantages,
-        clip_param=0.2,
-    ):
+        ppo_epochs: int,
+        mini_batch_size: int,
+        states: torch.Tensor,
+        actions: torch.Tensor,
+        log_probs: torch.Tensor,
+        returns: torch.Tensor,
+        advantages: torch.Tensor,
+        clip_param: float = 0.2,
+    ) -> None:
         """PPO update function.
 
         Args:
@@ -234,7 +242,7 @@ class GAIL:
                 loss.backward()
                 self.optimizer.step()
 
-    def learn(self, max_frames, max_reward):
+    def learn(self, max_frames: int, max_reward: float) -> None:
         """Agent training function.
 
         Args:

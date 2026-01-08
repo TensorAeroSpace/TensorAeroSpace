@@ -11,9 +11,13 @@ from .a3c import setup_global_params as setup_global_params  # noqa: F401
 from .ddpg.model import DDPG as DDPG  # noqa: F401
 from .dqn.model import DQNAgent as DQNAgent  # noqa: F401
 from .dqn.model import Model as Model  # noqa: F401
+from .dsac.dsac import DSAC as DSAC  # noqa: F401
 from .gail.model import GAIL as GAIL  # noqa: F401
 from .ihdp.model import IHDPAgent as IHDPAgent  # noqa: F401
-from .mpc.base import AircraftMPC as AircraftMPC  # noqa: F401
-from .mpc.dynamics import DynamicsNN as DynamicsNN  # noqa: F401
+
+# Backward compatibility alias
+from .mpc.mpc import MPC as MPC  # noqa: F401
+from .mpc.mpc import MPCAgent as MPCAgent  # noqa: F401
+from .mpc.mpc import MPCAgent as TorchMPCAgent
 from .ppo.model import PPO as PPO  # noqa: F401
 from .sac.sac import SAC as SAC  # noqa: F401

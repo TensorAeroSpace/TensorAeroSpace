@@ -101,6 +101,7 @@ agent = PPO(
     actor_lr=3e-4,  # Actor learning rate
     critic_lr=1e-3,  # Critic learning rate
     seed=336699,
+    device=DEVICE,
 )
 
 print(f"Actor parameters: {sum(p.numel() for p in agent.actor.parameters())}")
@@ -120,7 +121,7 @@ ckpt_path = os.path.join("runs", "ppo_b747_improved", "ppo_checkpoint.pt")
 if os.path.isfile(ckpt_path):
     try:
         print(f"Loading checkpoint from: {ckpt_path}")
-        checkpoint = torch.load(ckpt_path)
+        checkpoint = torch.load(ckpt_path, map_location=DEVICE)
         agent.actor.load_state_dict(checkpoint["actor_state_dict"])
         agent.critic.load_state_dict(checkpoint["critic_state_dict"])
         agent.a_opt.load_state_dict(checkpoint["actor_optimizer_state_dict"])

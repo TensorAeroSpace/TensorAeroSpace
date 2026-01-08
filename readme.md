@@ -11,6 +11,7 @@
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![GitHub stars](https://img.shields.io/github/stars/tensoraerospace/tensoraerospace.svg)](https://github.com/tensoraerospace/tensoraerospace/stargazers)
 [![Coverage Status](https://coveralls.io/repos/github/TensorAeroSpace/TensorAeroSpace/badge.svg?branch=develop)](https://coveralls.io/github/TensorAeroSpace/TensorAeroSpace?branch=develop)
+
 ![TensorAeroSpace Logo](./img/logo-no-background.png)
 
 **Advanced Aerospace Control Systems & Reinforcement Learning Framework**
@@ -33,7 +34,27 @@
 - 🧠 **RL Algorithms**: State-of-the-art reinforcement learning implementations
 - 🔧 **Extensible Architecture**: Easy to extend and customize for your specific needs
 
+## 🧭 Applied Use Cases
+
+1. **Automatic Aircraft & UAV Control** — stabilization, trajectory tracking, pitch/yaw angle control for F‑16, B747, X‑15, Ultrastick.
+2. **Rocket & Spacecraft Control** — linearized models of ELV, Typical Rocket, geostationary satellites, launch phase optimization.
+3. **Hybrid PID/MPC + RL Controllers** — tuning hybrid controllers, integrating SAC/DSAC/PPO/A3C for longitudinal motion tasks.
+4. **Hyperparameter Optimization & Benchmarking** — automated tuning of IHDP/NARX agents, running benchmark series, and metrics visualization.
+5. **Digital Twin Integration** — Unity ML‑Agents, MATLAB/Simulink, export to UnityAirplaneEnvironment and simulink-example.
+6. **Diagnostics & Robustness Methods** — fault analysis, controllability range assessment, dataset preparation for GAIL/Benchmark.
+
 ## 🚀 Quick Start
+
+### ✅ Minimum Technical Requirements
+
+| Component | Minimum | Recommended |
+| --- | --- | --- |
+| **OS** | Linux x86_64, Windows 10, macOS 13 | Ubuntu 22.04 LTS / Windows 11 |
+| **CPU** | 4 cores, AVX | 8+ cores, AVX2/FMA |
+| **RAM** | 8 GB | 16–32 GB for RL/Simulink |
+| **GPU** | Optional | NVIDIA RTX with ≥8 GB VRAM for SAC/DSAC/PPO, CUDA 12.2 support |
+| **Python** | 3.8–3.11 | 3.10/3.11 |
+| **Additional** | Git, Poetry or pip, Docker (optional) | MATLAB/Simulink R2022b+ (for simulink-example), Unity 2021.3.5f1/2023.2.20f1 |
 
 ### 📦 Installation
 
@@ -50,12 +71,34 @@ pip install tensoraerospace
 ```
 
 #### 🐳 Docker
+The image starts **JupyterLab by default** (see `Dockerfile` CMD).
+
+**Ubuntu / Linux (bash):**
+
 ```bash
 docker build -t tensoraerospace . --platform=linux/amd64
-# launch Jupyter Lab inside the container so you can open example/quickstart.ipynb
-docker run -v $(pwd)/example:/app/example \
-  -p 8888:8888 -it tensoraerospace \
-  jupyter lab --notebook-dir=/app --ip=0.0.0.0 --no-browser --allow-root
+docker run --rm -it -p 8888:8888 \
+  -v "$(pwd)/example:/app/example" \
+  tensoraerospace
+
+# Optional: enable NVIDIA GPU inside the container
+docker run --rm -it --gpus all -p 8888:8888 \
+  -v "$(pwd)/example:/app/example" \
+  tensoraerospace
+```
+
+**Windows (PowerShell):**
+
+```powershell
+docker build -t tensoraerospace . --platform=linux/amd64
+docker run --rm -it -p 8888:8888 `
+  -v "${PWD}\example:/app/example" `
+  tensoraerospace
+
+# Optional: enable NVIDIA GPU inside the container
+docker run --rm -it --gpus all -p 8888:8888 `
+  -v "${PWD}\example:/app/example" `
+  tensoraerospace
 ```
 > Open the printed URL (default `http://127.0.0.1:8888`) and navigate to `example/quickstart.ipynb` to run the SAC walkthrough inside Docker.
 
@@ -144,6 +187,7 @@ for t in range(N - 1):
 | **DQN** | Deep Q-Learning | ❌ | ✅ |
 | **DDPG** | Deep Deterministic Policy Gradient | ❌ | ✅ |
 | **SAC** | Soft Actor-Critic | ✅ | ✅ |
+| **DSAC** | Distributional Soft Actor-Critic | ✅ | ✅ |
 | **A3C** | Asynchronous Advantage Actor-Critic | ❌ | ✅ |
 | **PPO** | Proximal Policy Optimization | ✅ | ✅ |
 | **GAIL** | Imitation Learning (Adversarial) | ❌ | ✅ |
@@ -189,7 +233,7 @@ for t in range(N - 1):
 
 <div align="center">
 
-![Unity Demo](./docs/example/env/img/img_demo_unity.gif)
+![Unity Demo](docs/en/model/img/img_demo_unity.gif)
 
 </div>
 
@@ -204,7 +248,7 @@ TensorAeroSpace seamlessly integrates with Unity ML-Agents for immersive 3D simu
 
 ### 🔧 MATLAB Simulink Support
 
-![Simulink Model](docs/example/simulink/img/model.png)
+![Simulink Model](docs/en/example/simulink/img/model.png)
 
 - 📐 **Model Import**: Convert Simulink models to Python
 - ⚡ **High Performance**: Compiled C++ integration

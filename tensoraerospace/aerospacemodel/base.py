@@ -13,6 +13,8 @@ Main capabilities:
     - Support for various data formats
 """
 
+import warnings
+
 import matplotlib.pyplot as plt
 import numpy as np
 
@@ -203,6 +205,19 @@ class ModelBase:
         Example:
             >>> plot = model.plot_by_state('alpha', time, to_deg=True, figsize=(5,4))
         """
+        # Backwards-compatible guard:
+        # Some older examples passed a reference signal as the 3rd positional argument
+        # (e.g. plot_state('wz', tps, reference_signals[0], ...)). The 3rd argument is
+        # actually `lang` (a string), so we ignore non-string values and keep defaults.
+        if not isinstance(lang, str):
+            warnings.warn(
+                "`plot_state` expects `lang` (str) as the 3rd argument. "
+                "It looks like a reference signal was passed; this value will be ignored. "
+                "Use `plot_transient_process(state_name, time, ref_signal, ...)` to plot a reference.",
+                UserWarning,
+            )
+            lang = "rus"
+
         state_hist = self.get_state(state_name, to_deg, to_rad)
         if lang == "rus":
             label = state_to_latex_rus[state_name]

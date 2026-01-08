@@ -79,12 +79,12 @@ class GeoSatEnv(gym.Env):
         self.current_step = 0
         self.done = False
 
-    def _get_info(self):
+    def _get_info(self) -> dict[str, float]:
         """Return auxiliary info for Gym API (currently empty)."""
         return {}
 
     @staticmethod
-    def reward(state, ref_signal, ts):
+    def reward(state: np.ndarray, ref_signal: np.ndarray, ts: int) -> float:
         """Evaluate control performance.
 
         Args:
@@ -97,7 +97,9 @@ class GeoSatEnv(gym.Env):
         """
         return float(np.abs(state[0] - ref_signal[:, ts]).item())
 
-    def step(self, action: np.ndarray):
+    def step(
+        self, action: np.ndarray
+    ) -> tuple[np.ndarray, float, bool, bool, dict[str, float]]:
         """Execute one simulation step.
 
         Args:
@@ -123,13 +125,15 @@ class GeoSatEnv(gym.Env):
 
         return (
             next_state.astype(np.float32).reshape([-1, 1]),
-            reward,
+            float(reward),
             self.done,
             False,
             info,
         )
 
-    def reset(self, seed=None, options=None):
+    def reset(
+        self, seed: int | None = None, options: dict | None = None
+    ) -> tuple[np.ndarray, dict[str, float]]:
         """Reset simulation environment to initial conditions.
 
         Args:
@@ -161,10 +165,10 @@ class GeoSatEnv(gym.Env):
         ].reshape([-1, 1])
         return observation, info
 
-    def render(self):
+    def render(self) -> None:
         """Visual rendering of actions in the environment. Work in progress.
 
         Raises:
             NotImplementedError: Rendering is not yet implemented.
         """
-        raise NotImplementedError()
+        raise NotImplementedError("Rendering is not implemented for GeoSatEnv.")

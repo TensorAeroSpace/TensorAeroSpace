@@ -11,10 +11,19 @@ Main components:
     - Methods for flight dynamics simulation and analysis
 """
 
-import matplotlib.pyplot as plt
+from typing import TYPE_CHECKING
+
 import numpy as np
-from matplotlib.figure import Figure
 from scipy.signal import cont2discrete
+
+try:
+    import matplotlib.pyplot as plt
+except ModuleNotFoundError:  # pragma: no cover
+    # Plotting is optional; simulation/model usage should not require matplotlib.
+    plt = None  # type: ignore[assignment]
+
+if TYPE_CHECKING:  # pragma: no cover
+    from matplotlib.figure import Figure
 
 from .base import ModelBase
 from .f16.nonlinear.utils import output2dict
@@ -329,7 +338,7 @@ class LongitudinalB747(ModelBase):
         to_deg: bool = False,
         to_rad: bool = False,
         figsize: tuple = (10, 10),
-    ) -> Figure:
+    ) -> "Figure":
         """Plot an output signal over time.
 
         Args:
@@ -346,6 +355,11 @@ class LongitudinalB747(ModelBase):
         Raises:
             Exception: If invalid formatting is requested or the signal is not found.
         """
+        if plt is None:
+            raise ModuleNotFoundError(
+                "matplotlib is required for plot_output(). "
+                "Install it with `pip install matplotlib`."
+            )
         if to_rad and to_deg:
             raise Exception(
                 "Неверно указано форматирование, укажите один из типов: to_rad или to_deg."

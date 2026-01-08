@@ -167,7 +167,7 @@ env.model.plot_transient_process('alpha', tps, reference_signals[0], to_deg=True
 
 <!-- markdownlint-disable MD046 -->
 ```python
-env.model.plot_state('wz', tps, reference_signals[0], to_deg=True, figsize=(15, 4))
+env.model.plot_state('wz', tps, to_deg=True, figsize=(15, 4))
 ```
 <!-- markdownlint-enable MD046 -->
 

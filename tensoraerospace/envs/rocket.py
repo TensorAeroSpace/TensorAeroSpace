@@ -170,9 +170,9 @@ class LinearLongitudinalMissileModel(gym.Env):
         """Visual display of actions in the environment. Status: WIP.
 
         Raises:
-            NotImplementedError
+            NotImplementedError: Rendering is not implemented.
         """
-        raise NotImplementedError()
+        raise NotImplementedError("Rendering is not implemented for RocketEnv.")
 
 
 class ImprovedMissileEnv(gym.Env):
