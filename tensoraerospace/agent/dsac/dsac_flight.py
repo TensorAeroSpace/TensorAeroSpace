@@ -943,7 +943,19 @@ class DSAC(BaseRLModel):
         else:
             env = get_class_from_string(env_name)()
 
-        new_agent = cls(env=env, **config["policy"]["params"])
+        # --- rebuild policy params with safe device fallback
+        policy_params = dict(config["policy"]["params"])
+        if "device" in policy_params:
+            dev = str(policy_params["device"])
+            if dev == "cuda" and not torch.cuda.is_available():
+                dev = "cpu"
+            if dev == "mps" and not (
+                hasattr(torch.backends, "mps") and torch.backends.mps.is_available()
+            ):
+                dev = "cpu"
+            policy_params["device"] = dev
+
+        new_agent = cls(env=env, **policy_params)
 
         if new_agent.device.type == "cuda" and not torch.cuda.is_available():
             new_agent.device = torch.device("cpu")
