@@ -91,9 +91,9 @@ class NARX(nn.Module):
 
 
 class NARXDynamicsModel(nn.Module):
-    """TorchMPCAgent-compatible NARX dynamics model.
+    """MPCAgent-compatible NARX dynamics model.
 
-    `TorchMPCAgent` expects learned dynamics modules with signature:
+    `MPCAgent` expects learned dynamics modules with signature:
 
         y = model(xu), where xu = concat([x, u])
 

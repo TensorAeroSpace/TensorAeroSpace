@@ -1,15 +1,10 @@
 import numpy as np
 import torch
 
-from tensoraerospace.agent.mpc.torch_mpc import (
-    TorchMPC,
-    TorchMPCAgent,
-    TorchMPCConstraints,
-    TorchMPCWeights,
-)
+from tensoraerospace.agent.mpc.mpc import MPC, MPCAgent, MPCConstraints, MPCWeights
 
 
-def test_torch_mpc_shapes_and_constraints():
+def test_mpc_shapes_and_constraints():
     torch.manual_seed(0)
 
     # Simple 2D system: x_next = x + [u, 0]
@@ -19,18 +14,18 @@ def test_torch_mpc_shapes_and_constraints():
     horizon = 6
     u_max = 0.5
     du_max = 0.1
-    mpc = TorchMPC(
+    mpc = MPC(
         dynamics=dyn,
         state_dim=2,
         action_dim=1,
         horizon=horizon,
-        weights=TorchMPCWeights(
+        weights=MPCWeights(
             Q_diag=np.array([10.0, 0.0], dtype=np.float32),
             R_diag=np.array([0.1], dtype=np.float32),
             S_diag=np.array([0.5], dtype=np.float32),
             terminal_weight=1.0,
         ),
-        constraints=TorchMPCConstraints(
+        constraints=MPCConstraints(
             u_min=np.array([-u_max], dtype=np.float32),
             u_max=np.array([u_max], dtype=np.float32),
             du_min=np.array([-du_max], dtype=np.float32),
@@ -59,16 +54,16 @@ def test_torch_mpc_shapes_and_constraints():
     assert np.all(du >= -du_max - 1e-6)
 
 
-def test_torch_mpc_warm_start_reset():
+def test_mpc_warm_start_reset():
     def dyn(x: torch.Tensor, u: torch.Tensor) -> torch.Tensor:
         return x + u
 
-    mpc = TorchMPC(
+    mpc = MPC(
         dynamics=dyn,
         state_dim=1,
         action_dim=1,
         horizon=3,
-        weights=TorchMPCWeights(
+        weights=MPCWeights(
             Q_diag=np.array([1.0], dtype=np.float32),
             R_diag=np.array([0.1], dtype=np.float32),
             S_diag=np.array([0.0], dtype=np.float32),
@@ -99,7 +94,7 @@ class _BoxSpace:
 
 
 class _SimpleEnv:
-    """Tiny gym-like env for smoke-testing TorchMPCAgent."""
+    """Tiny gym-like env for smoke-testing MPCAgent."""
 
     def __init__(self) -> None:
         self.observation_space = _BoxSpace(
@@ -133,9 +128,9 @@ class _SimpleEnv:
         return self._x.copy(), reward, terminated, truncated, {}
 
 
-def test_torch_mpc_agent_collect_and_train_smoke():
+def test_mpc_agent_collect_and_train_smoke():
     env = _SimpleEnv()
-    agent = TorchMPCAgent(
+    agent = MPCAgent(
         env,
         horizon=6,
         iters=5,

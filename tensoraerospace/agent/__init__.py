@@ -14,8 +14,10 @@ from .dqn.model import Model as Model  # noqa: F401
 from .dsac.dsac import DSAC as DSAC  # noqa: F401
 from .gail.model import GAIL as GAIL  # noqa: F401
 from .ihdp.model import IHDPAgent as IHDPAgent  # noqa: F401
-from .mpc.base import AircraftMPC as AircraftMPC  # noqa: F401
-from .mpc.dynamics import DynamicsNN as DynamicsNN  # noqa: F401
-from .mpc.torch_mpc import TorchMPCAgent as TorchMPCAgent  # noqa: F401
+
+# Backward compatibility alias
+from .mpc.mpc import MPC as MPC  # noqa: F401
+from .mpc.mpc import MPCAgent as MPCAgent  # noqa: F401
+from .mpc.mpc import MPCAgent as TorchMPCAgent
 from .ppo.model import PPO as PPO  # noqa: F401
 from .sac.sac import SAC as SAC  # noqa: F401

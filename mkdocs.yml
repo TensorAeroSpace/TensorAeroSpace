@@ -86,9 +86,10 @@ plugins:
               - SAC Unity: example/agent/sac/example-sac-unity.md
               - Optimization: example/optimization/example_optimization.md
               - A2C-NARX: example/agent/a2c_narx/example-narx.md
-              - MPC: example/agent/mpc/example_mpc.md
-              - MPC Stochastic: example/agent/mpc/example_mpc_stochastic.md
-              - MPC Transformers: example/agent/mpc/example_transformers.md
+              - MPC:
+                - MPC + MLP (B747): example/agent/mpc/example-mpc-b747-torch-mpc-mlp.md
+                - MPC + NARX (B747): example/agent/mpc/example-mpc-b747-torch-mpc-narx.md
+                - MPC + Transformer (B747): example/agent/mpc/example-mpc-b747-torch-mpc-transformer.md
               - IHDP Failure: example/failure/ihdp-failure.md
               - Simulink:
                 - Simulink to Python: example/simulink/sim_pyth.md
@@ -173,9 +174,10 @@ plugins:
               - SAC Unity: example/agent/sac/example-sac-unity.md
               - Оптимизация: example/optimization/example_optimization.md
               - A2C-NARX: example/agent/a2c_narx/example-narx.md
-              - MPC: example/agent/mpc/example_mpc.md
-              - MPC Стохастический: example/agent/mpc/example_mpc_stochastic.md
-              - MPC Transformers: example/agent/mpc/example_transformers.md
+              - MPC:
+                - MPC + MLP (B747): example/agent/mpc/example-mpc-b747-torch-mpc-mlp.md
+                - MPC + NARX (B747): example/agent/mpc/example-mpc-b747-torch-mpc-narx.md
+                - MPC + Transformer (B747): example/agent/mpc/example-mpc-b747-torch-mpc-transformer.md
               - IHDP отказы: example/failure/ihdp-failure.md
               - Simulink:
                 - Simulink в Python: example/simulink/sim_pyth.md

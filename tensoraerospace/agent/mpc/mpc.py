@@ -29,7 +29,7 @@ ExtraCostFn = Callable[
 
 
 @dataclass(frozen=True)
-class TorchMPCTrackingExtraCostConfig:
+class MPCTrackingExtraCostConfig:
     """Extra cost for generic reference tracking.
 
     This is applied in addition to the quadratic MPC objective.
@@ -41,7 +41,7 @@ class TorchMPCTrackingExtraCostConfig:
 
 
 @dataclass(frozen=True)
-class TorchMPCStepResponseExtraCostConfig:
+class MPCStepResponseExtraCostConfig:
     """Extra cost tuned for step response (overshoot/settling/osc/jerk).
 
     All thresholds must be in the SAME UNITS as the tracked state component
@@ -97,7 +97,7 @@ class TorchMPCStepResponseExtraCostConfig:
         w_jerk: float = 50.0,
         w_du_steady: float = 80.0,
         w_jerk_steady: float = 800.0,
-    ) -> "TorchMPCStepResponseExtraCostConfig":
+    ) -> "MPCStepResponseExtraCostConfig":
         return cls(
             tracked_idx=int(tracked_idx),
             rate_idx=None if rate_idx is None else int(rate_idx),
@@ -122,7 +122,7 @@ class TorchMPCStepResponseExtraCostConfig:
 
 
 @dataclass(frozen=True)
-class TorchMPCWeights:
+class MPCWeights:
     """Quadratic weights for the standard MPC objective.
 
     The objective is:
@@ -142,7 +142,7 @@ class TorchMPCWeights:
 
 
 @dataclass(frozen=True)
-class TorchMPCConstraints:
+class MPCConstraints:
     """Box constraints for control and rate limits.
 
     All bounds are interpreted element-wise (per control dimension).
@@ -155,7 +155,7 @@ class TorchMPCConstraints:
 
 
 @dataclass(frozen=True)
-class TorchMPCSolveResult:
+class MPCSolveResult:
     """Result bundle for MPC solve."""
 
     u0: np.ndarray  # (action_dim,)
@@ -180,7 +180,7 @@ def _to_1d(x: TensorLike, *, dtype: torch.dtype, device: torch.device) -> torch.
     return xt.reshape(-1)
 
 
-class TorchMPC:
+class MPC:
     """Projected-gradient MPC over a differentiable dynamics model.
 
     This solver optimizes a control sequence U using torch/autograd and applies
@@ -194,8 +194,8 @@ class TorchMPC:
         state_dim: int,
         action_dim: int,
         horizon: int = 20,
-        weights: TorchMPCWeights,
-        constraints: TorchMPCConstraints | None = None,
+        weights: MPCWeights,
+        constraints: MPCConstraints | None = None,
         extra_cost_fn: ExtraCostFn | None = None,
         iters: int = 60,
         lr: float = 0.05,
@@ -203,6 +203,10 @@ class TorchMPC:
         device: torch.device | str | None = None,
         dtype: torch.dtype = torch.float32,
         warm_start: bool = True,
+        track_best: bool = True,
+        best_check_every: int = 1,
+        compile_dynamics: bool = False,
+        compile_mode: str = "reduce-overhead",
         seed: int | None = None,
     ) -> None:
         self.dynamics = dynamics
@@ -213,7 +217,7 @@ class TorchMPC:
             raise ValueError("horizon must be positive")
 
         self.weights = weights
-        self.constraints = constraints or TorchMPCConstraints()
+        self.constraints = constraints or MPCConstraints()
         self.extra_cost_fn = extra_cost_fn
         self.iters = int(iters)
         self.lr = float(lr)
@@ -221,9 +225,41 @@ class TorchMPC:
         self.device = torch.device("cpu" if device is None else device)
         self.dtype = dtype
         self.warm_start = bool(warm_start)
+        self.track_best = bool(track_best)
+        self.best_check_every = int(best_check_every)
+        if self.best_check_every < 1:
+            raise ValueError("best_check_every must be >= 1")
+        self.compile_dynamics = bool(compile_dynamics)
+        self.compile_mode = str(compile_mode)
 
         if seed is not None:
             torch.manual_seed(int(seed))
+
+        if self.compile_dynamics:
+            if not hasattr(torch, "compile"):
+                raise RuntimeError(
+                    "compile_dynamics=True requires torch.compile (PyTorch 2.x)."
+                )
+            try:
+                compiled_dyn = torch.compile(
+                    self.dynamics, mode=self.compile_mode
+                )  # type: ignore[attr-defined]
+
+                # IMPORTANT: compiled CUDA graphs can reuse output buffers across
+                # invocations. MPC rollouts keep intermediate states, so we must
+                # clone to avoid "output overwritten" errors.
+                def _dyn_wrapped(x: torch.Tensor, u: torch.Tensor) -> torch.Tensor:
+                    out = compiled_dyn(x, u)
+                    if out.is_cuda:
+                        return out.clone()
+                    return out
+
+                self.dynamics = _dyn_wrapped
+            except Exception as e:  # pragma: no cover - depends on torch backend
+                raise RuntimeError(
+                    f"torch.compile failed for dynamics (mode={self.compile_mode!r}). "
+                    "Try compile_dynamics=False or a different compile_mode."
+                ) from e
 
         # Warm start buffer in *projected* space (horizon, action_dim)
         self._u_warm: torch.Tensor | None = None
@@ -236,6 +272,10 @@ class TorchMPC:
             if weights.S_diag is None
             else _to_1d(weights.S_diag, dtype=self.dtype, device=self.device)
         )
+        self._Q_row = self._Q.reshape(1, -1)
+        self._R_row = self._R.reshape(1, -1)
+        self._S_row = None if self._S is None else self._S.reshape(1, -1)
+        self._terminal_weight = float(weights.terminal_weight)
 
         if self._Q.numel() != self.state_dim:
             raise ValueError(
@@ -347,13 +387,62 @@ class TorchMPC:
             xs.append(x.reshape(-1))
         return torch.stack(xs, dim=0)
 
+    def _compute_cost(
+        self,
+        *,
+        x_seq: torch.Tensor,
+        u_seq: torch.Tensor,
+        x_ref: torch.Tensor | None,
+        u_prev: torch.Tensor | None,
+    ) -> torch.Tensor:
+        """Compute MPC objective for an already-rolled-out trajectory."""
+
+        cost_t = u_seq.new_zeros(())
+
+        # stage cost for x_{t+1}
+        if x_ref is not None:
+            err = x_seq[1:] - x_ref[1:]
+            cost_t = cost_t + (err.pow(2) * self._Q_row).sum()
+
+        # control effort
+        cost_t = cost_t + (u_seq.pow(2) * self._R_row).sum()
+
+        # delta-u penalty
+        if self._S_row is not None:
+            if u_prev is None:
+                du = u_seq[1:] - u_seq[:-1]
+                cost_t = cost_t + (du.pow(2) * self._S_row).sum()
+            else:
+                u_prev_row = u_prev.reshape(1, -1)
+                du0 = u_seq[0:1] - u_prev_row
+                du_rest = u_seq[1:] - u_seq[:-1]
+                cost_t = cost_t + (du0.pow(2) * self._S_row).sum()
+                cost_t = cost_t + (du_rest.pow(2) * self._S_row).sum()
+
+        # terminal cost (same Q diag, scaled)
+        if x_ref is not None and float(self._terminal_weight) != 0.0:
+            terr = x_seq[-1] - x_ref[-1]
+            cost_t = cost_t + float(self._terminal_weight) * (
+                (terr.pow(2) * self._Q).sum()
+            )
+
+        # Optional extra cost (e.g., step-response constraints)
+        if self.extra_cost_fn is not None:
+            extra = self.extra_cost_fn(x_seq, u_seq, x_ref)
+            extra_t = torch.as_tensor(
+                extra, dtype=self.dtype, device=self.device
+            ).mean()
+            cost_t = cost_t + extra_t
+
+        return cost_t
+
     def solve(
         self,
         *,
         x0: TensorLike,
         x_ref: TensorLike | None = None,
         u_prev: TensorLike | None = None,
-    ) -> TorchMPCSolveResult:
+    ) -> MPCSolveResult:
         """Solve MPC problem for the current state.
 
         Args:
@@ -368,7 +457,7 @@ class TorchMPC:
             u_prev: Optional previous control input, shape (action_dim,).
 
         Returns:
-            TorchMPCSolveResult: contains the first control input and the
+            MPCSolveResult: contains the first control input and the
                 predicted trajectory.
         """
 
@@ -427,52 +516,17 @@ class TorchMPC:
             raise ValueError(f"Unknown optimizer: {self.optimizer!r}")
 
         best_u: torch.Tensor | None = None
-        best_x: torch.Tensor | None = None
         best_cost: float = float("inf")
 
-        for _ in range(self.iters):
+        for i in range(self.iters):
             opt.zero_grad(set_to_none=True)
 
             u_proj = self._project_u(u_param, u_prev_t)
             x_seq = self._rollout(x0_t, u_proj)
 
-            # Quadratic cost
-            cost_t = torch.tensor(0.0, device=self.device, dtype=self.dtype)
-
-            # stage cost for x_{t+1}
-            if x_ref_t is not None:
-                err = x_seq[1:] - x_ref_t[1:]
-                cost_t = cost_t + (err.pow(2) * self._Q.reshape(1, -1)).sum()
-
-            # control effort
-            cost_t = cost_t + (u_proj.pow(2) * self._R.reshape(1, -1)).sum()
-
-            # delta-u penalty
-            if self._S is not None:
-                if u_prev_t is None:
-                    du = u_proj[1:] - u_proj[:-1]
-                    cost_t = cost_t + (du.pow(2) * self._S.reshape(1, -1)).sum()
-                else:
-                    u_prev_row = u_prev_t.reshape(1, -1)
-                    du0 = u_proj[0:1] - u_prev_row
-                    du_rest = u_proj[1:] - u_proj[:-1]
-                    cost_t = cost_t + (du0.pow(2) * self._S.reshape(1, -1)).sum()
-                    cost_t = cost_t + (du_rest.pow(2) * self._S.reshape(1, -1)).sum()
-
-            # terminal cost (same Q diag, scaled)
-            if x_ref_t is not None and float(self.weights.terminal_weight) != 0.0:
-                terr = x_seq[-1] - x_ref_t[-1]
-                cost_t = cost_t + float(self.weights.terminal_weight) * (
-                    (terr.pow(2) * self._Q).sum()
-                )
-
-            # Optional extra cost (e.g., step-response constraints)
-            if self.extra_cost_fn is not None:
-                extra = self.extra_cost_fn(x_seq, u_proj, x_ref_t)
-                extra_t = torch.as_tensor(
-                    extra, dtype=self.dtype, device=self.device
-                ).mean()
-                cost_t = cost_t + extra_t
+            cost_t = self._compute_cost(
+                x_seq=x_seq, u_seq=u_proj, x_ref=x_ref_t, u_prev=u_prev_t
+            )
 
             # IMPORTANT: we only need gradients w.r.t. u_param
             # (control sequence),
@@ -487,21 +541,34 @@ class TorchMPC:
             u_param.grad = grad_u
             opt.step()
 
-            with torch.no_grad():
-                cost_val = float(cost_t.detach().cpu().item())
-                if cost_val < best_cost:
-                    best_cost = cost_val
-                    best_u = u_proj.detach().clone()
-                    best_x = x_seq.detach().clone()
+            if self.track_best and (
+                i % self.best_check_every == 0 or i == self.iters - 1
+            ):
+                with torch.no_grad():
+                    cost_val = float(cost_t.detach().item())
+                    if cost_val < best_cost:
+                        best_cost = cost_val
+                        best_u = u_proj.detach().clone()
 
-        if best_u is None or best_x is None:
-            # Defensive: should never happen.
-            raise RuntimeError("MPC solve failed to produce a candidate solution.")
+        if best_u is None:
+            # Track-best disabled (or nothing checked): use final iterate.
+            with torch.no_grad():
+                best_u = self._project_u(u_param, u_prev_t).detach().clone()
+                best_cost_t = self._compute_cost(
+                    x_seq=self._rollout(x0_t, best_u),
+                    u_seq=best_u,
+                    x_ref=x_ref_t,
+                    u_prev=u_prev_t,
+                )
+                best_cost = float(best_cost_t.detach().item())
+
+        with torch.no_grad():
+            best_x = self._rollout(x0_t, best_u).detach().clone()
 
         self._u_warm = best_u.detach().clone()
 
         u0_np = best_u[0].detach().cpu().numpy().reshape(-1)
-        return TorchMPCSolveResult(
+        return MPCSolveResult(
             u0=u0_np.astype(np.float32),
             u_seq=best_u.detach().cpu().numpy().astype(np.float32),
             x_seq=best_x.detach().cpu().numpy().astype(np.float32),
@@ -511,7 +578,7 @@ class TorchMPC:
 
 
 @dataclass
-class TorchMPCStandardScaler:
+class MPCStandardScaler:
     """Simple per-feature standardization helper (mean/std).
 
     The scaler lives on a torch device and is used both for training and for
@@ -524,7 +591,7 @@ class TorchMPCStandardScaler:
     @classmethod
     def identity(
         cls, dim: int, *, device: torch.device, dtype: torch.dtype
-    ) -> "TorchMPCStandardScaler":
+    ) -> "MPCStandardScaler":
         mean = torch.zeros((int(dim),), device=device, dtype=dtype)
         std = torch.ones((int(dim),), device=device, dtype=dtype)
         return cls(mean=mean, std=std)
@@ -535,7 +602,7 @@ class TorchMPCStandardScaler:
         x: torch.Tensor,
         *,
         eps: float = 1e-6,
-    ) -> "TorchMPCStandardScaler":
+    ) -> "MPCStandardScaler":
         if x.ndim != 2:
             raise ValueError(f"fit expects a 2-D tensor (N, D). Got {tuple(x.shape)}")
         mean = x.mean(dim=0)
@@ -549,9 +616,7 @@ class TorchMPCStandardScaler:
     def inverse(self, x: torch.Tensor) -> torch.Tensor:
         return x * self.std.reshape(1, -1) + self.mean.reshape(1, -1)
 
-    def to(
-        self, *, device: torch.device, dtype: torch.dtype
-    ) -> "TorchMPCStandardScaler":
+    def to(self, *, device: torch.device, dtype: torch.dtype) -> "MPCStandardScaler":
         self.mean = self.mean.to(device=device, dtype=dtype)
         self.std = self.std.to(device=device, dtype=dtype)
         return self
@@ -610,8 +675,8 @@ class OneStepMLP(nn.Module):
         return cast(torch.Tensor, self.net(xu))
 
 
-class TorchMPCAgent(BaseRLModel):
-    """DSAC-like wrapper around `TorchMPC` with learned dynamics.
+class MPCAgent(BaseRLModel):
+    """DSAC-like wrapper around `MPC` with learned dynamics.
 
     Goals:
     - Work with different Gymnasium-like environments (infer dims and bounds)
@@ -628,16 +693,20 @@ class TorchMPCAgent(BaseRLModel):
         action_dim: int | None = None,
         # --- MPC config ---
         horizon: int = 20,
-        weights: TorchMPCWeights | None = None,
-        constraints: TorchMPCConstraints | None = None,
+        weights: MPCWeights | None = None,
+        constraints: MPCConstraints | None = None,
         tracking_type: Literal["tracking", "step_response"] = "tracking",
-        tracking_config: TorchMPCTrackingExtraCostConfig | None = None,
-        step_response_config: TorchMPCStepResponseExtraCostConfig | None = None,
+        tracking_config: MPCTrackingExtraCostConfig | None = None,
+        step_response_config: MPCStepResponseExtraCostConfig | None = None,
         extra_cost_fn: ExtraCostFn | None = None,
         iters: int = 60,
         mpc_lr: float = 0.05,
         mpc_optimizer: Literal["adam", "sgd"] = "adam",
         warm_start: bool = True,
+        mpc_track_best: bool = True,
+        mpc_best_check_every: int = 1,
+        mpc_compile_dynamics: bool = False,
+        mpc_compile_mode: str = "reduce-overhead",
         # --- Learned dynamics config ---
         model: nn.Module | None = None,
         model_predict_delta: bool = True,
@@ -669,20 +738,24 @@ class TorchMPCAgent(BaseRLModel):
 
         # Keep MPC config to allow rebuilding (e.g., for device switches)
         self._mpc_horizon = int(horizon)
-        self._mpc_weights: TorchMPCWeights | None = None
-        self._mpc_constraints: TorchMPCConstraints | None = None
+        self._mpc_weights: MPCWeights | None = None
+        self._mpc_constraints: MPCConstraints | None = None
         self._mpc_extra_cost_fn: ExtraCostFn | None = None
         self._mpc_iters = int(iters)
         self._mpc_lr = float(mpc_lr)
         self._mpc_optimizer: Literal["adam", "sgd"] = mpc_optimizer
         self._mpc_warm_start = bool(warm_start)
+        self._mpc_track_best = bool(mpc_track_best)
+        self._mpc_best_check_every = int(mpc_best_check_every)
+        if self._mpc_best_check_every < 1:
+            raise ValueError("mpc_best_check_every must be >= 1")
+        self._mpc_compile_dynamics = bool(mpc_compile_dynamics)
+        self._mpc_compile_mode = str(mpc_compile_mode)
 
         # Tracking mode configuration
         self.tracking_type: Literal["tracking", "step_response"] = tracking_type
         self.tracking_config = (
-            TorchMPCTrackingExtraCostConfig()
-            if tracking_config is None
-            else tracking_config
+            MPCTrackingExtraCostConfig() if tracking_config is None else tracking_config
         )
         self.step_response_config = step_response_config
         self._u_lim: torch.Tensor | None = None
@@ -731,7 +804,7 @@ class TorchMPCAgent(BaseRLModel):
 
         if self.state_dim <= 0 or self.action_dim <= 0:
             raise ValueError(
-                "TorchMPCAgent could not infer state/action dims. "
+                "MPCAgent could not infer state/action dims. "
                 f"state_dim={self.state_dim}, action_dim={self.action_dim}. "
                 "Pass state_dim=... and action_dim=... explicitly."
             )
@@ -795,13 +868,13 @@ class TorchMPCAgent(BaseRLModel):
         self.grad_clip_norm = None if grad_clip_norm is None else float(grad_clip_norm)
 
         # --- Normalizers (identity until fitted) ---
-        self.x_scaler = TorchMPCStandardScaler.identity(
+        self.x_scaler = MPCStandardScaler.identity(
             self.state_dim, device=self.device, dtype=self.dtype
         )
-        self.u_scaler = TorchMPCStandardScaler.identity(
+        self.u_scaler = MPCStandardScaler.identity(
             self.action_dim, device=self.device, dtype=self.dtype
         )
-        self.y_scaler = TorchMPCStandardScaler.identity(
+        self.y_scaler = MPCStandardScaler.identity(
             self.state_dim, device=self.device, dtype=self.dtype
         )
 
@@ -810,7 +883,7 @@ class TorchMPCAgent(BaseRLModel):
 
         # --- MPC weights/constraints defaults ---
         if weights is None:
-            weights = TorchMPCWeights(
+            weights = MPCWeights(
                 Q_diag=np.ones((self.state_dim,), dtype=np.float32),
                 R_diag=np.full((self.action_dim,), 1e-2, dtype=np.float32),
                 S_diag=np.full((self.action_dim,), 1e-1, dtype=np.float32),
@@ -821,7 +894,7 @@ class TorchMPCAgent(BaseRLModel):
             and self._a_low_env is not None
             and self._a_high_env is not None
         ):
-            constraints = TorchMPCConstraints(
+            constraints = MPCConstraints(
                 u_min=self._a_low_env.copy(),
                 u_max=self._a_high_env.copy(),
             )
@@ -847,7 +920,7 @@ class TorchMPCAgent(BaseRLModel):
             )
             tracked_idx = int(self.state_dim - 1)
             rate_idx = int(self.state_dim - 2) if self.state_dim >= 3 else None
-            self.step_response_config = TorchMPCStepResponseExtraCostConfig(
+            self.step_response_config = MPCStepResponseExtraCostConfig(
                 tracked_idx=tracked_idx,
                 rate_idx=rate_idx,
                 dt=float(dt0),
@@ -863,7 +936,7 @@ class TorchMPCAgent(BaseRLModel):
         self._rebuild_mpc()
 
     def _rebuild_mpc(self) -> None:
-        """(Re)build internal TorchMPC with current device/dtype."""
+        """(Re)build internal MPC with current device/dtype."""
 
         if self._mpc_weights is None:
             raise RuntimeError("Internal error: MPC weights are not set")
@@ -890,7 +963,7 @@ class TorchMPCAgent(BaseRLModel):
                 return x + y_hat
             return y_hat
 
-        self.mpc = TorchMPC(
+        self.mpc = MPC(
             dynamics=dyn,
             state_dim=int(self.state_dim),
             action_dim=int(self.action_dim),
@@ -904,6 +977,10 @@ class TorchMPCAgent(BaseRLModel):
             device=self.device,
             dtype=self.dtype,
             warm_start=bool(self._mpc_warm_start),
+            track_best=bool(self._mpc_track_best),
+            best_check_every=int(self._mpc_best_check_every),
+            compile_dynamics=bool(self._mpc_compile_dynamics),
+            compile_mode=str(self._mpc_compile_mode),
             seed=self.seed,
         )
 
@@ -968,8 +1045,8 @@ class TorchMPCAgent(BaseRLModel):
         self,
         tracking_type: Literal["tracking", "step_response"],
         *,
-        tracking_config: TorchMPCTrackingExtraCostConfig | None = None,
-        step_response_config: TorchMPCStepResponseExtraCostConfig | None = None,
+        tracking_config: MPCTrackingExtraCostConfig | None = None,
+        step_response_config: MPCStepResponseExtraCostConfig | None = None,
     ) -> None:
         """Switch extra-cost mode (tracking vs step_response)."""
 
@@ -980,7 +1057,7 @@ class TorchMPCAgent(BaseRLModel):
             self.step_response_config = step_response_config
         if self.step_response_config is None:
             rate_idx = int(self.state_dim - 2) if self.state_dim >= 3 else None
-            self.step_response_config = TorchMPCStepResponseExtraCostConfig(
+            self.step_response_config = MPCStepResponseExtraCostConfig(
                 tracked_idx=int(self.state_dim - 1),
                 rate_idx=rate_idx,
                 dt=float(
@@ -996,9 +1073,7 @@ class TorchMPCAgent(BaseRLModel):
         self._mpc_extra_cost_fn = self._make_extra_cost_fn()
         self.mpc.extra_cost_fn = self._mpc_extra_cost_fn
 
-    def _make_tracking_extra_cost(
-        self, cfg: TorchMPCTrackingExtraCostConfig
-    ) -> ExtraCostFn:
+    def _make_tracking_extra_cost(self, cfg: MPCTrackingExtraCostConfig) -> ExtraCostFn:
         w_du = float(cfg.w_du)
         w_jerk = float(cfg.w_jerk)
 
@@ -1030,7 +1105,7 @@ class TorchMPCAgent(BaseRLModel):
         return extra
 
     def _make_step_response_extra_cost(
-        self, cfg: TorchMPCStepResponseExtraCostConfig
+        self, cfg: MPCStepResponseExtraCostConfig
     ) -> ExtraCostFn:
         tracked_idx = self._resolve_state_idx(cfg.tracked_idx)
         rate_idx = None
@@ -1108,16 +1183,17 @@ class TorchMPCAgent(BaseRLModel):
             cost = cost + (w_sse * err.pow(2)).sum()
 
             # Oscillation penalty: sign changes of error outside band
-            err_post = err[step_idx:]
-            if err_post.numel() >= 2:
-                prod = err_post[1:] * err_post[:-1]
-                sign_change = torch.relu(-prod) / (band.pow(2) + 1e-9)
-                out_w = torch.sigmoid(20.0 * (torch.abs(err_post) - band))
-                out_pair = out_w[1:] * out_w[:-1]
-                cost = cost + float(cfg.w_osc) * (sign_change * out_pair).sum()
+            if err.numel() >= 2:
+                err_post = err[step_idx:]
+                if err_post.numel() >= 2:
+                    prod = err_post[1:] * err_post[:-1]
+                    sign_change = torch.relu(-prod) / (band.pow(2) + 1e-9)
+                    out_w = torch.sigmoid(20.0 * (torch.abs(err_post) - band))
+                    out_pair = out_w[1:] * out_w[:-1]
+                    cost = cost + float(cfg.w_osc) * (sign_change * out_pair).sum()
 
             # Overshoot penalty (only if step is "big enough")
-            if float(amp_abs.detach().cpu().item()) >= float(cfg.min_step_amp):
+            if float(amp_abs.detach().item()) >= float(cfg.min_step_amp):
                 seg_sign = torch.sign(target - baseline)
                 seg_sign = torch.where(
                     seg_sign == 0, torch.ones_like(seg_sign), seg_sign
@@ -1146,7 +1222,7 @@ class TorchMPCAgent(BaseRLModel):
 
         return extra
 
-    def to_device(self, device: str | torch.device) -> "TorchMPCAgent":
+    def to_device(self, device: str | torch.device) -> "MPCAgent":
         """Move model, normalizers, and MPC to a new device (DSAC-style)."""
 
         new_device = torch.device(device)
@@ -1622,13 +1698,13 @@ class TorchMPCAgent(BaseRLModel):
 
         y = ns_t - s_t if self.model_predict_delta else ns_t
 
-        self.x_scaler = TorchMPCStandardScaler.fit(s_t).to(
+        self.x_scaler = MPCStandardScaler.fit(s_t).to(
             device=self.device, dtype=self.dtype
         )
-        self.u_scaler = TorchMPCStandardScaler.fit(a_t).to(
+        self.u_scaler = MPCStandardScaler.fit(a_t).to(
             device=self.device, dtype=self.dtype
         )
-        self.y_scaler = TorchMPCStandardScaler.fit(y).to(
+        self.y_scaler = MPCStandardScaler.fit(y).to(
             device=self.device, dtype=self.dtype
         )
 
