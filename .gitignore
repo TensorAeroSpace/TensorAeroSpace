@@ -90,7 +90,7 @@ docs/build/
 # PyBuilder
 .pybuilder/
 target/
-
+FAILURES.md
 # Jupyter Notebook
 .ipynb_checkpoints
 

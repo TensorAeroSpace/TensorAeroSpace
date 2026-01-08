@@ -10,7 +10,11 @@ TensorAeroSpace environments (notably the B747 family).
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+import copy
+import datetime
+import inspect
+import json
+from dataclasses import asdict, dataclass, is_dataclass
 from pathlib import Path
 from typing import Any, Callable, Literal, Optional, Sequence, Union, cast
 
@@ -19,7 +23,13 @@ import torch
 import torch.nn as nn
 from tqdm import tqdm  # type: ignore[import-untyped]
 
-from ..base import BaseRLModel
+from ..base import (
+    BaseRLModel,
+    TheEnvironmentDoesNotMatch,
+    deserialize_env_params,
+    get_class_from_string,
+    serialize_env,
+)
 from ..sac.replay_memory import ReplayMemory
 
 TensorLike = Union[np.ndarray, torch.Tensor]
@@ -163,6 +173,73 @@ class MPCSolveResult:
     x_seq: np.ndarray  # (horizon + 1, state_dim)
     final_cost: float
     iters: int
+
+
+def _to_serializable(obj: Any) -> Any:
+    """Recursively move tensors/arrays to CPU lists for JSON friendliness."""
+    if torch.is_tensor(obj):
+        return obj.detach().cpu().tolist()
+    if isinstance(obj, np.ndarray):
+        return obj.tolist()
+    if is_dataclass(obj):
+        return _to_serializable(asdict(obj))
+    if isinstance(obj, dict):
+        return {k: _to_serializable(v) for k, v in obj.items()}
+    if isinstance(obj, (list, tuple)):
+        return [_to_serializable(v) for v in obj]
+    return obj
+
+
+def _to_cpu_detached(obj: Any) -> Any:
+    """Recursively detach tensors to CPU (used for safe checkpointing)."""
+    if torch.is_tensor(obj):
+        return obj.detach().cpu().clone()
+    if isinstance(obj, dict):
+        return {k: _to_cpu_detached(v) for k, v in obj.items()}
+    if isinstance(obj, list):
+        return [_to_cpu_detached(v) for v in obj]
+    if isinstance(obj, tuple):
+        return tuple(_to_cpu_detached(v) for v in obj)
+    return obj
+
+
+def _state_dict_cpu(module: nn.Module) -> dict[str, torch.Tensor]:
+    """Clone a module state_dict to CPU for portable saving."""
+    return {k: v.detach().cpu().clone() for k, v in module.state_dict().items()}
+
+
+def _optimizer_state_dict_cpu(opt: torch.optim.Optimizer) -> dict[str, Any]:
+    """Deepcopy optimizer state and move all tensors to CPU."""
+    sd = copy.deepcopy(opt.state_dict())
+    sd["state"] = _to_cpu_detached(sd.get("state", {}))
+    return sd
+
+
+def _dtype_from_string(name: str | None, default: torch.dtype = torch.float32) -> torch.dtype:
+    """Convert torch dtype name string back to dtype object."""
+    if name is None:
+        return default
+    try:
+        attr = name.split(".")[-1]
+        dt = getattr(torch, attr)
+        if isinstance(dt, torch.dtype):
+            return dt
+    except Exception:
+        pass
+    return default
+
+
+def _safe_device_str(device_str: str | torch.device | None) -> str:
+    """Return a device string downgraded to CPU when CUDA/MPS is unavailable."""
+    if device_str is None:
+        return "cpu"
+    dev = torch.device(device_str)
+    if dev.type == "cuda" and not torch.cuda.is_available():
+        return "cpu"
+    if dev.type == "mps":
+        if not (hasattr(torch.backends, "mps") and torch.backends.mps.is_available()):
+            return "cpu"
+    return dev.type if dev.index is None else f"{dev.type}:{dev.index}"
 
 
 def _to_2d(x: TensorLike, *, dtype: torch.dtype, device: torch.device) -> torch.Tensor:
@@ -659,6 +736,9 @@ class OneStepMLP(nn.Module):
         else:
             raise ValueError(f"Unknown activation: {activation!r}")
 
+        self.hidden_layers = hs
+        self.activation_name = activation
+
         layers: list[nn.Module] = []
         d = input_dim
         for h in hs:
@@ -850,13 +930,15 @@ class MPCAgent(BaseRLModel):
         # --- Learned model ---
         self.normalize = bool(normalize)
         self.model_predict_delta = bool(model_predict_delta)
+        self._hidden_layers_cfg: Sequence[int] = tuple(int(h) for h in hidden_layers)
+        self._activation_name: Literal["relu", "tanh", "gelu"] = activation
 
         if model is None:
             model = OneStepMLP(
                 input_dim=int(self.state_dim + self.action_dim),
                 output_dim=int(self.state_dim),
-                hidden_layers=hidden_layers,
-                activation=activation,
+                hidden_layers=self._hidden_layers_cfg,
+                activation=self._activation_name,
             )
         self.model: nn.Module = model.to(self.device, dtype=self.dtype)
 
@@ -1269,6 +1351,64 @@ class MPCAgent(BaseRLModel):
         if state is None:
             raise ValueError("predict() requires an explicit `state` array.")
         return self.select_action(state, x_ref=x_ref)
+
+    def get_param_env(self) -> dict[str, dict[str, Any]]:
+        """Return env/policy metadata for HuggingFace-style checkpoints."""
+
+        env_obj = getattr(self.env, "unwrapped", self.env)
+        env_name = f"{env_obj.__class__.__module__}.{env_obj.__class__.__name__}"
+        env_params: dict[str, Any] = {}
+        if "tensoraerospace" in env_name:
+            try:
+                env_params = serialize_env(self.env)
+            except Exception:
+                env_params = {}
+
+        def _serialize_dc(dc: Any) -> Any:
+            if dc is None:
+                return None
+            return _to_serializable(dc)
+
+        policy_params: dict[str, Any] = {
+            "state_dim": int(self.state_dim),
+            "action_dim": int(self.action_dim),
+            "horizon": int(self._mpc_horizon),
+            "weights": _serialize_dc(self._mpc_weights),
+            "constraints": _serialize_dc(self._mpc_constraints),
+            "tracking_type": self.tracking_type,
+            "tracking_config": _serialize_dc(self.tracking_config),
+            "step_response_config": _serialize_dc(self.step_response_config),
+            "iters": int(self._mpc_iters),
+            "mpc_lr": float(self._mpc_lr),
+            "mpc_optimizer": self._mpc_optimizer,
+            "warm_start": bool(self._mpc_warm_start),
+            "mpc_track_best": bool(self._mpc_track_best),
+            "mpc_best_check_every": int(self._mpc_best_check_every),
+            "mpc_compile_dynamics": bool(self._mpc_compile_dynamics),
+            "mpc_compile_mode": str(self._mpc_compile_mode),
+            "model_predict_delta": bool(self.model_predict_delta),
+            "hidden_layers": list(getattr(self.model, "hidden_layers", []))
+            if hasattr(self.model, "hidden_layers")
+            else list(getattr(self, "_hidden_layers_cfg", [])),
+            "activation": getattr(self, "_activation_name", "relu"),
+            "normalize": bool(self.normalize),
+            "dynamics_lr": float(self.model_opt.defaults.get("lr", 0.0)),
+            "weight_decay": float(self.model_opt.defaults.get("weight_decay", 0.0)),
+            "grad_clip_norm": self.grad_clip_norm,
+            "memory_capacity": int(getattr(self.memory, "capacity", 0)),
+            "device": _safe_device_str(self.device),
+            "dtype": str(self.dtype),
+            "seed": int(self.seed),
+            "model_class": f"{self.model.__class__.__module__}.{self.model.__class__.__name__}",
+        }
+
+        return {
+            "env": {"name": env_name, "params": env_params},
+            "policy": {
+                "name": f"{self.__class__.__module__}.{self.__class__.__name__}",
+                "params": policy_params,
+            },
+        }
 
     # -----------------------------
     # Adapters
@@ -1797,21 +1937,56 @@ class MPCAgent(BaseRLModel):
         return {"loss": float(running)}
 
     # -----------------------------
-    # Save / load (DSAC-ish)
+    # Save / load (HuggingFace-style, like PPO/DSAC)
     # -----------------------------
-    def save(self, path: str | Path | None = None) -> Path:
-        import datetime
+    @staticmethod
+    def _filter_kwargs_for_init(env_cls: type, kwargs: dict[str, Any]) -> dict[str, Any]:
+        """Drop unexpected kwargs so env construction is robust to config drift."""
+        try:
+            sig = inspect.signature(env_cls.__init__)
+        except (TypeError, ValueError):
+            return kwargs
+
+        for p in sig.parameters.values():
+            if p.kind == inspect.Parameter.VAR_KEYWORD:
+                return kwargs
+
+        allowed: set[str] = set()
+        for name, p in sig.parameters.items():
+            if name == "self":
+                continue
+            if p.kind in (
+                inspect.Parameter.POSITIONAL_OR_KEYWORD,
+                inspect.Parameter.KEYWORD_ONLY,
+            ):
+                allowed.add(name)
+        return {k: v for k, v in kwargs.items() if k in allowed}
+
+    def save(
+        self, path: str | Path | None = None, save_gradients: bool = True
+    ) -> Path:
+        """Save MPC agent in HuggingFace-style layout (config + weights)."""
 
         base = Path.cwd() if path is None else Path(path)
-        date_str = datetime.datetime.now().strftime("%Y%m%d_%H-%M-%S")
+        date_str = datetime.datetime.now().strftime("%b%d_%H-%M-%S")
         run_dir = base / f"{date_str}_{self.__class__.__name__}"
         run_dir.mkdir(parents=True, exist_ok=True)
 
-        torch.save(self.model.state_dict(), str(run_dir / "dynamics_model.pt"))
-        torch.save(self.model_opt.state_dict(), str(run_dir / "dynamics_optim.pt"))
+        config_path = run_dir / "config.json"
+        model_path = run_dir / "dynamics_model.pth"
+        optim_path = run_dir / "dynamics_optim.pth"
+        norms_path = run_dir / "normalizers.npz"
+
+        config = self.get_param_env()
+        with open(config_path, "w", encoding="utf-8") as f:
+            json.dump(config, f, indent=2)
+
+        torch.save(_state_dict_cpu(self.model), model_path)
+        if save_gradients:
+            torch.save(_optimizer_state_dict_cpu(self.model_opt), optim_path)
 
         np.savez(
-            str(run_dir / "normalizers.npz"),
+            norms_path,
             x_mean=self.x_scaler.mean.detach().cpu().numpy(),
             x_std=self.x_scaler.std.detach().cpu().numpy(),
             u_mean=self.u_scaler.mean.detach().cpu().numpy(),
@@ -1821,39 +1996,188 @@ class MPCAgent(BaseRLModel):
         )
         return run_dir
 
-    def load(self, path: str | Path | None = None) -> None:
-        if path is None:
-            raise ValueError("load() requires a checkpoint directory path.")
+    @classmethod
+    def __load(cls, path: str | Path, load_gradients: bool = False) -> "MPCAgent":
         path = Path(path)
-        self.model.load_state_dict(
-            torch.load(str(path / "dynamics_model.pt"), map_location=self.device)
-        )
-        opt_path = path / "dynamics_optim.pt"
-        if opt_path.exists():
-            self.model_opt.load_state_dict(
-                torch.load(str(opt_path), map_location=self.device)
-            )
-
+        config_path = path / "config.json"
+        model_path = path / "dynamics_model.pth"
+        optim_path = path / "dynamics_optim.pth"
         norms_path = path / "normalizers.npz"
-        if norms_path.exists():
-            data = np.load(str(norms_path))
-            self.x_scaler.mean = torch.as_tensor(
-                data["x_mean"], device=self.device, dtype=self.dtype
+
+        with open(config_path, "r", encoding="utf-8") as f:
+            config = json.load(f)
+
+        agent_name = f"{cls.__module__}.{cls.__name__}"
+        if config["policy"]["name"] != agent_name:
+            raise TheEnvironmentDoesNotMatch
+
+        # --- rebuild env
+        env_name = config["env"]["name"]
+        raw_env_params = dict(config["env"].get("params", {}) or {})
+        if "tensoraerospace" in env_name:
+            env_cls = get_class_from_string(env_name)
+            env_params = deserialize_env_params(raw_env_params)
+            env_params = cls._filter_kwargs_for_init(env_cls, env_params)
+            if "device" in env_params:
+                env_params["device"] = _safe_device_str(env_params["device"])
+            env = env_cls(**env_params)
+        else:
+            env = get_class_from_string(env_name)()
+
+        # --- rebuild policy params
+        policy_params = dict(config["policy"]["params"])
+        policy_params["device"] = _safe_device_str(policy_params.get("device"))
+        policy_params["dtype"] = _dtype_from_string(policy_params.get("dtype"))
+        if policy_params.get("mpc_compile_dynamics") and not hasattr(torch, "compile"):
+            policy_params["mpc_compile_dynamics"] = False
+        for key in [
+            "state_dim",
+            "action_dim",
+            "horizon",
+            "iters",
+            "mpc_best_check_every",
+            "memory_capacity",
+            "seed",
+        ]:
+            if key in policy_params:
+                policy_params[key] = int(policy_params[key])
+
+        weights_cfg = policy_params.pop("weights", None)
+        constraints_cfg = policy_params.pop("constraints", None)
+        tracking_cfg = policy_params.pop("tracking_config", None)
+        step_cfg = policy_params.pop("step_response_config", None)
+        model_class_path = policy_params.pop("model_class", None)
+
+        def _maybe_arr(x: Any) -> np.ndarray | None:
+            if x is None:
+                return None
+            return np.asarray(x, dtype=np.float32)
+
+        if policy_params.get("grad_clip_norm") is not None:
+            policy_params["grad_clip_norm"] = float(policy_params["grad_clip_norm"])
+        if "mpc_lr" in policy_params:
+            policy_params["mpc_lr"] = float(policy_params["mpc_lr"])
+        if "dynamics_lr" in policy_params:
+            policy_params["dynamics_lr"] = float(policy_params["dynamics_lr"])
+
+        if weights_cfg is not None:
+            policy_params["weights"] = MPCWeights(
+                Q_diag=_maybe_arr(weights_cfg.get("Q_diag")),
+                R_diag=_maybe_arr(weights_cfg.get("R_diag")),
+                S_diag=_maybe_arr(weights_cfg.get("S_diag")),
+                terminal_weight=float(weights_cfg.get("terminal_weight", 1.0)),
             )
-            self.x_scaler.std = torch.as_tensor(
-                data["x_std"], device=self.device, dtype=self.dtype
+        if constraints_cfg is not None:
+            policy_params["constraints"] = MPCConstraints(
+                u_min=_maybe_arr(constraints_cfg.get("u_min")),
+                u_max=_maybe_arr(constraints_cfg.get("u_max")),
+                du_min=_maybe_arr(constraints_cfg.get("du_min")),
+                du_max=_maybe_arr(constraints_cfg.get("du_max")),
             )
-            self.u_scaler.mean = torch.as_tensor(
-                data["u_mean"], device=self.device, dtype=self.dtype
+        if tracking_cfg is not None:
+            policy_params["tracking_config"] = MPCTrackingExtraCostConfig(
+                **{k: v for k, v in tracking_cfg.items() if k in MPCTrackingExtraCostConfig.__annotations__}
             )
-            self.u_scaler.std = torch.as_tensor(
-                data["u_std"], device=self.device, dtype=self.dtype
-            )
-            self.y_scaler.mean = torch.as_tensor(
-                data["y_mean"], device=self.device, dtype=self.dtype
-            )
-            self.y_scaler.std = torch.as_tensor(
-                data["y_std"], device=self.device, dtype=self.dtype
+        if step_cfg is not None:
+            policy_params["step_response_config"] = MPCStepResponseExtraCostConfig(
+                **{
+                    k: v
+                    for k, v in step_cfg.items()
+                    if k in MPCStepResponseExtraCostConfig.__annotations__
+                }
             )
 
-        self.model.eval()
+        if isinstance(policy_params.get("hidden_layers"), (list, tuple)):
+            policy_params["hidden_layers"] = tuple(
+                int(h) for h in policy_params["hidden_layers"]
+            )
+        else:
+            policy_params["hidden_layers"] = (256, 256)
+
+        if model_class_path and "OneStepMLP" not in model_class_path:
+            print(
+                f"Warning: custom model {model_class_path} not automatically rebuilt; "
+                "using default OneStepMLP."
+            )
+
+        new_agent = cls(env=env, **policy_params)
+
+        # --- load weights/optim
+        state = torch.load(model_path, map_location=new_agent.device, weights_only=False)
+        new_agent.model.load_state_dict(state)
+
+        if load_gradients and optim_path.exists():
+            opt_state = torch.load(
+                optim_path, map_location=new_agent.device, weights_only=False
+            )
+            new_agent.model_opt.load_state_dict(opt_state)
+
+        if norms_path.exists():
+            data = np.load(norms_path)
+            new_agent.x_scaler.mean = torch.as_tensor(
+                data["x_mean"], device=new_agent.device, dtype=new_agent.dtype
+            )
+            new_agent.x_scaler.std = torch.as_tensor(
+                data["x_std"], device=new_agent.device, dtype=new_agent.dtype
+            )
+            new_agent.u_scaler.mean = torch.as_tensor(
+                data["u_mean"], device=new_agent.device, dtype=new_agent.dtype
+            )
+            new_agent.u_scaler.std = torch.as_tensor(
+                data["u_std"], device=new_agent.device, dtype=new_agent.dtype
+            )
+            new_agent.y_scaler.mean = torch.as_tensor(
+                data["y_mean"], device=new_agent.device, dtype=new_agent.dtype
+            )
+            new_agent.y_scaler.std = torch.as_tensor(
+                data["y_std"], device=new_agent.device, dtype=new_agent.dtype
+            )
+
+        new_agent.model.eval()
+        return new_agent
+
+    @classmethod
+    def from_pretrained(
+        cls,
+        repo_name: str,
+        access_token: Optional[str] = None,
+        version: Optional[str] = None,
+        load_gradients: bool = False,
+    ) -> "MPCAgent":
+        """Load checkpoint from local dir or HuggingFace Hub."""
+
+        p = Path(str(repo_name)).expanduser()
+        if p.is_dir():
+            return cls.__load(p, load_gradients=load_gradients)
+
+        pathlike_prefixes = ("./", "../", "/", "~")
+        if str(repo_name).startswith(pathlike_prefixes):
+            if not p.exists() or not p.is_dir():
+                raise FileNotFoundError(
+                    f"Local directory not found: '{repo_name}'. Please check the path."
+                )
+            return cls.__load(p, load_gradients=load_gradients)
+
+        folder_path = BaseRLModel.from_pretrained(
+            repo_name, access_token=access_token, version=version
+        )
+        return cls.__load(folder_path, load_gradients=load_gradients)
+
+    def push_to_hub(
+        self,
+        repo_name: str,
+        access_token: Optional[str] = None,
+        save_path: Optional[Union[str, Path]] = None,
+        include_gradients: bool = False,
+    ) -> str:
+        """Save checkpoint and upload it to HuggingFace Hub."""
+        base_path = Path.cwd() if save_path is None else Path(str(save_path))
+        base_path.mkdir(parents=True, exist_ok=True)
+
+        run_dir = self.save(path=base_path, save_gradients=include_gradients)
+        BaseRLModel().publish_to_hub(
+            repo_name=repo_name,
+            folder_path=str(run_dir),
+            access_token=access_token,
+        )
+        return str(run_dir)
