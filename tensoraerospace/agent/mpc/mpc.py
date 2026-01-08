@@ -215,7 +215,9 @@ def _optimizer_state_dict_cpu(opt: torch.optim.Optimizer) -> dict[str, Any]:
     return sd
 
 
-def _dtype_from_string(name: str | None, default: torch.dtype = torch.float32) -> torch.dtype:
+def _dtype_from_string(
+    name: str | None, default: torch.dtype = torch.float32
+) -> torch.dtype:
     """Convert torch dtype name string back to dtype object."""
     if name is None:
         return default
@@ -1387,9 +1389,11 @@ class MPCAgent(BaseRLModel):
             "mpc_compile_dynamics": bool(self._mpc_compile_dynamics),
             "mpc_compile_mode": str(self._mpc_compile_mode),
             "model_predict_delta": bool(self.model_predict_delta),
-            "hidden_layers": list(getattr(self.model, "hidden_layers", []))
-            if hasattr(self.model, "hidden_layers")
-            else list(getattr(self, "_hidden_layers_cfg", [])),
+            "hidden_layers": (
+                list(getattr(self.model, "hidden_layers", []))
+                if hasattr(self.model, "hidden_layers")
+                else list(getattr(self, "_hidden_layers_cfg", []))
+            ),
             "activation": getattr(self, "_activation_name", "relu"),
             "normalize": bool(self.normalize),
             "dynamics_lr": float(self.model_opt.defaults.get("lr", 0.0)),
@@ -1940,7 +1944,9 @@ class MPCAgent(BaseRLModel):
     # Save / load (HuggingFace-style, like PPO/DSAC)
     # -----------------------------
     @staticmethod
-    def _filter_kwargs_for_init(env_cls: type, kwargs: dict[str, Any]) -> dict[str, Any]:
+    def _filter_kwargs_for_init(
+        env_cls: type, kwargs: dict[str, Any]
+    ) -> dict[str, Any]:
         """Drop unexpected kwargs so env construction is robust to config drift."""
         try:
             sig = inspect.signature(env_cls.__init__)
@@ -1962,9 +1968,7 @@ class MPCAgent(BaseRLModel):
                 allowed.add(name)
         return {k: v for k, v in kwargs.items() if k in allowed}
 
-    def save(
-        self, path: str | Path | None = None, save_gradients: bool = True
-    ) -> Path:
+    def save(self, path: str | Path | None = None, save_gradients: bool = True) -> Path:
         """Save MPC agent in HuggingFace-style layout (config + weights)."""
 
         base = Path.cwd() if path is None else Path(path)
@@ -2076,7 +2080,11 @@ class MPCAgent(BaseRLModel):
             )
         if tracking_cfg is not None:
             policy_params["tracking_config"] = MPCTrackingExtraCostConfig(
-                **{k: v for k, v in tracking_cfg.items() if k in MPCTrackingExtraCostConfig.__annotations__}
+                **{
+                    k: v
+                    for k, v in tracking_cfg.items()
+                    if k in MPCTrackingExtraCostConfig.__annotations__
+                }
             )
         if step_cfg is not None:
             policy_params["step_response_config"] = MPCStepResponseExtraCostConfig(
@@ -2103,7 +2111,9 @@ class MPCAgent(BaseRLModel):
         new_agent = cls(env=env, **policy_params)
 
         # --- load weights/optim
-        state = torch.load(model_path, map_location=new_agent.device, weights_only=False)
+        state = torch.load(
+            model_path, map_location=new_agent.device, weights_only=False
+        )
         new_agent.model.load_state_dict(state)
 
         if load_gradients and optim_path.exists():
