@@ -10,5 +10,3 @@ neurocontrol.” Neural Networks, 8(9), 1995, pp. 1367–1372.
 from .adp import ADP as ADP  # noqa: F401
 
 __all__ = ["ADP"]
-
-

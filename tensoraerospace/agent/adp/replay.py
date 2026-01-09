@@ -77,5 +77,3 @@ class ReplayBuffer:
             [self._buf[i].done_bootstrap for i in idx], dtype=np.float32
         ).reshape(-1, 1)
         return obs, act, rew, nxt, done
-
-

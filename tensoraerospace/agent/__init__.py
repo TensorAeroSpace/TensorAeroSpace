@@ -29,6 +29,7 @@ except Exception as _ihdp_exc:  # pragma: no cover
                 f"(original import error: {_ihdp_exc!r})."
             )
 
+
 # Adaptive Critic / ADP (Prokhorov & Wunsch 1995 inspired)
 from .adp.adp import ADP as ADP  # noqa: F401
 

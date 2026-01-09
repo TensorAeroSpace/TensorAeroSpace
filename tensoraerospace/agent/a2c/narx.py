@@ -12,6 +12,7 @@ import torch
 from gymnasium import Env
 from torch import nn
 from torch.nn import functional as F
+
 try:
     from torch.utils.tensorboard import SummaryWriter  # type: ignore
 except Exception:  # pragma: no cover - tensorboard optional at runtime
@@ -33,6 +34,7 @@ except Exception:  # pragma: no cover - tensorboard optional at runtime
 
         def close(self) -> None:
             pass
+
 
 from ..metrics import create_metric_writer
 

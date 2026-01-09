@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Iterable, Sequence
+from typing import Iterable, Sequence, Tuple
 
 import numpy as np
 import torch
@@ -28,6 +28,26 @@ def _mlp(
     if out_activation is not None:
         layers.append(out_activation())
     return nn.Sequential(*layers)
+
+
+def _mlp_body(
+    in_dim: int,
+    hidden_sizes: Sequence[int],
+    *,
+    activation: type[nn.Module] = nn.Tanh,
+) -> Tuple[nn.Module, int]:
+    """Create an MLP trunk (no output layer) and return (module, last_dim)."""
+    prev = int(in_dim)
+    if len(hidden_sizes) == 0:
+        return nn.Identity(), prev
+
+    layers: list[nn.Module] = []
+    for h in hidden_sizes:
+        h = int(h)
+        layers.append(nn.Linear(prev, h))
+        layers.append(activation())
+        prev = h
+    return nn.Sequential(*layers), prev
 
 
 class DeterministicActor(nn.Module):
@@ -66,7 +86,9 @@ class DeterministicActor(nn.Module):
 
         scale = (high - low) / 2.0
         bias = (high + low) / 2.0
-        self.register_buffer("action_scale", torch.as_tensor(scale, dtype=torch.float32))
+        self.register_buffer(
+            "action_scale", torch.as_tensor(scale, dtype=torch.float32)
+        )
         self.register_buffer("action_bias", torch.as_tensor(bias, dtype=torch.float32))
 
     def forward(self, obs: torch.Tensor) -> torch.Tensor:
@@ -99,8 +121,121 @@ class QCritic(nn.Module):
         return self._q(x)
 
 
+class JCritic(nn.Module):
+    """Critic approximating cost-to-go J(R) (HDP-style scalar critic)."""
+
+    def __init__(
+        self,
+        input_dim: int,
+        *,
+        hidden_sizes: Sequence[int] = (256, 256),
+        activation: type[nn.Module] = nn.Tanh,
+    ) -> None:
+        super().__init__()
+        trunk, last = _mlp_body(int(input_dim), hidden_sizes, activation=activation)
+        self._trunk = trunk
+        self._j = nn.Linear(int(last), 1)
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        h = self._trunk(x)
+        return self._j(h)
+
+
+class LambdaCritic(nn.Module):
+    """Critic estimating lambda = dJ/dx (DHP-style).
+
+    Input can be an observable vector R(t) (e.g., state concatenated with
+    exogenous reference signals). Output is lambda w.r.t the *plant state* x.
+    """
+
+    def __init__(
+        self,
+        state_dim: int,
+        *,
+        input_dim: int | None = None,
+        hidden_sizes: Sequence[int] = (256, 256),
+        activation: type[nn.Module] = nn.Tanh,
+    ) -> None:
+        super().__init__()
+        in_dim = int(input_dim) if input_dim is not None else int(state_dim)
+        self._net = _mlp(
+            in_dim,
+            int(state_dim),
+            hidden_sizes,
+            activation=activation,
+            out_activation=None,
+        )
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        return self._net(x)
+
+
+class JLambdaCritic(nn.Module):
+    """Critic approximating both J(R) and lambda_R=dJ/dR (GDHP-style, Fig. 5).
+
+    This is the "straightforward" GDHP critic: a shared trunk with two heads:
+      - scalar J
+      - vector lambda_R
+    """
+
+    def __init__(
+        self,
+        *,
+        input_dim: int,
+        r_dim: int,
+        hidden_sizes: Sequence[int] = (256, 256),
+        activation: type[nn.Module] = nn.Tanh,
+    ) -> None:
+        super().__init__()
+        trunk, last = _mlp_body(int(input_dim), hidden_sizes, activation=activation)
+        self._trunk = trunk
+        self._j = nn.Linear(int(last), 1)
+        self._lam_r = nn.Linear(int(last), int(r_dim))
+
+    def forward(self, x: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
+        h = self._trunk(x)
+        return self._j(h), self._lam_r(h)
+
+
+class JLambdaActionCritic(nn.Module):
+    """Critic for ADGDHP: outputs J and two gradient vectors (Fig. 7).
+
+    Outputs:
+      - J(R,A) scalar
+      - J_R = dJ/dR  (vector)
+      - J_A = dJ/dA  (vector)
+    """
+
+    def __init__(
+        self,
+        *,
+        r_dim: int,
+        a_dim: int,
+        hidden_sizes: Sequence[int] = (256, 256),
+        activation: type[nn.Module] = nn.Tanh,
+    ) -> None:
+        super().__init__()
+        in_dim = int(r_dim) + int(a_dim)
+        trunk, last = _mlp_body(in_dim, hidden_sizes, activation=activation)
+        self._trunk = trunk
+        self._j = nn.Linear(int(last), 1)
+        self._jr = nn.Linear(int(last), int(r_dim))
+        self._ja = nn.Linear(int(last), int(a_dim))
+
+    def forward(
+        self, r: torch.Tensor, a: torch.Tensor
+    ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+        x = torch.cat([r, a], dim=-1)
+        h = self._trunk(x)
+        return self._j(h), self._jr(h), self._ja(h)
+
+
 def polyak_update(
-    target: nn.Module, source: nn.Module, *, tau: float, params: Iterable[str] | None = None
+    target: nn.Module,
+    source: nn.Module,
+    *,
+    tau: float,
+    params: Iterable[str] | None = None,
 ) -> None:
     """Polyak averaging: target = (1-tau)*target + tau*source."""
 
@@ -119,5 +254,3 @@ def polyak_update(
                 if name not in src or name not in tgt:
                     continue
                 tgt[name].data.mul_(1.0 - tau).add_(src[name].data, alpha=tau)
-
-

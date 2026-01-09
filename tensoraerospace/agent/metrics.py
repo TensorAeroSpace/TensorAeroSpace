@@ -97,11 +97,15 @@ class MetricWriter:
 
     def add_scalar(self, tag, scalar_value, global_step=None, *args, **kwargs):
         normalized_tag = normalize_tag(tag)
-        return self._writer.add_scalar(normalized_tag, scalar_value, global_step, *args, **kwargs)
+        return self._writer.add_scalar(
+            normalized_tag, scalar_value, global_step, *args, **kwargs
+        )
 
     def add_histogram(self, tag, values, global_step=None, *args, **kwargs):
         normalized_tag = normalize_tag(tag)
-        return self._writer.add_histogram(normalized_tag, values, global_step, *args, **kwargs)
+        return self._writer.add_histogram(
+            normalized_tag, values, global_step, *args, **kwargs
+        )
 
     def flush(self) -> None:
         return self._writer.flush()
@@ -117,15 +121,20 @@ class MetricWriter:
 def create_metric_writer(log_dir: Optional[Union[str, Path]] = None) -> MetricWriter:
     """Create a MetricWriter with optional log directory."""
     log_path = str(log_dir) if log_dir is not None else None
-    base_writer = TorchSummaryWriter(log_dir=log_path) if log_path is not None else TorchSummaryWriter()
+    base_writer = (
+        TorchSummaryWriter(log_dir=log_path)
+        if log_path is not None
+        else TorchSummaryWriter()
+    )
     return MetricWriter(base_writer)
 
 
-def ensure_metric_writer(writer: Optional[TorchSummaryWriter]) -> Optional[MetricWriter]:
+def ensure_metric_writer(
+    writer: Optional[TorchSummaryWriter],
+) -> Optional[MetricWriter]:
     """Wrap an existing writer if provided, otherwise return None."""
     if writer is None:
         return None
     if isinstance(writer, MetricWriter):
         return writer
     return MetricWriter(writer)
-
