@@ -85,6 +85,9 @@ class ADP(BaseRLModel):
         # Logging
         log_dir: Union[str, Path, None] = None,
         log_every_updates: int = 100,
+        # ADHDP stabilization: optional PD baseline computed from the observation.
+        # This is useful for open-loop unstable plants; the actor learns a residual.
+        adhdp_use_baseline: bool = False,
         # DHP utility weights (used only when design="dhp")
         dhp_w_theta: float = 5.0,
         dhp_w_q: float = 0.2,
@@ -175,6 +178,7 @@ class ADP(BaseRLModel):
         self._prev_u_norm = np.zeros((act_dim,), dtype=np.float32)
         self._prev2_u_norm = np.zeros((act_dim,), dtype=np.float32)
         self._dhp_pid = None
+        self._adhdp_use_baseline = bool(adhdp_use_baseline)
 
         supported_designs = ("adhdp", "dhp", "gdhp", "hdp", "addhp", "adgdhp")
         if self.design not in supported_designs:
@@ -197,6 +201,12 @@ class ADP(BaseRLModel):
             raise ValueError("use_target_networks is only supported for design='adhdp'")
         if self._is_model_based_design and self.use_replay:
             raise ValueError("use_replay is only supported for design='adhdp'")
+        if self.design == "adhdp" and self._adhdp_use_baseline:
+            # For ADHDP we only support a simple PD baseline computed from observation.
+            if str(getattr(self, "_dhp_baseline_type", "pd")).lower().strip() != "pd":
+                raise ValueError(
+                    "adhdp_use_baseline=True currently supports only dhp_baseline_type='pd'"
+                )
 
         if self._is_model_based_design:
             init_state = getattr(self.env, "initial_state", None)
@@ -474,7 +484,10 @@ class ADP(BaseRLModel):
                 obs, dtype=torch.float32, device=self.device
             ).unsqueeze(0)
             with torch.no_grad():
-                act = self.actor(obs_t).squeeze(0).cpu().numpy()
+                if self.design == "adhdp" and bool(getattr(self, "_adhdp_use_baseline", False)):
+                    act = self._adhdp_policy_action(obs_t).squeeze(0).cpu().numpy()
+                else:
+                    act = self.actor(obs_t).squeeze(0).cpu().numpy()
 
         if not evaluate and self.exploration_std > 0.0:
             act = act + np.random.normal(
@@ -510,6 +523,56 @@ class ADP(BaseRLModel):
                     pass
 
     # ---- learning ----
+    def _adhdp_pd_baseline_action(self, obs: torch.Tensor) -> torch.Tensor:
+        """Compute a simple PD baseline action from normalized observation.
+
+        This is primarily intended for ImprovedB747Env where the observation is:
+          obs = [norm_pitch_error, norm_q, norm_theta, norm_prev_action]   (dim=4)
+        and optionally (include_reference_in_obs=True):
+          obs = [..., norm_theta_ref, norm_ref_theta_dot]                 (dim=6)
+
+        Returns: tensor with shape (B, act_dim) in normalized action units.
+        """
+        if obs.ndim != 2:
+            raise ValueError(f"Expected obs shape (B, obs_dim), got {tuple(obs.shape)}")
+        if int(obs.shape[1]) < 2:
+            raise ValueError(
+                "PD baseline requires observation with at least 2 dims (pitch_error, q)"
+            )
+
+        e_theta_n = obs[:, 0]  # target - theta (normalized)
+        q_n = obs[:, 1]  # q (normalized)
+        # If available, use reference theta-dot (normalized) as q_ref
+        q_ref_n = obs[:, 5] if int(obs.shape[1]) >= 6 else torch.zeros_like(q_n)
+        e_q_n = q_ref_n - q_n
+
+        kp = float(getattr(self, "_dhp_baseline_kp", 0.0))
+        kd = float(getattr(self, "_dhp_baseline_kd", 0.0))
+        u = kp * e_theta_n + kd * e_q_n
+
+        act_dim = int(getattr(self.env.action_space, "shape", (1,))[0])
+        u = u.reshape(-1, 1).repeat(1, act_dim)
+        return torch.clamp(u, -1.0, 1.0)
+
+    def _adhdp_policy_action(self, obs: torch.Tensor) -> torch.Tensor:
+        """Policy action for ADHDP, optionally with a stabilizing PD baseline."""
+        a = self.actor(obs)
+        if bool(getattr(self, "_adhdp_use_baseline", False)):
+            base = self._adhdp_pd_baseline_action(obs).to(a.device)
+            a = base + float(getattr(self, "_dhp_residual_scale", 1.0)) * a
+            low = torch.as_tensor(
+                np.asarray(self.env.action_space.low, dtype=np.float32).reshape(-1),
+                dtype=torch.float32,
+                device=a.device,
+            )
+            high = torch.as_tensor(
+                np.asarray(self.env.action_space.high, dtype=np.float32).reshape(-1),
+                dtype=torch.float32,
+                device=a.device,
+            )
+            a = torch.max(torch.min(a, high), low)
+        return a
+
     def _dhp_targets_and_grads(
         self,
         *,
@@ -641,6 +704,20 @@ class ADP(BaseRLModel):
 
         with torch.no_grad():
             next_act_t = actor_next(next_obs_t)
+            if self.design == "adhdp" and bool(getattr(self, "_adhdp_use_baseline", False)):
+                base_next = self._adhdp_pd_baseline_action(next_obs_t).to(next_act_t.device)
+                next_act_t = base_next + float(getattr(self, "_dhp_residual_scale", 1.0)) * next_act_t
+                low = torch.as_tensor(
+                    np.asarray(self.env.action_space.low, dtype=np.float32).reshape(-1),
+                    dtype=torch.float32,
+                    device=next_act_t.device,
+                )
+                high = torch.as_tensor(
+                    np.asarray(self.env.action_space.high, dtype=np.float32).reshape(-1),
+                    dtype=torch.float32,
+                    device=next_act_t.device,
+                )
+                next_act_t = torch.max(torch.min(next_act_t, high), low)
             q_next = critic_next(next_obs_t, next_act_t)
             target_q = cost_t + (1.0 - done_t) * self.gamma * q_next
 
@@ -653,8 +730,30 @@ class ADP(BaseRLModel):
         self.critic_optim.step()
 
         # Actor update: minimize critic (cost-to-go)
-        actor_act = self.actor(obs_t)
+        if self.design == "adhdp" and bool(getattr(self, "_adhdp_use_baseline", False)):
+            delta = self.actor(obs_t)
+            base = self._adhdp_pd_baseline_action(obs_t).to(delta.device)
+            actor_act = base + float(getattr(self, "_dhp_residual_scale", 1.0)) * delta
+            low = torch.as_tensor(
+                np.asarray(self.env.action_space.low, dtype=np.float32).reshape(-1),
+                dtype=torch.float32,
+                device=actor_act.device,
+            )
+            high = torch.as_tensor(
+                np.asarray(self.env.action_space.high, dtype=np.float32).reshape(-1),
+                dtype=torch.float32,
+                device=actor_act.device,
+            )
+            actor_act = torch.max(torch.min(actor_act, high), low)
+        else:
+            delta = None
+            actor_act = self.actor(obs_t)
         actor_loss_t = self.critic(obs_t, actor_act).mean()
+        # Regularize residual when using a strong baseline (prevents drift)
+        if delta is not None:
+            reg = float(getattr(self, "_dhp_actor_delta_l2", 0.0) or 0.0)
+            if reg > 0.0:
+                actor_loss_t = actor_loss_t + reg * torch.mean(delta * delta)
         self.actor_optim.zero_grad()
         actor_loss_t.backward()
         torch.nn.utils.clip_grad_norm_(self.actor.parameters(), max_norm=1.0)
@@ -2003,6 +2102,7 @@ class ADP(BaseRLModel):
             "actor_lr": float(self.actor_optim.defaults.get("lr", 3e-4)),
             "critic_lr": float(self.critic_optim.defaults.get("lr", 3e-4)),
             "hidden_size": int(self.hidden_size),
+            "adhdp_use_baseline": bool(getattr(self, "_adhdp_use_baseline", False)),
         }
         if bool(getattr(self, "_is_model_based_design", False)):
             policy_params.update(

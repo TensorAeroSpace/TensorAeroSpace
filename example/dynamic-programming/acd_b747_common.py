@@ -41,6 +41,7 @@ def make_env_b747_sine(
     n_steps: int = 300,
     reward_mode: str = "tracking",
     initial_state: Optional[np.ndarray] = None,
+    include_reference_in_obs: bool = False,
     sine_amp_deg: float = 1.0,
     sine_freq_hz: float = 0.05,
     sine_phase_deg: float = 0.0,
@@ -65,6 +66,7 @@ def make_env_b747_sine(
         number_time_steps=int(n_steps),
         dt=float(dt),
         reward_mode=str(reward_mode),
+        include_reference_in_obs=bool(include_reference_in_obs),
     )
 
 
