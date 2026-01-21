@@ -49,3 +49,4 @@ class NormalPolicyNet(nn.Module):
         out = self.shared_net(states)
         log_std = self.log_std_layer(out)
         return torch.exp(torch.clamp(log_std, LOG_STD_MIN, LOG_STD_MAX))
+

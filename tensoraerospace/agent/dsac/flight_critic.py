@@ -114,3 +114,4 @@ class IQN(nn.Module):
         out = self.hidden_layers(h)  # (B*N, A)
         out = out.view(B, N, self.A)  # (B, N, A)
         return out
+

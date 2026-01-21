@@ -1,0 +1,107 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 500" width="800" height="500">
+  <defs>
+    <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#333"/>
+    </marker>
+    <marker id="arrowhead-blue" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#2196F3"/>
+    </marker>
+    <marker id="arrowhead-green" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#4CAF50"/>
+    </marker>
+    <marker id="arrowhead-orange" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#FF9800"/>
+    </marker>
+    <linearGradient id="actorGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#4CAF50;stop-opacity:1"/>
+      <stop offset="100%" style="stop-color:#388E3C;stop-opacity:1"/>
+    </linearGradient>
+    <linearGradient id="criticGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#2196F3;stop-opacity:1"/>
+      <stop offset="100%" style="stop-color:#1565C0;stop-opacity:1"/>
+    </linearGradient>
+    <linearGradient id="plantGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#FF9800;stop-opacity:1"/>
+      <stop offset="100%" style="stop-color:#E65100;stop-opacity:1"/>
+    </linearGradient>
+    <linearGradient id="modelGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#9C27B0;stop-opacity:1"/>
+      <stop offset="100%" style="stop-color:#6A1B9A;stop-opacity:1"/>
+    </linearGradient>
+  </defs>
+  
+  <!-- Background -->
+  <rect width="800" height="500" fill="#FAFAFA"/>
+  
+  <!-- Title -->
+  <text x="400" y="35" font-family="Arial, sans-serif" font-size="20" font-weight="bold" text-anchor="middle" fill="#333">
+    HDP (Heuristic Dynamic Programming)
+  </text>
+  
+  <!-- Actor Block -->
+  <rect x="100" y="180" width="140" height="80" rx="10" fill="url(#actorGrad)" stroke="#2E7D32" stroke-width="2"/>
+  <text x="170" y="215" font-family="Arial, sans-serif" font-size="16" font-weight="bold" text-anchor="middle" fill="white">Actor pi(R)</text>
+  <text x="170" y="240" font-family="Arial, sans-serif" font-size="12" text-anchor="middle" fill="white">Neural Network</text>
+  
+  <!-- Critic Block -->
+  <rect x="330" y="80" width="140" height="80" rx="10" fill="url(#criticGrad)" stroke="#0D47A1" stroke-width="2"/>
+  <text x="400" y="115" font-family="Arial, sans-serif" font-size="16" font-weight="bold" text-anchor="middle" fill="white">Critic J(R)</text>
+  <text x="400" y="140" font-family="Arial, sans-serif" font-size="12" text-anchor="middle" fill="white">Cost-to-Go</text>
+  
+  <!-- Plant/Environment Block -->
+  <rect x="530" y="180" width="140" height="80" rx="10" fill="url(#plantGrad)" stroke="#BF360C" stroke-width="2"/>
+  <text x="600" y="215" font-family="Arial, sans-serif" font-size="16" font-weight="bold" text-anchor="middle" fill="white">Plant</text>
+  <text x="600" y="240" font-family="Arial, sans-serif" font-size="12" text-anchor="middle" fill="white">x(t+1) = f(x,u)</text>
+  
+  <!-- Model Block -->
+  <rect x="330" y="300" width="140" height="80" rx="10" fill="url(#modelGrad)" stroke="#4A148C" stroke-width="2"/>
+  <text x="400" y="335" font-family="Arial, sans-serif" font-size="16" font-weight="bold" text-anchor="middle" fill="white">Model (A, B)</text>
+  <text x="400" y="360" font-family="Arial, sans-serif" font-size="12" text-anchor="middle" fill="white">Linearized</text>
+  
+  <!-- State R(t) input -->
+  <text x="50" y="225" font-family="Arial, sans-serif" font-size="14" text-anchor="middle" fill="#333">R(t)</text>
+  <line x1="70" y1="220" x2="95" y2="220" stroke="#333" stroke-width="2" marker-end="url(#arrowhead)"/>
+  
+  <!-- Actor to Plant: Action u(t) -->
+  <line x1="240" y1="220" x2="525" y2="220" stroke="#4CAF50" stroke-width="2" marker-end="url(#arrowhead-green)"/>
+  <text x="380" y="210" font-family="Arial, sans-serif" font-size="13" text-anchor="middle" fill="#4CAF50">u(t)</text>
+  
+  <!-- Plant output: state -->
+  <path d="M 600 260 L 600 420 L 170 420 L 170 265" fill="none" stroke="#FF9800" stroke-width="2" marker-end="url(#arrowhead-orange)"/>
+  <text x="385" y="440" font-family="Arial, sans-serif" font-size="13" text-anchor="middle" fill="#FF9800">x(t+1), R(t+1)</text>
+  
+  <!-- R(t) to Critic -->
+  <path d="M 170 180 L 170 120 L 325 120" fill="none" stroke="#333" stroke-width="2" marker-end="url(#arrowhead)"/>
+  <text x="250" y="110" font-family="Arial, sans-serif" font-size="13" text-anchor="middle" fill="#333">R(t)</text>
+  
+  <!-- Model to Actor (gradient for actor update) -->
+  <path d="M 330 340 L 170 340 L 170 265" fill="none" stroke="#9C27B0" stroke-width="2" stroke-dasharray="5,3" marker-end="url(#arrowhead)"/>
+  <text x="250" y="330" font-family="Arial, sans-serif" font-size="11" text-anchor="middle" fill="#9C27B0">dR'/du</text>
+  
+  <!-- Critic to Model (J for actor loss) -->
+  <line x1="400" y1="165" x2="400" y2="295" stroke="#2196F3" stroke-width="2" stroke-dasharray="5,3" marker-end="url(#arrowhead-blue)"/>
+  <text x="420" y="230" font-family="Arial, sans-serif" font-size="11" text-anchor="middle" fill="#2196F3">J(R')</text>
+  
+  <!-- Bellman equation box -->
+  <rect x="550" y="350" width="220" height="100" rx="8" fill="#E3F2FD" stroke="#1565C0" stroke-width="1.5"/>
+  <text x="660" y="375" font-family="Arial, sans-serif" font-size="12" font-weight="bold" text-anchor="middle" fill="#1565C0">Critic TD Target:</text>
+  <text x="660" y="400" font-family="Arial, sans-serif" font-size="12" text-anchor="middle" fill="#333">J(R) = U(t) + g*J(R')</text>
+  <text x="660" y="430" font-family="Arial, sans-serif" font-size="11" text-anchor="middle" fill="#666">R' = A*R + B*u (predict)</text>
+  
+  <!-- Actor objective box -->
+  <rect x="30" y="320" width="180" height="80" rx="8" fill="#E8F5E9" stroke="#2E7D32" stroke-width="1.5"/>
+  <text x="120" y="345" font-family="Arial, sans-serif" font-size="12" font-weight="bold" text-anchor="middle" fill="#2E7D32">Actor Objective:</text>
+  <text x="120" y="370" font-family="Arial, sans-serif" font-size="11" text-anchor="middle" fill="#333">min U(t) + g*J(R')</text>
+  <text x="120" y="390" font-family="Arial, sans-serif" font-size="10" text-anchor="middle" fill="#666">model-based lookahead</text>
+  
+  <!-- Legend -->
+  <rect x="560" y="60" width="210" height="100" rx="5" fill="#fff" stroke="#ccc" stroke-width="1"/>
+  <text x="665" y="80" font-family="Arial, sans-serif" font-size="11" font-weight="bold" text-anchor="middle" fill="#333">Legend</text>
+  <line x1="575" y1="95" x2="605" y2="95" stroke="#4CAF50" stroke-width="2"/>
+  <text x="615" y="99" font-family="Arial, sans-serif" font-size="10" fill="#333">Forward pass</text>
+  <line x1="575" y1="115" x2="605" y2="115" stroke="#9C27B0" stroke-width="2" stroke-dasharray="5,3"/>
+  <text x="615" y="119" font-family="Arial, sans-serif" font-size="10" fill="#333">Gradient</text>
+  <line x1="575" y1="135" x2="605" y2="135" stroke="#FF9800" stroke-width="2"/>
+  <text x="615" y="139" font-family="Arial, sans-serif" font-size="10" fill="#333">Feedback</text>
+</svg>

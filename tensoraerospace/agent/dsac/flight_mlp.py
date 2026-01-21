@@ -43,3 +43,4 @@ def make_mlp(
         layers.append(final_activation)
 
     return nn.Sequential(*layers)
+

@@ -1,3 +1,4 @@
+# flake8: noqa
 """Adaptive Critic Design / ADP agent.
 
 This implementation follows the Adaptive Critic Design (ACD) / Approximate
@@ -6,11 +7,15 @@ Dynamic Programming idea from:
 Prokhorov D.V., Wunsch D.C. “Adaptive critic designs: A case study for
 neurocontrol.” Neural Networks, 8(9), 1995, pp. 1367–1372.
 
-We implement a practical ACD variant with:
-  - deterministic actor  a = π(s)
-  - adaptive critic      Q = Q(s, a)  (interpreted as *cost-to-go*)
-  - online TD learning    Q(s,a) ≈ c(s,a) + γ Q(s', π(s'))
-  - actor improvement     minimize Q(s, π(s)) w.r.t actor params
+We implement paper-inspired ACD designs (HDP/DHP/GDHP and AD variants) and a
+canonical ADHDP-style actor-critic:
+  - actor:  a = π(R)
+  - critic: J = J(R, a)  (action-dependent cost-to-go)
+  - TD learning: J(R_t, a_t) ≈ U_t + γ J(R_{t+1}, π(R_{t+1}))
+  - actor improvement: minimize J(R, π(R)) w.r.t actor params
+
+For convenience we also keep a more "practical" DDPG-like variant under
+`design="ddpg"` (optional replay/target networks).
 
 Notes:
   - The environment is assumed to follow Gymnasium API.
@@ -86,23 +91,64 @@ class ADP(BaseRLModel):
         log_dir: Union[str, Path, None] = None,
         log_every_updates: int = 100,
         # ADHDP stabilization: optional PD baseline computed from the observation.
-        # This is useful for open-loop unstable plants; the actor learns a residual.
+        # NOTE: for canonical ADHDP (paper-style) we do NOT compose actions as
+        # baseline+residual. Instead, use warm-start below to initialize the actor as
+        # a stabilizing controller, then train with pure ACD updates.
         adhdp_use_baseline: bool = False,
+        adhdp_warmstart_actor_episodes: int = 0,
+        adhdp_warmstart_actor_epochs: int = 2,
+        # Paper-style training schedule: keep actor fixed for first N episodes so the
+        # critic can adapt on stable trajectories.
+        adhdp_critic_warmup_episodes: int = 0,
+        # Paper Section III-style alternating cycles (also applicable to AD forms):
+        # train critic for Nc episodes with fixed actor, then train actor for Na episodes
+        # with fixed critic, and repeat.
+        adhdp_critic_cycle_episodes: int = 0,
+        adhdp_action_cycle_episodes: int = 0,
+        # Use environment cost as utility U for ADHDP updates (paper-style).
+        # If enabled and env returns info["cost_total"], we train on reward=-cost_total
+        # instead of the shaped environment reward (which can include bonuses/progress).
+        adhdp_use_env_cost: bool = True,
+        # Optional ADHDP stabilization (practical): keep actor close to PD stabilizer early
+        # in training, then decay this regularizer.
+        #
+        # This helps prevent the actor from drifting into saturated actions while the
+        # critic is still inaccurate.
+        adhdp_actor_bc_l2: float = 0.0,
+        adhdp_actor_bc_decay: float = 1.0,
         # DHP utility weights (used only when design="dhp")
         dhp_w_theta: float = 5.0,
         dhp_w_q: float = 0.2,
         dhp_w_u: float = 0.01,
         dhp_w_du: float = 0.02,
         dhp_use_env_cost: bool = True,
-        # Stabilization (paper recommends starting with a stabilizing controller)
-        dhp_use_baseline: bool = True,
+        # Optional stabilization for classic ACD (HDP/DHP/GDHP and AD variants):
+        # the paper recommends *starting* with a stabilizing controller to keep the
+        # closed loop stable early in training, but the ACD update rules themselves
+        # do NOT require any "baseline" or expert policy.
+        #
+        # If enabled, the learned actor is treated as a residual controller:
+        #   u = u_baseline + dhp_residual_scale * delta_u
+        dhp_use_baseline: bool = False,
         dhp_baseline_type: str = "pd",
         dhp_baseline_kp: float = 0.6,
         dhp_baseline_ki: float = 0.0,
         dhp_baseline_kd: float = 0.2,
         dhp_pid_use_normalized_theta: bool = True,
         dhp_pid_mode: str = "norm",
-        dhp_residual_scale: float = 0.3,
+        # Scale of the learned policy output (or residual if baseline is enabled).
+        # Use 1.0 for "pure" learned control without a baseline.
+        dhp_residual_scale: float = 1.0,
+        # Optional paper-style warm start:
+        # The paper recommends starting critic training with an actor that already acts
+        # as a stabilizing controller, to keep the closed-loop stable while the critic adapts.
+        #
+        # This is *not* a "baseline controller" inside ACD equations; it is just actor
+        # initialization. We implement it by collecting (R(t) -> u_baseline) samples from
+        # a PD/PID stabilizer and doing a short supervised fit of the actor.
+        dhp_warmstart_actor_episodes: int = 0,
+        dhp_warmstart_actor_epochs: int = 2,
+        dhp_warmstart_actor_disable_baseline_after: bool = True,
         # Extra stabilization: keep residual close to 0 when using a strong baseline.
         # Adds actor_loss += dhp_actor_delta_l2 * mean(delta_u^2)
         dhp_actor_delta_l2: float = 0.0,
@@ -172,6 +218,11 @@ class ADP(BaseRLModel):
         self._dhp_pid_use_normalized_theta = bool(dhp_pid_use_normalized_theta)
         self._dhp_pid_mode = str(dhp_pid_mode).lower().strip()
         self._dhp_residual_scale = float(dhp_residual_scale)
+        self._dhp_warmstart_actor_episodes = int(dhp_warmstart_actor_episodes)
+        self._dhp_warmstart_actor_epochs = int(dhp_warmstart_actor_epochs)
+        self._dhp_warmstart_actor_disable_baseline_after = bool(
+            dhp_warmstart_actor_disable_baseline_after
+        )
         self._dhp_actor_delta_l2 = float(dhp_actor_delta_l2)
         self._dhp_critic_cycle_episodes = int(dhp_critic_cycle_episodes)
         self._dhp_action_cycle_episodes = int(dhp_action_cycle_episodes)
@@ -179,8 +230,25 @@ class ADP(BaseRLModel):
         self._prev2_u_norm = np.zeros((act_dim,), dtype=np.float32)
         self._dhp_pid = None
         self._adhdp_use_baseline = bool(adhdp_use_baseline)
+        self._adhdp_warmstart_actor_episodes = int(adhdp_warmstart_actor_episodes)
+        self._adhdp_warmstart_actor_epochs = int(adhdp_warmstart_actor_epochs)
+        self._adhdp_critic_warmup_episodes = int(adhdp_critic_warmup_episodes)
+        self._adhdp_critic_cycle_episodes = int(adhdp_critic_cycle_episodes)
+        self._adhdp_action_cycle_episodes = int(adhdp_action_cycle_episodes)
+        self._adhdp_use_env_cost = bool(adhdp_use_env_cost)
+        self._adhdp_actor_bc_l2 = float(adhdp_actor_bc_l2)
+        self._adhdp_actor_bc_decay = float(adhdp_actor_bc_decay)
+        self._adhdp_actor_bc_coef = float(adhdp_actor_bc_l2)
 
-        supported_designs = ("adhdp", "dhp", "gdhp", "hdp", "addhp", "adgdhp")
+        supported_designs = (
+            "adhdp",  # canonical action-dependent HDP (online, no replay/targets)
+            "ddpg",  # practical DDPG-like variant (optional replay/targets)
+            "dhp",
+            "gdhp",
+            "hdp",
+            "addhp",
+            "adgdhp",
+        )
         if self.design not in supported_designs:
             raise ValueError(
                 f"design must be one of {supported_designs}, got {self.design!r}"
@@ -194,19 +262,23 @@ class ADP(BaseRLModel):
             "adgdhp",
         )
 
-        # Target networks / replay buffer are DDPG-like stabilizers for ADHDP.
-        # For classic ACD designs (HDP/DHP/GDHP and their AD variants) we keep the
-        # implementation close to the paper (online, no targets).
-        if self._is_model_based_design and self.use_target_networks:
-            raise ValueError("use_target_networks is only supported for design='adhdp'")
-        if self._is_model_based_design and self.use_replay:
-            raise ValueError("use_replay is only supported for design='adhdp'")
+        # Replay/target networks are *not* part of canonical ACD/ADHDP (paper),
+        # but we allow them for the practical `design="ddpg"` variant only.
+        if self.design == "adhdp" and (self.use_replay or self.use_target_networks):
+            raise ValueError(
+                "Canonical design='adhdp' does not support replay/target networks. "
+                "Use design='ddpg' for a practical DDPG-like variant."
+            )
+        if self._is_model_based_design and (self.use_replay or self.use_target_networks):
+            raise ValueError(
+                "use_replay/use_target_networks are only supported for design='ddpg'"
+            )
         if self.design == "adhdp" and self._adhdp_use_baseline:
-            # For ADHDP we only support a simple PD baseline computed from observation.
-            if str(getattr(self, "_dhp_baseline_type", "pd")).lower().strip() != "pd":
-                raise ValueError(
-                    "adhdp_use_baseline=True currently supports only dhp_baseline_type='pd'"
-                )
+            raise ValueError(
+                "Canonical design='adhdp' does not support baseline+residual action composition. "
+                "Use adhdp_warmstart_actor_episodes>0 to initialize the actor as a stabilizing PD controller "
+                "(paper-style), or use design='ddpg' if you need residual stabilization."
+            )
 
         if self._is_model_based_design:
             init_state = getattr(self.env, "initial_state", None)
@@ -331,7 +403,14 @@ class ADP(BaseRLModel):
             self._env_w_jerk = float(getattr(self.env, "w_jerk", 0.0))
 
             # Optional PID baseline (from tensoraerospace.agent.pid)
-            if self._dhp_use_baseline and self._dhp_baseline_type == "pid":
+            need_pid = (
+                self._dhp_baseline_type == "pid"
+                and (
+                    bool(getattr(self, "_dhp_use_baseline", False))
+                    or int(getattr(self, "_dhp_warmstart_actor_episodes", 0) or 0) > 0
+                )
+            )
+            if need_pid:
                 try:
                     from ..pid import (  # local import to avoid unnecessary dependency chain
                         PID,
@@ -367,10 +446,10 @@ class ADP(BaseRLModel):
         self.actor_optim = Adam(self.actor.parameters(), lr=float(actor_lr))
         self.critic_optim = Adam(self.critic.parameters(), lr=float(critic_lr))
 
-        # Optional target networks
+        # Optional target networks (practical variant only)
         self.actor_target: Optional[DeterministicActor]
         self.critic_target: Optional[QCritic]
-        if self.use_target_networks:
+        if self.design == "ddpg" and self.use_target_networks:
             self.actor_target = DeterministicActor(
                 obs_dim,
                 act_dim,
@@ -387,9 +466,9 @@ class ADP(BaseRLModel):
             self.actor_target = None
             self.critic_target = None
 
-        # Optional replay buffer
+        # Optional replay buffer (practical variant only)
         self.memory: Optional[ReplayBuffer]
-        if self.use_replay:
+        if self.design == "ddpg" and self.use_replay:
             self.memory = ReplayBuffer(int(memory_capacity), seed=self.seed)
         else:
             self.memory = None
@@ -484,10 +563,7 @@ class ADP(BaseRLModel):
                 obs, dtype=torch.float32, device=self.device
             ).unsqueeze(0)
             with torch.no_grad():
-                if self.design == "adhdp" and bool(getattr(self, "_adhdp_use_baseline", False)):
-                    act = self._adhdp_policy_action(obs_t).squeeze(0).cpu().numpy()
-                else:
-                    act = self.actor(obs_t).squeeze(0).cpu().numpy()
+                act = self.actor(obs_t).squeeze(0).cpu().numpy()
 
         if not evaluate and self.exploration_std > 0.0:
             act = act + np.random.normal(
@@ -521,10 +597,136 @@ class ADP(BaseRLModel):
                     self._dhp_pid.reset()
                 except Exception:
                     pass
+        # Reset ADHDP PID integrator state (if used)
+        try:
+            self._adhdp_pid_i = 0.0
+        except Exception:
+            pass
+
+    def _dhp_baseline_u_norm(self, *, x: np.ndarray, theta_ref: float, q_ref: float) -> float:
+        """Compute baseline stabilizing action in env action units.
+
+        This helper is used for:
+          - residual composition when dhp_use_baseline=True
+          - actor warm-start (paper-style initialization)
+        """
+        baseline_type = str(getattr(self, "_dhp_baseline_type", "pd")).lower().strip()
+        if baseline_type == "pid":
+            pid = getattr(self, "_dhp_pid", None)
+            if pid is None:
+                raise ValueError(
+                    "PID baseline requested but PID instance is not initialized. "
+                    "Set dhp_baseline_type='pid' and enable dhp_use_baseline or dhp_warmstart_actor_episodes>0."
+                )
+            pid_mode = str(getattr(self, "_dhp_pid_mode", "norm")).lower().strip()
+            if pid_mode == "deg":
+                sp = float(np.rad2deg(theta_ref))
+                meas = float(np.rad2deg(float(x[3])))
+                control_deg = float(pid.select_action(sp, meas))
+                u_base = float(control_deg) / float(getattr(self, "_env_max_stabilizer_angle_deg", 1.0))
+            else:
+                if bool(getattr(self, "_dhp_pid_use_normalized_theta", True)):
+                    sp = float(theta_ref) / float(getattr(self, "_env_max_pitch_rad", 1.0))
+                    meas = float(x[3]) / float(getattr(self, "_env_max_pitch_rad", 1.0))
+                else:
+                    sp = float(theta_ref)
+                    meas = float(x[3])
+                u_base = float(pid.select_action(sp, meas))
+            return float(np.clip(u_base, -1.0, 1.0))
+
+        # Default: PD baseline using theta/q errors (normalized like env)
+        inv_theta = 1.0 / float(getattr(self, "_env_max_pitch_rad", 1.0))
+        inv_q = 1.0 / float(getattr(self, "_env_max_pitch_rate_rad_s", 1.0))
+        e_theta_n = (float(theta_ref) - float(x[3])) * float(inv_theta)
+        e_q_n = (float(q_ref) - float(x[2])) * float(inv_q)
+        u_base = float(getattr(self, "_dhp_baseline_kp", 0.0)) * float(e_theta_n) + float(
+            getattr(self, "_dhp_baseline_kd", 0.0)
+        ) * float(e_q_n)
+        return float(np.clip(u_base, -1.0, 1.0))
+
+    def _warmstart_actor_from_baseline(self, *, episodes: int, max_steps: int | None) -> None:
+        """Warm-start actor by imitating a stabilizing baseline controller.
+
+        This matches the paper's practical recommendation: start critic training with a
+        stabilizing actor, without introducing any baseline into ACD update equations.
+        """
+        episodes = int(episodes)
+        if episodes <= 0:
+            return
+        if not bool(getattr(self, "_is_model_based_design", False)):
+            return
+
+        act_dim = int(getattr(self.env.action_space, "shape", (1,))[0])
+        state_dim = int(getattr(self, "_dhp_state_dim", 0) or 0)
+        if state_dim < 1:
+            raise ValueError("Warm-start requires a valid _dhp_state_dim")
+        if getattr(self, "_dhp_ref", None) is None:
+            raise ValueError("Warm-start requires env.reference_signal (DHP-style tracking)")
+
+        xs: list[np.ndarray] = []
+        ys: list[np.ndarray] = []
+
+        for _ep in range(episodes):
+            _obs, _info = self.env.reset()
+            # Reset PID integrator per episode if used
+            if getattr(self, "_dhp_pid", None) is not None:
+                try:
+                    self._dhp_pid.reset()
+                except Exception:
+                    pass
+
+            done = False
+            steps = 0
+            while not done:
+                idx_t = int(getattr(self.env, "current_step", steps))
+                x = _as_flat_np(getattr(self.env, "state"))
+
+                ref = np.asarray(getattr(self, "_dhp_ref"), dtype=float)
+                idx = int(np.clip(idx_t, 0, int(ref.shape[1]) - 1))
+                idx_prev = int(np.clip(idx_t - 1, 0, int(ref.shape[1]) - 1))
+                theta_ref = float(ref[0, idx])
+                theta_ref_prev = float(ref[0, idx_prev])
+                q_ref = float((theta_ref - theta_ref_prev) / float(getattr(self, "_dhp_dt", 0.01) or 0.01))
+
+                r_t = np.concatenate([x[:state_dim], [theta_ref, q_ref]]).astype(np.float32)
+                u_base = float(self._dhp_baseline_u_norm(x=x, theta_ref=theta_ref, q_ref=q_ref))
+
+                # Supervised pair (R -> u)
+                xs.append(r_t)
+                ys.append(np.full((act_dim,), u_base, dtype=np.float32))
+
+                action = np.full((act_dim,), u_base, dtype=np.float32)
+                low = np.asarray(self.env.action_space.low, dtype=np.float32).reshape(-1)
+                high = np.asarray(self.env.action_space.high, dtype=np.float32).reshape(-1)
+                action = np.clip(action, low, high).astype(np.float32)
+
+                _obs, _reward, terminated, truncated, _info = self.env.step(action)
+                done = bool(terminated or truncated)
+                steps += 1
+                if max_steps is not None and steps >= int(max_steps):
+                    break
+
+        if len(xs) < 1:
+            return
+
+        x_t = torch.as_tensor(np.stack(xs, axis=0), dtype=torch.float32, device=self.device)
+        y_t = torch.as_tensor(np.stack(ys, axis=0), dtype=torch.float32, device=self.device)
+
+        # Use the same LR as the actor optimizer
+        lr = float(self.actor_optim.param_groups[0].get("lr", 3e-4))
+        opt = Adam(self.actor.parameters(), lr=lr)
+        epochs = int(getattr(self, "_dhp_warmstart_actor_epochs", 1) or 1)
+        for _ in range(max(1, epochs)):
+            pred = self.actor(x_t)
+            loss = F.mse_loss(pred, y_t)
+            opt.zero_grad()
+            loss.backward()
+            torch.nn.utils.clip_grad_norm_(self.actor.parameters(), max_norm=1.0)
+            opt.step()
 
     # ---- learning ----
-    def _adhdp_pd_baseline_action(self, obs: torch.Tensor) -> torch.Tensor:
-        """Compute a simple PD baseline action from normalized observation.
+    def _adhdp_baseline_action(self, obs: torch.Tensor) -> torch.Tensor:
+        """Compute a PD/PID baseline action from normalized observation.
 
         This is primarily intended for ImprovedB747Env where the observation is:
           obs = [norm_pitch_error, norm_q, norm_theta, norm_prev_action]   (dim=4)
@@ -547,31 +749,96 @@ class ADP(BaseRLModel):
         e_q_n = q_ref_n - q_n
 
         kp = float(getattr(self, "_dhp_baseline_kp", 0.0))
+        ki = float(getattr(self, "_dhp_baseline_ki", 0.0))
         kd = float(getattr(self, "_dhp_baseline_kd", 0.0))
-        u = kp * e_theta_n + kd * e_q_n
+        baseline_type = str(getattr(self, "_dhp_baseline_type", "pd")).lower().strip()
+        if baseline_type not in ("pd", "pid"):
+            baseline_type = "pd"
+
+        if baseline_type == "pid":
+            # Stateful integrator is maintained per episode (canonical ADHDP is online, no replay).
+            dt = float(getattr(self.env, "dt", 0.1))
+            i_prev = float(getattr(self, "_adhdp_pid_i", 0.0) or 0.0)
+            i_new = i_prev + float(torch.mean(e_theta_n).item()) * dt
+            # Simple anti-windup (keep integral bounded)
+            i_clip = float(getattr(self, "_adhdp_pid_i_clip", 1.0) or 1.0)
+            if i_clip > 0.0:
+                i_new = float(np.clip(i_new, -i_clip, i_clip))
+            self._adhdp_pid_i = float(i_new)
+            u = kp * e_theta_n + ki * float(i_new) + kd * e_q_n
+        else:
+            u = kp * e_theta_n + kd * e_q_n
 
         act_dim = int(getattr(self.env.action_space, "shape", (1,))[0])
         u = u.reshape(-1, 1).repeat(1, act_dim)
         return torch.clamp(u, -1.0, 1.0)
 
     def _adhdp_policy_action(self, obs: torch.Tensor) -> torch.Tensor:
-        """Policy action for ADHDP, optionally with a stabilizing PD baseline."""
-        a = self.actor(obs)
-        if bool(getattr(self, "_adhdp_use_baseline", False)):
-            base = self._adhdp_pd_baseline_action(obs).to(a.device)
-            a = base + float(getattr(self, "_dhp_residual_scale", 1.0)) * a
-            low = torch.as_tensor(
-                np.asarray(self.env.action_space.low, dtype=np.float32).reshape(-1),
-                dtype=torch.float32,
-                device=a.device,
-            )
-            high = torch.as_tensor(
-                np.asarray(self.env.action_space.high, dtype=np.float32).reshape(-1),
-                dtype=torch.float32,
-                device=a.device,
-            )
-            a = torch.max(torch.min(a, high), low)
-        return a
+        """Policy action for canonical ADHDP."""
+        return self.actor(obs)
+
+    def _warmstart_adhdp_actor_from_pd(self, *, episodes: int, max_steps: int | None) -> None:
+        """Warm-start ADHDP actor by imitating PD stabilizer computed from observation.
+
+        This matches the paper's practical recommendation (stabilizing initial actor),
+        without introducing baseline+residual composition into the ADHDP equations.
+        """
+        episodes = int(episodes)
+        if episodes <= 0:
+            return
+
+        act_dim = int(getattr(self.env.action_space, "shape", (1,))[0])
+        xs: list[np.ndarray] = []
+        ys: list[np.ndarray] = []
+
+        for _ep in range(episodes):
+            obs, _info = self.env.reset()
+            obs = _as_flat_np(obs)
+            # reset PID integrator at episode start
+            try:
+                self._adhdp_pid_i = 0.0
+            except Exception:
+                pass
+            done = False
+            steps = 0
+            while not done:
+                obs_t = torch.as_tensor(obs, dtype=torch.float32, device=self.device).unsqueeze(0)
+                with torch.no_grad():
+                    u_base = self._adhdp_baseline_action(obs_t).squeeze(0).cpu().numpy()
+                u_base = np.asarray(u_base, dtype=np.float32).reshape(-1)
+                if u_base.shape[0] == 1 and act_dim > 1:
+                    u_base = np.repeat(u_base, act_dim).astype(np.float32)
+
+                xs.append(obs.astype(np.float32))
+                ys.append(u_base.astype(np.float32))
+
+                low = np.asarray(self.env.action_space.low, dtype=np.float32).reshape(-1)
+                high = np.asarray(self.env.action_space.high, dtype=np.float32).reshape(-1)
+                action = np.clip(u_base, low, high).astype(np.float32)
+
+                next_obs, _reward, terminated, truncated, _info = self.env.step(action)
+                obs = _as_flat_np(next_obs)
+                done = bool(terminated or truncated)
+                steps += 1
+                if max_steps is not None and steps >= int(max_steps):
+                    break
+
+        if len(xs) < 1:
+            return
+
+        x_t = torch.as_tensor(np.stack(xs, axis=0), dtype=torch.float32, device=self.device)
+        y_t = torch.as_tensor(np.stack(ys, axis=0), dtype=torch.float32, device=self.device)
+
+        lr = float(self.actor_optim.param_groups[0].get("lr", 3e-4))
+        opt = Adam(self.actor.parameters(), lr=lr)
+        epochs = int(getattr(self, "_adhdp_warmstart_actor_epochs", 1) or 1)
+        for _ in range(max(1, epochs)):
+            pred = self.actor(x_t)
+            loss = F.mse_loss(pred, y_t)
+            opt.zero_grad()
+            loss.backward()
+            torch.nn.utils.clip_grad_norm_(self.actor.parameters(), max_norm=1.0)
+            opt.step()
 
     def _dhp_targets_and_grads(
         self,
@@ -678,8 +945,15 @@ class ADP(BaseRLModel):
         rew_b: np.ndarray,
         next_obs_b: np.ndarray,
         done_bootstrap_b: np.ndarray,
+        *,
+        do_critic_update: bool = True,
+        do_actor_update: bool = True,
     ) -> Tuple[float, float]:
-        """One update step on a given batch. Returns (critic_loss, actor_loss)."""
+        """One update step on a given batch. Returns (critic_loss, actor_loss).
+
+        do_actor_update=False is used for paper-style schedules where the critic is
+        trained first with a fixed stabilizing actor.
+        """
         obs_t = torch.as_tensor(obs_b, dtype=torch.float32, device=self.device)
         act_t = torch.as_tensor(act_b, dtype=torch.float32, device=self.device)
         # reward comes in as (B,1) from replay; accept (B,) too.
@@ -696,72 +970,50 @@ class ADP(BaseRLModel):
         # Convert reward to cost
         cost_t = -rew_t
 
-        # Target networks if enabled, otherwise online networks
+        # Practical variant uses target networks; canonical ADHDP uses online networks.
         actor_next = self.actor_target if self.actor_target is not None else self.actor
-        critic_next = (
-            self.critic_target if self.critic_target is not None else self.critic
-        )
+        critic_next = self.critic_target if self.critic_target is not None else self.critic
 
         with torch.no_grad():
             next_act_t = actor_next(next_obs_t)
-            if self.design == "adhdp" and bool(getattr(self, "_adhdp_use_baseline", False)):
-                base_next = self._adhdp_pd_baseline_action(next_obs_t).to(next_act_t.device)
-                next_act_t = base_next + float(getattr(self, "_dhp_residual_scale", 1.0)) * next_act_t
-                low = torch.as_tensor(
-                    np.asarray(self.env.action_space.low, dtype=np.float32).reshape(-1),
-                    dtype=torch.float32,
-                    device=next_act_t.device,
-                )
-                high = torch.as_tensor(
-                    np.asarray(self.env.action_space.high, dtype=np.float32).reshape(-1),
-                    dtype=torch.float32,
-                    device=next_act_t.device,
-                )
-                next_act_t = torch.max(torch.min(next_act_t, high), low)
             q_next = critic_next(next_obs_t, next_act_t)
             target_q = cost_t + (1.0 - done_t) * self.gamma * q_next
 
         # Critic update
-        q = self.critic(obs_t, act_t)
-        critic_loss_t = F.mse_loss(q, target_q)
-        self.critic_optim.zero_grad()
-        critic_loss_t.backward()
-        torch.nn.utils.clip_grad_norm_(self.critic.parameters(), max_norm=1.0)
-        self.critic_optim.step()
+        critic_loss_t: torch.Tensor
+        if bool(do_critic_update):
+            q = self.critic(obs_t, act_t)
+            critic_loss_t = F.mse_loss(q, target_q)
+            self.critic_optim.zero_grad()
+            critic_loss_t.backward()
+            torch.nn.utils.clip_grad_norm_(self.critic.parameters(), max_norm=1.0)
+            self.critic_optim.step()
+        else:
+            critic_loss_t = torch.as_tensor(0.0, dtype=torch.float32, device=self.device)
 
         # Actor update: minimize critic (cost-to-go)
-        if self.design == "adhdp" and bool(getattr(self, "_adhdp_use_baseline", False)):
-            delta = self.actor(obs_t)
-            base = self._adhdp_pd_baseline_action(obs_t).to(delta.device)
-            actor_act = base + float(getattr(self, "_dhp_residual_scale", 1.0)) * delta
-            low = torch.as_tensor(
-                np.asarray(self.env.action_space.low, dtype=np.float32).reshape(-1),
-                dtype=torch.float32,
-                device=actor_act.device,
-            )
-            high = torch.as_tensor(
-                np.asarray(self.env.action_space.high, dtype=np.float32).reshape(-1),
-                dtype=torch.float32,
-                device=actor_act.device,
-            )
-            actor_act = torch.max(torch.min(actor_act, high), low)
-        else:
-            delta = None
+        actor_loss_t: torch.Tensor
+        if bool(do_actor_update):
             actor_act = self.actor(obs_t)
-        actor_loss_t = self.critic(obs_t, actor_act).mean()
-        # Regularize residual when using a strong baseline (prevents drift)
-        if delta is not None:
-            reg = float(getattr(self, "_dhp_actor_delta_l2", 0.0) or 0.0)
-            if reg > 0.0:
-                actor_loss_t = actor_loss_t + reg * torch.mean(delta * delta)
-        self.actor_optim.zero_grad()
-        actor_loss_t.backward()
-        torch.nn.utils.clip_grad_norm_(self.actor.parameters(), max_norm=1.0)
-        self.actor_optim.step()
+            actor_loss_t = self.critic(obs_t, actor_act).mean()
+            # Optional behavioral-cloning regularizer towards PD stabilizer
+            if self.design == "adhdp":
+                coef = float(getattr(self, "_adhdp_actor_bc_coef", 0.0) or 0.0)
+                if coef > 0.0:
+                    with torch.no_grad():
+                        u_base = self._adhdp_baseline_action(obs_t)
+                    actor_loss_t = actor_loss_t + coef * F.mse_loss(actor_act, u_base)
+            self.actor_optim.zero_grad()
+            actor_loss_t.backward()
+            torch.nn.utils.clip_grad_norm_(self.actor.parameters(), max_norm=1.0)
+            self.actor_optim.step()
+        else:
+            actor_loss_t = torch.as_tensor(0.0, dtype=torch.float32, device=self.device)
 
-        # Polyak updates (optional)
+        # Polyak updates (practical variant only)
         if (
-            self.use_target_networks
+            self.design == "ddpg"
+            and self.use_target_networks
             and self.actor_target is not None
             and self.critic_target is not None
         ):
@@ -784,12 +1036,42 @@ class ADP(BaseRLModel):
         max_steps_i = int(max_steps) if max_steps is not None else None
 
         total_steps = 0
+        # Paper-style initialization: warm-start ADHDP actor as PD stabilizer
+        if self.design == "adhdp":
+            warm_ep = int(getattr(self, "_adhdp_warmstart_actor_episodes", 0) or 0)
+            if warm_ep > 0:
+                self._warmstart_adhdp_actor_from_pd(episodes=warm_ep, max_steps=max_steps_i)
+        # Paper-style initialization: warm-start actor as a stabilizing controller
+        # before beginning ACD updates. This keeps the closed loop stable while the critic adapts.
+        warm_ep = int(getattr(self, "_dhp_warmstart_actor_episodes", 0) or 0)
+        if warm_ep > 0 and bool(getattr(self, "_is_model_based_design", False)):
+            self._warmstart_actor_from_baseline(episodes=warm_ep, max_steps=max_steps_i)
+            if bool(getattr(self, "_dhp_warmstart_actor_disable_baseline_after", True)):
+                # After warm-start we typically want "pure" ACD updates (no residual baseline).
+                self._dhp_use_baseline = False
+
         for ep in range(num_episodes):
             obs, _info = self.env.reset()
             obs = _as_flat_np(obs)
             ep_reward = 0.0
             steps = 0
             done = False
+            # Reset ADHDP PID integrator at episode start (important for stable warm-start/BC targets)
+            if self.design == "adhdp":
+                try:
+                    self._adhdp_pid_i = 0.0
+                except Exception:
+                    pass
+            # Decay ADHDP actor BC regularizer per episode (if enabled)
+            if self.design == "adhdp":
+                try:
+                    decay = float(getattr(self, "_adhdp_actor_bc_decay", 1.0) or 1.0)
+                    if decay < 1.0:
+                        self._adhdp_actor_bc_coef = float(
+                            getattr(self, "_adhdp_actor_bc_coef", 0.0) or 0.0
+                        ) * float(decay)
+                except Exception:
+                    pass
             # Reset action history per episode to avoid cross-episode coupling in du/jerk penalties.
             # (Important for tracking tasks where the episode restarts the plant state.)
             if bool(getattr(self, "_is_model_based_design", False)):
@@ -2001,24 +2283,40 @@ class ADP(BaseRLModel):
                         )
 
                 else:
-                    # ADHDP-like (DDPG-style) update on observation space
-                    act = self.select_action(obs, evaluate=False)
-                    next_obs, reward, terminated, truncated, _info = self.env.step(act)
+                    # Canonical ADHDP-style update on observation space:
+                    # online TD on J(R,A) with actor improvement via critic gradients.
+                    adhdp_warm_c = int(getattr(self, "_adhdp_critic_warmup_episodes", 0) or 0)
+                    # Alternating cycles (if configured)
+                    c_ep = int(getattr(self, "_adhdp_critic_cycle_episodes", 0) or 0)
+                    a_ep = int(getattr(self, "_adhdp_action_cycle_episodes", 0) or 0)
+                    phase = "both"
+                    if c_ep > 0 and a_ep > 0:
+                        cyc = c_ep + a_ep
+                        pos = int(ep % cyc)
+                        phase = "critic" if pos < c_ep else "actor"
+
+                    do_critic = phase in ("both", "critic")
+                    do_actor = phase in ("both", "actor")
+                    # Warmup overrides: first N episodes train critic only
+                    if ep < adhdp_warm_c:
+                        do_critic = True
+                        do_actor = False
+
+                    # Avoid exploration noise while actor is frozen to keep trajectories stable.
+                    act = self.select_action(obs, evaluate=not do_actor)
+                    next_obs, reward, terminated, truncated, info = self.env.step(act)
                     next_obs = _as_flat_np(next_obs)
 
                 done_env = bool(terminated or truncated)
                 # Bootstrap stops only on true termination (not time limit)
                 done_bootstrap = float(bool(terminated))
 
+                # Logging uses the environment reward.
                 ep_reward += float(reward)
                 steps += 1
                 total_steps += 1
 
-                if (
-                    self.design == "adhdp"
-                    and self.use_replay
-                    and self.memory is not None
-                ):
+                if self.design == "ddpg" and self.use_replay and self.memory is not None:
                     self.memory.push(obs, act, float(reward), next_obs, done_bootstrap)
                     if len(self.memory) >= self.batch_size:
                         for _ in range(self.updates_per_step):
@@ -2032,16 +2330,28 @@ class ADP(BaseRLModel):
                                 self.writer.add_scalar(
                                     "loss/actor", actor_loss, self._updates
                                 )
-                elif self.design == "adhdp":
+                elif self.design in ("adhdp", "ddpg"):
+                    # For canonical ADHDP it is more stable to train on the utility U (cost),
+                    # not on shaped reward. If env provides cost_total, use reward=-cost_total.
+                    reward_for_update = float(reward)
+                    if self.design == "adhdp" and bool(getattr(self, "_adhdp_use_env_cost", True)):
+                        try:
+                            cost_total = float(info.get("cost_total"))  # type: ignore[union-attr]
+                            reward_scale = float(getattr(self.env, "reward_scale", 1.0))
+                            reward_for_update = -cost_total * reward_scale
+                        except Exception:
+                            reward_for_update = float(reward)
                     # Online update on the single transition
                     critic_loss, actor_loss = self._td_update_batch(
                         obs_b=obs.reshape(1, -1),
                         act_b=act.reshape(1, -1),
-                        rew_b=np.asarray([[reward]], dtype=np.float32),
+                        rew_b=np.asarray([[reward_for_update]], dtype=np.float32),
                         next_obs_b=next_obs.reshape(1, -1),
                         done_bootstrap_b=np.asarray(
                             [[done_bootstrap]], dtype=np.float32
                         ),
+                        do_critic_update=bool(do_critic) if self.design == "adhdp" else True,
+                        do_actor_update=bool(do_actor) if self.design == "adhdp" else True,
                     )
                     self._updates += 1
                     if (self._updates % self.log_every_updates) == 0:
@@ -2103,6 +2413,26 @@ class ADP(BaseRLModel):
             "critic_lr": float(self.critic_optim.defaults.get("lr", 3e-4)),
             "hidden_size": int(self.hidden_size),
             "adhdp_use_baseline": bool(getattr(self, "_adhdp_use_baseline", False)),
+            "adhdp_warmstart_actor_episodes": int(
+                getattr(self, "_adhdp_warmstart_actor_episodes", 0) or 0
+            ),
+            "adhdp_warmstart_actor_epochs": int(
+                getattr(self, "_adhdp_warmstart_actor_epochs", 0) or 0
+            ),
+            "adhdp_critic_warmup_episodes": int(
+                getattr(self, "_adhdp_critic_warmup_episodes", 0) or 0
+            ),
+            "adhdp_critic_cycle_episodes": int(
+                getattr(self, "_adhdp_critic_cycle_episodes", 0) or 0
+            ),
+            "adhdp_action_cycle_episodes": int(
+                getattr(self, "_adhdp_action_cycle_episodes", 0) or 0
+            ),
+            "adhdp_use_env_cost": bool(getattr(self, "_adhdp_use_env_cost", True)),
+            "adhdp_actor_bc_l2": float(getattr(self, "_adhdp_actor_bc_l2", 0.0) or 0.0),
+            "adhdp_actor_bc_decay": float(
+                getattr(self, "_adhdp_actor_bc_decay", 1.0) or 1.0
+            ),
         }
         if bool(getattr(self, "_is_model_based_design", False)):
             policy_params.update(
@@ -2125,6 +2455,15 @@ class ADP(BaseRLModel):
                         getattr(self, "_dhp_actor_delta_l2", 0.0) or 0.0
                     ),
                     "dhp_residual_scale": float(self._dhp_residual_scale),
+                    "dhp_warmstart_actor_episodes": int(
+                        getattr(self, "_dhp_warmstart_actor_episodes", 0) or 0
+                    ),
+                    "dhp_warmstart_actor_epochs": int(
+                        getattr(self, "_dhp_warmstart_actor_epochs", 0) or 0
+                    ),
+                    "dhp_warmstart_actor_disable_baseline_after": bool(
+                        getattr(self, "_dhp_warmstart_actor_disable_baseline_after", True)
+                    ),
                     "dhp_critic_cycle_episodes": int(
                         getattr(self, "_dhp_critic_cycle_episodes", 0) or 0
                     ),

@@ -33,6 +33,11 @@ except Exception as _ihdp_exc:  # pragma: no cover
 # Adaptive Critic / ADP (Prokhorov & Wunsch 1995 inspired)
 from .adp.adp import ADP as ADP  # noqa: F401
 
+# Canonical ADHDP (standalone)
+from .adhdp.model import ADHDP as ADHDP  # noqa: F401
+# Model-based HDP (standalone wrapper)
+from .hdp.model import HDP as HDP  # noqa: F401
+
 # Backward compatibility alias
 from .mpc.mpc import MPC as MPC  # noqa: F401
 from .mpc.mpc import MPCAgent as MPCAgent  # noqa: F401
