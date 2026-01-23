@@ -143,8 +143,8 @@ from tensoraerospace.agent.ppo.model import PPO
 from tensoraerospace.agent.pid import PID
 from tensoraerospace.envs.b747 import ImprovedB747Env
 
-# Load PPO
-ppo_agent = PPO.from_pretrained("path/to/checkpoint")
+# Load PPO (Hugging Face Hub)
+ppo_agent = PPO.from_pretrained("TensorAeroSpace/ppo-b747-step-response")
 
 # Tune PID
 pid_controller = PID(env=env_for_tuning, dt=0.1)

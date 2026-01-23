@@ -60,37 +60,37 @@ hide:
 
     Install the library, choose a model, and run your first agent.
 
-    [:octicons-arrow-right-24: Installation](guide/installation.md)
+    [:octicons-arrow-right-24: Installation](guide/installation/)
 
 -   :material-robot-outline: **RL algorithms**
 
     Modern algorithms: DQN, A3C/A2C‑NARX, PPO, SAC, DDPG, GAIL.
 
-    [:octicons-arrow-right-24: Explore](agent/sac.md)
+    [:octicons-arrow-right-24: Explore](agent/sac/)
 
 -   :material-airplane-takeoff: **Models**
 
     F‑16, Boeing‑747, X‑15, satellites and rockets with ready‑to‑use environments.
 
-    [:octicons-arrow-right-24: Browse](model/f16.md)
+    [:octicons-arrow-right-24: Browse](model/f16/)
 
 -   :material-cog-outline: **Gym integration**
 
     Compatible environments and a simple API for training and evaluation.
 
-    [:octicons-arrow-right-24: Learn more](example/enviroment/gymnasium.md)
+    [:octicons-arrow-right-24: Learn more](example/enviroment/gymnasium/)
 
 -   :material-school-outline: **Tutorials**
 
     Hands‑on practice with XFLR5, Simulink, SimInTech, and control theory.
 
-    [:octicons-arrow-right-24: Go to tutorials](lesson/0intro.md)
+    [:octicons-arrow-right-24: Go to tutorials](lesson/0intro/)
 
 -   :material-chart-line: **Benchmarking**
 
     Metrics, agent comparisons, and experiment examples.
 
-    [:octicons-arrow-right-24: Metrics](benchmark/metrics.md)
+    [:octicons-arrow-right-24: Metrics](benchmark/metrics/)
 
 </div>
 
@@ -222,7 +222,7 @@ hide:
         done = terminated or truncated
     ```
 
-    [:octicons-arrow-right-24: Full SAC B747 tutorial](example/agent/sac/example-sac-b747.md)
+    [:octicons-arrow-right-24: Full SAC B747 tutorial](example/agent/sac/example-sac-b747/)
 
 === "PID Controller"
 
@@ -281,11 +281,11 @@ hide:
 
 ## Useful links
 
-- Guide: [guide/installation](guide/installation.md)
-- Lessons: [lesson/0intro](lesson/0intro.md)
-- Models: [model/f16](model/f16.md), [model/b747](model/b747.md)
-- Algorithms: [agent/sac](agent/sac.md), [agent/ppo](agent/ppo.md), [agent/ddpg](agent/ddpg.md)
-- Examples: [example/enviroment/gymnasium](example/enviroment/gymnasium.md)
+- Guide: [guide/installation](guide/installation/)
+- Lessons: [lesson/0intro](lesson/0intro/)
+- Models: [model/f16](model/f16/), [model/b747](model/b747/)
+- Algorithms: [agent/sac](agent/sac/), [agent/ppo](agent/ppo/), [agent/ddpg](agent/ddpg/)
+- Examples: [example/enviroment/gymnasium](example/enviroment/gymnasium/)
 
 ---
 

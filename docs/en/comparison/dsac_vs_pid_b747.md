@@ -175,8 +175,8 @@ from tensoraerospace.agent import DSAC
 from tensoraerospace.agent.pid import PID
 from tensoraerospace.envs.b747 import ImprovedB747Env
 
-# Load DSAC
-dsac_agent = DSAC.from_pretrained("path/to/checkpoint")
+# Load DSAC (Hugging Face Hub)
+dsac_agent = DSAC.from_pretrained("TensorAeroSpace/dsac-b747-step-response")
 dsac_agent.to_device("cuda")
 dsac_agent.eval()
 

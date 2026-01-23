@@ -57,7 +57,8 @@ env = ImprovedB747Env(
 )
 
 # 2. Load pretrained agent
-agent = DSAC.from_pretrained("path/to/checkpoint")
+# You can load from Hugging Face Hub:
+agent = DSAC.from_pretrained("TensorAeroSpace/dsac-b747-step-response")
 agent.env = env
 agent.to_device("cpu")  # or "cuda" / "mps"
 agent.eval()
