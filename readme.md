@@ -36,12 +36,12 @@
 
 ## 🧭 Applied Use Cases
 
-1. **Automatic Aircraft & UAV Control** — stabilization, trajectory tracking, pitch/yaw angle control for F‑16, B747, X‑15, Ultrastick.
-2. **Rocket & Spacecraft Control** — linearized models of ELV, Typical Rocket, geostationary satellites, launch phase optimization.
-3. **Hybrid PID/MPC + RL Controllers** — tuning hybrid controllers, integrating SAC/DSAC/PPO/A3C for longitudinal motion tasks.
-4. **Hyperparameter Optimization & Benchmarking** — automated tuning of IHDP/NARX agents, running benchmark series, and metrics visualization.
-5. **Digital Twin Integration** — Unity ML‑Agents, MATLAB/Simulink, export to UnityAirplaneEnvironment and simulink-example.
-6. **Diagnostics & Robustness Methods** — fault analysis, controllability range assessment, dataset preparation for GAIL/Benchmark.
+1. **Autonomous Flight Vehicle Control** — stabilization, trajectory tracking, attitude control for aircraft, UAVs, and experimental vehicles.
+2. **Rocket & Spacecraft Systems Control** — modeling and control of launch vehicles, satellites in various orbital classes, trajectory optimization.
+3. **Hybrid Control Systems** — design and tuning of controllers combining classical and intelligent control methods.
+4. **Algorithm Optimization & Benchmarking** — automated hyperparameter tuning, comparative analysis of control algorithms, quality metrics visualization.
+5. **Simulation Platform Integration** — interfacing with game engines, CAD/CAE systems, model import/export between environments.
+6. **Reliability Analysis & Diagnostics** — failure mode investigation, control system robustness assessment, training data preparation.
 
 ## 🚀 Quick Start
 

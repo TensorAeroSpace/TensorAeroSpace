@@ -16,7 +16,6 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 from torch.optim import Adam
-from torch.utils.tensorboard import SummaryWriter
 from tqdm import tqdm
 
 from ..base import (
@@ -25,6 +24,7 @@ from ..base import (
     get_class_from_string,
     serialize_env,
 )
+from ..metrics import create_metric_writer
 from .model import DeterministicPolicy, GaussianPolicy, QNetwork
 from .replay_memory import ReplayMemory
 from .utils import hard_update, soft_update
@@ -100,11 +100,7 @@ class SAC(BaseRLModel):
         num_inputs = self.env.observation_space.shape[0]
         self.device = torch.device(device)
         self.log_dir = Path(log_dir) if log_dir is not None else None
-        self.writer = (
-            SummaryWriter(log_dir=str(self.log_dir))
-            if self.log_dir is not None
-            else SummaryWriter()
-        )
+        self.writer = create_metric_writer(self.log_dir)
         self.log_every_updates = int(log_every_updates)
         if self.log_every_updates < 1:
             raise ValueError("log_every_updates must be >= 1")

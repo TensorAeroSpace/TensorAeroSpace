@@ -12,7 +12,31 @@ import torch
 from gymnasium import Env
 from torch import nn
 from torch.nn import functional as F
-from torch.utils.tensorboard import SummaryWriter
+
+try:
+    from torch.utils.tensorboard import SummaryWriter  # type: ignore
+except Exception:  # pragma: no cover - tensorboard optional at runtime
+
+    class SummaryWriter:  # type: ignore
+        """Fallback SummaryWriter when tensorboard is unavailable."""
+
+        def __init__(self, *args, **kwargs) -> None:
+            pass
+
+        def add_scalar(self, *args, **kwargs) -> None:
+            pass
+
+        def add_histogram(self, *args, **kwargs) -> None:
+            pass
+
+        def flush(self) -> None:
+            pass
+
+        def close(self) -> None:
+            pass
+
+
+from ..metrics import create_metric_writer
 
 
 def clip_grad_norm_(module: torch.optim.Optimizer, max_grad_norm: float) -> None:
@@ -240,7 +264,7 @@ class A2CLearner:
         self.entropy_beta = entropy_beta
         self.actor_optim = torch.optim.Adam(actor.parameters(), lr=actor_lr)
         self.critic_optim = torch.optim.Adam(critic.parameters(), lr=critic_lr)
-        self.writer = SummaryWriter()
+        self.writer = create_metric_writer()
 
     def learn(
         self,
