@@ -280,3 +280,4 @@ shippable/
 scripts/
 
 .DS_Store
+muted_failers.md
