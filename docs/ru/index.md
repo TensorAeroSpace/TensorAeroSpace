@@ -60,37 +60,37 @@ hide:
 
     Установите библиотеку, выберите модель и запустите первого агента.
 
-    [:octicons-arrow-right-24: Установка](guide/installation.md)
+    [:octicons-arrow-right-24: Установка](guide/installation/)
 
 -   :material-robot-outline: **Алгоритмы RL**
 
     Современные алгоритмы: DQN, A3C/A2C‑NARX, PPO, SAC, DDPG, GAIL.
 
-    [:octicons-arrow-right-24: Смотреть](agent/sac.md)
+    [:octicons-arrow-right-24: Смотреть](agent/sac/)
 
 -   :material-airplane-takeoff: **Модели объектов**
 
     F‑16, Boeing‑747, X‑15, спутники и ракеты с готовыми средами.
 
-    [:octicons-arrow-right-24: Перейти](model/f16.md)
+    [:octicons-arrow-right-24: Перейти](model/f16/)
 
 -   :material-cog-outline: **Интеграция с Gym**
 
     Совместимые environments и простой API для обучения и оценки.
 
-    [:octicons-arrow-right-24: Подробнее](example/enviroment/gymnasium.md)
+    [:octicons-arrow-right-24: Подробнее](example/enviroment/gymnasium/)
 
 -   :material-school-outline: **Учебные уроки**
 
     Практика по XFLR5, Simulink, SimInTech и теории управления.
 
-    [:octicons-arrow-right-24: К урокам](lesson/0intro.md)
+    [:octicons-arrow-right-24: К урокам](lesson/0intro/)
 
 -   :material-chart-line: **Бенчмаркинг**
 
     Метрики, сравнение агентов и примеры экспериментов.
 
-    [:octicons-arrow-right-24: Метрики](benchmark/metrics.md)
+    [:octicons-arrow-right-24: Метрики](benchmark/metrics/)
 
 </div>
 
@@ -219,11 +219,11 @@ for t in range(N - 1):
 
 ## Полезные ссылки
 
-- Руководство: [guide/installation](guide/installation.md)
-- Уроки: [lesson/0intro](lesson/0intro.md)
-- Модели: [model/f16](model/f16.md), [model/b747](model/b747.md)
-- Алгоритмы: [agent/sac](agent/sac.md), [agent/ppo](agent/ppo.md), [agent/ddpg](agent/ddpg.md)
-- Примеры: [example/enviroment/gymnasium](example/enviroment/gymnasium.md)
+- Руководство: [guide/installation](guide/installation/)
+- Уроки: [lesson/0intro](lesson/0intro/)
+- Модели: [model/f16](model/f16/), [model/b747](model/b747/)
+- Алгоритмы: [agent/sac](agent/sac/), [agent/ppo](agent/ppo/), [agent/ddpg](agent/ddpg/)
+- Примеры: [example/enviroment/gymnasium](example/enviroment/gymnasium/)
 
 ---
 

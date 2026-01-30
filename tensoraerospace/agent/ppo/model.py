@@ -19,7 +19,6 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from torch.utils.tensorboard import SummaryWriter
 from tqdm import tqdm
 
 from ..base import (
@@ -29,6 +28,7 @@ from ..base import (
     get_class_from_string,
     serialize_env,
 )
+from ..metrics import create_metric_writer
 
 
 def _state_dict_cpu(module: torch.nn.Module) -> Dict[str, torch.Tensor]:
@@ -619,11 +619,7 @@ class PPO(BaseRLModel):
         self.best_reward = float("-inf")
         self.avg_rewards_list: list = []
         self.log_dir = Path(log_dir) if log_dir is not None else None
-        self.writer = (
-            SummaryWriter(log_dir=str(self.log_dir))
-            if self.log_dir is not None
-            else SummaryWriter()
-        )
+        self.writer = create_metric_writer(self.log_dir)
 
         # Best-checkpoint saving (optional, async by default)
         self.save_best_model = bool(save_best_model)

@@ -19,6 +19,7 @@ except ImportError:  # pragma: no cover - fallback for older environments
 
 from typing import Callable, Optional, Tuple
 
+from ..metrics import create_metric_writer
 from .shared_optim import SharedAdam
 from .utils import push_and_pull, record, set_init, v_wrap
 
@@ -427,15 +428,11 @@ class Agent:
         self.res_queue: "mp.Queue" = mp.Queue()
 
         # TensorBoard writer
-        from typing import Optional
-
         self.writer: Optional["torch.utils.tensorboard.SummaryWriter"] = None
         try:
-            from torch.utils.tensorboard import SummaryWriter
-
-            self.writer = SummaryWriter(log_dir=log_dir)
-        except ImportError:
-            pass
+            self.writer = create_metric_writer(log_dir)
+        except Exception:
+            self.writer = None
 
     def train(self) -> None:
         """Launch training across worker processes (or single-process mode)."""

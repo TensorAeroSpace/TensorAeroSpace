@@ -55,6 +55,8 @@ plugins:
               - IHDP:
                 - Description: agent/ihdp.md
                 - Example with LinearLongitudinalF16‑v0: agent/ihdp/example.md
+              - HDP: agent/hdp.md
+              - ADHDP: agent/adhdp.md
               - MPC: agent/mpc.md
               - DQN: agent/dqn.md
               - A3C: agent/a3c.md
@@ -145,6 +147,8 @@ plugins:
               - IHDP:
                 - Описание: agent/ihdp.md
                 - Пример LinearLongitudinalF16‑v0: agent/ihdp/example.md
+              - HDP: agent/hdp.md
+              - ADHDP: agent/adhdp.md
               - MPC: agent/mpc.md
               - DQN: agent/dqn.md
               - A3C: agent/a3c.md

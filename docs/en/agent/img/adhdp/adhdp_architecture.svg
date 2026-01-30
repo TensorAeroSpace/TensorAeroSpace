@@ -1,0 +1,105 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 500" width="800" height="500">
+  <defs>
+    <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#333"/>
+    </marker>
+    <marker id="arrowhead-blue" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#2196F3"/>
+    </marker>
+    <marker id="arrowhead-green" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#4CAF50"/>
+    </marker>
+    <marker id="arrowhead-orange" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#FF9800"/>
+    </marker>
+    <linearGradient id="actorGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#4CAF50;stop-opacity:1"/>
+      <stop offset="100%" style="stop-color:#388E3C;stop-opacity:1"/>
+    </linearGradient>
+    <linearGradient id="criticGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#2196F3;stop-opacity:1"/>
+      <stop offset="100%" style="stop-color:#1565C0;stop-opacity:1"/>
+    </linearGradient>
+    <linearGradient id="plantGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#FF9800;stop-opacity:1"/>
+      <stop offset="100%" style="stop-color:#E65100;stop-opacity:1"/>
+    </linearGradient>
+  </defs>
+  
+  <!-- Background -->
+  <rect width="800" height="500" fill="#FAFAFA"/>
+  
+  <!-- Title -->
+  <text x="400" y="35" font-family="Arial, sans-serif" font-size="20" font-weight="bold" text-anchor="middle" fill="#333">
+    ADHDP (Action-Dependent HDP) Architecture
+  </text>
+  
+  <!-- Actor Block -->
+  <rect x="100" y="180" width="140" height="80" rx="10" fill="url(#actorGrad)" stroke="#2E7D32" stroke-width="2"/>
+  <text x="170" y="215" font-family="Arial, sans-serif" font-size="16" font-weight="bold" text-anchor="middle" fill="white">Actor pi(R)</text>
+  <text x="170" y="240" font-family="Arial, sans-serif" font-size="12" text-anchor="middle" fill="white">Neural Network</text>
+  
+  <!-- Critic Block -->
+  <rect x="330" y="100" width="140" height="80" rx="10" fill="url(#criticGrad)" stroke="#0D47A1" stroke-width="2"/>
+  <text x="400" y="135" font-family="Arial, sans-serif" font-size="16" font-weight="bold" text-anchor="middle" fill="white">Critic J(R, a)</text>
+  <text x="400" y="160" font-family="Arial, sans-serif" font-size="12" text-anchor="middle" fill="white">Action-Dependent</text>
+  
+  <!-- Plant/Environment Block -->
+  <rect x="530" y="180" width="140" height="80" rx="10" fill="url(#plantGrad)" stroke="#BF360C" stroke-width="2"/>
+  <text x="600" y="215" font-family="Arial, sans-serif" font-size="16" font-weight="bold" text-anchor="middle" fill="white">Plant</text>
+  <text x="600" y="240" font-family="Arial, sans-serif" font-size="12" text-anchor="middle" fill="white">x(t+1) = f(x,u)</text>
+  
+  <!-- State R(t) input -->
+  <text x="50" y="225" font-family="Arial, sans-serif" font-size="14" text-anchor="middle" fill="#333">R(t)</text>
+  <line x1="70" y1="220" x2="95" y2="220" stroke="#333" stroke-width="2" marker-end="url(#arrowhead)"/>
+  
+  <!-- Actor to Plant: Action u(t) -->
+  <line x1="240" y1="220" x2="525" y2="220" stroke="#4CAF50" stroke-width="2" marker-end="url(#arrowhead-green)"/>
+  <text x="380" y="210" font-family="Arial, sans-serif" font-size="13" text-anchor="middle" fill="#4CAF50">u(t) = pi(R)</text>
+  
+  <!-- R(t) to Critic -->
+  <path d="M 170 180 L 170 140 L 325 140" fill="none" stroke="#333" stroke-width="2" marker-end="url(#arrowhead)"/>
+  <text x="250" y="130" font-family="Arial, sans-serif" font-size="13" text-anchor="middle" fill="#333">R(t)</text>
+  
+  <!-- Action to Critic -->
+  <path d="M 240 200 L 290 200 L 290 155 L 325 155" fill="none" stroke="#4CAF50" stroke-width="2" marker-end="url(#arrowhead-green)"/>
+  <text x="307" y="178" font-family="Arial, sans-serif" font-size="11" text-anchor="middle" fill="#4CAF50">a(t)</text>
+  
+  <!-- Critic gradient to Actor -->
+  <path d="M 330 140 L 170 140 L 170 175" fill="none" stroke="#2196F3" stroke-width="2" stroke-dasharray="5,3" marker-end="url(#arrowhead-blue)"/>
+  <text x="250" y="155" font-family="Arial, sans-serif" font-size="11" text-anchor="middle" fill="#2196F3">dJ/da</text>
+  
+  <!-- Plant output: state -->
+  <path d="M 600 260 L 600 400 L 170 400 L 170 265" fill="none" stroke="#FF9800" stroke-width="2" marker-end="url(#arrowhead-orange)"/>
+  <text x="385" y="420" font-family="Arial, sans-serif" font-size="13" text-anchor="middle" fill="#FF9800">R(t+1), U(t)</text>
+  
+  <!-- TD Target box -->
+  <rect x="520" y="320" width="250" height="110" rx="8" fill="#E3F2FD" stroke="#1565C0" stroke-width="1.5"/>
+  <text x="645" y="345" font-family="Arial, sans-serif" font-size="12" font-weight="bold" text-anchor="middle" fill="#1565C0">Critic TD Update:</text>
+  <text x="645" y="370" font-family="Arial, sans-serif" font-size="12" text-anchor="middle" fill="#333">J(R,a) = U(t) + g*J(R',pi(R'))</text>
+  <text x="645" y="395" font-family="Arial, sans-serif" font-size="11" text-anchor="middle" fill="#666">Online TD(0), no replay</text>
+  <text x="645" y="415" font-family="Arial, sans-serif" font-size="11" text-anchor="middle" fill="#666">no target networks</text>
+  
+  <!-- Actor objective box -->
+  <rect x="30" y="310" width="200" height="90" rx="8" fill="#E8F5E9" stroke="#2E7D32" stroke-width="1.5"/>
+  <text x="130" y="335" font-family="Arial, sans-serif" font-size="12" font-weight="bold" text-anchor="middle" fill="#2E7D32">Actor Update:</text>
+  <text x="130" y="360" font-family="Arial, sans-serif" font-size="11" text-anchor="middle" fill="#333">min J(R, pi(R))</text>
+  <text x="130" y="385" font-family="Arial, sans-serif" font-size="10" text-anchor="middle" fill="#666">Gradient through critic</text>
+  
+  <!-- Key difference box -->
+  <rect x="280" y="220" width="180" height="70" rx="8" fill="#FFF3E0" stroke="#E65100" stroke-width="1.5"/>
+  <text x="370" y="245" font-family="Arial, sans-serif" font-size="11" font-weight="bold" text-anchor="middle" fill="#E65100">Key: Model-Free</text>
+  <text x="370" y="265" font-family="Arial, sans-serif" font-size="10" text-anchor="middle" fill="#333">Critic takes (R, a) as input</text>
+  <text x="370" y="280" font-family="Arial, sans-serif" font-size="10" text-anchor="middle" fill="#333">No plant model needed</text>
+  
+  <!-- Legend -->
+  <rect x="560" y="55" width="210" height="100" rx="5" fill="#fff" stroke="#ccc" stroke-width="1"/>
+  <text x="665" y="75" font-family="Arial, sans-serif" font-size="11" font-weight="bold" text-anchor="middle" fill="#333">Legend</text>
+  <line x1="575" y1="90" x2="605" y2="90" stroke="#4CAF50" stroke-width="2"/>
+  <text x="615" y="94" font-family="Arial, sans-serif" font-size="10" fill="#333">Forward pass</text>
+  <line x1="575" y1="110" x2="605" y2="110" stroke="#2196F3" stroke-width="2" stroke-dasharray="5,3"/>
+  <text x="615" y="114" font-family="Arial, sans-serif" font-size="10" fill="#333">Gradient (backprop)</text>
+  <line x1="575" y1="130" x2="605" y2="130" stroke="#FF9800" stroke-width="2"/>
+  <text x="615" y="134" font-family="Arial, sans-serif" font-size="10" fill="#333">Environment feedback</text>
+</svg>

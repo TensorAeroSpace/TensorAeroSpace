@@ -15,8 +15,9 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from gymnasium.spaces import Discrete
-from torch.utils.tensorboard import SummaryWriter
 from tqdm import tqdm
+
+from ..metrics import create_metric_writer
 
 np.random.seed(1)
 torch.manual_seed(1)
@@ -284,7 +285,8 @@ class DQNAgent:
         self.model = model.to(self.device)
         self.target_model = target_model.to(self.device)
         self.optimizer = torch.optim.Adam(self.model.parameters(), lr=learning_rate)
-        self.writer = SummaryWriter()
+        self.log_dir = Path(log_dir) if log_dir is not None else None
+        self.writer = create_metric_writer(self.log_dir)
 
         # parameters
         self.env = env  # gym environment
@@ -693,7 +695,8 @@ class PERNARXAgent:
         self.model = model.to(self.device)
         self.target_model = target_model.to(self.device)
         self.optimizer = torch.optim.Adam(self.model.parameters(), lr=learning_rate)
-        self.writer = SummaryWriter()
+        self.log_dir = Path(log_dir) if log_dir is not None else None
+        self.writer = create_metric_writer(self.log_dir)
 
         # parameters
         self.env = env  # gym environment

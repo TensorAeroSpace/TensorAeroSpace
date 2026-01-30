@@ -101,6 +101,7 @@ from ..base import (  # noqa: E402
     get_class_from_string,
     serialize_env,
 )
+from ..metrics import create_metric_writer
 
 
 class RunningMeanStd:
@@ -826,7 +827,7 @@ class DDPG:
             try:
                 logdir = os.path.join("runs", "ddpg")
                 os.makedirs(logdir, exist_ok=True)
-                self.writer = SummaryWriter()
+                self.writer = create_metric_writer(logdir)
             except Exception:
                 self.writer = None
 

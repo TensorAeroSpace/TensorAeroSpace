@@ -75,6 +75,8 @@ print("After Training: %d out of 200" % rewards_sum)
 
 ![Unity Interface](../../guide/img/6.png){ width=800 }
 
+_Figure 2.1. Training visualization and interaction (Unity Environment)_
+
 ## Random Agent Interaction
 
 === "Plane env"
@@ -119,6 +121,12 @@ COPY a3c_example.py /tf
 
 ENTRYPOINT tensorboard --logdir /tf/logs --port 8889 --host 0.0.0.0 & python a3c_example.py
 ```
+
+## Open sources (documentation)
+
+- Unity ML-Agents: https://github.com/Unity-Technologies/ml-agents
+- TensorBoard documentation: https://www.tensorflow.org/tensorboard
+- Docker: https://docs.docker.com/
 
 ### A3C Launch Script Inside Docker
 

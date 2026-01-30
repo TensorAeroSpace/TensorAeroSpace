@@ -20,7 +20,6 @@ from typing import Any, Dict, Optional, Tuple, Union, cast
 import numpy as np
 import torch
 from torch.optim import Adam
-from torch.utils.tensorboard import SummaryWriter
 from tqdm import tqdm
 
 from ..base import (
@@ -29,6 +28,7 @@ from ..base import (
     get_class_from_string,
     serialize_env,
 )
+from ..metrics import create_metric_writer
 from ..sac.replay_memory import ReplayMemory
 from ..sac.utils import soft_update
 from .flight_actor import NormalPolicyNet
@@ -128,11 +128,7 @@ class DSAC(BaseRLModel):
 
         self.device = torch.device(device)
         self.log_dir = Path(log_dir) if log_dir is not None else None
-        self.writer = (
-            SummaryWriter(log_dir=str(self.log_dir))
-            if self.log_dir is not None
-            else SummaryWriter()
-        )
+        self.writer = create_metric_writer(self.log_dir)
 
         self.verbose_histogram = bool(verbose_histogram)
         self.log_every_updates = int(log_every_updates)
