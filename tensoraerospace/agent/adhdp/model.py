@@ -32,13 +32,13 @@ import torch
 import torch.nn.functional as F
 from torch.optim import Adam
 
+from ..adp.networks import DeterministicActor, QCritic
 from ..base import (
     BaseRLModel,
     get_class_from_string,
     serialize_env,
 )
 from ..metrics import create_metric_writer
-from ..adp.networks import DeterministicActor, QCritic
 
 
 def _as_flat_np(x: Any) -> np.ndarray:
@@ -404,17 +404,25 @@ class ADHDP(BaseRLModel):
             )
 
         action_low = np.asarray(self.env.action_space.low, dtype=np.float32).reshape(-1)
-        action_high = np.asarray(self.env.action_space.high, dtype=np.float32).reshape(-1)
+        action_high = np.asarray(self.env.action_space.high, dtype=np.float32).reshape(
+            -1
+        )
         hidden_sizes = (int(hidden_size), int(hidden_size))
-        self._action_low_t = torch.as_tensor(action_low, dtype=torch.float32, device=self.device)
-        self._action_high_t = torch.as_tensor(action_high, dtype=torch.float32, device=self.device)
+        self._action_low_t = torch.as_tensor(
+            action_low, dtype=torch.float32, device=self.device
+        )
+        self._action_high_t = torch.as_tensor(
+            action_high, dtype=torch.float32, device=self.device
+        )
 
         # Save baseline initial state / reference for per-episode randomization (if available).
         self._initial_state_base: Optional[np.ndarray] = None
         try:
             init_s = getattr(self.env, "initial_state", None)
             if init_s is not None:
-                self._initial_state_base = np.asarray(init_s, dtype=np.float32).reshape(-1).copy()
+                self._initial_state_base = (
+                    np.asarray(init_s, dtype=np.float32).reshape(-1).copy()
+                )
         except (TypeError, ValueError, AttributeError):
             self._initial_state_base = None
 
@@ -433,7 +441,9 @@ class ADHDP(BaseRLModel):
             action_low=action_low,
             action_high=action_high,
         ).to(self.device)
-        self.critic = QCritic(obs_dim, act_dim, hidden_sizes=hidden_sizes).to(self.device)
+        self.critic = QCritic(obs_dim, act_dim, hidden_sizes=hidden_sizes).to(
+            self.device
+        )
 
         self.actor_optim = Adam(self.actor.parameters(), lr=float(actor_lr))
         self.critic_optim = Adam(self.critic.parameters(), lr=float(critic_lr))
@@ -456,7 +466,9 @@ class ADHDP(BaseRLModel):
           [norm_pitch_error, norm_q, norm_theta, norm_prev_action] (+ optional refs)
         """
         if obs_t.ndim != 2:
-            raise ValueError(f"Expected obs shape (B, obs_dim), got {tuple(obs_t.shape)}")
+            raise ValueError(
+                f"Expected obs shape (B, obs_dim), got {tuple(obs_t.shape)}"
+            )
         if int(obs_t.shape[1]) < 2:
             raise ValueError("Baseline requires observation with at least 2 dims.")
 
@@ -485,7 +497,11 @@ class ADHDP(BaseRLModel):
             max_pitch_rad = getattr(self.env, "max_pitch_rad", None)
             if max_pitch_rad is not None:
                 max_pitch_rad_f = float(max_pitch_rad)
-                theta_n = obs_t[:, 2] if int(obs_t.shape[1]) >= 3 else torch.zeros_like(e_theta_n)
+                theta_n = (
+                    obs_t[:, 2]
+                    if int(obs_t.shape[1]) >= 3
+                    else torch.zeros_like(e_theta_n)
+                )
                 if int(obs_t.shape[1]) >= 5:
                     theta_ref_n = obs_t[:, 4]
                 else:
@@ -511,13 +527,21 @@ class ADHDP(BaseRLModel):
                     derivative = -(meas0 - prev_meas) / dt
                 i_candidate = i_curr + err0 * dt
                 if self.pid_i_clip > 0.0:
-                    i_candidate = float(np.clip(i_candidate, -self.pid_i_clip, self.pid_i_clip))
-                u_unsat = float(kp) * err0 + float(ki) * i_candidate + float(kd) * derivative
+                    i_candidate = float(
+                        np.clip(i_candidate, -self.pid_i_clip, self.pid_i_clip)
+                    )
+                u_unsat = (
+                    float(kp) * err0 + float(ki) * i_candidate + float(kd) * derivative
+                )
                 u_sat = float(np.clip(u_unsat, -1.0, 1.0))
                 if u_sat != u_unsat:
                     # anti-windup: do not integrate further if saturated
                     i_candidate = i_curr
-                    u_unsat = float(kp) * err0 + float(ki) * i_candidate + float(kd) * derivative
+                    u_unsat = (
+                        float(kp) * err0
+                        + float(ki) * i_candidate
+                        + float(kd) * derivative
+                    )
                     u_sat = float(np.clip(u_unsat, -1.0, 1.0))
                 self._pid_i = float(i_candidate)
                 self._pid_prev_meas = float(meas0)
@@ -548,15 +572,24 @@ class ADHDP(BaseRLModel):
             return self._baseline_action(obs_t)
 
         # --- choose raw action ---
-        if self.action_selection == "critic_gradient" and self.action_grad_steps > 0 and self.action_grad_lr > 0.0:
+        if (
+            self.action_selection == "critic_gradient"
+            and self.action_grad_steps > 0
+            and self.action_grad_lr > 0.0
+        ):
             # Initialize from previous action if present; else start from zero.
             if int(obs_t.shape[1]) >= 4:
                 a_init = obs_t[:, 3].reshape(-1, 1)
                 if int(self._action_low_t.numel()) > 1:
                     a_init = a_init.repeat(1, int(self._action_low_t.numel()))
             else:
-                a_init = torch.zeros((int(obs_t.shape[0]), int(self._action_low_t.numel())), device=obs_t.device)
-            a = self._optimize_action_by_critic(obs_t, a_init=a_init, n_steps=int(self.action_grad_steps))
+                a_init = torch.zeros(
+                    (int(obs_t.shape[0]), int(self._action_low_t.numel())),
+                    device=obs_t.device,
+                )
+            a = self._optimize_action_by_critic(
+                obs_t, a_init=a_init, n_steps=int(self.action_grad_steps)
+            )
             # Training-time exploration for critic-gradient mode (persistent excitation).
             if (not bool(evaluate)) and float(self.exploration_std) > 0.0:
                 a = a + torch.randn_like(a) * float(self.exploration_std)
@@ -631,14 +664,20 @@ class ADHDP(BaseRLModel):
                         j = j + float(self.action_grad_u_l2) * (a.pow(2).mean())
                     # Regularize large action changes (trust region around previous action)
                     if u_prev is not None and float(self.action_grad_du_l2) > 0.0:
-                        j = j + float(self.action_grad_du_l2) * ((a - u_prev).pow(2).mean())
+                        j = j + float(self.action_grad_du_l2) * (
+                            (a - u_prev).pow(2).mean()
+                        )
                     (grad_a,) = torch.autograd.grad(
                         j, a, create_graph=False, retain_graph=False
                     )
                     # Gradient DESCENT on J
                     step = -lr * grad_a
                     if float(self.action_grad_step_clip) > 0.0:
-                        step = torch.clamp(step, -float(self.action_grad_step_clip), float(self.action_grad_step_clip))
+                        step = torch.clamp(
+                            step,
+                            -float(self.action_grad_step_clip),
+                            float(self.action_grad_step_clip),
+                        )
                     a = (a + step).detach()
                     if u_max < 1.0:
                         a = torch.clamp(a, -u_max, u_max)
@@ -657,9 +696,12 @@ class ADHDP(BaseRLModel):
                 a_init = a_init.repeat(1, int(self._action_low_t.numel()))
         else:
             a_init = torch.zeros(
-                (int(obs_t.shape[0]), int(self._action_low_t.numel())), device=obs_t.device
+                (int(obs_t.shape[0]), int(self._action_low_t.numel())),
+                device=obs_t.device,
             )
-        a = self._optimize_action_by_critic(obs_t, a_init=a_init, n_steps=int(self.action_grad_steps))
+        a = self._optimize_action_by_critic(
+            obs_t, a_init=a_init, n_steps=int(self.action_grad_steps)
+        )
         # Teacher-rollout noise is independent from exploration_std (which is for actor-based rollouts).
         if (not bool(evaluate)) and float(self.teacher_rollout_noise_std) > 0.0:
             a = a + torch.randn_like(a) * float(self.teacher_rollout_noise_std)
@@ -682,10 +724,15 @@ class ADHDP(BaseRLModel):
         - Randomize env.reference_signal by rolling + optional noise.
         """
         # 1) initial state randomization
-        if self._initial_state_base is not None and float(self.initial_state_noise_std) > 0.0:
+        if (
+            self._initial_state_base is not None
+            and float(self.initial_state_noise_std) > 0.0
+        ):
             try:
                 noise = np.random.normal(
-                    0.0, float(self.initial_state_noise_std), size=self._initial_state_base.shape
+                    0.0,
+                    float(self.initial_state_noise_std),
+                    size=self._initial_state_base.shape,
                 ).astype(np.float32)
                 new_init = (self._initial_state_base + noise).astype(np.float32)
                 setattr(self.env, "initial_state", new_init.reshape(-1))
@@ -699,18 +746,23 @@ class ADHDP(BaseRLModel):
             try:
                 ref = np.asarray(self._reference_signal_base, dtype=np.float32).copy()
                 if int(self.reference_roll_steps) != 0:
-                    k = int(np.random.randint(-abs(int(self.reference_roll_steps)), abs(int(self.reference_roll_steps)) + 1))
+                    k = int(
+                        np.random.randint(
+                            -abs(int(self.reference_roll_steps)),
+                            abs(int(self.reference_roll_steps)) + 1,
+                        )
+                    )
                     ref = np.roll(ref, shift=k, axis=-1)
                 if float(self.reference_noise_std) > 0.0:
-                    ref = ref + np.random.normal(0.0, float(self.reference_noise_std), size=ref.shape).astype(
-                        np.float32
-                    )
+                    ref = ref + np.random.normal(
+                        0.0, float(self.reference_noise_std), size=ref.shape
+                    ).astype(np.float32)
                     # Clip to env limits if present (e.g. max_pitch_rad)
                     max_pitch_rad = getattr(self.env, "max_pitch_rad", None)
                     if max_pitch_rad is not None:
-                        ref = np.clip(ref, -float(max_pitch_rad), float(max_pitch_rad)).astype(
-                            np.float32
-                        )
+                        ref = np.clip(
+                            ref, -float(max_pitch_rad), float(max_pitch_rad)
+                        ).astype(np.float32)
                 setattr(self.env, "reference_signal", ref)
             except (TypeError, ValueError, AttributeError):
                 pass
@@ -731,7 +783,9 @@ class ADHDP(BaseRLModel):
             done = False
             steps = 0
             while not done:
-                obs_t = torch.as_tensor(obs, dtype=torch.float32, device=self.device).unsqueeze(0)
+                obs_t = torch.as_tensor(
+                    obs, dtype=torch.float32, device=self.device
+                ).unsqueeze(0)
                 with torch.no_grad():
                     u_base = self._baseline_action(obs_t).squeeze(0).cpu().numpy()
                 u_base = np.asarray(u_base, dtype=np.float32).reshape(-1)
@@ -741,8 +795,12 @@ class ADHDP(BaseRLModel):
                 xs.append(obs.astype(np.float32))
                 ys.append(u_base.astype(np.float32))
 
-                low = np.asarray(self.env.action_space.low, dtype=np.float32).reshape(-1)
-                high = np.asarray(self.env.action_space.high, dtype=np.float32).reshape(-1)
+                low = np.asarray(self.env.action_space.low, dtype=np.float32).reshape(
+                    -1
+                )
+                high = np.asarray(self.env.action_space.high, dtype=np.float32).reshape(
+                    -1
+                )
                 action = np.clip(u_base, low, high).astype(np.float32)
 
                 next_obs, _reward, terminated, truncated, _info = self.env.step(action)
@@ -755,8 +813,12 @@ class ADHDP(BaseRLModel):
         if len(xs) < 1:
             return
 
-        x_t = torch.as_tensor(np.stack(xs, axis=0), dtype=torch.float32, device=self.device)
-        y_t = torch.as_tensor(np.stack(ys, axis=0), dtype=torch.float32, device=self.device)
+        x_t = torch.as_tensor(
+            np.stack(xs, axis=0), dtype=torch.float32, device=self.device
+        )
+        y_t = torch.as_tensor(
+            np.stack(ys, axis=0), dtype=torch.float32, device=self.device
+        )
         if self.policy_mode == "residual":
             # Residual policy: baseline is added externally, so we want actor ≈ 0 initially.
             y_t = torch.zeros_like(y_t)
@@ -777,9 +839,13 @@ class ADHDP(BaseRLModel):
 
     def select_action(self, state: np.ndarray, *, evaluate: bool = False) -> np.ndarray:
         obs = _as_flat_np(state)
-        obs_t = torch.as_tensor(obs, dtype=torch.float32, device=self.device).unsqueeze(0)
+        obs_t = torch.as_tensor(obs, dtype=torch.float32, device=self.device).unsqueeze(
+            0
+        )
         with torch.no_grad():
-            act_t = self._policy_action_t(obs_t, evaluate=bool(evaluate), force_baseline=False)
+            act_t = self._policy_action_t(
+                obs_t, evaluate=bool(evaluate), force_baseline=False
+            )
             act = np.asarray(act_t.squeeze(0).cpu().numpy(), dtype=np.float32)
         low = np.asarray(self.env.action_space.low, dtype=np.float32).reshape(-1)
         high = np.asarray(self.env.action_space.high, dtype=np.float32).reshape(-1)
@@ -793,12 +859,16 @@ class ADHDP(BaseRLModel):
           - predict(state, deterministic=True/False)
         """
         if len(args) < 1 and "state" not in kwargs:
-            raise ValueError("ADHDP.predict expects `state` as the first positional argument.")
+            raise ValueError(
+                "ADHDP.predict expects `state` as the first positional argument."
+            )
         state = kwargs.get("state", args[0] if len(args) > 0 else None)
         deterministic = kwargs.get("deterministic", True)
         if len(args) > 1:
             deterministic = bool(args[1])
-        return self.select_action(np.asarray(state, dtype=np.float32), evaluate=bool(deterministic))
+        return self.select_action(
+            np.asarray(state, dtype=np.float32), evaluate=bool(deterministic)
+        )
 
     # ---- learning ----
     def _td_update(
@@ -813,15 +883,23 @@ class ADHDP(BaseRLModel):
         do_actor_update: bool,
         force_baseline_policy: bool = False,
     ) -> Tuple[float, float]:
-        obs_t = torch.as_tensor(obs.reshape(1, -1), dtype=torch.float32, device=self.device)
-        act_t = torch.as_tensor(act.reshape(1, -1), dtype=torch.float32, device=self.device)
+        obs_t = torch.as_tensor(
+            obs.reshape(1, -1), dtype=torch.float32, device=self.device
+        )
+        act_t = torch.as_tensor(
+            act.reshape(1, -1), dtype=torch.float32, device=self.device
+        )
         next_obs_t = torch.as_tensor(
             next_obs.reshape(1, -1), dtype=torch.float32, device=self.device
         )
-        done_t = torch.as_tensor([[done_bootstrap]], dtype=torch.float32, device=self.device)
+        done_t = torch.as_tensor(
+            [[done_bootstrap]], dtype=torch.float32, device=self.device
+        )
 
         # Convert reward to cost
-        cost_t = -torch.as_tensor([[reward_for_update]], dtype=torch.float32, device=self.device)
+        cost_t = -torch.as_tensor(
+            [[reward_for_update]], dtype=torch.float32, device=self.device
+        )
 
         with torch.no_grad():
             next_act_t = self._policy_action_t(
@@ -841,7 +919,9 @@ class ADHDP(BaseRLModel):
 
         actor_loss_t = torch.as_tensor(0.0, dtype=torch.float32, device=self.device)
         if bool(do_actor_update):
-            actor_act = self._policy_action_t(obs_t, evaluate=True, force_baseline=False)
+            actor_act = self._policy_action_t(
+                obs_t, evaluate=True, force_baseline=False
+            )
             actor_loss_t = self.critic(obs_t, actor_act).mean()
             if float(self._actor_bc_coef) > 0.0:
                 with torch.no_grad():
@@ -849,13 +929,13 @@ class ADHDP(BaseRLModel):
                 if self.policy_mode == "residual":
                     # Regularize residual towards zero (i.e., stay close to baseline)
                     res = self.actor(obs_t)
-                    actor_loss_t = actor_loss_t + float(self._actor_bc_coef) * F.mse_loss(
-                        res, torch.zeros_like(res)
-                    )
+                    actor_loss_t = actor_loss_t + float(
+                        self._actor_bc_coef
+                    ) * F.mse_loss(res, torch.zeros_like(res))
                 else:
-                    actor_loss_t = actor_loss_t + float(self._actor_bc_coef) * F.mse_loss(
-                        actor_act, u_base
-                    )
+                    actor_loss_t = actor_loss_t + float(
+                        self._actor_bc_coef
+                    ) * F.mse_loss(actor_act, u_base)
             self.actor_optim.zero_grad()
             actor_loss_t.backward()
             torch.nn.utils.clip_grad_norm_(self.actor.parameters(), max_norm=1.0)
@@ -864,7 +944,12 @@ class ADHDP(BaseRLModel):
         return float(critic_loss_t.item()), float(actor_loss_t.item())
 
     def _critic_update_with_target(
-        self, *, obs_t: torch.Tensor, act_t: torch.Tensor, target_q: torch.Tensor, n_steps: int
+        self,
+        *,
+        obs_t: torch.Tensor,
+        act_t: torch.Tensor,
+        target_q: torch.Tensor,
+        n_steps: int,
     ) -> float:
         """Run N critic gradient steps on a fixed TD target (semi-gradient)."""
         last = 0.0
@@ -878,9 +963,7 @@ class ADHDP(BaseRLModel):
             last = float(loss_t.item())
         return float(last)
 
-    def _actor_update(
-        self, *, obs_t: torch.Tensor, n_steps: int
-    ) -> float:
+    def _actor_update(self, *, obs_t: torch.Tensor, n_steps: int) -> float:
         """Run N actor gradient steps (critic weights held fixed)."""
         last = 0.0
         # Freeze critic weights to avoid wasting compute (still allows dJ/da).
@@ -889,7 +972,9 @@ class ADHDP(BaseRLModel):
             for p in self.critic.parameters():
                 p.requires_grad_(False)
             for _ in range(max(1, int(n_steps))):
-                actor_act = self._policy_action_t(obs_t, evaluate=True, force_baseline=False)
+                actor_act = self._policy_action_t(
+                    obs_t, evaluate=True, force_baseline=False
+                )
                 # Default actor objective: minimize critic output J(s, π(s)).
                 # In distillation mode we intentionally DO NOT include this term, because
                 # actor can exploit critic imperfections and diverge even when the
@@ -922,7 +1007,9 @@ class ADHDP(BaseRLModel):
                             a_init = torch.zeros_like(actor_act)
                         with torch.no_grad():
                             a_star = self._optimize_action_by_critic(
-                                obs_t, a_init=a_init, n_steps=int(self.action_grad_steps)
+                                obs_t,
+                                a_init=a_init,
+                                n_steps=int(self.action_grad_steps),
                             )
                         # Pure distillation loss (teacher matching).
                         loss_t = loss_t + float(self.actor_distill_coef) * F.mse_loss(
@@ -955,14 +1042,18 @@ class ADHDP(BaseRLModel):
         return float(last)
 
     def train(self, *args, **kwargs) -> None:
-        num_episodes = int(args[0]) if len(args) > 0 else int(kwargs.get("num_episodes", 1))
+        num_episodes = (
+            int(args[0]) if len(args) > 0 else int(kwargs.get("num_episodes", 1))
+        )
         max_steps = kwargs.get("max_steps", None)
         max_steps_i = int(max_steps) if max_steps is not None else None
         show_progress = bool(kwargs.get("show_progress", True))
         progress_desc = str(kwargs.get("progress_desc", "ADHDP train"))
 
         if self.warmstart_actor_episodes > 0:
-            self._warmstart_actor(episodes=self.warmstart_actor_episodes, max_steps=max_steps_i)
+            self._warmstart_actor(
+                episodes=self.warmstart_actor_episodes, max_steps=max_steps_i
+            )
 
         total_steps = 0
         ep_iter = range(num_episodes)
@@ -984,7 +1075,9 @@ class ADHDP(BaseRLModel):
 
             # BC decay
             if self.actor_bc_decay < 1.0:
-                self._actor_bc_coef = float(self._actor_bc_coef) * float(self.actor_bc_decay)
+                self._actor_bc_coef = float(self._actor_bc_coef) * float(
+                    self.actor_bc_decay
+                )
 
             # alternating cycles
             phase = "both"
@@ -1048,7 +1141,9 @@ class ADHDP(BaseRLModel):
                         act_t = self._policy_action_t(
                             # Always treat action selection as "training-time" here.
                             # If you want deterministic actions, set exploration_std=0.0.
-                            obs_t, evaluate=False, force_baseline=force_baseline
+                            obs_t,
+                            evaluate=False,
+                            force_baseline=force_baseline,
                         )
                 act = np.asarray(act_t.squeeze(0).cpu().numpy(), dtype=np.float32)
                 next_obs, reward, terminated, truncated, info = self.env.step(act)
@@ -1085,18 +1180,26 @@ class ADHDP(BaseRLModel):
                 next_obs_t_u = torch.as_tensor(
                     next_obs.reshape(1, -1), dtype=torch.float32, device=self.device
                 )
-                done_t_u = torch.as_tensor([[done_bootstrap]], dtype=torch.float32, device=self.device)
-                cost_t_u = -torch.as_tensor([[reward_for_update]], dtype=torch.float32, device=self.device)
+                done_t_u = torch.as_tensor(
+                    [[done_bootstrap]], dtype=torch.float32, device=self.device
+                )
+                cost_t_u = -torch.as_tensor(
+                    [[reward_for_update]], dtype=torch.float32, device=self.device
+                )
 
                 critic_loss = 0.0
                 actor_loss = 0.0
                 if bool(do_critic):
                     with torch.no_grad():
                         if bool(execute_teacher):
-                            next_act_t_u = self._teacher_action_t(next_obs_t_u, evaluate=True)
+                            next_act_t_u = self._teacher_action_t(
+                                next_obs_t_u, evaluate=True
+                            )
                         else:
                             next_act_t_u = self._policy_action_t(
-                                next_obs_t_u, evaluate=True, force_baseline=bool(force_baseline)
+                                next_obs_t_u,
+                                evaluate=True,
+                                force_baseline=bool(force_baseline),
                             )
                         q_next_u = self.critic(next_obs_t_u, next_act_t_u)
                         target_q_u = cost_t_u + (1.0 - done_t_u) * self.gamma * q_next_u
@@ -1124,10 +1227,14 @@ class ADHDP(BaseRLModel):
                             "loss/critic", float(critic_loss), self._updates
                         )
                     if bool(do_actor):
-                        self.writer.add_scalar("loss/actor", float(actor_loss), self._updates)
+                        self.writer.add_scalar(
+                            "loss/actor", float(actor_loss), self._updates
+                        )
                     # Phase + action diagnostics (helps debug saturation/drift)
                     self.writer.add_scalar(
-                        "train/do_critic", 1.0 if bool(do_critic) else 0.0, self._updates
+                        "train/do_critic",
+                        1.0 if bool(do_critic) else 0.0,
+                        self._updates,
                     )
                     self.writer.add_scalar(
                         "train/do_actor", 1.0 if bool(do_actor) else 0.0, self._updates
@@ -1135,11 +1242,17 @@ class ADHDP(BaseRLModel):
                     # Action saturation stats
                     try:
                         a = np.asarray(act, dtype=np.float32).reshape(-1)
-                        hi = np.asarray(self.env.action_space.high, dtype=np.float32).reshape(-1)
+                        hi = np.asarray(
+                            self.env.action_space.high, dtype=np.float32
+                        ).reshape(-1)
                         hi = np.maximum(np.abs(hi), 1e-6)
                         sat = float(np.mean(np.abs(a) >= 0.98 * hi))
-                        self.writer.add_scalar("action/mean_abs", float(np.mean(np.abs(a))), self._updates)
-                        self.writer.add_scalar("action/sat_frac", float(sat), self._updates)
+                        self.writer.add_scalar(
+                            "action/mean_abs", float(np.mean(np.abs(a))), self._updates
+                        )
+                        self.writer.add_scalar(
+                            "action/sat_frac", float(sat), self._updates
+                        )
                     except (TypeError, ValueError, AttributeError):
                         pass
 
@@ -1224,9 +1337,14 @@ class ADHDP(BaseRLModel):
             "actor_bc_l2": float(self.actor_bc_l2),
             "actor_bc_decay": float(self.actor_bc_decay),
         }
-        return {"env": {"name": env_name, "params": env_params}, "policy": {"name": agent_name, "params": policy_params}}
+        return {
+            "env": {"name": env_name, "params": env_params},
+            "policy": {"name": agent_name, "params": policy_params},
+        }
 
-    def save(self, path: Union[str, Path, None] = None, *, save_gradients: bool = False) -> str:
+    def save(
+        self, path: Union[str, Path, None] = None, *, save_gradients: bool = False
+    ) -> str:
         if path is None:
             path = Path.cwd()
         else:
@@ -1252,7 +1370,9 @@ class ADHDP(BaseRLModel):
         return str(run_dir)
 
     @staticmethod
-    def _filter_kwargs_for_init(env_cls: type, kwargs: Dict[str, Any]) -> Dict[str, Any]:
+    def _filter_kwargs_for_init(
+        env_cls: type, kwargs: Dict[str, Any]
+    ) -> Dict[str, Any]:
         try:
             sig = inspect.signature(env_cls)
         except (TypeError, ValueError):
@@ -1264,7 +1384,9 @@ class ADHDP(BaseRLModel):
         """Load model weights from a directory created by `save()`."""
         folder = kwargs.get("path", None) or (args[0] if len(args) > 0 else None)
         if folder is None:
-            raise ValueError("ADHDP.load(path=...) expects a folder path created by ADHDP.save().")
+            raise ValueError(
+                "ADHDP.load(path=...) expects a folder path created by ADHDP.save()."
+            )
         folder_p = Path(folder)
 
         actor_path = folder_p / "actor.pth"
@@ -1274,8 +1396,12 @@ class ADHDP(BaseRLModel):
                 f"Missing actor/critic files in {str(folder_p)!r} (expected actor.pth, critic.pth)"
             )
 
-        self.actor = torch.load(actor_path, map_location=self.device, weights_only=False)
-        self.critic = torch.load(critic_path, map_location=self.device, weights_only=False)
+        self.actor = torch.load(
+            actor_path, map_location=self.device, weights_only=False
+        )
+        self.critic = torch.load(
+            critic_path, map_location=self.device, weights_only=False
+        )
 
     @classmethod
     def from_dir(cls, folder: Union[str, Path]) -> "ADHDP":
@@ -1300,7 +1426,10 @@ class ADHDP(BaseRLModel):
         env = env_cls(**env_kwargs)
 
         agent = cls(env=env, **policy_params)
-        agent.actor = torch.load(actor_path, map_location=agent.device, weights_only=False)
-        agent.critic = torch.load(critic_path, map_location=agent.device, weights_only=False)
+        agent.actor = torch.load(
+            actor_path, map_location=agent.device, weights_only=False
+        )
+        agent.critic = torch.load(
+            critic_path, map_location=agent.device, weights_only=False
+        )
         return agent
-

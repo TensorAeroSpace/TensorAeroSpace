@@ -7,4 +7,3 @@ Prokhorov & Wunsch, "Adaptive Critic Designs" (1997).
 from .model import ADHDP as ADHDP  # noqa: F401
 
 __all__ = ["ADHDP"]
-

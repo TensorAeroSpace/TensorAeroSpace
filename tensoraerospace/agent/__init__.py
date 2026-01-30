@@ -30,11 +30,12 @@ except Exception as _ihdp_exc:  # pragma: no cover
             )
 
 
+# Canonical ADHDP (standalone)
+from .adhdp.model import ADHDP as ADHDP  # noqa: F401
+
 # Adaptive Critic / ADP (Prokhorov & Wunsch 1995 inspired)
 from .adp.adp import ADP as ADP  # noqa: F401
 
-# Canonical ADHDP (standalone)
-from .adhdp.model import ADHDP as ADHDP  # noqa: F401
 # Model-based HDP (standalone wrapper)
 from .hdp.model import HDP as HDP  # noqa: F401
 
