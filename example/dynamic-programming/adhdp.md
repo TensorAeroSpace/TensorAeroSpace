@@ -1,99 +1,98 @@
-# Action-Dependent Heuristic Dynamic Programming (ADHDP) — каноничное описание
+# Action-Dependent Heuristic Dynamic Programming (ADHDP) — Canonical Description
 
-Этот файл — краткая шпаргалка по **ADHDP** в смысле статьи Prokhorov & Wunsch (1997) “Adaptive Critic Designs” и нашей реализации `tensoraerospace.agent.ADHDP`.
+This document is a concise reference for **ADHDP** as described in Prokhorov & Wunsch (1997) "Adaptive Critic Designs" and our implementation `tensoraerospace.agent.ADHDP`.
 
-Важно: в старой версии этого документа были смешаны **HDP** (критик \(J(x)\)) и **model-based градиенты** (ближе к DHP/ADDHP). Для **ADHDP** по статье ключевое отличие — **action-dependent critic** \(J(x,u)\) и **прямая связь actor→critic** (без обязательной модели).
-
----
-
-## 1) Архитектура ADHDP (по статье)
-
-ADHDP состоит из двух обучаемых сетей и реального plant/environment:
-
-- **Critic**: аппроксимирует \(J(x,u)\) (cost-to-go / utility-to-go)  
-  - вход: \([x;u]\)  
-  - выход: скаляр \(J\)
-- **Actor**: аппроксимирует \(u=\pi(x)\)  
-  - вход: \(x\)  
-  - выход: \(u\)
-- **Plant / Environment**: выдаёт переход \(x_{t+1}\) и локальную стоимость \(U(t)\) (utility).
-
-> В статье: HDP использует model-network для связи actor↔critic, но **ADHDP** — это вариант, где actor подключён к critic напрямую (можно ждать следующего шага, либо модель не подходит).
+Important: an earlier version of this document mixed up **HDP** (critic \(J(x)\)) and **model-based gradients** (closer to DHP/ADDHP). For **ADHDP** per the paper, the key distinction is the **action-dependent critic** \(J(x,u)\) and the **direct actor→critic connection** (no model required).
 
 ---
 
-## 2) Bellman-уравнение для ADHDP
+## 1) ADHDP Architecture (per the paper)
 
-Для дискретного времени:
+ADHDP consists of two trainable networks and a real plant/environment:
+
+- **Critic**: approximates \(J(x,u)\) (cost-to-go / utility-to-go)  
+  - input: \([x;u]\)  
+  - output: scalar \(J\)
+- **Actor**: approximates \(u=\pi(x)\)  
+  - input: \(x\)  
+  - output: \(u\)
+- **Plant / Environment**: produces transition \(x_{t+1}\) and local cost \(U(t)\) (utility).
+
+> In the paper: HDP uses a model-network to link actor↔critic, but **ADHDP** is the variant where the actor connects to the critic directly (either waiting for the next step, or when a model is unavailable).
+
+---
+
+## 2) Bellman Equation for ADHDP
+
+For discrete time:
 
 \[
 J(x_t,u_t) = U(t) + \gamma J(x_{t+1}, u_{t+1}), \quad u_{t+1}=\pi(x_{t+1})
 \]
 
-где:
-- \(U(t)\) — локальная стоимость (utility)  
+where:
+- \(U(t)\) — local cost (utility)  
 - \(\gamma \in (0,1]\) — discount factor
 
 ---
 
-## 3) Обучение (online TD + minimization)
+## 3) Training (Online TD + Minimization)
 
-### 3.1 Critic update (TD, semi-gradient)
+### 3.1 Critic Update (TD, semi-gradient)
 
-На каждом шаге строим TD-target:
+At each step, construct the TD target:
 
 \[
 y_t = U(t) + \gamma\, J(x_{t+1}, \pi(x_{t+1}))
 \]
 
-и минимизируем:
+and minimize:
 
 \[
 L_c = \tfrac{1}{2}\left(J(x_t,u_t) - y_t\right)^2
 \]
 
-Как в статье, используем **semi-gradient**: целевой \(y_t\) считается константой относительно весов критика (не дифференцируем \(J(x_{t+1},\pi(x_{t+1}))\) по весам критика внутри таргета).
+As in the paper, we use **semi-gradient**: the target \(y_t\) is treated as a constant with respect to critic weights (we do not differentiate \(J(x_{t+1},\pi(x_{t+1}))\) through the critic weights inside the target).
 
-### 3.2 Actor update (минимизация \(J\))
+### 3.2 Actor Update (minimizing \(J\))
 
-Actor обучается минимизировать “стоимость” по critic:
+The actor is trained to minimize the "cost" as estimated by the critic:
 
 \[
 L_a = J(x_t,\pi(x_t))
 \]
 
-Градиент идёт через critic по входу \(u\) (direct path actor→critic), что соответствует Fig. 1(b) из статьи (“ошибка 1” для минимизации \(J\)).
+The gradient flows through the critic with respect to input \(u\) (direct path actor→critic), corresponding to Fig. 1(b) in the paper ("error 1" for minimizing \(J\)).
 
 ---
 
-## 4) Training procedure (Section III из статьи): alternating cycles
+## 4) Training Procedure (Section III of the paper): Alternating Cycles
 
-Статья рекомендует **чередование двух циклов**:
+The paper recommends **alternating two cycles**:
 
-- **critic cycle**: обновляем critic, actor держим фиксированным
-- **action cycle**: обновляем actor, critic держим фиксированным
+- **Critic cycle**: update the critic, keep the actor fixed
+- **Action cycle**: update the actor, keep the critic fixed
 
-Это напоминает **policy iteration**: во время actor-cycle reward/utility может быть “неровным”, пока critic не догонит новую политику.
+This resembles **policy iteration**: during the actor cycle, reward/utility may be "uneven" until the critic catches up with the new policy.
 
-Также статья подчёркивает, что система должна оставаться стабильной во время адаптации; рекомендуют начинать обучение критика с actor, который уже является стабилизирующим контроллером.
+The paper also emphasizes that the system must remain stable during adaptation; they recommend starting critic training with an actor that already serves as a stabilizing controller.
 
 ---
 
-## 5) Практика в TensorAeroSpace (как это отражено в нашей реализации)
+## 5) Practice in TensorAeroSpace (how this is reflected in our implementation)
 
-В `tensoraerospace.agent.ADHDP` реализовано:
+In `tensoraerospace.agent.ADHDP` the following is implemented:
 
-- **Онлайн TD без replay/target** (канонично для ADHDP из статьи).
-- **Опциональный warm-start** (имитация baseline-контроллера) + **critic warmup**.
-- **Alternating cycles** через параметры `critic_cycle_episodes` / `action_cycle_episodes`.
-- **Per-step update multipliers**: `critic_updates_per_step` / `actor_updates_per_step` (аналог “epochs per step” из некоторых практических реализаций).
-- **Utility vs shaped reward**: предпочтительно обучаться на `cost_total` (это ближе к \(U(t)\) в статье).
+- **Online TD without replay/target** (canonical for ADHDP per the paper).
+- **Optional warm-start** (imitating a baseline controller) + **critic warmup**.
+- **Alternating cycles** via `critic_cycle_episodes` / `action_cycle_episodes` parameters.
+- **Per-step update multipliers**: `critic_updates_per_step` / `actor_updates_per_step` (analogous to "epochs per step" in some practical implementations).
+- **Utility vs shaped reward**: preferably train on `cost_total` (this is closer to \(U(t)\) in the paper).
 
-Опция **residual-policy**:
+**Residual-policy** option:
 
 \[
 u = u_{baseline}(obs) + \alpha\, u_{actor}(obs)
 \]
 
-— это практический стабилизатор (не обязателен “по канону”), но часто помогает избежать saturation/развала, пока critic неточен.
-
+This is a practical stabilizer (not strictly "canonical") but often helps avoid saturation/divergence while the critic is still inaccurate.

@@ -1,47 +1,49 @@
-# 🔬 Сравнение методов управления: ML vs PID
+# 🔬 Control Method Comparison: ML vs PID
 
-Эта папка содержит примеры и эксперименты для сравнения методов машинного обучения (SAC, PPO, MPC) с классическим ПИД-регулятором.
+This folder contains examples and experiments comparing machine learning methods (SAC, PPO, MPC, DSAC) with a classical PID controller.
 
-## 📋 Содержание
+## 📋 Contents
 
-### Базовые ноутбуки (baseline)
+### Baseline Notebooks
 
-| Метод | Объект управления | Файл | Описание |
-|-------|------------------|------|----------|
-| **PID** | F-16 | `pid_f16_baseline.ipynb` | ПИД-регулятор для продольного управления F-16 |
-| **SAC** | F-16 | `sac_f16_baseline.ipynb` | Soft Actor-Critic для F-16 |
-| **PPO** | B747 | `ppo_b747_baseline.ipynb` | Proximal Policy Optimization для Boeing 747 |
-| **MPC** | B747 | `mpc_b747_baseline.ipynb` | Model Predictive Control для B747 |
+| Method | Plant | File | Description |
+|--------|-------|------|-------------|
+| **PID** | F-16 | `pid_f16_baseline.ipynb` | PID controller for F-16 longitudinal control |
+| **SAC** | F-16 | `sac_f16_baseline.ipynb` | Soft Actor-Critic for F-16 |
+| **PPO** | B747 | `ppo_b747_baseline.ipynb` | Proximal Policy Optimization for Boeing 747 |
+| **MPC** | B747 | `mpc_b747_baseline.ipynb` | Model Predictive Control for B747 |
 
-### Сравнительные эксперименты
+### Comparison Experiments
 
-| Эксперимент | Файл | Описание |
-|-------------|------|----------|
-| **ML vs PID (F-16)** | `comparison_sac_vs_pid_f16.ipynb` | Сравнение SAC и PID на модели F-16 |
-| **ML vs PID (B747)** | `comparison_ppo_vs_pid_b747.ipynb` | Сравнение PPO и PID на модели B747 |
-| **ML vs PID (MPC)** | `comparison_mpc_vs_pid_b747.ipynb` | Сравнение MPC и PID на модели B747 |
+| Experiment | File | Description |
+|------------|------|-------------|
+| **All vs PID (B747)** | `comparison_all_vs_pid_b747.ipynb` | DSAC vs PPO vs MPC vs PID on B747 |
+| **DSAC vs PID (B747)** | `comparison_dsac_vs_pid_b747.ipynb` | DSAC vs PID on B747 |
+| **PPO vs PID (B747)** | `comparison_ppo_vs_pid_b747.ipynb` | PPO vs PID on B747 |
+| **MPC vs PID (B747)** | `comparison_mpc_vs_pid_b747.ipynb` | MPC vs PID on B747 |
+| **SAC vs PID (F-16)** | `comparison_sac_vs_pid_f16.ipynb` | SAC vs PID on F-16 |
 
-## 📊 Метрики сравнения
+## 📊 Comparison Metrics
 
-Для каждого эксперимента измеряются следующие метрики качества переходного процесса:
+The following transient response quality metrics are measured for each experiment:
 
-- **Время регулирования (Settling Time)** — время достижения установившегося режима
-- **Перерегулирование (Overshoot)** — максимальное превышение заданного значения в %
-- **Статическая ошибка (Static Error)** — разность между заданным и установившимся значением
+- **Settling Time** — time to reach steady state
+- **Overshoot** — maximum percentage above the setpoint
+- **Static Error** — difference between the setpoint and the steady-state value
 
-## 🎯 Цель экспериментов
+## 🎯 Experiment Objective
 
-Продемонстрировать, что методы машинного обучения обеспечивают **на 30% и более быстрый переходный процесс** по сравнению с классическим ПИД-регулятором при сопоставимом или лучшем качестве управления.
+Demonstrate that machine learning methods achieve **30%+ faster transient response** compared to a classical PID controller with comparable or better control quality.
 
-## 🚀 Запуск
+## 🚀 Getting Started
 
 ```bash
-# Запуск Jupyter
+# Launch Jupyter
 cd example/comparison
 jupyter lab
 ```
 
-## 📚 Использованные функции
+## 📚 Key Imports
 
 ```python
 from tensoraerospace.benchmark.function import overshoot, settling_time, static_error
@@ -50,10 +52,7 @@ from tensoraerospace.agent.sac import SAC
 from tensoraerospace.agent.ppo.model import PPO
 ```
 
-## 📈 Результаты
+## 📈 Results
 
-- Сводные сравнения по B747 представлены в `comparison_all_vs_pid_b747.ipynb`.
-- Для отдельных сценариев используйте соответствующие ноутбуки `comparison_*_vs_pid_*.ipynb`.
-
-> Примечание: файла `comparison_summary.ipynb` в текущей версии репозитория нет (если он нужен для НТО — его следует добавить отдельно).
-
+- Summary comparisons on B747 are available in `comparison_all_vs_pid_b747.ipynb`.
+- For individual scenarios, use the corresponding `comparison_*_vs_pid_*.ipynb` notebooks.

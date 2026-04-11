@@ -59,4 +59,7 @@ __all__ = [
     "LinearLongitudinalX15",
 ]
 
-# from .unity_env import get_plane_env, unity_discrete_env
+try:
+    from .unity_env import get_plane_env, unity_discrete_env
+except ImportError:
+    pass  # mlagents_envs not installed
