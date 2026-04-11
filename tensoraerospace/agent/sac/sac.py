@@ -161,7 +161,7 @@ class SAC(BaseRLModel):
         """
         state_t = torch.as_tensor(
             state, dtype=torch.float32, device=self.device
-        ).unsqueeze(0)
+        ).flatten().unsqueeze(0)
         if evaluate is False:
             action_t, _, _ = self.policy.sample(state_t)
         else:
@@ -237,9 +237,13 @@ class SAC(BaseRLModel):
         state_batch_t = torch.as_tensor(
             state_batch, dtype=torch.float32, device=self.device
         )
+        if state_batch_t.ndim > 2:
+            state_batch_t = state_batch_t.reshape(state_batch_t.shape[0], -1)
         next_state_batch_t = torch.as_tensor(
             next_state_batch, dtype=torch.float32, device=self.device
         )
+        if next_state_batch_t.ndim > 2:
+            next_state_batch_t = next_state_batch_t.reshape(next_state_batch_t.shape[0], -1)
         action_batch_t = torch.as_tensor(
             action_batch, dtype=torch.float32, device=self.device
         )
