@@ -96,7 +96,7 @@ class LinearLongitudinalUAV(gym.Env):
         Returns:
             float: Control evaluation reward.
         """
-        return float(np.abs(state[0] - ref_signal[:, ts]).item())
+        return -float(np.abs(state[0] - ref_signal[:, ts]).item())
 
     def step(
         self, action: np.ndarray

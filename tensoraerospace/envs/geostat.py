@@ -94,9 +94,9 @@ class GeoSatEnv(gym.Env):
             ts (int): Time step.
 
         Returns:
-            float: Control evaluation reward.
+            float: Control evaluation reward (negative absolute error).
         """
-        return float(np.abs(state[0] - ref_signal[:, ts]).item())
+        return -float(np.abs(state[0] - ref_signal[:, ts]).item())
 
     def step(
         self, action: np.ndarray

@@ -88,8 +88,8 @@ class ComSatEnv(gym.Env):
 
     @staticmethod
     def reward(state, ref_signal, ts):
-        """Compute tracking error used as reward."""
-        return np.abs(state[0] - ref_signal[:, ts])
+        """Compute tracking reward (negative absolute error)."""
+        return -float(np.abs(state[0] - ref_signal[:, ts]).item())
 
     def step(self, action: np.ndarray):
         """Run one environment step (Gymnasium API)."""

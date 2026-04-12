@@ -79,13 +79,10 @@ def test_ultrastick_env_reset_and_step(monkeypatch):
         np.array([100.0], dtype=np.float32)
     )
     assert next_obs.shape == (2, 1)
-    # Reward is returned as float from reward() method, not as numpy array
     assert isinstance(
-        reward, (float, np.floating, np.ndarray)
-    ), f"Reward should be float or array, got {type(reward)}"
-    # If it's an array, check it's not empty; if it's a scalar, that's fine too
-    if isinstance(reward, np.ndarray):
-        assert reward.shape != (), "If reward is array, it should not be scalar"
+        reward, (float, np.floating)
+    ), f"Reward should be float, got {type(reward)}"
+    assert reward <= 0, "Reward should be non-positive (negative tracking error)."
     assert isinstance(done, (np.bool_, bool)), f"Done should be bool, got {type(done)}"
     assert isinstance(
         truncated, (np.bool_, bool)

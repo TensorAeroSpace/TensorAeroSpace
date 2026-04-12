@@ -107,7 +107,7 @@ class LinearLongitudinalX15(gym.Env):
         Returns:
             reward (float): Control performance evaluation.
         """
-        return np.abs(state[0] - ref_signal[:, ts])
+        return -float(np.abs(state[0] - ref_signal[:, ts]).item())
 
     def step(self, action: np.ndarray):
         """Execute a simulation step.

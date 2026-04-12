@@ -48,7 +48,8 @@ def test_step_function(env_setup):
     action = np.array([10], dtype=np.float32)  # within the valid range
     next_state, reward, done, _, info = env.step(action)
     assert isinstance(next_state, np.ndarray), "Next state should be a numpy array."
-    assert isinstance(reward, np.ndarray), "Reward should be a float."
+    assert isinstance(reward, float), "Reward should be a float."
+    assert reward <= 0, "Reward should be non-positive (negative tracking error)."
     assert isinstance(done, bool), "Done should be a boolean."
     assert isinstance(info, dict), "Info should be a dictionary."
     # ELV returns flattened state: reshape(-1) gives shape (3,)

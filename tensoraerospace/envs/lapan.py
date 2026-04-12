@@ -99,7 +99,7 @@ class LinearLongitudinalLAPAN(gym.Env):
         Returns:
             float: Reward value (lower is better in the legacy formulation).
         """
-        return float(np.abs(state[0] - ref_signal[:, ts]).item())
+        return -float(np.abs(state[0] - ref_signal[:, ts]).item())
 
     def _get_info(self) -> dict[str, float]:
         """Return auxiliary info for Gym API (currently empty)."""
