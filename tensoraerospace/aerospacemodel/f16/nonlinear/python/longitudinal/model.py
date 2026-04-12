@@ -59,10 +59,15 @@ class LongitudinalF16(ModelBase):
     def set_param(self, new_param: F16LongParameters) -> None:
         self.param = new_param
 
+    @property
+    def current_state(self) -> np.ndarray:
+        """Most recent state as a flat 1-D ndarray (alpha, wz, stab, dstab)."""
+        return np.asarray(self.x_history[-1], dtype=np.float64).reshape(-1)
+
     def run_step(self, u: ArrayLike) -> np.ndarray:
         u_arr = np.asarray(u, dtype=np.float64).reshape(-1)
         if u_arr.size != self.action_space_length:
-            raise Exception(
+            raise ValueError(
                 "Размерность управляющего вектора задана неверно."
                 f" Текущее значение {u_arr.size}, не соответсвует {self.action_space_length}"
             )

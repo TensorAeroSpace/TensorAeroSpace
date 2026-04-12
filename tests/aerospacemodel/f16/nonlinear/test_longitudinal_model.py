@@ -47,7 +47,7 @@ def test_run_step_rejects_wrong_action_dim():
         initial_state,
     )
     m = LongitudinalF16(initial_state)
-    with pytest.raises(Exception):
+    with pytest.raises(ValueError):
         m.run_step([[0.0], [0.0]])
 
 
@@ -74,6 +74,15 @@ def test_integrator_choice_runs_both_modes():
         assert np.all(np.isfinite(np.asarray(out_e)))
         assert np.all(np.isfinite(np.asarray(out_r)))
 
+    final_e = m_euler.current_state
+    final_r = m_rk4.current_state
+    # Euler and RK4 should diverge slightly over 50 steps with a non-trivial
+    # input. If they're allclose at default tolerance, the integrator switch
+    # is doing nothing.
+    assert not np.allclose(final_e, final_r, atol=1e-9), (
+        "euler and rk4 produced identical trajectories — integrator switch broken"
+    )
+
 
 def test_unknown_integrator_raises():
     from tensoraerospace.aerospacemodel.f16.nonlinear.python.longitudinal import (
@@ -99,3 +108,21 @@ def test_set_initial_state_rejects_unknown_key():
     )
     with pytest.raises(Exception):
         set_initial_state({"not_a_state": 1.0})
+
+
+def test_set_initial_state_does_not_accumulate_overrides_across_calls():
+    """Regression: set_initial_state must be pure. Two independent calls
+    should NOT see each other's overrides."""
+    from tensoraerospace.aerospacemodel.f16.nonlinear.python.longitudinal import (
+        set_initial_state,
+    )
+    a = set_initial_state({"alpha": math.radians(7.0)})
+    b = set_initial_state({"wz": math.radians(3.0)})
+    a_arr = np.asarray(a, dtype=float).reshape(-1)
+    b_arr = np.asarray(b, dtype=float).reshape(-1)
+    # `a` should have only alpha=7°, not wz=3°
+    assert a_arr[0] == pytest.approx(math.radians(7.0))
+    assert a_arr[1] == 0.0
+    # `b` should have only wz=3°, not alpha=7°
+    assert b_arr[0] == 0.0
+    assert b_arr[1] == pytest.approx(math.radians(3.0))

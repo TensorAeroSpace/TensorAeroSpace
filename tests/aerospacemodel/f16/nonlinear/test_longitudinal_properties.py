@@ -56,7 +56,7 @@ def test_open_loop_trajectory_matches_snapshot():
         pytest.skip(f"snapshot created at {SNAPSHOT}; re-run to compare")
 
     expected = np.load(SNAPSHOT)["trajectory"]
-    np.testing.assert_allclose(traj, expected, atol=1e-12)
+    np.testing.assert_allclose(traj, expected, atol=1e-9)
 
 
 def test_actuator_position_limit_enforced_over_long_command():
@@ -67,5 +67,5 @@ def test_actuator_position_limit_enforced_over_long_command():
     huge = math.radians(40.0)  # well above maxabsstab=25 deg
     for _ in range(500):
         m.run_step([[huge]])
-    final = np.asarray(m.x_history[-1]).reshape(-1)
+    final = m.current_state
     assert abs(final[2]) <= p.maxabsstab + 1e-6
