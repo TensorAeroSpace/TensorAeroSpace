@@ -406,12 +406,10 @@ class DSAC(BaseRLModel):
         # CAPS spatial smoothness (dsac-flight style: on mean, not tanh(action))
         a_det = self.policy.get_mean(s)
         a_near = self.policy.get_mean(torch.normal(mean=s, std=self.caps_noise_std))
-        loss_spatial = torch.mean((a_det - a_near) ** 2)
-        loss_spatial = loss_spatial * self.caps_lambda_smoothness / new_action.shape[0]
+        loss_spatial = torch.mean((a_det - a_near) ** 2) * self.caps_lambda_smoothness
 
         # CAPS temporal smoothness
-        loss_temporal = torch.mean((new_action - next_action) ** 2)
-        loss_temporal = loss_temporal * self.caps_lambda_temporal / new_action.shape[0]
+        loss_temporal = torch.mean((new_action - next_action) ** 2) * self.caps_lambda_temporal
 
         # Risk-distorted expectation for actor objective
         taus_exp = ZNet.generate_taus(

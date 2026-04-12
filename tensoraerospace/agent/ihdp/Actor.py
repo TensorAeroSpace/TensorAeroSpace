@@ -156,7 +156,7 @@ class Actor:
         maximum_q_rate: float = 20,
         cascaded_actor: bool = False,
         NN_initial: int | None = None,
-        cascade_tracking_state: list[str] = ["alpha", "wz"],
+        cascade_tracking_state: list[str] | None = None,
         model_path: str | None = None,
     ) -> None:
         """Initialize IHDP Actor network and hyperparameters.
@@ -186,7 +186,9 @@ class Actor:
         """
         self.number_inputs = len(selected_inputs)
         self.selected_states = selected_states
-        self.cascade_tracking_state = cascade_tracking_state
+        self.cascade_tracking_state = (
+            cascade_tracking_state if cascade_tracking_state is not None else ["alpha", "wz"]
+        )
         self.number_states = len(selected_states)
         self.number_tracking_states = len(tracking_states)
         self.indices_tracking_states = indices_tracking_states

@@ -106,7 +106,7 @@ class ReplayMemory:
         print("Saving buffer to {}".format(save_path))
 
         with open(save_path, "wb") as f:
-            pickle.dump(self.buffer, f)
+            pickle.dump({"buffer": self.buffer, "position": self.position}, f)
 
     def load_buffer(self, save_path: str) -> None:
         """Load a replay buffer from disk.
@@ -118,5 +118,11 @@ class ReplayMemory:
         print("Loading buffer from {}".format(save_path))
 
         with open(save_path, "rb") as f:
-            self.buffer = pickle.load(f)
+            data = pickle.load(f)
+        if isinstance(data, dict):
+            self.buffer = data["buffer"]
+            self.position = data["position"]
+        else:
+            # Backward compatibility for old format (just a list of transitions)
+            self.buffer = data
             self.position = len(self.buffer) % self.capacity

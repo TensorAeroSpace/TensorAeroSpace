@@ -95,7 +95,8 @@ def push_and_pull(opt, lnet, gnet, done, s_, bs, ba, br, gamma):
     lnet.zero_grad()
     total_loss.backward()
     for lp, gp in zip(lnet.parameters(), gnet.parameters()):
-        gp._grad = lp.grad
+        if lp.grad is not None:
+            gp.grad = lp.grad.clone()
     # clip gradients for stability before optimizer step
     torch.nn.utils.clip_grad_norm_(gnet.parameters(), max_norm=40.0)
     opt.step()

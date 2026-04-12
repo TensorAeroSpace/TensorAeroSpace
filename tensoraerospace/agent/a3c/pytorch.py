@@ -170,7 +170,6 @@ class Worker(mp.Process):
 
     def __init__(
         self,
-        env: gym.Env,
         gnet: Net,
         opt: SharedAdam,
         global_ep: mp.Value,
@@ -183,6 +182,8 @@ class Worker(mp.Process):
         MAX_EP_STEP: int,
         GAMMA: float,
         update_global_iter: int,
+        env_function: Optional[Callable[[int], gym.Env]] = None,
+        env: Optional[gym.Env] = None,
         render: bool = False,
         writer: Optional["torch.utils.tensorboard.SummaryWriter"] = None,
         global_step: Optional[mp.Value] = None,
@@ -190,7 +191,15 @@ class Worker(mp.Process):
         """Initialize worker process.
 
         Args:
-            env: Environment instance.
+            env_function: Factory callable taking worker id and returning
+                a fresh env. The env is created inside ``run()`` so that
+                under fork multiprocessing each worker gets its own env
+                (avoids sharing a single env object across processes).
+                This is the preferred way to supply an env.
+            env: Legacy/direct env instance. Provided for backward
+                compatibility (and for single-process tests); DO NOT use
+                this path with real multi-process training because a
+                single env would be shared across forked workers.
             gnet: Global shared network.
             opt: Shared optimizer.
             global_ep: Shared episode counter.
@@ -216,7 +225,18 @@ class Worker(mp.Process):
         )
         self.gnet, self.opt = gnet, opt
         self.lnet = Net(num_observations, num_actions)  # local network
-        self.env = env
+        # Store factory; env itself is created lazily in run() so that each
+        # worker process (under fork or spawn) owns a fresh env instance.
+        self.env_function = env_function
+        self.worker_id = int(name)
+        # Legacy: allow an env instance to be passed directly (tests/debug).
+        # When both env_function and env are supplied, env_function wins
+        # and env is ignored (the env will be created inside run()).
+        self.env: Optional[gym.Env] = env if env_function is None else None
+        if env_function is None and env is None:
+            raise ValueError(
+                "Worker requires either env_function (preferred) or env."
+            )
         self.gamma = GAMMA
         self.max_ep = MAX_EP
         self.max_ep_step = MAX_EP_STEP
@@ -228,6 +248,14 @@ class Worker(mp.Process):
     def run(self) -> None:
         """Execute worker process containing agent training."""
         total_step = 1
+        # Create the env inside the worker process. Under fork-based
+        # multiprocessing, creating envs in the parent and passing them
+        # to children would result in a single env object being shared
+        # across processes (race conditions, corrupt state). Creating it
+        # here guarantees each worker has its own independent env.
+        if self.env is None:
+            assert self.env_function is not None
+            self.env = self.env_function(self.worker_id)
         # initial sync from global to local to avoid stale params
         self.lnet.load_state_dict(self.gnet.state_dict())
         while self.g_ep.value < self.max_ep:
@@ -441,10 +469,10 @@ class Agent:
         """Launch training across worker processes (or single-process mode)."""
         workers = []
         if self.run_in_main:
-            # run a single worker in current process (useful for tests)
-            env = self.env_function(0)
+            # run a single worker in current process (useful for tests).
+            # The worker will create its own env via env_function in run().
             w = Worker(
-                env=env,
+                env_function=self.env_function,
                 gnet=self.gnet,
                 opt=self.opt,
                 global_ep=self.global_ep,
@@ -463,13 +491,22 @@ class Agent:
             )
             # directly call run without starting a new process
             w.run()
-            env.close()
+            if w.env is not None:
+                try:
+                    w.env.close()
+                except Exception:
+                    pass
             return
 
+        # IMPORTANT: Do NOT create envs in the parent process here.
+        # Each worker creates its own env inside Worker.run() via
+        # env_function(worker_id). This avoids sharing a single env
+        # across processes when using fork-based multiprocessing.
+        # Recommendation: use 'spawn' start method for additional
+        # safety when the env holds non-picklable/system resources.
         for i in range(self.n_workers):
-            env = self.env_function(i)
             w = Worker(
-                env=env,
+                env_function=self.env_function,
                 gnet=self.gnet,
                 opt=self.opt,
                 global_ep=self.global_ep,
