@@ -126,3 +126,17 @@ def test_set_initial_state_does_not_accumulate_overrides_across_calls():
     # `b` should have only wz=3°, not alpha=7°
     assert b_arr[0] == 0.0
     assert b_arr[1] == pytest.approx(math.radians(3.0))
+
+
+def test_list_state_survives_construction():
+    """Regression: ModelBase._initialize_selected_state_index has a side
+    effect of wiping self.list_state. The class must work around this so
+    consumers can do `m.list_state.index('alpha')` after construction."""
+    from tensoraerospace.aerospacemodel.f16.nonlinear.python.longitudinal import (
+        LongitudinalF16,
+        initial_state,
+    )
+    m = LongitudinalF16(initial_state)
+    assert m.list_state == ["alpha", "wz", "stab", "dstab"]
+    assert m.control_list == ["stab"]
+    assert m.list_state.index("dstab") == 3

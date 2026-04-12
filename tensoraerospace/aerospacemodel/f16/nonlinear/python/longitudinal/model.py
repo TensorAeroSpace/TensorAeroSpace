@@ -38,12 +38,17 @@ class LongitudinalF16(ModelBase):
                 f"x0 must have 4 elements (alpha, wz, stab, dstab); got {x0_arr.size}"
             )
         super().__init__(x0_arr, selected_state_output, t0, dt)
-        self.list_state = ["alpha", "wz", "stab", "dstab"]
-        self.control_list = ["stab"]
-        self.action_space_length = len(self.control_list)
+        # ModelBase._initialize_selected_state_index has the side effect of
+        # resetting self.list_state and self.control_list to []. Compute
+        # them locally, pass to that method, then reassign so they survive.
+        _list_state = ["alpha", "wz", "stab", "dstab"]
+        _control_list = ["stab"]
+        self.action_space_length = len(_control_list)
         self.param: F16LongParameters = default_parameters()
         self.x_history = [x0_arr.reshape(4, 1)]
-        self._initialize_selected_state_index(self.selected_state_output, self.list_state)
+        self._initialize_selected_state_index(self.selected_state_output, _list_state)
+        self.list_state = _list_state
+        self.control_list = _control_list
 
         if integrator == "euler":
             self._step_fn = euler
