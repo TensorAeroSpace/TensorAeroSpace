@@ -126,7 +126,7 @@ q \\
 
 - **Matrix A (derivatives):**
 
-  | Коэффициент | Значение |
+  | Coefficient | Value |
   |-------------|----------|
   | x_u | -0.0089 |
   | x_w | -0.1474 |
@@ -143,7 +143,7 @@ q \\
 
 - **Input η (column B):**
 
-  | Коэффициент | Значение |
+  | Coefficient | Value |
   |-------------|----------|
   | x_η | 9.748 |
   | z_η | 3.77 |
@@ -160,7 +160,15 @@ q \\
 
 ## Sources
 
-1. Arikapalli V. S. N. et al. Missile Longitudinal Dynamics Control Design using Pole Placement and LQR Methods — A Critical Analysis // Defence Science Journal. 2021. 71(5). [Ссылка](https://www.strategicfront.org/forums/attachments/16232-article-text-62198-1-10-20210902-pdf.20806/)
+1. Arikapalli V. S. N. et al. Missile Longitudinal Dynamics Control Design using Pole Placement and LQR Methods — A Critical Analysis // Defence Science Journal. 2021. 71(5). [Link](https://www.strategicfront.org/forums/attachments/16232-article-text-62198-1-10-20210902-pdf.20806/)
+
+## Reward
+
+The default reward function returns the negative absolute tracking error for the pitch angle:
+
+$$r_t = -|\theta(t) - \theta_{\text{ref}}(t)|$$
+
+Higher reward (closer to 0) indicates better tracking performance. A custom reward function can be passed via the `reward_func` parameter.
 
 ## Quick start {#quick-start}
 

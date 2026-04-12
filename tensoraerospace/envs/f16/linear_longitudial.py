@@ -154,10 +154,8 @@ class LinearLongitudinalF16(gym.Env):
                 - truncated (bool): Whether episode was truncated.
                 - info (dict): Additional information (not used).
         """
-        if action[0] > self.max_action_value:
-            action[0] = self.max_action_value
-        if action[0] < self.max_action_value * -1:
-            action[0] = self.max_action_value * -1
+        action = np.asarray(action).reshape(-1)
+        action = np.clip(action, -self.max_action_value, self.max_action_value)
         self.current_step += 1
         next_state = self.model.run_step(action)
         reward = 1.0

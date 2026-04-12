@@ -162,6 +162,14 @@ q \\
 
 1. Arikapalli V. S. N. et al. Missile Longitudinal Dynamics Control Design using Pole Placement and LQR Methods — A Critical Analysis // Defence Science Journal. 2021. 71(5). [Ссылка](https://www.strategicfront.org/forums/attachments/16232-article-text-62198-1-10-20210902-pdf.20806/)
 
+## Награда
+
+Функция награды по умолчанию возвращает отрицательную абсолютную ошибку отслеживания угла тангажа:
+
+$$r_t = -|\theta(t) - \theta_{\text{ref}}(t)|$$
+
+Чем выше награда (ближе к 0), тем лучше качество отслеживания. Пользовательская функция награды может быть передана через параметр `reward_func`.
+
 ## Быстрый старт {#быстрый-старт}
 
 === "Gymnasium"

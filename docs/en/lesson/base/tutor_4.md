@@ -46,9 +46,9 @@ As discussed earlier, dynamic stability characterizes how the aircraft returns t
 
 ## 5. References
 
-1. Flight dynamics — Wikipedia (RU). – [URL: https://ru.wikipedia.org/wiki/Динамика_полёта](https://ru.wikipedia.org/wiki/Динамика_полёта)
+1. Flight dynamics — Wikipedia. – [URL: https://en.wikipedia.org/wiki/Flight_dynamics_(fixed-wing_aircraft)](https://en.wikipedia.org/wiki/Flight_dynamics_(fixed-wing_aircraft))
 2. Fundamentals of aircraft flight dynamics — MIPT (RU). – [URL: https://oat.mai.ru/book/glava06/6_1/6_1.htm](https://oat.mai.ru/book/glava06/6_1/6_1.htm)
-3. Balakin V.L. Flight Dynamics of an Airplane: Trajectory and Performance Calculations. — Samara: SSAU, 2002. – [URL: https://repo.ssau.ru/bitstream/Uchebnye-izdaniya/Dinamika-poleta-samoleta-Raschet-traektorii-i-letnyh-harakteristik-konspekt-lekcii-Tekst-elektronnyi-85702/1/Балакин%20В.Л.%20Динамика%20полета%202002.pdf](https://repo.ssau.ru/bitstream/Uchebnye-izdaniya/Dinamika-poleta-samoleta-Raschet-traektorii-i-letnyh-harakteristik-konspekt-lekcii-Tekst-elektronnyi-85702/1/Балакин%20В.Л.%20Динамика%20полета%202002.pdf)
+3. Balakin V.L. Flight Dynamics of an Airplane: Trajectory and Performance Calculations. — Samara: SSAU, 2002. – [URL: https://repo.ssau.ru/bitstream/Uchebnye-izdaniya/Dinamika-poleta-samoleta-Raschet-traektorii-i-letnyh-harakteristik-konspekt-lekcii-Tekst-elektronnyi-85702/1/%D0%91%D0%B0%D0%BB%D0%B0%D0%BA%D0%B8%D0%BD%20%D0%92.%D0%9B.%20%D0%94%D0%B8%D0%BD%D0%B0%D0%BC%D0%B8%D0%BA%D0%B0%20%D0%BF%D0%BE%D0%BB%D0%B5%D1%82%D0%B0%202002.pdf](https://repo.ssau.ru/bitstream/Uchebnye-izdaniya/Dinamika-poleta-samoleta-Raschet-traektorii-i-letnyh-harakteristik-konspekt-lekcii-Tekst-elektronnyi-85702/1/%D0%91%D0%B0%D0%BB%D0%B0%D0%BA%D0%B8%D0%BD%20%D0%92.%D0%9B.%20%D0%94%D0%B8%D0%BD%D0%B0%D0%BC%D0%B8%D0%BA%D0%B0%20%D0%BF%D0%BE%D0%BB%D0%B5%D1%82%D0%B0%202002.pdf)
 
 
 ## 6. Practical Python Example

@@ -6,7 +6,7 @@
 [![ru](https://img.shields.io/badge/lang-ru-green.svg)](./README.ru-ru.md)
 [![Documentation Status](https://readthedocs.org/projects/tensoraerospace/badge/?version=latest)](https://tensoraerospace.readthedocs.io/en/latest/?badge=latest)
 [![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/TensorAeroSpace/TensorAeroSpace)
-[![Python](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
+[![Python](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![GitHub stars](https://img.shields.io/github/stars/tensoraerospace/tensoraerospace.svg)](https://github.com/tensoraerospace/tensoraerospace/stargazers)
 
@@ -57,7 +57,7 @@
 | **CPU** | 4 ядра, AVX | 8+ ядер, AVX2/FMA |
 | **RAM** | 8 ГБ | 16–32 ГБ для RL/Simulink |
 | **GPU** | Необязательно | NVIDIA RTX с ≥8 ГБ VRAM для SAC/DSAC/PPO, поддержка CUDA 12.2 |
-| **Python** | 3.8–3.11 | 3.10/3.11 |
+| **Python** | 3.10–3.12 | 3.11/3.12 |
 | **Доп. ПО** | Git, Poetry или pip, Docker (опционально) | MATLAB/Simulink R2022b+ (для simulink-example), Unity 2021.3.5f1/2023.2.20f1 |
 
 ### 📦 Установка

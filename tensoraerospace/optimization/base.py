@@ -86,14 +86,16 @@ class HyperParamOptimizationOptuna(HyperParamOptimizationBase):
         x = []
         x_labels = []
         for trial in self.study.trials:
+            if trial.state != optuna.trial.TrialState.COMPLETE:
+                continue
             x.append(trial.value)
             x_labels.append(
                 "".join([f"{key}={trial.params[key]}\n" for key in trial.params.keys()])
             )
 
         fig, ax = plt.subplots(figsize=figsize)
-        ax.plot(range(len(self.study.trials)), x)
-        ax.set_xticks(range(len(self.study.trials)))
+        ax.plot(range(len(x)), x)
+        ax.set_xticks(range(len(x)))
         ax.set_xticklabels(x_labels, rotation=90, multialignment="left")
         ax.set_title("Hyperparameter search history")
         ax.set_ylabel("Значение функции", fontsize=15)

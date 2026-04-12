@@ -40,6 +40,7 @@ class GeoSatEnv(gym.Env):
         reward_func: Callable | None = None,
     ) -> None:
         """Initialize geostationary satellite environment."""
+        super().__init__()
         self.initial_state = initial_state
         self.number_time_steps = number_time_steps
         self.selected_state_output = output_space
@@ -93,9 +94,9 @@ class GeoSatEnv(gym.Env):
             ts (int): Time step.
 
         Returns:
-            float: Control evaluation reward.
+            float: Control evaluation reward (negative absolute error).
         """
-        return float(np.abs(state[0] - ref_signal[:, ts]).item())
+        return -float(np.abs(state[0] - ref_signal[:, ts]).item())
 
     def step(
         self, action: np.ndarray

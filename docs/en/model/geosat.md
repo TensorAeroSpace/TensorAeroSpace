@@ -117,7 +117,7 @@ Numerical matrices (example linearization):
 
 - **Matrix A (derivatives):**
 
-  | Коэффициент | Значение |
+  | Coefficient | Value |
   |-------------|----------|
   | a_ρθ (∂ρ̇/∂θ) | 1.0 |
   | a_θρ (∂θ̇/∂ρ) | 0.01036 |
@@ -126,13 +126,21 @@ Numerical matrices (example linearization):
 
 - **Input η (column B):**
 
-  | Коэффициент | Значение |
+  | Coefficient | Value |
   |-------------|----------|
   | b_η→ω (∂ω̇/∂η) | 0.1513 |
 
 ## Sources
 
 1. Tun, Hla & Mon, Lae & Lwin, Kyaw & Naing, Zaw. (2012). Implementation of Communication Satellite Orbit Controller Design Using State Space Techniques. ASEAN Journal on Science and Technology for Development. 29. 29‑49. 10.29037/ajstd.48.
+
+## Reward
+
+The default reward function returns the negative absolute tracking error for the angular position:
+
+$$r_t = -|\theta(t) - \theta_{\text{ref}}(t)|$$
+
+Higher reward (closer to 0) indicates better tracking performance. A custom reward function can be passed via the `reward_func` parameter.
 
 ## Quick start {#quick-start}
 

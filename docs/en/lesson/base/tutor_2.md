@@ -80,7 +80,7 @@ In other words, the mathematical tests for controllability and observability mir
 
 ## 5. References
 
-1. Observability (control theory) // Wikipedia. URL: https://ru.wikipedia.org/wiki/Наблюдаемость_(теория_управления)
+1. Observability (control theory) // Wikipedia. URL: https://en.wikipedia.org/wiki/Observability
 2. Controllability and observability // Studfile. URL: https://studfile.net/preview/2202942/page:8/
 3. Controllability and Observability // Rutgers ECE. URL: http://eceweb1.rutgers.edu/~gajic/psfiles/chap5traCO.pdf
 

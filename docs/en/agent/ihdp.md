@@ -8,7 +8,7 @@ IHDP is an incremental variant of Heuristic Dynamic Programming from the Adaptiv
 - The actor produces the control signal based on tracking error
 - The critic estimates the cost function and provides gradients to the actor
 
-![Схема IHDP](../agent/img/ihdp/ihdp.png){ width=800 }
+![IHDP Diagram](../agent/img/ihdp/ihdp.png){ width=800 }
 
 ## IHDP components
 
@@ -82,7 +82,7 @@ agent = IHDPAgent(
     indices_tracking_states,
 )
 
-# Один шаг предсказания
+# Single prediction step
 xt = np.zeros((len(selected_states), 1))
 reference = np.zeros((len(selected_states), number_time_steps))
 ut = agent.predict(xt, reference, time_step=0)
@@ -141,7 +141,7 @@ ut = agent.predict(xt, reference, time_step=0)
 
 ::: tensoraerospace.agent.ihdp.IncrementalModel
 
-## Источники
+## Sources
 
 - [Incremental Model Based Heuristic Dynamic Programming for Nonlinear Adaptive Flight Control](https://www.researchgate.net/publication/313696777_Incremental_Model_Based_Heuristic_Dynamic_Programming_for_Nonlinear_Adaptive_Flight_Control)
 - [IHDP (reference implementation)](https://github.com/joigalcar3/IHDP)

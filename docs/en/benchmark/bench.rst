@@ -33,7 +33,7 @@ Usage Example
 
     from tensoraerospace.benchmark import ControlBenchmark
     bench = ControlBenchmark()
-    res = bench.becnchmarking_one_step(control_signal_orig, system_signal_orig, 1, dt)
+    res = bench.benchmarking_one_step(control_signal_orig, system_signal_orig, 1, dt)
 
     print("Steady-state error:", res['static_error'])
     print("Settling time:", res['settling_time'], "s")
@@ -52,3 +52,8 @@ Usage Example
     bench.plot(control_signal_orig, system_signal_orig, 1, dt, tps, figsize=(15,5))
 
 .. image:: bench.png
+
+.. note::
+
+    The old method name ``becnchmarking_one_step`` still works as an alias for
+    ``benchmarking_one_step`` for backward compatibility.

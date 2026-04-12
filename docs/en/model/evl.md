@@ -118,7 +118,7 @@ q \\
 
 - **Matrix A (derivatives):**
 
-  | Коэффициент | Значение |
+  | Coefficient | Value |
   |-------------|----------|
   | z_w | -100.858 |
   | z_q | 1.0 |
@@ -129,7 +129,7 @@ q \\
 
 - **Input η (column B):**
 
-  | Коэффициент | Значение |
+  | Coefficient | Value |
   |-------------|----------|
   | z_η | 0.0 |
   | m_η | 3.4558 |
@@ -144,8 +144,16 @@ q \\
 
 ## Sources
 
-1. Aliyu, Bhar & Funmilayo, A. & Okwo, Odooh & Sholiyi, Olusegun. (2019). State‑Space Modelling of a Rocket for Optimal Control System Design. Journal of Aircraft and Spacecraft Technology. 3. 128‑137. 10.3844/jastsp.2019.128.137. [Ссылка](https://www.researchgate.net/publication/335917723_State-Space_Modelling_of_a_Rocket_for_Optimal_Control_System_Design)
-2. Aliyu, Bhar. (2011). Expendable Launch Vehicle Flight Control — Design & Simulation with Matlab/Simulink. [Ссылка](https://www.researchgate.net/publication/301790480_Expendable_Launch_Vehicle_Flight_Control-Design_Simulation_with_MatlabSimulink)
+1. Aliyu, Bhar & Funmilayo, A. & Okwo, Odooh & Sholiyi, Olusegun. (2019). State‑Space Modelling of a Rocket for Optimal Control System Design. Journal of Aircraft and Spacecraft Technology. 3. 128‑137. 10.3844/jastsp.2019.128.137. [Link](https://www.researchgate.net/publication/335917723_State-Space_Modelling_of_a_Rocket_for_Optimal_Control_System_Design)
+2. Aliyu, Bhar. (2011). Expendable Launch Vehicle Flight Control — Design & Simulation with Matlab/Simulink. [Link](https://www.researchgate.net/publication/301790480_Expendable_Launch_Vehicle_Flight_Control-Design_Simulation_with_MatlabSimulink)
+
+## Reward
+
+The default reward function returns the negative absolute tracking error for the pitch angle:
+
+$$r_t = -|\theta(t) - \theta_{\text{ref}}(t)|$$
+
+Higher reward (closer to 0) indicates better tracking performance. A custom reward function can be passed via the `reward_func` parameter.
 
 ## Quick start {#quick-start}
 

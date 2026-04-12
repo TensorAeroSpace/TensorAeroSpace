@@ -8,10 +8,10 @@ hide:
   <h1>TensorAeroSpace</h1>
   <p class="tagline">Реалистичные аэрокосмические среды и алгоритмы RL для обучения систем управления</p>
   <p>
-    <a href="guide/installation/" class="md-button md-button--primary">Установка</a>
-    <a href="lesson/0intro/" class="md-button">Учебные уроки</a>
-    <a href="agent/sac/" class="md-button">Алгоритмы</a>
-    <a href="model/f16/" class="md-button">Модели</a>
+    <a href="guide/installation.md" class="md-button md-button--primary">Установка</a>
+    <a href="lesson/0intro.md" class="md-button">Учебные уроки</a>
+    <a href="agent/sac.md" class="md-button">Алгоритмы</a>
+    <a href="model/f16.md" class="md-button">Модели</a>
   </p>
   <p>
     <a href="https://github.com/TensorAeroSpace/TensorAeroSpace"><img alt="GitHub" src="https://img.shields.io/badge/GitHub-TensorAeroSpace-000?logo=github"></a>
@@ -60,37 +60,37 @@ hide:
 
     Установите библиотеку, выберите модель и запустите первого агента.
 
-    [:octicons-arrow-right-24: Установка](guide/installation/)
+    [:octicons-arrow-right-24: Установка](guide/installation.md)
 
 -   :material-robot-outline: **Алгоритмы RL**
 
     Современные алгоритмы: DQN, A3C/A2C‑NARX, PPO, SAC, DDPG, GAIL.
 
-    [:octicons-arrow-right-24: Смотреть](agent/sac/)
+    [:octicons-arrow-right-24: Смотреть](agent/sac.md)
 
 -   :material-airplane-takeoff: **Модели объектов**
 
     F‑16, Boeing‑747, X‑15, спутники и ракеты с готовыми средами.
 
-    [:octicons-arrow-right-24: Перейти](model/f16/)
+    [:octicons-arrow-right-24: Перейти](model/f16.md)
 
 -   :material-cog-outline: **Интеграция с Gym**
 
     Совместимые environments и простой API для обучения и оценки.
 
-    [:octicons-arrow-right-24: Подробнее](example/enviroment/gymnasium/)
+    [:octicons-arrow-right-24: Подробнее](example/enviroment/gymnasium.md)
 
 -   :material-school-outline: **Учебные уроки**
 
     Практика по XFLR5, Simulink, SimInTech и теории управления.
 
-    [:octicons-arrow-right-24: К урокам](lesson/0intro/)
+    [:octicons-arrow-right-24: К урокам](lesson/0intro.md)
 
 -   :material-chart-line: **Бенчмаркинг**
 
     Метрики, сравнение агентов и примеры экспериментов.
 
-    [:octicons-arrow-right-24: Метрики](benchmark/metrics/)
+    [:octicons-arrow-right-24: Метрики](benchmark/metrics.md)
 
 </div>
 
@@ -219,11 +219,11 @@ for t in range(N - 1):
 
 ## Полезные ссылки
 
-- Руководство: [guide/installation](guide/installation/)
-- Уроки: [lesson/0intro](lesson/0intro/)
-- Модели: [model/f16](model/f16/), [model/b747](model/b747/)
-- Алгоритмы: [agent/sac](agent/sac/), [agent/ppo](agent/ppo/), [agent/ddpg](agent/ddpg/)
-- Примеры: [example/enviroment/gymnasium](example/enviroment/gymnasium/)
+- Руководство: [guide/installation](guide/installation.md)
+- Уроки: [lesson/0intro](lesson/0intro.md)
+- Модели: [model/f16](model/f16.md), [model/b747](model/b747.md)
+- Алгоритмы: [agent/sac](agent/sac.md), [agent/ppo](agent/ppo.md), [agent/ddpg](agent/ddpg.md)
+- Примеры: [example/enviroment/gymnasium](example/enviroment/gymnasium.md)
 
 ---
 
@@ -245,7 +245,7 @@ for t in range(N - 1):
 
 -   :material-python: **Поддержка Python**
 
-    3.9 — 3.12, совместимость с ecosystem Gymnasium
+    3.10 — 3.12, совместимость с ecosystem Gymnasium
 
 -   :material-license: **Лицензия**
 
@@ -262,6 +262,6 @@ for t in range(N - 1):
 </div>
 
 <div style="text-align:center; margin: 1.2rem 0 0.2rem;">
-  <a href="guide/installation/" class="md-button md-button--primary">Начать сейчас</a>
-  <a href="example/enviroment/gymnasium/" class="md-button">Посмотреть примеры</a>
+  <a href="guide/installation.md" class="md-button md-button--primary">Начать сейчас</a>
+  <a href="example/enviroment/gymnasium.md" class="md-button">Посмотреть примеры</a>
 </div>
