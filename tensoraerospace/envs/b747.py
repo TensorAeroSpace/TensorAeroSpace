@@ -237,10 +237,10 @@ class LinearLongitudinalB747(gym.Env):
                     self.reference_signal,
                     self.current_step,
                 )
-        self.done = self.current_step >= self.number_time_steps - 2
+        self.done = self.current_step >= self.number_time_steps - 1
 
         return (
-            np.array(next_state, dtype=np.float32).reshape(-1, 1),
+            np.array(next_state, dtype=np.float32).reshape(-1),
             reward,
             self.done,
             False,
@@ -290,7 +290,7 @@ class LinearLongitudinalB747(gym.Env):
                 next_state[2] = np.rad2deg(next_state[2])
             if next_state.shape[0] >= 4:
                 next_state[3] = np.rad2deg(next_state[3])
-        observation = next_state.astype(np.float32).reshape(-1, 1)
+        observation = next_state.astype(np.float32).reshape(-1)
         return observation, self._get_info()
 
     def render(self):
@@ -893,7 +893,7 @@ class ImprovedB747Env(gym.Env):
 
         # Termination conditions
         terminated = bool(abs(theta) > self.max_pitch_rad)
-        truncated = self.current_step >= self.number_time_steps - 2
+        truncated = self.current_step >= self.number_time_steps - 1
 
         # --------------------------------------------------------------
         # Survival shaping (optional):
@@ -905,7 +905,7 @@ class ImprovedB747Env(gym.Env):
             remaining_steps = float(
                 max(
                     0,
-                    int(self.number_time_steps - 2) - int(self.current_step),
+                    int(self.number_time_steps - 1) - int(self.current_step),
                 )
             )
             reward = float(-100.0 - self.early_termination_penalty) - float(

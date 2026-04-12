@@ -67,6 +67,29 @@ agent.learn(max_frames=12000, max_steps=500, batch_size=128)
 !!! tip
     Exploration relies on OU noise: tune `sigma` and `decay_period` to gradually reduce noise intensity.
 
+## Unified training interface
+
+DDPG also exposes the shared unified `train()` API from `BaseRLModel`:
+
+```python
+agent.train(
+    num_episodes=24,
+    max_steps=500,
+    batch_size=128,
+    warmup_frames=2_000,
+)
+```
+
+Under the hood `train()` converts `num_episodes * max_steps` into a
+`max_frames` budget and calls the legacy `learn()` method. Accepted
+DDPG-specific keyword arguments (passed via `**kwargs`):
+
+- `max_frames`, `batch_size`, `gamma`, `soft_tau`, `warmup_frames`,
+  `updates_per_step`, `target_value_clip`.
+
+The legacy `agent.learn(max_frames=..., max_steps=..., batch_size=...)`
+call continues to work unchanged.
+
 ## API reference
 
 ::: tensoraerospace.agent.ddpg.model.DDPG

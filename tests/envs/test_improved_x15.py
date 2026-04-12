@@ -27,7 +27,7 @@ DT = 0.01
 def _make_reference_signal(n_steps, degree=2.0):
     """Create a unit-step reference signal of shape (1, n_steps)."""
     tp = generate_time_period(tn=n_steps * DT, dt=DT)
-    sig = unit_step(degree=degree, tp=tp, time_step=int(len(tp) * 0.3), output_rad=True)
+    sig = unit_step(degree=degree, tp=tp, time_step=(n_steps * DT) * 0.3, output_rad=True)
     return np.reshape(sig, [1, -1])[:, :n_steps]
 
 
@@ -56,7 +56,7 @@ class TestLinearLongitudinalX15CustomReward:
     def test_custom_reward_func_is_used(self):
         tp = generate_time_period(tn=20, dt=DT)
         ref = np.reshape(
-            unit_step(degree=5, tp=tp, time_step=10, output_rad=True), [1, -1]
+            unit_step(degree=5, tp=tp, time_step=0.1, output_rad=True), [1, -1]
         )
         calls = []
 
@@ -78,7 +78,7 @@ class TestLinearLongitudinalX15CustomReward:
     def test_render_raises(self):
         tp = generate_time_period(tn=20, dt=DT)
         ref = np.reshape(
-            unit_step(degree=5, tp=tp, time_step=10, output_rad=True), [1, -1]
+            unit_step(degree=5, tp=tp, time_step=0.1, output_rad=True), [1, -1]
         )
         env = LinearLongitudinalX15(
             initial_state=[[0], [0], [0], [0]],
@@ -228,8 +228,8 @@ class TestFullEpisode:
             total_reward += reward
             steps += 1
             done = terminated or truncated
-        # Should run until truncation at number_time_steps - 2
-        assert steps == N_STEPS - 2
+        # Should run until truncation at number_time_steps - 1
+        assert steps == N_STEPS - 1
         assert isinstance(total_reward, float)
 
     def test_full_episode_with_random_actions(self):

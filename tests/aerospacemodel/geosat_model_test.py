@@ -15,8 +15,8 @@ def test_geosat_initialization_run_and_histories():
     x1 = model.run_step(np.array([10.0]))
     assert x1.shape[0] == 3
 
-    assert model.get_state("rho").shape[0] == steps - 1
-    assert model.get_control("ele").shape[0] == steps - 1
+    assert model.get_state("rho").shape[0] == steps
+    assert model.get_control("ele").shape[0] == steps
     assert model.get_output("theta").shape[0] == model.time_step - 1
 
     # Plotting is guarded by a strict name check; skip to avoid false failures

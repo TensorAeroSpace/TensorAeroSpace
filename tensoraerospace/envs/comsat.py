@@ -66,6 +66,7 @@ class ComSatEnv(gym.Env):
         else:
             self.reward_func = self.reward
 
+        # Constructor already invokes initialise_system internally.
         self.model = ComSat(
             initial_state,
             number_time_steps=number_time_steps,
@@ -78,18 +79,15 @@ class ComSatEnv(gym.Env):
         ]
 
         self.ref_signal = reference_signal
-        self.model.initialise_system(
-            x0=initial_state, number_time_steps=number_time_steps
-        )
         self.number_time_steps = number_time_steps
 
         self.action_space = spaces.Box(
-            low=-60, high=60, shape=(len(self.control_space), 1), dtype=np.float32
+            low=-60, high=60, shape=(len(self.control_space),), dtype=np.float32
         )
         self.observation_space = spaces.Box(
             low=-np.inf,
             high=np.inf,
-            shape=(len(self.state_space), 1),
+            shape=(len(self.state_space),),
             dtype=np.float32,
         )
 
@@ -109,16 +107,23 @@ class ComSatEnv(gym.Env):
     def step(self, action: np.ndarray):
         """Run one environment step (Gymnasium API)."""
         self.current_step += 1
+        action = np.asarray(action).reshape(-1)
         next_state = self.model.run_step(action)
         reward = self.reward_func(
             next_state[self.indices_tracking_states],
             self.reference_signal,
             self.current_step,
         )
-        self.done = self.current_step >= self.number_time_steps - 2
+        self.done = self.current_step >= self.number_time_steps - 1
         info = self._get_info()
 
-        return next_state.reshape([-1, 1]), reward, self.done, False, info
+        return (
+            np.asarray(next_state).reshape(-1).astype(np.float32),
+            reward,
+            self.done,
+            False,
+            info,
+        )
 
     def reset(self, seed=None, options=None):
         """Reset environment to the initial state (Gymnasium API)."""
@@ -127,6 +132,7 @@ class ComSatEnv(gym.Env):
         self.current_step = 0
         self.done = False
 
+        # Constructor already invokes initialise_system internally.
         self.model = None
         self.model = ComSat(
             self.initial_state,
@@ -135,13 +141,10 @@ class ComSatEnv(gym.Env):
             t0=0,
         )
         self.ref_signal = self.reference_signal
-        self.model.initialise_system(
-            x0=self.initial_state, number_time_steps=self.number_time_steps
-        )
         info = self._get_info()
         observation = np.array(self.initial_state, dtype=np.float32)[
             self.model.selected_state_index
-        ].reshape([-1, 1])
+        ].reshape(-1)
         return observation, info
 
     def render(self):
@@ -231,7 +234,7 @@ class ImprovedComSatEnv(gym.Env):
         )
         self.use_initial_action_on_first_step = bool(use_initial_action_on_first_step)
         self.previous_action = float(self.initial_action_norm)
-        self.pre_previous_action = 0.0
+        self.pre_previous_action = float(self.initial_action_norm)
         self._last_reward = 0.0
 
         # Reward scale for Q-value stability
@@ -249,16 +252,13 @@ class ImprovedComSatEnv(gym.Env):
         self.init_args = locals()
 
         # Model
+        # Constructor already invokes initialise_system internally.
         self.model = ComSat(
             self.initial_state,
             number_time_steps=self.number_time_steps,
             selected_state_output=None,
             t0=0,
             dt=self.dt,
-        )
-        self.model.initialise_system(
-            x0=self.initial_state,
-            number_time_steps=self.number_time_steps,
         )
 
     # State indices
@@ -440,7 +440,7 @@ class ImprovedComSatEnv(gym.Env):
             reward = -10.0  # Reduced penalty
             terminated = True
 
-        truncated = self.current_step >= self.number_time_steps - 2
+        truncated = self.current_step >= self.number_time_steps - 1
 
         return (
             self._get_obs(),

@@ -574,6 +574,7 @@ class DDPG:
         policy_lr: float,
         replay_buffer_size: int,
         normalize_observations: bool = True,
+        device: Optional[Union[str, torch.device]] = None,
     ) -> None:
         """Initialize DDPG agent.
 
@@ -586,12 +587,20 @@ class DDPG:
             normalize_observations: Whether to normalize observations using running
                 mean and standard deviation. Recommended for faster convergence.
                 Default is True.
+            device: Torch device to place networks and tensors on. If None,
+                auto-detects CUDA and falls back to CPU. Default is None.
         """
         self.env = env
         self.value_lr = value_lr
         self.policy_lr = policy_lr
         self.replay_buffer_size = replay_buffer_size
         self.normalize_observations = normalize_observations
+
+        # Resolve device: explicit arg takes priority, otherwise auto-detect
+        if device is None:
+            self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        else:
+            self.device = torch.device(device)
 
         self.ou_noise = OUNoise(self.env.action_space)
 
@@ -612,25 +621,25 @@ class DDPG:
 
         self.value_net = ValueNetwork(
             self.state_dim, self.action_dim, self.hidden_dim
-        ).to(device)
+        ).to(self.device)
         self.policy_net = PolicyNetwork(
             self.state_dim,
             self.action_dim,
             self.hidden_dim,
             action_low=action_low,
             action_high=action_high,
-        ).to(device)
+        ).to(self.device)
 
         self.target_value_net = ValueNetwork(
             self.state_dim, self.action_dim, self.hidden_dim
-        ).to(device)
+        ).to(self.device)
         self.target_policy_net = PolicyNetwork(
             self.state_dim,
             self.action_dim,
             self.hidden_dim,
             action_low=action_low,
             action_high=action_high,
-        ).to(device)
+        ).to(self.device)
 
         for target_param, param in zip(
             self.target_value_net.parameters(), self.value_net.parameters()
@@ -696,11 +705,11 @@ class DDPG:
         batch = self.replay_buffer.sample(batch_size)
         state, action, reward, next_state, done = batch
 
-        state = torch.FloatTensor(state).to(device)
-        next_state = torch.FloatTensor(next_state).to(device)
-        action = torch.FloatTensor(action).to(device)
-        reward = torch.FloatTensor(reward).unsqueeze(1).to(device)
-        done = torch.FloatTensor(np.float32(done)).unsqueeze(1).to(device)
+        state = torch.FloatTensor(state).to(self.device)
+        next_state = torch.FloatTensor(next_state).to(self.device)
+        action = torch.FloatTensor(action).to(self.device)
+        reward = torch.FloatTensor(reward).unsqueeze(1).to(self.device)
+        done = torch.FloatTensor(np.float32(done)).unsqueeze(1).to(self.device)
 
         policy_loss = self.value_net(state, self.policy_net(state))
         policy_loss = -policy_loss.mean()
@@ -753,6 +762,80 @@ class DDPG:
                 )
             except Exception:
                 pass
+
+    def train(
+        self,
+        num_episodes: int = 100,
+        *,
+        max_steps: Optional[int] = None,
+        save_best: bool = False,
+        save_path: Optional[str] = None,
+        verbose: bool = True,
+        **kwargs: Any,
+    ) -> dict:
+        """Train DDPG (unified interface wrapper around :meth:`learn`).
+
+        DDPG operates in terms of environment *frames*, not episodes, so
+        this wrapper translates the unified arguments into the legacy
+        frame-based :meth:`learn` signature.
+
+        Args:
+            num_episodes: Number of episodes. Combined with ``max_steps``
+                to produce a ``max_frames`` budget, unless ``max_frames``
+                is supplied directly via ``**kwargs``.
+            max_steps: Max steps per episode. Defaults to 200 when not
+                provided.
+            save_best: Reserved for API consistency. DDPG does not
+                currently implement best-model checkpointing inside the
+                training loop.
+            save_path: Reserved for API consistency.
+            verbose: Reserved for symmetry.
+            **kwargs: DDPG-specific keyword arguments forwarded to
+                :meth:`learn`. Recognized keys:
+
+                - ``max_frames`` (int): override the computed frame
+                  budget.
+                - ``batch_size`` (int, default 64): mini-batch size for
+                  updates.
+                - ``gamma`` (float, default 0.995): discount factor.
+                - ``soft_tau`` (float, default 5e-3): Polyak factor.
+                - ``warmup_frames`` (int, default 10_000): exploration
+                  warmup.
+                - ``updates_per_step`` (int, default 1).
+                - ``target_value_clip`` (tuple|None, default
+                  ``(-10, 10)``).
+
+        Returns:
+            dict: Summary of training with ``rewards``, ``frame_idx``
+            and ``num_episodes``.
+        """
+        _ = (save_best, save_path, verbose)
+        max_steps_i = int(max_steps) if max_steps is not None else 200
+        max_frames = int(
+            kwargs.pop("max_frames", int(num_episodes) * max_steps_i)
+        )
+        batch_size = int(kwargs.pop("batch_size", 64))
+        gamma = float(kwargs.pop("gamma", 0.995))
+        soft_tau = float(kwargs.pop("soft_tau", 5e-3))
+        warmup_frames = int(kwargs.pop("warmup_frames", 10_000))
+        updates_per_step = int(kwargs.pop("updates_per_step", 1))
+        target_value_clip = kwargs.pop("target_value_clip", (-10.0, 10.0))
+
+        self.learn(
+            max_frames=max_frames,
+            max_steps=max_steps_i,
+            batch_size=batch_size,
+            gamma=gamma,
+            soft_tau=soft_tau,
+            warmup_frames=warmup_frames,
+            updates_per_step=updates_per_step,
+            target_value_clip=target_value_clip,
+        )
+        return {
+            "rewards": list(getattr(self, "rewards", []) or []),
+            "frame_idx": int(getattr(self, "frame_idx", 0)),
+            "num_episodes": int(len(getattr(self, "rewards", []) or [])),
+        }
 
     def learn(
         self,
@@ -947,11 +1030,17 @@ class DDPG:
             with open(folder / "config.json", "w", encoding="utf-8") as f:
                 json.dump(config, f, indent=2)
 
-            # 2) Save networks
-            torch.save(self.policy_net, folder / "policy.pth")
-            torch.save(self.value_net, folder / "value.pth")
-            torch.save(self.target_policy_net, folder / "target_policy.pth")
-            torch.save(self.target_value_net, folder / "target_value.pth")
+            # 2) Save networks (state_dict only, not full pickled objects)
+            torch.save(self.policy_net.state_dict(), folder / "policy.pth")
+            torch.save(self.value_net.state_dict(), folder / "value.pth")
+            torch.save(
+                self.target_policy_net.state_dict(),
+                folder / "target_policy.pth",
+            )
+            torch.save(
+                self.target_value_net.state_dict(),
+                folder / "target_value.pth",
+            )
 
             # 3) Optionally save optimizers
             if include_grads:
@@ -1184,26 +1273,64 @@ class DDPG:
             normalize_observations=bool(p.get("normalize_observations", True)),
         )
 
-        # Load networks
-        new_agent.policy_net = torch.load(
-            policy_path, map_location=device, weights_only=False
-        )
-        new_agent.value_net = torch.load(
-            value_path, map_location=device, weights_only=False
-        )
-        new_agent.target_policy_net = torch.load(
-            target_policy_path, map_location=device, weights_only=False
-        )
-        new_agent.target_value_net = torch.load(
-            target_value_path, map_location=device, weights_only=False
-        )
+        # Restore architecture hyperparameters and rebuild networks if the
+        # saved hidden_dim differs from the constructor default. This ensures
+        # state_dicts saved with a non-default architecture load correctly.
+        saved_hidden_dim = int(p.get("hidden_dim", new_agent.hidden_dim))
+        if saved_hidden_dim != new_agent.hidden_dim:
+            new_agent.hidden_dim = saved_hidden_dim
+            action_low = env.action_space.low
+            action_high = env.action_space.high
+            new_agent.value_net = ValueNetwork(
+                new_agent.state_dim, new_agent.action_dim, saved_hidden_dim
+            ).to(new_agent.device)
+            new_agent.policy_net = PolicyNetwork(
+                new_agent.state_dim,
+                new_agent.action_dim,
+                saved_hidden_dim,
+                action_low=action_low,
+                action_high=action_high,
+            ).to(new_agent.device)
+            new_agent.target_value_net = ValueNetwork(
+                new_agent.state_dim, new_agent.action_dim, saved_hidden_dim
+            ).to(new_agent.device)
+            new_agent.target_policy_net = PolicyNetwork(
+                new_agent.state_dim,
+                new_agent.action_dim,
+                saved_hidden_dim,
+                action_low=action_low,
+                action_high=action_high,
+            ).to(new_agent.device)
+            new_agent.value_optimizer = optim.Adam(
+                new_agent.value_net.parameters(), lr=new_agent.value_lr
+            )
+            new_agent.policy_optimizer = optim.Adam(
+                new_agent.policy_net.parameters(), lr=new_agent.policy_lr
+            )
 
-        # Reinit optimizers to match new params
-        policy_lr = float(p.get("policy_lr", 1e-3))
+        # Load network weights from state_dict files
+        policy_state = torch.load(policy_path, map_location="cpu")
+        value_state = torch.load(value_path, map_location="cpu")
+        target_policy_state = torch.load(target_policy_path, map_location="cpu")
+        target_value_state = torch.load(target_value_path, map_location="cpu")
+
+        new_agent.policy_net.load_state_dict(policy_state)
+        new_agent.value_net.load_state_dict(value_state)
+        new_agent.target_policy_net.load_state_dict(target_policy_state)
+        new_agent.target_value_net.load_state_dict(target_value_state)
+
+        # Move networks to the correct device after loading CPU state_dicts
+        new_agent.policy_net.to(new_agent.device)
+        new_agent.value_net.to(new_agent.device)
+        new_agent.target_policy_net.to(new_agent.device)
+        new_agent.target_value_net.to(new_agent.device)
+
+        # Reinit optimizers to point at the (possibly rebuilt) networks
+        policy_lr = float(p.get("policy_lr", new_agent.policy_lr))
+        value_lr = float(p.get("value_lr", new_agent.value_lr))
         new_agent.policy_optimizer = optim.Adam(
             new_agent.policy_net.parameters(), lr=policy_lr
         )
-        value_lr = float(p.get("value_lr", 1e-3))
         new_agent.value_optimizer = optim.Adam(
             new_agent.value_net.parameters(), lr=value_lr
         )
@@ -1214,14 +1341,10 @@ class DDPG:
 
         if load_gradients:
             if policy_optim_path.exists():
-                st = torch.load(
-                    policy_optim_path, map_location=device, weights_only=False
-                )
+                st = torch.load(policy_optim_path, map_location="cpu")
                 new_agent.policy_optimizer.load_state_dict(st)
             if value_optim_path.exists():
-                st = torch.load(
-                    value_optim_path, map_location=device, weights_only=False
-                )
+                st = torch.load(value_optim_path, map_location="cpu")
                 new_agent.value_optimizer.load_state_dict(st)
         return new_agent
 

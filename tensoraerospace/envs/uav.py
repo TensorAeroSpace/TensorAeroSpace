@@ -74,10 +74,10 @@ class LinearLongitudinalUAV(gym.Env):
         )
         self.number_time_steps = number_time_steps
         self.action_space = spaces.Box(
-            low=-60, high=60, shape=(len(self.control_space), 1), dtype=np.float32
+            low=-60, high=60, shape=(len(self.control_space),), dtype=np.float32
         )
         self.observation_space = spaces.Box(
-            low=-np.inf, high=np.inf, shape=(len(self.state_space), 1), dtype=np.float32
+            low=-np.inf, high=np.inf, shape=(len(self.state_space),), dtype=np.float32
         )
 
         self.current_step = 0
@@ -119,17 +119,18 @@ class LinearLongitudinalUAV(gym.Env):
                 - info (dict): Additional information.
         """
         self.current_step += 1
+        action = np.asarray(action).reshape(-1)
         next_state = self.model.run_step(action)
         reward = self.reward_func(
             next_state[self.indices_tracking_states],
             self.reference_signal,
             self.current_step,
         )
-        self.done = self.current_step >= self.number_time_steps - 2
+        self.done = self.current_step >= self.number_time_steps - 1
         info = self._get_info()
 
         return (
-            next_state.reshape([-1, 1]),
+            np.asarray(next_state).reshape(-1).astype(np.float32),
             float(reward),
             self.done,
             False,
@@ -167,7 +168,7 @@ class LinearLongitudinalUAV(gym.Env):
         self.current_step = 0
         observation = np.array(self.initial_state, dtype=np.float32)[
             self.model.selected_state_index
-        ].reshape([-1, 1])
+        ].reshape(-1)
         return observation, info
 
     def render(self) -> None:

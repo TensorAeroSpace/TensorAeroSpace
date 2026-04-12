@@ -61,11 +61,11 @@ def test_improved_x15_action_clamping(x15_env_default):
 
 def test_improved_x15_truncation_flag():
     initial_state = np.array([500.0, 0.0, 0.0, 0.0], dtype=np.float32)
-    reference_signal = np.zeros((1, 3), dtype=np.float32)
+    reference_signal = np.zeros((1, 2), dtype=np.float32)
     env = ImprovedX15Env(
         initial_state=initial_state,
         reference_signal=reference_signal,
-        number_time_steps=3,
+        number_time_steps=2,
         dt=0.01,
         initial_elevator_deg=0.0,
         use_initial_action_on_first_step=False,

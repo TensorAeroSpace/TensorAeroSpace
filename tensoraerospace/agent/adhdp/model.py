@@ -1043,13 +1043,37 @@ class ADHDP(BaseRLModel):
                 p.requires_grad_(r)
         return float(last)
 
-    def train(self, *args, **kwargs) -> None:
-        num_episodes = (
-            int(args[0]) if len(args) > 0 else int(kwargs.get("num_episodes", 1))
-        )
-        max_steps = kwargs.get("max_steps", None)
+    def train(
+        self,
+        num_episodes: int = 1,
+        *,
+        max_steps: Optional[int] = None,
+        save_best: bool = False,
+        save_path: Optional[str] = None,
+        verbose: bool = True,
+        **kwargs: Any,
+    ) -> dict:
+        """Train the ADHDP agent (unified interface).
+
+        Args:
+            num_episodes: Number of training episodes.
+            max_steps: Optional per-episode step cap.
+            save_best: Unused by ADHDP; accepted for API consistency.
+            save_path: Unused by ADHDP; accepted for API consistency.
+            verbose: If True, show a tqdm progress bar.
+            **kwargs: Algorithm-specific options. Recognized keys:
+
+                - ``show_progress`` (bool, legacy): overrides ``verbose``.
+                - ``progress_desc`` (str): tqdm description label.
+
+        Returns:
+            dict: Training summary dictionary. Currently minimal.
+        """
+        _ = (save_best, save_path)
+        num_episodes = int(num_episodes)
         max_steps_i = int(max_steps) if max_steps is not None else None
-        show_progress = bool(kwargs.get("show_progress", True))
+        # Legacy ``show_progress`` takes precedence if explicitly provided.
+        show_progress = bool(kwargs.get("show_progress", verbose))
         progress_desc = str(kwargs.get("progress_desc", "ADHDP train"))
 
         if self.warmstart_actor_episodes > 0:
@@ -1279,6 +1303,7 @@ class ADHDP(BaseRLModel):
                     pass
 
         self.writer.flush()
+        return {"total_steps": int(total_steps)}
 
     # ---- persistence (optional, aligned with other agents) ----
     def get_param_env(self) -> Dict[str, Dict[str, Any]]:

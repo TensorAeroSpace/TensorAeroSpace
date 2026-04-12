@@ -61,11 +61,11 @@ def test_improved_elv_action_clamping(elv_env_default):
 
 def test_improved_elv_truncation_flag():
     initial_state = np.array([0.0, 0.0, 0.0], dtype=np.float32)
-    reference_signal = np.zeros((1, 3), dtype=np.float32)
+    reference_signal = np.zeros((1, 2), dtype=np.float32)
     env = ImprovedELVEnv(
         initial_state=initial_state,
         reference_signal=reference_signal,
-        number_time_steps=3,
+        number_time_steps=2,
         dt=0.01,
         initial_elevator_deg=0.0,
         use_initial_action_on_first_step=False,

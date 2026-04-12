@@ -460,6 +460,9 @@ class ControlBenchmark:
 
         all_metrics = {}
 
+        if not systems_data:
+            return all_metrics
+
         # Строим задающий сигнал (один для всех)
         first_system = list(systems_data.values())[0]
         control_step, _ = find_step_function(
@@ -633,8 +636,8 @@ class ControlBenchmark:
         # Добавляем нулевую линию на график ошибок
         fig.add_shape(
             type="line",
-            x0=ntime[0],
-            x1=ntime[-1],
+            x0=ntime_ref[0],
+            x1=ntime_ref[-1],
             y0=0,
             y1=0,
             line=dict(color="black", width=1),

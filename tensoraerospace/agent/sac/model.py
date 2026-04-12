@@ -270,7 +270,7 @@ class DeterministicPolicy(nn.Module):
         self.linear2 = nn.Linear(hidden_dim, hidden_dim)
 
         self.mean = nn.Linear(hidden_dim, num_actions)
-        self.noise = torch.Tensor(num_actions)
+        self.noise = torch.zeros(num_actions)
 
         self.apply(weights_init_)
 

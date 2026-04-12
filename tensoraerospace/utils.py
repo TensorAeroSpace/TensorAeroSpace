@@ -14,33 +14,39 @@ from typing import Sequence
 import numpy as np
 
 
-def generate_time_period(tn: int = 20, dt: float = 0.01):
-    """Generate time period with sampling frequency dt.
+def generate_time_period(tn: float = 20.0, dt: float = 0.01) -> np.ndarray:
+    """Generate time period in seconds with sampling frequency dt.
+
+    Returns an array of actual time values in seconds, from 0 to ``tn``
+    inclusive, with step ``dt``.
 
     Args:
-        tn (int): Simulation time. Defaults to 20.
-        dt (float): Sampling frequency. Defaults to 0.01.
+        tn (float): Simulation duration in seconds. Defaults to 20.0.
+        dt (float): Sampling period in seconds. Defaults to 0.01.
 
     Returns:
-        np.array: Time period with sampling frequency dt.
+        np.ndarray: Time period in seconds ``[0, dt, 2*dt, ..., tn]``.
     """
-    t0 = 0
-    number_time_steps = int(((tn - t0) / dt) + 1)  # Количество шагов моделирования
-    time = list(np.arange(0, number_time_steps * dt, dt))  # Массив с шагом dt
-    return np.linspace(-0, len(time), len(time))
+    t0 = 0.0
+    # Returns actual time in seconds: [0, dt, 2*dt, ..., tn]
+    n_steps = int(round((tn - t0) / dt)) + 1
+    return np.linspace(t0, tn, n_steps)
 
 
-def convert_tp_to_sec_tp(tp: np.array, dt: float = 0.01) -> list:
-    """Convert time interval tp with sampling frequency to array in seconds.
+def convert_tp_to_sec_tp(tp, dt=None) -> np.ndarray:
+    """Backward-compat identity function.
+
+    Since :func:`generate_time_period` now returns actual seconds, this
+    function is effectively a no-op kept for API compatibility.
 
     Args:
-        tp (np.array): Time period with sampling frequency dt.
-        dt (float, optional): Sampling frequency. Defaults to 0.01.
+        tp: Time period (already in seconds).
+        dt: Ignored. Kept for backward-compatible signature.
 
     Returns:
-        list: Time period in seconds.
+        np.ndarray: ``tp`` converted to a numpy array.
     """
-    return list(np.arange(0, len(tp) * dt, dt))
+    return np.asarray(tp)
 
 
 def validate_time_series_alignment(*series: Sequence) -> int:

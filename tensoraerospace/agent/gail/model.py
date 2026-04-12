@@ -9,7 +9,7 @@ import json
 import math
 import random
 from pathlib import Path
-from typing import Optional, Union
+from typing import Any, Optional, Union
 
 import gymnasium as gym
 import numpy as np
@@ -246,6 +246,43 @@ class GAIL:
                 self.optimizer.zero_grad()
                 loss.backward()
                 self.optimizer.step()
+
+    def train(
+        self,
+        num_episodes: int = 100,
+        *,
+        max_steps: Optional[int] = None,
+        save_best: bool = False,
+        save_path: Optional[str] = None,
+        verbose: bool = True,
+        **kwargs: Any,
+    ) -> dict:
+        """Train GAIL (unified interface wrapper around :meth:`learn`).
+
+        Args:
+            num_episodes: Number of episodes. Combined with
+                ``max_steps`` to produce a ``max_frames`` budget unless
+                ``max_frames`` is supplied explicitly via ``**kwargs``.
+            max_steps: Max steps per episode. Defaults to
+                ``self.max_steps`` when not provided.
+            save_best: Reserved for API consistency.
+            save_path: Reserved for API consistency.
+            verbose: Reserved for symmetry.
+            **kwargs: GAIL-specific options:
+
+                - ``max_frames`` (int): override the computed budget.
+                - ``max_reward`` (float, default ``inf``): early-stop
+                  threshold on mean test reward.
+
+        Returns:
+            dict: Empty dict (GAIL does not yet collect metrics).
+        """
+        _ = (save_best, save_path, verbose)
+        per_ep = int(max_steps) if max_steps is not None else int(self.max_steps)
+        max_frames = int(kwargs.pop("max_frames", int(num_episodes) * per_ep))
+        max_reward = float(kwargs.pop("max_reward", float("inf")))
+        self.learn(max_frames=max_frames, max_reward=max_reward)
+        return {}
 
     def learn(self, max_frames: int, max_reward: float) -> None:
         """Agent training function.
