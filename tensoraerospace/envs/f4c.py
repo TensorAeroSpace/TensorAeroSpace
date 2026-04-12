@@ -114,7 +114,8 @@ class LinearLongitudinalF4C(gym.Env):
         Returns:
             reward (float): Control performance evaluation.
         """
-        return -float(np.abs(state[0] - ref_signal[:, ts]).item())
+        ts_safe = int(np.clip(ts, 0, ref_signal.shape[1] - 1))
+        return -float(np.abs(state[0] - ref_signal[:, ts_safe]).item())
 
     def step(self, action: np.ndarray):
         """Execute a simulation step.

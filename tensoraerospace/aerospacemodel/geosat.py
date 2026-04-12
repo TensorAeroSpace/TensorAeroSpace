@@ -92,12 +92,24 @@ class GeoSat(ModelBase):
         self.initialise_system(x0, number_time_steps)
 
     def import_linear_system(self):
-        """Load (set) stored linearized system matrices."""
+        """Load (set) stored linearized system matrices.
+
+        Values are taken from the authoritative Simulink reference model
+        ``tensoraerospace/aerospacemodel/simulinkModel/geosat/geosat_data.m``,
+        which is the source of truth for this linearization.
+
+        NOTE: The Russian/English markdown docs under ``docs/**/model/geosat.md``
+        currently list slightly different coefficients (0.7757, -0.1775, 0.1513).
+        Those values actually correspond to the ComSat model (see
+        ``simulinkModel/comsat/comsat_data.m``) and the docs are likely a
+        copy/paste error. The Simulink ``.m`` reference is trusted here.
+        TODO: reconcile ``docs/**/model/geosat.md`` with the Simulink source.
+        """
         self.A = np.array(
             [
                 [0.0, 1.0, 0.0],
-                [0.01036, 0, 0.7757],
-                [0, -0.1775, 0],
+                [0.01036, 0, 0.7753],
+                [0, -0.1774, 0],
             ]
         )
 
@@ -105,7 +117,7 @@ class GeoSat(ModelBase):
             [
                 [0.0],
                 [0.0],
-                [0.1513],
+                [0.1512],
             ]
         )
 

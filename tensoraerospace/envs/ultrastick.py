@@ -107,7 +107,8 @@ class LinearLongitudinalUltrastick(gym.Env):
         Returns:
             float: Control evaluation.
         """
-        ref_val = float(np.asarray(ref_signal[:, ts]).reshape(-1)[0])
+        ts_safe = int(np.clip(ts, 0, ref_signal.shape[1] - 1))
+        ref_val = float(np.asarray(ref_signal[:, ts_safe]).reshape(-1)[0])
         return -float(abs(float(state[0]) - ref_val))
 
     def _get_info(self):

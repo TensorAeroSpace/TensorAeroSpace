@@ -35,10 +35,10 @@ class LinearLongitudinalF16(gym.Env):
         initial_state: np.ndarray,
         reference_signal: np.ndarray,
         number_time_steps: int,
-        tracking_states: list = ["alpha", "q"],
-        state_space: list = ["alpha", "q"],
-        control_space: list = ["ele"],
-        output_space: list = ["alpha", "q"],
+        tracking_states: list[str] | None = None,
+        state_space: list[str] | None = None,
+        control_space: list[str] | None = None,
+        output_space: list[str] | None = None,
         reward_func: callable = None,
         use_reward: bool = True,
     ) -> None:
@@ -61,10 +61,12 @@ class LinearLongitudinalF16(gym.Env):
         self.initial_state = initial_state
         self.reference_signal = reference_signal
         self.number_time_steps = number_time_steps
-        self.tracking_states = tracking_states
-        self.state_space = state_space
-        self.control_space = control_space
-        self.output_space = output_space
+        self.tracking_states = (
+            tracking_states if tracking_states is not None else ["alpha", "q"]
+        )
+        self.state_space = state_space if state_space is not None else ["alpha", "q"]
+        self.control_space = control_space if control_space is not None else ["ele"]
+        self.output_space = output_space if output_space is not None else ["alpha", "q"]
         self.use_reward = use_reward
         self.reward_func = (
             reward_func if reward_func is not None else self.default_reward
@@ -81,14 +83,21 @@ class LinearLongitudinalF16(gym.Env):
         )
 
         self.indices_tracking_states = [
-            state_space.index(tracking_states[i]) for i in range(len(tracking_states))
+            self.state_space.index(self.tracking_states[i])
+            for i in range(len(self.tracking_states))
         ]
 
         self.action_space = spaces.Box(
-            low=-0.5, high=0.5, shape=(len(control_space), 1), dtype=np.float32
+            low=-self.max_action_value,
+            high=self.max_action_value,
+            shape=(len(self.control_space), 1),
+            dtype=np.float32,
         )
         self.observation_space = spaces.Box(
-            low=-np.inf, high=np.inf, shape=(len(state_space), 1), dtype=np.float32
+            low=-np.inf,
+            high=np.inf,
+            shape=(len(self.state_space), 1),
+            dtype=np.float32,
         )
 
         self.current_step = 0
@@ -243,9 +252,13 @@ class LinearLongitudinalF16(gym.Env):
     ) -> np.ndarray:
         """Reward function for RL environment in longitudinal aircraft control.
 
+        The first element of ``state`` is treated as the tracked state value
+        (e.g. ``alpha`` or ``theta`` depending on ``tracking_states``) and the
+        second element — as the corresponding angular rate used for damping.
+
         Args:
-            state (np.ndarray): Current aircraft state [theta, omega_z].
-            ref_signal (np.ndarray): Target pitch angle to track.
+            state (np.ndarray): Current tracked state vector.
+            ref_signal (np.ndarray): Reference signal to track.
             ts (int): Time step between state update iterations.
 
         Returns:
@@ -254,18 +267,22 @@ class LinearLongitudinalF16(gym.Env):
 
         # Параметры для настройки функции вознаграждения
 
-        theta, omega_z = state
-        theta_ref = ref_signal[:, ts]
+        state_vec = np.asarray(state).reshape(-1)
+        # Safe time-step index so that out-of-bounds ``ts`` does not raise
+        ts_safe = int(np.clip(ts, 0, ref_signal.shape[1] - 1))
+        tracked_val = float(state_vec[0])
+        ref_val = float(np.asarray(ref_signal[:, ts_safe]).reshape(-1)[0])
 
-        # Расчет ошибки угла атаки
-        angle_error = abs(theta - theta_ref)
+        # Расчет ошибки по отслеживаемому состоянию
+        angle_error = abs(tracked_val - ref_val)
 
-        # Наказание за высокую угловую скорость
-        omega_penalty = abs(omega_z)
+        # Наказание за высокую угловую скорость (если она доступна во втором
+        # компоненте state)
+        rate_penalty = float(abs(state_vec[1])) if state_vec.size > 1 else 0.0
 
-        # Вознаграждение как функция ошибки угла и наказания за скорость
-        # Можно настроить веса для этих компонентов в зависимости от предпочтений в управлении
-        reward = -angle_error - 0.1 * omega_penalty
+        # Вознаграждение как функция ошибки и наказания за скорость.
+        # Можно настроить веса этих компонентов под предпочтения в управлении.
+        reward = -angle_error - 0.1 * rate_penalty
 
         # Возвращаем как np.ndarray для совместимости с тестами
         return np.array(reward)

@@ -1360,7 +1360,9 @@ class PPO(BaseRLModel):
         actions2 = torch.stack(actions).detach()
         rewards2 = torch.cat(rewards)
         dones2 = torch.cat(dones)
-        values2 = torch.cat(values).flatten()
+        # Explicitly build a 1D tensor of values so rollout_len=1 does not
+        # collapse into a scalar (which would break indexing below).
+        values2 = torch.cat([v.view(1) for v in values])
         probs2 = torch.cat(probs).detach()
 
         returns2 = []
@@ -1370,8 +1372,10 @@ class PPO(BaseRLModel):
             g2 = delta2 + gamma * self.gae_lambda * (1 - dones2[i]) * g2
             returns2.insert(0, g2 + values2[i].view(-1, 1))
 
-        # Compute advantages without recreating a tensor from a list of tensors
-        returns_tensor = torch.cat(returns2).detach().squeeze()
+        # Compute advantages without recreating a tensor from a list of tensors.
+        # Use view(-1) to preserve the batch dim when rollout_len == 1
+        # (bare .squeeze() would turn a 1-elem tensor into a 0-d scalar).
+        returns_tensor = torch.cat(returns2).detach().view(-1)
         adv2 = returns_tensor - values2[:-1]
         # adv = (adv - adv.mean()) / (adv.std() + 1e-10)
 

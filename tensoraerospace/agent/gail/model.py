@@ -339,6 +339,13 @@ class GAIL:
             fake = self.discriminator(state_action)
             real = self.discriminator(expert_state_action)
             self.optimizer_discrim.zero_grad()
+            # NOTE: Label convention here is inverted relative to the canonical
+            # GAIL paper: policy (fake) -> 1, expert (real) -> 0. This is
+            # intentional and consistent with `expert_reward`, which returns
+            # `-log(D(s,a))`. Under this convention D ~ 0 for expert-like
+            # state-action pairs, so `-log(D)` yields a HIGH reward when the
+            # policy behaves like the expert. Flipping the labels without also
+            # updating `expert_reward` would break training.
             discrim_loss = self.discrim_criterion(
                 fake, torch.ones((states.shape[0], 1)).to(device)
             ) + self.discrim_criterion(

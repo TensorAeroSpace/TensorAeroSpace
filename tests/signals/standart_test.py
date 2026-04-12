@@ -88,61 +88,64 @@ import pytest
 
 
 def test_sinusoid():
+    # Updated after B2 fix: sinusoid() now returns the mathematically correct
+    # signal amplitude * sin(2*pi*frequency*tp) (frequency in Hz, amplitude is
+    # peak value), rather than the previous swapped expression.
     # Проверка работы функции при нормальных входных данных
     tp = np.array([1.0, 2.0, 3.0, 4.0])
     frequency = 1.0
     amplitude = 1.0
     result = sinusoid(tp, frequency, amplitude)
-    assert np.all(result == np.sin(tp * amplitude) * frequency)
+    assert np.allclose(result, amplitude * np.sin(2 * np.pi * frequency * tp))
 
     # Проверка работы функции при пограничных входных данных
     tp = np.array([0.5, 1.5, 2.5, 3.5])
     frequency = 0.5
     amplitude = 0.5
     result = sinusoid(tp, frequency, amplitude)
-    assert np.all(result == np.sin(tp * amplitude) * frequency)
+    assert np.allclose(result, amplitude * np.sin(2 * np.pi * frequency * tp))
 
     # Проверка работы функции при отрицательных входных данных
     tp = np.array([-1.0, -2.0, -3.0, -4.0])
     frequency = -1.0
     amplitude = -1.0
     result = sinusoid(tp, frequency, amplitude)
-    assert np.all(result == np.sin(tp * amplitude) * frequency)
+    assert np.allclose(result, amplitude * np.sin(2 * np.pi * frequency * tp))
 
     # Проверка работы функции при очень больших входных данных
     tp = np.array([100.0, 200.0, 300.0, 400.0])
     frequency = 100.0
     amplitude = 100.0
     result = sinusoid(tp, frequency, amplitude)
-    assert np.all(result == np.sin(tp * amplitude) * frequency)
+    assert np.allclose(result, amplitude * np.sin(2 * np.pi * frequency * tp))
 
     # Проверка работы функции при нулевых входных данных
     tp = np.array([0.0, 0.0, 0.0, 0.0])
     frequency = 0.0
     amplitude = 0.0
     result = sinusoid(tp, frequency, amplitude)
-    assert np.all(result == np.sin(tp * amplitude) * frequency)
+    assert np.allclose(result, amplitude * np.sin(2 * np.pi * frequency * tp))
 
     # Проверка работы функции при отрицательных входных данных
     tp = np.array([-100.0, -200.0, -300.0, -400.0])
     frequency = -100.0
     amplitude = -100.0
     result = sinusoid(tp, frequency, amplitude)
-    assert np.all(result == np.sin(tp * amplitude) * frequency)
+    assert np.allclose(result, amplitude * np.sin(2 * np.pi * frequency * tp))
 
     # Проверка работы функции при очень больших входных данных
     tp = np.array([1000.0, 2000.0, 3000.0, 4000.0])
     frequency = 1000.0
     amplitude = 1000.0
     result = sinusoid(tp, frequency, amplitude)
-    assert np.all(result == np.sin(tp * amplitude) * frequency)
+    assert np.allclose(result, amplitude * np.sin(2 * np.pi * frequency * tp))
 
     # Проверка работы функции при нулевых входных данных
     tp = np.array([0.0, 0.0, 0.0, 0.0])
     frequency = 0.0
     amplitude = 0.0
     result = sinusoid(tp, frequency, amplitude)
-    assert np.all(result == np.sin(tp * amplitude) * frequency)
+    assert np.allclose(result, amplitude * np.sin(2 * np.pi * frequency * tp))
 
 
 from io import StringIO
