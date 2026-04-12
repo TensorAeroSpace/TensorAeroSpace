@@ -30,10 +30,10 @@ from tensoraerospace.agent.dsac.risk_distortions import (
     wang,
 )
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 class _TinySpace:
     def __init__(self, shape):
@@ -116,6 +116,7 @@ def _fill_memory(agent, n=16):
 # Risk distortion coverage (lines 15, 22, 32, 37-39, 44)
 # ---------------------------------------------------------------------------
 
+
 def test_risk_distortion_cvar():
     tau = torch.linspace(0.01, 0.99, 50)
     result = cvar(tau, 0.5)
@@ -148,6 +149,7 @@ def test_risk_distortion_neutral():
 # select_action in evaluate mode (line 298-299)
 # ---------------------------------------------------------------------------
 
+
 def test_select_action_evaluate_mode():
     agent, env = _make_agent()
     state = np.zeros(env.observation_space.shape[0], dtype=np.float32)
@@ -169,6 +171,7 @@ def test_select_action_with_exploration_noise():
 # ---------------------------------------------------------------------------
 # select_action_batch in evaluate mode (line 325-326)
 # ---------------------------------------------------------------------------
+
 
 def test_select_action_batch_evaluate():
     agent, env = _make_agent()
@@ -196,6 +199,7 @@ def test_select_action_batch_exploration_noise():
 # ---------------------------------------------------------------------------
 # update_parameters with automatic_entropy_tuning OFF (line 456-457)
 # ---------------------------------------------------------------------------
+
 
 def test_update_parameters_no_auto_entropy():
     agent, env = _make_agent(automatic_entropy_tuning=False, alpha=0.5)
@@ -244,6 +248,7 @@ def test_update_parameters_max_grad_norm():
 # train() single-episode loop (lines 521-525, 543, 559-561)
 # ---------------------------------------------------------------------------
 
+
 def test_train_one_episode():
     agent, env = _make_agent(max_steps=3, learning_starts=0)
     before = len(agent.memory)
@@ -263,8 +268,10 @@ def test_train_with_save_best():
 # train_vector (lines 574-742) -- needs tensor-returning env
 # ---------------------------------------------------------------------------
 
+
 class _VecTensorEnv:
     """Minimal vectorized environment returning torch Tensors."""
+
     def __init__(self, num_envs=2, obs_dim=3, act_dim=2, max_steps=5):
         self.observation_space = _TinySpace((obs_dim,))
         self.action_space = _TinySpace((act_dim,))
@@ -378,11 +385,22 @@ def test_train_vector_rejects_1d_obs():
         action_space = _TinySpace((2,))
         unwrapped = None
         auto_reset = False
+
         def reset(self):
             return torch.zeros((3,)), {}
+
         def step(self, a):
-            return torch.zeros((3,)), torch.tensor(0.0), torch.tensor(False), torch.tensor(False), {}
-    agent = DSAC(env=_Bad1DEnv(), batch_size=4, hidden_size=8, learning_starts=0, device="cpu")
+            return (
+                torch.zeros((3,)),
+                torch.tensor(0.0),
+                torch.tensor(False),
+                torch.tensor(False),
+                {},
+            )
+
+    agent = DSAC(
+        env=_Bad1DEnv(), batch_size=4, hidden_size=8, learning_starts=0, device="cpu"
+    )
     agent.writer = _NoOpWriter()
     with pytest.raises(ValueError, match="obs of shape"):
         agent.train_vector(total_steps=2, warmup_steps=0)
@@ -391,6 +409,7 @@ def test_train_vector_rejects_1d_obs():
 # ---------------------------------------------------------------------------
 # get_param_env (lines 744-790)
 # ---------------------------------------------------------------------------
+
 
 def test_get_param_env_keys():
     agent, env = _make_agent()
@@ -407,6 +426,7 @@ def test_get_param_env_keys():
 # ---------------------------------------------------------------------------
 # save / load roundtrip (lines 796-835, 905-1033)
 # ---------------------------------------------------------------------------
+
 
 def test_save_load_roundtrip():
     agent, env = _make_agent()
@@ -445,6 +465,7 @@ def test_from_pretrained_bad_path_raises():
 # to_device (lines 838-867)
 # ---------------------------------------------------------------------------
 
+
 def test_to_device_cpu():
     agent, _ = _make_agent()
     _fill_memory(agent)
@@ -457,6 +478,7 @@ def test_to_device_cpu():
 # ---------------------------------------------------------------------------
 # eval mode (lines 869-876)
 # ---------------------------------------------------------------------------
+
 
 def test_eval_mode():
     agent, _ = _make_agent()
@@ -472,6 +494,7 @@ def test_eval_mode():
 # close (lines 1082-1089)
 # ---------------------------------------------------------------------------
 
+
 def test_close():
     agent, _ = _make_agent()
     agent.close()  # should not raise
@@ -480,6 +503,7 @@ def test_close():
 # ---------------------------------------------------------------------------
 # hidden_layers validation (lines 178-183)
 # ---------------------------------------------------------------------------
+
 
 def test_hidden_layers_validation():
     env = _TinyEnv()
@@ -497,6 +521,7 @@ def test_hidden_layers_empty_raises():
 # NormalPolicyNet.get_std (line 49-51 of flight_actor.py)
 # ---------------------------------------------------------------------------
 
+
 def test_policy_get_std():
     agent, env = _make_agent()
     state = torch.zeros((1, env.observation_space.shape[0]))
@@ -509,10 +534,12 @@ def test_policy_get_std():
 # _filter_kwargs with **kwargs in init
 # ---------------------------------------------------------------------------
 
+
 def test_filter_kwargs_passthrough_varkw():
     class Open:
         def __init__(self, **kwargs):
             pass
+
     result = DSAC._filter_kwargs_for_init(Open, {"a": 1, "b": 2})
     assert result == {"a": 1, "b": 2}
 
@@ -520,6 +547,7 @@ def test_filter_kwargs_passthrough_varkw():
 # ---------------------------------------------------------------------------
 # Different risk_distortion types
 # ---------------------------------------------------------------------------
+
 
 def test_agent_with_cvar_distortion():
     agent, env = _make_agent(risk_distortion="cvar", risk_measure=0.5)
@@ -546,6 +574,7 @@ def test_agent_with_wang_distortion():
 # Logging branches in update_parameters (lines 465-489)
 # ---------------------------------------------------------------------------
 
+
 def test_update_parameters_with_logging():
     """Cover the writer.add_scalar calls inside update_parameters."""
     agent, env = _make_agent(log_every_updates=1)
@@ -558,6 +587,7 @@ def test_update_parameters_with_logging():
 # ---------------------------------------------------------------------------
 # train_vector edge: total_steps < 1, warmup_steps < 0
 # ---------------------------------------------------------------------------
+
 
 def test_train_vector_bad_total_steps():
     env = _VecTensorEnv(num_envs=1, obs_dim=3, act_dim=2)
@@ -578,6 +608,7 @@ def test_train_vector_bad_warmup_steps():
 # ---------------------------------------------------------------------------
 # push_to_hub guard (lines 1070-1079)
 # ---------------------------------------------------------------------------
+
 
 def test_push_to_hub_save_creates_dir():
     """Test that push_to_hub calls save() (just test save portion without actual upload)."""

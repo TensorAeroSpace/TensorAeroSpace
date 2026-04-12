@@ -275,7 +275,9 @@ class GAIL:
                 dist, value = self.model(state)
 
                 action = dist.sample()
-                next_state, reward, terminated, truncated, info = self.env.step(action.cpu().numpy())
+                next_state, reward, terminated, truncated, info = self.env.step(
+                    action.cpu().numpy()
+                )
                 done = terminated or truncated
                 next_state = next_state.reshape(1, -1)
                 reward = self.expert_reward(state, action.cpu().numpy())

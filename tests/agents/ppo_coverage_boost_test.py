@@ -32,10 +32,10 @@ from tensoraerospace.agent.ppo.model import (
     _to_cpu_detached,
 )
 
-
 # ---------------------------------------------------------------------------
 # Lightweight dummy environments
 # ---------------------------------------------------------------------------
+
 
 class _DummyEnv:
     """Minimal single-step env for fast unit tests."""
@@ -214,6 +214,7 @@ class TestOptimizerStateToDevice:
 # _AsyncBestCheckpointSaver
 # ===========================================================================
 
+
 class TestAsyncBestCheckpointSaver:
     """Cover init, submit, flush, close, and worker of the background saver."""
 
@@ -310,6 +311,7 @@ class TestAsyncBestCheckpointSaver:
 # PPO: _is_vector_env, _to_tensor
 # ===========================================================================
 
+
 class TestIsVectorEnv:
     def test_with_num_envs_attribute(self):
         env = _DummyVectorEnv(n_envs=3)
@@ -354,6 +356,7 @@ class TestToTensor:
 # PPO: act (batched path) and _act_tensor_batch
 # ===========================================================================
 
+
 class TestActBatched:
     def test_batched_numpy(self):
         env = _DummyVectorEnv(n_envs=3)
@@ -382,8 +385,12 @@ class TestActBatched:
     def test_batched_with_obs_normalization(self):
         env = _DummyVectorEnv(n_envs=2)
         agent = PPO(
-            env=env, normalize_obs=True,
-            max_episodes=1, rollout_len=4, num_epochs=1, batch_size=2,
+            env=env,
+            normalize_obs=True,
+            max_episodes=1,
+            rollout_len=4,
+            num_epochs=1,
+            batch_size=2,
         )
         # Feed some data into obs_rms
         agent.obs_rms.update(np.random.randn(10, 4))
@@ -395,6 +402,7 @@ class TestActBatched:
 # ===========================================================================
 # PPO: eval() and close()
 # ===========================================================================
+
 
 class TestEvalAndClose:
     def test_eval_returns_self(self):
@@ -425,6 +433,7 @@ class TestEvalAndClose:
 # PPO: test_reward edge cases
 # ===========================================================================
 
+
 class TestTestReward:
     def test_old_reset_api(self):
         """Env whose reset() returns just obs (no info tuple)."""
@@ -445,13 +454,19 @@ class TestTestReward:
 # PPO: _save_best_checkpoint (sync and async paths)
 # ===========================================================================
 
+
 class TestSaveBestCheckpoint:
     def test_sync_checkpoint(self, tmp_path):
         env = _DummyEnv()
         agent = PPO(
-            env=env, save_best_model=True, save_best_async=False,
+            env=env,
+            save_best_model=True,
+            save_best_async=False,
             best_model_dir=str(tmp_path / "best"),
-            max_episodes=1, rollout_len=4, num_epochs=1, batch_size=2,
+            max_episodes=1,
+            rollout_len=4,
+            num_epochs=1,
+            batch_size=2,
         )
         agent._save_best_checkpoint(eval_reward=10.0, episode=1)
         assert (tmp_path / "best" / "config.json").exists()
@@ -462,10 +477,16 @@ class TestSaveBestCheckpoint:
     def test_sync_checkpoint_with_normalization(self, tmp_path):
         env = _DummyEnv()
         agent = PPO(
-            env=env, save_best_model=True, save_best_async=False,
-            normalize_obs=True, normalize_reward=True,
+            env=env,
+            save_best_model=True,
+            save_best_async=False,
+            normalize_obs=True,
+            normalize_reward=True,
             best_model_dir=str(tmp_path / "best"),
-            max_episodes=1, rollout_len=4, num_epochs=1, batch_size=2,
+            max_episodes=1,
+            rollout_len=4,
+            num_epochs=1,
+            batch_size=2,
         )
         agent._save_best_checkpoint(eval_reward=10.0, episode=1)
         assert (tmp_path / "best" / "obs_rms.npz").exists()
@@ -474,9 +495,14 @@ class TestSaveBestCheckpoint:
     def test_async_checkpoint(self, tmp_path):
         env = _DummyEnv()
         agent = PPO(
-            env=env, save_best_model=True, save_best_async=True,
+            env=env,
+            save_best_model=True,
+            save_best_async=True,
             best_model_dir=str(tmp_path / "best"),
-            max_episodes=1, rollout_len=4, num_epochs=1, batch_size=2,
+            max_episodes=1,
+            rollout_len=4,
+            num_epochs=1,
+            batch_size=2,
         )
         agent._save_best_checkpoint(eval_reward=10.0, episode=1)
         # Saver should have been lazy-created
@@ -488,9 +514,13 @@ class TestSaveBestCheckpoint:
     def test_disabled_save(self, tmp_path):
         env = _DummyEnv()
         agent = PPO(
-            env=env, save_best_model=False,
+            env=env,
+            save_best_model=False,
             best_model_dir=str(tmp_path / "best"),
-            max_episodes=1, rollout_len=4, num_epochs=1, batch_size=2,
+            max_episodes=1,
+            rollout_len=4,
+            num_epochs=1,
+            batch_size=2,
         )
         agent._save_best_checkpoint(eval_reward=10.0, episode=1)
         assert not (tmp_path / "best").exists()
@@ -499,6 +529,7 @@ class TestSaveBestCheckpoint:
 # ===========================================================================
 # PPO: _train_vector
 # ===========================================================================
+
 
 class TestTrainVector:
     def test_vector_env_5step_training(self, tmp_path):
@@ -597,6 +628,7 @@ class TestTrainVector:
 # PPO: train() with single env edge cases
 # ===========================================================================
 
+
 class TestTrainSingleEnv:
     def test_train_old_step_api(self):
         """Single env with old 4-return step()."""
@@ -663,6 +695,7 @@ class TestTrainSingleEnv:
 # PPO: save / load roundtrip with optimizer + train_state + normalization
 # ===========================================================================
 
+
 class TestSaveLoadRoundtrip:
     def test_full_roundtrip(self, tmp_path):
         """Save then load with optimizer states, train_state, and normalization."""
@@ -671,7 +704,10 @@ class TestSaveLoadRoundtrip:
             env=env,
             normalize_obs=True,
             normalize_reward=True,
-            max_episodes=1, rollout_len=4, num_epochs=1, batch_size=2,
+            max_episodes=1,
+            rollout_len=4,
+            num_epochs=1,
+            batch_size=2,
         )
         # Do a learn step to populate optimizer state
         obs_dim = 4
@@ -748,6 +784,7 @@ class TestSaveLoadRoundtrip:
 # PPO: get_param_env edge cases
 # ===========================================================================
 
+
 class TestGetParamEnv:
     def test_env_with_ref_signal(self):
         env = _DummyEnv()
@@ -783,14 +820,13 @@ class TestGetParamEnv:
 # PPO: Vector env with action space that lacks .low / .high
 # ===========================================================================
 
+
 class TestVectorEnvFallbackBounds:
     def test_no_low_high(self, tmp_path):
         """Action space without .low/.high should use -1/+1 fallback."""
         env = _DummyVectorEnv(n_envs=2)
         # Remove low/high attributes
-        env.action_space = type(
-            "A", (), {"shape": (2,)}
-        )
+        env.action_space = type("A", (), {"shape": (2,)})
         agent = PPO(
             env=env,
             max_episodes=1,
@@ -808,6 +844,7 @@ class TestVectorEnvFallbackBounds:
 # ===========================================================================
 # PPO: Vector env reset returning non-tuple
 # ===========================================================================
+
 
 class TestVectorEnvResetNonTuple:
     def test_reset_returns_only_obs(self, tmp_path):

@@ -153,9 +153,9 @@ ENV_FACTORIES = [
 def test_has_np_random(factory):
     """Each legacy env should have np_random after construction (set by gym.Env.__init__)."""
     env = factory()
-    assert hasattr(env, "np_random"), (
-        f"{type(env).__name__} missing np_random attribute; super().__init__() likely not called"
-    )
+    assert hasattr(
+        env, "np_random"
+    ), f"{type(env).__name__} missing np_random attribute; super().__init__() likely not called"
 
 
 @pytest.mark.parametrize("factory", ENV_FACTORIES)
@@ -164,4 +164,6 @@ def test_reset_with_seed(factory):
     env = factory()
     result = env.reset(seed=42)
     assert result is not None, f"{type(env).__name__}.reset(seed=42) returned None"
-    assert len(result) == 2, f"{type(env).__name__}.reset(seed=42) should return (obs, info)"
+    assert (
+        len(result) == 2
+    ), f"{type(env).__name__}.reset(seed=42) should return (obs, info)"

@@ -41,10 +41,10 @@ from tensoraerospace.agent.mpc.mpc import (
     _to_serializable,
 )
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 class _BoxSpace:
     def __init__(self, low, high):
@@ -58,6 +58,7 @@ class _BoxSpace:
 
 class _SimpleEnv:
     """Tiny gym-like env for testing MPCAgent."""
+
     def __init__(self, state_dim=4, action_dim=1, max_steps=20):
         self.observation_space = _BoxSpace(
             low=-np.ones(state_dim, dtype=np.float32) * 10,
@@ -121,6 +122,7 @@ def _fill_agent_memory(agent, env, n_episodes=3):
 # Utility function tests (_to_serializable, _to_cpu_detached, etc.)
 # Lines 178-183, 195-203, 208, 213-215, 222-231, 236-244, 254
 # ---------------------------------------------------------------------------
+
 
 def test_to_serializable_tensor():
     t = torch.tensor([1.0, 2.0, 3.0])
@@ -204,6 +206,7 @@ def test_optimizer_state_dict_cpu():
 # Lines 218-231, 236-244
 # ---------------------------------------------------------------------------
 
+
 def test_dtype_from_string():
     assert _dtype_from_string("torch.float32") == torch.float32
     assert _dtype_from_string("torch.float64") == torch.float64
@@ -225,6 +228,7 @@ def test_safe_device_str():
 # _to_2d, _to_1d
 # Lines 247-259
 # ---------------------------------------------------------------------------
+
 
 def test_to_2d_1d_input():
     x = np.array([1.0, 2.0, 3.0])
@@ -248,6 +252,7 @@ def test_to_1d():
 # OneStepMLP branches
 # Lines 724, 727, 730, 734-739, 750, 756
 # ---------------------------------------------------------------------------
+
 
 def test_one_step_mlp_tanh():
     mlp = OneStepMLP(input_dim=5, output_dim=3, hidden_layers=(16,), activation="tanh")
@@ -293,6 +298,7 @@ def test_one_step_mlp_3d_forward():
 # Lines 660-701
 # ---------------------------------------------------------------------------
 
+
 def test_scaler_identity():
     sc = MPCStandardScaler.identity(4, device=torch.device("cpu"), dtype=torch.float32)
     x = torch.randn(3, 4)
@@ -326,6 +332,7 @@ def test_scaler_to_device():
 # MPC solver edge cases
 # Lines 296, 310, 318-336, 360, 365, 370, 404
 # ---------------------------------------------------------------------------
+
 
 def test_mpc_horizon_zero_raises():
     with pytest.raises(ValueError, match="positive"):
@@ -415,8 +422,10 @@ def test_mpc_sgd_optimizer():
 
 def test_mpc_unknown_optimizer_raises():
     with pytest.raises(ValueError, match="Unknown optimizer"):
+
         def dyn(x, u):
             return x + u
+
         mpc = MPC(
             dynamics=dyn,
             state_dim=1,
@@ -431,6 +440,7 @@ def test_mpc_unknown_optimizer_raises():
 
 def test_mpc_track_best_disabled():
     """Cover the branch when track_best=False (lines 632-642)."""
+
     def dyn(x, u):
         return x + torch.cat([u, torch.zeros_like(x[..., :1])], dim=-1)
 
@@ -450,6 +460,7 @@ def test_mpc_track_best_disabled():
 
 def test_mpc_x_ref_horizon_length():
     """Cover x_ref that has length=horizon (not horizon+1) -- gets extended."""
+
     def dyn(x, u):
         return x + torch.cat([u, torch.zeros_like(x[..., :1])], dim=-1)
 
@@ -517,6 +528,7 @@ def test_mpc_u_prev_bad_dim_raises():
 
 def test_mpc_no_x_ref_no_terminal_cost():
     """Solve without x_ref -- only control penalty applies."""
+
     def dyn(x, u):
         return x + u
 
@@ -564,6 +576,7 @@ def test_mpc_with_extra_cost_fn():
 
 def test_mpc_cost_with_S_diag_and_u_prev():
     """Cover delta-u cost when u_prev is provided (lines 494-499)."""
+
     def dyn(x, u):
         return x + torch.cat([u, torch.zeros_like(x[..., :1])], dim=-1)
 
@@ -573,7 +586,8 @@ def test_mpc_cost_with_S_diag_and_u_prev():
         action_dim=1,
         horizon=4,
         weights=MPCWeights(
-            Q_diag=np.ones(2), R_diag=np.ones(1),
+            Q_diag=np.ones(2),
+            R_diag=np.ones(1),
             S_diag=np.ones(1) * 0.5,
         ),
         iters=5,
@@ -589,6 +603,7 @@ def test_mpc_cost_with_S_diag_and_u_prev():
 
 def test_mpc_cost_with_S_diag_no_u_prev():
     """Cover delta-u cost when u_prev is None (lines 492-493)."""
+
     def dyn(x, u):
         return x + torch.cat([u, torch.zeros_like(x[..., :1])], dim=-1)
 
@@ -598,7 +613,8 @@ def test_mpc_cost_with_S_diag_no_u_prev():
         action_dim=1,
         horizon=4,
         weights=MPCWeights(
-            Q_diag=np.ones(2), R_diag=np.ones(1),
+            Q_diag=np.ones(2),
+            R_diag=np.ones(1),
             S_diag=np.ones(1) * 0.5,
         ),
         iters=5,
@@ -615,6 +631,7 @@ def test_mpc_cost_with_S_diag_no_u_prev():
 # MPCAgent: collect_data random & signals modes
 # Lines 1517-1525, 1531-1769, 1778-1802
 # ---------------------------------------------------------------------------
+
 
 def test_mpc_agent_collect_data_random():
     agent, env = _make_mpc_agent()
@@ -702,10 +719,13 @@ def test_mpc_agent_collect_data_bad_num_episodes():
 # Lines 1855-1941
 # ---------------------------------------------------------------------------
 
+
 def test_mpc_agent_train_dynamics_mse():
     agent, env = _make_mpc_agent()
     _fill_agent_memory(agent, env, n_episodes=2)
-    metrics = agent.train_dynamics(epochs=1, batch_size=32, steps_per_epoch=2, loss="mse")
+    metrics = agent.train_dynamics(
+        epochs=1, batch_size=32, steps_per_epoch=2, loss="mse"
+    )
     assert "loss" in metrics
     assert np.isfinite(metrics["loss"])
 
@@ -713,7 +733,9 @@ def test_mpc_agent_train_dynamics_mse():
 def test_mpc_agent_train_dynamics_huber():
     agent, env = _make_mpc_agent()
     _fill_agent_memory(agent, env, n_episodes=2)
-    metrics = agent.train_dynamics(epochs=1, batch_size=32, steps_per_epoch=2, loss="huber")
+    metrics = agent.train_dynamics(
+        epochs=1, batch_size=32, steps_per_epoch=2, loss="huber"
+    )
     assert "loss" in metrics
 
 
@@ -756,6 +778,7 @@ def test_mpc_agent_train_dynamics_predict_absolute():
 # Lines 1824-1853
 # ---------------------------------------------------------------------------
 
+
 def test_mpc_agent_fit_normalizers():
     agent, env = _make_mpc_agent()
     _fill_agent_memory(agent, env, n_episodes=2)
@@ -774,6 +797,7 @@ def test_mpc_agent_fit_normalizers_empty_raises():
 # MPCAgent: select_action
 # Lines 1476-1488
 # ---------------------------------------------------------------------------
+
 
 def test_mpc_agent_select_action_with_ref():
     agent, env = _make_mpc_agent()
@@ -807,6 +831,7 @@ def test_mpc_agent_select_action_bad_state_dim():
 # Lines 1471-1474
 # ---------------------------------------------------------------------------
 
+
 def test_mpc_agent_reset():
     agent, env = _make_mpc_agent()
     _fill_agent_memory(agent, env, n_episodes=2)
@@ -823,6 +848,7 @@ def test_mpc_agent_reset():
 # MPCAgent: predict (wrapper)
 # Lines 1347-1355
 # ---------------------------------------------------------------------------
+
 
 def test_mpc_agent_predict():
     agent, env = _make_mpc_agent()
@@ -843,6 +869,7 @@ def test_mpc_agent_predict_none_raises():
 # MPCAgent: to_device
 # Lines 1312-1338
 # ---------------------------------------------------------------------------
+
 
 def test_mpc_agent_to_device_cpu_noop():
     agent, env = _make_mpc_agent()
@@ -866,6 +893,7 @@ def test_mpc_agent_to_device_with_optim_state():
 # Lines 1360-1409
 # ---------------------------------------------------------------------------
 
+
 def test_mpc_agent_get_param_env():
     agent, env = _make_mpc_agent()
     cfg = agent.get_param_env()
@@ -882,10 +910,13 @@ def test_mpc_agent_get_param_env():
 # Lines 1128-1158
 # ---------------------------------------------------------------------------
 
+
 def test_mpc_agent_set_tracking_type_step_response():
     agent, env = _make_mpc_agent()
     step_cfg = MPCStepResponseExtraCostConfig.from_degrees(
-        tracked_idx=-1, rate_idx=-2, dt=0.1,
+        tracked_idx=-1,
+        rate_idx=-2,
+        dt=0.1,
     )
     agent.set_tracking_type("step_response", step_response_config=step_cfg)
     assert agent.tracking_type == "step_response"
@@ -910,6 +941,7 @@ def test_mpc_agent_set_tracking_type_no_config():
 # MPCAgent: save / load roundtrip
 # Lines 1971-2001, 2003-2147
 # ---------------------------------------------------------------------------
+
 
 def test_mpc_agent_save_load_roundtrip():
     agent, env = _make_mpc_agent()
@@ -952,6 +984,7 @@ def test_mpc_agent_from_pretrained_bad_path():
 # Lines 1946-1969
 # ---------------------------------------------------------------------------
 
+
 def test_mpc_agent_filter_kwargs():
     class Dummy:
         def __init__(self, a, b=None):
@@ -976,6 +1009,7 @@ def test_mpc_agent_filter_kwargs_varkw():
 # Lines 1112-1120
 # ---------------------------------------------------------------------------
 
+
 def test_resolve_state_idx_positive():
     agent, _ = _make_mpc_agent(state_dim=4)
     assert agent._resolve_state_idx(2) == 2
@@ -996,6 +1030,7 @@ def test_resolve_state_idx_invalid():
 # MPCAgent: _update_u_limit_tensor edge cases
 # Lines 1071-1110
 # ---------------------------------------------------------------------------
+
 
 def test_update_u_limit_no_constraints():
     agent, env = _make_mpc_agent()
@@ -1021,7 +1056,9 @@ def test_update_u_limit_only_u_min():
 def test_update_u_limit_scalar_bound():
     """Cover the scalar broadcast path (line 1089-1090)."""
     agent, env = _make_mpc_agent()
-    agent._mpc_constraints = MPCConstraints(u_min=np.array([-1.0]), u_max=np.array([1.0]))
+    agent._mpc_constraints = MPCConstraints(
+        u_min=np.array([-1.0]), u_max=np.array([1.0])
+    )
     agent._update_u_limit_tensor()
     assert agent._u_lim is not None
 
@@ -1030,6 +1067,7 @@ def test_update_u_limit_scalar_bound():
 # MPCAgent: _action adapters
 # Lines 1433-1466
 # ---------------------------------------------------------------------------
+
 
 def test_action_env_from_internal_clips():
     agent, env = _make_mpc_agent()
@@ -1062,6 +1100,7 @@ def test_state_from_obs_bad_dim():
 # MPCAgent: MPC warm start across multiple calls
 # ---------------------------------------------------------------------------
 
+
 def test_mpc_agent_warm_start_behavior():
     agent, env = _make_mpc_agent()
     _fill_agent_memory(agent, env, n_episodes=2)
@@ -1081,21 +1120,25 @@ def test_mpc_agent_warm_start_behavior():
 # MPCAgent construction edge cases (lines 851-893)
 # ---------------------------------------------------------------------------
 
+
 def test_mpc_agent_bad_dims_raises():
     class _BadEnv:
         observation_space = type("O", (), {"shape": (0,)})()
         action_space = type("A", (), {"shape": (0,)})()
         unwrapped = None
+
     with pytest.raises(ValueError, match="could not infer"):
         MPCAgent(env=_BadEnv())
 
 
 def test_mpc_agent_weights_infer_dims():
     """Cover dim inference from weights (lines 868-876)."""
+
     class _NoShapeEnv:
         observation_space = type("O", (), {"shape": (0,)})()
         action_space = type("A", (), {"shape": (0,)})()
         unwrapped = None
+
     agent = MPCAgent(
         env=_NoShapeEnv(),
         weights=MPCWeights(Q_diag=np.ones(3), R_diag=np.ones(2)),
@@ -1108,6 +1151,7 @@ def test_mpc_agent_weights_infer_dims():
 # MPCStepResponseExtraCostConfig.from_degrees
 # Lines 87-131
 # ---------------------------------------------------------------------------
+
 
 def test_step_response_config_from_degrees():
     cfg = MPCStepResponseExtraCostConfig.from_degrees(
@@ -1128,6 +1172,7 @@ def test_step_response_config_from_degrees():
 # _make_step_response_extra_cost: with rate_idx
 # Lines 1191-1307
 # ---------------------------------------------------------------------------
+
 
 def test_step_response_extra_cost_with_rate():
     agent, env = _make_mpc_agent(state_dim=4, action_dim=1)

@@ -12,7 +12,6 @@ import torch
 
 from tensoraerospace.agent.adhdp.model import ADHDP, _as_flat_np
 
-
 # ---------------------------------------------------------------------------
 # Helpers: lightweight fake envs
 # ---------------------------------------------------------------------------
@@ -41,13 +40,13 @@ class _TinyEnv:
         self._step_count = 0
         obs = np.zeros(self.observation_space.shape[0], dtype=np.float32)
         # Provide some nonzero obs to exercise baseline branches
-        obs[0] = 0.05   # pitch error
-        obs[1] = 0.01   # q
-        obs[2] = 0.03   # theta
-        obs[3] = 0.0    # prev_action
+        obs[0] = 0.05  # pitch error
+        obs[1] = 0.01  # q
+        obs[2] = 0.03  # theta
+        obs[3] = 0.0  # prev_action
         if obs.shape[0] >= 6:
             obs[4] = 0.04  # theta_ref
-            obs[5] = 0.005 # q_ref
+            obs[5] = 0.005  # q_ref
         return obs, {}
 
     def step(self, action):
@@ -129,6 +128,7 @@ class TestADHDPConstruction:
             observation_space = _TinySpace((0,))
             action_space = _TinySpace((1,))
             unwrapped = property(lambda self: self)
+
         with pytest.raises(ValueError, match="ADHDP expects Box-like spaces"):
             ADHDP(env=_Bad(), device="cpu")
 
@@ -145,7 +145,8 @@ class TestADHDPConstruction:
     def test_negative_lr_clamp(self):
         env = _TinyEnv()
         agent = ADHDP(
-            env=env, device="cpu",
+            env=env,
+            device="cpu",
             action_grad_lr=-1.0,
             action_grad_step_clip=-1.0,
             action_grad_u_l2=-1.0,
@@ -322,8 +323,11 @@ class TestADHDPPolicyAction:
     def test_residual_mode(self):
         env = _TinyEnv(obs_dim=6, act_dim=1)
         agent = ADHDP(
-            env=env, device="cpu", policy_mode="residual",
-            residual_scale=0.2, exploration_std=0.0,
+            env=env,
+            device="cpu",
+            policy_mode="residual",
+            residual_scale=0.2,
+            exploration_std=0.0,
         )
         obs_t = torch.randn(1, 6)
         act = agent._policy_action_t(obs_t, evaluate=True)
@@ -354,9 +358,11 @@ class TestADHDPPolicyAction:
     def test_critic_gradient_action_selection(self):
         env = _TinyEnv(obs_dim=6, act_dim=1)
         agent = ADHDP(
-            env=env, device="cpu",
+            env=env,
+            device="cpu",
             action_selection="critic_gradient",
-            action_grad_steps=3, action_grad_lr=0.1,
+            action_grad_steps=3,
+            action_grad_lr=0.1,
             exploration_std=0.05,
         )
         obs_t = torch.randn(1, 6)
@@ -373,8 +379,10 @@ class TestOptimizeAction:
     def test_basic(self):
         env = _TinyEnv(obs_dim=6, act_dim=1)
         agent = ADHDP(
-            env=env, device="cpu",
-            action_grad_steps=5, action_grad_lr=0.1,
+            env=env,
+            device="cpu",
+            action_grad_steps=5,
+            action_grad_lr=0.1,
         )
         obs_t = torch.randn(1, 6)
         a_init = torch.zeros(1, 1)
@@ -384,9 +392,12 @@ class TestOptimizeAction:
     def test_with_regularizers(self):
         env = _TinyEnv(obs_dim=6, act_dim=1)
         agent = ADHDP(
-            env=env, device="cpu",
-            action_grad_steps=3, action_grad_lr=0.1,
-            action_grad_u_l2=0.1, action_grad_du_l2=0.1,
+            env=env,
+            device="cpu",
+            action_grad_steps=3,
+            action_grad_lr=0.1,
+            action_grad_u_l2=0.1,
+            action_grad_du_l2=0.1,
             action_grad_step_clip=0.05,
             action_max_abs=0.8,
         )
@@ -414,9 +425,11 @@ class TestTeacherAction:
     def test_teacher_action(self):
         env = _TinyEnv(obs_dim=6, act_dim=1)
         agent = ADHDP(
-            env=env, device="cpu",
+            env=env,
+            device="cpu",
             action_selection="critic_gradient",
-            action_grad_steps=2, action_grad_lr=0.1,
+            action_grad_steps=2,
+            action_grad_lr=0.1,
             teacher_rollout_noise_std=0.1,
         )
         obs_t = torch.randn(1, 6)
@@ -426,9 +439,11 @@ class TestTeacherAction:
     def test_teacher_action_4dim(self):
         env = _SmallEnv()
         agent = ADHDP(
-            env=env, device="cpu",
+            env=env,
+            device="cpu",
             action_selection="critic_gradient",
-            action_grad_steps=2, action_grad_lr=0.1,
+            action_grad_steps=2,
+            action_grad_lr=0.1,
         )
         obs_t = torch.randn(1, 4)
         a = agent._teacher_action_t(obs_t, evaluate=True)
@@ -438,9 +453,11 @@ class TestTeacherAction:
         """Test with obs dim < 4 (no prev action in obs)."""
         env = _TinyEnv(obs_dim=3, act_dim=1)
         agent = ADHDP(
-            env=env, device="cpu",
+            env=env,
+            device="cpu",
             action_selection="critic_gradient",
-            action_grad_steps=2, action_grad_lr=0.1,
+            action_grad_steps=2,
+            action_grad_lr=0.1,
         )
         obs_t = torch.randn(1, 3)
         a = agent._teacher_action_t(obs_t, evaluate=True)
@@ -463,8 +480,10 @@ class TestMaybeRandomize:
     def test_randomize_reference(self):
         env = _EnvWithRef()
         agent = ADHDP(
-            env=env, device="cpu",
-            reference_roll_steps=2, reference_noise_std=0.001,
+            env=env,
+            device="cpu",
+            reference_roll_steps=2,
+            reference_noise_std=0.001,
         )
         orig_ref = env.reference_signal.copy()
         agent._maybe_randomize_env_for_episode()
@@ -473,7 +492,9 @@ class TestMaybeRandomize:
 
     def test_no_randomize_when_zero(self):
         env = _EnvWithRef()
-        agent = ADHDP(env=env, device="cpu", initial_state_noise_std=0.0, reference_roll_steps=0)
+        agent = ADHDP(
+            env=env, device="cpu", initial_state_noise_std=0.0, reference_roll_steps=0
+        )
         orig_init = env.initial_state.copy()
         agent._maybe_randomize_env_for_episode()
         # Should remain unchanged
@@ -494,9 +515,13 @@ class TestTdUpdate:
         next_obs = np.random.randn(4).astype(np.float32)
 
         c_loss, a_loss = agent._td_update(
-            obs=obs, act=act, reward_for_update=-0.1,
-            next_obs=next_obs, done_bootstrap=0.0,
-            do_critic_update=True, do_actor_update=True,
+            obs=obs,
+            act=act,
+            reward_for_update=-0.1,
+            next_obs=next_obs,
+            done_bootstrap=0.0,
+            do_critic_update=True,
+            do_actor_update=True,
         )
         assert isinstance(c_loss, float)
         assert isinstance(a_loss, float)
@@ -509,9 +534,13 @@ class TestTdUpdate:
         next_obs = np.random.randn(4).astype(np.float32)
 
         c_loss, a_loss = agent._td_update(
-            obs=obs, act=act, reward_for_update=-0.1,
-            next_obs=next_obs, done_bootstrap=0.0,
-            do_critic_update=True, do_actor_update=False,
+            obs=obs,
+            act=act,
+            reward_for_update=-0.1,
+            next_obs=next_obs,
+            done_bootstrap=0.0,
+            do_critic_update=True,
+            do_actor_update=False,
         )
         assert isinstance(c_loss, float)
         assert a_loss == 0.0
@@ -524,17 +553,23 @@ class TestTdUpdate:
         next_obs = np.random.randn(4).astype(np.float32)
 
         c_loss, a_loss = agent._td_update(
-            obs=obs, act=act, reward_for_update=-0.1,
-            next_obs=next_obs, done_bootstrap=0.0,
-            do_critic_update=True, do_actor_update=True,
+            obs=obs,
+            act=act,
+            reward_for_update=-0.1,
+            next_obs=next_obs,
+            done_bootstrap=0.0,
+            do_critic_update=True,
+            do_actor_update=True,
         )
         assert isinstance(a_loss, float)
 
     def test_td_update_residual_bc(self):
         env = _TinyEnv(obs_dim=6, act_dim=1)
         agent = ADHDP(
-            env=env, device="cpu",
-            policy_mode="residual", residual_scale=0.2,
+            env=env,
+            device="cpu",
+            policy_mode="residual",
+            residual_scale=0.2,
             actor_bc_l2=0.5,
         )
         obs = np.random.randn(6).astype(np.float32)
@@ -542,9 +577,13 @@ class TestTdUpdate:
         next_obs = np.random.randn(6).astype(np.float32)
 
         c_loss, a_loss = agent._td_update(
-            obs=obs, act=act, reward_for_update=-0.1,
-            next_obs=next_obs, done_bootstrap=0.0,
-            do_critic_update=True, do_actor_update=True,
+            obs=obs,
+            act=act,
+            reward_for_update=-0.1,
+            next_obs=next_obs,
+            done_bootstrap=0.0,
+            do_critic_update=True,
+            do_actor_update=True,
         )
         assert isinstance(a_loss, float)
 
@@ -556,9 +595,13 @@ class TestTdUpdate:
         next_obs = np.random.randn(6).astype(np.float32)
 
         c_loss, a_loss = agent._td_update(
-            obs=obs, act=act, reward_for_update=-0.1,
-            next_obs=next_obs, done_bootstrap=0.0,
-            do_critic_update=True, do_actor_update=True,
+            obs=obs,
+            act=act,
+            reward_for_update=-0.1,
+            next_obs=next_obs,
+            done_bootstrap=0.0,
+            do_critic_update=True,
+            do_actor_update=True,
             force_baseline_policy=True,
         )
         assert isinstance(c_loss, float)
@@ -577,7 +620,10 @@ class TestCriticActorUpdate:
         act_t = torch.randn(1, 1)
         target_q = torch.tensor([[0.5]])
         loss = agent._critic_update_with_target(
-            obs_t=obs_t, act_t=act_t, target_q=target_q, n_steps=3,
+            obs_t=obs_t,
+            act_t=act_t,
+            target_q=target_q,
+            n_steps=3,
         )
         assert isinstance(loss, float)
 
@@ -598,8 +644,10 @@ class TestCriticActorUpdate:
     def test_actor_update_residual_bc(self):
         env = _TinyEnv(obs_dim=6, act_dim=1)
         agent = ADHDP(
-            env=env, device="cpu",
-            policy_mode="residual", actor_bc_l2=0.5,
+            env=env,
+            device="cpu",
+            policy_mode="residual",
+            actor_bc_l2=0.5,
         )
         obs_t = torch.randn(1, 6)
         loss = agent._actor_update(obs_t=obs_t, n_steps=2)
@@ -608,7 +656,8 @@ class TestCriticActorUpdate:
     def test_actor_update_distill_mode(self):
         env = _TinyEnv(obs_dim=6, act_dim=1)
         agent = ADHDP(
-            env=env, device="cpu",
+            env=env,
+            device="cpu",
             actor_update_mode="distill_critic_gradient",
             actor_distill_coef=1.0,
             actor_distill_steps=2,
@@ -630,7 +679,8 @@ class TestWarmstart:
     def test_warmstart_direct(self):
         env = _TinyEnv(obs_dim=6, act_dim=1, max_steps=3)
         agent = ADHDP(
-            env=env, device="cpu",
+            env=env,
+            device="cpu",
             warmstart_actor_episodes=1,
             warmstart_actor_epochs=1,
         )
@@ -639,7 +689,8 @@ class TestWarmstart:
     def test_warmstart_residual(self):
         env = _TinyEnv(obs_dim=6, act_dim=1, max_steps=3)
         agent = ADHDP(
-            env=env, device="cpu",
+            env=env,
+            device="cpu",
             policy_mode="residual",
             warmstart_actor_episodes=1,
             warmstart_actor_epochs=1,
@@ -661,8 +712,10 @@ class TestADHDPTrain:
     def test_train_basic(self):
         env = _TinyEnv(obs_dim=4, act_dim=1, max_steps=5)
         agent = ADHDP(
-            env=env, device="cpu",
-            exploration_std=0.0, log_every_updates=2,
+            env=env,
+            device="cpu",
+            exploration_std=0.0,
+            log_every_updates=2,
         )
         agent.train(num_episodes=2, max_steps=5, show_progress=False)
         assert agent._updates > 0
@@ -670,7 +723,8 @@ class TestADHDPTrain:
     def test_train_with_warmstart(self):
         env = _TinyEnv(obs_dim=6, act_dim=1, max_steps=5)
         agent = ADHDP(
-            env=env, device="cpu",
+            env=env,
+            device="cpu",
             warmstart_actor_episodes=1,
             warmstart_actor_epochs=1,
             exploration_std=0.0,
@@ -681,7 +735,8 @@ class TestADHDPTrain:
     def test_train_with_critic_warmup(self):
         env = _TinyEnv(obs_dim=6, act_dim=1, max_steps=5)
         agent = ADHDP(
-            env=env, device="cpu",
+            env=env,
+            device="cpu",
             critic_warmup_episodes=1,
             exploration_std=0.0,
             log_every_updates=2,
@@ -691,7 +746,8 @@ class TestADHDPTrain:
     def test_train_alternating_cycles(self):
         env = _TinyEnv(obs_dim=4, act_dim=1, max_steps=5)
         agent = ADHDP(
-            env=env, device="cpu",
+            env=env,
+            device="cpu",
             critic_cycle_episodes=1,
             action_cycle_episodes=1,
             log_every_updates=2,
@@ -701,7 +757,8 @@ class TestADHDPTrain:
     def test_train_baseline_warmup(self):
         env = _TinyEnv(obs_dim=6, act_dim=1, max_steps=5)
         agent = ADHDP(
-            env=env, device="cpu",
+            env=env,
+            device="cpu",
             baseline_warmup_episodes=1,
             log_every_updates=2,
         )
@@ -710,8 +767,10 @@ class TestADHDPTrain:
     def test_train_bc_decay(self):
         env = _TinyEnv(obs_dim=4, act_dim=1, max_steps=5)
         agent = ADHDP(
-            env=env, device="cpu",
-            actor_bc_l2=0.1, actor_bc_decay=0.5,
+            env=env,
+            device="cpu",
+            actor_bc_l2=0.1,
+            actor_bc_decay=0.5,
             log_every_updates=2,
         )
         agent.train(num_episodes=3, max_steps=5, show_progress=False)
@@ -720,7 +779,8 @@ class TestADHDPTrain:
     def test_train_env_cost(self):
         env = _TinyEnv(obs_dim=4, act_dim=1, max_steps=5)
         agent = ADHDP(
-            env=env, device="cpu",
+            env=env,
+            device="cpu",
             use_env_cost=True,
             log_every_updates=2,
         )
@@ -729,9 +789,11 @@ class TestADHDPTrain:
     def test_train_critic_gradient_selection(self):
         env = _TinyEnv(obs_dim=6, act_dim=1, max_steps=5)
         agent = ADHDP(
-            env=env, device="cpu",
+            env=env,
+            device="cpu",
             action_selection="critic_gradient",
-            action_grad_steps=2, action_grad_lr=0.1,
+            action_grad_steps=2,
+            action_grad_lr=0.1,
             log_every_updates=2,
         )
         agent.train(num_episodes=1, max_steps=5, show_progress=False)
@@ -739,7 +801,8 @@ class TestADHDPTrain:
     def test_train_with_env_randomization(self):
         env = _EnvWithRef(max_steps=5)
         agent = ADHDP(
-            env=env, device="cpu",
+            env=env,
+            device="cpu",
             initial_state_noise_std=0.01,
             reference_roll_steps=1,
             reference_noise_std=0.001,
@@ -750,7 +813,8 @@ class TestADHDPTrain:
     def test_train_multi_step_critic_actor(self):
         env = _TinyEnv(obs_dim=4, act_dim=1, max_steps=5)
         agent = ADHDP(
-            env=env, device="cpu",
+            env=env,
+            device="cpu",
             critic_updates_per_step=2,
             actor_updates_per_step=2,
             log_every_updates=2,
@@ -760,7 +824,8 @@ class TestADHDPTrain:
     def test_train_with_distill_execute_teacher(self):
         env = _TinyEnv(obs_dim=6, act_dim=1, max_steps=5)
         agent = ADHDP(
-            env=env, device="cpu",
+            env=env,
+            device="cpu",
             actor_update_mode="distill_critic_gradient",
             distill_execute_teacher=True,
             actor_distill_coef=1.0,

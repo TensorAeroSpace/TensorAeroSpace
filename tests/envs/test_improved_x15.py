@@ -16,7 +16,6 @@ from tensoraerospace.envs.x15 import ImprovedX15Env, LinearLongitudinalX15
 from tensoraerospace.signals.standart import unit_step
 from tensoraerospace.utils import generate_time_period
 
-
 # ---------------------------------------------------------------------------
 # Shared helpers
 # ---------------------------------------------------------------------------
@@ -701,6 +700,7 @@ class TestRenderWithMockedPygame:
             def get_rect(self, **kw):
                 class R:
                     pass
+
                 return R()
 
         class FakeTransform:
@@ -769,6 +769,7 @@ class TestDrawMethods:
             def render(self, text, antialias, color):
                 class S:
                     pass
+
                 return S()
 
         class FakeDraw:
@@ -830,6 +831,7 @@ class TestDrawMethods:
             def get_rect(self, **kw):
                 class R:
                     pass
+
                 return R()
 
         class FakeTransform:

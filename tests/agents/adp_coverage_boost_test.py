@@ -19,12 +19,11 @@ from tensoraerospace.agent.adp.networks import (
     JLambdaCritic,
     LambdaCritic,
     QCritic,
-    polyak_update,
     _mlp,
     _mlp_body,
+    polyak_update,
 )
 from tensoraerospace.agent.adp.replay import ReplayBuffer, Transition
-
 
 # ---------------------------------------------------------------------------
 # Helpers: lightweight fake envs
@@ -110,7 +109,10 @@ class _ModelBasedEnv:
         _ = np.asarray(action, dtype=np.float32).reshape(-1)
         self._step_count += 1
         self.current_step = self._step_count
-        self.state = self.state * 0.99 + np.random.randn(*self.state.shape).astype(np.float32) * 0.001
+        self.state = (
+            self.state * 0.99
+            + np.random.randn(*self.state.shape).astype(np.float32) * 0.001
+        )
         obs = np.concatenate([self.state, [0.01, 0.0]]).astype(np.float32)
         reward = -0.05
         terminated = self._step_count >= self.max_steps
@@ -229,7 +231,9 @@ class TestNetworks:
     def test_deterministic_actor_custom_bounds(self):
         low = np.array([-2.0, -3.0], dtype=np.float32)
         high = np.array([2.0, 3.0], dtype=np.float32)
-        actor = DeterministicActor(obs_dim=4, act_dim=2, action_low=low, action_high=high)
+        actor = DeterministicActor(
+            obs_dim=4, act_dim=2, action_low=low, action_high=high
+        )
         x = torch.randn(5, 4)
         out = actor(x)
         assert out.shape == (5, 2)
@@ -238,7 +242,8 @@ class TestNetworks:
     def test_deterministic_actor_invalid_bounds(self):
         with pytest.raises(ValueError, match="action_low/high must have shape"):
             DeterministicActor(
-                obs_dim=4, act_dim=2,
+                obs_dim=4,
+                act_dim=2,
                 action_low=np.array([-1.0]),
                 action_high=np.array([1.0]),
             )
@@ -365,9 +370,13 @@ class TestADPConstruction:
     def test_ddpg_with_replay_and_targets(self):
         env = _TinyEnv(obs_dim=4, act_dim=1)
         agent = ADP(
-            env=env, device="cpu", design="ddpg",
-            use_replay=True, memory_capacity=100,
-            use_target_networks=True, tau=0.01,
+            env=env,
+            device="cpu",
+            design="ddpg",
+            use_replay=True,
+            memory_capacity=100,
+            use_target_networks=True,
+            tau=0.01,
         )
         assert agent.memory is not None
         assert agent.actor_target is not None
@@ -375,12 +384,16 @@ class TestADPConstruction:
 
     def test_adhdp_rejects_replay(self):
         env = _TinyEnv()
-        with pytest.raises(ValueError, match="Canonical design='adhdp' does not support replay"):
+        with pytest.raises(
+            ValueError, match="Canonical design='adhdp' does not support replay"
+        ):
             ADP(env=env, device="cpu", design="adhdp", use_replay=True)
 
     def test_adhdp_rejects_baseline(self):
         env = _TinyEnv()
-        with pytest.raises(ValueError, match="Canonical design='adhdp' does not support baseline"):
+        with pytest.raises(
+            ValueError, match="Canonical design='adhdp' does not support baseline"
+        ):
             ADP(env=env, device="cpu", design="adhdp", adhdp_use_baseline=True)
 
     def test_invalid_design(self):
@@ -474,23 +487,41 @@ class TestADPSelectAction:
 class TestADPTrainOnline:
     def test_train_adhdp_online_short(self):
         env = _TinyEnv(obs_dim=4, act_dim=1, max_steps=5)
-        agent = ADP(env=env, device="cpu", design="adhdp", exploration_std=0.0, log_every_updates=2)
+        agent = ADP(
+            env=env,
+            device="cpu",
+            design="adhdp",
+            exploration_std=0.0,
+            log_every_updates=2,
+        )
         agent.train(num_episodes=2, max_steps=5)
         assert agent._updates > 0
 
     def test_train_ddpg_online(self):
         env = _TinyEnv(obs_dim=4, act_dim=1, max_steps=5)
-        agent = ADP(env=env, device="cpu", design="ddpg", exploration_std=0.0, log_every_updates=2)
+        agent = ADP(
+            env=env,
+            device="cpu",
+            design="ddpg",
+            exploration_std=0.0,
+            log_every_updates=2,
+        )
         agent.train(num_episodes=2, max_steps=5)
         assert agent._updates > 0
 
     def test_train_ddpg_with_replay_and_targets(self):
         env = _TinyEnv(obs_dim=4, act_dim=1, max_steps=8)
         agent = ADP(
-            env=env, device="cpu", design="ddpg",
-            use_replay=True, memory_capacity=200, batch_size=4,
-            use_target_networks=True, tau=0.1,
-            exploration_std=0.1, log_every_updates=2,
+            env=env,
+            device="cpu",
+            design="ddpg",
+            use_replay=True,
+            memory_capacity=200,
+            batch_size=4,
+            use_target_networks=True,
+            tau=0.1,
+            exploration_std=0.1,
+            log_every_updates=2,
         )
         agent.train(num_episodes=3, max_steps=8)
         assert agent._updates > 0
@@ -498,14 +529,22 @@ class TestADPTrainOnline:
 
     def test_train_adhdp_with_env_cost(self):
         env = _TinyEnv(obs_dim=4, act_dim=1, max_steps=5)
-        agent = ADP(env=env, device="cpu", design="adhdp", adhdp_use_env_cost=True, log_every_updates=2)
+        agent = ADP(
+            env=env,
+            device="cpu",
+            design="adhdp",
+            adhdp_use_env_cost=True,
+            log_every_updates=2,
+        )
         agent.train(num_episodes=2, max_steps=5)
         assert agent._updates > 0
 
     def test_train_adhdp_warmup_episodes(self):
         env = _TinyEnv(obs_dim=4, act_dim=1, max_steps=5)
         agent = ADP(
-            env=env, device="cpu", design="adhdp",
+            env=env,
+            device="cpu",
+            design="adhdp",
             adhdp_critic_warmup_episodes=1,
             log_every_updates=2,
         )
@@ -515,7 +554,9 @@ class TestADPTrainOnline:
     def test_train_adhdp_alternating_cycles(self):
         env = _TinyEnv(obs_dim=4, act_dim=1, max_steps=5)
         agent = ADP(
-            env=env, device="cpu", design="adhdp",
+            env=env,
+            device="cpu",
+            design="adhdp",
             adhdp_critic_cycle_episodes=1,
             adhdp_action_cycle_episodes=1,
             log_every_updates=2,
@@ -526,8 +567,11 @@ class TestADPTrainOnline:
     def test_train_adhdp_bc_decay(self):
         env = _TinyEnv(obs_dim=4, act_dim=1, max_steps=5)
         agent = ADP(
-            env=env, device="cpu", design="adhdp",
-            adhdp_actor_bc_l2=0.1, adhdp_actor_bc_decay=0.5,
+            env=env,
+            device="cpu",
+            design="adhdp",
+            adhdp_actor_bc_l2=0.1,
+            adhdp_actor_bc_decay=0.5,
             log_every_updates=2,
         )
         agent.train(num_episodes=3, max_steps=5)
@@ -537,7 +581,9 @@ class TestADPTrainOnline:
     def test_train_adhdp_warmstart_from_pd(self):
         env = _TinyEnv(obs_dim=4, act_dim=1, max_steps=5)
         agent = ADP(
-            env=env, device="cpu", design="adhdp",
+            env=env,
+            device="cpu",
+            design="adhdp",
             adhdp_warmstart_actor_episodes=1,
             adhdp_warmstart_actor_epochs=1,
             log_every_updates=2,
@@ -562,8 +608,13 @@ class TestTdUpdateBatch:
         done = np.array([[0.0], [1.0]], dtype=np.float32)
 
         c_loss, a_loss = agent._td_update_batch(
-            obs, act, rew, next_obs, done,
-            do_critic_update=True, do_actor_update=False,
+            obs,
+            act,
+            rew,
+            next_obs,
+            done,
+            do_critic_update=True,
+            do_actor_update=False,
         )
         assert isinstance(c_loss, float)
         assert a_loss == 0.0
@@ -578,8 +629,13 @@ class TestTdUpdateBatch:
         done = np.array([[0.0], [1.0]], dtype=np.float32)
 
         c_loss, a_loss = agent._td_update_batch(
-            obs, act, rew, next_obs, done,
-            do_critic_update=False, do_actor_update=True,
+            obs,
+            act,
+            rew,
+            next_obs,
+            done,
+            do_critic_update=False,
+            do_actor_update=True,
         )
         assert c_loss == 0.0
         assert isinstance(a_loss, float)
@@ -594,8 +650,13 @@ class TestTdUpdateBatch:
         done = np.array([[0.0], [1.0]], dtype=np.float32)
 
         c_loss, a_loss = agent._td_update_batch(
-            obs, act, rew, next_obs, done,
-            do_critic_update=True, do_actor_update=True,
+            obs,
+            act,
+            rew,
+            next_obs,
+            done,
+            do_critic_update=True,
+            do_actor_update=True,
         )
         assert isinstance(c_loss, float) and c_loss > 0.0 or c_loss == 0.0
         assert isinstance(a_loss, float)
@@ -603,8 +664,11 @@ class TestTdUpdateBatch:
     def test_td_update_with_target_networks(self):
         env = _TinyEnv(obs_dim=4, act_dim=1)
         agent = ADP(
-            env=env, device="cpu", design="ddpg",
-            use_target_networks=True, tau=0.1,
+            env=env,
+            device="cpu",
+            design="ddpg",
+            use_target_networks=True,
+            tau=0.1,
         )
         obs = np.random.randn(2, 4).astype(np.float32)
         act = np.random.randn(2, 1).astype(np.float32)
@@ -613,8 +677,13 @@ class TestTdUpdateBatch:
         done = np.array([[0.0], [1.0]], dtype=np.float32)
 
         c_loss, a_loss = agent._td_update_batch(
-            obs, act, rew, next_obs, done,
-            do_critic_update=True, do_actor_update=True,
+            obs,
+            act,
+            rew,
+            next_obs,
+            done,
+            do_critic_update=True,
+            do_actor_update=True,
         )
         assert isinstance(c_loss, float)
         assert isinstance(a_loss, float)
@@ -622,7 +691,9 @@ class TestTdUpdateBatch:
     def test_td_update_with_bc_regularizer(self):
         env = _TinyEnv(obs_dim=4, act_dim=1)
         agent = ADP(
-            env=env, device="cpu", design="adhdp",
+            env=env,
+            device="cpu",
+            design="adhdp",
             adhdp_actor_bc_l2=0.5,
         )
         obs = np.random.randn(2, 4).astype(np.float32)
@@ -632,8 +703,13 @@ class TestTdUpdateBatch:
         done = np.array([[0.0], [0.0]], dtype=np.float32)
 
         c_loss, a_loss = agent._td_update_batch(
-            obs, act, rew, next_obs, done,
-            do_critic_update=True, do_actor_update=True,
+            obs,
+            act,
+            rew,
+            next_obs,
+            done,
+            do_critic_update=True,
+            do_actor_update=True,
         )
         assert isinstance(a_loss, float)
 
@@ -773,40 +849,74 @@ class TestADPModelBased:
 
     def test_dhp_train_short(self):
         env = _ModelBasedEnv(max_steps=3, n_steps=10)
-        agent = ADP(env=env, device="cpu", design="dhp", exploration_std=0.0, log_every_updates=2)
+        agent = ADP(
+            env=env,
+            device="cpu",
+            design="dhp",
+            exploration_std=0.0,
+            log_every_updates=2,
+        )
         agent.train(num_episodes=1, max_steps=3)
         assert agent._updates > 0
 
     def test_hdp_train_short(self):
         env = _ModelBasedEnv(max_steps=3, n_steps=10)
-        agent = ADP(env=env, device="cpu", design="hdp", exploration_std=0.0, log_every_updates=2)
+        agent = ADP(
+            env=env,
+            device="cpu",
+            design="hdp",
+            exploration_std=0.0,
+            log_every_updates=2,
+        )
         agent.train(num_episodes=1, max_steps=3)
         assert agent._updates > 0
 
     def test_gdhp_train_short(self):
         env = _ModelBasedEnv(max_steps=3, n_steps=10)
-        agent = ADP(env=env, device="cpu", design="gdhp", exploration_std=0.0, log_every_updates=2)
+        agent = ADP(
+            env=env,
+            device="cpu",
+            design="gdhp",
+            exploration_std=0.0,
+            log_every_updates=2,
+        )
         agent.train(num_episodes=1, max_steps=3)
         assert agent._updates > 0
 
     def test_addhp_train_short(self):
         env = _ModelBasedEnv(max_steps=3, n_steps=10)
-        agent = ADP(env=env, device="cpu", design="addhp", exploration_std=0.0, log_every_updates=2)
+        agent = ADP(
+            env=env,
+            device="cpu",
+            design="addhp",
+            exploration_std=0.0,
+            log_every_updates=2,
+        )
         agent.train(num_episodes=1, max_steps=3)
         assert agent._updates > 0
 
     def test_adgdhp_train_short(self):
         env = _ModelBasedEnv(max_steps=3, n_steps=10)
-        agent = ADP(env=env, device="cpu", design="adgdhp", exploration_std=0.0, log_every_updates=2)
+        agent = ADP(
+            env=env,
+            device="cpu",
+            design="adgdhp",
+            exploration_std=0.0,
+            log_every_updates=2,
+        )
         agent.train(num_episodes=1, max_steps=3)
         assert agent._updates > 0
 
     def test_dhp_train_with_alternating_cycles(self):
         env = _ModelBasedEnv(max_steps=3, n_steps=10)
         agent = ADP(
-            env=env, device="cpu", design="dhp",
-            dhp_critic_cycle_episodes=1, dhp_action_cycle_episodes=1,
-            exploration_std=0.0, log_every_updates=2,
+            env=env,
+            device="cpu",
+            design="dhp",
+            dhp_critic_cycle_episodes=1,
+            dhp_action_cycle_episodes=1,
+            exploration_std=0.0,
+            log_every_updates=2,
         )
         agent.train(num_episodes=4, max_steps=3)
         assert agent._updates > 0
@@ -821,8 +931,11 @@ class TestADPModelBased:
     def test_dhp_select_action_with_pd_baseline(self):
         env = _ModelBasedEnv(max_steps=3, n_steps=10)
         agent = ADP(
-            env=env, device="cpu", design="dhp",
-            dhp_use_baseline=True, dhp_baseline_type="pd",
+            env=env,
+            device="cpu",
+            design="dhp",
+            dhp_use_baseline=True,
+            dhp_baseline_type="pd",
         )
         obs, _ = env.reset()
         act = agent.select_action(obs, evaluate=True)
@@ -856,8 +969,11 @@ class TestADPSaveLoad:
     def test_save_ddpg_with_targets(self):
         env = _TinyEnv(obs_dim=4, act_dim=1)
         agent = ADP(
-            env=env, device="cpu", design="ddpg",
-            use_target_networks=True, tau=0.1,
+            env=env,
+            device="cpu",
+            design="ddpg",
+            use_target_networks=True,
+            tau=0.1,
         )
         with tempfile.TemporaryDirectory() as tmpdir:
             run_dir = agent.save(path=tmpdir)

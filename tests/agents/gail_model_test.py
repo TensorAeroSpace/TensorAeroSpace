@@ -134,6 +134,7 @@ def test_gail_env_step_unpacking_five_tuple():
 
     class _TerminatingEnv(_FakeEnv):
         """Env that terminates after 2 steps to exercise done logic."""
+
         def __init__(self):
             super().__init__(obs_dim=3, act_dim=2)
             self._step_count = 0
