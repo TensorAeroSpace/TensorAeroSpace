@@ -2,7 +2,7 @@
 
 DQN is the classic reinforcement learning method approximating the Q-function with a neural network. The implementation uses a target network for stability and prioritized experience replay (PER) for more informative updates.
 
-![DQN схема](../agent/img/dqn/DQN.png){ width=800 }
+![DQN Diagram](../agent/img/dqn/DQN.png){ width=800 }
 
 ## Components
 
@@ -13,7 +13,7 @@ DQN is the classic reinforcement learning method approximating the Q-function wi
 
 ## Theory
 
-### 1) Уравнение оптимальности Беллмана
+### 1) Bellman Optimality Equation
 
 The optimal Q-function satisfies:
 
@@ -25,7 +25,7 @@ Stochastic gradient descent on an MSE objective solves:
 
 $$
 \min_\theta \;\mathbb{E}_{(s,a,r,s')}\big[\big(y - Q_\theta(s,a)\big)^2\big],\quad
-\text{где } y = r + \gamma\, \max_{a'} Q_{\theta^-}(s', a')
+\text{where } y = r + \gamma\, \max_{a'} Q_{\theta^-}(s', a')
 $$
 
 ### 2) Double DQN vs classical DQN
@@ -43,7 +43,7 @@ This reduces overestimation and stabilizes training.
 - The target network \(Q_{\theta^-}\) copies the online network every `target_update_iter` steps:
 
 $$
-\theta^- \leftarrow \theta \quad \text{(периодически)}
+\theta^- \leftarrow \theta \quad \text{(periodically)}
 $$
 
 A fixed target over a short horizon reduces target drift.
@@ -53,7 +53,7 @@ A fixed target over a short horizon reduces target drift.
 - Transition priority i:
 
 $$
- p_i = |\delta_i| + \varepsilon_{\text{margin}} \quad \text{(далее может быть отсечён сверху: } p_i \le \text{abs\_error\_upper)}
+ p_i = |\delta_i| + \varepsilon_{\text{margin}} \quad \text{(may be clipped from above: } p_i \le \text{abs\_error\_upper)}
 $$
 
 - Sampling probability:
@@ -84,7 +84,7 @@ $$
 3. Update priorities \(p_i\) and the parameter \(\beta\).
 4. Every `target_update_iter` steps: \(\theta^- \leftarrow \theta\).
 
-Псевдокод:
+Pseudocode:
 
 ```text
 predict_q = Q_theta(s_batch)
@@ -92,16 +92,16 @@ best_action = argmax_a predict_q
 target_q = Q_theta_minus(s_next_batch)
 y = r_batch + gamma * target_q[range, best_action]
 
-# TD-ошибка и приоритеты
+# TD error and priorities
 delta = y - predict_q[range, a_batch]
 priority = clip(|delta| + margin, 0, abs_error_upper) ** alpha
 
-# веса важности и взвешенная MSE
+# importance weights and weighted MSE
 w = ((buffer_size * P(i)) ** -beta) / max_w
 loss = mean(w * (y - Q_theta(s_batch, a_batch))^2)
 update theta by SGD
 
-# обновить приоритеты, увеличить beta, периодически обновить target
+# update priorities, increase beta, periodically update target
 ```
 
 ### 7) Stabilization tricks

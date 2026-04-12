@@ -291,7 +291,7 @@ class ELVRocket(ModelBase):
         if to_deg:
             return np.rad2deg(self.store_input[index])[: self.number_time_steps - 1]
         if to_rad:
-            return np.deg2rad(self.store_states[index][: self.number_time_steps - 1])
+            return np.deg2rad(self.store_input[index][: self.number_time_steps - 1])
         return self.store_input[index][: self.number_time_steps - 1]
 
     def get_output(
@@ -309,9 +309,9 @@ class ELVRocket(ModelBase):
         """
         self.output_history = output2dict(self.store_outputs, self.selected_output)
         if to_deg:
-            return np.rad2deg(self.state_history[state_name][: self.time_step - 1])
+            return np.rad2deg(self.output_history[state_name][: self.time_step - 1])
         if to_rad:
-            return np.deg2rad(self.state_history[state_name][: self.time_step - 1])
+            return np.deg2rad(self.output_history[state_name][: self.time_step - 1])
         return self.output_history[state_name][: self.time_step - 1]
 
     def plot_output(

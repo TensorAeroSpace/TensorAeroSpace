@@ -4,7 +4,7 @@ This guide helps you set up a local development environment for TensorAeroSpace.
 
 ## 📋 Prerequisites
 
-- Python 3.9+ (3.10 or 3.11 recommended)
+- Python 3.10+ (3.11 or 3.12 recommended)
 - Poetry for dependency management
 - Git for version control
 - Make for running development tasks

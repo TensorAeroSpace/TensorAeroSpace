@@ -7,7 +7,7 @@
 [![Documentation Status](https://readthedocs.org/projects/tensoraerospace/badge/?version=latest)](https://tensoraerospace.readthedocs.io/en/latest/?badge=latest)
 [![Hugging Face](https://img.shields.io/badge/%F0%9F%A4%97%20Hugging%20Face-TensorAeroSpace-FFD21E)](https://huggingface.co/TensorAeroSpace)
 [![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/TensorAeroSpace/TensorAeroSpace)
-[![Python](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
+[![Python](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![GitHub stars](https://img.shields.io/github/stars/tensoraerospace/tensoraerospace.svg)](https://github.com/tensoraerospace/tensoraerospace/stargazers)
 [![Coverage Status](https://coveralls.io/repos/github/TensorAeroSpace/TensorAeroSpace/badge.svg?branch=develop)](https://coveralls.io/github/TensorAeroSpace/TensorAeroSpace?branch=develop)
@@ -53,7 +53,7 @@
 | **CPU** | 4 cores, AVX | 8+ cores, AVX2/FMA |
 | **RAM** | 8 GB | 16–32 GB for RL/Simulink |
 | **GPU** | Optional | NVIDIA RTX with ≥8 GB VRAM for SAC/DSAC/PPO, CUDA 12.2 support |
-| **Python** | 3.8–3.11 | 3.10/3.11 |
+| **Python** | 3.10–3.12 | 3.11/3.12 |
 | **Additional** | Git, Poetry or pip, Docker (optional) | MATLAB/Simulink R2022b+ (for simulink-example), Unity 2021.3.5f1/2023.2.20f1 |
 
 ### 📦 Installation

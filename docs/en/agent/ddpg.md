@@ -12,7 +12,7 @@ DDPG is an off-policy actor-critic for continuous actions: it trains a determini
 
 ## Theory (from the implementation)
 
-- Градиент политики (DPG):
+- Policy gradient (DPG):
 
 $$
 \nabla_\theta J(\theta) = \mathbb{E}_{s\sim \mathcal{D}}\Big[\nabla_a Q(s,a)\big|_{a=\pi_\theta(s)}\, \nabla_\theta \pi_\theta(s)\Big]

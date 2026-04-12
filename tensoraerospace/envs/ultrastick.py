@@ -40,6 +40,7 @@ class LinearLongitudinalUltrastick(gym.Env):
         reward_func: Optional[Callable] = None,
     ) -> None:
         """Initialize legacy Ultrastick environment."""
+        super().__init__()
         self.max_action_value = 25.0
         self.initial_state = initial_state
         self.number_time_steps = number_time_steps
@@ -107,7 +108,7 @@ class LinearLongitudinalUltrastick(gym.Env):
             float: Control evaluation.
         """
         ref_val = float(np.asarray(ref_signal[:, ts]).reshape(-1)[0])
-        return float(abs(float(state[0]) - ref_val))
+        return -float(abs(float(state[0]) - ref_val))
 
     def _get_info(self):
         """Return auxiliary info for Gym API (currently empty)."""

@@ -1,94 +1,94 @@
-# SimInTech: что это и как быстро создать пример
+# SimInTech: what it is and how to quickly create an example
 
-SimInTech — это среда визуального моделирования и имитации динамических систем с блочным редактором и встроенным скриптовым языком. Она позволяет собирать схемы из стандартных блоков, описывать математику в скриптах и запускать численное моделирование с сохранением и визуализацией результатов.
+SimInTech is a visual modeling and simulation environment for dynamic systems, featuring a block editor and a built-in scripting language. It allows you to assemble diagrams from standard blocks, describe mathematics in scripts, and run numerical simulations with result saving and visualization.
 
-Цели и требования
+Goals and requirements
 ------------------
 
-- Что вы сделаете:
-  - Создадите проект и минимальную схему.
-  - Напишете скрипт с параметрами и переменными состояния.
-  - Настроите блоки и параметры расчета.
-  - Запустите моделирование и увидите графики.
-- Что потребуется:
-  - Установленный SimInTech (актуальная версия).
-  - Базовое понимание линейных моделей/состояний (опционально).
+- What you will do:
+  - Create a project and a minimal diagram.
+  - Write a script with parameters and state variables.
+  - Configure blocks and simulation parameters.
+  - Run the simulation and see the plots.
+- What is required:
+  - SimInTech installed (current version).
+  - Basic understanding of linear models/state space (optional).
 
-Шаг 1. Создайте проект
+Step 1. Create a project
 ----------------------
 
-В главном окне SimInTech нажмите «Файл» → «Новый проект» → «Схема модели общего вида».
+In the main SimInTech window, click "File" -> "New Project" -> "General model diagram".
 
-![Новый проект](img/scheme.png)
+![New project](img/scheme.png)
 
-Шаг 2. Добавьте скрипт проекта
+Step 2. Add a project script
 -------------------------------
 
-Нажмите кнопку «Скрипт» в окне проекта и создайте скрипт. В нем удобно объявлять параметры (например, матрицы `A`, `B`, вектор начальных условий `x0`, шаг интегрирования и т.д.).
+Click the "Script" button in the project window and create a script. It is convenient to declare parameters here (e.g., matrices `A`, `B`, initial condition vector `x0`, integration step, etc.).
 
-![Скрипт проекта](img/code.png)
+![Project script](img/code.png)
 
-Шаг 3. Соберите минимальную схему
+Step 3. Assemble the minimal diagram
 ----------------------------------
 
-Разместите на поле проекта необходимые блоки:
+Place the necessary blocks on the project canvas:
 
-- «Константа» из группы «Источники» — задание входного воздействия;
-- «Переменные состояния» из группы «Динамические» — реализация состояния системы (ẋ = Ax + Bu);
-- «Временной график» из группы «Вывод данных» — визуализация сигналов.
+- "Constant" from the "Sources" group -- setting the input signal;
+- "State Variables" from the "Dynamics" group -- implementing the system state (x_dot = Ax + Bu);
+- "Time Plot" from the "Data Output" group -- visualizing signals.
 
-Соедините блоки линиями сигналов согласно вашей структуре (например, вход U → «Переменные состояния» → выходы X на график).
+Connect the blocks with signal lines according to your structure (e.g., input U -> "State Variables" -> outputs X to the plot).
 
-![Минимальная схема](img/simintech_model.png)
+![Minimal diagram](img/simintech_model.png)
 
-Шаг 4. Настройте блок «Переменные состояния»
+Step 4. Configure the "State Variables" block
 --------------------------------------------
 
-Откройте параметры блока и инициализируйте поля значениями из скрипта:
+Open the block parameters and initialize the fields with values from the script:
 
-- «Начальные условия» → `x0`;
-- «Матрица A (Nx*Ny)» → `A`;
-- «Матрица B (Nx*Nu)» → `B` (и при необходимости `C`, `D`).
+- "Initial conditions" -> `x0`;
+- "Matrix A (Nx*Ny)" -> `A`;
+- "Matrix B (Nx*Nu)" -> `B` (and `C`, `D` if needed).
 
-Проверьте размерности матриц и согласованность со схемой.
+Check the matrix dimensions and consistency with the diagram.
 
-![Параметры состояния](img/state_param.png)
+![State parameters](img/state_param.png)
 
-Шаг 5. Задайте параметры расчета
+Step 5. Set the simulation parameters
 ---------------------------------
 
-В окне проекта откройте «Параметры расчета» и настройте:
+In the project window, open "Simulation Parameters" and configure:
 
-- Временной интервал моделирования (t0, t_end);
-- Шаг интегрирования/метод (фиксированный/переменный);
-- Частоту сохранения результатов.
+- Simulation time interval (t0, t_end);
+- Integration step/method (fixed/variable);
+- Result saving frequency.
 
-![Параметры расчета](img/simintech_param.png)
+![Simulation parameters](img/simintech_param.png)
 
-Шаг 6. Запустите моделирование
+Step 6. Run the simulation
 -------------------------------
 
-Нажмите кнопку «Пуск». Убедитесь, что графики показывают ожидаемое поведение. При необходимости корректируйте параметры и снова запускайте расчет.
+Click the "Run" button. Make sure the plots show the expected behavior. Adjust the parameters as needed and re-run the simulation.
 
-!!! tip "Полезно помнить"
-    - Сохраняйте проект перед запуском, чтобы зафиксировать изменения скрипта.
-    - При «жестких» системах уменьшайте шаг интегрирования или меняйте метод.
-    - Подписывайте сигналы и оси — это облегчит анализ результатов.
+!!! tip "Useful to remember"
+    - Save the project before running to preserve script changes.
+    - For "stiff" systems, reduce the integration step or change the method.
+    - Label signals and axes -- this will make result analysis easier.
 
-Распространенные проблемы и решения
+Common issues and solutions
 -----------------------------------
 
-- «Переменная не найдена» при запуске:
-  - Проверьте, что имя переменной точно совпадает и задано в скрипте до запуска.
-- Пустые графики:
-  - Убедитесь в правильности соединений между блоками и выборе отображаемых сигналов.
-- Ошибка размерностей матриц:
-  - Сверьте размеры `A`, `B`, `C`, `D` с количеством входов/выходов блока «Переменные состояния».
-- Слишком медленный расчет:
-  - Увеличьте шаг (если допустимо) или сократите модель до необходимого минимума.
+- "Variable not found" at runtime:
+  - Check that the variable name matches exactly and is defined in the script before the run.
+- Empty plots:
+  - Verify the connections between blocks and the selection of displayed signals.
+- Matrix dimension error:
+  - Compare the sizes of `A`, `B`, `C`, `D` with the number of inputs/outputs of the "State Variables" block.
+- Simulation is too slow:
+  - Increase the step size (if acceptable) or simplify the model to the necessary minimum.
 
-Что дальше
+What's next
 ----------
 
-- Интеграция результатов и моделей с Python: см. раздел «Simintech to Python» — [simintechToPython.md](simintechToPython.md).
-- Примеры систем и контроллеров в TensorAeroSpace — раздел «Examples» в документации.
+- Integrating results and models with Python: see the "SimInTech to Python" section -- [simintechToPython.md](simintechToPython.md).
+- Examples of systems and controllers in TensorAeroSpace -- the "Examples" section in the documentation.

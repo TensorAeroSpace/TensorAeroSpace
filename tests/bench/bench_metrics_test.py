@@ -56,6 +56,34 @@ def test_plot_returns_metrics_and_no_show(monkeypatch):
     assert called.get("show") is True
 
 
+def test_benchmarking_one_step_new_name_works():
+    """The corrected method name 'benchmarking_one_step' should work."""
+    cb = ControlBenchmark()
+    t = np.linspace(0, 1, 50)
+    control = np.zeros_like(t)
+    control[10:] = 1.0
+    system = np.zeros_like(t)
+    system[10:] = np.linspace(0.0, 1.0, 40)
+
+    metrics = cb.benchmarking_one_step(control, system, signal_val=0.5, dt=t[1] - t[0])
+    assert "overshoot" in metrics
+    assert "settling_time" in metrics
+
+
+def test_becnchmarking_one_step_alias_backward_compatible():
+    """The old misspelled name 'becnchmarking_one_step' should still work as an alias."""
+    cb = ControlBenchmark()
+    t = np.linspace(0, 1, 50)
+    control = np.zeros_like(t)
+    control[10:] = 1.0
+    system = np.zeros_like(t)
+    system[10:] = np.linspace(0.0, 1.0, 40)
+
+    metrics = cb.becnchmarking_one_step(control, system, signal_val=0.5, dt=t[1] - t[0])
+    assert "overshoot" in metrics
+    assert "settling_time" in metrics
+
+
 def test_generate_report_contains_metrics():
     cb = ControlBenchmark()
     t = np.linspace(0, 1, 30)

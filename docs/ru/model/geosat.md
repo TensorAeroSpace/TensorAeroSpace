@@ -134,6 +134,14 @@ $$
 
 1. Tun, Hla & Mon, Lae & Lwin, Kyaw & Naing, Zaw. (2012). Implementation of Communication Satellite Orbit Controller Design Using State Space Techniques. ASEAN Journal on Science and Technology for Development. 29. 29‑49. 10.29037/ajstd.48.
 
+## Награда
+
+Функция награды по умолчанию возвращает отрицательную абсолютную ошибку отслеживания угловой позиции:
+
+$$r_t = -|\theta(t) - \theta_{\text{ref}}(t)|$$
+
+Чем выше награда (ближе к 0), тем лучше качество отслеживания. Пользовательская функция награды может быть передана через параметр `reward_func`.
+
 ## Быстрый старт {#быстрый-старт}
 
 === "Gymnasium"

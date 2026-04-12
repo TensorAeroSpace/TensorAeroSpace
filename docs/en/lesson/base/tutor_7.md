@@ -126,7 +126,7 @@ class AircraftLongitudinalControl:
         self.B = np.array([[-0.0322],
                           [0.0]])
         
-        self.C = np.array([[0, 1]])  # измеряем только угловую скорость q
+        self.C = np.array([[0, 1]])  # we measure only the pitch rate q
         
         self.D = np.array([[0]])
         
@@ -201,7 +201,7 @@ class AircraftLongitudinalControl:
         """Controller synthesis via pole placement"""
         
         if desired_poles is None:
-            desired_poles = [-1.0 + 1.0j, -1.0 - 1.0j]  # более быстрые и лучше задемпфированные
+            desired_poles = [-1.0 + 1.0j, -1.0 - 1.0j]  # faster and better damped
         
         print(f"\n{'='*60}")
         print("CONTROLLER SYNTHESIS")
@@ -229,7 +229,7 @@ class AircraftLongitudinalControl:
         """State observer synthesis"""
         
         if observer_poles is None:
-            # Полюсы наблюдателя в 5 раз быстрее полюсов регулятора
+            # Observer poles 5 times faster than controller poles
             observer_poles = [-5.0 + 5.0j, -5.0 - 5.0j]
         
         print(f"\n{'='*60}")
@@ -270,26 +270,26 @@ class AircraftLongitudinalControl:
         q0 = 0.0      # initial pitch rate
         x0_true = np.array([alpha0, q0])
         
-        # Начальная оценка (неточная)
+        # Initial estimate (inaccurate)
         x0_est = np.array([0.0, 0.0])
         
         print(f"Initial conditions:")
         print(f"  True state: α₀ = {alpha0:.3f} rad ({np.degrees(alpha0):.1f}°), q₀ = {q0:.3f} rad/s")
         print(f"  Initial estimate: α̂₀ = {x0_est[0]:.3f} rad, q̂₀ = {x0_est[1]:.3f} rad/s")
         
-        # Сценарий 1: Без управления
+        # Scenario 1: No control
         print("\nSimulating: Open-loop system...")
         sys_open = ctrl.ss(self.A, np.zeros((2, 1)), np.eye(2), np.zeros((2, 1)))
         t1, x1 = ctrl.initial_response(sys_open, t, X0=x0_true, return_x=True)
         
-        # Сценарий 2: Идеальная обратная связь
+        # Scenario 2: Ideal state feedback
         print("Simulating: Ideal feedback...")
         A_ideal = self.A - self.B @ self.K
         sys_ideal = ctrl.ss(A_ideal, np.zeros((2, 1)), np.eye(2), np.zeros((2, 1)))
         t2, x2 = ctrl.initial_response(sys_ideal, t, X0=x0_true, return_x=True)
         u2 = -self.K @ x2  # control signal
         
-        # Сценарий 3: Полная система (регулятор + наблюдатель)
+        # Scenario 3: Full system (controller + observer)
         print("Simulating: Full system with observer...")
         
         def full_system_dynamics(t, state):
@@ -314,7 +314,7 @@ class AircraftLongitudinalControl:
             
             return np.concatenate([dx_dt, dx_hat_dt])
         
-        # Численное интегрирование
+        # Numerical integration
         x0_full = np.concatenate([x0_true, x0_est])
         sol = solve_ivp(full_system_dynamics, [0, t_sim], x0_full, t_eval=t, rtol=1e-8)
         
@@ -392,8 +392,8 @@ class AircraftLongitudinalControl:
         axes[1, 1].grid(True)
         
         # 6. True state vs estimate
-        axes[1, 2].plot(t, np.degrees(full['x'][0, :]), 'b-', linewidth=2, label='Истинный α')
-        axes[1, 2].plot(t, np.degrees(full['x_hat'][0, :]), 'r--', linewidth=2, label='Оценка α̂')
+        axes[1, 2].plot(t, np.degrees(full['x'][0, :]), 'b-', linewidth=2, label='True α')
+        axes[1, 2].plot(t, np.degrees(full['x_hat'][0, :]), 'r--', linewidth=2, label='Estimate α̂')
         axes[1, 2].set_title('Comparison: true vs estimate (α)')
         axes[1, 2].set_xlabel('Time (s)')
         axes[1, 2].set_ylabel('α (deg)')
@@ -408,7 +408,7 @@ class AircraftLongitudinalControl:
         axes[2, 0].plot(np.degrees(full['x'][0, :]), np.degrees(full['x'][1, :]), 
                        'r-', linewidth=2, label='With observer')
         axes[2, 0].plot(np.degrees(full['x'][0, 0]), np.degrees(full['x'][1, 0]), 
-                       'ko', markersize=8, label='Начальная точка')
+                       'ko', markersize=8, label='Initial point')
         axes[2, 0].set_title('Phase portrait')
         axes[2, 0].set_xlabel('α (deg)')
         axes[2, 0].set_ylabel('q (deg/s)')
@@ -448,7 +448,7 @@ class AircraftLongitudinalControl:
         settling_time_ideal = ideal['t'][settling_idx_ideal[0]] if len(settling_idx_ideal) > 0 else ideal['t'][-1]
         settling_time_full = t[settling_idx_full[0]] if len(settling_idx_full) > 0 else t[-1]
         
-        systems = ['Идеальная ОС', 'С наблюдателем']
+        systems = ['Ideal FB', 'With observer']
         settling_times = [settling_time_ideal, settling_time_full]
         
         axes[2, 2].bar(systems, settling_times, alpha=0.7, color=['blue', 'red'])
@@ -487,7 +487,7 @@ def main():
     poles, controllable, observable = aircraft.analyze_open_loop()
     
     if not (controllable and observable):
-        print("Система не подходит для синтеза!")
+        print("System is not suitable for synthesis!")
         return
     
     # Controller synthesis
@@ -534,8 +534,8 @@ def extended_experiments():
     
     print("Task 1: Study the effect of different controller poles")
     for i, poles in enumerate(pole_variants):
-        print(f"Вариант {i+1}: {poles}")
-        # TODO: Реализуйте синтез и сравнение
+        print(f"Variant {i+1}: {poles}")
+        # TODO: Implement synthesis and comparison
     
     # 2. Measurement noise experiment
     print("\nTask 2: Add measurement noise and assess robustness")
@@ -552,10 +552,10 @@ def extended_experiments():
 # Run these experiments for deeper exploration!
 ```
 
-Этот полный пример демонстрирует:
+This complete example demonstrates:
 
-1. **Объектно-ориентированный подход** к проектированию систем управления
-2. **Полный цикл разработки** от анализа до моделирования
-3. **Детальную визуализацию** всех аспектов работы системы
-4. **Практические рекомендации** по настройке параметров
-5. **Задания для самостоятельной работы** для закрепления материала
+1. **Object-oriented approach** to control system design
+2. **Full development cycle** from analysis to simulation
+3. **Detailed visualization** of all aspects of system operation
+4. **Practical recommendations** for parameter tuning
+5. **Self-study exercises** for reinforcing the material

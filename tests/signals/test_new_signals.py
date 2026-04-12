@@ -300,6 +300,28 @@ def test_multisine():
         multisine(tp, frequencies, amplitudes, [0, np.pi / 4])
 
 
+def test_chirp_equal_frequencies_exponential():
+    """Test chirp with f0 == f1 (exponential) returns valid constant-frequency sinusoid."""
+    tp = np.linspace(0, 10, 1000)
+    f0 = 2.0
+    result = chirp(tp, f0=f0, f1=f0, amplitude=3.0, method="exponential")
+    # Should not raise and should return a valid array
+    assert result.shape == tp.shape
+    assert np.all(np.isfinite(result))
+    # Should match a constant-frequency sinusoid
+    expected = 3.0 * np.sin(2 * np.pi * f0 * tp)
+    assert np.allclose(result, expected)
+
+
+def test_chirp_f0_non_positive_raises():
+    """Test chirp raises ValueError when f0 <= 0."""
+    tp = np.linspace(0, 10, 100)
+    with pytest.raises(ValueError, match="f0 must be positive"):
+        chirp(tp, f0=0.0, f1=1.0)
+    with pytest.raises(ValueError, match="f0 must be positive"):
+        chirp(tp, f0=-1.0, f1=1.0)
+
+
 def test_damped_sinusoid():
     """Test damped sinusoid signal generation."""
     # Normal input data

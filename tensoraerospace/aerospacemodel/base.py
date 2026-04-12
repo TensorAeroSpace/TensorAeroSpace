@@ -385,13 +385,13 @@ class ModelBase:
             label_time = "t, sec."
         fig = plt.figure(figsize=figsize)
         plt.clf()
-        plt.legend()
-        plt.xlabel(label_time)
-        plt.ylabel(label)
-        plt.grid(True)
         plt.plot(
             time[: self.time_step - 1],
             state_hist[: self.time_step - 1],
             label=label,
             color="green",
         )
+        plt.legend()
+        plt.xlabel(label_time)
+        plt.ylabel(label)
+        plt.grid(True)

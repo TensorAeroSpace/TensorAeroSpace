@@ -1,4 +1,4 @@
-Поиск гиперпараметров 
+Hyperparameter Search 
 ===========================
 
 ```python
@@ -11,8 +11,8 @@
     from tensoraerospace.signals import unit_step
 
 .. warning::
-    Перед началом создаем объект класса `HyperParamOptimizationOptuna` в основе которого лежит библиотека `Optuna`.
-    Мы сделали обертку вокруг нее для удобства пользования, если вам неудобно пользоваться нашей оберткой вы всегда можете использовать просто `Optuna`.
+    Before starting, create an instance of the `HyperParamOptimizationOptuna` class, which is based on the `Optuna` library.
+    We have built a wrapper around it for convenience. If you prefer not to use our wrapper, you can always use `Optuna` directly.
 
 ```python
 
@@ -84,7 +84,7 @@
 
 .. warning::
 
-    Критерий который мы будем использовать для оптимизации это модуль разницы между текущим состоянием и заданным. Расчет данного критерия происходит в методе `tensoraerospace.envs.LinearLongitudinalF16.reward`. 
+    The criterion used for optimization is the absolute difference between the current state and the reference. This criterion is computed in the `tensoraerospace.envs.LinearLongitudinalF16.reward` method. 
 
     ```python
 
@@ -92,7 +92,7 @@
         def reward(state, ref_signal, ts):
             return np.abs(state[0] - ref_signal[:, ts])
     
-    В дальнейшем мы планируем добавить и иные критерии оптимальности в данную библиотеку 
+    In the future, we plan to add other optimality criteria to the library. 
 
 ```python
 

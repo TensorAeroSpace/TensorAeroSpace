@@ -145,6 +145,15 @@ def test_oscillation_count_zero_when_no_extrema_and_performance_index_nonnegativ
     assert val >= 0.0
 
 
+def test_overshoot_y_final_zero_returns_zero():
+    """When y_final is 0 (regulation to zero setpoint), overshoot should return 0.0."""
+    control = np.zeros(100, dtype=float)  # setpoint is zero
+    system = np.zeros(100, dtype=float)
+    system[10] = 0.5  # some transient spike
+    val = overshoot(control, system)
+    assert val == 0.0
+
+
 def test_performance_index_returns_scalar():
     control = np.ones(50, dtype=float)
     system = np.ones(50, dtype=float) * 0.9

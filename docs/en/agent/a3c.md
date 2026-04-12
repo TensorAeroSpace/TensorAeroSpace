@@ -2,7 +2,7 @@
 
 A3C combines the strengths of policy-based and value-based methods: multiple asynchronous workers explore the environment in parallel and update a shared (global) network using the advantage function. This PyTorch implementation uses multiprocessing with a shared global network and SharedAdam optimizer.
 
-![A3C схема](../agent/img/a3c/a3c.png){ width=800 }
+![A3C Diagram](../agent/img/a3c/a3c.png){ width=800 }
 
 ## Components
 

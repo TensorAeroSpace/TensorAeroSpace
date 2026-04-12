@@ -151,6 +151,14 @@ q \\
 
 1. A. Rauf, Muhammad Aamir Zafar, Z. Ashraf and H. Akhtar, "Aerodynamic modeling and state-space model extraction of a UAV using DATCOM and Simulink," 2011 3rd International Conference on Computer Research and Development, Shanghai, China, 2011, pp. 88-92, doi: 10.1109/ICCRD.2011.5763860.
 
+## Награда
+
+Функция награды по умолчанию возвращает отрицательную абсолютную ошибку отслеживания угла тангажа:
+
+$$r_t = -|\theta(t) - \theta_{\text{ref}}(t)|$$
+
+Чем выше награда (ближе к 0), тем лучше качество отслеживания. Пользовательская функция награды может быть передана через параметр `reward_func`.
+
 ## Быстрый старт {#быстрый-старт}
 
 === "Gymnasium"

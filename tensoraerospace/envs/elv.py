@@ -46,6 +46,7 @@ class LinearLongitudinalELVRocket(gym.Env):
         dt: float = 0.01,
     ) -> None:
         """Initialize ELV longitudinal environment."""
+        super().__init__()
         self.max_action_value = float(np.deg2rad(25.0))  # radians
         self.dt = dt
         self.initial_state = initial_state
@@ -115,7 +116,7 @@ class LinearLongitudinalELVRocket(gym.Env):
         Returns:
             reward (float): Control performance evaluation.
         """
-        return np.abs(state[0] - ref_signal[:, ts])
+        return -float(np.abs(state[0] - ref_signal[:, ts]).item())
 
     def step(self, action: np.ndarray):
         """Execute a simulation step.

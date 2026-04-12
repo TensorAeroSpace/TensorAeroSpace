@@ -2,7 +2,7 @@
 
 PPO is a reliable policy-gradient method that balances implementation simplicity with stable learning. Our implementation trains the actor and critic on batches of collected rollouts, using a clipped surrogate objective, policy entropy, and GAE-style advantage estimation.
 
-![PPO схема](../agent/img/ppo.png){ width=800 }
+![PPO Diagram](../agent/img/ppo.png){ width=800 }
 
 ## Components
 
@@ -106,8 +106,11 @@ agent = PPO(
 # Train
 agent.train()
 
-# Save
+# Save and load
 agent.save('./runs')
+
+# Load a trained agent
+agent = PPO.load('./runs')
 ```
 
 !!! tip

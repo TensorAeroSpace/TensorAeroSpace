@@ -1,4 +1,4 @@
-"""Global pytest configuration for filesystem isolation.
+"""Global pytest configuration for filesystem isolation and optional deps.
 
 Goal: make sure tests do not create files/folders in the repository root.
 
@@ -19,6 +19,31 @@ import sys
 from pathlib import Path
 
 import pytest
+
+# ---------------------------------------------------------------------------
+# Auto-skip tests that require optional dependencies (TensorFlow, Ray, etc.)
+# ---------------------------------------------------------------------------
+collect_ignore_glob: list[str] = []
+
+try:
+    import tensorflow  # noqa: F401
+except ImportError:
+    collect_ignore_glob += [
+        "agents/ihdp_actor_test.py",
+        "agents/ihdp_critic_test.py",
+        "agents/ihdp_agent_test.py",
+        "agents/ihdp_incremental_model_test.py",
+    ]
+
+try:
+    import ray  # noqa: F401
+except ImportError:
+    collect_ignore_glob += ["optimization/ray_test.py"]
+
+try:
+    import tensorboard  # noqa: F401
+except ImportError:
+    collect_ignore_glob += ["agents/a2c_narx_learner_test.py"]
 
 # Ensure the repository root is importable even when tests change cwd to /tmp
 # and/or when pytest uses importlib import mode.

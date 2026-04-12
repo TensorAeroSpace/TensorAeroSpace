@@ -158,6 +158,14 @@ u_2
 
 1. Santosh Kumar Choudhary (2015). Design and Analysis of an Optimal Orbit Control for a Communication Satellite. INTERNATIONAL JOURNAL OF COMMUNICATIONS. Volume 9, 2015
 
+## Награда
+
+Функция награды по умолчанию возвращает отрицательную абсолютную ошибку отслеживания радиальной скорости:
+
+$$r_t = -|\dot{\rho}(t) - \dot{\rho}_{\text{ref}}(t)|$$
+
+Чем выше награда (ближе к 0), тем лучше качество отслеживания. Пользовательская функция награды может быть передана через параметр `reward_func`.
+
 ## Быстрый старт {#быстрый-старт}
 
 === "Gymnasium"
