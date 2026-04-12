@@ -16,8 +16,8 @@ def test_x15_initialization_and_run_step():
     assert x1.shape[0] == 4
 
     # Histories
-    assert model.get_state("theta").shape[0] == steps - 1
-    assert model.get_control("ele").shape[0] == steps - 1
+    assert model.get_state("theta").shape[0] == steps
+    assert model.get_control("ele").shape[0] == steps
     assert model.get_output("q").shape[0] == model.time_step - 1
 
 

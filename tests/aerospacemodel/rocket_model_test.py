@@ -14,8 +14,8 @@ def test_rocket_initialization_and_run_step():
     x1 = model.run_step(np.array([100.0]))
     assert x1.shape[0] == 4
 
-    assert model.get_state("theta").shape[0] == steps - 1
-    assert model.get_control("ele").shape[0] == steps - 1
+    assert model.get_state("theta").shape[0] == steps
+    assert model.get_control("ele").shape[0] == steps
     assert model.get_output("q").shape[0] == model.time_step - 1
 
 

@@ -141,6 +141,23 @@ aux_loss = agent.auxillary_task(states, rewards)
 
 The auxiliary task encourages the network to encode reward-relevant features in its hidden representations, potentially improving sample efficiency and generalization.
 
+## Unified training interface
+
+PPO follows the shared unified `train()` API from `BaseRLModel`:
+
+```python
+stats = agent.train(
+    num_episodes=200,   # optional: overrides self.max_episodes
+    max_steps=1024,     # optional: overrides self.rollout_len
+)
+```
+
+Calling `agent.train()` with no arguments is still supported and uses
+the hyperparameters set at construction time. Note that PPO's
+`learn(states, actions, adv, old_probs, returns, rewards, old_values)`
+method is an internal per-batch gradient update helper and is kept
+untouched by the unified interface.
+
 ## API reference
 
 ::: tensoraerospace.agent.ppo.model.PPO

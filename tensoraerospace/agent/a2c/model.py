@@ -614,6 +614,11 @@ class A2C(BaseRLModel):
 
     def train(
         self,
+        num_episodes=None,
+        *,
+        max_steps=None,
+        save_best: bool = False,
+        verbose: bool = True,
         steps_on_memory=128,
         episodes=2000,
         episode_length=300,
@@ -621,26 +626,54 @@ class A2C(BaseRLModel):
         log_freq=10,
         save_freq=None,
         save_path=None,
+        **kwargs,
     ):
-        """Train the agent.
+        """Train the A2C agent (unified interface with legacy kwargs).
+
+        The method accepts both the canonical unified-API parameters
+        (``num_episodes``, ``max_steps``, ``save_best``, ``save_path``,
+        ``verbose``) and A2C's historical keyword-only options
+        (``steps_on_memory``, ``episodes``, ``episode_length`` …) so
+        existing notebooks continue to work unchanged.
 
         Args:
-            steps_on_memory (int): Number of steps to collect before learning.
-                Defaults to 128.
-            episodes (int): Total number of training episodes. Defaults to 2000.
-            episode_length (int): Maximum episode length. Defaults to 300.
-            discount_rewards (bool): Whether to use Monte Carlo returns (True)
-                or TD(0) (False). Defaults to True (recommended for stability).
-            log_freq (int): Frequency of console logging (in iterations).
-                Defaults to 10.
-            save_freq (int, optional): Frequency of saving checkpoints (in iterations).
-                If None, does not save during training.
+            num_episodes (int, optional): Unified-API alias for
+                ``episodes``. When provided, it overrides the legacy
+                ``episodes`` keyword.
+            max_steps (int, optional): Unified-API alias for
+                ``episode_length``. When provided, it overrides the
+                legacy ``episode_length`` keyword.
+            save_best (bool): Kept for API consistency – A2C always
+                saves the best model if ``save_path`` is provided.
+            verbose (bool): Reserved for symmetry with other agents.
+            steps_on_memory (int): Number of steps to collect before
+                learning. Defaults to 128.
+            episodes (int): Total number of training episodes. Defaults
+                to 2000.
+            episode_length (int): Maximum episode length. Defaults to
+                300.
+            discount_rewards (bool): Whether to use Monte Carlo returns
+                (True) or TD(0) (False). Defaults to True (recommended
+                for stability).
+            log_freq (int): Frequency of console logging (in
+                iterations). Defaults to 10.
+            save_freq (int, optional): Frequency of saving checkpoints
+                (in iterations). If None, does not save during
+                training.
             save_path (str, optional): Base path for saving checkpoints.
-                If None, uses current directory / 'checkpoints'.
+                If None, uses current directory / ``checkpoints``.
+            **kwargs: Ignored; present for forward-compat with the
+                unified interface.
 
         Returns:
             dict: Training statistics including episode rewards.
         """
+        _ = (save_best, verbose, kwargs)
+        # Unified-API overrides: translate to legacy names.
+        if num_episodes is not None:
+            episodes = int(num_episodes)
+        if max_steps is not None:
+            episode_length = int(max_steps)
         total_steps = (episodes * episode_length) // steps_on_memory
         best_reward = -np.inf
 

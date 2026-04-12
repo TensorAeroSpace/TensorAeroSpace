@@ -1381,7 +1381,16 @@ class PPO(BaseRLModel):
 
         return states2, actions2, returns2, adv2, rewards2, probs2
 
-    def train(self) -> None:
+    def train(
+        self,
+        num_episodes: Optional[int] = None,
+        *,
+        max_steps: Optional[int] = None,
+        save_best: bool = False,
+        save_path: Optional[str] = None,
+        verbose: bool = True,
+        **kwargs: Any,
+    ) -> dict:
         """Train the PPO agent through interaction with the environment.
 
         This method implements the complete PPO training loop:
@@ -1391,17 +1400,40 @@ class PPO(BaseRLModel):
             4. Log metrics to TensorBoard
             5. Periodically evaluate policy performance
 
-        The training loop continues for max_episodes, with each episode consisting
-        of rollout_len environment steps. Policy updates are performed using
-        num_epochs of optimization over mini-batches of size batch_size.
+        Args:
+            num_episodes: Number of training episodes. When ``None``
+                (the default), PPO falls back to ``self.max_episodes``
+                which was set at construction time. This preserves the
+                original no-argument call style.
+            max_steps: Optional override for ``self.rollout_len`` so
+                callers can shorten each rollout via the unified API.
+            save_best: Reserved for unified interface; PPO already
+                handles best-model saving via its internal background
+                saver, so this flag is currently a no-op.
+            save_path: Reserved for unified interface (see
+                ``save_best``).
+            verbose: Reserved for symmetry with other agents.
+            **kwargs: Additional algorithm-specific keyword arguments
+                (currently ignored by PPO).
 
-        Training can be stopped early using KL divergence thresholds (target_kl)
-        or by setting self.target = True.
+        Returns:
+            dict: Training metrics dictionary with episode rewards
+            collected so far, the final running average and any
+            early-stopping flag PPO may have triggered.
+
+        Training can be stopped early using KL divergence thresholds
+        (``target_kl``) or by setting ``self.target = True``.
 
         Note:
-            All metrics are logged to TensorBoard including actor/critic losses,
-            rewards, entropy, KL divergence, clip fraction, and explained variance.
+            All metrics are logged to TensorBoard including actor/critic
+            losses, rewards, entropy, KL divergence, clip fraction, and
+            explained variance.
         """
+        _ = (save_best, save_path, verbose, kwargs)
+        if num_episodes is not None:
+            self.max_episodes = int(num_episodes)
+        if max_steps is not None:
+            self.rollout_len = int(max_steps)
         try:
             # Detect vector env and use batched training loop
             reset_return = self.env.reset()
@@ -1411,7 +1443,11 @@ class PPO(BaseRLModel):
                 state0 = reset_return
             if self._is_vector_env(state0):
                 self._train_vector(initial_obs=state0)
-                return
+                return {
+                    "episode_rewards": list(getattr(self, "ep_reward", []) or []),
+                    "avg_rewards": list(getattr(self, "avg_rewards_list", []) or []),
+                    "best_reward": float(getattr(self, "best_reward", float("-inf"))),
+                }
 
             # Non-vector env fallback (original loop)
             for episode in tqdm(range(self.max_episodes)):
@@ -1554,7 +1590,7 @@ class PPO(BaseRLModel):
                 probs = torch.cat(probs).detach()
 
                 # Reward normalization (normalize returns)
-                if self.normalize_reward:
+                if self.normalize_reward and hasattr(self, 'ret_rms'):
                     returns_np = returns.cpu().numpy().flatten()
                     self.ret_rms.update(returns_np)
                     returns = torch.clamp(
@@ -1673,6 +1709,11 @@ class PPO(BaseRLModel):
             self.close()
 
         # print("Training completed. Average rewards list:", self.avg_rewards_list)
+        return {
+            "episode_rewards": list(getattr(self, "ep_reward", []) or []),
+            "avg_rewards": list(getattr(self, "avg_rewards_list", []) or []),
+            "best_reward": float(getattr(self, "best_reward", float("-inf"))),
+        }
 
     def get_param_env(self) -> Dict[str, Dict[str, Any]]:
         """Get environment and agent parameters for serialization.

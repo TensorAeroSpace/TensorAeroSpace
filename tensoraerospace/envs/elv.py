@@ -67,6 +67,7 @@ class LinearLongitudinalELVRocket(gym.Env):
         else:
             self.reward_func = self.reward
 
+        # Constructor already invokes initialise_system internally.
         self.model = ELVRocket(
             initial_state,
             number_time_steps=number_time_steps,
@@ -80,9 +81,6 @@ class LinearLongitudinalELVRocket(gym.Env):
         ]
 
         self.ref_signal = reference_signal
-        self.model.initialise_system(
-            x0=initial_state, number_time_steps=number_time_steps
-        )
         self.number_time_steps = number_time_steps
         self.action_space = spaces.Box(
             low=-self.max_action_value,
@@ -141,7 +139,7 @@ class LinearLongitudinalELVRocket(gym.Env):
             self.reference_signal,
             self.current_step,
         )
-        self.done = self.current_step >= self.number_time_steps - 2
+        self.done = self.current_step >= self.number_time_steps - 1
         info = self._get_info()
 
         return next_state.reshape(-1), reward, self.done, False, info
@@ -157,15 +155,13 @@ class LinearLongitudinalELVRocket(gym.Env):
 
         self.current_step = 0
         self.done = False
+        # Constructor already invokes initialise_system internally.
         self.model = ELVRocket(
             self.initial_state,
             number_time_steps=self.number_time_steps,
             selected_state_output=None,
             t0=0,
             dt=self.dt,
-        )
-        self.model.initialise_system(
-            x0=self.initial_state, number_time_steps=self.number_time_steps
         )
         info = self._get_info()
 
@@ -260,15 +256,13 @@ class ImprovedELVEnv(gym.Env):
         self.init_args = locals()
 
         # Underlying ELV model (keep full state output order)
+        # Constructor already invokes initialise_system internally.
         self.model = ELVRocket(
             self.initial_state,
             number_time_steps=self.number_time_steps,
             selected_state_output=None,
             t0=0,
             dt=self.dt,
-        )
-        self.model.initialise_system(
-            x0=self.initial_state, number_time_steps=self.number_time_steps
         )
 
     # Helper indices based on ELV state order [alpha, q, theta]
@@ -395,7 +389,7 @@ class ImprovedELVEnv(gym.Env):
             reward = -100.0
             terminated = True
 
-        truncated = self.current_step >= self.number_time_steps - 2
+        truncated = self.current_step >= self.number_time_steps - 1
 
         return (
             self._get_obs(),

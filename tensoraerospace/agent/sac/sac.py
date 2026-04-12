@@ -105,6 +105,7 @@ class SAC(BaseRLModel):
         self.log_every_updates = int(log_every_updates)
         if self.log_every_updates < 1:
             raise ValueError("log_every_updates must be >= 1")
+        self.hidden_size = int(hidden_size)
         self.critic = QNetwork(num_inputs, action_space.shape[0], hidden_size).to(
             device=self.device
         )
@@ -344,18 +345,48 @@ class SAC(BaseRLModel):
             alpha_tlogs.item(),
         )
 
-    def train(self, *args, **kwargs) -> None:
-        """Train SAC for the given number of episodes."""
-        num_episodes = (
-            int(args[0]) if len(args) > 0 else int(kwargs.get("num_episodes", 1))
-        )
-        save_best = bool(kwargs.get("save_best", False))
-        save_path = kwargs.get("save_path", None)
+    def train(
+        self,
+        num_episodes: int = 1,
+        *,
+        max_steps: Optional[int] = None,
+        save_best: bool = False,
+        save_path: Optional[str] = None,
+        verbose: bool = True,
+        **kwargs: Any,
+    ) -> dict:
+        """Train SAC for the given number of episodes (unified interface).
+
+        Args:
+            num_episodes: Number of training episodes.
+            max_steps: Optional per-episode step cap. ``None`` lets the
+                environment decide when an episode terminates.
+            save_best: If True, save a checkpoint whenever a new best
+                episode reward is reached.
+            save_path: Destination for best-reward checkpoints.
+            verbose: If True, show a tqdm progress bar.
+            **kwargs: Algorithm-specific options. Recognized keys:
+
+                - ``save_best_with_gradients`` (bool): include optimizer
+                  gradients when saving the best model.
+
+        Returns:
+            dict: Training metrics with keys ``episode_rewards``,
+            ``best_reward`` and ``updates``.
+        """
+        # Backward-compat: legacy call style passed num_episodes as the
+        # first positional arg via *args, or via a ``num_episodes`` kwarg.
+        num_episodes = int(num_episodes)
+        save_best = bool(save_best)
         save_best_with_gradients = bool(kwargs.get("save_best_with_gradients", False))
         # Training Loop
         updates = 0
         best_reward = float("-inf")
-        for i_episode in tqdm(range(num_episodes)):
+        episode_rewards: list = []
+        ep_iter = range(num_episodes)
+        if verbose:
+            ep_iter = tqdm(ep_iter)
+        for i_episode in ep_iter:
             episode_reward = 0
             episode_steps = 0
             done = False
@@ -383,6 +414,10 @@ class SAC(BaseRLModel):
                 )  # Append transition to memory
                 state = next_state
                 done = done_env
+                # Optional user-provided step cap (unified interface).
+                if max_steps is not None and episode_steps >= int(max_steps):
+                    done = True
+            episode_rewards.append(float(episode_reward))
             self.writer.add_scalar("Performance/Reward", episode_reward, i_episode)
             self.writer.add_scalar(
                 "Performance/EpisodeLength", episode_steps, i_episode
@@ -398,6 +433,12 @@ class SAC(BaseRLModel):
                     best_reward,
                     i_episode,
                 )
+
+        return {
+            "episode_rewards": episode_rewards,
+            "best_reward": float(best_reward) if episode_rewards else float("-inf"),
+            "updates": int(updates),
+        }
 
     def train_vector(
         self,
@@ -621,6 +662,7 @@ class SAC(BaseRLModel):
             "automatic_entropy_tuning": self.automatic_entropy_tuning,
             "device": self.device.type,
             "lr": self.critic_optim.defaults["lr"],
+            "hidden_size": self.hidden_size,
         }
 
         return {
@@ -668,9 +710,11 @@ class SAC(BaseRLModel):
         config = self.get_param_env()
         with open(config_path, "w", encoding="utf-8") as outfile:
             json.dump(config, outfile)
-        torch.save(self.policy, policy_path)
-        torch.save(self.critic, critic_path)
-        torch.save(self.critic_target, critic_target_path)
+        # Save state_dicts only, not pickled module objects, to avoid
+        # tight coupling with class definitions and to allow safe loading.
+        torch.save(self.policy.state_dict(), policy_path)
+        torch.save(self.critic.state_dict(), critic_path)
+        torch.save(self.critic_target.state_dict(), critic_target_path)
 
         # Save log_alpha if automatic entropy tuning is used
         if getattr(self, "automatic_entropy_tuning", False):
@@ -781,24 +825,20 @@ class SAC(BaseRLModel):
             ):
                 new_agent.device = torch.device("cpu")
 
-        # Load models
-        new_agent.critic = torch.load(
-            critic_path, map_location=new_agent.device, weights_only=False
-        )
-        new_agent.policy = torch.load(
-            policy_path, map_location=new_agent.device, weights_only=False
-        )
-        new_agent.critic_target = torch.load(
-            critic_target_path, map_location=new_agent.device, weights_only=False
-        )
+        # Load network weights from state_dict files. Networks were already
+        # constructed with the correct architecture in cls(env, **params).
+        policy_state = torch.load(policy_path, map_location="cpu")
+        critic_state = torch.load(critic_path, map_location="cpu")
+        critic_target_state = torch.load(critic_target_path, map_location="cpu")
 
-        # Ensure modules live on new_agent.device
-        try:
-            new_agent.critic = new_agent.critic.to(new_agent.device)
-            new_agent.policy = new_agent.policy.to(new_agent.device)
-            new_agent.critic_target = new_agent.critic_target.to(new_agent.device)
-        except Exception:
-            pass
+        new_agent.policy.load_state_dict(policy_state)
+        new_agent.critic.load_state_dict(critic_state)
+        new_agent.critic_target.load_state_dict(critic_target_state)
+
+        # Move networks to the requested device after loading CPU state_dicts
+        new_agent.policy = new_agent.policy.to(new_agent.device)
+        new_agent.critic = new_agent.critic.to(new_agent.device)
+        new_agent.critic_target = new_agent.critic_target.to(new_agent.device)
 
         # Restore log_alpha if available
         if (

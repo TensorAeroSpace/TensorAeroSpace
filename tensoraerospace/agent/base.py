@@ -14,6 +14,7 @@ Main components:
 
 import importlib
 from abc import ABC
+from typing import Any, Optional
 
 from huggingface_hub import HfApi, snapshot_download
 
@@ -66,9 +67,64 @@ class BaseRLModel(ABC):
         """
         pass
 
-    def train(self):
-        """Start the model training process."""
-        pass
+    def train(
+        self,
+        num_episodes: int = 100,
+        *,
+        max_steps: Optional[int] = None,
+        save_best: bool = False,
+        save_path: Optional[str] = None,
+        verbose: bool = True,
+        **kwargs: Any,
+    ) -> dict:
+        """Start the model training process (unified interface).
+
+        This is the canonical training entry point shared by all RL agents
+        in the TensorAeroSpace library. Concrete subclasses override this
+        method to run their algorithm-specific training loop while keeping
+        the same signature.
+
+        Args:
+            num_episodes: Number of training episodes to run. For agents
+                that operate in a frame/step budget (e.g. DDPG, GAIL),
+                this is combined with ``max_steps`` to compute a total
+                number of environment interactions.
+            max_steps: Optional maximum steps per episode. When ``None``,
+                the agent uses its default / environment-provided horizon.
+            save_best: If True, checkpoint the best-reward model during
+                training.
+            save_path: Path (file or directory) where best checkpoints are
+                written when ``save_best`` is True.
+            verbose: If True, print / display training progress.
+            **kwargs: Algorithm-specific parameters. See the concrete
+                agent's docstring for the accepted keys.
+
+        Returns:
+            dict: Training metrics (rewards, losses, etc.). The base
+            implementation is a no-op and returns an empty dict so
+            legacy callers that invoke ``BaseRLModel.train()`` with no
+            arguments keep working.
+        """
+        # Base implementation is intentionally a no-op so subclasses can
+        # opt-in to the unified interface without breaking existing code
+        # that still uses legacy positional signatures.
+        _ = (num_episodes, max_steps, save_best, save_path, verbose, kwargs)
+        return {}
+
+    def learn(self, *args: Any, **kwargs: Any) -> Any:
+        """Alias kept for backward compatibility.
+
+        Historically some agents (DDPG, GAIL, PPO, A2C variants) exposed
+        their training loop under the name ``learn``. The canonical name
+        in the unified API is :meth:`train`. This base implementation
+        simply forwards to :meth:`train` so code written against the new
+        interface can still call ``agent.learn(...)``.
+
+        Concrete agents that already define their own ``learn`` (for
+        example PPO's gradient-update helper) override this method and
+        keep their existing behavior.
+        """
+        return self.train(*args, **kwargs)
 
     def action_probability(self):
         """Returns action probabilities for the last state.

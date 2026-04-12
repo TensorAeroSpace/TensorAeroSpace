@@ -15,7 +15,7 @@ dt = 0.01
 tp = generate_time_period(tn=20, dt=dt)
 tps = convert_tp_to_sec_tp(tp, dt=dt)
 REFERENCE_SIGNAL = np.reshape(
-    unit_step(degree=5, tp=tp, time_step=10, output_rad=True), [1, -1]
+    unit_step(degree=5, tp=tp, time_step=0.1, output_rad=True), [1, -1]
 )
 NUMBER_TIME_STEPS = 1000
 
@@ -603,4 +603,4 @@ def test_linear_b747_multiple_steps_to_done():
 
     # Should have reached done
     assert env.done is True
-    assert env.current_step >= env.number_time_steps - 2
+    assert env.current_step >= env.number_time_steps - 1

@@ -182,9 +182,13 @@ def damping_degree(system_signal: np.ndarray) -> float:
     amplitudes = system_signal[peaks]
 
     # Damping degree calculation
-    y_values = 1 - (amplitudes[1:] / amplitudes[:-1])
-
-    return np.mean(y_values)
+    denom = amplitudes[:-1]
+    # Guard against division by (near-)zero peaks
+    safe_denom = np.where(np.abs(denom) > 1e-12, denom, np.nan)
+    y_values = 1 - (amplitudes[1:] / safe_denom)
+    if np.all(np.isnan(y_values)):
+        return 0.0
+    return float(np.nanmean(y_values))
 
 
 def static_error(control_signal: np.ndarray, system_signal: np.ndarray) -> float:

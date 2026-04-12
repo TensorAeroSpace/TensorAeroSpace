@@ -451,8 +451,19 @@ class ImprovedB747VecEnvTorch:
         self._settle_time_s[idx] = -1.0
         self._prev_error_sign[idx] = 0
         self._sign_changes[idx] = 0
-        self._prev_e_theta[idx] = 0.0
-        self._prev_e_q_rel[idx] = 0.0
+        # Initialize progress-shaping errors using the new reference's first
+        # sample and the current (reset) state so that on the first step
+        # after auto-reset the progress term (prev_e^2 - e^2) is meaningful
+        # rather than using the stale ``prev_e = 0``.
+        theta_reset = self.state[idx, self._idx_theta]
+        q_reset = self.state[idx, self._idx_q]
+        target_reset = self.reference_signal[idx, 0]
+        # Reference rate at t=0 is undefined (no previous sample); treat as 0,
+        # matching `ref_theta_dot` clamp behavior at the start of an episode.
+        e_theta_init = (theta_reset - target_reset) / float(self.max_pitch_rad)
+        e_q_rel_init = (q_reset - 0.0) / float(self.max_pitch_rate_rad_s)
+        self._prev_e_theta[idx] = e_theta_init.detach()
+        self._prev_e_q_rel[idx] = e_q_rel_init.detach()
 
     def reset(
         self, seed: Optional[int] = None, options: Optional[dict[str, Any]] = None
@@ -751,18 +762,19 @@ class ImprovedB747VecEnvTorch:
         # - discourage early termination
         # - encourage finishing the full time horizon
         # --------------------------------------------------------------
-        term_val = float(-100.0 - float(self.early_termination_penalty))
+        term_tensor = torch.full_like(
+            reward, -100.0 - float(self.early_termination_penalty)
+        )
         if self.early_termination_penalty_per_step != 0.0:
             remaining = torch.clamp(
                 (int(self.number_time_steps - 2) - self.step_count).to(torch.float32),
                 min=0.0,
             )
-            term_val = (
-                term_val - float(self.early_termination_penalty_per_step) * remaining
+            term_tensor = (
+                term_tensor
+                - float(self.early_termination_penalty_per_step) * remaining
             )
-            reward = torch.where(terminated, term_val, reward)
-        else:
-            reward = torch.where(terminated, torch.full_like(reward, term_val), reward)
+        reward = torch.where(terminated, term_tensor, reward)
         if self.survival_bonus != 0.0:
             reward = reward + float(self.survival_bonus) * (~terminated).to(
                 torch.float32

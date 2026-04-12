@@ -75,7 +75,21 @@ env = gym.make('LinearLongitudinalF16-v0',
 expert_data = np.load('expert_f16.npy')
 agent = GAIL(env, learning_rate=3e-3, max_steps=20, mini_batch_size=16, epochs=4, data=expert_data)
 agent.learn(max_frames=5000, max_reward=-1)
+
+# Unified API (wraps learn)
+agent.train(num_episodes=250, max_steps=20, max_reward=-1)
 ```
+
+## Unified training interface
+
+GAIL exposes the shared unified `train()` API from `BaseRLModel`.
+Internally it delegates to the legacy `learn()` method, translating
+`num_episodes * max_steps` into a `max_frames` budget. GAIL-specific
+options accepted via `**kwargs`:
+
+- `max_frames` (`int`): override the computed step budget.
+- `max_reward` (`float`): early-stop threshold for the mean test
+  reward.
 
 !!! tip
     High-quality `expert_data` is crucial—include demonstrations with varied initial states and maneuvers.

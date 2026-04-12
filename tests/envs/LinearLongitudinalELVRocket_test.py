@@ -15,7 +15,7 @@ tp = generate_time_period(tn=20, dt=dt)  # Временной периуд
 tps = convert_tp_to_sec_tp(tp, dt=dt)
 number_time_steps = len(tp)  # Количество временных шагов
 REFERENCE_SIGNAL = np.reshape(
-    unit_step(degree=5, tp=tp, time_step=10, output_rad=True), [1, -1]
+    unit_step(degree=5, tp=tp, time_step=0.1, output_rad=True), [1, -1]
 )  # Заданный сигнал
 NUMBER_TIME_STEPS = 1000
 INITIAL_STATE_ENV = np.array([0, 0])

@@ -505,6 +505,24 @@ After 3000 episodes of training:
 
 ---
 
+## Unified training interface
+
+A3C follows the shared unified `train()` signature from `BaseRLModel`:
+
+```python
+agent.train(
+    num_episodes=500,   # optional: overrides self.max_episodes
+    max_steps=200,      # optional: overrides self.max_ep_step
+)
+```
+
+Calling `agent.train()` with no arguments still works and preserves
+the values passed to the `Agent` constructor (`max_episodes`,
+`max_ep_step`). The method returns a dict with `global_ep`,
+`global_step` and `global_ep_r`.
+
+---
+
 ## API Reference
 
 ### Agent

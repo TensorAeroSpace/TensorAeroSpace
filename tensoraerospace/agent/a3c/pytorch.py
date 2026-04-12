@@ -9,7 +9,7 @@ from __future__ import annotations
 import datetime
 import json
 from pathlib import Path
-from typing import Callable, Optional, Tuple, Union
+from typing import Any, Callable, Optional, Tuple, Union
 
 import numpy as np
 import torch
@@ -465,8 +465,37 @@ class Agent:
         except Exception:
             self.writer = None
 
-    def train(self) -> None:
-        """Launch training across worker processes (or single-process mode)."""
+    def train(
+        self,
+        num_episodes: Optional[int] = None,
+        *,
+        max_steps: Optional[int] = None,
+        save_best: bool = False,
+        save_path: Optional[str] = None,
+        verbose: bool = True,
+        **kwargs: Any,
+    ) -> dict:
+        """Launch training across worker processes (unified interface).
+
+        Args:
+            num_episodes: Override for ``self.max_episodes``; when
+                ``None`` the value supplied at construction is used,
+                preserving the original no-argument call style.
+            max_steps: Override for ``self.max_ep_step``.
+            save_best: Reserved for API consistency.
+            save_path: Reserved for API consistency.
+            verbose: Reserved for symmetry.
+            **kwargs: Currently unused.
+
+        Returns:
+            dict: Summary dictionary (``global_ep``, ``global_step``,
+            ``global_ep_r``).
+        """
+        _ = (save_best, save_path, verbose, kwargs)
+        if num_episodes is not None:
+            self.max_episodes = int(num_episodes)
+        if max_steps is not None:
+            self.max_ep_step = int(max_steps)
         workers = []
         if self.run_in_main:
             # run a single worker in current process (useful for tests).
@@ -496,7 +525,11 @@ class Agent:
                     w.env.close()
                 except Exception:
                     pass
-            return
+            return {
+                "global_ep": int(self.global_ep.value),
+                "global_step": int(self.global_step.value),
+                "global_ep_r": float(self.global_ep_r.value),
+            }
 
         # IMPORTANT: Do NOT create envs in the parent process here.
         # Each worker creates its own env inside Worker.run() via
@@ -535,6 +568,12 @@ class Agent:
 
         for w in workers:
             w.join()
+
+        return {
+            "global_ep": int(self.global_ep.value),
+            "global_step": int(self.global_step.value),
+            "global_ep_r": float(self.global_ep_r.value),
+        }
 
     def close(self) -> None:
         """Close TensorBoard writer and cleanup resources."""

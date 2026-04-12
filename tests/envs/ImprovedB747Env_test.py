@@ -11,7 +11,7 @@ dt = 0.01
 tp = generate_time_period(tn=20, dt=dt)
 tps = convert_tp_to_sec_tp(tp, dt=dt)
 REFERENCE_SIGNAL = np.reshape(
-    unit_step(degree=5, tp=tp, time_step=10, output_rad=True), [1, -1]
+    unit_step(degree=5, tp=tp, time_step=0.1, output_rad=True), [1, -1]
 )
 NUMBER_TIME_STEPS = 1000
 
@@ -72,7 +72,7 @@ def test_truncation_flag():
     small_steps_env = ImprovedB747Env(
         initial_state=INITIAL_STATE,
         reference_signal=REFERENCE_SIGNAL,
-        number_time_steps=3,  # very small to hit truncation quickly
+        number_time_steps=2,  # very small to hit truncation quickly
         dt=dt,
         initial_elevator_deg=0.0,
         use_initial_action_on_first_step=False,
@@ -83,7 +83,7 @@ def test_truncation_flag():
     )
     assert isinstance(terminated, bool)
     assert isinstance(truncated, bool)
-    # For number_time_steps=3, truncated becomes True at current_step>=1
+    # For number_time_steps=2, truncated becomes True at current_step>=1
     assert truncated is True
 
 

@@ -72,13 +72,13 @@ def test_ultrastick_env_reset_and_step(monkeypatch):
     )
 
     obs, info = env.reset()
-    assert obs.shape == (2, 1)
+    assert obs.shape == (2,)
 
     # Step with an out-of-range action to trigger clipping
     next_obs, reward, done, truncated, info = env.step(
         np.array([100.0], dtype=np.float32)
     )
-    assert next_obs.shape == (2, 1)
+    assert next_obs.shape == (2,)
     assert isinstance(
         reward, (float, np.floating)
     ), f"Reward should be float, got {type(reward)}"

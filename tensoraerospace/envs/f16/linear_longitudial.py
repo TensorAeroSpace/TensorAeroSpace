@@ -90,13 +90,13 @@ class LinearLongitudinalF16(gym.Env):
         self.action_space = spaces.Box(
             low=-self.max_action_value,
             high=self.max_action_value,
-            shape=(len(self.control_space), 1),
+            shape=(len(self.control_space),),
             dtype=np.float32,
         )
         self.observation_space = spaces.Box(
             low=-np.inf,
             high=np.inf,
-            shape=(len(self.state_space), 1),
+            shape=(len(self.state_space),),
             dtype=np.float32,
         )
 
@@ -172,13 +172,13 @@ class LinearLongitudinalF16(gym.Env):
             reward = self.reward_func(
                 next_state, self.reference_signal, self.current_step
             )
-        self.done = self.current_step >= self.number_time_steps - 2
+        self.done = self.current_step >= self.number_time_steps - 1
         info = self._get_info()
 
         reward_value = float(np.asarray(reward, dtype=float).squeeze())
 
         return (
-            next_state.reshape([-1, 1]),
+            np.asarray(next_state).reshape(-1).astype(np.float32),
             reward_value,
             self.done,
             False,
@@ -206,20 +206,19 @@ class LinearLongitudinalF16(gym.Env):
         # Пересобираем начальное состояние под модель
         model_x0 = self._build_model_initial_state(self.initial_state, self.state_space)
 
+        # Constructor already calls initialise_system internally, so no
+        # explicit call is needed here.
         self.model = LongitudinalF16(
             model_x0,
             number_time_steps=self.number_time_steps,
             selected_state_output=self.state_space,
-        )
-        self.model.initialise_system(
-            x0=model_x0, number_time_steps=self.number_time_steps
         )
         info = self._get_info()
 
         return (
             np.array(model_x0, dtype=np.float32)[
                 self.model.selected_state_index
-            ].reshape([-1, 1]),
+            ].reshape(-1),
             info,
         )
 

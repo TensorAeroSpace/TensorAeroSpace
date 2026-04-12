@@ -185,6 +185,31 @@ agent.train_vector(
 )
 ```
 
+## Unified training interface
+
+DSAC implements the shared unified `train()` API from `BaseRLModel`:
+
+```python
+def train(
+    self,
+    num_episodes: int = 1,
+    *,
+    max_steps: Optional[int] = None,
+    save_best: bool = False,
+    save_path: Optional[str] = None,
+    verbose: bool = True,
+    **kwargs,
+) -> dict
+```
+
+Algorithm-specific options accepted via `**kwargs`:
+
+- `save_best_with_gradients` (`bool`): include optimizer gradients when
+  saving the best model checkpoint.
+
+Returns a metrics dictionary with `episode_rewards`, `best_reward`,
+`updates` and `total_steps`.
+
 ## API Reference
 
 ::: tensoraerospace.agent.dsac.dsac.DSAC

@@ -21,9 +21,6 @@ from huggingface_hub import HfApi, snapshot_download
 
 from ..metrics import create_metric_writer
 
-np.random.seed(1)
-torch.manual_seed(1)
-
 # Select device for computation
 _DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -259,6 +256,7 @@ class DQNAgent:
         beta_increment_per_sample: float = 0.001,
         log_dir: str | None = None,
         verbose_histogram: bool = False,
+        seed: int = 1,
     ) -> None:
         """Initialize DQN agent and replay buffer.
 
@@ -281,7 +279,11 @@ class DQNAgent:
             beta_increment_per_sample: Increment for beta per sample.
             log_dir: Directory for TensorBoard logs.
             verbose_histogram: Whether to log histograms extensively.
+            seed: Random seed for numpy and torch. Defaults to 1.
         """
+        np.random.seed(seed)
+        torch.manual_seed(seed)
+
         # Models and optimizer
         self.device = _DEVICE
         self.model = model.to(self.device)
@@ -326,9 +328,42 @@ class DQNAgent:
         self.global_step = 0
         self.episode_idx = 0
 
-    def train(self) -> None:
-        """Function for training."""
+    def train(
+        self,
+        num_episodes: Optional[int] = None,
+        *,
+        max_steps: Optional[int] = None,
+        save_best: bool = False,
+        save_path: Optional[str] = None,
+        verbose: bool = True,
+        **kwargs: Any,
+    ) -> dict:
+        """Train the DQN agent (unified interface).
 
+        DQN is frame-based internally. ``num_episodes`` is treated as an
+        episode target that is multiplied by ``max_steps`` to derive a
+        total training-step budget. When ``max_steps`` is omitted, the
+        original ``self.train_nums`` budget set at construction is used.
+
+        Args:
+            num_episodes: Target number of episodes. Converted to a
+                step budget via ``num_episodes * max_steps`` when
+                ``max_steps`` is provided.
+            max_steps: Approximate maximum steps per episode.
+            save_best: Reserved for API consistency.
+            save_path: Reserved for API consistency.
+            verbose: Reserved for symmetry.
+            **kwargs: Currently unused.
+
+        Returns:
+            dict: Empty dict for API compatibility.
+        """
+        _ = (save_best, save_path, verbose, kwargs)
+        if num_episodes is not None and max_steps is not None:
+            self.train_nums = int(num_episodes) * int(max_steps)
+        elif max_steps is not None:
+            # Allow overriding the step cap without touching num_episodes.
+            self.train_nums = int(max_steps)
         obs, _info = self.env.reset()
         episode_reward = 0.0
         pbar = tqdm(range(1, self.train_nums), desc="DQNAgent Train", unit="step")
@@ -373,6 +408,7 @@ class DQNAgent:
                 obs, info = self.env.reset()
             else:
                 obs = next_obs
+        return {"episodes": int(self.episode_idx)}
 
     def train_step(self) -> Any:
         """Function for training step.
@@ -882,9 +918,26 @@ class PERNARXAgent:
         self.global_step = 0
         self.episode_idx = 0
 
-    def train(self) -> None:
-        """Function for training."""
+    def train(
+        self,
+        num_episodes: Optional[int] = None,
+        *,
+        max_steps: Optional[int] = None,
+        save_best: bool = False,
+        save_path: Optional[str] = None,
+        verbose: bool = True,
+        **kwargs: Any,
+    ) -> dict:
+        """Train the PERNARX variant (unified interface).
 
+        See :meth:`DQNAgent.train` for semantics. Arguments mirror the
+        canonical unified signature.
+        """
+        _ = (save_best, save_path, verbose, kwargs)
+        if num_episodes is not None and max_steps is not None:
+            self.train_nums = int(num_episodes) * int(max_steps)
+        elif max_steps is not None:
+            self.train_nums = int(max_steps)
         obs, _info = self.env.reset()
         prev_action = [0]
         episode_reward = 0.0
@@ -930,6 +983,7 @@ class PERNARXAgent:
                 obs, _info = self.env.reset()  # one episode end
             else:
                 obs = next_obs
+        return {"episodes": int(self.episode_idx)}
 
     def train_step(self) -> Any:
         """Function for training step.
