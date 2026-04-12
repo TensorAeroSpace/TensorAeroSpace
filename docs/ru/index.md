@@ -245,7 +245,7 @@ for t in range(N - 1):
 
 -   :material-python: **Поддержка Python**
 
-    3.9 — 3.12, совместимость с ecosystem Gymnasium
+    3.10 — 3.12, совместимость с ecosystem Gymnasium
 
 -   :material-license: **Лицензия**
 

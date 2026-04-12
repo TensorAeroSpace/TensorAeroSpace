@@ -307,7 +307,7 @@ Need help? Open an issue on GitHub or check the tutorials section.
 
 -   :material-python: **Python support**
 
-    3.9 — 3.12, compatible with the Gymnasium ecosystem
+    3.10 — 3.12, compatible with the Gymnasium ecosystem
 
 -   :material-license: **License**
 
