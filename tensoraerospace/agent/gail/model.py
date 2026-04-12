@@ -188,9 +188,10 @@ class GAIL:
         for _ in range(self.max_steps):
             state = torch.FloatTensor(state).unsqueeze(0).to(device)
             dist, _ = self.model(state)
-            next_state, reward, done, _, _ = self.env.step(
+            next_state, reward, terminated, truncated, info = self.env.step(
                 dist.sample().cpu().numpy()[0]
             )
+            done = terminated or truncated
             next_state = next_state.reshape(1, -1)
             state = next_state
             total_reward += reward
@@ -274,7 +275,8 @@ class GAIL:
                 dist, value = self.model(state)
 
                 action = dist.sample()
-                next_state, reward, done, _, _ = self.env.step(action.cpu().numpy())
+                next_state, reward, terminated, truncated, info = self.env.step(action.cpu().numpy())
+                done = terminated or truncated
                 next_state = next_state.reshape(1, -1)
                 reward = self.expert_reward(state, action.cpu().numpy())
 

@@ -21,6 +21,7 @@ from tqdm import tqdm
 from ..base import (
     BaseRLModel,
     TheEnvironmentDoesNotMatch,
+    deserialize_env_params,
     get_class_from_string,
     serialize_env,
 )
@@ -348,7 +349,6 @@ class SAC(BaseRLModel):
         save_path = kwargs.get("save_path", None)
         save_best_with_gradients = bool(kwargs.get("save_best_with_gradients", False))
         # Training Loop
-        total_numsteps = 0
         updates = 0
         best_reward = float("-inf")
         for i_episode in tqdm(range(num_episodes)):
@@ -356,8 +356,6 @@ class SAC(BaseRLModel):
             episode_steps = 0
             done = False
             state, _ = self.env.reset()
-            reward_per_step = []
-            done = False
             while not done:
                 action = self.select_action(state)
                 if len(self.memory) > self.batch_size:
@@ -375,9 +373,7 @@ class SAC(BaseRLModel):
                 done_env = bool(terminated or truncated)
                 done_bootstrap = float(bool(terminated))
                 episode_steps += 1
-                total_numsteps += 1
                 episode_reward += reward
-                reward_per_step.append(reward)
                 self.memory.push(
                     state, action, reward, next_state, done_bootstrap
                 )  # Append transition to memory
@@ -753,6 +749,7 @@ class SAC(BaseRLModel):
         if "tensoraerospace" in config["env"]["name"]:
             env_cls = get_class_from_string(config["env"]["name"])
             env_params = dict(config["env"].get("params", {}) or {})
+            env_params = deserialize_env_params(env_params)
             env_params = cls._filter_kwargs_for_init(env_cls, env_params)
 
             # Device fallback for env creation (avoid requesting cuda/mps when unavailable)

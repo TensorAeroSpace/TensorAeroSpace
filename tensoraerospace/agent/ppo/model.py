@@ -1305,8 +1305,8 @@ class PPO(BaseRLModel):
             action, mean_action, delta = self.act(state, deterministic=True)
             step_return = self.env.step(mean_action[0])
             if len(step_return) > 4:
-                next_state, reward, terminated, trunkated, info = step_return
-                done = terminated or trunkated
+                next_state, reward, terminated, truncated, info = step_return
+                done = terminated or truncated
             else:
                 next_state, reward, terminated, info = step_return
                 done = terminated

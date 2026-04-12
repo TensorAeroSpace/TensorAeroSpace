@@ -41,6 +41,7 @@ class LinearLongitudinalUAV(gym.Env):
         reward_func: Callable | None = None,
     ) -> None:
         """Initialize UAV longitudinal environment."""
+        super().__init__()
         self.initial_state = initial_state
         self.number_time_steps = number_time_steps
         self.selected_state_output = output_space
@@ -95,7 +96,7 @@ class LinearLongitudinalUAV(gym.Env):
         Returns:
             float: Control evaluation reward.
         """
-        return float(np.abs(state[0] - ref_signal[:, ts]))
+        return float(np.abs(state[0] - ref_signal[:, ts]).item())
 
     def step(
         self, action: np.ndarray

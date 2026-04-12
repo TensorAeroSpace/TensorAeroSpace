@@ -111,6 +111,8 @@ def overshoot(control_signal: np.ndarray, system_signal: np.ndarray) -> float:
     M = np.max(system_signal)
 
     # Overshoot calculation
+    if y_final == 0:
+        return 0.0
     output = (M - y_final) / y_final * 100
 
     return output

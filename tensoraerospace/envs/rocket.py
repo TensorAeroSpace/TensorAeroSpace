@@ -42,6 +42,7 @@ class LinearLongitudinalMissileModel(gym.Env):
         reward_func: Optional[Callable] = None,
     ) -> None:
         """Initialize linear missile model environment."""
+        super().__init__()
         self.max_action_value = 25.0
         self.initial_state = initial_state
         self.number_time_steps = number_time_steps
@@ -109,7 +110,7 @@ class LinearLongitudinalMissileModel(gym.Env):
         Returns:
             reward (float): Control performance evaluation.
         """
-        return np.abs(state[0] - ref_signal[:, ts])
+        return float(np.abs(state[0] - ref_signal[:, ts]).item())
 
     def step(self, action: np.ndarray):
         """Execute a simulation step.
@@ -124,10 +125,8 @@ class LinearLongitudinalMissileModel(gym.Env):
             done (bool): Simulation status, whether completed or not.
             logging (any): Additional information (not used).
         """
-        if action[0] > self.max_action_value:
-            action[0] = self.max_action_value
-        if action[0] < self.max_action_value * -1:
-            action[0] = self.max_action_value * -1
+        action = np.asarray(action).reshape(-1)
+        action = np.clip(action, -self.max_action_value, self.max_action_value)
         self.current_step += 1
         next_state = self.model.run_step(action)
         reward = self.reward_func(

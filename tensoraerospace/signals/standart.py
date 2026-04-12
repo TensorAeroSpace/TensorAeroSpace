@@ -305,6 +305,9 @@ def chirp(
         ...                   method='linear')
         >>> # Linear frequency sweep from 0.1 Hz to 5.0 Hz
     """
+    if f0 <= 0:
+        raise ValueError("f0 must be positive")
+
     if len(tp) == 0:
         return tp
 
@@ -314,6 +317,9 @@ def chirp(
         # Linear frequency sweep
         phase = 2 * np.pi * (f0 * tp + (f1 - f0) * tp**2 / (2 * t_max))
     elif method == "exponential":
+        # When f0 == f1, k = 1 and log(k) = 0; fall back to constant frequency
+        if f0 == f1:
+            return amplitude * np.sin(2 * np.pi * f0 * tp)
         # Exponential frequency sweep
         k = (f1 / f0) ** (1.0 / t_max)
         phase = 2 * np.pi * f0 * (k**tp - 1) / np.log(k)

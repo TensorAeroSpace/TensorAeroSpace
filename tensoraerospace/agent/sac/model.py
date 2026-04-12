@@ -276,8 +276,8 @@ class DeterministicPolicy(nn.Module):
 
         # Масштабирование действий
         if action_space is None:
-            self.action_scale = 1.0
-            self.action_bias = 0.0
+            self.action_scale = torch.tensor(1.0)
+            self.action_bias = torch.tensor(0.0)
         else:
             self.action_scale = torch.FloatTensor(
                 (action_space.high - action_space.low) / 2.0
@@ -305,7 +305,7 @@ class DeterministicPolicy(nn.Module):
         noise = self.noise.normal_(0.0, std=0.1)
         noise = noise.clamp(-0.25, 0.25)
         action = mean + noise
-        return action, torch.tensor(0.0), mean
+        return action, torch.zeros(1, device=mean.device), mean
 
     def to(self, device: Union[str, torch.device]) -> "DeterministicPolicy":
         """Move internal tensors to the given device."""

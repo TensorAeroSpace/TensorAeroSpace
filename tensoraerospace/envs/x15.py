@@ -48,6 +48,7 @@ class LinearLongitudinalX15(gym.Env):
         output_space: tuple[float, float] = ["theta", "q"],
         reward_func: Callable | None = None,
     ) -> None:
+        super().__init__()
         self.initial_state = initial_state
         self.number_time_steps = number_time_steps
         self.selected_state_output = output_space

@@ -42,6 +42,7 @@ class LinearLongitudinalF4C(gym.Env):
         reward_func: Optional[Callable] = None,
     ) -> None:
         """Initialize F-4C longitudinal environment."""
+        super().__init__()
         self.initial_state = initial_state
         self.number_time_steps = number_time_steps
         self.tracking_states = (

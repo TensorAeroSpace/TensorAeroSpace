@@ -1,16 +1,19 @@
 import matplotlib
+
+matplotlib.use("Agg")
+
 import matplotlib.pyplot as plt
+import optuna.trial
 import pytest
 
 from tensoraerospace.optimization import base
 
-matplotlib.use("Agg")
-
 
 class _DummyTrial:
-    def __init__(self, value, params):
+    def __init__(self, value, params, state=None):
         self.value = value
         self.params = params
+        self.state = state if state is not None else optuna.trial.TrialState.COMPLETE
 
 
 class _DummyStudy:
@@ -71,3 +74,27 @@ def test_plot_parms_runs(monkeypatch):
     fig = plt.gcf()
     ax = fig.axes[0]
     assert len(ax.get_xticks()) == len(dummy.trials)
+
+
+def test_plot_parms_skips_pruned_and_failed_trials(monkeypatch):
+    """plot_parms should skip pruned/failed trials that have value=None."""
+    dummy = _DummyStudy()
+    dummy.trials = [
+        _DummyTrial(1.0, {"p": 0.1}, state=optuna.trial.TrialState.COMPLETE),
+        _DummyTrial(None, {"p": 0.3}, state=optuna.trial.TrialState.PRUNED),
+        _DummyTrial(None, {}, state=optuna.trial.TrialState.FAIL),
+        _DummyTrial(0.5, {"p": 0.2}, state=optuna.trial.TrialState.COMPLETE),
+    ]
+
+    def fake_create_study(direction):
+        return dummy
+
+    monkeypatch.setattr(base.optuna, "create_study", fake_create_study)
+
+    opt = base.HyperParamOptimizationOptuna(direction="minimize")
+    # Should not raise despite pruned/failed trials with None values
+    opt.plot_parms(figsize=(2, 2))
+    fig = plt.gcf()
+    ax = fig.axes[0]
+    # Only 2 COMPLETE trials should be plotted
+    assert len(ax.get_xticks()) == 2

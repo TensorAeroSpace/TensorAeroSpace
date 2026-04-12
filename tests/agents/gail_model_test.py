@@ -129,6 +129,42 @@ def test_gail_expert_reward_and_test_env_smoke():
     assert isinstance(total, (int, float))
 
 
+def test_gail_env_step_unpacking_five_tuple():
+    """Bug #11: GAIL should use 5-tuple env.step() API (terminated, truncated)."""
+
+    class _TerminatingEnv(_FakeEnv):
+        """Env that terminates after 2 steps to exercise done logic."""
+        def __init__(self):
+            super().__init__(obs_dim=3, act_dim=2)
+            self._step_count = 0
+
+        def reset(self):
+            self._step_count = 0
+            return super().reset()
+
+        def step(self, action):
+            self._step_count += 1
+            next_state, reward, _, _, info = super().step(action)
+            terminated = self._step_count >= 2
+            truncated = False
+            return next_state, reward, terminated, truncated, info
+
+    env = _TerminatingEnv()
+    expert_dim = env.observation_space.shape[0] + env.action_space.shape[0]
+    expert_data = np.zeros((16, expert_dim), dtype=np.float32)
+    gail = GAIL(
+        env,
+        learning_rate=1e-3,
+        max_steps=3,
+        mini_batch_size=2,
+        epochs=1,
+        data=expert_data,
+    )
+    # test_env should run without crashing (previously used 4-tuple unpacking)
+    total = gail.test_env()
+    assert isinstance(total, (int, float))
+
+
 def test_gail_ppo_update_runs_one_step():
     env = _FakeEnv(obs_dim=3, act_dim=2)
     expert_dim = env.observation_space.shape[0] + env.action_space.shape[0]

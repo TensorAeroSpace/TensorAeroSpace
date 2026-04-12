@@ -345,6 +345,6 @@ class LongitudinalF16(ModelBase):
             rad_deg_input = np.rad2deg(self.store_input[index])
             return rad_deg_input[: self.number_time_steps - 1]
         if to_rad:
-            values_rad = self.store_states[index][: self.number_time_steps - 1]
+            values_rad = self.store_input[index][: self.number_time_steps - 1]
             return np.deg2rad(values_rad)
         return self.store_input[index][: self.number_time_steps - 1]

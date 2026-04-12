@@ -41,6 +41,7 @@ class ComSatEnv(gym.Env):
         reward_func: Callable | None = None,
     ) -> None:
         """Initialize communication satellite environment."""
+        super().__init__()
         self.max_action_value = 25.0
         self.initial_state = initial_state
         self.number_time_steps = number_time_steps
