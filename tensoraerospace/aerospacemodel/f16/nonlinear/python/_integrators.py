@@ -1,8 +1,6 @@
 """Fixed-step ODE integrators for F-16 nonlinear models.
 
-These are intentionally minimal: a function ``f(x, u, t, params) -> dx`` and
-a step size are all that's needed. Both integrators are pure functions and
-allocation-cheap so they're safe to call thousands of times per RL episode.
+RHS signature: ``f(x, u, t, params) -> dx``.
 """
 from __future__ import annotations
 

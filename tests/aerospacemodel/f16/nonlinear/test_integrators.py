@@ -45,3 +45,4 @@ def test_rhs_signature_called_with_all_args():
     rk4(rhs, x0, u, t=0.7, dt=0.01, params={"k": 1})
     assert seen["t"] >= 0.7
     assert seen["params"] == {"k": 1}
+    np.testing.assert_array_equal(seen["u"], u)
