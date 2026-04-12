@@ -68,7 +68,7 @@ jobs:
       run: |
         if ! poetry check --lock; then
           echo "Lock file is outdated, updating..."
-          poetry lock --no-update
+          poetry lock
         fi
 
     - name: 📚 Install dependencies

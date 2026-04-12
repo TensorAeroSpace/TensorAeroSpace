@@ -25,15 +25,13 @@ pygame = "^2.6.1"
 cryptography = {version = ">=45.0.0", python = ">=3.10,<3.13"}
 requests = ">=2.33.0"
 numpy = ">=1.24.0"
+tensorflow = {version = "^2.15.0", optional = true}
+tensorflow-macos = {version = "2.15.0", markers = "sys_platform == 'darwin'", optional = true}
+ray = {extras = ["tune"], version = "^2.52.0", optional = true}
 
 [tool.poetry.extras]
 tensorflow = ["tensorflow", "tensorflow-macos"]
 ray = ["ray"]
-
-[tool.poetry.group.optional.dependencies]
-tensorflow = {version = "^2.15.0", optional = true}
-tensorflow-macos = {version = "2.15.0", markers = "sys_platform == 'darwin'", optional = true}
-ray = {extras = ["tune"], version = "^2.52.0", optional = true}
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^7.4.3"
