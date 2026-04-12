@@ -164,10 +164,15 @@ def parse_matlab_assignment(src: str, var_name: str) -> np.ndarray:
 
         plain = re.match(r"^([A-Za-z_]\w*)\s*=\s*(.+)$", stmt, re.DOTALL)
         if plain:
+            # Side-variable assignment. Best-effort: matlab init blocks contain
+            # things this parser doesn't handle (function calls beyond deg2rad,
+            # arithmetic, etc). If we can't evaluate it, drop it from scope so
+            # later references trigger an explicit error rather than using
+            # stale data.
             try:
                 scope[plain.group(1)] = _eval_rhs(plain.group(2), scope)
-            except Exception:
-                pass
+            except ValueError:
+                scope.pop(plain.group(1), None)
 
     if indexed_pages and var_name not in scope:
         # Only assemble indexed pages if no direct assignment superseded them
@@ -205,6 +210,11 @@ ANG_TABLES: dict = {}  # populated in Phase 4 Task 4.1
 
 
 def extract(matlab_dir: Path, out_dir: Path, table_spec: dict) -> None:
+    if not table_spec:
+        print(f"no tables defined for {matlab_dir.name}; skipping")
+        return
+    if not matlab_dir.exists():
+        raise FileNotFoundError(f"matlab source directory not found: {matlab_dir}")
     out_dir.mkdir(parents=True, exist_ok=True)
     for filename, spec in table_spec.items():
         src = (matlab_dir / filename).read_text()

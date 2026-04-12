@@ -64,3 +64,39 @@ def test_parse_handles_negation_followed_by_assignment():
     """
     out = parse_matlab_assignment(src, "Cy1")
     np.testing.assert_allclose(out, [[-1, -2], [-3, -4]])
+
+
+def test_parse_single_row_vector_returns_1d():
+    """Regression: `name = [1 2 3];` (no transpose) should return shape (3,),
+    not (1, 3). The squeeze-on-singleton-dim path was added in cb1101a."""
+    src = "name = [1 2 3];"
+    out = parse_matlab_assignment(src, "name")
+    assert out.shape == (3,)
+    np.testing.assert_allclose(out, [1, 2, 3])
+
+
+def test_parse_indexed_pages_then_target_negation():
+    """Regression: when a 3-D variable is built via `name(:,:,k) = ...` pages
+    and then negated by `name = -name;`, the post-loop assembly must NOT
+    overwrite the negated value. Fixed in cb1101a."""
+    src = """
+    Cy1(:,:,1) = [1 2; 3 4];
+    Cy1(:,:,2) = [5 6; 7 8];
+    Cy1 = -Cy1;
+    """
+    out = parse_matlab_assignment(src, "Cy1")
+    assert out.shape == (2, 2, 2)
+    np.testing.assert_allclose(out[:, :, 0], [[-1, -2], [-3, -4]])
+    np.testing.assert_allclose(out[:, :, 1], [[-5, -6], [-7, -8]])
+
+
+def test_side_variable_negation_propagates():
+    """Regression: a side variable (`mxwy1 = [...]; mxwy1 = -mxwy1;`) that
+    is later requested via parse_matlab_file must reflect the negation, not
+    the original. This pattern appears in angular GetMx.m / GetMy.m."""
+    src = """
+    mxwy1 = [-1.0 -2.0 -3.0];
+    mxwy1 = -mxwy1;
+    """
+    out = parse_matlab_assignment(src, "mxwy1")
+    np.testing.assert_allclose(out, [1.0, 2.0, 3.0])
