@@ -78,7 +78,7 @@ class Net(nn.Module):
             and value for the given state.
         """
         a1 = F.relu6(self.a1(x))
-        mu = 2 * F.tanh(self.mu(a1))
+        mu = 2 * torch.tanh(self.mu(a1))
         sigma = self.softplus(self.sigma(a1)) + 0.001  # avoid 0
         c1 = F.relu6(self.c1(x))
         values = self.v(c1)

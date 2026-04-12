@@ -23,15 +23,24 @@ class ELVRocket(ModelBase):
         ele: elevator [rad]
 
     State space (order):
-        w: Longitudinal aircraft velocity [m/s]
+        alpha: Angle of attack [rad]
         q: Pitch angular velocity [rad/s]
         theta: Pitch [rad]
 
 
     Output space (order):
-        w: Longitudinal aircraft velocity [m/s]
+        alpha: Angle of attack [rad]
         q: Pitch angular velocity [rad/s]
         theta: Pitch [rad]
+
+    Note:
+        The stored ``A``/``B`` matrices are linearised about a trim point and
+        the first state is the angle of attack ``alpha`` (in radians), not the
+        body-frame normal velocity ``w`` (in m/s). The coefficient ``A[0, 0]
+        = -100.858`` is a typical ``Z_alpha``-type stability derivative; the
+        corresponding coefficient for ``w`` in SI units would be several
+        orders of magnitude smaller. Labels were kept consistent with that
+        physical meaning.
     """
 
     def __init__(
@@ -47,8 +56,8 @@ class ELVRocket(ModelBase):
         self.discretisation_time = dt
 
         # Selected data for the system
-        self.selected_states = ["w", "q", "theta"]
-        self.selected_output = ["w", "q", "theta"]
+        self.selected_states = ["alpha", "q", "theta"]
+        self.selected_output = ["alpha", "q", "theta"]
         self.list_state = self.selected_states
         self.selected_input = [
             "ele",
@@ -82,14 +91,17 @@ class ELVRocket(ModelBase):
         self.initialise_system(x0, number_time_steps)
 
     def import_linear_system(self) -> None:
-        """Load (set) stored linearized system matrices.
+        """Load (set) stored linearised system matrices.
 
-        The original matrices are defined for the legacy state order
-        ``[alpha, q, theta]`` and are converted to the current order
-        ``[w, q, theta]`` using a permutation matrix.
+        The matrices are defined for the state vector ``x = [alpha, q, theta]``
+        (angle of attack in radians, pitch rate in rad/s, pitch angle in
+        radians) and the control ``u = [ele]`` (elevator deflection in
+        radians). The coefficients are classical stability derivatives for a
+        rocket's longitudinal short-period mode, so the first state has units
+        of radians of angle of attack, not m/s of body-frame normal velocity.
         """
-        # Old-order matrices: x_old = [alpha, q, theta]
-        A_old = np.array(
+        # State: x = [alpha, q, theta]
+        self.A = np.array(
             [
                 [-100.858, 1, -0.1256],
                 [14.7805, 0, 0.01958],
@@ -97,7 +109,7 @@ class ELVRocket(ModelBase):
             ]
         )
 
-        B_old = np.array(
+        self.B = np.array(
             [
                 [20.42],
                 [3.4558],
@@ -105,23 +117,7 @@ class ELVRocket(ModelBase):
             ]
         )
 
-        # Permutation from new -> old basis
-        # new = [w, q, theta] corresponds to old = [alpha, q, theta]
-        # so indices: old[0]=alpha->new[0]=w, old[1]=q->new[1]=q,
-        # old[2]=theta->new[2]=theta. P[i,j] = 1 if old[i] = new[j]
-        P = np.array(
-            [
-                [1, 0, 0],  # alpha_old = w_new
-                [0, 1, 0],  # q_old = q_new
-                [0, 0, 1],  # theta_old = theta_new
-            ]
-        )
-
-        # Transform to new basis: A_new = P^T A_old P, B_new = P^T B_old
-        self.A = P.T @ A_old @ P
-        self.B = P.T @ B_old
-
-        # Identity output in new basis
+        # Identity output: observation equals state
         self.C = np.eye(3)
         self.D = np.zeros((3, 1))
 

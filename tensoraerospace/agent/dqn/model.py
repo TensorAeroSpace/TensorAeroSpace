@@ -467,10 +467,14 @@ class DQNAgent:
         is_weights = np.empty((k, 1))
         self.beta = min(1.0, self.beta + self.beta_increment_per_sample)
         # calculate max_weight
-        min_prob = (
-            np.min(self.replay_buffer.tree[-self.replay_buffer.capacity :])
-            / self.replay_buffer.total_p
-        )
+        # Only consider filled leaves (buffer may not be full yet, so many leaves are 0).
+        leaves = self.replay_buffer.tree[-self.replay_buffer.capacity :]
+        filled_leaves = leaves[leaves > 0]
+        if len(filled_leaves) == 0:
+            min_prob = 1.0  # uniform fallback
+        else:
+            min_prob = np.min(filled_leaves) / self.replay_buffer.total_p
+        min_prob = max(min_prob, 1e-8)  # guard against division by zero
         max_weight = np.power(self.buffer_size * min_prob, -self.beta)
         segment = self.replay_buffer.total_p / k
         for i in range(k):
@@ -1020,10 +1024,14 @@ class PERNARXAgent:
         is_weights = np.empty((k, 1))
         self.beta = min(1.0, self.beta + self.beta_increment_per_sample)
         # calculate max_weight
-        min_prob = (
-            np.min(self.replay_buffer.tree[-self.replay_buffer.capacity :])
-            / self.replay_buffer.total_p
-        )
+        # Only consider filled leaves (buffer may not be full yet, so many leaves are 0).
+        leaves = self.replay_buffer.tree[-self.replay_buffer.capacity :]
+        filled_leaves = leaves[leaves > 0]
+        if len(filled_leaves) == 0:
+            min_prob = 1.0  # uniform fallback
+        else:
+            min_prob = np.min(filled_leaves) / self.replay_buffer.total_p
+        min_prob = max(min_prob, 1e-8)  # guard against division by zero
         max_weight = np.power(self.buffer_size * min_prob, -self.beta)
         segment = self.replay_buffer.total_p / k
         for i in range(k):
