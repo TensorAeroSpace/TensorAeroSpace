@@ -121,7 +121,7 @@ ckpt_path = os.path.join("runs", "ppo_b747_improved", "ppo_checkpoint.pt")
 if os.path.isfile(ckpt_path):
     try:
         print(f"Loading checkpoint from: {ckpt_path}")
-        checkpoint = torch.load(ckpt_path, map_location=DEVICE)
+        checkpoint = torch.load(ckpt_path, map_location=DEVICE, weights_only=True)
         agent.actor.load_state_dict(checkpoint["actor_state_dict"])
         agent.critic.load_state_dict(checkpoint["critic_state_dict"])
         agent.a_opt.load_state_dict(checkpoint["actor_optimizer_state_dict"])

@@ -4,7 +4,6 @@ This module implements experience replay utilities used by the SAC agent.
 """
 
 import os
-import pickle
 import random
 from typing import List, Tuple, Union
 
@@ -105,8 +104,29 @@ class ReplayMemory:
             save_path = "checkpoints/sac_buffer_{}_{}".format(env_name, suffix)
         print("Saving buffer to {}".format(save_path))
 
+        if not self.buffer:
+            return
+
+        # Stack each field of the transition tuple into arrays so the buffer
+        # can be persisted with numpy (avoiding unsafe pickle deserialization).
+        states = np.array([t[0] for t in self.buffer])
+        actions = np.array([t[1] for t in self.buffer])
+        rewards = np.array([t[2] for t in self.buffer])
+        next_states = np.array([t[3] for t in self.buffer])
+        dones = np.array([t[4] for t in self.buffer])
+        # Use a file handle so np.savez writes to the exact requested path
+        # instead of appending a ``.npz`` suffix.
         with open(save_path, "wb") as f:
-            pickle.dump({"buffer": self.buffer, "position": self.position}, f)
+            np.savez(
+                f,
+                states=states,
+                actions=actions,
+                rewards=rewards,
+                next_states=next_states,
+                dones=dones,
+                position=self.position,
+                capacity=self.capacity,
+            )
 
     def load_buffer(self, save_path: str) -> None:
         """Load a replay buffer from disk.
@@ -117,12 +137,25 @@ class ReplayMemory:
         """
         print("Loading buffer from {}".format(save_path))
 
-        with open(save_path, "rb") as f:
-            data = pickle.load(f)
-        if isinstance(data, dict):
-            self.buffer = data["buffer"]
-            self.position = data["position"]
+        # allow_pickle=False ensures no arbitrary code execution during load.
+        data = np.load(save_path, allow_pickle=False)
+        states = data["states"]
+        actions = data["actions"]
+        rewards = data["rewards"]
+        next_states = data["next_states"]
+        dones = data["dones"]
+        self.buffer = [
+            (states[i], actions[i], rewards[i], next_states[i], dones[i])
+            for i in range(len(states))
+        ]
+        if "capacity" in data.files:
+            self.capacity = int(data["capacity"])
+        # Backward-compat: ensure loaded buffer respects current capacity.
+        if len(self.buffer) > self.capacity:
+            self.buffer = self.buffer[-self.capacity:]
+        if "position" in data.files:
+            self.position = int(data["position"])
         else:
-            # Backward compatibility for old format (just a list of transitions)
-            self.buffer = data
-            self.position = len(self.buffer) % self.capacity
+            self.position = (
+                len(self.buffer) if len(self.buffer) < self.capacity else 0
+            )
