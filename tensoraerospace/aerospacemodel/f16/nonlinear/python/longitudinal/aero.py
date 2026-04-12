@@ -10,18 +10,31 @@ from pathlib import Path
 import numpy as np
 from scipy.interpolate import PchipInterpolator, RegularGridInterpolator
 
-_AERO_DIR = Path(__file__).parent / "aero_tables"
+AERO_TABLE_DIR = Path(__file__).parent / "aero_tables"
 
 
-def _clamped_lookup(interp: RegularGridInterpolator, point: np.ndarray,
-                    bounds: list[tuple[float, float]]) -> float:
-    clipped = np.array([np.clip(p, lo, hi) for p, (lo, hi) in zip(point, bounds)])
-    return float(interp(clipped)[0])
+def _interp1(interp, value, lo, hi) -> float:
+    """1-D interpolator query, scalar-clipped. Returns Python float."""
+    return float(interp(min(max(value, lo), hi)))
+
+
+def _interp2(interp, x0, x1, lo0, hi0, lo1, hi1) -> float:
+    """2-D RegularGridInterpolator query, scalar-clipped per axis."""
+    pt = np.array([[min(max(x0, lo0), hi0), min(max(x1, lo1), hi1)]])
+    return float(interp(pt)[0])
+
+
+def _interp3(interp, x0, x1, x2, lo0, hi0, lo1, hi1, lo2, hi2) -> float:
+    """3-D RegularGridInterpolator query, scalar-clipped per axis."""
+    pt = np.array([[min(max(x0, lo0), hi0),
+                    min(max(x1, lo1), hi1),
+                    min(max(x2, lo2), hi2)]])
+    return float(interp(pt)[0])
 
 
 # ---------- Cy tables ----------
 
-_cy_data = np.load(_AERO_DIR / "getcy.npz")
+_cy_data = np.load(AERO_TABLE_DIR / "getcy.npz")
 _alpha1 = _cy_data["alpha1"]
 _alpha2 = _cy_data["alpha2"]
 _beta1 = _cy_data["beta1"]
@@ -42,20 +55,15 @@ _interp_cywz = PchipInterpolator(_alpha1, _Cywz1, extrapolate=False)
 _interp_cywz_nos = PchipInterpolator(_alpha2, _dCywz_nos1, extrapolate=False)
 _interp_dcy_sb = PchipInterpolator(_alpha1, _dCy_sb1, extrapolate=False)
 
-_cy_bounds_3d = [
-    (float(_alpha1.min()), float(_alpha1.max())),
-    (float(_beta1.min()), float(_beta1.max())),
-    (float(_fi1.min()), float(_fi1.max())),
-]
-_cy_bounds_nos = [
-    (float(_alpha2.min()), float(_alpha2.max())),
-    (float(_beta1.min()), float(_beta1.max())),
-]
+_alpha1_lo, _alpha1_hi = float(_alpha1.min()), float(_alpha1.max())
+_alpha2_lo, _alpha2_hi = float(_alpha2.min()), float(_alpha2.max())
+_beta1_lo, _beta1_hi = float(_beta1.min()), float(_beta1.max())
+_fi1_lo, _fi1_hi = float(_fi1.min()), float(_fi1.max())
 
 
 # ---------- Mz tables ----------
 
-_mz_data = np.load(_AERO_DIR / "getmz.npz")
+_mz_data = np.load(AERO_TABLE_DIR / "getmz.npz")
 _mz_alpha1 = _mz_data["alpha1"]
 _mz_alpha2 = _mz_data["alpha2"]
 _mz_beta1 = _mz_data["beta1"]
@@ -85,65 +93,59 @@ _interp_dmz_ds = RegularGridInterpolator(
     (_mz_alpha1, _mz_fi2), _dmz_ds1, method="cubic", bounds_error=False
 )
 
-_mz_bounds_3d = [
-    (float(_mz_alpha1.min()), float(_mz_alpha1.max())),
-    (float(_mz_beta1.min()), float(_mz_beta1.max())),
-    (float(_mz_fi1.min()), float(_mz_fi1.max())),
-]
-_mz_bounds_nos = [
-    (float(_mz_alpha2.min()), float(_mz_alpha2.max())),
-    (float(_mz_beta1.min()), float(_mz_beta1.max())),
-]
-_mz_bounds_ds = [
-    (float(_mz_alpha1.min()), float(_mz_alpha1.max())),
-    (float(_mz_fi2.min()), float(_mz_fi2.max())),
-]
+_mz_alpha1_lo, _mz_alpha1_hi = float(_mz_alpha1.min()), float(_mz_alpha1.max())
+_mz_alpha2_lo, _mz_alpha2_hi = float(_mz_alpha2.min()), float(_mz_alpha2.max())
+_mz_beta1_lo, _mz_beta1_hi = float(_mz_beta1.min()), float(_mz_beta1.max())
+_mz_fi1_lo, _mz_fi1_hi = float(_mz_fi1.min()), float(_mz_fi1.max())
+_mz_fi2_lo, _mz_fi2_hi = float(_mz_fi2.min()), float(_mz_fi2.max())
 
 
-def _clip(x: float, lo: float, hi: float) -> float:
-    return float(np.clip(x, lo, hi))
-
-
-_DEG25 = math.radians(25)
-_DEG60 = math.radians(60)
+_NOS_NORM = math.radians(25)  # slat deflection normalization (max ±25°)
+_SB_NORM = math.radians(60)   # speedbrake deflection normalization (max ±60°)
 
 
 def get_cy(alpha: float, beta: float, fi: float, dnos: float,
            wz: float, V: float, ba: float, sb: float) -> float:
     """Normal-force coefficient. Mirrors longitudinal/matlab_code/GetCy.m."""
-    cy = _clamped_lookup(_interp_cy, np.array([alpha, beta, fi]), _cy_bounds_3d)
-    cy0 = _clamped_lookup(_interp_cy, np.array([alpha, beta, 0.0]), _cy_bounds_3d)
-    cy_nos = _clamped_lookup(_interp_cy_nos, np.array([alpha, beta]), _cy_bounds_nos)
-    a1 = _clip(alpha, float(_alpha1.min()), float(_alpha1.max()))
-    a2 = _clip(alpha, float(_alpha2.min()), float(_alpha2.max()))
-    cywz = float(_interp_cywz(a1)) + float(_interp_cywz_nos(a2)) * (dnos / _DEG25)
-    dcy_sb = float(_interp_dcy_sb(a1))
+    cy = _interp3(_interp_cy, alpha, beta, fi,
+                  _alpha1_lo, _alpha1_hi, _beta1_lo, _beta1_hi, _fi1_lo, _fi1_hi)
+    cy0 = _interp3(_interp_cy, alpha, beta, 0.0,
+                   _alpha1_lo, _alpha1_hi, _beta1_lo, _beta1_hi, _fi1_lo, _fi1_hi)
+    cy_nos = _interp2(_interp_cy_nos, alpha, beta,
+                      _alpha2_lo, _alpha2_hi, _beta1_lo, _beta1_hi)
+    cywz = (_interp1(_interp_cywz, alpha, _alpha1_lo, _alpha1_hi)
+            + _interp1(_interp_cywz_nos, alpha, _alpha2_lo, _alpha2_hi) * (dnos / _NOS_NORM))
+    dcy_sb = _interp1(_interp_dcy_sb, alpha, _alpha1_lo, _alpha1_hi)
 
     dcy_nos = cy_nos - cy0
-    return cy + dcy_nos * (dnos / _DEG25) + cywz * ((wz * ba) / (2.0 * V)) + dcy_sb * (sb / _DEG60)
+    return cy + dcy_nos * (dnos / _NOS_NORM) + cywz * ((wz * ba) / (2.0 * V)) + dcy_sb * (sb / _SB_NORM)
 
 
 def get_mz(alpha: float, beta: float, fi: float, dnos: float,
            wz: float, V: float, ba: float, sb: float) -> float:
     """Pitch-moment coefficient. Mirrors longitudinal/matlab_code/GetMz.m."""
-    mz = _clamped_lookup(_interp_mz, np.array([alpha, beta, fi]), _mz_bounds_3d)
-    mz0 = _clamped_lookup(_interp_mz, np.array([alpha, beta, 0.0]), _mz_bounds_3d)
-    mz_nos = _clamped_lookup(_interp_mz_nos, np.array([alpha, beta]), _mz_bounds_nos)
-    a1 = _clip(alpha, float(_mz_alpha1.min()), float(_mz_alpha1.max()))
-    a2 = _clip(alpha, float(_mz_alpha2.min()), float(_mz_alpha2.max()))
-    fi_clip = _clip(fi, float(_mz_fi1.min()), float(_mz_fi1.max()))
-    dmz = float(_interp_dmz(a1))
-    mzwz = float(_interp_mzwz(a1)) + float(_interp_mzwz_nos(a2)) * (dnos / _DEG25)
-    dmz_sb = float(_interp_dmz_sb(a1))
-    eta_fi = float(_interp_eta_fi(fi_clip))
-    dmz_ds = _clamped_lookup(_interp_dmz_ds, np.array([alpha, fi]), _mz_bounds_ds)
+    mz = _interp3(_interp_mz, alpha, beta, fi,
+                  _mz_alpha1_lo, _mz_alpha1_hi, _mz_beta1_lo, _mz_beta1_hi,
+                  _mz_fi1_lo, _mz_fi1_hi)
+    mz0 = _interp3(_interp_mz, alpha, beta, 0.0,
+                   _mz_alpha1_lo, _mz_alpha1_hi, _mz_beta1_lo, _mz_beta1_hi,
+                   _mz_fi1_lo, _mz_fi1_hi)
+    mz_nos = _interp2(_interp_mz_nos, alpha, beta,
+                      _mz_alpha2_lo, _mz_alpha2_hi, _mz_beta1_lo, _mz_beta1_hi)
+    dmz = _interp1(_interp_dmz, alpha, _mz_alpha1_lo, _mz_alpha1_hi)
+    mzwz = (_interp1(_interp_mzwz, alpha, _mz_alpha1_lo, _mz_alpha1_hi)
+            + _interp1(_interp_mzwz_nos, alpha, _mz_alpha2_lo, _mz_alpha2_hi) * (dnos / _NOS_NORM))
+    dmz_sb = _interp1(_interp_dmz_sb, alpha, _mz_alpha1_lo, _mz_alpha1_hi)
+    eta_fi = _interp1(_interp_eta_fi, fi, _mz_fi1_lo, _mz_fi1_hi)
+    dmz_ds = _interp2(_interp_dmz_ds, alpha, fi,
+                      _mz_alpha1_lo, _mz_alpha1_hi, _mz_fi2_lo, _mz_fi2_hi)
 
     dmz_nos = mz_nos - mz0
     return (
         mz * eta_fi
-        + dmz_nos * (dnos / _DEG25)
+        + dmz_nos * (dnos / _NOS_NORM)
         + dmz
         + mzwz * ((wz * ba) / (2.0 * V))
-        + dmz_sb * (sb / _DEG60)
+        + dmz_sb * (sb / _SB_NORM)
         + dmz_ds
     )

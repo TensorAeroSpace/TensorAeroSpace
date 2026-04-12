@@ -5,7 +5,7 @@ import pytest
 
 from tensoraerospace.aerospacemodel.f16.nonlinear.python.longitudinal import aero
 
-_AERO_DIR = aero._AERO_DIR
+_AERO_DIR = aero.AERO_TABLE_DIR
 
 
 def test_get_cy_at_zero_state_returns_finite():
@@ -16,8 +16,11 @@ def test_get_cy_at_zero_state_returns_finite():
 
 def test_get_cy_grid_node_matches_table_value():
     """At a grid node with no secondary contributions, get_cy should equal
-    the corresponding Cy1 table entry (cubic spline interpolates exactly at
-    data points to within scipy's rounding tolerance)."""
+    the corresponding Cy1 table entry to within ~1e-4. Note: matlab uses
+    csaps (smoothing spline, smoothing param ≈ 1-1e-6) while we use scipy's
+    interpolating cubic spline. The two are not bit-identical at grid nodes;
+    the loose tolerance accounts for this divergence, not for floating-point
+    rounding."""
     raw = np.load(_AERO_DIR / "getcy.npz")
     alpha1 = raw["alpha1"]
     beta1 = raw["beta1"]
@@ -54,6 +57,10 @@ def test_get_cy_pitch_rate_contribution_is_linear_in_wz():
 
 
 def test_get_mz_at_grid_node_matches_table():
+    """Mz at a grid node should match the table value to within ~1e-3.
+    matlab GetMz.m uses csaps with smoothing param 1-1e-5; we use scipy's
+    interpolating cubic spline. The wider 1e-3 tolerance reflects this
+    smoothing-vs-interpolating divergence."""
     raw = np.load(_AERO_DIR / "getmz.npz")
     alpha1 = raw["alpha1"]
     beta1 = raw["beta1"]
