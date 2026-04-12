@@ -26,12 +26,13 @@ from tensoraerospace.signals.standart import sinusoid_vertical_shift
 from tensoraerospace.utils import convert_tp_to_sec_tp, generate_time_period
 
 
-def build_env(dt: float, tn: int) -> ImprovedB747Env:
+def build_env(dt: float, tn: int, render: bool = False) -> ImprovedB747Env:
     """Create B747 environment with sinusoidal pitch angle reference.
 
     Args:
         dt: discretization step in seconds
         tn: number of episode timesteps
+        render: whether to enable human-mode rendering
 
     Returns:
         Initialized ImprovedB747Env environment
@@ -60,6 +61,7 @@ def build_env(dt: float, tn: int) -> ImprovedB747Env:
         initial_elevator_deg=0.0,
         use_initial_action_on_first_step=True,
         dt=dt,
+        render_mode="human" if render else None,
     )
     env.unwrapped.model.discretisation_time = dt
     return env
@@ -85,7 +87,7 @@ def evaluate_episode(agent: DDPG, env: ImprovedB747Env, render: bool = True) -> 
         action = agent.policy_net.get_action(state)
         state, reward, terminated, truncated, _info = env.step(action)
         if render:
-            env.render(mode="human")
+            env.render()
         done = bool(terminated or truncated)
         total_reward += float(reward)
         steps += 1
@@ -125,7 +127,7 @@ def parse_args() -> argparse.Namespace:
 def main() -> None:
     args = parse_args()
 
-    env = build_env(dt=args.dt, tn=args.tn)
+    env = build_env(dt=args.dt, tn=args.tn, render=args.render)
     agent = DDPG.from_pretrained(args.repo)
     try:
         evaluate_episode(agent, env, render=args.render)

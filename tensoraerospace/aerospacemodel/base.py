@@ -188,6 +188,7 @@ class ModelBase:
         to_deg: bool = False,
         to_rad: bool = False,
         figsize: tuple = (10, 10),
+        close: bool = False,
     ):
         """Plot control object states.
 
@@ -198,6 +199,9 @@ class ModelBase:
             time (np.ndarray): Time array for plotting.
             lang (str): Label language. Defaults to "rus".
             figsize (tuple): Figure size. Defaults to (10, 10).
+            close (bool): If True, close the figure with ``plt.close(fig)``
+                before returning (useful for batch processing to avoid
+                memory accumulation). Defaults to False.
 
         Returns:
             plt.Figure: Plot of selected state.
@@ -233,6 +237,8 @@ class ModelBase:
         ax.set_xlabel(label_time)
         ax.set_ylabel(label)
         ax.grid(True)
+        if close:
+            plt.close(fig)
         return fig
 
     def plot_error(
@@ -246,6 +252,7 @@ class ModelBase:
         figsize: tuple = (10, 10),
         xlim: list = [13, 20],
         ylim: list = [-3, 3],
+        close: bool = False,
     ):
         """Plot control error.
 
@@ -261,6 +268,9 @@ class ModelBase:
             figsize (tuple): Figure size. Defaults to (10, 10).
             xlim (list): X-axis limits. Defaults to [13, 20].
             ylim (list): Y-axis limits. Defaults to [-3, 3].
+            close (bool): If True, close the figure with ``plt.close(fig)``
+                before returning (useful for batch processing to avoid
+                memory accumulation). Defaults to False.
 
         Returns:
             plt.Figure: Plot of transient process.
@@ -289,6 +299,8 @@ class ModelBase:
         ax.set_xlabel(label_time)
         ax.set_ylabel(label)
         ax.grid(True)
+        if close:
+            plt.close(fig)
         return fig
 
     def plot_transient_process(
@@ -300,6 +312,7 @@ class ModelBase:
         to_deg: bool = False,
         to_rad: bool = False,
         figsize: tuple = (10, 10),
+        close: bool = False,
     ):
         """Plot transient process.
 
@@ -311,6 +324,9 @@ class ModelBase:
             to_rad (bool): Convert to radians. Defaults to False.
             lang (str): Label language. Defaults to "rus".
             figsize (tuple): Figure size. Defaults to (10, 10).
+            close (bool): If True, close the figure with ``plt.close(fig)``
+                before returning (useful for batch processing to avoid
+                memory accumulation). Defaults to False.
 
         Returns:
             plt.Figure: Plot of transient process.
@@ -349,6 +365,8 @@ class ModelBase:
         ax.set_xlabel(label_time)
         ax.set_ylabel(label)
         ax.grid(True)
+        if close:
+            plt.close(fig)
         return fig
 
     def plot_control(
@@ -359,6 +377,7 @@ class ModelBase:
         to_deg: bool = False,
         to_rad: bool = False,
         figsize: tuple = (10, 10),
+        close: bool = False,
     ):
         """Plot control signals.
 
@@ -369,6 +388,9 @@ class ModelBase:
             time (np.ndarray): Time array for plotting.
             lang (str): Label language. Defaults to "rus".
             figsize (tuple): Figure size. Defaults to (10, 10).
+            close (bool): If True, close the figure with ``plt.close(fig)``
+                before returning (useful for batch processing to avoid
+                memory accumulation). Defaults to False.
 
         Returns:
             plt.Figure: Plot of selected control signal.
@@ -394,4 +416,6 @@ class ModelBase:
         ax.set_xlabel(label_time)
         ax.set_ylabel(label)
         ax.grid(True)
+        if close:
+            plt.close(fig)
         return fig

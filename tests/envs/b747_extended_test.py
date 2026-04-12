@@ -343,17 +343,18 @@ def test_improved_b747_weights_and_cost():
 
 
 def test_improved_b747_render_mode_not_human():
-    """Test that render with mode != 'human' returns early."""
+    """Test that render returns early when render_mode is not 'human'."""
     env = ImprovedB747Env(
         initial_state=np.array(INITIAL_STATE),
         reference_signal=REFERENCE_SIGNAL,
         number_time_steps=NUMBER_TIME_STEPS,
         dt=dt,
+        render_mode=None,
     )
 
     env.reset()
-    # Should return early without error
-    env.render(mode="rgb_array")
+    # Should return early without error (render_mode is None)
+    env.render()
     # No assertion needed, just checking it doesn't raise
 
 
@@ -383,12 +384,13 @@ def test_improved_b747_render_without_pygame(mock_import):
         reference_signal=REFERENCE_SIGNAL,
         number_time_steps=NUMBER_TIME_STEPS,
         dt=dt,
+        render_mode="human",
     )
 
     env.reset()
 
     with pytest.raises(ImportError, match="pygame"):
-        env.render(mode="human")
+        env.render()
 
 
 def test_improved_b747_render_with_mock_pygame():
@@ -398,6 +400,7 @@ def test_improved_b747_render_with_mock_pygame():
         reference_signal=REFERENCE_SIGNAL,
         number_time_steps=NUMBER_TIME_STEPS,
         dt=dt,
+        render_mode="human",
     )
 
     env.reset()
@@ -428,7 +431,7 @@ def test_improved_b747_render_with_mock_pygame():
         assert env._pygame_initialized is True
 
         # Render a frame
-        env.render(mode="human")
+        env.render()
 
         # Check that display methods were called
         assert mock_screen.fill.called
@@ -505,13 +508,14 @@ def test_improved_b747_render_after_close():
         reference_signal=REFERENCE_SIGNAL,
         number_time_steps=NUMBER_TIME_STEPS,
         dt=dt,
+        render_mode="human",
     )
 
     env.reset()
     env._pygame_closed = True
 
     # Should return early
-    env.render(mode="human")
+    env.render()
     # No assertion needed, just checking it doesn't raise
 
 

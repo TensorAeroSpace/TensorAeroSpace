@@ -61,12 +61,13 @@ def extract_theta_value(state: np.ndarray) -> float:
     return float(flat[idx])
 
 
-def build_env(dt: float, tn: int) -> ImprovedB747Env:
+def build_env(dt: float, tn: int, render: bool = False) -> ImprovedB747Env:
     """Create B747 environment with sinusoidal pitch angle reference.
 
     Args:
         dt: discretization step in seconds
         tn: number of episode timesteps
+        render: whether to enable human-mode rendering
 
     Returns:
         Initialized ImprovedB747Env environment
@@ -102,6 +103,7 @@ def build_env(dt: float, tn: int) -> ImprovedB747Env:
         initial_elevator_deg=0.0,
         use_initial_action_on_first_step=True,
         dt=dt,
+        render_mode="human" if render else None,
     )
     env.unwrapped.model.discretisation_time = dt
     return env
@@ -127,7 +129,7 @@ def evaluate_episode(agent: SAC, env: ImprovedB747Env, render: bool = True) -> f
         action = agent.select_action(state, evaluate=True)
         state, reward, terminated, truncated, _info = env.step(action)
         if render:
-            env.render(mode="human")
+            env.render()
         done = bool(terminated or truncated)
         total_reward += float(reward)
         steps += 1
@@ -209,7 +211,7 @@ def main() -> None:
             print(f"CUDA memory: {total_memory_gb:.2f} GB")
 
     # Build environment
-    env = build_env(dt=args.dt, tn=args.tn)
+    env = build_env(dt=args.dt, tn=args.tn, render=args.render)
 
     # Load pretrained agent
     print(f"Loading pretrained agent from: {args.repo}")
@@ -235,7 +237,7 @@ def main() -> None:
     # Set display for rendering (if needed)
     if args.render:
         # Check if DISPLAY is set (for X11)
-        if "DISPLAY" not in os.environ and device.type != "cpu":
+        if "DISPLAY" not in os.environ:
             print(
                 "Warning: DISPLAY not set. Rendering may not work on headless "
                 "systems."
