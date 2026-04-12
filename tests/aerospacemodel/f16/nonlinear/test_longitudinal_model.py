@@ -1,0 +1,101 @@
+import math
+import sys
+
+import numpy as np
+import pytest
+
+
+def test_import_does_not_load_matlab():
+    """Importing the python.* longitudinal module must not pull matlab in."""
+    for mod in list(sys.modules):
+        if mod.startswith("matlab"):
+            sys.modules.pop(mod, None)
+    from tensoraerospace.aerospacemodel.f16.nonlinear.python.longitudinal import (  # noqa
+        LongitudinalF16,
+        initial_state,
+        set_initial_state,
+    )
+    assert "matlab" not in sys.modules
+    assert "matlab.engine" not in sys.modules
+
+
+def test_run_step_returns_4d_state():
+    from tensoraerospace.aerospacemodel.f16.nonlinear.python.longitudinal import (
+        LongitudinalF16,
+        initial_state,
+    )
+    m = LongitudinalF16(initial_state)
+    out = m.run_step([[0.0]])
+    assert isinstance(out, np.ndarray)
+    arr = np.asarray(out).reshape(-1)
+    assert arr.shape == (4,)
+
+
+def test_run_step_accepts_numpy_array():
+    from tensoraerospace.aerospacemodel.f16.nonlinear.python.longitudinal import (
+        LongitudinalF16,
+        initial_state,
+    )
+    m = LongitudinalF16(initial_state)
+    out = m.run_step(np.array([[0.0]]))
+    assert out is not None
+
+
+def test_run_step_rejects_wrong_action_dim():
+    from tensoraerospace.aerospacemodel.f16.nonlinear.python.longitudinal import (
+        LongitudinalF16,
+        initial_state,
+    )
+    m = LongitudinalF16(initial_state)
+    with pytest.raises(Exception):
+        m.run_step([[0.0], [0.0]])
+
+
+def test_selected_state_output_subset():
+    from tensoraerospace.aerospacemodel.f16.nonlinear.python.longitudinal import (
+        LongitudinalF16,
+        initial_state,
+    )
+    m = LongitudinalF16(initial_state, selected_state_output=["alpha", "wz"])
+    y = m.run_step([[0.0]])
+    assert np.asarray(y).reshape(-1).shape == (2,)
+
+
+def test_integrator_choice_runs_both_modes():
+    from tensoraerospace.aerospacemodel.f16.nonlinear.python.longitudinal import (
+        LongitudinalF16,
+        initial_state,
+    )
+    m_euler = LongitudinalF16(initial_state, integrator="euler")
+    m_rk4 = LongitudinalF16(initial_state, integrator="rk4")
+    for _ in range(50):
+        out_e = m_euler.run_step([[math.radians(1.0)]])
+        out_r = m_rk4.run_step([[math.radians(1.0)]])
+        assert np.all(np.isfinite(np.asarray(out_e)))
+        assert np.all(np.isfinite(np.asarray(out_r)))
+
+
+def test_unknown_integrator_raises():
+    from tensoraerospace.aerospacemodel.f16.nonlinear.python.longitudinal import (
+        LongitudinalF16,
+        initial_state,
+    )
+    with pytest.raises(ValueError):
+        LongitudinalF16(initial_state, integrator="midpoint")
+
+
+def test_set_initial_state_returns_array_with_overrides_applied():
+    from tensoraerospace.aerospacemodel.f16.nonlinear.python.longitudinal import (
+        set_initial_state,
+    )
+    out = set_initial_state({"alpha": math.radians(10.0)})
+    arr = np.asarray(out, dtype=float).reshape(-1)
+    assert arr[0] == pytest.approx(math.radians(10.0))
+
+
+def test_set_initial_state_rejects_unknown_key():
+    from tensoraerospace.aerospacemodel.f16.nonlinear.python.longitudinal import (
+        set_initial_state,
+    )
+    with pytest.raises(Exception):
+        set_initial_state({"not_a_state": 1.0})
