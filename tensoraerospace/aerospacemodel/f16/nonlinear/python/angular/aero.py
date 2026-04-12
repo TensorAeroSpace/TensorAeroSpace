@@ -1,10 +1,15 @@
 """Aero coefficient functions for F-16 angular model.
 
 Direct port of angular/matlab_code/Get{Cx,Cy,Cz,Mx,My,Mz}.m.
-GetThrust, EnginePowerLevel, body2wind, wind2body are out-of-scope
-for the angular ODE and are intentionally omitted.
+Tables are loaded once at import; thrust is out of scope.
 
-Tables are loaded once at import time.
+NOTE: matlab uses csaps (cubic smoothing spline), while we use scipy's
+RegularGridInterpolator with method='cubic' (interpolating spline). The
+two diverge by ~1e-4 at grid nodes. Trajectories are not bit-exact with
+the matlab version but qualitative behavior is preserved. The mx1/my1
+interpolators use method='linear' because their fi2 axis has only 3
+points (cubic requires >=4); see inline comments at the construction
+sites.
 """
 from __future__ import annotations
 
@@ -15,6 +20,11 @@ import numpy as np
 from scipy.interpolate import PchipInterpolator, RegularGridInterpolator
 
 AERO_TABLE_DIR = Path(__file__).parent / "aero_tables"
+
+# Note: getthrust.npz is committed alongside the other tables but is NOT
+# loaded here. The angular F16ODE.m does not call GetThrust, so thrust
+# coefficients are out of scope for the angular ODE port. The npz exists
+# only as an extracted artifact in case a future thrust model needs it.
 
 
 # ---------------------------------------------------------------------------
@@ -141,6 +151,7 @@ _mx_alpha2 = _mx["alpha2"]
 _mx_beta1 = _mx["beta1"]
 _mx_fi2 = _mx["fi2"]
 
+# fi2 has only 3 points; cubic requires >=4, so fall back to linear here.
 _interp_mx = RegularGridInterpolator(
     (_mx_alpha1, _mx_beta1, _mx_fi2), _mx["mx1"], method="linear", bounds_error=False
 )
@@ -177,6 +188,7 @@ _my_alpha2 = _my["alpha2"]
 _my_beta1 = _my["beta1"]
 _my_fi2 = _my["fi2"]
 
+# fi2 has only 3 points; cubic requires >=4, so fall back to linear here.
 _interp_my = RegularGridInterpolator(
     (_my_alpha1, _my_beta1, _my_fi2), _my["my1"], method="linear", bounds_error=False
 )

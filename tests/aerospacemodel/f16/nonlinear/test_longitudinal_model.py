@@ -140,3 +140,17 @@ def test_list_state_survives_construction():
     assert m.list_state == ["alpha", "wz", "stab", "dstab"]
     assert m.control_list == ["stab"]
     assert m.list_state.index("dstab") == 3
+
+
+def test_top_level_python_subpackage_reexports():
+    """Importing from the top-level python.* path must yield the same classes."""
+    from tensoraerospace.aerospacemodel.f16.nonlinear.python import (
+        LongitudinalF16 as LongitudinalF16_top,
+        AngularF16 as AngularF16_top,
+    )
+    from tensoraerospace.aerospacemodel.f16.nonlinear.python.longitudinal import (
+        LongitudinalF16,
+    )
+    from tensoraerospace.aerospacemodel.f16.nonlinear.python.angular import AngularF16
+    assert LongitudinalF16_top is LongitudinalF16
+    assert AngularF16_top is AngularF16

@@ -1,6 +1,15 @@
 """Aerodynamic coefficient functions for the F-16 longitudinal model.
 
 Direct port of GetCy.m and GetMz.m. Tables are loaded once at import.
+
+NOTE: matlab uses csaps (cubic *smoothing* spline with smoothing parameter
+near 1 but not exactly 1), while we use scipy's RegularGridInterpolator
+with method='cubic' which is an *interpolating* cubic spline. The two
+agree to within ~1e-4 at grid nodes and within a few percent at typical
+mid-grid query points. The numerical trajectories will not be bit-exact
+matches of the matlab version, but the qualitative behavior (trim points,
+mode shapes, response signs) is preserved. Snapshot regression tests in
+test_longitudinal_properties.py guard against accidental changes.
 """
 from __future__ import annotations
 
