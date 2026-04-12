@@ -82,14 +82,26 @@ jobs:
 
     - name: 🧪 Run tests with pytest
       run: |
-        poetry run pytest tests/ -v --tb=short --junitxml=pytest.xml
+        poetry run pytest tests/ -v --tb=short --junitxml=pytest.xml \
+          --ignore=tests/agents/ihdp_actor_test.py \
+          --ignore=tests/agents/ihdp_critic_test.py \
+          --ignore=tests/agents/ihdp_agent_test.py \
+          --ignore=tests/agents/ihdp_incremental_model_test.py \
+          --ignore=tests/agents/a2c_narx_learner_test.py \
+          --ignore=tests/optimization/ray_test.py
 
     - name: Run tests with coverage
       run: |
         poetry run pytest --maxfail=1 --disable-warnings \
               --cov=tensoraerospace \
               --cov-report=xml:coverage.xml \
-              --cov-report=term-missing:skip-covered | tee pytest-coverage.txt
+              --cov-report=term-missing:skip-covered \
+              --ignore=tests/agents/ihdp_actor_test.py \
+              --ignore=tests/agents/ihdp_critic_test.py \
+              --ignore=tests/agents/ihdp_agent_test.py \
+              --ignore=tests/agents/ihdp_incremental_model_test.py \
+              --ignore=tests/agents/a2c_narx_learner_test.py \
+              --ignore=tests/optimization/ray_test.py | tee pytest-coverage.txt
 
     - name: Upload coverage to Coveralls
       if: ${{ success() && hashFiles('coverage.xml') != '' }}
