@@ -10,4 +10,8 @@ Main components:
 """
 
 from .base import HyperParamOptimizationOptuna as HyperParamOptimizationOptuna
-from .ray import HyperParamOptimizationRay as HyperParamOptimizationRay
+
+try:
+    from .ray import HyperParamOptimizationRay as HyperParamOptimizationRay
+except ImportError:
+    pass  # ray not installed

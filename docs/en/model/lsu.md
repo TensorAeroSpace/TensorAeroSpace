@@ -81,7 +81,7 @@ q \\
 
 - **Matrix A (derivatives):**
 
-  | Коэффициент | Значение |
+  | Coefficient | Value |
   |-------------|----------|
   | x_u | -0.00271615 |
   | x_w | 0.248462 |
@@ -98,7 +98,7 @@ q \\
 
 - **Input η (column B):**
 
-  | Коэффициент | Значение |
+  | Coefficient | Value |
   |-------------|----------|
   | x_η | 1.959083 |
   | z_η | -73.99448 |
@@ -127,6 +127,14 @@ where
 ## Sources
 
 1. 2.	Lembaga, D.O., Antariksa, P.D., Septiyana, A., Hidayat, K., Rizaldi, A., Suseno, P.A., Jayanti, E.B., Atmasari, N., Ramadiansyah, M.L., Ramadhan, R.A., Suryo, V.N., Grüter, B., Diepolder, J., Holzapfel, F., Wijaya, Y.G., Dewan, S., Jurnal, P., Dirgantara, T., Wibowo, H., Panas, P., Septanto, H., Harno, A., Syah, N.A., Angkasa, R., Satelit, M.D., Irwanto, H.Y., Avionik, M.E., Hakim, A.N., Utama, A.B., Wahyudi, A.H., Kurniawati, F., Putro, I.E., & Astuti, R.A. STABILITY AND CONTROLLABILITY ANALYSIS ON LINEARIZED DYNAMIC SYSTEM EQUATION OF MOTION OF LSU 05-NG USING KALMAN RANK CONDITION METHOD. - Jurnal Teknologi Dirgantara Vol. 18 No. 2 Desember 2020 : hal 81 – 92 – 2020
+
+## Reward
+
+The default reward function returns the negative absolute tracking error for the pitch angle:
+
+$$r_t = -|\theta(t) - \theta_{\text{ref}}(t)|$$
+
+Higher reward (closer to 0) indicates better tracking performance. A custom reward function can be passed via the `reward_func` parameter.
 
 ## Quick start {#quick-start}
 
@@ -161,11 +169,11 @@ for _ in range(200):
 
 ## Python API
 
-=== "Модель"
+=== "Model"
 
     ::: tensoraerospace.aerospacemodel.lapan.LAPAN
 
-=== "Среда Gymnasium"
+=== "Gymnasium environment"
 
     ::: tensoraerospace.envs.lapan.LinearLongitudinalLAPAN
 

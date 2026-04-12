@@ -16,6 +16,7 @@ __pycache__/
 .coverage-report.html
 .coverage-report.txt
 .cursor
+.claude
 htmlcov/
 # C extensions
 *.so

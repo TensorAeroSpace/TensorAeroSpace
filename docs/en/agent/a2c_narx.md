@@ -1,8 +1,8 @@
-# A2C с NARX‑Critic
+# A2C with NARX‑Critic
 
 A2C (Advantage Actor-Critic) uses an actor to select actions and a critic to evaluate states. Our implementation employs a NARX (Nonlinear AutoRegressive with eXogenous inputs) critic, enabling better modeling of dynamics and history by explicitly incorporating past states.
 
-![A2C-NARX схема](../agent/img/a2c_narx.png){ width=800 }
+![A2C-NARX Diagram](../agent/img/a2c_narx.png){ width=800 }
 
 ## Components
 

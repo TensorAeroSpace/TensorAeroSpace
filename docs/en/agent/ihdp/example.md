@@ -1,24 +1,24 @@
-# Пример: управление F‑16 с IHDP (LinearLongitudinalF16‑v0)
+# Example: F-16 Control with IHDP (LinearLongitudinalF16-v0)
 
-Ниже — понятный пошаговый пример на базе `example_ihdp_beautiful.ipynb`: от создания опорного сигнала до запуска IHDP и интерпретации графиков. В конце приведены ответы на частые вопросы.
+Below is a clear step-by-step example based on `example_ihdp_beautiful.ipynb`: from creating a reference signal to running IHDP and interpreting the plots. Answers to frequently asked questions are provided at the end.
 
-— [Шаг 1. Время и опорный сигнал](#шаг-1-время-симуляции-и-опорный-сигнал)
+-- [Step 1. Simulation time and reference signal](#step-1-simulation-time-and-reference-signal)
 
-— [Шаг 2. Среда F‑16](#шаг-2-инициализация-среды-f16)
+-- [Step 2. F-16 environment](#step-2-initialize-the-f16-environment)
 
-— [Шаг 3. Параметры IHDP](#шаг-3-параметры-actor--critic--incremental-model)
+-- [Step 3. IHDP parameters](#step-3-actor--critic--incremental-model-parameters)
 
-— [Шаг 4. Создание агента](#шаг-4-создание-агента-ihdp)
+-- [Step 4. Create the agent](#step-4-create-the-ihdp-agent)
 
-— [Шаг 5. Симуляция](#шаг-5-основной-цикл-симуляции)
+-- [Step 5. Simulation](#step-5-main-simulation-loop)
 
-— [Шаг 6. Графики и ожидания](#шаг-6-визуализация-результатов)
+-- [Step 6. Plots and expectations](#step-6-visualize-results)
 
-— [FAQ и советы](#частые-вопросы-и-советы)
+-- [FAQ and tips](#frequently-asked-questions-and-tips)
 
-## Шаг 1. Время симуляции и опорный сигнал {#шаг-1-время-симуляции-и-опорный-сигнал}
+## Step 1. Simulation time and reference signal {#step-1-simulation-time-and-reference-signal}
 
-Задаём дискретизацию и горизонт моделирования. Формируем ступенчатый опорный сигнал по углу атаки `alpha`: это цель, к которой агент будет стремиться, минимизируя ошибку слежения.
+Define the discretization and modeling horizon. Form a step reference signal for the angle of attack `alpha`: this is the target the agent will try to reach by minimizing the tracking error.
 
 <!-- markdownlint-disable MD046 -->
 ```python
@@ -26,19 +26,19 @@ import numpy as np
 from tensoraerospace.utils import generate_time_period, convert_tp_to_sec_tp
 from tensoraerospace.signals.standart import unit_step
 
-dt = 0.01  # дискретизация, с
-tp = generate_time_period(tn=20, dt=dt)  # массив шагов времени
-tps = convert_tp_to_sec_tp(tp, dt=dt)    # время в секундах для графиков
+dt = 0.01  # discretization step, s
+tp = generate_time_period(tn=20, dt=dt)  # array of time steps
+tps = convert_tp_to_sec_tp(tp, dt=dt)    # time in seconds for plots
 number_time_steps = len(tp)
 
-# Заданная ступенька по углу атаки (5°) на 10‑м шаге
+# Step reference for angle of attack (5 deg) at the 10th step
 reference_signals = unit_step(degree=5, tp=tp, time_step=10, output_rad=True).reshape(1, -1)
 ```
 <!-- markdownlint-enable MD046 -->
 
-## Шаг 2. Инициализация среды F‑16 {#шаг-2-инициализация-среды-f16}
+## Step 2. Initialize the F-16 environment {#step-2-initialize-the-f16-environment}
 
-Создаём среду `LinearLongitudinalF16-v0`. Указываем начальное состояние, состав вектора состояний/выхода и канал управления (руль высоты — `ele`). Включаем `tracking_states=["alpha"]`, чтобы ориентировать обучение на слежение за углом атаки.
+Create the `LinearLongitudinalF16-v0` environment. Specify the initial state, the composition of the state/output vectors, and the control channel (elevator -- `ele`). Enable `tracking_states=["alpha"]` to orient the training toward tracking the angle of attack.
 
 <!-- markdownlint-disable MD046 -->
 ```python
@@ -47,7 +47,7 @@ import gymnasium as gym
 env = gym.make(
     'LinearLongitudinalF16-v0',
     number_time_steps=number_time_steps,
-    initial_state=[[0], [0], [0]],   # порядок: [theta, alpha, q]
+    initial_state=[[0], [0], [0]],   # order: [theta, alpha, q]
     reference_signal=reference_signals,
     use_reward=False,
     state_space=["theta", "alpha", "q"],
@@ -60,15 +60,15 @@ obs, info = env.reset()
 ```
 <!-- markdownlint-enable MD046 -->
 
-## Шаг 3. Параметры Actor / Critic / Incremental model {#шаг-3-параметры-actor--critic--incremental-model}
+## Step 3. Actor / Critic / Incremental model parameters {#step-3-actor--critic--incremental-model-parameters}
 
-IHDP использует три модуля:
+IHDP uses three modules:
 
-- `Actor` — нейросеть, выдающая управляющее воздействие по ошибке слежения.
-- `Critic` — нейросеть, оценивающая функционал качества J(x) и его градиент.
-- `Incremental model` — онлайн‑идентификация и локальная линеаризация динамики.
+- `Actor` -- a neural network that outputs the control action based on the tracking error.
+- `Critic` -- a neural network that estimates the cost functional J(x) and its gradient.
+- `Incremental model` -- online identification and local linearization of the dynamics.
 
-Параметры ниже подобраны под демонстрационный кейс: сильная персистентная составляющая (`type_PE="combined"`) ускоряет идентификацию; высокие `learning_rate` уместны при коротком горизонте и насыщениях (`WB_limits`).
+The parameters below are tuned for the demonstration case: a strong persistent excitation component (`type_PE="combined"`) speeds up the identification; high `learning_rate` values are appropriate for a short horizon and saturation limits (`WB_limits`).
 
 <!-- markdownlint-disable MD046 -->
 ```python
@@ -111,9 +111,9 @@ incremental_settings = {
 ```
 <!-- markdownlint-enable MD046 -->
 
-## Шаг 4. Создание агента IHDP {#шаг-4-создание-агента-ihdp}
+## Step 4. Create the IHDP agent {#step-4-create-the-ihdp-agent}
 
-Передаём агенту конфигурацию модулей и метаданные среды. Следите за согласованностью `indices_tracking_states` с порядком состояний среды.
+Pass the module configurations and environment metadata to the agent. Make sure that `indices_tracking_states` is consistent with the ordering of the environment states.
 
 <!-- markdownlint-disable MD046 -->
 ```python
@@ -132,19 +132,19 @@ agent = IHDPAgent(
 ```
 <!-- markdownlint-enable MD046 -->
 
-## Шаг 5. Основной цикл симуляции {#шаг-5-основной-цикл-симуляции}
+## Step 5. Main simulation loop {#step-5-main-simulation-loop}
 
-На каждом шаге:
+At each step:
 
-- `agent.predict` возвращает управляющее воздействие с учётом текущего состояния и опорного сигнала,
-- среда интегрирует динамику и возвращает новое состояние,
-- при необходимости можно учитывать `reward` (здесь отключён для чистоты контроля по слежению).
+- `agent.predict` returns the control action given the current state and reference signal,
+- the environment integrates the dynamics and returns the new state,
+- if needed, you can use `reward` (here it is disabled for pure tracking control).
 
 <!-- markdownlint-disable MD046 -->
 ```python
 from tqdm import tqdm
 
-xt = np.array([[0], [0], [0]])  # начальное состояние [theta, alpha, q]
+xt = np.array([[0], [0], [0]])  # initial state [theta, alpha, q]
 for step in tqdm(range(number_time_steps - 3)):
     ut = agent.predict(xt, reference_signals, step)
     xt, reward, terminated, truncated, info = env.step(np.array(ut))
@@ -153,9 +153,9 @@ for step in tqdm(range(number_time_steps - 3)):
 ```
 <!-- markdownlint-enable MD046 -->
 
-## Шаг 6. Визуализация результатов {#шаг-6-визуализация-результатов}
+## Step 6. Visualize results {#step-6-visualize-results}
 
-Сравниваем траекторию `alpha` с опорным сигналом и анализируем динамику `wz`. Сглаженность и отсутствие перерегулирования зависят от весов критика, ограничений и скоростей обучения.
+Compare the `alpha` trajectory with the reference signal and analyze the `wz` dynamics. Smoothness and absence of overshoot depend on the critic weights, constraints, and learning rates.
 
 <!-- markdownlint-disable MD046 -->
 ```python
@@ -163,7 +163,7 @@ env.model.plot_transient_process('alpha', tps, reference_signals[0], to_deg=True
 ```
 <!-- markdownlint-enable MD046 -->
 
-![Переходный процесс по углу атаки](../../example/agent/ihdp/img/output_9_0.png){ width=960 }
+![Angle of attack transient response](../../example/agent/ihdp/img/output_9_0.png){ width=960 }
 
 <!-- markdownlint-disable MD046 -->
 ```python
@@ -171,41 +171,41 @@ env.model.plot_state('wz', tps, to_deg=True, figsize=(15, 4))
 ```
 <!-- markdownlint-enable MD046 -->
 
-![Динамика угловой скорости wz](../../example/agent/ihdp/img/output_10_1.png){ width=960 }
+![Angular rate wz dynamics](../../example/agent/ihdp/img/output_10_1.png){ width=960 }
 
-Ожидаемые признаки корректной работы:
+Expected signs of correct operation:
 
-- Ошибка `alpha` быстро стремится к нулю без устойчивых колебаний
-- `wz` не выходит за физически разумные пределы и затухает
-- Управляющий сигнал (если вывести) не насыщается длительно
+- The `alpha` error quickly converges to zero without sustained oscillations
+- `wz` stays within physically reasonable bounds and decays
+- The control signal (if plotted) does not saturate for extended periods
 
 !!! note
-    Параметры обучения подобраны для демонстрации и могут отличаться от оптимальных для вашей задачи.
+    The training parameters are tuned for demonstration purposes and may differ from the optimal ones for your task.
 
-## Sanity‑checks (быстрые проверки)
+## Sanity checks
 
-- Осреднённая абсолютная ошибка по `alpha` за финальные 20% горизонта меньше 5–10% от амплитуды ступеньки
-- Нет длительного насыщения управляющего сигнала
-- Дискретный шаг `dt` согласован с динамикой (нет «пилообразного» шума)
+- The mean absolute error of `alpha` over the final 20% of the horizon is less than 5-10% of the step amplitude
+- No prolonged saturation of the control signal
+- The discrete step `dt` is consistent with the dynamics (no "sawtooth" noise)
 
-## Единицы измерения и нормализация
+## Units and normalization
 
-- Углы `theta`, `alpha`, `q` в моделях и графиках — в радианах, для визуализации переводим в градусы (`to_deg=True`)
-- Управление `ele` — в радианах; ограничения задаются в тех же единицах
-- Если используете собственные признаки — нормализуйте входы для стабильного обучения
+- Angles `theta`, `alpha`, `q` in the models and plots are in radians; for visualization they are converted to degrees (`to_deg=True`)
+- The control `ele` is in radians; limits are specified in the same units
+- If you use custom features, normalize inputs for stable training
 
-## Частые вопросы и советы {#частые-вопросы-и-советы}
+## Frequently asked questions and tips {#frequently-asked-questions-and-tips}
 
-- Почему добавляется персистентное возбуждение (PE)?
-  Для качественной идентификации инкрементальной модели требуется богатая динамика входа; иначе актор и критик быстро «залипают».
+- Why is persistent excitation (PE) added?
+  For quality identification of the incremental model, the input must have rich dynamics; otherwise the actor and critic quickly "get stuck."
 
-- Как выбрать `Q_weights` у критика?
-  Увеличение веса по ошибке слежения (например, по `alpha`) повышает приоритет точности слежения относительно энергозатрат.
+- How to choose the critic's `Q_weights`?
+  Increasing the weight on the tracking error (e.g., on `alpha`) raises the priority of tracking accuracy relative to control effort.
 
-- Что делать при дрожании управления?
-  Снизьте `learning_rate`, увеличьте `WB_limits` осторожно, ограничьте `maximum_input`/`maximum_q_rate`, проверьте масштабирование признаков.
+- What to do about control chattering?
+  Reduce the `learning_rate`, increase `WB_limits` carefully, limit `maximum_input`/`maximum_q_rate`, and check feature scaling.
 
-- Как ускорить выход на режим?
-  Поднимите `learning_rate` актёра/критика, но следите за устойчивостью; увеличьте амплитуду PE, если идентификация идёт медленно.
+- How to speed up convergence?
+  Increase the actor/critic `learning_rate`, but monitor stability; increase the PE amplitude if identification is slow.
 
-См. также обзор алгоритма и гиперпараметры: [IHDP](../../agent/ihdp.md).
+See also the algorithm overview and hyperparameters: [IHDP](../../agent/ihdp.md).

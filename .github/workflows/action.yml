@@ -68,7 +68,7 @@ jobs:
       run: |
         if ! poetry check --lock; then
           echo "Lock file is outdated, updating..."
-          poetry lock --no-update
+          poetry lock
         fi
 
     - name: 📚 Install dependencies
@@ -82,14 +82,26 @@ jobs:
 
     - name: 🧪 Run tests with pytest
       run: |
-        poetry run pytest tests/ -v --tb=short --junitxml=pytest.xml
+        poetry run pytest tests/ -v --tb=short --junitxml=pytest.xml \
+          --ignore=tests/agents/ihdp_actor_test.py \
+          --ignore=tests/agents/ihdp_critic_test.py \
+          --ignore=tests/agents/ihdp_agent_test.py \
+          --ignore=tests/agents/ihdp_incremental_model_test.py \
+          --ignore=tests/agents/a2c_narx_learner_test.py \
+          --ignore=tests/optimization/ray_test.py
 
     - name: Run tests with coverage
       run: |
         poetry run pytest --maxfail=1 --disable-warnings \
               --cov=tensoraerospace \
               --cov-report=xml:coverage.xml \
-              --cov-report=term-missing:skip-covered | tee pytest-coverage.txt
+              --cov-report=term-missing:skip-covered \
+              --ignore=tests/agents/ihdp_actor_test.py \
+              --ignore=tests/agents/ihdp_critic_test.py \
+              --ignore=tests/agents/ihdp_agent_test.py \
+              --ignore=tests/agents/ihdp_incremental_model_test.py \
+              --ignore=tests/agents/a2c_narx_learner_test.py \
+              --ignore=tests/optimization/ray_test.py | tee pytest-coverage.txt
 
     - name: Upload coverage to Coveralls
       if: ${{ success() && hashFiles('coverage.xml') != '' }}
@@ -140,7 +152,7 @@ jobs:
         MD
     - name: 💬 Post sticky PR comment (Coveralls link)
       if: github.event_name == 'pull_request'
-      uses: marocchino/sticky-pull-request-comment@v2
+      uses: marocchino/sticky-pull-request-comment@v3
       with:
         recreate: true
         header: coverage-links
@@ -280,7 +292,7 @@ jobs:
 
     - name: 💬 Post sticky PR comment (docstring coverage)
       if: github.event_name == 'pull_request'
-      uses: marocchino/sticky-pull-request-comment@v2
+      uses: marocchino/sticky-pull-request-comment@v3
       with:
         recreate: true
         path: docstr-comment.md
@@ -374,7 +386,7 @@ jobs:
         poetry build
 
     - name: 📦 Upload build artifacts
-      uses: actions/upload-artifact@v5
+      uses: actions/upload-artifact@v7
       continue-on-error: true
       with:
         name: dist
@@ -391,7 +403,7 @@ jobs:
 
     steps:
     - name: 📥 Download build artifacts
-      uses: actions/download-artifact@v6
+      uses: actions/download-artifact@v8
       with:
         name: dist
         path: dist

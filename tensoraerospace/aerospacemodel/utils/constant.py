@@ -22,6 +22,10 @@ state_to_latex_rus = {
     # English state names
     "q": r"$\omega_z$" + ", deg./s",
     "u": r"$u$" + ", m/s",
+    "w": r"$w$" + ", m/s",
+    "v": r"$v$" + ", m/s",
+    "p": r"$\omega_x$" + ", deg./s",
+    "r": r"$\omega_y$" + ", deg./s",
     "gamma": r"$\gamma$" + ", deg.",
     "phi": r"$\gamma$" + ", deg.",
     "psi": r"$\varpsi$" + ", deg.",
@@ -35,6 +39,11 @@ state_to_latex_rus = {
     "dail": r"$\dot{\delta_{A}}$" + ", deg./s",
     "ddir": r"$\dot{\delta_{R}}$" + ", deg./s",
     "altitude": r"Altitude" + ", m.",
+    "h": r"$h$" + ", m.",
+    "rho": r"$\rho$",
+    "rho_dot": r"$\dot{\rho}$" + ", m/s",
+    "theta_dot": r"$\dot{\theta}$" + ", rad/s",
+    "omega": r"$\omega$" + ", rad/s",
 }
 
 ref_state_to_latex_rus = {
@@ -44,6 +53,11 @@ ref_state_to_latex_rus = {
     "wy": r"$\omega^{ref}_y$" + ", deg./s",
     "wz": r"$\omega^{ref}_z$" + ", deg./s",
     "q": r"$\omega^{ref}_z$" + ", deg./s",
+    "u": r"$u^{ref}$" + ", m/s",
+    "w": r"$w^{ref}$" + ", m/s",
+    "v": r"$v^{ref}$" + ", m/s",
+    "p": r"$\omega^{ref}_x$" + ", deg./s",
+    "r": r"$\omega^{ref}_y$" + ", deg./s",
     "gamma": r"$\gamma^{ref}$" + ", deg.",
     "phi": r"$\gamma^{ref}$" + ", deg.",
     "psi": r"$\varpsi^{ref}$" + ", deg.",
@@ -54,6 +68,11 @@ ref_state_to_latex_rus = {
     "dir": r"$\delta{ref}_{Н}$" + ", deg.",
     "rud": r"$\delta{ref}_{Н}$" + ", deg.",
     "altitude": r"Высота" + ", м.",
+    "h": r"$h^{ref}$" + ", м.",
+    "rho": r"$\rho^{ref}$",
+    "rho_dot": r"$\dot{\rho}^{ref}$" + ", m/s",
+    "theta_dot": r"$\dot{\theta}^{ref}$" + ", rad/s",
+    "omega": r"$\omega^{ref}$" + ", rad/s",
 }
 
 ref_state_to_latex_eng = {
@@ -62,6 +81,12 @@ ref_state_to_latex_eng = {
     "wx": r"$\omega^{ref}_x$" + ", deg./s",
     "wy": r"$\omega^{ref}_y$" + ", deg./s",
     "wz": r"$\omega^{ref}_z$" + ", deg./s",
+    "q": r"$\omega^{ref}_z$" + ", deg./s",
+    "u": r"$u^{ref}$" + ", m/s",
+    "w": r"$w^{ref}$" + ", m/s",
+    "v": r"$v^{ref}$" + ", m/s",
+    "p": r"$\omega^{ref}_x$" + ", deg./s",
+    "r": r"$\omega^{ref}_y$" + ", deg./s",
     "gamma": r"$\gamma^{ref}$" + ", deg.",
     "phi": r"$\gamma^{ref}$" + ", deg.",
     "psi": r"$\varpsi^{ref}$" + ", deg.",
@@ -71,6 +96,11 @@ ref_state_to_latex_eng = {
     "ail": r"$\delta^{ref}_{A_{act}}$" + ", deg.",
     "dir": r"$\delta^{ref}_{D_{act}}$" + ", deg.",
     "rud": r"$\delta^{ref}_{D_{act}}$" + ", deg.",
+    "h": r"$h^{ref}$" + ", m",
+    "rho": r"$\rho^{ref}$",
+    "rho_dot": r"$\dot{\rho}^{ref}$" + ", m/s",
+    "theta_dot": r"$\dot{\theta}^{ref}$" + ", rad/s",
+    "omega": r"$\omega^{ref}$" + ", rad/s",
 }
 
 
@@ -80,6 +110,12 @@ state_to_latex_eng = {
     "wx": r"$\omega_x$" + ", deg./s",
     "wy": r"$\omega_y$" + ", deg./s",
     "wz": r"$\omega_z$" + ", deg./s",
+    "q": r"$\omega_z$" + ", deg./s",
+    "u": r"$u$" + ", m/s",
+    "w": r"$w$" + ", m/s",
+    "v": r"$v$" + ", m/s",
+    "p": r"$\omega_x$" + ", deg./s",
+    "r": r"$\omega_y$" + ", deg./s",
     "gamma": r"$\gamma$" + ", deg.",
     "phi": r"$\gamma$" + ", deg.",
     "psi": r"$\varpsi$" + ", deg.",
@@ -92,6 +128,11 @@ state_to_latex_eng = {
     "dstab": r"$\dot{\delta_{D}}$" + ", deg./s",
     "dail": r"$\dot{\delta_{A}}$" + ", deg./s",
     "ddir": r"$\dot{\delta_{D}}$" + ", deg./s",
+    "h": r"$h$" + ", m",
+    "rho": r"$\rho$",
+    "rho_dot": r"$\dot{\rho}$" + ", m/s",
+    "theta_dot": r"$\dot{\theta}$" + ", rad/s",
+    "omega": r"$\omega$" + ", rad/s",
 }
 
 control_to_latex_rus = {
@@ -100,6 +141,9 @@ control_to_latex_rus = {
     "ail": r"$\delta_{A_{act}}$" + ", deg.",
     "dir": r"$\delta_{D_{act}}$" + ", deg.",
     "rud": r"$\delta_{D_{act}}$" + ", deg.",
+    "u2": r"$u_2$" + ", N",
+    "delta_t": r"$\delta_T$",
+    "thrust": r"$T$" + ", N",
 }
 
 control_to_latex_eng = {
@@ -108,4 +152,7 @@ control_to_latex_eng = {
     "ail": r"$\delta_{Э_{act}}$" + ", deg.",
     "dir": r"$\delta_{Н_{act}}$" + ", deg.",
     "rud": r"$\delta_{Н_{act}}$" + ", deg.",
+    "u2": r"$u_2$" + ", N",
+    "delta_t": r"$\delta_T$",
+    "thrust": r"$T$" + ", N",
 }

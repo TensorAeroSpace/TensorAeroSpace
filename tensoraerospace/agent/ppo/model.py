@@ -1182,6 +1182,16 @@ class PPO(BaseRLModel):
             )
         _atomic_write_json(model_dir / "best_meta.json", meta)
 
+    def eval(self) -> "PPO":
+        """Switch actor and critic networks to evaluation mode.
+
+        Returns:
+            self for method chaining.
+        """
+        self.actor.eval()
+        self.critic.eval()
+        return self
+
     def close(self) -> None:
         """Flush and stop background saver (safe to call multiple times)."""
         if self._best_saver is not None:
@@ -1295,8 +1305,8 @@ class PPO(BaseRLModel):
             action, mean_action, delta = self.act(state, deterministic=True)
             step_return = self.env.step(mean_action[0])
             if len(step_return) > 4:
-                next_state, reward, terminated, trunkated, info = step_return
-                done = terminated or trunkated
+                next_state, reward, terminated, truncated, info = step_return
+                done = terminated or truncated
             else:
                 next_state, reward, terminated, info = step_return
                 done = terminated

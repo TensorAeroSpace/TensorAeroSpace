@@ -433,3 +433,5 @@ Generates a random test input with configurable frequency and amplitude ranges f
 - For aerospace applications, doublet signals are particularly useful for flight control testing.
 - Chirp signals are ideal for system identification and frequency response analysis.
 - Combine multiple signals to create complex test scenarios.
+- **Chirp `f0` parameter:** `f0` must be positive; a `ValueError` is raised otherwise.
+- **Chirp exponential mode with `f0 == f1`:** When `f0` equals `f1` in exponential mode, the function returns a constant-frequency sinusoid instead of raising an error.

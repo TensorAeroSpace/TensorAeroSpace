@@ -41,6 +41,7 @@ class ComSatEnv(gym.Env):
         reward_func: Callable | None = None,
     ) -> None:
         """Initialize communication satellite environment."""
+        super().__init__()
         self.max_action_value = 25.0
         self.initial_state = initial_state
         self.number_time_steps = number_time_steps
@@ -87,8 +88,8 @@ class ComSatEnv(gym.Env):
 
     @staticmethod
     def reward(state, ref_signal, ts):
-        """Compute tracking error used as reward."""
-        return np.abs(state[0] - ref_signal[:, ts])
+        """Compute tracking reward (negative absolute error)."""
+        return -float(np.abs(state[0] - ref_signal[:, ts]).item())
 
     def step(self, action: np.ndarray):
         """Run one environment step (Gymnasium API)."""

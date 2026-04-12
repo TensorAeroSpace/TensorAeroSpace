@@ -57,26 +57,26 @@ Training includes 5 scenes (1 base + 4 with additional challenges) located in `U
 
     Configure via the `Birds` component on `AircraftManager` (`Impact` and interval). Forces apply randomly to wings or nose with magnitude `(Impact, 2 × Impact)`.
 
-    ![Сцена Birds](img/bird.gif)
+    ![Birds Scene](img/bird.gif)
 
 ???+ info "MLAgentsSceneCold — icing"
     Engine thrust is capped; thrust may stall; controls can freeze.
 
     Configure `MaxThrust` in `AircraftManager`; the `Cold` component defines freeze intervals (UI hint “controls frozen”).
 
-    ![Сцена Cold](img/frozen.gif)
+    ![Icing Scene](img/frozen.gif)
 
 ???+ info "MLAgentsSceneRain — rain"
     Constant downward force vector.
 
     Configure with the `Rain` component (`Impact`).
 
-    ![Сцена Rain](img/rain.gif)
+    ![Rain Scene](img/rain.gif)
 
 ???+ info "MLAgentsSceneWind — wind"
     Parameters from `UnityAirplaneEnvironment/Assets/AlbLab3/Experiment Settings/ml_agent_wind.asset` (speed, azimuth, elevator). Example: speed 10, elevator 30.
 
-    ![Сцена Wind](img/wind.gif)
+    ![Wind Scene](img/wind.gif)
 
 !!! note
 Gravity is set to g = 9.81.

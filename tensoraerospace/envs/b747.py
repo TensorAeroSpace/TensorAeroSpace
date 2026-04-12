@@ -67,6 +67,7 @@ class LinearLongitudinalB747(gym.Env):
             use_reward (bool): Whether to use reward. Defaults to True.
             dt (float): Discretization frequency. Defaults to 0.01.
         """
+        super().__init__()
         self.max_action_value = 25.0
         self.dt = dt
         self.initial_state = initial_state

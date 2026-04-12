@@ -111,6 +111,14 @@ q \\
 
 1. Ahmed EA, Hafez A, Ouda AN, Ahmed HEH, Abd‑Elkader HM. Modelling of a Small Unmanned Aerial Vehicle. Adv Robot Autom 4:126, 2015.
 
+## Reward
+
+The default reward function returns the negative absolute tracking error for the pitch angle:
+
+$$r_t = -|\theta(t) - \theta_{\text{ref}}(t)|$$
+
+Higher reward (closer to 0) indicates better tracking performance. A custom reward function can be passed via the `reward_func` parameter.
+
 ## Quick start {#quick-start}
 
 === "Gymnasium"

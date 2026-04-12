@@ -40,6 +40,7 @@ class LinearLongitudinalLAPAN(gym.Env):
         reward_func: Callable[[np.ndarray, np.ndarray, int], float] | None = None,
     ) -> None:
         """Initialize legacy LAPAN longitudinal environment."""
+        super().__init__()
         self.max_action_value = 25.0
         self.initial_state = initial_state
         self.number_time_steps = number_time_steps
@@ -98,7 +99,7 @@ class LinearLongitudinalLAPAN(gym.Env):
         Returns:
             float: Reward value (lower is better in the legacy formulation).
         """
-        return float(np.abs(state[0] - ref_signal[:, ts]))
+        return -float(np.abs(state[0] - ref_signal[:, ts]).item())
 
     def _get_info(self) -> dict[str, float]:
         """Return auxiliary info for Gym API (currently empty)."""
@@ -116,10 +117,8 @@ class LinearLongitudinalLAPAN(gym.Env):
             tuple: ``(observation, reward, terminated, truncated, info)`` in the
             Gymnasium API format.
         """
-        if action[0] > self.max_action_value:
-            action[0] = self.max_action_value
-        if action[0] < self.max_action_value * -1:
-            action[0] = self.max_action_value * -1
+        action = np.asarray(action).reshape(-1)
+        action = np.clip(action, -self.max_action_value, self.max_action_value)
         self.current_step += 1
         next_state = self.model.run_step(action)
         reward = self.reward_func(

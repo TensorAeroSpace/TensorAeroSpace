@@ -1,47 +1,47 @@
-Интеграция собственной Simulink‑модели
+Integrating your own Simulink model
 ======================================
 
-Ниже — короткий и практичный путь: сгенерировать код из Simulink, собрать динамическую библиотеку и запустить вашу модель из Python через `ctypes`.
+Below is a short and practical path: generate code from Simulink, build a dynamic library, and run your model from Python via `ctypes`.
 
-Цели и требования
+Goals and requirements
 ------------------
 
-- Что вы получите:
-  - **Артефакты сборки** из Simulink (`*.c`, `*.h`) и **динамическую библиотеку** (`.so`/`.dylib`/`.dll`).
-  - **Минимальный Python‑скрипт**, который инициализирует модель, делает шаги и читает выходы.
-- Что требуется:
-  - MATLAB/Simulink с установленным **Embedded Coder**.
-  - Компилятор C/C++ (GCC/Clang/MSVC) и утилиты линковки.
-  - Python 3.8+ и `matplotlib` для визуализации (опционально).
+- What you will get:
+  - **Build artifacts** from Simulink (`*.c`, `*.h`) and a **dynamic library** (`.so`/`.dylib`/`.dll`).
+  - A **minimal Python script** that initializes the model, steps through it, and reads the outputs.
+- What is required:
+  - MATLAB/Simulink with **Embedded Coder** installed.
+  - A C/C++ compiler (GCC/Clang/MSVC) and linker utilities.
+  - Python 3.8+ and `matplotlib` for visualization (optional).
 
-Шаг 1. Сгенерируйте C/C++ код в Simulink
+Step 1. Generate C/C++ code in Simulink
 ----------------------------------------
 
-- Добавьте блоки `In1`/`Out1` для описания входов и выходов модели.
-- В настройках выберите: `Code Generation → System target file: ert_shrlib.tlc` (Embedded Coder).
-- Соберите модель (`Ctrl+B` или кнопка “Build model”). В папке модели появятся `*.c`, `*.h` и прочие артефакты.
+- Add `In1`/`Out1` blocks to define the model inputs and outputs.
+- In the settings, select: `Code Generation -> System target file: ert_shrlib.tlc` (Embedded Coder).
+- Build the model (`Ctrl+B` or the "Build model" button). The `*.c`, `*.h`, and other artifacts will appear in the model folder.
 
-![Генерация C/C++ кода](img/cpp_gen.png){ width="400" }
+![C/C++ code generation](img/cpp_gen.png){ width="400" }
 
-!!! note "Шаг моделирования"
-    Шаг расчета задается в параметрах Simulink‑модели. Он будет использован функцией шага в сгенерированном коде.
+!!! note "Simulation step"
+    The simulation step is set in the Simulink model parameters. It will be used by the step function in the generated code.
 
-Структура артефактов и соглашения об именах
+Artifact structure and naming conventions
 -------------------------------------------
 
-После сборки в каталоге модели появятся файлы вида:
+After the build, the model directory will contain files such as:
 
-- Заголовки: `MODEL_NAME.h`, приватные заголовки `*_private.h`, типы `rtwtypes.h`.
-- Исходники: `*.c` с реализацией и точкой входа шага модели.
-- Имена глобальных объектов и функций:
-  - Входы: `MODEL_NAME_U`
-  - Выходы: `MODEL_NAME_Y`
-  - Инициализация/шаг/завершение: `MODEL_NAME_initialize`, `MODEL_NAME_step`, `MODEL_NAME_terminate`
+- Headers: `MODEL_NAME.h`, private headers `*_private.h`, types `rtwtypes.h`.
+- Source files: `*.c` with the implementation and the model step entry point.
+- Names of global objects and functions:
+  - Inputs: `MODEL_NAME_U`
+  - Outputs: `MODEL_NAME_Y`
+  - Initialize/step/terminate: `MODEL_NAME_initialize`, `MODEL_NAME_step`, `MODEL_NAME_terminate`
 
-Шаг 2. Соберите динамическую библиотеку
+Step 2. Build the dynamic library
 --------------------------------------
 
-Сборка выполняется в каталоге, где лежат сгенерированные `*.c` файлы.
+The build is performed in the directory containing the generated `*.c` files.
 
 === "Linux"
 
@@ -67,27 +67,27 @@
    cl /LD /O2 *.c /Fe:model.dll
    ```
 
-!!! tip "Подсказка"
-    Иногда требуется добавить системные библиотеки (например, `-lm` на Linux). Если компоновщик сообщает об отсутствующих символах — проверьте вывод сборки и добавьте необходимые флаги.
+!!! tip "Hint"
+    Sometimes you need to add system libraries (e.g., `-lm` on Linux). If the linker reports missing symbols, check the build output and add the necessary flags.
 
-Быстрая проверка загрузки библиотеки
+Quick check: loading the library
 ------------------------------------
 
-Перед интеграцией в код убедитесь, что библиотека загружается:
+Before integrating into your code, make sure the library loads:
 
 ```python
 import ctypes, os
-print(ctypes.CDLL(os.path.abspath("model.so")))  # замените на .dylib или .dll
+print(ctypes.CDLL(os.path.abspath("model.so")))  # replace with .dylib or .dll
 ```
 
 !!! warning "Windows"
-    - На Windows может потребоваться, чтобы зависимые DLL находились в одном каталоге или были прописаны в `PATH`.
-    - Если видите `OSError: [WinError 126] The specified module could not be found` — проверьте расположение всех зависимостей и архитектуру (x64 vs x86).
+    - On Windows, dependent DLLs may need to be in the same directory or listed in `PATH`.
+    - If you see `OSError: [WinError 126] The specified module could not be found`, check the locations of all dependencies and the architecture (x64 vs x86).
 
-Шаг 3. Опишите интерфейс входов/выходов в Python
+Step 3. Describe the input/output interface in Python
 ------------------------------------------------
 
-Откройте сгенерированный заголовок `MODEL_NAME.h` и найдите секции `External inputs` и `External outputs`. По ним создайте структуры для `ctypes`.
+Open the generated header `MODEL_NAME.h` and find the `External inputs` and `External outputs` sections. Create `ctypes` structures based on them.
 
 ```python
 import ctypes
@@ -95,14 +95,14 @@ from tensoraerospace.aerospacemodel.utils.rtwtypes import real_T
 
 
 class ExtU(ctypes.Structure):
-    """Входы модели (name, type)"""
+    """Model inputs (name, type)"""
     _fields_ = [
         ("ref_signal", real_T),
     ]
 
 
 class ExtY(ctypes.Structure):
-    """Выходы модели (name, type)"""
+    """Model outputs (name, type)"""
     _fields_ = [
         ("Wz", real_T),
         ("theta_big", real_T),
@@ -112,13 +112,13 @@ class ExtY(ctypes.Structure):
     ]
 ```
 
-!!! info "Имена и типы"
-    Имена полей и их типы всегда берите из `MODEL_NAME.h`. В именах глобальных структур и функций используется имя модели: `MODEL_NAME_U`, `MODEL_NAME_Y`, `MODEL_NAME_initialize`, `MODEL_NAME_step`, `MODEL_NAME_terminate`.
+!!! info "Names and types"
+    Always take field names and their types from `MODEL_NAME.h`. The names of global structures and functions use the model name: `MODEL_NAME_U`, `MODEL_NAME_Y`, `MODEL_NAME_initialize`, `MODEL_NAME_step`, `MODEL_NAME_terminate`.
 
-Шаг 4. Пример запуска из Python
+Step 4. Example: running from Python
 --------------------------------
 
-Ниже — минимальный пример, который загружает библиотеку, выполняет 2100 шагов и строит графики. Подставьте актуальное имя модели и путь к библиотеке (`.so`/`.dylib`/`.dll`).
+Below is a minimal example that loads the library, executes 2100 steps, and plots the results. Substitute your actual model name and library path (`.so`/`.dylib`/`.dll`).
 
 ```python
 import os
@@ -142,14 +142,14 @@ class ExtY(ctypes.Structure):
     ]
 
 
-# Укажите правильный путь и расширение библиотеки вашей модели
+# Specify the correct path and library extension for your model
 lib_path = os.path.abspath("model.so")   # Linux
 # lib_path = os.path.abspath("model.dylib")  # macOS
 # lib_path = os.path.abspath("model.dll")    # Windows
 
 dll = ctypes.CDLL(lib_path)
 
-# Имя префикса совпадает с именем модели в Simulink (здесь — "model")
+# The name prefix matches the model name in Simulink (here -- "model")
 X = ExtU.in_dll(dll, "model_U")
 Y = ExtY.in_dll(dll, "model_Y")
 
@@ -173,28 +173,28 @@ for _ in range(2100):
 model_terminate()
 
 plt.figure(figsize=(8, 6))
-plt.subplot(3, 2, 1); plt.plot(wz); plt.title("$w_z$, рад/с")
-plt.subplot(3, 2, 2); plt.plot(H); plt.title("H, м")
-plt.subplot(3, 2, 3); plt.plot(theta_big); plt.title("$\\Theta$, рад")
-plt.subplot(3, 2, 4); plt.plot(theta_small); plt.title("$\\theta$, рад")
-plt.subplot(3, 2, 5); plt.plot(alpha); plt.title("$\\alpha$, рад")
+plt.subplot(3, 2, 1); plt.plot(wz); plt.title("$w_z$, rad/s")
+plt.subplot(3, 2, 2); plt.plot(H); plt.title("H, m")
+plt.subplot(3, 2, 3); plt.plot(theta_big); plt.title("$\\Theta$, rad")
+plt.subplot(3, 2, 4); plt.plot(theta_small); plt.title("$\\theta$, rad")
+plt.subplot(3, 2, 5); plt.plot(alpha); plt.title("$\\alpha$, rad")
 plt.tight_layout(); plt.show()
 ```
 
-Распространенные проблемы и их решения
+Common issues and solutions
 --------------------------------------
 
-- "Не нахожу `MODEL_NAME_U`/`MODEL_NAME_Y`":
-  - Убедитесь, что используете корректный префикс имени модели (как файл `.h`).
-  - Проверьте, что `In1`/`Out1` присутствуют и экспортируются.
-- Ошибка линковки про `math` или `sqrt`:
-  - Добавьте `-lm` при сборке на Linux.
-- Python падает при обращении к полям структуры:
-  - Проверьте соответствие типов полей `ctypes` тому, что в `MODEL_NAME.h`.
-  - Убедитесь, что библиотека собрана для той же архитектуры, что и Python (x64/x86).
+- "Cannot find `MODEL_NAME_U`/`MODEL_NAME_Y`":
+  - Make sure you are using the correct model name prefix (as in the `.h` file).
+  - Verify that `In1`/`Out1` are present and exported.
+- Linker error about `math` or `sqrt`:
+  - Add `-lm` when building on Linux.
+- Python crashes when accessing structure fields:
+  - Check that the `ctypes` field types match those in `MODEL_NAME.h`.
+  - Make sure the library is built for the same architecture as Python (x64/x86).
 
-Полезные ссылки
+Useful links
 ---------------
 
-- Репозиторий с примером модели: [tensoraerospace/simulink-example](https://github.com/tensoraerospace/simulink-example)
-- Конвертация и запуск Simulink‑моделей: см. также раздел «Simulink to Python» в документации.
+- Repository with a model example: [tensoraerospace/simulink-example](https://github.com/tensoraerospace/simulink-example)
+- Converting and running Simulink models: see also the "Simulink to Python" section in the documentation.

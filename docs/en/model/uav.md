@@ -124,7 +124,7 @@ q \\
 
 - **Matrix A (derivatives):**
 
-  | Коэффициент | Значение |
+  | Coefficient | Value |
   |-------------|----------|
   | x_u | -0.1982 |
   | x_w | 0.593 |
@@ -141,7 +141,7 @@ q \\
 
 - **Input η (column B):**
 
-  | Коэффициент | Значение |
+  | Coefficient | Value |
   |-------------|----------|
   | x_η | 0.2281 |
   | z_η | -4.6830 |
@@ -150,6 +150,14 @@ q \\
 ## Sources
 
 1. A. Rauf, Muhammad Aamir Zafar, Z. Ashraf and H. Akhtar, "Aerodynamic modeling and state-space model extraction of a UAV using DATCOM and Simulink," 2011 3rd International Conference on Computer Research and Development, Shanghai, China, 2011, pp. 88-92, doi: 10.1109/ICCRD.2011.5763860.
+
+## Reward
+
+The default reward function returns the negative absolute tracking error for the pitch angle:
+
+$$r_t = -|\theta(t) - \theta_{\text{ref}}(t)|$$
+
+Higher reward (closer to 0) indicates better tracking performance. A custom reward function can be passed via the `reward_func` parameter.
 
 ## Quick start {#quick-start}
 

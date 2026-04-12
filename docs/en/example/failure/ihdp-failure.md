@@ -1,4 +1,4 @@
-Работа IHDP с отказами системы
+IHDP with System Failures
 ==============================
 
 ```python
@@ -15,11 +15,11 @@
 
 ```python
 
-    dt = 0.01  # Дискретизация
-    tp = generate_time_period(tn=40, dt=dt) # Временной периуд
+    dt = 0.01  # Discretization
+    tp = generate_time_period(tn=40, dt=dt) # Time period
     tps = convert_tp_to_sec_tp(tp, dt=dt)
-    number_time_steps = len(tp) # Количество временных шагов
-    reference_signals = np.reshape(unit_step(degree=5, tp=tp, time_step=10, output_rad=True), [1, -1]) # Заданный сигнал
+    number_time_steps = len(tp) # Number of time steps
+    reference_signals = np.reshape(unit_step(degree=5, tp=tp, time_step=10, output_rad=True), [1, -1]) # Reference signal
 
 ```python
 
@@ -142,7 +142,7 @@
 
 .. note::
 
-    В данном примере происходит моделирование резкого изменения частной производной продольной силы по углу атаки :math:`z_{\alpha}` в матрице A пространств состояний. Таким образом моделируется изменение воздушного потока. 
+    In this example, a sudden change in the partial derivative of the longitudinal force with respect to the angle of attack :math:`z_{\alpha}` in the state-space A matrix is simulated. This models a change in airflow conditions. 
     
 
 ```python
@@ -151,7 +151,7 @@
     
     for step in tqdm(range(number_time_steps-1)):
         if step == 2500:
-            env.model.filt_A[1][1]=0.98# изменяем динамику полета в матрице пространства состояний
+            env.model.filt_A[1][1]=0.98# modify flight dynamics in the state-space matrix
         ut = model.predict(xt, reference_signals, step)
         xt, reward, done, info = env.step(np.array(ut))
 

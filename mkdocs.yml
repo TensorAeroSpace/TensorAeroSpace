@@ -45,9 +45,19 @@ plugins:
               - F4C: model/f4c.md
               - GeoSat: model/geosat.md
               - UAV: model/uav.md
-              - X15: model/x15.md
-              - LSU: model/lsu.md
-              - SUAV: model/suav.md
+              - X15:
+                - Classic State-Space: model/x15.md
+                - Normalized State-Space: model/x15_improved.md
+              - LSU:
+                - Classic State-Space: model/lsu.md
+                - Normalized State-Space: model/lapan_improved.md
+              - SUAV:
+                - Classic State-Space: model/suav.md
+                - Normalized State-Space: model/ultrastick_improved.md
+              - ComSat Improved: model/comsat_improved.md
+              - ELV Improved: model/elv_improved.md
+              - F4C Improved: model/f4c_improved.md
+              - Missile Improved: model/missile_improved.md
               - Unity Environment: model/unity_env.md
               
             - Agents:
@@ -66,6 +76,7 @@ plugins:
               - DSAC: agent/dsac.md
               - DDPG: agent/ddpg.md
               - GAIL: agent/gail.md
+              - Improved ComSat: agent/improved_comsat.md
               - Optimization: optimization/optuna_based.md
               - Benchmark:
                 - Overview: benchmark/bench.md
@@ -111,6 +122,10 @@ plugins:
                 - "Lesson 5 — Pole Placement Method": lesson/base/tutor_5.md
                 - "Lesson 6 — Observers and the Separation Principle": lesson/base/tutor_6.md
                 - "Lesson 7 — Practice: Longitudinal Stabilization": lesson/base/tutor_7.md
+              - Reinforcement Learning:
+                - "Lesson 8 — Introduction to RL for Aerospace": lesson/base/tutor_8.md
+                - "Lesson 9 — Environments and Simulations": lesson/base/tutor_9.md
+                - "Lesson 10 — Training Your First RL Agent": lesson/base/tutor_10.md
               - XFLR5:
                 - Introduction: lesson/0intro.md
                 - Airfoil Analysis: lesson/1analysis_airfoil.md
@@ -138,9 +153,19 @@ plugins:
               - F4C: model/f4c.md
               - GeoSat: model/geosat.md
               - UAV: model/uav.md
-              - X15: model/x15.md
-              - LSU: model/lsu.md
-              - SUAV: model/suav.md
+              - X15:
+                - Пространство состояний: model/x15.md
+                - Нормализованное управление: model/x15_improved.md
+              - LSU:
+                - Пространство состояний: model/lsu.md
+                - Нормализованное управление: model/lapan_improved.md
+              - SUAV:
+                - Пространство состояний: model/suav.md
+                - Нормализованное управление: model/ultrastick_improved.md
+              - ComSat (нормализованный): model/comsat_improved.md
+              - ELV (нормализованный): model/elv_improved.md
+              - F4C (нормализованный): model/f4c_improved.md
+              - Ракета (нормализованный): model/missile_improved.md
               - Unity окружение: model/unity_env.md
             - Алгоритмы управления:
               - PID: agent/pid.md
@@ -158,6 +183,7 @@ plugins:
               - DSAC: agent/dsac.md
               - DDPG: agent/ddpg.md
               - GAIL: agent/gail.md
+              - Improved ComSat: agent/improved_comsat.md
               - Оптимизация: optimization/optuna_based.md
               - Бенчмаркинг:
                 - Обзор: benchmark/bench.md
@@ -172,6 +198,7 @@ plugins:
               - Окружения: example/enviroment/gymnasium.md
               - IHDP: example/agent/ihdp/example_ihdp.md
               - SAC F16: example/agent/sac/example-sac-f16.md
+              - SAC B747: example/agent/sac/example-sac-b747.md
               - DSAC B747:
                 - Обучение (ступенчатое воздействие): example/agent/dsac/example-dsac-b747.md
                 - Скрипт обучения (ступенчатое): example/agent/dsac/train-dsac-b747-step-response.md
@@ -202,6 +229,10 @@ plugins:
                 - "Урок 5 — Метод размещения полюсов": lesson/base/tutor_5.md
                 - "Урок 6 — Наблюдатели и принцип разделения": lesson/base/tutor_6.md
                 - "Урок 7 — Практика: стабилизация продольного движения": lesson/base/tutor_7.md
+              - Обучение с подкреплением:
+                - "Урок 8 — Введение в RL для аэрокосмики": lesson/base/tutor_8.md
+                - "Урок 9 — Среды и симуляции": lesson/base/tutor_9.md
+                - "Урок 10 — Обучение первого RL-агента": lesson/base/tutor_10.md
               - XFLR5:
                 - Введение: lesson/0intro.md
                 - Анализ профиля крыла: lesson/1analysis_airfoil.md

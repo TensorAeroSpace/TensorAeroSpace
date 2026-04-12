@@ -2,7 +2,7 @@
 
 The F‑4C Phantom II is an American 3rd‑generation fighter bomber. This page mirrors the ELV layout: quick start, math model, derivatives, and API.
 
-![Модель F4C](https://upload.wikimedia.org/wikipedia/commons/thumb/2/2b/QF-4_Holloman_AFB.jpg/1024px-QF-4_Holloman_AFB.jpg){ width=800 }
+![F4C Model](https://upload.wikimedia.org/wikipedia/commons/thumb/2/2b/QF-4_Holloman_AFB.jpg/1024px-QF-4_Holloman_AFB.jpg){ width=800 }
 
 <div class="grid cards" markdown>
 
@@ -192,7 +192,15 @@ q \\
 ## Sources
 
 1. Heffley R. K., Jewell W. F. Aircraft handling qualities data. – NASA, 1972. № AD‑A277031.
-2. Etkin B., Reid L. D. Dynamics of flight. – New York : Wiley, 1959. – Т. 2
+2. Etkin B., Reid L. D. Dynamics of flight. – New York : Wiley, 1959. – Vol. 2
+
+## Reward
+
+The default reward function returns the negative absolute tracking error for the pitch angle:
+
+$$r_t = -|\theta(t) - \theta_{\text{ref}}(t)|$$
+
+Higher reward (closer to 0) indicates better tracking performance. A custom reward function can be passed via the `reward_func` parameter.
 
 ## Quick start {#quick-start}
 

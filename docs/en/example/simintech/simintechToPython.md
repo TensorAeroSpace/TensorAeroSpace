@@ -1,23 +1,23 @@
-# SimInTech → Python
+# SimInTech to Python
 
-Интегрируйте модели SimInTech в Python через запуск проекта из скрипта и обмен данными через файлы. Ниже — быстрый старт и рабочий пример.
+Integrate SimInTech models into Python by running the project from a script and exchanging data through files. Below is a quick start guide and a working example.
 
-## Быстрый старт
+## Quick start
 
-1. Подготовьте проект SimInTech (`.prt`/`.xprt`) с блоками:
-   - чтение входного сигнала из файла (например, `sit_in_1.dat`),
-   - запись выходного сигнала в файл (например, `sit_out_1.dat`).
-2. Найдите путь к исполняемому файлу SimInTech `mmain.exe` (обычно `C:\\SimInTech64\\bin\\mmain.exe`).
-3. Сгенерируйте входной сигнал в Python, сохраните в `sit_in_1.dat`.
-4. Запустите проект SimInTech из Python: `mmain.exe <path_to_project> /run /exitonstop`.
-5. Прочитайте выходной файл в Python и постройте график.
+1. Prepare a SimInTech project (`.prt`/`.xprt`) with the following blocks:
+   - reading the input signal from a file (e.g., `sit_in_1.dat`),
+   - writing the output signal to a file (e.g., `sit_out_1.dat`).
+2. Find the path to the SimInTech executable `mmain.exe` (usually `C:\\SimInTech64\\bin\\mmain.exe`).
+3. Generate the input signal in Python and save it to `sit_in_1.dat`.
+4. Run the SimInTech project from Python: `mmain.exe <path_to_project> /run /exitonstop`.
+5. Read the output file in Python and plot the results.
 
-!!! note "Поддерживаемая платформа"
-    Примеры ниже рассчитаны на Windows, так как SimInTech — Windows‑приложение.
+!!! note "Supported platform"
+    The examples below are designed for Windows, since SimInTech is a Windows application.
 
 ---
 
-## Полноценный пример на Python
+## Full Python example
 
 ```python
 from __future__ import annotations
@@ -31,12 +31,12 @@ from tensoraerospace.signals.standart import unit_step
 
 
 def run_simintech(sit_bin: Path, project: Path, extra_args: list[str] | None = None, timeout_sec: int | None = 120) -> None:
-    """Запускает SimInTech проект с параметрами /run /exitonstop.
+    """Run a SimInTech project with the /run /exitonstop flags.
 
-    - sit_bin: путь к mmain.exe
-    - project: путь к .prt/.xprt
-    - extra_args: дополнительные аргументы командной строки
-    - timeout_sec: таймаут ожидания завершения, сек
+    - sit_bin: path to mmain.exe
+    - project: path to .prt/.xprt
+    - extra_args: additional command-line arguments
+    - timeout_sec: timeout for completion, in seconds
     """
     args = [str(sit_bin), str(project), "/run", "/exitonstop"]
     if extra_args:
@@ -44,8 +44,8 @@ def run_simintech(sit_bin: Path, project: Path, extra_args: list[str] | None = N
 
     completed = subprocess.run(
         args,
-        check=False,           # покажем понятную ошибку ниже
-        capture_output=True,   # соберём stdout/stderr на случай ошибок
+        check=False,           # we will show a clear error below
+        capture_output=True,   # capture stdout/stderr in case of errors
         text=True,
         timeout=timeout_sec,
         shell=False,
@@ -53,59 +53,59 @@ def run_simintech(sit_bin: Path, project: Path, extra_args: list[str] | None = N
 
     if completed.returncode != 0:
         raise RuntimeError(
-            "SimInTech завершился с ошибкой "
-            f"(код {completed.returncode}).\nSTDOUT:\n{completed.stdout}\nSTDERR:\n{completed.stderr}"
+            "SimInTech exited with an error "
+            f"(code {completed.returncode}).\nSTDOUT:\n{completed.stdout}\nSTDERR:\n{completed.stderr}"
         )
 
 
 if __name__ == "__main__":
-    # Пути: скорректируйте под свою установку/проект
+    # Paths: adjust for your installation/project
     sit_bin = Path(r"C:\\SimInTech64\\bin\\mmain.exe")
-    project = Path(r".\\lsu2.xprt")  # проект в текущей папке
+    project = Path(r".\\lsu2.xprt")  # project in the current folder
 
-    # Генерация входного сигнала: ступенька 1° с t0=0.5 c, dt=0.01 c
+    # Generate input signal: 1 deg step at t0=0.5 s, dt=0.01 s
     dt = 0.01
-    tp = generate_time_period(tn=100, dt=dt)                 # дискретные такты
-    tps = convert_tp_to_sec_tp(tp, dt=dt)                     # время в секундах
+    tp = generate_time_period(tn=100, dt=dt)                 # discrete ticks
+    tps = convert_tp_to_sec_tp(tp, dt=dt)                     # time in seconds
 
-    # unit_step возвращает массив значений (в радианах при output_rad=True)
-    # Сформируем форму [channels, time] — здесь один канал
+    # unit_step returns an array of values (in radians when output_rad=True)
+    # Form the shape [channels, time] -- here one channel
     ref = unit_step(degree=1, tp=tp, time_step=0.5, output_rad=True)
     reference_signals = np.reshape(ref, (1, -1))
 
-    # Запись входного файла. Часто SimInTech ожидает значения построчно/покомпонентно.
-    # Уточните формат своего проекта. В простейшем случае — один столбец значений.
+    # Write the input file. SimInTech often expects values line-by-line/component-wise.
+    # Check the format of your project. In the simplest case -- a single column of values.
     in_file = Path("sit_in_1.dat")
     np.savetxt(in_file, reference_signals.ravel(), fmt="%.6f")
 
-    # Запуск расчёта
+    # Run the simulation
     run_simintech(sit_bin=sit_bin, project=project)
 
-    # Чтение результата (путь и формат выходного файла настройте в проекте SimInTech)
+    # Read the result (configure the output file path and format in the SimInTech project)
     out_file = Path("sit_out_1.dat")
     if out_file.exists():
         y = np.loadtxt(out_file, dtype=float)
 
-        # Построение графика
+        # Plot the result
         plt.plot(tps, y[: len(tps)])
-        plt.xlabel("t, [с]")
-        plt.ylabel("y, [ед.]")
+        plt.xlabel("t, [s]")
+        plt.ylabel("y, [units]")
         plt.grid(True, alpha=0.3)
         plt.show()
     else:
-        print(f"Предупреждение: выходной файл {out_file} не найден. Проверьте настройки проекта SimInTech.")
+        print(f"Warning: output file {out_file} not found. Check the SimInTech project settings.")
 ```
 
-### Пояснения к ключевым строкам
+### Explanation of key lines
 
-- `run_simintech(...)` использует `subprocess.run` без `shell=True` и с аргументами списком — это надёжнее и безопаснее.
-- Флаги `/run` и `/exitonstop` запускают расчёт и закрывают GUI после успешного завершения.
-- Вход/выход через `*.dat`: используйте `numpy.savetxt`/`numpy.loadtxt` для простого текстового формата. Для нескольких каналов организуйте столбцы.
-- Модули `generate_time_period`, `convert_tp_to_sec_tp` и `unit_step` входят в TensorAeroSpace и упрощают формирование тестовых сигналов.
+- `run_simintech(...)` uses `subprocess.run` without `shell=True` and with arguments as a list -- this is more reliable and safer.
+- The `/run` and `/exitonstop` flags start the simulation and close the GUI after successful completion.
+- Input/output via `*.dat`: use `numpy.savetxt`/`numpy.loadtxt` for a simple text format. For multiple channels, organize columns.
+- The modules `generate_time_period`, `convert_tp_to_sec_tp`, and `unit_step` are part of TensorAeroSpace and simplify the creation of test signals.
 
 ---
 
-## Альтернатива: запуск из PowerShell
+## Alternative: running from PowerShell
 
 ```powershell
 "C:\\SimInTech64\\bin\\mmain.exe" \
@@ -113,32 +113,32 @@ if __name__ == "__main__":
   /run /exitonstop
 ```
 
-> Кавычки обязательны, если путь содержит пробелы.
+> Quotes are required if the path contains spaces.
 
 ---
 
-## Частые проблемы и решения
+## Common issues and solutions
 
-- SimInTech не стартует из Python:
-  - Проверьте корректность пути к `mmain.exe`.
-  - Убедитесь, что проект `.xprt` существует и доступен.
-  - Запустите скрипт из «PowerShell (x64)».
-- Процесс завершается с ненулевым кодом и пустым результатом:
-  - Откройте проект вручную и проверьте блоки ввода/вывода файлов.
-  - Сравните формат `sit_in_1.dat` с ожидаемым в проекте (число столбцов, разделитель, кодировка). Для бинарного формата используйте `numpy.tofile`/`fromfile`.
-- Выходной файл не создаётся:
-  - Убедитесь, что путь записи корректен и каталог существует.
-  - Проверьте права доступа к директории.
+- SimInTech does not start from Python:
+  - Check the correctness of the path to `mmain.exe`.
+  - Make sure the `.xprt` project file exists and is accessible.
+  - Run the script from "PowerShell (x64)".
+- The process exits with a nonzero code and empty output:
+  - Open the project manually and check the file input/output blocks.
+  - Compare the format of `sit_in_1.dat` with what the project expects (number of columns, delimiter, encoding). For binary format, use `numpy.tofile`/`fromfile`.
+- Output file is not created:
+  - Make sure the write path is correct and the directory exists.
+  - Check directory access permissions.
 
-!!! warning "Формат данных"
-    Конкретный формат файлов (`*.dat`) зависит от настроек вашего проекта SimInTech. При несовпадении формата обновите логику записи/чтения в Python.
+!!! warning "Data format"
+    The specific file format (`*.dat`) depends on the settings of your SimInTech project. If the format does not match, update the read/write logic in Python.
 
 ---
 
-## Чек‑лист
+## Checklist
 
-- [ ] Путь к `mmain.exe` верный (или доступен через переменную окружения/ярлык)
-- [ ] Проект `.prt/.xprt` открывается вручную и корректно считается
-- [ ] Настроены блоки чтения входа и записи выхода в файлы
-- [ ] Python генерирует входной файл в нужном формате
-- [ ] Запуск через `subprocess.run` завершается без ошибок, выходной файл читается
+- [ ] The path to `mmain.exe` is correct (or accessible via an environment variable/shortcut)
+- [ ] The `.prt/.xprt` project opens manually and runs correctly
+- [ ] Input reading and output writing blocks are configured for files
+- [ ] Python generates the input file in the required format
+- [ ] Launching via `subprocess.run` completes without errors and the output file is readable

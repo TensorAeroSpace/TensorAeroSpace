@@ -740,18 +740,12 @@ class DDPG:
 
         self.policy_optimizer.zero_grad()
         policy_loss.backward()
-        try:
-            torch.nn.utils.clip_grad_norm_(self.policy_net.parameters(), 1.0)
-        except Exception:
-            pass
+        torch.nn.utils.clip_grad_norm_(self.policy_net.parameters(), 1.0)
         self.policy_optimizer.step()
 
         self.value_optimizer.zero_grad()
         value_loss.backward()
-        try:
-            torch.nn.utils.clip_grad_norm_(self.value_net.parameters(), 1.0)
-        except Exception:
-            pass
+        torch.nn.utils.clip_grad_norm_(self.value_net.parameters(), 1.0)
         self.value_optimizer.step()
 
         for target_param, param in zip(

@@ -46,7 +46,7 @@ class ControlBenchmark:
     in automatic control systems with results visualization.
     """
 
-    def becnchmarking_one_step(
+    def benchmarking_one_step(
         self,
         control_signal: np.ndarray,
         system_signal: np.ndarray,
@@ -126,6 +126,9 @@ class ControlBenchmark:
             "performance_index": perf_idx,
         }
 
+    # Backward-compatible alias for the old misspelled method name
+    becnchmarking_one_step = benchmarking_one_step
+
     def plot(
         self,
         control_signal: np.ndarray,
@@ -149,7 +152,7 @@ class ControlBenchmark:
             title (str): Plot title.
         """
         # Get metrics
-        metrics = self.becnchmarking_one_step(
+        metrics = self.benchmarking_one_step(
             control_signal, system_signal, signal_val, dt
         )
         control_signal_step, system_signal_step = find_step_function(
@@ -483,7 +486,7 @@ class ControlBenchmark:
             color = COLORS[i % len(COLORS)]
 
             # Получаем метрики для каждой системы
-            metrics = self.becnchmarking_one_step(
+            metrics = self.benchmarking_one_step(
                 data["control_signal"], data["system_signal"], signal_val, dt
             )
             all_metrics[system_name] = metrics
@@ -682,7 +685,7 @@ class ControlBenchmark:
         Returns:
             str: Formatted report string.
         """
-        metrics = self.becnchmarking_one_step(
+        metrics = self.benchmarking_one_step(
             control_signal, system_signal, signal_val, dt
         )
 

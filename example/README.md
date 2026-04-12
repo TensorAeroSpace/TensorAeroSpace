@@ -1,220 +1,218 @@
-# 📚 Примеры TensorAeroSpace
+# 📚 TensorAeroSpace Examples
 
 <div align="center">
 
 ![TensorAeroSpace Logo](../img/logo-no-background.png)
 
-**Комплексная коллекция примеров и руководств**
+**Comprehensive collection of examples and tutorials**
 
-*Изучите возможности TensorAeroSpace через практические примеры*
+*Explore TensorAeroSpace capabilities through hands-on examples*
 
-[🏠 Главная](../) • [📖 Документация](https://tensoraerospace.readthedocs.io/) • [🚀 Быстрый старт](../README.ru-ru.md#-быстрый-старт)
+[🏠 Home](../) • [📖 Documentation](https://tensoraerospace.readthedocs.io/) • [🚀 Quick Start](../README.md)
 
 </div>
 
 ---
 
-## 🌟 Обзор
+## 🌟 Overview
 
-Эта папка содержит обширную коллекцию примеров использования библиотеки TensorAeroSpace, организованных по категориям для удобства навигации и изучения. Каждый пример включает подробные объяснения и готовый к запуску код.
+This folder contains an extensive collection of TensorAeroSpace usage examples, organized by category for easy navigation and learning. Each example includes detailed explanations and ready-to-run code.
 
-## 📁 Структура примеров
+## 📁 Example Structure
 
-### ✈️ Аэрокосмические среды
-> **Папка:** [`environments/`](./environments/)
+### ✈️ Aerospace Environments
+> **Folder:** [`environments/`](./environments/)
 
-Примеры различных аэрокосмических окружений с высокоточными моделями:
+Examples of various aerospace environments with high-fidelity models:
 
-| Модель | Описание | Блокнот |
-|--------|----------|---------|
-| **🛩️ Boeing 747** | Продольное управление коммерческим авиалайнером | [`example-env-LinearLongitudinalB747.ipynb`](./environments/example-env-LinearLongitudinalB747.ipynb) |
-| **⚡ F-16 Fighting Falcon** | Высокоманевренный истребитель | [`example-env-LinearLongitudinalF16.ipynb`](./environments/example-env-LinearLongitudinalF16.ipynb) |
-| **🚀 F-4C Phantom II** | Военный истребитель-бомбардировщик | [`example-env-f4c.ipynb`](./environments/example-env-f4c.ipynb) |
-| **🚀 ELV Rocket** | Ракета-носитель | [`example-env-LinearLongitudinalELVRocket.ipynb`](./environments/example-env-LinearLongitudinalELVRocket.ipynb) |
-| **🛸 UAV** | Беспилотные летательные аппараты | [`example-env-LinearLongitudinalUAV.ipynb`](./environments/example-env-LinearLongitudinalUAV.ipynb) |
-| **🎯 Missile Model** | Модель управляемой ракеты | [`example-env-LinearLongitudinalMissileModel.ipynb`](./environments/example-env-LinearLongitudinalMissileModel.ipynb) |
-| **🛰️ ComSat** | Спутник связи | [`example-env-comsat.ipynb`](./environments/example-env-comsat.ipynb) |
-| **🌍 GeoSat** | Геостационарный спутник | [`example-env-geosat.ipynb`](./environments/example-env-geosat.ipynb) |
-| **🎮 Unity** | Интеграция с Unity ML-Agents | [`example-env-unity.ipynb`](./environments/example-env-unity.ipynb) |
-| **🚁 X-15** | Экспериментальный гиперзвуковой самолет | [`example-env-x15.ipynb`](./environments/example-env-x15.ipynb) |
+| Model | Description | Notebook |
+|-------|-------------|----------|
+| **🛩️ Boeing 747** | Longitudinal control of a commercial airliner | [`example-env-LinearLongitudinalB747.ipynb`](./environments/example-env-LinearLongitudinalB747.ipynb) |
+| **⚡ F-16 Fighting Falcon** | Highly maneuverable fighter jet | [`example-env-LinearLongitudinalF16.ipynb`](./environments/example-env-LinearLongitudinalF16.ipynb) |
+| **🚀 F-4C Phantom II** | Military fighter-bomber | [`example-env-f4c.ipynb`](./environments/example-env-f4c.ipynb) |
+| **🚀 ELV Rocket** | Expendable launch vehicle | [`example-env-LinearLongitudinalELVRocket.ipynb`](./environments/example-env-LinearLongitudinalELVRocket.ipynb) |
+| **🛸 UAV** | Unmanned aerial vehicle | [`example-env-LinearLongitudinalUAV.ipynb`](./environments/example-env-LinearLongitudinalUAV.ipynb) |
+| **🎯 Missile Model** | Guided missile model | [`example-env-LinearLongitudinalMissileModel.ipynb`](./environments/example-env-LinearLongitudinalMissileModel.ipynb) |
+| **🛰️ ComSat** | Communication satellite | [`example-env-comsat.ipynb`](./environments/example-env-comsat.ipynb) |
+| **🌍 GeoSat** | Geostationary satellite | [`example-env-geosat.ipynb`](./environments/example-env-geosat.ipynb) |
+| **🎮 Unity** | Unity ML-Agents integration | [`example-env-unity.ipynb`](./environments/example-env-unity.ipynb) |
+| **🚁 X-15** | Experimental hypersonic aircraft | [`example-env-x15.ipynb`](./environments/example-env-x15.ipynb) |
 
-### 🤖 Обучение с подкреплением
-> **Папка:** [`reinforcement_learning/`](./reinforcement_learning/)
+### 🤖 Reinforcement Learning
+> **Folder:** [`reinforcement_learning/`](./reinforcement_learning/)
 
-Современные алгоритмы RL для аэрокосмических задач:
+State-of-the-art RL algorithms for aerospace tasks:
 
-| Алгоритм | Описание | Примеры |
-|----------|----------|---------|
-| **🎯 A3C** | Асинхронный актор-критик | [`example-a3c.ipynb`](./reinforcement_learning/example-a3c.ipynb), [`a3c-classic.ipynb`](./reinforcement_learning/a3c-classic.ipynb) |
-| **🎭 SAC** | Мягкий актор-критик | [`example-sac.ipynb`](./reinforcement_learning/example-sac.ipynb), [`example-sac-f16.ipynb`](./reinforcement_learning/example-sac-f16.ipynb) |
-| **🎪 A2C** | Актор-критик с преимуществом | [`example_a2c.ipynb`](./reinforcement_learning/example_a2c.ipynb) |
-| **🧠 DQN** | Глубокое Q-обучение | [`example_dqn.ipynb`](./reinforcement_learning/example_dqn.ipynb), [`torch_dqn.ipynb`](./reinforcement_learning/torch_dqn.ipynb) |
-| **🚀 PPO** | Проксимальная оптимизация политики | [`example_ppo.ipynb`](./reinforcement_learning/example_ppo.ipynb), [`example_ppo_torch.ipynb`](./reinforcement_learning/example_ppo_torch.ipynb) |
-| **🎨 GAIL** | Генеративное состязательное обучение имитации | [`create_dataset_for_gail.ipynb`](./reinforcement_learning/create_dataset_for_gail.ipynb) |
+| Algorithm | Description | Examples |
+|-----------|-------------|----------|
+| **🎯 A3C** | Asynchronous Advantage Actor-Critic | [`example-a3c.ipynb`](./reinforcement_learning/example-a3c.ipynb) |
+| **🎭 SAC** | Soft Actor-Critic | [`example-sac.ipynb`](./reinforcement_learning/example-sac.ipynb), [`example-sac-f16.ipynb`](./reinforcement_learning/example-sac-f16.ipynb) |
+| **🎪 A2C** | Advantage Actor-Critic | [`example_a2c.ipynb`](./reinforcement_learning/example_a2c.ipynb) |
+| **🧠 DQN** | Deep Q-Network | [`example_dqn_b747_improved.ipynb`](./reinforcement_learning/example_dqn_b747_improved.ipynb) |
+| **🚀 PPO** | Proximal Policy Optimization | [`example_ppo.ipynb`](./reinforcement_learning/example_ppo.ipynb) |
+| **🎨 GAIL** | Generative Adversarial Imitation Learning | [`create_dataset_for_gail.ipynb`](./reinforcement_learning/create_dataset_for_gail.ipynb) |
 
-### 🎛️ Системы управления
-> **Папки:** [`mpc_controllers/`](./mpc_controllers/), [`pid_controllers/`](./pid_controllers/)
+### 🎛️ Control Systems
+> **Folders:** [`mpc_controllers/`](./mpc_controllers/), [`pid_controllers/`](./pid_controllers/)
 
-#### 🔮 Модельно-предиктивное управление (MPC)
-- **📊 Пространство состояний**: [`example-mpc-state-space.ipynb`](./mpc_controllers/example-mpc-state-space.ipynb)
-- **🤖 MPC с трансформерами**: [`example-mpc-state-space-transformers.ipynb`](./mpc_controllers/example-mpc-state-space-transformers.ipynb)
+#### 🔮 Model Predictive Control (MPC)
+- **📊 MPC with MLP dynamics**: [`example-mpc-b747-torch-mpc-mlp.ipynb`](./mpc_controllers/example-mpc-b747-torch-mpc-mlp.ipynb)
+- **🤖 MPC with Transformer dynamics**: [`example-mpc-b747-torch-mpc-transformer.ipynb`](./mpc_controllers/example-mpc-b747-torch-mpc-transformer.ipynb)
+- **📈 MPC with NARX dynamics**: [`example-mpc-b747-torch-mpc-narx.ipynb`](./mpc_controllers/example-mpc-b747-torch-mpc-narx.ipynb)
 
-#### ⚙️ ПИД-регуляторы
-- **🎯 Настройка ПИД**: [`tune_pid.ipynb`](./pid_controllers/tune_pid.ipynb)
-- **🔧 Оптимизация ПИД**: [`pid_optimization.ipynb`](./pid_controllers/pid_optimization.ipynb)
-- **🌀 Алгоритм Twiddle**: [`pid_twiddle.ipynb`](./pid_controllers/pid_twiddle.ipynb)
-- **💼 Практическое использование**: [`pid_use.ipynb`](./pid_controllers/pid_use.ipynb)
+#### ⚙️ PID Controllers
+- **🎯 PID Tuning**: [`tune_pid.ipynb`](./pid_controllers/tune_pid.ipynb)
+- **🔧 MATLAB-style PID Tuning**: [`pid_matlab_tuning.ipynb`](./pid_controllers/pid_matlab_tuning.ipynb)
+- **📊 Tuning Methods Comparison**: [`pid_tuning_methods.ipynb`](./pid_controllers/pid_tuning_methods.ipynb)
+- **💼 Practical Usage**: [`pid_use.ipynb`](./pid_controllers/pid_use.ipynb)
 
-### 🛠️ Утилиты и инструменты
-> **Папка:** [`utilities/`](./utilities/)
+### 🛠️ Utilities and Tools
+> **Folder:** [`utilities/`](./utilities/)
 
-Вспомогательные инструменты для анализа и разработки:
+Helper tools for analysis and development:
 
-| Инструмент | Описание | Блокнот |
-|------------|----------|---------|
-| **📡 Генерация сигналов** | Создание тестовых сигналов | [`signals.ipynb`](./utilities/signals.ipynb) |
-| **🔄 Конвертация Simulink** | Преобразование моделей в Python | [`example_sim_model_to_python.ipynb`](./utilities/example_sim_model_to_python.ipynb) |
-| **🔍 Исследование** | Анализ и визуализация данных | [`example_explarotaion.ipynb`](./utilities/example_explarotaion.ipynb) |
-| **⚡ Оптимизация гиперпараметров** | Настройка параметров алгоритмов | [`hyperparam_optimization.ipynb`](./utilities/hyperparam_optimization.ipynb) |
+| Tool | Description | Notebook |
+|------|-------------|----------|
+| **📡 Signal Generation** | Creating test signals | [`signals.ipynb`](./utilities/signals.ipynb) |
+| **🔄 Simulink Conversion** | Converting models to Python | [`example_sim_model_to_python.ipynb`](./utilities/example_sim_model_to_python.ipynb) |
+| **🔍 Exploration** | Data analysis and visualization | [`example_explarotaion.ipynb`](./utilities/example_explarotaion.ipynb) |
+| **⚡ Hyperparameter Optimization** | Algorithm parameter tuning | [`hyperparam_optimization.ipynb`](./utilities/hyperparam_optimization.ipynb) |
 
-### 📚 Общие примеры
-> **Папка:** [`general_examples/`](./general_examples/)
+### 📚 General Examples
+> **Folder:** [`general_examples/`](./general_examples/)
 
-Базовые концепции и классические задачи:
+Core concepts and classic tasks:
 
-| Пример | Описание | Блокнот |
-|--------|----------|---------|
-| **🎯 Классический пример** | Основы использования библиотеки | [`classic_example.ipynb`](./general_examples/classic_example.ipynb) |
-| **🧮 IHDP** | Бесконечно-горизонтное динамическое программирование | [`example_ihdp.ipynb`](./general_examples/example_ihdp.ipynb), [`example_ihdp_beautiful.ipynb`](./general_examples/example_ihdp_beautiful.ipynb) |
-| **📈 NARX** | Нелинейная авторегрессия с внешними входами | [`example-narx.ipynb`](./general_examples/example-narx.ipynb) |
-| **⚠️ Обработка отказов** | Работа с отказами систем | [`example-ihdp-failure.ipynb`](./general_examples/example-ihdp-failure.ipynb) |
+| Example | Description | Notebook |
+|---------|-------------|----------|
+| **🎯 Classic Example** | Library usage fundamentals | [`classic_example.ipynb`](./general_examples/classic_example.ipynb) |
+| **🧮 IHDP** | Infinite-Horizon Dynamic Programming | [`example_ihdp.ipynb`](./general_examples/example_ihdp.ipynb), [`example_ihdp_beautiful.ipynb`](./general_examples/example_ihdp_beautiful.ipynb) |
+| **📈 NARX** | Nonlinear Autoregressive with Exogenous Inputs | [`example-narx.ipynb`](./general_examples/example-narx.ipynb) |
+| **⚠️ Failure Handling** | Working with system failures | [`example-ihdp-failure.ipynb`](./general_examples/example-ihdp-failure.ipynb) |
 
-### 🔧 Оптимизация
-> **Папка:** [`optimization/`](./optimization/)
+### 🔧 Optimization
+> **Folder:** [`optimization/`](./optimization/)
 
-Алгоритмы и методы оптимизации:
-- **📊 Общая оптимизация**: [`example_optimization.ipynb`](./optimization/example_optimization.ipynb)
+Optimization algorithms and methods:
+- **📊 General Optimization**: [`example_optimization.ipynb`](./optimization/example_optimization.ipynb)
 
-## 🚀 Быстрый старт
+### 🔬 Comparison
+> **Folder:** [`comparison/`](./comparison/)
 
-### 1. 📋 Предварительные требования
+Controller comparison experiments (ML vs PID):
+- **📊 All Methods vs PID (B747)**: [`comparison_all_vs_pid_b747.ipynb`](./comparison/comparison_all_vs_pid_b747.ipynb)
+- **🎭 DSAC vs PID (B747)**: [`comparison_dsac_vs_pid_b747.ipynb`](./comparison/comparison_dsac_vs_pid_b747.ipynb)
+- **🚀 PPO vs PID (B747)**: [`comparison_ppo_vs_pid_b747.ipynb`](./comparison/comparison_ppo_vs_pid_b747.ipynb)
+- **🔮 MPC vs PID (B747)**: [`comparison_mpc_vs_pid_b747.ipynb`](./comparison/comparison_mpc_vs_pid_b747.ipynb)
 
-Убедитесь, что у вас установлены все необходимые зависимости:
+## 🚀 Quick Start
+
+### 1. 📋 Prerequisites
+
+Make sure all required dependencies are installed:
 
 ```bash
-# Установка основной библиотеки
+# Install the main library
 pip install tensoraerospace
 
-# Или с использованием Poetry
+# Or using Poetry
 poetry install
 ```
 
-### 2. 🔀 Выберите формат примера
+### 2. 🔀 Choose an Example Format
 
-- **CLI-сценарии** — подойдут, если нужно быстро воспроизвести готовый результат или интегрировать пример в собственный пайплайн. Скрипты находятся в `example/**` и запускаются напрямую через `python` или `poetry run python`.
-- **Jupyter Notebook** — используйте для интерактивного изучения, пошаговых пояснений и экспериментов. Каждый раздел выше содержит ссылку на соответствующий ноутбук.
+- **CLI scripts** — suitable for quickly reproducing results or integrating examples into your own pipeline. Scripts are located in `example/**` and can be run directly via `python` or `poetry run python`.
+- **Jupyter Notebooks** — use for interactive learning, step-by-step explanations, and experiments. Each section above links to the corresponding notebook.
 
-### 3. 🏃‍♂️ Команды CLI для типовых сценариев
+### 3. 🏃‍♂️ CLI Commands for Typical Scenarios
 
-Запускайте скрипты из корня репозитория (после установки зависимостей):
+Run scripts from the repository root (after installing dependencies):
 
-- **F-16 baseline (general_examples/example.py)** — простейшая проверка среды `LinearLongitudinalF16-v0`.
+- **F-16 baseline (general_examples/example.py)** — basic environment check for `LinearLongitudinalF16-v0`.
   ```bash
   poetry run python example/general_examples/example.py
-  # или, если использовали pip/venv
+  # or, if using pip/venv
   python example/general_examples/example.py
   ```
 
-- **DDPG Boeing 747 (reinforcement_learning/ddpg-b747-render.py)** — воспроизводит готового агента и при необходимости визуализирует траекторию.
+- **DDPG Boeing 747 (reinforcement_learning/ddpg-b747-render.py)** — replay a trained agent and optionally visualize the trajectory.
   ```bash
   poetry run python example/reinforcement_learning/ddpg-b747-render.py \
     --repo TensorAeroSpace/ddpg-b747 --dt 0.1 --tn 200 --render
-  # через pip/venv:
-  python example/reinforcement_learning/ddpg-b747-render.py \
-    --repo TensorAeroSpace/ddpg-b747 --dt 0.1 --tn 200 --render
   ```
-  Ключи `--repo`, `--dt`, `--tn`, `--render/--no-render` настраивают источник весов, дискретизацию и визуализацию.
+  Flags `--repo`, `--dt`, `--tn`, `--render/--no-render` configure weights source, discretization, and visualization.
 
-- **GAIL Pendulum dataset (reinforcement_learning/gail_pendulum_generate_expert.py)** — собирает демонстрации маятника для дальнейшего обучения.
-  ```bash
-  poetry run python example/reinforcement_learning/gail_pendulum_generate_expert.py
-  # через pip/venv:
-  python example/reinforcement_learning/gail_pendulum_generate_expert.py
-  ```
-  Используйте флаг `--help`, чтобы уточнить параметры генерации (количество эпизодов, путь сохранения и т.д.).
-
-### 4. 📓 Запуск ноутбуков
+### 4. 📓 Running Notebooks
 
 ```bash
-# Запуск Jupyter Lab
+# Launch Jupyter Lab
 jupyter lab
 
-# Или Jupyter Notebook
+# Or Jupyter Notebook
 jupyter notebook
 ```
 
-### 5. ⚡️ GPU и “FAST_PRESET” в ноутбуках
+### 5. ⚡️ GPU and "FAST_PRESET" in Notebooks
 
-Некоторые ноутбуки в папке `example/` могут быть “тяжёлыми” и занимать много времени.
-Чтобы ускорить запуск и сделать результат воспроизводимым на типичном ноутбуке/CI:
+Some notebooks in `example/` can be computationally heavy.
+To speed up execution and make results reproducible on a typical laptop/CI:
 
-- **GPU**: если доступна CUDA (или MPS на macOS), примеры автоматически выбирают устройство и печатают `Using device: ...`.
-- **FAST_PRESET**: во многих ноутбуках есть переключатель `FAST_PRESET = True`, который уменьшает горизонт/число эпизодов/эпох, чтобы пример завершался за минуты.
+- **GPU**: if CUDA (or MPS on macOS) is available, examples automatically select the device and print `Using device: ...`.
+- **FAST_PRESET**: many notebooks have a `FAST_PRESET = True` toggle that reduces horizon/episodes/epochs so the example completes in minutes.
 
-## 📖 Рекомендуемый порядок изучения
+## 📖 Recommended Learning Path
 
-### 🌱 Для начинающих:
-1. 📚 [`quickstart.ipynb`](./quickstart.ipynb) - Основы работы с библиотекой
-2. 🎯 [`classic_example.ipynb`](./general_examples/classic_example.ipynb) - Классические задачи управления
-3. ✈️ [`example-env-LinearLongitudinalF16.ipynb`](./environments/example-env-LinearLongitudinalF16.ipynb) - Простая модель самолета
+### 🌱 For Beginners:
+1. 📚 [`quickstart.ipynb`](./quickstart.ipynb) — Library basics
+2. 🎯 [`classic_example.ipynb`](./general_examples/classic_example.ipynb) — Classic control tasks
+3. ✈️ [`example-env-LinearLongitudinalF16.ipynb`](./environments/example-env-LinearLongitudinalF16.ipynb) — Simple aircraft model
 
-### 🚀 Для продвинутых:
-1. 🤖 [`example_ppo.ipynb`](./reinforcement_learning/example_ppo.ipynb) - Обучение с подкреплением
-2. 🔮 [`example-mpc-state-space.ipynb`](./mpc_controllers/example-mpc-state-space.ipynb) - Модельно-предиктивное управление
-3. 🎮 [`example-env-unity.ipynb`](./environments/example-env-unity.ipynb) - Интеграция с Unity
+### 🚀 For Advanced Users:
+1. 🤖 [`example_ppo.ipynb`](./reinforcement_learning/example_ppo.ipynb) — Reinforcement learning
+2. 🔮 [`example-mpc-b747-torch-mpc-mlp.ipynb`](./mpc_controllers/example-mpc-b747-torch-mpc-mlp.ipynb) — Model predictive control
+3. 🎮 [`example-env-unity.ipynb`](./environments/example-env-unity.ipynb) — Unity integration
 
-## 🔧 Дополнительные зависимости
+## 🔧 Additional Dependencies
 
-Некоторые примеры могут требовать дополнительных библиотек:
+Some examples may require additional libraries:
 
 ```bash
-# Для работы с Unity
+# For Unity integration
 pip install mlagents
 
-# Для продвинутой визуализации
+# For advanced visualization
 pip install plotly seaborn
 
-# Для оптимизации
-pip install optuna ray[tune]
+# For optimization
+pip install optuna
 
-# Для работы с PyTorch
+# For PyTorch
 pip install torch torchvision
 ```
 
-## 🤝 Участие в разработке
+## 🤝 Contributing
 
-Хотите добавить свой пример? Мы будем рады вашему вкладу!
+Want to add your own example? We welcome your contributions!
 
-1. 🍴 **Fork** репозитория
-2. 🌿 **Создайте ветку** для вашего примера
-3. 📝 **Добавьте документацию** и комментарии
-4. 🧪 **Протестируйте** ваш код
-5. 📤 **Создайте Pull Request**
+1. 🍴 **Fork** the repository
+2. 🌿 **Create a branch** for your example
+3. 📝 **Add documentation** and comments
+4. 🧪 **Test** your code
+5. 📤 **Create a Pull Request**
 
-## 📞 Поддержка
+## 📞 Support
 
-Нужна помощь с примерами?
+Need help with the examples?
 
-- 💬 **GitHub Discussions**: [Обсуждения](https://github.com/tensoraerospace/tensoraerospace/discussions)
-- 🐛 **Issues**: [Сообщить о проблеме](https://github.com/tensoraerospace/tensoraerospace/issues)
-- 📧 **Email**: support@tensoraerospace.org
+- 💬 **GitHub Discussions**: [Discussions](https://github.com/tensoraerospace/tensoraerospace/discussions)
+- 🐛 **Issues**: [Report an issue](https://github.com/tensoraerospace/tensoraerospace/issues)
 
 ---
 
 <div align="center">
 
-**🌟 Изучайте, экспериментируйте и создавайте удивительные аэрокосмические системы! 🌟**
+**🌟 Explore, experiment, and build amazing aerospace systems! 🌟**
 
-[⬆️ Наверх](#-примеры-tensoraerospace) • [🏠 Главная](../) • [📖 Документация](https://tensoraerospace.readthedocs.io/)
+[⬆️ Back to top](#-tensoraerospace-examples) • [🏠 Home](../) • [📖 Documentation](https://tensoraerospace.readthedocs.io/)
 
 </div>
