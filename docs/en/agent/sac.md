@@ -2,7 +2,7 @@
 
 SAC is an off-policy actor-critic with entropy maximization: it learns a stochastic policy while increasing expected reward and entropy (exploration). Our implementation employs twin Q-networks, a target critic, Gaussian/deterministic policy options, a replay buffer, soft updates, and optional automatic entropy tuning.
 
-![SAC схема](../agent/img/sac/sac.png){ width=800 }
+![SAC Diagram](../agent/img/sac/sac.png){ width=800 }
 
 ## Components
 
@@ -70,6 +70,15 @@ agent.save('./runs')
 - Increase `batch_size` and `memory_capacity` for steadier gradients
 - Choose `tau` around 0.005–0.02 for soft target updates
 - With a deterministic policy set `alpha=0` and disable auto tuning
+- When using `DeterministicPolicy` with `action_space=None`, note that `action_scale` and `action_bias` are now `torch.Tensor` values (not Python floats)
+
+!!! warning "Gymnasium 5-tuple API"
+    This implementation uses the modern Gymnasium 5-tuple step API internally:
+    ```python
+    next_state, reward, terminated, truncated, info = env.step(action)
+    done = terminated or truncated
+    ```
+    If you are migrating from older code that used the 4-tuple API (`next_state, reward, done, info = env.step(action)`), ensure your environment is compatible with Gymnasium and returns the 5-tuple.
 
 ## API reference
 

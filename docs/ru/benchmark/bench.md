@@ -22,7 +22,7 @@
 from tensoraerospace.benchmark import ControlBenchmark
 
 bench = ControlBenchmark()
-metrics = bench.becnchmarking_one_step(control_signal, system_signal, 1.0, dt)
+metrics = bench.benchmarking_one_step(control_signal, system_signal, 1.0, dt)
 
 print("Статическая ошибка:", metrics['static_error'])
 print("Время переходного процесса:", metrics['settling_time'])
@@ -37,4 +37,7 @@ bench.plot(control_signal, system_signal, 1.0, dt, tps, figsize=(15, 5))
     - `control_signal`, `system_signal` — массивы одинаковой длины
     - `1.0` — желаемое установившееся значение (пример)
     - `dt` — шаг дискретизации; `tps` — временная ось
+
+!!! info "Обратная совместимость"
+    Старое имя метода `becnchmarking_one_step` по-прежнему работает как псевдоним для `benchmarking_one_step` для обеспечения обратной совместимости.
 

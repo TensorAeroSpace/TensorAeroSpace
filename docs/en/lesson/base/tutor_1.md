@@ -72,8 +72,8 @@ Here `f` and `h` are nonlinear vector functions. Analyzing such systems is much 
 
 ## 4. References
 
-1. Davydov I.E. Aircraft Control Systems: Electronic textbook. Samara: SSAU, 2013. URL: https://repo.ssau.ru/bitstream/Uchebnye-posobiya/Sistemy-upravleniya-LA-Elektronnyi-resurs-elektron-ucheb-posobie-54206/1/Давыдов%20И.Е.%20Системы%20управления%20ЛА.pdf
-2. State space (control theory) // Wikipedia. URL: https://ru.wikipedia.org/wiki/Пространство_состояний_(теория_управления)
+1. Davydov I.E. Aircraft Control Systems: Electronic textbook. Samara: SSAU, 2013. URL: https://repo.ssau.ru/bitstream/Uchebnye-posobiya/Sistemy-upravleniya-LA-Elektronnyi-resurs-elektron-ucheb-posobie-54206/1/%D0%94%D0%B0%D0%B2%D1%8B%D0%B4%D0%BE%D0%B2%20%D0%98.%D0%95.%20%D0%A1%D0%B8%D1%81%D1%82%D0%B5%D0%BC%D1%8B%20%D1%83%D0%BF%D1%80%D0%B0%D0%B2%D0%BB%D0%B5%D0%BD%D0%B8%D1%8F%20%D0%9B%D0%90.pdf
+2. State space (control theory) // Wikipedia. URL: https://en.wikipedia.org/wiki/State-space_representation
 
 ## 5. Practical Example in Python
 

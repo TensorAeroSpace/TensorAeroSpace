@@ -1,43 +1,43 @@
-Интеграция собственной Simulink модели
+Integrating your own Simulink model
 ======================================
 
-Генерация C++ кода
+C++ code generation
 ------------------
 
-Для поддержки ОУ из ПО Simulink необходима надстройка для Simulink – Embedded Coder.
+To support controlled plants from Simulink, the Simulink add-on Embedded Coder is required.
 
-Для преобразования Simulink модели в С код:
+To convert a Simulink model to C code:
 
-#. При помощи блоков In1/Out1 опишите входные и выходные параметры
+#. Use In1/Out1 blocks to describe the input and output parameters.
 
-#. 	В настройках Simulink выберите: Code Generation/System target file ert_shrlib.tlc.
-	
+#. 	In the Simulink settings, select: Code Generation/System target file ert_shrlib.tlc.
+
 	.. image:: img/cpp_gen.png
   		:width: 400
-  		:alt: Блок Stae-Space
+  		:alt: State-Space block
 
-#. Для построения модели используйте сочетание клавиш ctrl+B. Также это можно сделать в панели навигации, выбрав пункт “Build model”. В результате появится папка с кодом на языке C++ в директории, в которой находилась модель. 
+#. To build the model, use the keyboard shortcut ctrl+B. Alternatively, you can do this from the navigation panel by selecting "Build model". As a result, a folder with C++ code will appear in the directory where the model was located.
 
-Интегрирование Simulink модели в Python 
+Integrating a Simulink model into Python
 ---------------------------------------
 
-#. Создайте so файл
+#. Create an .so file
 
-   Интегрирование Simulink модели в Python осуществляется с помощью DLL библиотеки (библиотеки динамической компоновки). Для ее генерации необходим gcc compiler.
+   Integration of a Simulink model into Python is done using a DLL (dynamic-link library). To generate it, a gcc compiler is required.
 
-   Введите команду
+   Enter the command
 
-   .. code-block:: 
+   .. code-block::
 
       gcc -shared -o model.so -fPIC *.c
 
-   где .c - все файлы с расширением c
+   where .c refers to all files with the .c extension.
 
-   В папке появится so файл.
+   An .so file will appear in the folder.
 
-#. Опишите интерфейс взаимодействия
+#. Describe the interaction interface
 
-  Интерфейс взаимодействия описывается для входных и выходных параметров при помощи ctypes.Structure и преобразователя типов rtwtypes (tensoraerospace/aerospacemodel/model/rtwtypes.py)
+  The interaction interface is described for input and output parameters using ctypes.Structure and the type converter rtwtypes (tensoraerospace/aerospacemodel/model/rtwtypes.py).
 
   ```python
 
@@ -48,21 +48,21 @@
         ("name2", type_from_rtwtypes),
     ]
 
-    Имя и тип можно посмотреть в сгенерированном С файле. Файл должен называться MODEL_NAME.h. В данном файле найдите описание External inputs, External outputs
+    The name and type can be found in the generated C file. The file should be called MODEL_NAME.h. In this file, find the description of External inputs, External outputs.
 
-  В dll файле существуют 3 функции
-    * MODEL_NAME_initialize - служит для инициализации модели
-    * MODEL_NAME_step - служит для расчета модели на следующем шаге модели
-      шаг модели равен dt, определенном в параметрах Simulink модели
-    * MODEL_NAME_terminate - служит для освобождении ресурсов модели
+  The DLL file contains 3 functions:
+    * MODEL_NAME_initialize - used to initialize the model
+    * MODEL_NAME_step - used to compute the next model step;
+      the step size equals dt, defined in the Simulink model parameters
+    * MODEL_NAME_terminate - used to release model resources
 
-Пример использования Simulink модели Ту с Python:
+Example of using a Simulink model with Python:
 
-Модель находится в https://github.com/tensoraerospace/simulink-example
+The model is located at https://github.com/tensoraerospace/simulink-example
 
 	.. image:: img/model.png
   		:width: 400
-  		:alt: Модель
+  		:alt: Model
 
 .. container:: cell code
 
@@ -92,7 +92,7 @@
               ("theta_small", real_T),
           ]
 
-          
+
       class ExtU(ctypes.Structure):
           """
               INput parameters Simulink model
@@ -139,7 +139,7 @@
       for step in range(int(2100)):
           X.ref_signal = -0.1
           model_step()
-          
+
           wz.append(Y.Wz)
           theta_big.append(Y.theta_big)
           H.append(Y.H)
@@ -160,13 +160,13 @@
 
       plt.plot(wz)
 
-      plt.ylabel('$w_z$, [рад/с]')
+      plt.ylabel('$w_z$, [rad/s]')
 
    .. container:: output execute_result
 
       ::
 
-         Text(0, 0.5, '$w_z$, [рад/с]')
+         Text(0, 0.5, '$w_z$, [rad/s]')
 
    .. container:: output display_data
 
@@ -178,13 +178,13 @@
 
       plt.plot(H)
 
-      plt.ylabel('H, [м]')
+      plt.ylabel('H, [m]')
 
    .. container:: output execute_result
 
       ::
 
-         Text(0, 0.5, 'H, [м]')
+         Text(0, 0.5, 'H, [m]')
 
    .. container:: output display_data
 
@@ -196,13 +196,13 @@
 
       plt.plot(theta_big)
 
-      plt.ylabel('$\Theta$, [рад]')
+      plt.ylabel('$\Theta$, [rad]')
 
    .. container:: output execute_result
 
       ::
 
-         Text(0, 0.5, '$\\Theta$, [рад]')
+         Text(0, 0.5, '$\\Theta$, [rad]')
 
    .. container:: output display_data
 
@@ -214,13 +214,13 @@
 
       plt.plot(theta_small)
 
-      plt.ylabel(r'$\theta$, [рад]')
+      plt.ylabel(r'$\theta$, [rad]')
 
    .. container:: output execute_result
 
       ::
 
-         Text(0, 0.5, '$\\theta$, [рад]')
+         Text(0, 0.5, '$\\theta$, [rad]')
 
    .. container:: output display_data
 
@@ -232,13 +232,13 @@
 
       plt.plot(alpha)
 
-      plt.ylabel(r'$\alpha$, [рад]')
+      plt.ylabel(r'$\alpha$, [rad]')
 
    .. container:: output execute_result
 
       ::
 
-         Text(0, 0.5, '$\\alpha$, [рад]')
+         Text(0, 0.5, '$\\alpha$, [rad]')
 
    .. container:: output display_data
 

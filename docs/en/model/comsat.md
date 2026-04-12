@@ -158,6 +158,14 @@ Expanded form:
 
 1. Santosh Kumar Choudhary (2015). Design and Analysis of an Optimal Orbit Control for a Communication Satellite. INTERNATIONAL JOURNAL OF COMMUNICATIONS. Volume 9, 2015
 
+## Reward
+
+The default reward function returns the negative absolute tracking error for the radial velocity:
+
+$$r_t = -|\dot{\rho}(t) - \dot{\rho}_{\text{ref}}(t)|$$
+
+Higher reward (closer to 0) indicates better tracking performance. A custom reward function can be passed via the `reward_func` parameter.
+
 ## Quick start {#quick-start}
 
 === "Gymnasium"

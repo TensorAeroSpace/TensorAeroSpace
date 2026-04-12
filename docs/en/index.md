@@ -8,10 +8,10 @@ hide:
   <h1>TensorAeroSpace</h1>
   <p class="tagline">Realistic aerospace environments and RL algorithms for training control systems</p>
   <p>
-    <a href="guide/installation/" class="md-button md-button--primary">Installation</a>
-    <a href="lesson/0intro/" class="md-button">Tutorials</a>
-    <a href="agent/sac/" class="md-button">Algorithms</a>
-    <a href="model/f16/" class="md-button">Models</a>
+    <a href="guide/installation.md" class="md-button md-button--primary">Installation</a>
+    <a href="lesson/0intro.md" class="md-button">Tutorials</a>
+    <a href="agent/sac.md" class="md-button">Algorithms</a>
+    <a href="model/f16.md" class="md-button">Models</a>
   </p>
   <p>
     <a href="https://github.com/TensorAeroSpace/TensorAeroSpace"><img alt="GitHub" src="https://img.shields.io/badge/GitHub-TensorAeroSpace-000?logo=github"></a>
@@ -60,37 +60,37 @@ hide:
 
     Install the library, choose a model, and run your first agent.
 
-    [:octicons-arrow-right-24: Installation](guide/installation/)
+    [:octicons-arrow-right-24: Installation](guide/installation.md)
 
 -   :material-robot-outline: **RL algorithms**
 
     Modern algorithms: DQN, A3C/A2C‑NARX, PPO, SAC, DDPG, GAIL.
 
-    [:octicons-arrow-right-24: Explore](agent/sac/)
+    [:octicons-arrow-right-24: Explore](agent/sac.md)
 
 -   :material-airplane-takeoff: **Models**
 
     F‑16, Boeing‑747, X‑15, satellites and rockets with ready‑to‑use environments.
 
-    [:octicons-arrow-right-24: Browse](model/f16/)
+    [:octicons-arrow-right-24: Browse](model/f16.md)
 
 -   :material-cog-outline: **Gym integration**
 
     Compatible environments and a simple API for training and evaluation.
 
-    [:octicons-arrow-right-24: Learn more](example/enviroment/gymnasium/)
+    [:octicons-arrow-right-24: Learn more](example/enviroment/gymnasium.md)
 
 -   :material-school-outline: **Tutorials**
 
     Hands‑on practice with XFLR5, Simulink, SimInTech, and control theory.
 
-    [:octicons-arrow-right-24: Go to tutorials](lesson/0intro/)
+    [:octicons-arrow-right-24: Go to tutorials](lesson/0intro.md)
 
 -   :material-chart-line: **Benchmarking**
 
     Metrics, agent comparisons, and experiment examples.
 
-    [:octicons-arrow-right-24: Metrics](benchmark/metrics/)
+    [:octicons-arrow-right-24: Metrics](benchmark/metrics.md)
 
 </div>
 
@@ -222,7 +222,7 @@ hide:
         done = terminated or truncated
     ```
 
-    [:octicons-arrow-right-24: Full SAC B747 tutorial](example/agent/sac/example-sac-b747/)
+    [:octicons-arrow-right-24: Full SAC B747 tutorial](example/agent/sac/example-sac-b747.md)
 
 === "PID Controller"
 
@@ -281,11 +281,11 @@ hide:
 
 ## Useful links
 
-- Guide: [guide/installation](guide/installation/)
-- Lessons: [lesson/0intro](lesson/0intro/)
-- Models: [model/f16](model/f16/), [model/b747](model/b747/)
-- Algorithms: [agent/sac](agent/sac/), [agent/ppo](agent/ppo/), [agent/ddpg](agent/ddpg/)
-- Examples: [example/enviroment/gymnasium](example/enviroment/gymnasium/)
+- Guide: [guide/installation](guide/installation.md)
+- Lessons: [lesson/0intro](lesson/0intro.md)
+- Models: [model/f16](model/f16.md), [model/b747](model/b747.md)
+- Algorithms: [agent/sac](agent/sac.md), [agent/ppo](agent/ppo.md), [agent/ddpg](agent/ddpg.md)
+- Examples: [example/enviroment/gymnasium](example/enviroment/gymnasium.md)
 
 ---
 
@@ -324,6 +324,6 @@ Need help? Open an issue on GitHub or check the tutorials section.
 </div>
 
 <div style="text-align:center; margin: 1.2rem 0 0.2rem;">
-  <a href="guide/installation/" class="md-button md-button--primary">Get started</a>
-  <a href="example/enviroment/gymnasium/" class="md-button">View examples</a>
+  <a href="guide/installation.md" class="md-button md-button--primary">Get started</a>
+  <a href="example/enviroment/gymnasium.md" class="md-button">View examples</a>
 </div>

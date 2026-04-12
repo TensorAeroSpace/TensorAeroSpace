@@ -48,7 +48,7 @@ Expect `expert_data` as an array of shape `[N, obs_dim + act_dim]`: state concat
 4. Train the discriminator with BCE: `D(fake)=1`, `D(real)=0`
 5. Periodically evaluate the policy and early-stop based on `max_reward`
 
-## Пример (LinearLongitudinalF16‑v0)
+## Example (LinearLongitudinalF16‑v0)
 
 ```python
 import gymnasium as gym
@@ -79,6 +79,14 @@ agent.learn(max_frames=5000, max_reward=-1)
 
 !!! tip
     High-quality `expert_data` is crucial—include demonstrations with varied initial states and maneuvers.
+
+!!! warning "Gymnasium 5-tuple API"
+    This implementation uses the modern Gymnasium 5-tuple step API internally:
+    ```python
+    next_state, reward, terminated, truncated, info = env.step(action)
+    done = terminated or truncated
+    ```
+    If you are migrating from older code that used the 4-tuple API (`next_state, reward, done, info = env.step(action)`), ensure your environment is compatible with Gymnasium and returns the 5-tuple.
 
 ## API reference
 
