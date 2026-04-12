@@ -32,6 +32,8 @@ import torch
 import torch.nn.functional as F
 from torch.optim import Adam
 
+from huggingface_hub import snapshot_download
+
 from ..adp.networks import DeterministicActor, QCritic
 from ..base import (
     BaseRLModel,
@@ -1432,4 +1434,78 @@ class ADHDP(BaseRLModel):
         agent.critic = torch.load(
             critic_path, map_location=agent.device, weights_only=False
         )
+        return agent
+
+    @classmethod
+    def from_pretrained(
+        cls,
+        repo_name: str,
+        access_token: Optional[str] = None,
+        version: Optional[str] = None,
+        load_gradients: bool = False,
+    ) -> "ADHDP":
+        """Load pretrained model from local directory or Hugging Face Hub.
+
+        Args:
+            repo_name: Path to local folder with weights or repository name
+                in format ``namespace/repo_name`` on Hugging Face Hub.
+            access_token: Access token for private HF repository.
+            version: Revision / branch / tag of HF repository.
+            load_gradients: If ``True``, also load optimizer states so
+                training can be continued (requires ``save_gradients=True``
+                at save time).
+
+        Returns:
+            ADHDP: Fully initialised agent with loaded weights.
+        """
+        # 1) Try local loading (absolute / relative path)
+        p = Path(str(repo_name)).expanduser()
+        if p.is_dir():
+            return cls._load_from_dir(p, load_gradients=load_gradients)
+
+        # 2) If the path looks like a file-system path but doesn't exist – error
+        pathlike_prefixes = ("./", "../", "/", "~")
+        if str(repo_name).startswith(pathlike_prefixes):
+            if not p.exists() or not p.is_dir():
+                raise FileNotFoundError(
+                    f"Local directory not found: '{repo_name}'."
+                    " Please check the path."
+                )
+            return cls._load_from_dir(p, load_gradients=load_gradients)
+
+        # 3) Otherwise treat as a Hugging Face Hub repo id
+        folder_path = snapshot_download(
+            repo_id=repo_name, token=access_token, revision=version
+        )
+        return cls._load_from_dir(folder_path, load_gradients=load_gradients)
+
+    @classmethod
+    def _load_from_dir(
+        cls,
+        folder: Union[str, Path],
+        *,
+        load_gradients: bool = False,
+    ) -> "ADHDP":
+        """Reconstruct an ADHDP agent from a ``save()`` directory.
+
+        This is a thin wrapper around :meth:`from_dir` that also optionally
+        restores optimiser state dicts when *load_gradients* is ``True``.
+        """
+        folder_p = Path(folder)
+        agent = cls.from_dir(folder_p)
+
+        if load_gradients:
+            actor_optim_path = folder_p / "actor_optim.pth"
+            critic_optim_path = folder_p / "critic_optim.pth"
+            if actor_optim_path.exists():
+                state = torch.load(
+                    actor_optim_path, map_location=agent.device, weights_only=False
+                )
+                agent.actor_optim.load_state_dict(state)
+            if critic_optim_path.exists():
+                state = torch.load(
+                    critic_optim_path, map_location=agent.device, weights_only=False
+                )
+                agent.critic_optim.load_state_dict(state)
+
         return agent

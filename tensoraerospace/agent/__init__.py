@@ -14,23 +14,8 @@ from .dqn.model import Model as Model  # noqa: F401
 from .dsac.dsac import DSAC as DSAC  # noqa: F401
 from .gail.model import GAIL as GAIL  # noqa: F401
 
-# IHDP depends on TensorFlow; keep TensorAeroSpace importable even when optional
-# heavy deps are not installed.
-try:
-    from .ihdp.model import IHDPAgent as IHDPAgent  # noqa: F401
-except Exception as _ihdp_exc:  # pragma: no cover
-    _ihdp_exc_repr = repr(_ihdp_exc)
-
-    class IHDPAgent:  # type: ignore
-        """Placeholder when TensorFlow dependency is missing for IHDP."""
-
-        def __init__(self, *args, **kwargs) -> None:
-            message = (
-                "IHDPAgent requires TensorFlow. Install it with `pip install tensorflow` "
-                "(original import error: "
-                f"{_ihdp_exc_repr})."
-            )
-            raise ImportError(message)
+# IHDP (now PyTorch-based, no TensorFlow required)
+from .ihdp.model import IHDPAgent as IHDPAgent  # noqa: F401
 
 
 # Canonical ADHDP (standalone)

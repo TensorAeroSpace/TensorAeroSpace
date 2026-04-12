@@ -6,6 +6,11 @@ implementation, including network definitions and worker logic.
 
 from __future__ import annotations
 
+import datetime
+import json
+from pathlib import Path
+from typing import Callable, Optional, Tuple, Union
+
 import numpy as np
 import torch
 import torch.multiprocessing as mp
@@ -16,8 +21,6 @@ try:  # Prefer gymnasium when available for typing accuracy
     import gymnasium as gym
 except ImportError:  # pragma: no cover - fallback for older environments
     import gym
-
-from typing import Callable, Optional, Tuple
 
 from ..metrics import create_metric_writer
 from .shared_optim import SharedAdam
@@ -500,3 +503,199 @@ class Agent:
         """Close TensorBoard writer and cleanup resources."""
         if self.writer is not None:
             self.writer.close()
+
+    # ------------------------------------------------------------------
+    # Serialization helpers
+    # ------------------------------------------------------------------
+
+    def get_param_env(self) -> dict:
+        """Return serializable configuration of the agent."""
+        class_name = self.__class__.__name__
+        module_name = self.__class__.__module__
+        agent_name = f"{module_name}.{class_name}"
+
+        policy_params = {
+            "gamma": self.gamma,
+            "hidden_size": 256,
+            "update_interval": self.update_global_iter,
+            "max_episodes": self.max_episodes,
+            "max_ep_step": self.max_ep_step,
+            "lr": self.lr,
+            "num_inputs": self.gnet.s_dim,
+            "num_outputs": self.gnet.a_dim,
+        }
+
+        return {
+            "policy": {"name": agent_name, "params": policy_params},
+        }
+
+    def save(
+        self,
+        path: Union[str, Path, None] = None,
+        save_gradients: bool = False,
+    ) -> Path:
+        """Save A3C agent to the specified directory.
+
+        Saves the global actor-critic network and configuration.
+        Optionally saves the shared optimizer state for resuming training.
+
+        Args:
+            path (str | Path | None): Base save directory.  If *None*, saves to
+                the current working directory.
+            save_gradients (bool): If True, also save optimizer state dict.
+
+        Returns:
+            Path: The directory where the model was saved.
+        """
+        if path is None:
+            path = Path.cwd()
+        else:
+            path = Path(path)
+
+        date_str = datetime.datetime.now().strftime("%b%d_%H-%M-%S")
+        save_dir = path / f"{date_str}_{self.__class__.__name__}"
+        save_dir.mkdir(parents=True, exist_ok=True)
+
+        config_path = save_dir / "config.json"
+        model_path = save_dir / "global_actor_critic.pth"
+        optimizer_path = save_dir / "optimizer.pth"
+
+        # Save configuration
+        config = self.get_param_env()
+        with open(config_path, "w", encoding="utf-8") as f:
+            json.dump(config, f, indent=2)
+
+        # Save network weights
+        torch.save(self.gnet.state_dict(), model_path)
+
+        # Optionally save optimizer state
+        if save_gradients:
+            torch.save(self.opt.state_dict(), optimizer_path)
+
+        return save_dir
+
+    @classmethod
+    def load(
+        cls,
+        path: Union[str, Path],
+        env_function: Optional[Callable[[int], gym.Env]] = None,
+        load_gradients: bool = False,
+    ) -> "Agent":
+        """Load an A3C agent from a checkpoint directory.
+
+        Args:
+            path: Directory containing saved model files.
+            env_function: Factory returning an environment per worker id.
+                Required because A3C needs environments for its workers.
+            load_gradients: If True, restore optimizer state.
+
+        Returns:
+            Agent: Reconstructed agent.
+        """
+        path = Path(path)
+        config_path = path / "config.json"
+        model_path = path / "global_actor_critic.pth"
+        optimizer_path = path / "optimizer.pth"
+
+        with open(config_path, "r", encoding="utf-8") as f:
+            config = json.load(f)
+
+        policy_params = config["policy"]["params"]
+
+        if env_function is None:
+            raise ValueError(
+                "A3C Agent requires an 'env_function' argument when loading "
+                "because the environment cannot be reconstructed from the "
+                "config alone."
+            )
+
+        new_agent = cls(
+            env_function=env_function,
+            gamma=policy_params["gamma"],
+            lr=policy_params["lr"],
+            max_episodes=policy_params["max_episodes"],
+            max_ep_step=policy_params["max_ep_step"],
+            update_global_iter=policy_params["update_interval"],
+        )
+
+        # Restore global network weights
+        new_agent.gnet.load_state_dict(
+            torch.load(model_path, map_location="cpu", weights_only=False)
+        )
+
+        # Optionally restore optimizer state
+        if load_gradients and optimizer_path.exists():
+            new_agent.opt.load_state_dict(
+                torch.load(optimizer_path, map_location="cpu", weights_only=False)
+            )
+
+        return new_agent
+
+    @classmethod
+    def from_pretrained(
+        cls,
+        repo_name: str,
+        env_function: Optional[Callable[[int], gym.Env]] = None,
+        access_token: Optional[str] = None,
+        version: Optional[str] = None,
+        load_gradients: bool = False,
+    ) -> "Agent":
+        """Load pretrained model from a local directory or Hugging Face Hub.
+
+        Args:
+            repo_name: Path to a local folder **or** a Hugging Face repo id
+                (e.g. ``"namespace/repo_name"``).
+            env_function: Factory returning an environment per worker id
+                (required).
+            access_token: Hugging Face access token for private repos.
+            version: Revision / branch / tag on Hugging Face.
+            load_gradients: Restore optimizer state for continued training.
+
+        Returns:
+            Agent: Initialized agent.
+        """
+        p = Path(str(repo_name)).expanduser()
+        if p.is_dir():
+            return cls.load(
+                p, env_function=env_function, load_gradients=load_gradients
+            )
+
+        # If it looks like an explicit filesystem path, raise immediately.
+        pathlike_prefixes = ("./", "../", "/", "~")
+        if str(repo_name).startswith(pathlike_prefixes):
+            raise FileNotFoundError(
+                f"Local directory not found: '{repo_name}'."
+            )
+
+        # Fall back to Hugging Face Hub download.
+        from huggingface_hub import snapshot_download
+
+        folder_path = snapshot_download(
+            repo_id=repo_name, token=access_token, revision=version
+        )
+        return cls.load(
+            folder_path, env_function=env_function, load_gradients=load_gradients
+        )
+
+    def publish_to_hub(
+        self,
+        repo_name: str,
+        folder_path: Union[str, Path],
+        access_token: Optional[str] = None,
+    ) -> None:
+        """Upload a saved model folder to Hugging Face Hub.
+
+        Args:
+            repo_name: Repository id on Hugging Face (e.g. ``"user/my-a3c"``).
+            folder_path: Local folder produced by :meth:`save`.
+            access_token: Hugging Face access token.
+        """
+        from huggingface_hub import HfApi
+
+        api = HfApi()
+        api.upload_folder(
+            folder_path=str(folder_path),
+            repo_id=repo_name,
+            repo_type="model",
+            token=access_token,
+        )

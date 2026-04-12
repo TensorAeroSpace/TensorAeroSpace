@@ -7,7 +7,7 @@ buffer helpers) used in TensorAeroSpace.
 import json
 import time
 from pathlib import Path
-from typing import Any, Tuple, Union, cast
+from typing import Any, Optional, Tuple, Union, cast
 
 import gymnasium as gym
 import numpy as np
@@ -16,6 +16,8 @@ import torch.nn as nn
 import torch.nn.functional as F
 from gymnasium.spaces import Discrete
 from tqdm import tqdm
+
+from huggingface_hub import HfApi, snapshot_download
 
 from ..metrics import create_metric_writer
 
@@ -624,6 +626,150 @@ class DQNAgent:
         }
         with open(config_path, "w", encoding="utf-8") as f:
             json.dump(config, f)
+
+    @classmethod
+    def load(
+        cls,
+        path: Union[str, Path],
+        env: Any,
+        *,
+        load_gradients: bool = False,
+    ) -> "DQNAgent":
+        """Load a DQNAgent from a directory created by :meth:`save`.
+
+        Args:
+            path: Directory that contains ``model.pth``, ``target_model.pth``
+                and ``config.json`` (as written by :meth:`save`).
+            env: A Gymnasium-compatible environment. The environment is
+                required because it is not serialised alongside the weights.
+            load_gradients: If ``True`` and ``optimizer.pth`` exists, also
+                restore the optimiser state so training can be continued.
+
+        Returns:
+            DQNAgent: Fully initialised agent with loaded weights.
+        """
+        folder = Path(path)
+        config_path = folder / "config.json"
+        model_path = folder / "model.pth"
+        target_model_path = folder / "target_model.pth"
+        optim_path = folder / "optimizer.pth"
+
+        if not config_path.exists():
+            raise FileNotFoundError(
+                f"Missing config.json in {str(folder)!r}"
+            )
+        if not model_path.exists():
+            raise FileNotFoundError(
+                f"Missing model.pth in {str(folder)!r}"
+            )
+
+        with open(config_path, "r", encoding="utf-8") as f:
+            config = json.load(f)
+
+        # Reconstruct online & target networks from saved full objects
+        loaded_model = torch.load(model_path, map_location=_DEVICE, weights_only=False)
+        loaded_target = torch.load(
+            target_model_path, map_location=_DEVICE, weights_only=False
+        ) if target_model_path.exists() else torch.load(
+            model_path, map_location=_DEVICE, weights_only=False
+        )
+
+        agent = cls(
+            model=loaded_model,
+            target_model=loaded_target,
+            env=env,
+            learning_rate=config.get("learning_rate", 0.0012),
+            epsilon=config.get("epsilon", 0.1),
+            epsilon_dacay=config.get("epsilon_decay", 0.995),
+            min_epsilon=config.get("min_epsilon", 0.01),
+            gamma=config.get("gamma", 0.9),
+            batch_size=config.get("batch_size", 8),
+            target_update_iter=config.get("target_update_iter", 400),
+            train_nums=config.get("train_nums", 5000),
+            buffer_size=config.get("buffer_size", 200),
+            alpha=config.get("alpha", 0.4),
+            beta=config.get("beta", 0.4),
+        )
+
+        # The constructor moves models to device and creates a *new* optimizer;
+        # replace them with the loaded objects that are already on _DEVICE.
+        agent.model = loaded_model
+        agent.target_model = loaded_target
+
+        if load_gradients and optim_path.exists():
+            state = torch.load(optim_path, map_location=_DEVICE, weights_only=False)
+            agent.optimizer.load_state_dict(state)
+
+        return agent
+
+    @classmethod
+    def from_pretrained(
+        cls,
+        repo_name: str,
+        env: Any,
+        access_token: Optional[str] = None,
+        version: Optional[str] = None,
+        load_gradients: bool = False,
+    ) -> "DQNAgent":
+        """Load pretrained model from local directory or Hugging Face Hub.
+
+        Args:
+            repo_name: Path to local folder with weights **or** repository
+                name in format ``namespace/repo_name`` on Hugging Face Hub.
+            env: A Gymnasium-compatible environment (required for
+                reconstruction).
+            access_token: Access token for private HF repository.
+            version: Revision / branch / tag of HF repository.
+            load_gradients: If ``True``, also load optimiser states for
+                continuing training.
+
+        Returns:
+            DQNAgent: Initialised agent with loaded weights.
+        """
+        # 1) Try local loading (absolute / relative path)
+        p = Path(str(repo_name)).expanduser()
+        if p.is_dir():
+            return cls.load(p, env=env, load_gradients=load_gradients)
+
+        # 2) If it looks like a file-system path but doesn't exist -> error
+        pathlike_prefixes = ("./", "../", "/", "~")
+        if str(repo_name).startswith(pathlike_prefixes):
+            if not p.exists() or not p.is_dir():
+                raise FileNotFoundError(
+                    f"Local directory not found: '{repo_name}'."
+                    " Please check the path."
+                )
+            return cls.load(p, env=env, load_gradients=load_gradients)
+
+        # 3) Otherwise treat as a Hugging Face Hub repo id
+        folder_path = snapshot_download(
+            repo_id=repo_name, token=access_token, revision=version
+        )
+        return cls.load(folder_path, env=env, load_gradients=load_gradients)
+
+    def publish_to_hub(
+        self,
+        repo_name: str,
+        folder_path: Union[str, Path],
+        access_token: Optional[str] = None,
+    ) -> None:
+        """Publish saved model to Hugging Face Hub.
+
+        Args:
+            repo_name: Repository id on Hugging Face Hub
+                (e.g. ``"my-org/dqn-cartpole"``).
+            folder_path: Local folder that contains saved weights
+                (as written by :meth:`save`).
+            access_token: HF access token. If ``None``, the token cached
+                by ``huggingface-cli login`` will be used.
+        """
+        api = HfApi()
+        api.upload_folder(
+            folder_path=str(folder_path),
+            repo_id=repo_name,
+            repo_type="model",
+            token=access_token,
+        )
 
 
 class PERNARXAgent:

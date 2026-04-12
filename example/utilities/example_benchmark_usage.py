@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Пример использования улучшенного бенчмарка для анализа систем управления.
+Example of using the improved benchmark for control-system analysis.
 
-Этот файл демонстрирует, как использовать новые возможности класса ControlBenchmark
-для создания красивых и информативных графиков анализа качества управления.
+This file shows how to use the new features of the ControlBenchmark class
+to build nice, informative plots for control-quality analysis.
 """
 
 import matplotlib.pyplot as plt
@@ -17,39 +17,39 @@ def generate_sample_system_response(
     time, overshoot=0.2, settling_time=3.0, noise_level=0.01
 ):
     """
-    Генерирует примерный отклик системы управления.
+    Generate a sample control-system response.
 
     Args:
-        time (np.ndarray): Временной массив
-        overshoot (float): Перерегулирование (0.0 - 1.0)
-        settling_time (float): Время установления
-        noise_level (float): Уровень шума
+        time (np.ndarray): Time array
+        overshoot (float): Overshoot (0.0 - 1.0)
+        settling_time (float): Settling time
+        noise_level (float): Noise level
 
     Returns:
         tuple: (control_signal, system_signal)
     """
-    # Задающий сигнал (ступенчатый)
+    # Reference signal (step)
     control_signal = np.ones_like(time)
     control_signal[time < 1.0] = 0
 
-    # Параметры системы второго порядка
-    wn = 4.0 / settling_time  # Собственная частота
+    # Second-order system parameters
+    wn = 4.0 / settling_time  # Natural frequency
     zeta = -np.log(overshoot) / np.sqrt(
         np.pi**2 + np.log(overshoot) ** 2
-    )  # Коэффициент затухания
+    )  # Damping ratio
 
-    # Отклик системы второго порядка на ступенчатое воздействие
+    # Second-order system step response
     system_signal = np.zeros_like(time)
 
     for i, t in enumerate(time):
         if t >= 1.0:
             tau = t - 1.0
-            if zeta < 1.0:  # Недодемпфированная система
+            if zeta < 1.0:  # Underdamped system
                 wd = wn * np.sqrt(1 - zeta**2)
                 response = 1 - np.exp(-zeta * wn * tau) * (
                     np.cos(wd * tau) + (zeta * wn / wd) * np.sin(wd * tau)
                 )
-            else:  # Передемпфированная система
+            else:  # Overdamped system
                 r1 = -wn * (zeta + np.sqrt(zeta**2 - 1))
                 r2 = -wn * (zeta - np.sqrt(zeta**2 - 1))
                 response = 1 + (r2 * np.exp(r1 * tau) - r1 * np.exp(r2 * tau)) / (
@@ -58,7 +58,7 @@ def generate_sample_system_response(
 
             system_signal[i] = response
 
-    # Добавляем шум
+    # Add noise
     system_signal += np.random.normal(0, noise_level, len(system_signal))
 
     return control_signal, system_signal
@@ -66,90 +66,90 @@ def generate_sample_system_response(
 
 def main():
     """
-    Основная функция демонстрации возможностей бенчмарка.
+    Main function demonstrating the benchmark capabilities.
     """
-    print("🚀 Демонстрация улучшенного бенчмарка TensorAeroSpace")
+    print("🚀 TensorAeroSpace improved benchmark demo")
     print("=" * 60)
 
-    # Создаем временной массив
+    # Build the time array
     dt = 0.01
     time = np.arange(0, 10, dt)
 
-    # Создаем экземпляр бенчмарка
+    # Create the benchmark instance
     benchmark = ControlBenchmark()
 
-    print("\n1️⃣  Анализ одной системы управления")
+    print("\n1️⃣  Analysis of a single control system")
     print("-" * 40)
 
-    # Генерируем данные для одной системы
+    # Generate data for a single system
     control_signal, system_signal = generate_sample_system_response(
         time, overshoot=0.15, settling_time=2.5, noise_level=0.005
     )
 
-    # Строим красивый график
+    # Build a nice plot
     metrics = benchmark.plot(
         control_signal,
         system_signal,
         signal_val=0.5,
         dt=dt,
         tps=time,
-        title="Анализ ПИД-регулятора",
+        title="PID controller analysis",
     )
 
-    # Генерируем отчет
+    # Generate the report
     report = benchmark.generate_report(
         control_signal,
         system_signal,
         signal_val=0.5,
         dt=dt,
-        system_name="ПИД-регулятор",
+        system_name="PID controller",
     )
     print(report)
 
-    print("\n2️⃣  Сравнение нескольких систем управления")
+    print("\n2️⃣  Comparison of several control systems")
     print("-" * 50)
 
-    # Создаем данные для сравнения нескольких систем
+    # Build data for comparing several systems
     systems_data = {}
 
-    # Система 1: Быстрая с перерегулированием
+    # System 1: Fast with overshoot
     control1, system1 = generate_sample_system_response(
         time, overshoot=0.25, settling_time=1.5, noise_level=0.003
     )
-    systems_data["Быстрая система"] = {
+    systems_data["Fast system"] = {
         "control_signal": control1,
         "system_signal": system1,
         "time": time,
     }
 
-    # Система 2: Медленная без перерегулирования
+    # System 2: Slow without overshoot
     control2, system2 = generate_sample_system_response(
         time, overshoot=0.05, settling_time=4.0, noise_level=0.002
     )
-    systems_data["Медленная система"] = {
+    systems_data["Slow system"] = {
         "control_signal": control2,
         "system_signal": system2,
         "time": time,
     }
 
-    # Система 3: Оптимальная
+    # System 3: Optimal
     control3, system3 = generate_sample_system_response(
         time, overshoot=0.10, settling_time=2.0, noise_level=0.004
     )
-    systems_data["Оптимальная система"] = {
+    systems_data["Optimal system"] = {
         "control_signal": control3,
         "system_signal": system3,
         "time": time,
     }
 
-    # Сравниваем системы
+    # Compare the systems
     all_metrics = benchmark.compare_systems(systems_data, signal_val=0.5, dt=dt)
 
-    # Выводим сравнительную таблицу в консоль
-    print("\n📊 Сравнительная таблица метрик:")
+    # Print the comparison table to the console
+    print("\n📊 Metric comparison table:")
     print("-" * 80)
     print(
-        f"{'Система':<20} {'Перерег.%':<12} {'Время уст.':<12} {'Затухание':<12} {'Стат.ошибка':<12}"
+        f"{'System':<20} {'Overshoot%':<12} {'Settling t.':<12} {'Damping':<12} {'Steady err.':<12}"
     )
     print("-" * 80)
 
@@ -160,15 +160,15 @@ def main():
             f"{metrics['static_error']:<12.4f}"
         )
 
-    print("\n✅ Демонстрация завершена!")
-    print("\n💡 Возможности улучшенного бенчмарка:")
-    print("   • Красивые графики с современным дизайном")
-    print("   • Автоматические аннотации ключевых точек")
-    print("   • Таблицы с метриками качества")
-    print("   • Сравнение нескольких систем")
-    print("   • Графики ошибок регулирования")
-    print("   • Текстовые отчеты с оценками")
-    print("   • Настраиваемые цветовые схемы")
+    print("\n✅ Demo finished!")
+    print("\n💡 Improved benchmark features:")
+    print("   • Nice plots with a modern design")
+    print("   • Automatic annotations of key points")
+    print("   • Quality-metric tables")
+    print("   • Multi-system comparison")
+    print("   • Control-error plots")
+    print("   • Text reports with ratings")
+    print("   • Customizable color schemes")
 
 
 if __name__ == "__main__":

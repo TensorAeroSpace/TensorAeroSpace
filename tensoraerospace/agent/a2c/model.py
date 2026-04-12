@@ -879,6 +879,24 @@ class A2C(BaseRLModel):
             new_agent = cls.__load(folder_path)
             return new_agent
 
+    def publish_to_hub(self, repo_name, folder_path, access_token=None):
+        """Publish model to Hugging Face Hub.
+
+        Args:
+            repo_name (str): Repository name in Hub.
+            folder_path (str): Path to model folder.
+            access_token (str, optional): Access token for authentication.
+        """
+        from huggingface_hub import HfApi
+
+        api = HfApi()
+        api.upload_folder(
+            folder_path=folder_path,
+            repo_id=repo_name,
+            repo_type="model",
+            token=access_token,
+        )
+
 
 class A2CWithNARXCritic(A2C):
     """A2C variant that uses a NARX critic with history-aware features."""

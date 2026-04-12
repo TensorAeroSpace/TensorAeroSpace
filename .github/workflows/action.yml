@@ -83,10 +83,6 @@ jobs:
     - name: 🧪 Run tests with pytest
       run: |
         poetry run pytest tests/ -v --tb=short --junitxml=pytest.xml \
-          --ignore=tests/agents/ihdp_actor_test.py \
-          --ignore=tests/agents/ihdp_critic_test.py \
-          --ignore=tests/agents/ihdp_agent_test.py \
-          --ignore=tests/agents/ihdp_incremental_model_test.py \
           --ignore=tests/agents/a2c_narx_learner_test.py \
           --ignore=tests/optimization/ray_test.py
 
