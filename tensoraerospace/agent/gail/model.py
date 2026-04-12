@@ -131,9 +131,9 @@ class Discriminator(nn.Module):
 
     def forward(self, x):
         """Compute discriminator probability for state-action pairs."""
-        x = F.tanh(self.linear1(x))
-        x = F.tanh(self.linear2(x))
-        prob = F.sigmoid(self.linear3(x))
+        x = torch.tanh(self.linear1(x))
+        x = torch.tanh(self.linear2(x))
+        prob = torch.sigmoid(self.linear3(x))
         return prob
 
 
@@ -276,9 +276,13 @@ class GAIL:
 
             for _ in range(self.max_steps):
                 state = torch.FloatTensor(state).to(device)
-                dist, value = self.model(state)
+                with torch.no_grad():
+                    dist, value = self.model(state)
 
-                action = dist.sample()
+                    action = dist.sample()
+                    log_prob = dist.log_prob(action)
+                    entropy += dist.entropy().mean()
+
                 next_state, reward, terminated, truncated, info = self.env.step(
                     action.cpu().numpy()
                 )
@@ -286,16 +290,13 @@ class GAIL:
                 next_state = next_state.reshape(1, -1)
                 reward = self.expert_reward(state, action.cpu().numpy())
 
-                log_prob = dist.log_prob(action)
-                entropy += dist.entropy().mean()
-
-                log_probs.append(log_prob)
-                values.append(value)
+                log_probs.append(log_prob.detach())
+                values.append(value.detach())
                 rewards.append(torch.FloatTensor(reward).to(device))
                 masks.append(torch.FloatTensor([1 - done]).unsqueeze(1).to(device))
 
-                states.append(state)
-                actions.append(action)
+                states.append(state.detach())
+                actions.append(action.detach())
 
                 state = next_state
                 frame_idx += 1
@@ -308,7 +309,8 @@ class GAIL:
                         early_stop = True
 
             next_state = torch.FloatTensor(next_state).to(device)
-            _, next_value = self.model(next_state)
+            with torch.no_grad():
+                _, next_value = self.model(next_state)
             returns = compute_gae(next_value, rewards, masks, values)
 
             returns = torch.cat(returns).detach()

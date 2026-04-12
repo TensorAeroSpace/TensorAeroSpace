@@ -721,7 +721,9 @@ class PPO(BaseRLModel):
             if deterministic:
                 action_t = mean_action_t
             action_exec_t = torch.clamp(action_t, low, high)
-            log_prob_t = dist.log_prob(action_exec_t).sum(dim=-1, keepdim=True)
+            # Compute log_prob from the UNCLAMPED sampled action to avoid biased
+            # gradients when actions saturate at the bounds.
+            log_prob_t = dist.log_prob(action_t).sum(dim=-1, keepdim=True)
         return action_exec_t, mean_action_t, log_prob_t
 
     def _act_tensor_batch(
@@ -758,7 +760,9 @@ class PPO(BaseRLModel):
             if deterministic:
                 action_t = mean_action_t
             action_exec_t = torch.clamp(action_t, low, high)
-            log_prob_t = dist.log_prob(action_exec_t).sum(dim=-1, keepdim=True)
+            # Compute log_prob from the UNCLAMPED sampled action to avoid biased
+            # gradients when actions saturate at the bounds.
+            log_prob_t = dist.log_prob(action_t).sum(dim=-1, keepdim=True)
         return action_exec_t, mean_action_t, log_prob_t
 
     def _is_vector_env(self, obs: Any) -> bool:
@@ -841,7 +845,9 @@ class PPO(BaseRLModel):
                     value = self.critic(obs)
                     action, dist = self.actor(obs)
                     env_action = torch.clamp(action, low, high)
-                    logp = dist.log_prob(env_action).sum(dim=-1, keepdim=True)
+                    # Compute log_prob from the UNCLAMPED sampled action to avoid
+                    # biased gradients when actions saturate at the bounds.
+                    logp = dist.log_prob(action).sum(dim=-1, keepdim=True)
                 step_return = self.env.step(env_action)
                 if len(step_return) > 4:
                     next_obs, reward, terminated, truncated, info = step_return
@@ -865,7 +871,10 @@ class PPO(BaseRLModel):
                 reward_t = self._to_tensor(reward, dtype=torch.float32).view(-1, 1)
 
                 buf_states.append(obs)
-                buf_actions.append(env_action)
+                # Store the UNCLAMPED sampled action so that old/new log-probs
+                # are computed w.r.t. the same point in the distribution's
+                # support (matching the unclamped log_prob computed above).
+                buf_actions.append(action)
                 buf_logp.append(logp)
                 buf_rewards.append(reward_t)
                 buf_dones.append(done_t)
@@ -1431,19 +1440,31 @@ class PPO(BaseRLModel):
                 rollout_states = []  # For obs normalization update
                 for step in range(self.rollout_len):
                     rollout_states.append(state)
-                    action, mu, prob = self._act_tensor(state)
-                    # Normalize state for value function if needed
+                    # Inline actor forward so we can store the UNCLAMPED sampled
+                    # action alongside its log-prob. Storing the clamped action
+                    # while computing log-prob from the unclamped sample (or
+                    # vice versa) produces inconsistent old/new log-probs in the
+                    # PPO ratio and biases the policy gradient when actions
+                    # saturate at the bounds.
                     state_normalized = (
                         self._normalize_obs(state) if self.normalize_obs else state
                     )
+                    state_t = torch.as_tensor(
+                        np.array([state_normalized]),
+                        dtype=torch.float32,
+                        device=self.device,
+                    )
                     with torch.no_grad():
-                        value = self.critic(
-                            torch.as_tensor(
-                                np.array([state_normalized]),
-                                dtype=torch.float32,
-                                device=self.device,
-                            )
+                        action_raw_t, dist_t = self.actor(state_t)
+                        mu_t = dist_t.mean
+                        # `action_raw_t` is the unclamped sampled action; this is
+                        # the point at which we compute log_prob for PPO.
+                        prob = dist_t.log_prob(action_raw_t).sum(
+                            dim=-1, keepdim=True
                         )
+                        value = self.critic(state_t)
+                    action = action_raw_t  # unclamped, stored in buffer
+                    mu = mu_t
                     # Clip action to environment bounds to avoid invalid controls
                     env_action = action.detach().cpu().numpy()[0]
                     try:

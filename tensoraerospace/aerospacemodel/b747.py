@@ -82,12 +82,13 @@ class LongitudinalB747(ModelBase):
         self.state_space = self.selected_states
         self.action_space = self.selected_input
         # ele
-        # Limitations of the system
+        # Limitations of the system (model works in radians)
+        # Magnitude: ±25 deg -> radians; Rate: ±60 deg/s -> rad/s
         self.input_magnitude_limits = [
-            np.deg2rad(25),
+            float(np.deg2rad(25.0)),
         ]
         self.input_rate_limits = [
-            60,
+            float(np.deg2rad(60.0)),
         ]
 
         # Store the number of inputs, states and outputs

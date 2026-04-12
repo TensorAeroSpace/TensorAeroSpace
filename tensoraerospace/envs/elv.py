@@ -19,11 +19,11 @@ from tensoraerospace.aerospacemodel import ELVRocket
 class LinearLongitudinalELVRocket(gym.Env):
     """Simulation of ELVRocket control object for training AI agents.
 
-    State order: [w, q, theta] in SI units (m/s, rad/s, rad).
+    State order: [alpha, q, theta] in SI units (rad, rad/s, rad).
     Action: elevator in radians.
 
     Args:
-        initial_state: Initial state [w, q, theta] in SI units.
+        initial_state: Initial state [alpha, q, theta] in SI units (radians).
         reference_signal: Reference signal (radians for angular states).
         number_time_steps: Number of simulation steps.
         tracking_states: Tracked states.
@@ -55,11 +55,11 @@ class LinearLongitudinalELVRocket(gym.Env):
             tracking_states if tracking_states is not None else ["theta"]
         )
         self.state_space = (
-            state_space if state_space is not None else ["w", "q", "theta"]
+            state_space if state_space is not None else ["alpha", "q", "theta"]
         )
         self.control_space = control_space if control_space is not None else ["ele"]
         self.output_space = (
-            output_space if output_space is not None else ["w", "q", "theta"]
+            output_space if output_space is not None else ["alpha", "q", "theta"]
         )
         self.reference_signal = reference_signal
         if reward_func:
@@ -188,7 +188,7 @@ class ImprovedELVEnv(gym.Env):
     Features normalized action/observation spaces and shaped reward similar to
     `ImprovedB747Env`, adapted to the ELV rocket model.
 
-    State order: [w, q, theta] in SI units (m/s, rad/s, rad).
+    State order: [alpha, q, theta] in SI units (rad, rad/s, rad).
 
     Observation (shape: (4,)):
         [norm_pitch_error, norm_q, norm_theta, norm_prev_action]
@@ -229,7 +229,7 @@ class ImprovedELVEnv(gym.Env):
         self.reference_signal = np.array(reference_signal, dtype=float)
         self.number_time_steps = int(number_time_steps)
         self.current_step = 0
-        # ELV state order (per model): [w, q, theta] in SI (m/s, rad/s, rad)
+        # ELV state order (per model): [alpha, q, theta] in SI (rad, rad/s, rad)
         self.state = np.array(self.initial_state, dtype=float).reshape(-1)
 
         # Initial elevator and action history (normalized)
@@ -270,10 +270,10 @@ class ImprovedELVEnv(gym.Env):
             x0=self.initial_state, number_time_steps=self.number_time_steps
         )
 
-    # Helper indices based on ELV state order [w, q, theta]
+    # Helper indices based on ELV state order [alpha, q, theta]
     @property
-    def _idx_w(self) -> int:
-        """Index of longitudinal velocity state."""
+    def _idx_alpha(self) -> int:
+        """Index of angle-of-attack state."""
         return 0
 
     @property
