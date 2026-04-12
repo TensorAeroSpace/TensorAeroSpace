@@ -153,6 +153,12 @@ def parse_matlab_assignment(src: str, var_name: str) -> np.ndarray:
             continue
         m = direct_re.match(stmt)
         if m:
+            # If we have accumulated indexed pages (e.g. Cy1(:,:,k) = ...)
+            # but not yet assembled them, do so now before evaluating the rhs
+            # (the rhs might reference var_name itself, e.g. `Cy1 = -Cy1;`).
+            if indexed_pages and var_name not in scope:
+                pages = [indexed_pages[i] for i in sorted(indexed_pages)]
+                scope[var_name] = np.stack(pages, axis=-1)
             scope[var_name] = _eval_rhs(m.group(1), scope)
             continue
 
@@ -163,7 +169,10 @@ def parse_matlab_assignment(src: str, var_name: str) -> np.ndarray:
             except Exception:
                 pass
 
-    if indexed_pages:
+    if indexed_pages and var_name not in scope:
+        # Only assemble indexed pages if no direct assignment superseded them
+        # (e.g. `Cy1 = -Cy1;` after the indexed assignments). In that case the
+        # direct_re branch above already assembled and negated, so we skip here.
         pages = [indexed_pages[i] for i in sorted(indexed_pages)]
         scope[var_name] = np.stack(pages, axis=-1)
 
