@@ -66,33 +66,8 @@ except Exception:
                 yield x
 
 
-# Optional TensorBoard SummaryWriter
-try:
-    from torch.utils.tensorboard import SummaryWriter
-except Exception:
-
-    class SummaryWriter:  # type: ignore
-        """Fallback SummaryWriter when tensorboard is unavailable."""
-
-        def __init__(self, *args, **kwargs):
-            """Fallback SummaryWriter that stores nothing when tensorboard is absent."""
-            pass
-
-        def add_scalar(self, *args, **kwargs):
-            """No-op scalar logging."""
-            pass
-
-        def add_histogram(self, *args, **kwargs):
-            """No-op histogram logging."""
-            pass
-
-        def flush(self):
-            """No-op flush."""
-            pass
-
-        def close(self):
-            """No-op close."""
-            pass
+# Optional TensorBoard SummaryWriter (lazy import to avoid pulling in TF)
+from ..metrics import TorchSummaryWriter as SummaryWriter  # noqa: E402
 
 
 from ..base import (  # noqa: E402
@@ -1368,3 +1343,21 @@ class DDPG:
             access_token=access_token,
         )
         return str(save_path)
+
+    def publish_to_hub(self, repo_name, folder_path, access_token=None):
+        """Publish model to Hugging Face Hub.
+
+        Args:
+            repo_name (str): Repository name in Hub.
+            folder_path (str): Path to model folder.
+            access_token (str, optional): Access token for authentication.
+        """
+        from huggingface_hub import HfApi
+
+        api = HfApi()
+        api.upload_folder(
+            folder_path=folder_path,
+            repo_id=repo_name,
+            repo_type="model",
+            token=access_token,
+        )

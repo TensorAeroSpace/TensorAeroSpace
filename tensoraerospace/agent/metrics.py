@@ -4,29 +4,50 @@ from __future__ import annotations
 
 import re
 from pathlib import Path
-from typing import Optional, Union
+from typing import Any, Optional, Union
 
-try:
-    from torch.utils.tensorboard import SummaryWriter as TorchSummaryWriter
-except Exception:  # pragma: no cover - tensorboard optional at runtime
+class _FallbackSummaryWriter:  # type: ignore
+    """Fallback SummaryWriter when tensorboard is unavailable."""
 
-    class TorchSummaryWriter:  # type: ignore
-        """Fallback SummaryWriter when tensorboard is unavailable."""
+    def __init__(self, *args, **kwargs) -> None:
+        pass
 
-        def __init__(self, *args, **kwargs) -> None:
-            pass
+    def add_scalar(self, *args, **kwargs) -> None:
+        pass
 
-        def add_scalar(self, *args, **kwargs) -> None:
-            pass
+    def add_histogram(self, *args, **kwargs) -> None:
+        pass
 
-        def add_histogram(self, *args, **kwargs) -> None:
-            pass
+    def flush(self) -> None:
+        pass
 
-        def flush(self) -> None:
-            pass
+    def close(self) -> None:
+        pass
 
-        def close(self) -> None:
-            pass
+
+def _get_summary_writer_class():
+    """Lazily import torch.utils.tensorboard.SummaryWriter.
+
+    Importing this module eagerly pulls TensorFlow into the process if
+    tensorboard is installed alongside it, which is expensive and noisy.
+    We defer the import until the first actual writer is constructed.
+    """
+    try:
+        from torch.utils.tensorboard import SummaryWriter  # type: ignore
+        return SummaryWriter
+    except Exception:  # pragma: no cover - tensorboard optional at runtime
+        return _FallbackSummaryWriter
+
+
+class _LazyTorchSummaryWriter:
+    """Proxy that forwards ``__call__`` to the real SummaryWriter class."""
+
+    def __call__(self, *args, **kwargs):
+        cls = _get_summary_writer_class()
+        return cls(*args, **kwargs)
+
+
+TorchSummaryWriter = _LazyTorchSummaryWriter()
 
 
 _CAMEL_CASE_BOUNDARY = re.compile(r"(?<!^)(?=[A-Z])")
@@ -92,7 +113,7 @@ def normalize_tag(tag: str) -> str:
 class MetricWriter:
     """SummaryWriter wrapper that normalizes metric names before logging."""
 
-    def __init__(self, writer: TorchSummaryWriter) -> None:
+    def __init__(self, writer: Any) -> None:
         self._writer = writer
 
     def add_scalar(self, tag, scalar_value, global_step=None, *args, **kwargs):
@@ -130,7 +151,7 @@ def create_metric_writer(log_dir: Optional[Union[str, Path]] = None) -> MetricWr
 
 
 def ensure_metric_writer(
-    writer: Optional[TorchSummaryWriter],
+    writer: Optional[Any],
 ) -> Optional[MetricWriter]:
     """Wrap an existing writer if provided, otherwise return None."""
     if writer is None:

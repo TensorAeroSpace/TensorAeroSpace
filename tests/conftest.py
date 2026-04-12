@@ -25,15 +25,7 @@ import pytest
 # ---------------------------------------------------------------------------
 collect_ignore_glob: list[str] = []
 
-try:
-    import tensorflow  # noqa: F401
-except ImportError:
-    collect_ignore_glob += [
-        "agents/ihdp_actor_test.py",
-        "agents/ihdp_critic_test.py",
-        "agents/ihdp_agent_test.py",
-        "agents/ihdp_incremental_model_test.py",
-    ]
+# IHDP is now PyTorch-based — no TensorFlow needed
 
 try:
     import ray  # noqa: F401
