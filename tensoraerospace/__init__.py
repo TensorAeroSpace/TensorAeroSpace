@@ -20,6 +20,11 @@ register(
 )
 
 register(
+    id="NonlinearLongitudinalF16-v0",
+    entry_point="tensoraerospace.envs:NonlinearLongitudinalF16",
+)
+
+register(
     id="LinearLongitudinalB747-v0",
     entry_point="tensoraerospace.envs:LinearLongitudinalB747",
 )
