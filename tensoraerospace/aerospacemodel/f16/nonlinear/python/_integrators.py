@@ -2,6 +2,7 @@
 
 RHS signature: ``f(x, u, t, params) -> dx``.
 """
+
 from __future__ import annotations
 
 from typing import Any, Callable
@@ -11,11 +12,15 @@ import numpy as np
 RHS = Callable[[np.ndarray, np.ndarray, float, Any], np.ndarray]
 
 
-def euler(f: RHS, x: np.ndarray, u: np.ndarray, t: float, dt: float, params: Any) -> np.ndarray:
+def euler(
+    f: RHS, x: np.ndarray, u: np.ndarray, t: float, dt: float, params: Any
+) -> np.ndarray:
     return x + dt * f(x, u, t, params)
 
 
-def rk4(f: RHS, x: np.ndarray, u: np.ndarray, t: float, dt: float, params: Any) -> np.ndarray:
+def rk4(
+    f: RHS, x: np.ndarray, u: np.ndarray, t: float, dt: float, params: Any
+) -> np.ndarray:
     k1 = f(x, u, t, params)
     k2 = f(x + 0.5 * dt * k1, u, t + 0.5 * dt, params)
     k3 = f(x + 0.5 * dt * k2, u, t + 0.5 * dt, params)

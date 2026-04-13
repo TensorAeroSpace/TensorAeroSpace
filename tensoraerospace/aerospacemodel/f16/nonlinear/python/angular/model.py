@@ -4,6 +4,7 @@ State (14): [alpha, beta, wx, wy, wz, gamma, psi, theta,
              stab, dstab, ail, dail, dir, ddir]
 Control (3): [stab_act, ail_act, dir_act]
 """
+
 from __future__ import annotations
 
 from typing import Literal, Sequence, Union
@@ -35,17 +36,23 @@ class AngularF16(ModelBase):
     ) -> None:
         x0_arr = np.asarray(x0, dtype=np.float64).reshape(-1)
         if x0_arr.size != 14:
-            raise ValueError(
-                f"x0 must have 14 elements; got {x0_arr.size}"
-            )
+            raise ValueError(f"x0 must have 14 elements; got {x0_arr.size}")
         super().__init__(x0_arr, selected_state_output, t0, dt)
         _list_state = [
-            "alpha", "beta",
-            "wx", "wy", "wz",
-            "gamma", "psi", "theta",
-            "stab", "dstab",
-            "ail", "dail",
-            "dir", "ddir",
+            "alpha",
+            "beta",
+            "wx",
+            "wy",
+            "wz",
+            "gamma",
+            "psi",
+            "theta",
+            "stab",
+            "dstab",
+            "ail",
+            "dail",
+            "dir",
+            "ddir",
         ]
         _control_list = ["stab", "ail", "dir"]
         self.action_space_length = len(_control_list)

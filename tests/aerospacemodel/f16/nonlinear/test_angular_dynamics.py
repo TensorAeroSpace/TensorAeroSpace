@@ -27,9 +27,9 @@ def test_each_actuator_responds_to_its_own_command():
     x = _zero_state()
     dx_zero = f16_ode_6dof(x, np.zeros(3), 0.0, p)
     dx_stab = f16_ode_6dof(x, np.array([math.radians(5.0), 0.0, 0.0]), 0.0, p)
-    dx_ail  = f16_ode_6dof(x, np.array([0.0, math.radians(5.0), 0.0]), 0.0, p)
-    dx_dir  = f16_ode_6dof(x, np.array([0.0, 0.0, math.radians(5.0)]), 0.0, p)
-    assert dx_stab[9] != dx_zero[9]   # ddstab
+    dx_ail = f16_ode_6dof(x, np.array([0.0, math.radians(5.0), 0.0]), 0.0, p)
+    dx_dir = f16_ode_6dof(x, np.array([0.0, 0.0, math.radians(5.0)]), 0.0, p)
+    assert dx_stab[9] != dx_zero[9]  # ddstab
     assert dx_ail[11] != dx_zero[11]  # ddail
     assert dx_dir[13] != dx_zero[13]  # dddir
 

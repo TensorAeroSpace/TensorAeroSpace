@@ -2,6 +2,7 @@
 
 Mirrors longitudinal/matlab_code/airplane_parameters.m line by line.
 """
+
 from __future__ import annotations
 
 import math
@@ -16,7 +17,7 @@ _RHO0 = 1.225
 def _isa_dynamic_pressure(altitude_m: float, velocity_mps: float, g: float) -> float:
     T = _T0 - _L * altitude_m
     rho = _RHO0 * (T / _T0) ** (g / (_L * _R) - 1.0)
-    return 0.5 * rho * velocity_mps ** 2
+    return 0.5 * rho * velocity_mps**2
 
 
 @dataclass

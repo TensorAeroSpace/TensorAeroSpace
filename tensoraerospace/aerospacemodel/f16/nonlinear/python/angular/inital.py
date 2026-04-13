@@ -9,6 +9,7 @@ were grouped before their derivatives in the dict). This module uses the
 correct interleaved ordering and `set_initial_state` is pure (no module-
 level mutation).
 """
+
 from __future__ import annotations
 
 import numpy as np
@@ -32,12 +33,20 @@ _DEFAULT_STATE: dict[str, float] = {
 }
 
 _STATE_ORDER = (
-    "alpha", "beta",
-    "wx", "wy", "wz",
-    "gamma", "psi", "theta",
-    "stab", "dstab",
-    "ail", "dail",
-    "dir", "ddir",
+    "alpha",
+    "beta",
+    "wx",
+    "wy",
+    "wz",
+    "gamma",
+    "psi",
+    "theta",
+    "stab",
+    "dstab",
+    "ail",
+    "dail",
+    "dir",
+    "ddir",
 )
 
 initial_state: np.ndarray = np.array(

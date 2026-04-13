@@ -3,6 +3,7 @@
 Direct line-by-line port of longitudinal/matlab_code/F16ODE.m.
 State: [alpha, wz, stab, dstab]. Control: [stab_act].
 """
+
 from __future__ import annotations
 
 import numpy as np
@@ -11,8 +12,9 @@ from .aero import get_cy, get_mz
 from .params import F16LongParameters
 
 
-def f16_ode_long(x: np.ndarray, u: np.ndarray, t: float,
-                 params: F16LongParameters) -> np.ndarray:
+def f16_ode_long(
+    x: np.ndarray, u: np.ndarray, t: float, params: F16LongParameters
+) -> np.ndarray:
     alpha, wz, stab, dstab = float(x[0]), float(x[1]), float(x[2]), float(x[3])
     stab_act = float(u[0])
     p = params
@@ -31,6 +33,6 @@ def f16_ode_long(x: np.ndarray, u: np.ndarray, t: float,
 
     dstab_clip = float(np.clip(dstab, -p.maxabsdstab, p.maxabsdstab))
     stab_act_clip = float(np.clip(stab_act, -p.maxabsstab, p.maxabsstab))
-    ddstab = (-2.0 * p.Tstab * p.Xistab * dstab - stab + stab_act_clip) / (p.Tstab ** 2)
+    ddstab = (-2.0 * p.Tstab * p.Xistab * dstab - stab + stab_act_clip) / (p.Tstab**2)
 
     return np.array([dalpha, dwz, dstab_clip, ddstab], dtype=np.float64)

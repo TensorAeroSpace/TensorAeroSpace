@@ -11,6 +11,7 @@ interpolators use method='linear' because their fi2 axis has only 3
 points (cubic requires >=4); see inline comments at the construction
 sites.
 """
+
 from __future__ import annotations
 
 import math
@@ -31,6 +32,7 @@ AERO_TABLE_DIR = Path(__file__).parent / "aero_tables"
 # Helpers (same signature as longitudinal aero.py)
 # ---------------------------------------------------------------------------
 
+
 def _interp1(interp, value, lo, hi) -> float:
     """1-D PCHIP query, scalar-clipped. Returns Python float."""
     return float(interp(min(max(value, lo), hi)))
@@ -44,19 +46,21 @@ def _interp2(interp, x0, x1, lo0, hi0, lo1, hi1) -> float:
 
 def _interp3(interp, x0, x1, x2, lo0, hi0, lo1, hi1, lo2, hi2) -> float:
     """3-D RegularGridInterpolator query, clipped per axis."""
-    pt = np.array([[min(max(x0, lo0), hi0),
-                    min(max(x1, lo1), hi1),
-                    min(max(x2, lo2), hi2)]])
+    pt = np.array(
+        [[min(max(x0, lo0), hi0), min(max(x1, lo1), hi1), min(max(x2, lo2), hi2)]]
+    )
     return float(interp(pt)[0])
 
 
 # ---------------------------------------------------------------------------
 # Normalisation constants
 # ---------------------------------------------------------------------------
-_NOS_NORM = math.radians(25)   # slat / leading-edge flap normalisation
-_SB_NORM = math.radians(60)    # speedbrake normalisation
-_DEL_NORM = math.radians(20)   # aileron table reference (Czdel20 / mxdel20 / mydel20)
-_DRN_NORM = math.radians(-30)  # rudder table reference (Czdrn30 / mxdrn30 / mydrn30) — negative!
+_NOS_NORM = math.radians(25)  # slat / leading-edge flap normalisation
+_SB_NORM = math.radians(60)  # speedbrake normalisation
+_DEL_NORM = math.radians(20)  # aileron table reference (Czdel20 / mxdel20 / mydel20)
+_DRN_NORM = math.radians(
+    -30
+)  # rudder table reference (Czdrn30 / mxdrn30 / mydrn30) — negative!
 
 
 # ---------------------------------------------------------------------------
@@ -252,189 +256,379 @@ _mz_fi2_lo, _mz_fi2_hi = float(_mz_fi2.min()), float(_mz_fi2.max())
 # Public API
 # ---------------------------------------------------------------------------
 
-def get_cx(alpha: float, beta: float, fi: float, dnos: float,
-           wz: float, V: float, ba: float, sb: float) -> float:
+
+def get_cx(
+    alpha: float,
+    beta: float,
+    fi: float,
+    dnos: float,
+    wz: float,
+    V: float,
+    ba: float,
+    sb: float,
+) -> float:
     """Longitudinal-force coefficient Cx. Mirrors GetCx.m.
 
     Parameters mirror matlab: (alpha, beta, fi=stab, dnos=lef, Wz, V, ba, sb).
     """
-    cx = _interp3(_interp_cx, alpha, beta, fi,
-                  _cx_a1_lo, _cx_a1_hi, _cx_b_lo, _cx_b_hi, _cx_fi_lo, _cx_fi_hi)
-    cx0 = _interp3(_interp_cx, alpha, beta, 0.0,
-                   _cx_a1_lo, _cx_a1_hi, _cx_b_lo, _cx_b_hi, _cx_fi_lo, _cx_fi_hi)
-    cx_nos = _interp2(_interp_cx_nos, alpha, beta,
-                      _cx_a2_lo, _cx_a2_hi, _cx_b_lo, _cx_b_hi)
-    cxwz = (_interp1(_interp_cxwz, alpha, _cx_a1_lo, _cx_a1_hi)
-            + _interp1(_interp_cxwz_nos, alpha, _cx_a2_lo, _cx_a2_hi) * (dnos / _NOS_NORM))
+    cx = _interp3(
+        _interp_cx,
+        alpha,
+        beta,
+        fi,
+        _cx_a1_lo,
+        _cx_a1_hi,
+        _cx_b_lo,
+        _cx_b_hi,
+        _cx_fi_lo,
+        _cx_fi_hi,
+    )
+    cx0 = _interp3(
+        _interp_cx,
+        alpha,
+        beta,
+        0.0,
+        _cx_a1_lo,
+        _cx_a1_hi,
+        _cx_b_lo,
+        _cx_b_hi,
+        _cx_fi_lo,
+        _cx_fi_hi,
+    )
+    cx_nos = _interp2(
+        _interp_cx_nos, alpha, beta, _cx_a2_lo, _cx_a2_hi, _cx_b_lo, _cx_b_hi
+    )
+    cxwz = _interp1(_interp_cxwz, alpha, _cx_a1_lo, _cx_a1_hi) + _interp1(
+        _interp_cxwz_nos, alpha, _cx_a2_lo, _cx_a2_hi
+    ) * (dnos / _NOS_NORM)
     dcx_sb = _interp1(_interp_dcx_sb, alpha, _cx_a1_lo, _cx_a1_hi)
 
     dcx_nos = cx_nos - cx0
-    return (cx
-            + dcx_nos * (dnos / _NOS_NORM)
-            + cxwz * ((wz * ba) / (2.0 * V))
-            + dcx_sb * (sb / _SB_NORM))
+    return (
+        cx
+        + dcx_nos * (dnos / _NOS_NORM)
+        + cxwz * ((wz * ba) / (2.0 * V))
+        + dcx_sb * (sb / _SB_NORM)
+    )
 
 
-def get_cy(alpha: float, beta: float, fi: float, dnos: float,
-           wz: float, V: float, ba: float, sb: float) -> float:
+def get_cy(
+    alpha: float,
+    beta: float,
+    fi: float,
+    dnos: float,
+    wz: float,
+    V: float,
+    ba: float,
+    sb: float,
+) -> float:
     """Normal-force coefficient Cy. Mirrors GetCy.m.
 
     Same argument layout and assembly as GetCx.
     """
-    cy = _interp3(_interp_cy, alpha, beta, fi,
-                  _cy_a1_lo, _cy_a1_hi, _cy_b_lo, _cy_b_hi, _cy_fi_lo, _cy_fi_hi)
-    cy0 = _interp3(_interp_cy, alpha, beta, 0.0,
-                   _cy_a1_lo, _cy_a1_hi, _cy_b_lo, _cy_b_hi, _cy_fi_lo, _cy_fi_hi)
-    cy_nos = _interp2(_interp_cy_nos, alpha, beta,
-                      _cy_a2_lo, _cy_a2_hi, _cy_b_lo, _cy_b_hi)
-    cywz = (_interp1(_interp_cywz, alpha, _cy_a1_lo, _cy_a1_hi)
-            + _interp1(_interp_cywz_nos, alpha, _cy_a2_lo, _cy_a2_hi) * (dnos / _NOS_NORM))
+    cy = _interp3(
+        _interp_cy,
+        alpha,
+        beta,
+        fi,
+        _cy_a1_lo,
+        _cy_a1_hi,
+        _cy_b_lo,
+        _cy_b_hi,
+        _cy_fi_lo,
+        _cy_fi_hi,
+    )
+    cy0 = _interp3(
+        _interp_cy,
+        alpha,
+        beta,
+        0.0,
+        _cy_a1_lo,
+        _cy_a1_hi,
+        _cy_b_lo,
+        _cy_b_hi,
+        _cy_fi_lo,
+        _cy_fi_hi,
+    )
+    cy_nos = _interp2(
+        _interp_cy_nos, alpha, beta, _cy_a2_lo, _cy_a2_hi, _cy_b_lo, _cy_b_hi
+    )
+    cywz = _interp1(_interp_cywz, alpha, _cy_a1_lo, _cy_a1_hi) + _interp1(
+        _interp_cywz_nos, alpha, _cy_a2_lo, _cy_a2_hi
+    ) * (dnos / _NOS_NORM)
     dcy_sb = _interp1(_interp_dcy_sb, alpha, _cy_a1_lo, _cy_a1_hi)
 
     dcy_nos = cy_nos - cy0
-    return (cy
-            + dcy_nos * (dnos / _NOS_NORM)
-            + cywz * ((wz * ba) / (2.0 * V))
-            + dcy_sb * (sb / _SB_NORM))
+    return (
+        cy
+        + dcy_nos * (dnos / _NOS_NORM)
+        + cywz * ((wz * ba) / (2.0 * V))
+        + dcy_sb * (sb / _SB_NORM)
+    )
 
 
-def get_cz(alpha: float, beta: float, drn: float, del_: float, dnos: float,
-           wx: float, wy: float, V: float, l: float) -> float:
+def get_cz(
+    alpha: float,
+    beta: float,
+    drn: float,
+    del_: float,
+    dnos: float,
+    wx: float,
+    wy: float,
+    V: float,
+    l: float,
+) -> float:
     """Lateral-force coefficient Cz. Mirrors GetCz.m.
 
     Note: ``del`` is a Python keyword so the parameter is named ``del_``.
     """
-    cz = _interp2(_interp_cz, alpha, beta,
-                  _cz_a1_lo, _cz_a1_hi, _cz_b_lo, _cz_b_hi)
-    cz_nos = _interp2(_interp_cz_nos, alpha, beta,
-                      _cz_a2_lo, _cz_a2_hi, _cz_b_lo, _cz_b_hi)
-    czdel = _interp2(_interp_czdel20, alpha, beta,
-                     _cz_a1_lo, _cz_a1_hi, _cz_b_lo, _cz_b_hi)
-    czdel_nos = _interp2(_interp_czdel20_nos, alpha, beta,
-                         _cz_a2_lo, _cz_a2_hi, _cz_b_lo, _cz_b_hi)
-    czdrn = _interp2(_interp_czdrn30, alpha, beta,
-                     _cz_a1_lo, _cz_a1_hi, _cz_b_lo, _cz_b_hi)
+    cz = _interp2(_interp_cz, alpha, beta, _cz_a1_lo, _cz_a1_hi, _cz_b_lo, _cz_b_hi)
+    cz_nos = _interp2(
+        _interp_cz_nos, alpha, beta, _cz_a2_lo, _cz_a2_hi, _cz_b_lo, _cz_b_hi
+    )
+    czdel = _interp2(
+        _interp_czdel20, alpha, beta, _cz_a1_lo, _cz_a1_hi, _cz_b_lo, _cz_b_hi
+    )
+    czdel_nos = _interp2(
+        _interp_czdel20_nos, alpha, beta, _cz_a2_lo, _cz_a2_hi, _cz_b_lo, _cz_b_hi
+    )
+    czdrn = _interp2(
+        _interp_czdrn30, alpha, beta, _cz_a1_lo, _cz_a1_hi, _cz_b_lo, _cz_b_hi
+    )
 
     dcz_nos = cz_nos - cz
     dczdel = czdel - cz
     dczdel_nos = czdel_nos - cz_nos - dczdel
     dczdrn = czdrn - cz
 
-    czwx = (_interp1(_interp_czwx, alpha, _cz_a1_lo, _cz_a1_hi)
-            + _interp1(_interp_czwx_nos, alpha, _cz_a2_lo, _cz_a2_hi) * (dnos / _NOS_NORM))
-    czwy = (_interp1(_interp_czwy, alpha, _cz_a1_lo, _cz_a1_hi)
-            + _interp1(_interp_czwy_nos, alpha, _cz_a2_lo, _cz_a2_hi) * (dnos / _NOS_NORM))
+    czwx = _interp1(_interp_czwx, alpha, _cz_a1_lo, _cz_a1_hi) + _interp1(
+        _interp_czwx_nos, alpha, _cz_a2_lo, _cz_a2_hi
+    ) * (dnos / _NOS_NORM)
+    czwy = _interp1(_interp_czwy, alpha, _cz_a1_lo, _cz_a1_hi) + _interp1(
+        _interp_czwy_nos, alpha, _cz_a2_lo, _cz_a2_hi
+    ) * (dnos / _NOS_NORM)
 
-    return (cz
-            + dcz_nos * (dnos / _NOS_NORM)
-            + (dczdel + dczdel_nos * (dnos / _NOS_NORM)) * (del_ / _DEL_NORM)
-            + dczdrn * (drn / _DRN_NORM)
-            + czwx * ((wx * l) / (2.0 * V))
-            + czwy * ((wy * l) / (2.0 * V)))
+    return (
+        cz
+        + dcz_nos * (dnos / _NOS_NORM)
+        + (dczdel + dczdel_nos * (dnos / _NOS_NORM)) * (del_ / _DEL_NORM)
+        + dczdrn * (drn / _DRN_NORM)
+        + czwx * ((wx * l) / (2.0 * V))
+        + czwy * ((wy * l) / (2.0 * V))
+    )
 
 
-def get_mx(alpha: float, beta: float, fi: float, drn: float, del_: float,
-           dnos: float, wx: float, wy: float, V: float, l: float) -> float:
+def get_mx(
+    alpha: float,
+    beta: float,
+    fi: float,
+    drn: float,
+    del_: float,
+    dnos: float,
+    wx: float,
+    wy: float,
+    V: float,
+    l: float,
+) -> float:
     """Roll-moment coefficient mx. Mirrors GetMx.m.
 
     ``fi`` here is the stabiliser deflection mapped onto the fi2 grid [-25,0,25 deg].
     """
-    mx = _interp3(_interp_mx, alpha, beta, fi,
-                  _mx_a1_lo, _mx_a1_hi, _mx_b_lo, _mx_b_hi, _mx_fi2_lo, _mx_fi2_hi)
-    mx0 = _interp3(_interp_mx, alpha, beta, 0.0,
-                   _mx_a1_lo, _mx_a1_hi, _mx_b_lo, _mx_b_hi, _mx_fi2_lo, _mx_fi2_hi)
-    mx_nos = _interp2(_interp_mx_nos, alpha, beta,
-                      _mx_a2_lo, _mx_a2_hi, _mx_b_lo, _mx_b_hi)
-    mxdel = _interp2(_interp_mxdel20, alpha, beta,
-                     _mx_a1_lo, _mx_a1_hi, _mx_b_lo, _mx_b_hi)
-    mxdel_nos = _interp2(_interp_mxdel20_nos, alpha, beta,
-                         _mx_a2_lo, _mx_a2_hi, _mx_b_lo, _mx_b_hi)
-    mxdrn = _interp2(_interp_mxdrn30, alpha, beta,
-                     _mx_a1_lo, _mx_a1_hi, _mx_b_lo, _mx_b_hi)
+    mx = _interp3(
+        _interp_mx,
+        alpha,
+        beta,
+        fi,
+        _mx_a1_lo,
+        _mx_a1_hi,
+        _mx_b_lo,
+        _mx_b_hi,
+        _mx_fi2_lo,
+        _mx_fi2_hi,
+    )
+    mx0 = _interp3(
+        _interp_mx,
+        alpha,
+        beta,
+        0.0,
+        _mx_a1_lo,
+        _mx_a1_hi,
+        _mx_b_lo,
+        _mx_b_hi,
+        _mx_fi2_lo,
+        _mx_fi2_hi,
+    )
+    mx_nos = _interp2(
+        _interp_mx_nos, alpha, beta, _mx_a2_lo, _mx_a2_hi, _mx_b_lo, _mx_b_hi
+    )
+    mxdel = _interp2(
+        _interp_mxdel20, alpha, beta, _mx_a1_lo, _mx_a1_hi, _mx_b_lo, _mx_b_hi
+    )
+    mxdel_nos = _interp2(
+        _interp_mxdel20_nos, alpha, beta, _mx_a2_lo, _mx_a2_hi, _mx_b_lo, _mx_b_hi
+    )
+    mxdrn = _interp2(
+        _interp_mxdrn30, alpha, beta, _mx_a1_lo, _mx_a1_hi, _mx_b_lo, _mx_b_hi
+    )
 
     dmx_nos = mx_nos - mx0
     dmxdel = mxdel - mx0
     dmxdel_nos = mxdel_nos - mx_nos - dmxdel
     dmxdrn = mxdrn - mx0
 
-    mxwx = (_interp1(_interp_mxwx, alpha, _mx_a1_lo, _mx_a1_hi)
-            + _interp1(_interp_mxwx_nos, alpha, _mx_a2_lo, _mx_a2_hi) * (dnos / _NOS_NORM))
-    mxwy = (_interp1(_interp_mxwy, alpha, _mx_a1_lo, _mx_a1_hi)
-            + _interp1(_interp_mxwy_nos, alpha, _mx_a2_lo, _mx_a2_hi) * (dnos / _NOS_NORM))
+    mxwx = _interp1(_interp_mxwx, alpha, _mx_a1_lo, _mx_a1_hi) + _interp1(
+        _interp_mxwx_nos, alpha, _mx_a2_lo, _mx_a2_hi
+    ) * (dnos / _NOS_NORM)
+    mxwy = _interp1(_interp_mxwy, alpha, _mx_a1_lo, _mx_a1_hi) + _interp1(
+        _interp_mxwy_nos, alpha, _mx_a2_lo, _mx_a2_hi
+    ) * (dnos / _NOS_NORM)
     dmxbt = _interp1(_interp_dmxbt, alpha, _mx_a1_lo, _mx_a1_hi)
 
-    return (mx
-            + dmx_nos * (dnos / _NOS_NORM)
-            + (dmxdel + dmxdel_nos * (dnos / _NOS_NORM)) * (del_ / _DEL_NORM)
-            + dmxdrn * (drn / _DRN_NORM)
-            + mxwx * ((wx * l) / (2.0 * V))
-            + mxwy * ((wy * l) / (2.0 * V))
-            + dmxbt * beta)
+    return (
+        mx
+        + dmx_nos * (dnos / _NOS_NORM)
+        + (dmxdel + dmxdel_nos * (dnos / _NOS_NORM)) * (del_ / _DEL_NORM)
+        + dmxdrn * (drn / _DRN_NORM)
+        + mxwx * ((wx * l) / (2.0 * V))
+        + mxwy * ((wy * l) / (2.0 * V))
+        + dmxbt * beta
+    )
 
 
-def get_my(alpha: float, beta: float, fi: float, drn: float, del_: float,
-           dnos: float, wx: float, wy: float, V: float, l: float) -> float:
+def get_my(
+    alpha: float,
+    beta: float,
+    fi: float,
+    drn: float,
+    del_: float,
+    dnos: float,
+    wx: float,
+    wy: float,
+    V: float,
+    l: float,
+) -> float:
     """Yaw-moment coefficient my. Mirrors GetMy.m.
 
     Same structure as GetMx, with ``my*`` tables.
     """
-    my = _interp3(_interp_my, alpha, beta, fi,
-                  _my_a1_lo, _my_a1_hi, _my_b_lo, _my_b_hi, _my_fi2_lo, _my_fi2_hi)
-    my0 = _interp3(_interp_my, alpha, beta, 0.0,
-                   _my_a1_lo, _my_a1_hi, _my_b_lo, _my_b_hi, _my_fi2_lo, _my_fi2_hi)
-    my_nos = _interp2(_interp_my_nos, alpha, beta,
-                      _my_a2_lo, _my_a2_hi, _my_b_lo, _my_b_hi)
-    mydel = _interp2(_interp_mydel20, alpha, beta,
-                     _my_a1_lo, _my_a1_hi, _my_b_lo, _my_b_hi)
-    mydel_nos = _interp2(_interp_mydel20_nos, alpha, beta,
-                         _my_a2_lo, _my_a2_hi, _my_b_lo, _my_b_hi)
-    mydrn = _interp2(_interp_mydrn30, alpha, beta,
-                     _my_a1_lo, _my_a1_hi, _my_b_lo, _my_b_hi)
+    my = _interp3(
+        _interp_my,
+        alpha,
+        beta,
+        fi,
+        _my_a1_lo,
+        _my_a1_hi,
+        _my_b_lo,
+        _my_b_hi,
+        _my_fi2_lo,
+        _my_fi2_hi,
+    )
+    my0 = _interp3(
+        _interp_my,
+        alpha,
+        beta,
+        0.0,
+        _my_a1_lo,
+        _my_a1_hi,
+        _my_b_lo,
+        _my_b_hi,
+        _my_fi2_lo,
+        _my_fi2_hi,
+    )
+    my_nos = _interp2(
+        _interp_my_nos, alpha, beta, _my_a2_lo, _my_a2_hi, _my_b_lo, _my_b_hi
+    )
+    mydel = _interp2(
+        _interp_mydel20, alpha, beta, _my_a1_lo, _my_a1_hi, _my_b_lo, _my_b_hi
+    )
+    mydel_nos = _interp2(
+        _interp_mydel20_nos, alpha, beta, _my_a2_lo, _my_a2_hi, _my_b_lo, _my_b_hi
+    )
+    mydrn = _interp2(
+        _interp_mydrn30, alpha, beta, _my_a1_lo, _my_a1_hi, _my_b_lo, _my_b_hi
+    )
 
     dmy_nos = my_nos - my0
     dmydel = mydel - my0
     dmydel_nos = mydel_nos - my_nos - dmydel
     dmydrn = mydrn - my0
 
-    mywx = (_interp1(_interp_mywx, alpha, _my_a1_lo, _my_a1_hi)
-            + _interp1(_interp_mywx_nos, alpha, _my_a2_lo, _my_a2_hi) * (dnos / _NOS_NORM))
-    mywy = (_interp1(_interp_mywy, alpha, _my_a1_lo, _my_a1_hi)
-            + _interp1(_interp_mywy_nos, alpha, _my_a2_lo, _my_a2_hi) * (dnos / _NOS_NORM))
+    mywx = _interp1(_interp_mywx, alpha, _my_a1_lo, _my_a1_hi) + _interp1(
+        _interp_mywx_nos, alpha, _my_a2_lo, _my_a2_hi
+    ) * (dnos / _NOS_NORM)
+    mywy = _interp1(_interp_mywy, alpha, _my_a1_lo, _my_a1_hi) + _interp1(
+        _interp_mywy_nos, alpha, _my_a2_lo, _my_a2_hi
+    ) * (dnos / _NOS_NORM)
     dmybt = _interp1(_interp_dmybt, alpha, _my_a1_lo, _my_a1_hi)
 
-    return (my
-            + dmy_nos * (dnos / _NOS_NORM)
-            + (dmydel + dmydel_nos * (dnos / _NOS_NORM)) * (del_ / _DEL_NORM)
-            + dmydrn * (drn / _DRN_NORM)
-            + mywx * ((wx * l) / (2.0 * V))
-            + mywy * ((wy * l) / (2.0 * V))
-            + dmybt * beta)
+    return (
+        my
+        + dmy_nos * (dnos / _NOS_NORM)
+        + (dmydel + dmydel_nos * (dnos / _NOS_NORM)) * (del_ / _DEL_NORM)
+        + dmydrn * (drn / _DRN_NORM)
+        + mywx * ((wx * l) / (2.0 * V))
+        + mywy * ((wy * l) / (2.0 * V))
+        + dmybt * beta
+    )
 
 
-def get_mz(alpha: float, beta: float, fi: float, dnos: float,
-           wz: float, V: float, ba: float, sb: float) -> float:
+def get_mz(
+    alpha: float,
+    beta: float,
+    fi: float,
+    dnos: float,
+    wz: float,
+    V: float,
+    ba: float,
+    sb: float,
+) -> float:
     """Pitch-moment coefficient mz. Mirrors GetMz.m.
 
     ``fi`` is on the fi1 axis [-25,-10,0,10,25 deg]; ``ba`` is the wing span.
     """
-    mz = _interp3(_interp_mz, alpha, beta, fi,
-                  _mz_a1_lo, _mz_a1_hi, _mz_b_lo, _mz_b_hi, _mz_fi1_lo, _mz_fi1_hi)
-    mz0 = _interp3(_interp_mz, alpha, beta, 0.0,
-                   _mz_a1_lo, _mz_a1_hi, _mz_b_lo, _mz_b_hi, _mz_fi1_lo, _mz_fi1_hi)
-    mz_nos = _interp2(_interp_mz_nos, alpha, beta,
-                      _mz_a2_lo, _mz_a2_hi, _mz_b_lo, _mz_b_hi)
+    mz = _interp3(
+        _interp_mz,
+        alpha,
+        beta,
+        fi,
+        _mz_a1_lo,
+        _mz_a1_hi,
+        _mz_b_lo,
+        _mz_b_hi,
+        _mz_fi1_lo,
+        _mz_fi1_hi,
+    )
+    mz0 = _interp3(
+        _interp_mz,
+        alpha,
+        beta,
+        0.0,
+        _mz_a1_lo,
+        _mz_a1_hi,
+        _mz_b_lo,
+        _mz_b_hi,
+        _mz_fi1_lo,
+        _mz_fi1_hi,
+    )
+    mz_nos = _interp2(
+        _interp_mz_nos, alpha, beta, _mz_a2_lo, _mz_a2_hi, _mz_b_lo, _mz_b_hi
+    )
     dmz = _interp1(_interp_dmz, alpha, _mz_a1_lo, _mz_a1_hi)
-    mzwz = (_interp1(_interp_mzwz, alpha, _mz_a1_lo, _mz_a1_hi)
-            + _interp1(_interp_mzwz_nos, alpha, _mz_a2_lo, _mz_a2_hi) * (dnos / _NOS_NORM))
+    mzwz = _interp1(_interp_mzwz, alpha, _mz_a1_lo, _mz_a1_hi) + _interp1(
+        _interp_mzwz_nos, alpha, _mz_a2_lo, _mz_a2_hi
+    ) * (dnos / _NOS_NORM)
     dmz_sb = _interp1(_interp_dmz_sb, alpha, _mz_a1_lo, _mz_a1_hi)
     eta_fi = _interp1(_interp_eta_fi, fi, _mz_fi1_lo, _mz_fi1_hi)
-    dmz_ds = _interp2(_interp_dmz_ds, alpha, fi,
-                      _mz_a1_lo, _mz_a1_hi, _mz_fi2_lo, _mz_fi2_hi)
+    dmz_ds = _interp2(
+        _interp_dmz_ds, alpha, fi, _mz_a1_lo, _mz_a1_hi, _mz_fi2_lo, _mz_fi2_hi
+    )
 
     dmz_nos = mz_nos - mz0
-    return (mz * eta_fi
-            + dmz_nos * (dnos / _NOS_NORM)
-            + dmz
-            + mzwz * ((wz * ba) / (2.0 * V))
-            + dmz_sb * (sb / _SB_NORM)
-            + dmz_ds)
+    return (
+        mz * eta_fi
+        + dmz_nos * (dnos / _NOS_NORM)
+        + dmz
+        + mzwz * ((wz * ba) / (2.0 * V))
+        + dmz_sb * (sb / _SB_NORM)
+        + dmz_ds
+    )

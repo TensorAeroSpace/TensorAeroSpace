@@ -1499,9 +1499,7 @@ class PPO(BaseRLModel):
                         mu_t = dist_t.mean
                         # `action_raw_t` is the unclamped sampled action; this is
                         # the point at which we compute log_prob for PPO.
-                        prob = dist_t.log_prob(action_raw_t).sum(
-                            dim=-1, keepdim=True
-                        )
+                        prob = dist_t.log_prob(action_raw_t).sum(dim=-1, keepdim=True)
                         value = self.critic(state_t)
                     action = action_raw_t  # unclamped, stored in buffer
                     mu = mu_t
@@ -1590,7 +1588,7 @@ class PPO(BaseRLModel):
                 probs = torch.cat(probs).detach()
 
                 # Reward normalization (normalize returns)
-                if self.normalize_reward and hasattr(self, 'ret_rms'):
+                if self.normalize_reward and hasattr(self, "ret_rms"):
                     returns_np = returns.cpu().numpy().flatten()
                     self.ret_rms.update(returns_np)
                     returns = torch.clamp(

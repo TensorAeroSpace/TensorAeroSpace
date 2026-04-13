@@ -1,4 +1,5 @@
 """Default initial state for the longitudinal F-16 (numpy version)."""
+
 from __future__ import annotations
 
 import numpy as np

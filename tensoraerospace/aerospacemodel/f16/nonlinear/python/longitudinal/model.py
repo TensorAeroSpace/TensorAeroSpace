@@ -2,6 +2,7 @@
 
 State: [alpha, wz, stab, dstab]. Control: [stab_act].
 """
+
 from __future__ import annotations
 
 from typing import Literal, Sequence, Union

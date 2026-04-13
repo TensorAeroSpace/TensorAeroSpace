@@ -57,7 +57,9 @@ def pytest_configure(config) -> None:  # noqa: ANN001
     imports but before collection) so the first real import resolves to the
     root scripts/ package via the sys.path we set above.
     """
-    _stale = [k for k in list(sys.modules) if k == "scripts" or k.startswith("scripts.")]
+    _stale = [
+        k for k in list(sys.modules) if k == "scripts" or k.startswith("scripts.")
+    ]
     for _key in _stale:
         # Only remove entries that point inside tests/ — leave the real one.
         mod = sys.modules[_key]

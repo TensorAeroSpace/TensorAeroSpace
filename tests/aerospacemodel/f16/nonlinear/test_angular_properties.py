@@ -5,7 +5,8 @@ import numpy as np
 import pytest
 
 from tensoraerospace.aerospacemodel.f16.nonlinear.python.angular import (
-    AngularF16, initial_state,
+    AngularF16,
+    initial_state,
 )
 
 SNAPSHOT = pathlib.Path(__file__).parent / "snapshots" / "angular_open_loop_1s.npz"
@@ -52,6 +53,6 @@ def test_actuator_position_limits_enforced_3channels():
     for _ in range(500):
         m.run_step(huge)
     final = m.current_state
-    assert abs(final[8]) <= p.maxabsstab + 1e-6   # stab at index 8
-    assert abs(final[10]) <= p.maxabsail + 1e-6   # ail at index 10
-    assert abs(final[12]) <= p.maxabsdir + 1e-6   # dir at index 12
+    assert abs(final[8]) <= p.maxabsstab + 1e-6  # stab at index 8
+    assert abs(final[10]) <= p.maxabsail + 1e-6  # ail at index 10
+    assert abs(final[12]) <= p.maxabsdir + 1e-6  # dir at index 12

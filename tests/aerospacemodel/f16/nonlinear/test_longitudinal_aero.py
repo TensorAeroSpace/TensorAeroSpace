@@ -9,8 +9,9 @@ _AERO_DIR = aero.AERO_TABLE_DIR
 
 
 def test_get_cy_at_zero_state_returns_finite():
-    val = aero.get_cy(alpha=0.0, beta=0.0, fi=0.0, dnos=0.0, wz=0.0,
-                     V=150.0, ba=3.45, sb=0.0)
+    val = aero.get_cy(
+        alpha=0.0, beta=0.0, fi=0.0, dnos=0.0, wz=0.0, V=150.0, ba=3.45, sb=0.0
+    )
     assert math.isfinite(val)
 
 
@@ -33,8 +34,14 @@ def test_get_cy_grid_node_matches_table_value():
     expected_base = Cy1[i_alpha, i_beta, i_fi]
 
     val = aero.get_cy(
-        alpha=float(alpha1[i_alpha]), beta=float(beta1[i_beta]), fi=float(fi1[i_fi]),
-        dnos=0.0, wz=0.0, V=150.0, ba=3.45, sb=0.0,
+        alpha=float(alpha1[i_alpha]),
+        beta=float(beta1[i_beta]),
+        fi=float(fi1[i_fi]),
+        dnos=0.0,
+        wz=0.0,
+        V=150.0,
+        ba=3.45,
+        sb=0.0,
     )
     # At this exact node, Cy0 == Cy1[i,j,k] so dCy_nos contribution is 0,
     # and wz=sb=0. So the result should equal Cy_nos1 at (alpha, beta) only
@@ -47,12 +54,15 @@ def test_get_cy_grid_node_matches_table_value():
 
 def test_get_cy_pitch_rate_contribution_is_linear_in_wz():
     """The Cywz term is added linearly: doubling wz doubles the increment."""
-    a = aero.get_cy(alpha=0.1, beta=0.0, fi=0.0, dnos=0.0, wz=0.0,
-                   V=150.0, ba=3.45, sb=0.0)
-    b = aero.get_cy(alpha=0.1, beta=0.0, fi=0.0, dnos=0.0, wz=0.5,
-                   V=150.0, ba=3.45, sb=0.0)
-    c = aero.get_cy(alpha=0.1, beta=0.0, fi=0.0, dnos=0.0, wz=1.0,
-                   V=150.0, ba=3.45, sb=0.0)
+    a = aero.get_cy(
+        alpha=0.1, beta=0.0, fi=0.0, dnos=0.0, wz=0.0, V=150.0, ba=3.45, sb=0.0
+    )
+    b = aero.get_cy(
+        alpha=0.1, beta=0.0, fi=0.0, dnos=0.0, wz=0.5, V=150.0, ba=3.45, sb=0.0
+    )
+    c = aero.get_cy(
+        alpha=0.1, beta=0.0, fi=0.0, dnos=0.0, wz=1.0, V=150.0, ba=3.45, sb=0.0
+    )
     assert (c - a) == pytest.approx(2.0 * (b - a), rel=1e-9)
 
 
@@ -75,15 +85,27 @@ def test_get_mz_at_grid_node_matches_table():
     expected = mz1[i_alpha, i_beta, i_fi] * eta_fi1[i_fi] + dmz1[i_alpha]
 
     val = aero.get_mz(
-        alpha=float(alpha1[i_alpha]), beta=float(beta1[i_beta]), fi=float(fi1[i_fi]),
-        dnos=0.0, wz=0.0, V=150.0, ba=3.45, sb=0.0,
+        alpha=float(alpha1[i_alpha]),
+        beta=float(beta1[i_beta]),
+        fi=float(fi1[i_fi]),
+        dnos=0.0,
+        wz=0.0,
+        V=150.0,
+        ba=3.45,
+        sb=0.0,
     )
     assert val == pytest.approx(expected, rel=1e-3, abs=1e-3)
 
 
 def test_clamp_out_of_bounds_inputs_does_not_blow_up():
     val = aero.get_cy(
-        alpha=math.radians(200.0), beta=0.0, fi=0.0, dnos=0.0, wz=0.0,
-        V=150.0, ba=3.45, sb=0.0,
+        alpha=math.radians(200.0),
+        beta=0.0,
+        fi=0.0,
+        dnos=0.0,
+        wz=0.0,
+        V=150.0,
+        ba=3.45,
+        sb=0.0,
     )
     assert math.isfinite(val)

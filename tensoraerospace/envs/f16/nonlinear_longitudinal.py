@@ -12,6 +12,7 @@ Control vector::
 
     [stab_act]                 (commanded elevator deflection, rad)
 """
+
 from __future__ import annotations
 
 import math
@@ -99,12 +100,18 @@ class NonlinearLongitudinalF16(gym.Env):
         self.integrator = integrator
         self.control_bias = float(control_bias)
         self.feedforward_fn = feedforward_fn
-        self.tracking_states = tracking_states if tracking_states is not None else ["alpha"]
+        self.tracking_states = (
+            tracking_states if tracking_states is not None else ["alpha"]
+        )
         self.state_space = state_space if state_space is not None else ["alpha", "wz"]
         self.control_space = control_space if control_space is not None else ["stab"]
-        self.output_space = output_space if output_space is not None else list(self.state_space)
+        self.output_space = (
+            output_space if output_space is not None else list(self.state_space)
+        )
         self.use_reward = use_reward
-        self.reward_func = reward_func if reward_func is not None else self.default_reward
+        self.reward_func = (
+            reward_func if reward_func is not None else self.default_reward
+        )
 
         model_x0 = self._build_model_initial_state(self.initial_state, self.state_space)
 
@@ -168,7 +175,9 @@ class NonlinearLongitudinalF16(gym.Env):
     def step(
         self, action: np.ndarray
     ) -> tuple[np.ndarray, float, bool, bool, dict[str, float]]:
-        action_deg = np.asarray(action, dtype=np.float64).reshape(-1) + self.control_bias
+        action_deg = (
+            np.asarray(action, dtype=np.float64).reshape(-1) + self.control_bias
+        )
         if self.feedforward_fn is not None:
             ff = np.asarray(
                 self.feedforward_fn(self.current_step, self.reference_signal),
@@ -183,7 +192,9 @@ class NonlinearLongitudinalF16(gym.Env):
 
         reward = 1.0
         if self.use_reward:
-            reward = self.reward_func(next_state, self.reference_signal, self.current_step)
+            reward = self.reward_func(
+                next_state, self.reference_signal, self.current_step
+            )
 
         self.done = self.current_step >= self.number_time_steps - 1
         info = self._get_info()
@@ -213,10 +224,9 @@ class NonlinearLongitudinalF16(gym.Env):
             integrator=self.integrator,
         )
         info = self._get_info()
-        observation = (
-            np.asarray(model_x0, dtype=np.float32)[self.model.selected_state_index]
-            .reshape(-1)
-        )
+        observation = np.asarray(model_x0, dtype=np.float32)[
+            self.model.selected_state_index
+        ].reshape(-1)
         return observation, info
 
     def close(self) -> None:

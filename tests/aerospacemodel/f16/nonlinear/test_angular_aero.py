@@ -8,6 +8,7 @@ For each of the 6 functions we test:
 If a grid-node test fails by more than 1e-2 that indicates an assembly or
 table indexing bug and should be reported as BLOCKED.
 """
+
 from __future__ import annotations
 
 import math
@@ -26,9 +27,9 @@ from tensoraerospace.aerospacemodel.f16.nonlinear.python.angular.aero import (
 )
 
 # ---- common parameter values used as stand-ins when terms drop out ----
-_V = 120.0   # m/s
-_BA = 3.45   # wing span
-_L = 9.144   # characteristic length
+_V = 120.0  # m/s
+_BA = 3.45  # wing span
+_L = 9.144  # characteristic length
 
 # ---- grid coordinates used in grid-node tests ----
 # alpha1[5] = 5 deg, beta1[9] = 0 rad (middle of beta grid), fi=0
@@ -39,6 +40,7 @@ _B0 = 0.0
 # ===========================================================================
 # Cx
 # ===========================================================================
+
 
 class TestGetCx:
 
@@ -52,7 +54,7 @@ class TestGetCx:
         Expected = Cx1[5,9,2] = 0.0066
         """
         d = np.load(AERO_TABLE_DIR / "getcx.npz")
-        expected = float(d["Cx1"][5, 9, 2])   # fi1[2] = 0
+        expected = float(d["Cx1"][5, 9, 2])  # fi1[2] = 0
         val = get_cx(_A5, _B0, 0.0, 0.0, 0.0, _V, _BA, 0.0)
         assert val == pytest.approx(expected, abs=1e-3)
 
@@ -60,6 +62,7 @@ class TestGetCx:
 # ===========================================================================
 # Cy
 # ===========================================================================
+
 
 class TestGetCy:
 
@@ -78,6 +81,7 @@ class TestGetCy:
 # ===========================================================================
 # Cz
 # ===========================================================================
+
 
 class TestGetCz:
 
@@ -100,6 +104,7 @@ class TestGetCz:
 # Mx
 # ===========================================================================
 
+
 class TestGetMx:
 
     def test_finite_at_zero_state(self):
@@ -113,7 +118,7 @@ class TestGetMx:
         mx = mx1[5,9,1] = 0.0
         """
         d = np.load(AERO_TABLE_DIR / "getmx.npz")
-        expected = float(d["mx1"][5, 9, 1])   # fi2[1] = 0
+        expected = float(d["mx1"][5, 9, 1])  # fi2[1] = 0
         val = get_mx(_A5, _B0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, _V, _L)
         assert val == pytest.approx(expected, abs=1e-3)
 
@@ -121,6 +126,7 @@ class TestGetMx:
 # ===========================================================================
 # My
 # ===========================================================================
+
 
 class TestGetMy:
 
@@ -143,6 +149,7 @@ class TestGetMy:
 # Mz
 # ===========================================================================
 
+
 class TestGetMz:
 
     def test_finite_at_zero_state(self):
@@ -161,9 +168,9 @@ class TestGetMz:
         """
         d = np.load(AERO_TABLE_DIR / "getmz.npz")
         mz_table = float(d["mz1"][5, 9, 2])
-        eta = float(d["eta_fi1"][2])       # fi1[2] = 0 → 1.0
+        eta = float(d["eta_fi1"][2])  # fi1[2] = 0 → 1.0
         dmz = float(d["dmz1"][5])
-        dmz_ds = float(d["dmz_ds1"][5, 2]) # fi2[2] = 0
+        dmz_ds = float(d["dmz_ds1"][5, 2])  # fi2[2] = 0
         expected = mz_table * eta + dmz + dmz_ds
 
         val = get_mz(_A5, _B0, 0.0, 0.0, 0.0, _V, _BA, 0.0)

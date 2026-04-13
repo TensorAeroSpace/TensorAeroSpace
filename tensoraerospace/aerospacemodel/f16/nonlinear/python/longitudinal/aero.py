@@ -11,6 +11,7 @@ matches of the matlab version, but the qualitative behavior (trim points,
 mode shapes, response signs) is preserved. Snapshot regression tests in
 test_longitudinal_properties.py guard against accidental changes.
 """
+
 from __future__ import annotations
 
 import math
@@ -35,9 +36,9 @@ def _interp2(interp, x0, x1, lo0, hi0, lo1, hi1) -> float:
 
 def _interp3(interp, x0, x1, x2, lo0, hi0, lo1, hi1, lo2, hi2) -> float:
     """3-D RegularGridInterpolator query, scalar-clipped per axis."""
-    pt = np.array([[min(max(x0, lo0), hi0),
-                    min(max(x1, lo1), hi1),
-                    min(max(x2, lo2), hi2)]])
+    pt = np.array(
+        [[min(max(x0, lo0), hi0), min(max(x1, lo1), hi1), min(max(x2, lo2), hi2)]]
+    )
     return float(interp(pt)[0])
 
 
@@ -110,44 +111,114 @@ _mz_fi2_lo, _mz_fi2_hi = float(_mz_fi2.min()), float(_mz_fi2.max())
 
 
 _NOS_NORM = math.radians(25)  # slat deflection normalization (max ±25°)
-_SB_NORM = math.radians(60)   # speedbrake deflection normalization (max ±60°)
+_SB_NORM = math.radians(60)  # speedbrake deflection normalization (max ±60°)
 
 
-def get_cy(alpha: float, beta: float, fi: float, dnos: float,
-           wz: float, V: float, ba: float, sb: float) -> float:
+def get_cy(
+    alpha: float,
+    beta: float,
+    fi: float,
+    dnos: float,
+    wz: float,
+    V: float,
+    ba: float,
+    sb: float,
+) -> float:
     """Normal-force coefficient. Mirrors longitudinal/matlab_code/GetCy.m."""
-    cy = _interp3(_interp_cy, alpha, beta, fi,
-                  _alpha1_lo, _alpha1_hi, _beta1_lo, _beta1_hi, _fi1_lo, _fi1_hi)
-    cy0 = _interp3(_interp_cy, alpha, beta, 0.0,
-                   _alpha1_lo, _alpha1_hi, _beta1_lo, _beta1_hi, _fi1_lo, _fi1_hi)
-    cy_nos = _interp2(_interp_cy_nos, alpha, beta,
-                      _alpha2_lo, _alpha2_hi, _beta1_lo, _beta1_hi)
-    cywz = (_interp1(_interp_cywz, alpha, _alpha1_lo, _alpha1_hi)
-            + _interp1(_interp_cywz_nos, alpha, _alpha2_lo, _alpha2_hi) * (dnos / _NOS_NORM))
+    cy = _interp3(
+        _interp_cy,
+        alpha,
+        beta,
+        fi,
+        _alpha1_lo,
+        _alpha1_hi,
+        _beta1_lo,
+        _beta1_hi,
+        _fi1_lo,
+        _fi1_hi,
+    )
+    cy0 = _interp3(
+        _interp_cy,
+        alpha,
+        beta,
+        0.0,
+        _alpha1_lo,
+        _alpha1_hi,
+        _beta1_lo,
+        _beta1_hi,
+        _fi1_lo,
+        _fi1_hi,
+    )
+    cy_nos = _interp2(
+        _interp_cy_nos, alpha, beta, _alpha2_lo, _alpha2_hi, _beta1_lo, _beta1_hi
+    )
+    cywz = _interp1(_interp_cywz, alpha, _alpha1_lo, _alpha1_hi) + _interp1(
+        _interp_cywz_nos, alpha, _alpha2_lo, _alpha2_hi
+    ) * (dnos / _NOS_NORM)
     dcy_sb = _interp1(_interp_dcy_sb, alpha, _alpha1_lo, _alpha1_hi)
 
     dcy_nos = cy_nos - cy0
-    return cy + dcy_nos * (dnos / _NOS_NORM) + cywz * ((wz * ba) / (2.0 * V)) + dcy_sb * (sb / _SB_NORM)
+    return (
+        cy
+        + dcy_nos * (dnos / _NOS_NORM)
+        + cywz * ((wz * ba) / (2.0 * V))
+        + dcy_sb * (sb / _SB_NORM)
+    )
 
 
-def get_mz(alpha: float, beta: float, fi: float, dnos: float,
-           wz: float, V: float, ba: float, sb: float) -> float:
+def get_mz(
+    alpha: float,
+    beta: float,
+    fi: float,
+    dnos: float,
+    wz: float,
+    V: float,
+    ba: float,
+    sb: float,
+) -> float:
     """Pitch-moment coefficient. Mirrors longitudinal/matlab_code/GetMz.m."""
-    mz = _interp3(_interp_mz, alpha, beta, fi,
-                  _mz_alpha1_lo, _mz_alpha1_hi, _mz_beta1_lo, _mz_beta1_hi,
-                  _mz_fi1_lo, _mz_fi1_hi)
-    mz0 = _interp3(_interp_mz, alpha, beta, 0.0,
-                   _mz_alpha1_lo, _mz_alpha1_hi, _mz_beta1_lo, _mz_beta1_hi,
-                   _mz_fi1_lo, _mz_fi1_hi)
-    mz_nos = _interp2(_interp_mz_nos, alpha, beta,
-                      _mz_alpha2_lo, _mz_alpha2_hi, _mz_beta1_lo, _mz_beta1_hi)
+    mz = _interp3(
+        _interp_mz,
+        alpha,
+        beta,
+        fi,
+        _mz_alpha1_lo,
+        _mz_alpha1_hi,
+        _mz_beta1_lo,
+        _mz_beta1_hi,
+        _mz_fi1_lo,
+        _mz_fi1_hi,
+    )
+    mz0 = _interp3(
+        _interp_mz,
+        alpha,
+        beta,
+        0.0,
+        _mz_alpha1_lo,
+        _mz_alpha1_hi,
+        _mz_beta1_lo,
+        _mz_beta1_hi,
+        _mz_fi1_lo,
+        _mz_fi1_hi,
+    )
+    mz_nos = _interp2(
+        _interp_mz_nos,
+        alpha,
+        beta,
+        _mz_alpha2_lo,
+        _mz_alpha2_hi,
+        _mz_beta1_lo,
+        _mz_beta1_hi,
+    )
     dmz = _interp1(_interp_dmz, alpha, _mz_alpha1_lo, _mz_alpha1_hi)
-    mzwz = (_interp1(_interp_mzwz, alpha, _mz_alpha1_lo, _mz_alpha1_hi)
-            + _interp1(_interp_mzwz_nos, alpha, _mz_alpha2_lo, _mz_alpha2_hi) * (dnos / _NOS_NORM))
+    mzwz = _interp1(_interp_mzwz, alpha, _mz_alpha1_lo, _mz_alpha1_hi) + _interp1(
+        _interp_mzwz_nos, alpha, _mz_alpha2_lo, _mz_alpha2_hi
+    ) * (dnos / _NOS_NORM)
     dmz_sb = _interp1(_interp_dmz_sb, alpha, _mz_alpha1_lo, _mz_alpha1_hi)
     eta_fi = _interp1(_interp_eta_fi, fi, _mz_fi1_lo, _mz_fi1_hi)
-    dmz_ds = _interp2(_interp_dmz_ds, alpha, fi,
-                      _mz_alpha1_lo, _mz_alpha1_hi, _mz_fi2_lo, _mz_fi2_hi)
+    dmz_ds = _interp2(
+        _interp_dmz_ds, alpha, fi, _mz_alpha1_lo, _mz_alpha1_hi, _mz_fi2_lo, _mz_fi2_hi
+    )
 
     dmz_nos = mz_nos - mz0
     return (
