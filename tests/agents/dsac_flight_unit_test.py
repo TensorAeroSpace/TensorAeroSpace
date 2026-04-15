@@ -101,7 +101,10 @@ def test_filter_kwargs_for_init_drops_unexpected():
 
 def test_invalid_risk_distortion_raises():
     env = _TinyEnv(obs_dim=3, act_dim=2)
-    with torch.random.fork_rng():
+    # Fork only CPU RNG — without ``devices=[]`` torch 2.11 iterates all
+    # detected CUDA devices even when CUDA isn't actually initialized, which
+    # fails on CPU-only machines where the NVIDIA driver is incompatible.
+    with torch.random.fork_rng(devices=[]):
         with torch.no_grad():
             try:
                 DSAC(env=env, risk_distortion="bad_distortion", device="cpu")
