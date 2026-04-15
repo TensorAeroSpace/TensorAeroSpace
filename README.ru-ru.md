@@ -185,7 +185,7 @@ for t in range(N - 1):
 | **ADHDP** | Действие-зависимое HDP | ✅ | ✅ `from_pretrained` / `publish_to_hub` | ✅ |
 | **HDP** | Эвристическое динамическое программирование | ✅ | ✅ `from_pretrained` / `publish_to_hub` | ✅ |
 | **PID** | ПИД-регулятор | ✅ | ✅ `from_pretrained` / `publish_to_hub` | ✅ |
-| **IHDP** | Инкрементальное эвристическое ДП | ❌ | ❌ (требует TensorFlow) | ✅ |
+| **IHDP** | Инкрементальное эвристическое ДП | ✅ | ❌ | ✅ |
 | **NARX** | Нелинейная авторегрессия | ✅ | ✅ `from_pretrained` / `publish_to_hub` | ✅ |
 
 ## ✈️ Модели самолетов и космических аппаратов

@@ -110,7 +110,7 @@ Test: 599 simulation steps of `LinearLongitudinalF16-v0` with MPC agent (`exampl
     
     If you encounter issues running on ARM:
     
-    - Check PyTorch/TensorFlow version compatibility with your platform
+    - Check PyTorch version compatibility with your platform
     - Create an [Issue in our GitHub repository](https://github.com/TensorAeroSpace/TensorAeroSpace/issues) with platform description and error details
     - Attach logs and version information (`python --version`, `pip list`)
 

@@ -197,7 +197,7 @@ for t in range(N - 1):
 | **ADHDP** | Action-Dependent HDP | ✅ | ✅ `from_pretrained` / `publish_to_hub` | ✅ |
 | **HDP** | Heuristic Dynamic Programming | ✅ | ✅ `from_pretrained` / `publish_to_hub` | ✅ |
 | **PID** | Proportional-Integral-Derivative | ✅ | ✅ `from_pretrained` / `publish_to_hub` | ✅ |
-| **IHDP** | Incremental Heuristic Dynamic Programming | ❌ | ❌ (requires TensorFlow) | ✅ |
+| **IHDP** | Incremental Heuristic Dynamic Programming | ✅ | ❌ | ✅ |
 | **NARX** | Nonlinear Autoregressive Network | ✅ | ✅ `from_pretrained` / `publish_to_hub` | ✅ |
 
 ## ✈️ Aircraft & Spacecraft Models

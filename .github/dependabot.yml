@@ -28,8 +28,6 @@ updates:
       - dependency-type: "indirect"
     ignore:
       # Игнорируем major обновления для критических зависимостей
-      - dependency-name: "tensorflow"
-        update-types: ["version-update:semver-major"]
       - dependency-name: "torch"
         update-types: ["version-update:semver-major"]
       - dependency-name: "ray"

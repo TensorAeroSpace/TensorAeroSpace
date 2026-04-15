@@ -217,8 +217,8 @@ class DQNAgent:
     """DQN Agent.
 
     Args:
-        model (tf.keras.Model): Deep Q-network model.
-        target_model (tf.keras.Model): Target deep Q-network model.
+        model (torch.nn.Module): Deep Q-network model.
+        target_model (torch.nn.Module): Target deep Q-network model.
         env (gym.Env): Gym/Gymnasium environment.
         learning_rate (float, optional): Learning rate.
         epsilon (float, optional): Environment exploration probability.
@@ -811,8 +811,8 @@ class PERNARXAgent:
     """DQN Agent with NARX training model.
 
     Args:
-        model (tf.keras.Model): Deep Q-network model.
-        target_model (tf.keras.Model): Target deep Q-network model.
+        model (torch.nn.Module): Deep Q-network model.
+        target_model (torch.nn.Module): Target deep Q-network model.
         env (gym.Env): Gym environment.
         learning_rate (float, optional): Learning rate.
         epsilon (float, optional): Environment exploration probability.
