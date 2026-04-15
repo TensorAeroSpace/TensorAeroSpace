@@ -536,7 +536,9 @@ class GAIL:
         if load_gradients:
             if optimizer_path.exists():
                 new_agent.optimizer.load_state_dict(
-                    torch.load(optimizer_path, map_location=map_loc, weights_only=False)
+                    torch.load(
+                        optimizer_path, map_location=map_loc, weights_only=False
+                    )
                 )
             if optimizer_discrim_path.exists():
                 new_agent.optimizer_discrim.load_state_dict(
@@ -575,12 +577,16 @@ class GAIL:
         """
         p = Path(str(repo_name)).expanduser()
         if p.is_dir():
-            return cls._load(p, env=env, data=data, load_gradients=load_gradients)
+            return cls._load(
+                p, env=env, data=data, load_gradients=load_gradients
+            )
 
         # If it looks like an explicit filesystem path, raise immediately.
         pathlike_prefixes = ("./", "../", "/", "~")
         if str(repo_name).startswith(pathlike_prefixes):
-            raise FileNotFoundError(f"Local directory not found: '{repo_name}'.")
+            raise FileNotFoundError(
+                f"Local directory not found: '{repo_name}'."
+            )
 
         # Fall back to Hugging Face Hub download.
         from huggingface_hub import snapshot_download
@@ -588,7 +594,9 @@ class GAIL:
         folder_path = snapshot_download(
             repo_id=repo_name, token=access_token, revision=version
         )
-        return cls._load(folder_path, env=env, data=data, load_gradients=load_gradients)
+        return cls._load(
+            folder_path, env=env, data=data, load_gradients=load_gradients
+        )
 
     def publish_to_hub(
         self,

@@ -152,8 +152,10 @@ class ReplayMemory:
             self.capacity = int(data["capacity"])
         # Backward-compat: ensure loaded buffer respects current capacity.
         if len(self.buffer) > self.capacity:
-            self.buffer = self.buffer[-self.capacity :]
+            self.buffer = self.buffer[-self.capacity:]
         if "position" in data.files:
             self.position = int(data["position"])
         else:
-            self.position = len(self.buffer) if len(self.buffer) < self.capacity else 0
+            self.position = (
+                len(self.buffer) if len(self.buffer) < self.capacity else 0
+            )

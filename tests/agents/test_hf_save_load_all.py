@@ -19,10 +19,10 @@ import pytest
 import torch
 import torch.nn as nn
 
+
 # ---------------------------------------------------------------------------
 # Helper envs
 # ---------------------------------------------------------------------------
-
 
 class _ContinuousSpace:
     """Minimal Box-like space for continuous action/obs."""
@@ -115,7 +115,6 @@ def _find_saved_subdir(base: Path) -> Path:
 # DSAC
 # ---------------------------------------------------------------------------
 
-
 def test_dsac_save_load_roundtrip(tmp_path):
     from tensoraerospace.agent.dsac.dsac_flight import DSAC
 
@@ -145,7 +144,6 @@ def test_dsac_save_load_roundtrip(tmp_path):
 # A3C
 # ---------------------------------------------------------------------------
 
-
 def test_a3c_save_load_roundtrip(tmp_path):
     from tensoraerospace.agent.a3c.pytorch import Agent as A3CAgent
 
@@ -162,7 +160,9 @@ def test_a3c_save_load_roundtrip(tmp_path):
     )
 
     # Compare network weights directly (choose_action samples stochastically)
-    weights_before = {k: v.clone() for k, v in agent.gnet.state_dict().items()}
+    weights_before = {
+        k: v.clone() for k, v in agent.gnet.state_dict().items()
+    }
 
     save_dir = str(tmp_path / "a3c_test")
     run_dir = agent.save(save_dir)
@@ -180,7 +180,6 @@ def test_a3c_save_load_roundtrip(tmp_path):
 # ---------------------------------------------------------------------------
 # GAIL
 # ---------------------------------------------------------------------------
-
 
 def test_gail_save_load_roundtrip(tmp_path):
     from tensoraerospace.agent.gail.model import GAIL
@@ -220,7 +219,6 @@ def test_gail_save_load_roundtrip(tmp_path):
 # MPC
 # ---------------------------------------------------------------------------
 
-
 def test_mpc_save_load_roundtrip(tmp_path):
     from tensoraerospace.agent.mpc.mpc import MPCAgent
 
@@ -235,7 +233,9 @@ def test_mpc_save_load_roundtrip(tmp_path):
     )
 
     # Get model parameter values before save
-    params_before = {k: v.clone() for k, v in agent.model.state_dict().items()}
+    params_before = {
+        k: v.clone() for k, v in agent.model.state_dict().items()
+    }
 
     save_dir = str(tmp_path / "mpc_test")
     run_dir = agent.save(save_dir)
@@ -255,7 +255,6 @@ def test_mpc_save_load_roundtrip(tmp_path):
 # ---------------------------------------------------------------------------
 # ADP (design="adhdp", default)
 # ---------------------------------------------------------------------------
-
 
 def test_adp_save_load_roundtrip(tmp_path):
     from tensoraerospace.agent.adp.adp import ADP
@@ -284,7 +283,6 @@ def test_adp_save_load_roundtrip(tmp_path):
 # ADHDP
 # ---------------------------------------------------------------------------
 
-
 def test_adhdp_save_load_roundtrip(tmp_path):
     from tensoraerospace.agent.adhdp.model import ADHDP
 
@@ -312,7 +310,6 @@ def test_adhdp_save_load_roundtrip(tmp_path):
 # HDP (subclass of ADP with design="hdp")
 # HDP requires env.reference_signal, env.initial_state, env.model.filt_A/B
 # ---------------------------------------------------------------------------
-
 
 class _HDPModel:
     """Minimal model stub with linearized dynamics matrices."""
@@ -360,7 +357,6 @@ def test_hdp_save_load_roundtrip(tmp_path):
 # PID
 # ---------------------------------------------------------------------------
 
-
 def test_pid_save_load_roundtrip(tmp_path):
     from tensoraerospace.agent.pid import PID
 
@@ -380,7 +376,9 @@ def test_pid_save_load_roundtrip(tmp_path):
     loaded.prev_measurement = 0
     action2 = loaded.select_action(1.0, 0.5)
 
-    assert abs(action1 - action2) < 1e-6, f"PID actions differ: {action1} vs {action2}"
+    assert abs(action1 - action2) < 1e-6, (
+        f"PID actions differ: {action1} vs {action2}"
+    )
     assert loaded.kp == agent.kp
     assert loaded.ki == agent.ki
     assert loaded.kd == agent.kd
@@ -391,7 +389,6 @@ def test_pid_save_load_roundtrip(tmp_path):
 # ---------------------------------------------------------------------------
 # NARX
 # ---------------------------------------------------------------------------
-
 
 def test_narx_save_load_roundtrip(tmp_path):
     from tensoraerospace.agent.narx.model import NARX
@@ -417,7 +414,6 @@ def test_narx_save_load_roundtrip(tmp_path):
 # ---------------------------------------------------------------------------
 # A2C-NARX (A2CLearner from a2c/narx.py)
 # ---------------------------------------------------------------------------
-
 
 def test_a2c_narx_save_load_roundtrip(tmp_path):
     from tensoraerospace.agent.a2c.narx import A2CLearner, Actor, Critic

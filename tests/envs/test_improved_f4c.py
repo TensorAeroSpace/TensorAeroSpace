@@ -27,9 +27,7 @@ DT = 0.01
 def _make_reference_signal(n_steps, degree=2.0):
     """Create a unit-step reference signal of shape (1, n_steps)."""
     tp = generate_time_period(tn=n_steps * DT, dt=DT)
-    sig = unit_step(
-        degree=degree, tp=tp, time_step=(n_steps * DT) * 0.3, output_rad=True
-    )
+    sig = unit_step(degree=degree, tp=tp, time_step=(n_steps * DT) * 0.3, output_rad=True)
     return np.reshape(sig, [1, -1])[:, :n_steps]
 
 

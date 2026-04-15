@@ -49,7 +49,9 @@ class ComSatEnv(gym.Env):
             tracking_states if tracking_states is not None else ["rho_dot", "theta_dot"]
         )
         self.state_space = (
-            state_space if state_space is not None else ["rho", "rho_dot", "theta_dot"]
+            state_space
+            if state_space is not None
+            else ["rho", "rho_dot", "theta_dot"]
         )
         self.control_space = control_space if control_space is not None else ["u2"]
         self.output_space = (

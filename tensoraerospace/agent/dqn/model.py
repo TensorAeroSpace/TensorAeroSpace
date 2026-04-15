@@ -15,8 +15,9 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from gymnasium.spaces import Discrete
-from huggingface_hub import HfApi, snapshot_download
 from tqdm import tqdm
+
+from huggingface_hub import HfApi, snapshot_download
 
 from ..metrics import create_metric_writer
 
@@ -694,19 +695,23 @@ class DQNAgent:
         optim_path = folder / "optimizer.pth"
 
         if not config_path.exists():
-            raise FileNotFoundError(f"Missing config.json in {str(folder)!r}")
+            raise FileNotFoundError(
+                f"Missing config.json in {str(folder)!r}"
+            )
         if not model_path.exists():
-            raise FileNotFoundError(f"Missing model.pth in {str(folder)!r}")
+            raise FileNotFoundError(
+                f"Missing model.pth in {str(folder)!r}"
+            )
 
         with open(config_path, "r", encoding="utf-8") as f:
             config = json.load(f)
 
         # Reconstruct online & target networks from saved full objects
         loaded_model = torch.load(model_path, map_location=_DEVICE, weights_only=False)
-        loaded_target = (
-            torch.load(target_model_path, map_location=_DEVICE, weights_only=False)
-            if target_model_path.exists()
-            else torch.load(model_path, map_location=_DEVICE, weights_only=False)
+        loaded_target = torch.load(
+            target_model_path, map_location=_DEVICE, weights_only=False
+        ) if target_model_path.exists() else torch.load(
+            model_path, map_location=_DEVICE, weights_only=False
         )
 
         agent = cls(

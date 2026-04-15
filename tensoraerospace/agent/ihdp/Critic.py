@@ -273,7 +273,8 @@ class Critic:
 
             updated_Jt = self.model(nn_input).detach().numpy()
             ec_critic_after = (
-                np.reshape(-self.ct_1 - self.gamma * updated_Jt, [-1, 1]) + self.Jt_1
+                np.reshape(-self.ct_1 - self.gamma * updated_Jt, [-1, 1])
+                + self.Jt_1
             )
             Ec_critic_after = 0.5 * np.square(ec_critic_after)
 

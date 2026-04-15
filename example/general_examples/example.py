@@ -1,9 +1,7 @@
 import gymnasium as gym
 import numpy as np
 
-from tensoraerospace.envs.f16.linear_longitudial import (  # noqa: F401
-    LinearLongitudinalF16,
-)
+from tensoraerospace.envs.f16.linear_longitudial import LinearLongitudinalF16  # noqa: F401
 
 
 def unit_step(x):

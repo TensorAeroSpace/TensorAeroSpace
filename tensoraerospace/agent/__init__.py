@@ -8,23 +8,24 @@ for aircraft and space system control tasks.
 from .a2c.model import A2C as A2C  # noqa: F401
 from .a3c import Agent as Agent  # noqa: F401
 from .a3c import setup_global_params as setup_global_params  # noqa: F401
-
-# Canonical ADHDP (standalone)
-from .adhdp.model import ADHDP as ADHDP  # noqa: F401
-
-# Adaptive Critic / ADP (Prokhorov & Wunsch 1995 inspired)
-from .adp.adp import ADP as ADP  # noqa: F401
 from .ddpg.model import DDPG as DDPG  # noqa: F401
 from .dqn.model import DQNAgent as DQNAgent  # noqa: F401
 from .dqn.model import Model as Model  # noqa: F401
 from .dsac.dsac import DSAC as DSAC  # noqa: F401
 from .gail.model import GAIL as GAIL  # noqa: F401
 
-# Model-based HDP (standalone wrapper)
-from .hdp.model import HDP as HDP  # noqa: F401
-
 # IHDP (now PyTorch-based, no TensorFlow required)
 from .ihdp.model import IHDPAgent as IHDPAgent  # noqa: F401
+
+
+# Canonical ADHDP (standalone)
+from .adhdp.model import ADHDP as ADHDP  # noqa: F401
+
+# Adaptive Critic / ADP (Prokhorov & Wunsch 1995 inspired)
+from .adp.adp import ADP as ADP  # noqa: F401
+
+# Model-based HDP (standalone wrapper)
+from .hdp.model import HDP as HDP  # noqa: F401
 
 # Backward compatibility alias
 from .mpc.mpc import MPC as MPC  # noqa: F401

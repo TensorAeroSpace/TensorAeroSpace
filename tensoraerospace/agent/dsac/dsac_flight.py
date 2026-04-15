@@ -409,9 +409,7 @@ class DSAC(BaseRLModel):
         loss_spatial = torch.mean((a_det - a_near) ** 2) * self.caps_lambda_smoothness
 
         # CAPS temporal smoothness
-        loss_temporal = (
-            torch.mean((new_action - next_action) ** 2) * self.caps_lambda_temporal
-        )
+        loss_temporal = torch.mean((new_action - next_action) ** 2) * self.caps_lambda_temporal
 
         # Risk-distorted expectation for actor objective
         taus_exp = ZNet.generate_taus(

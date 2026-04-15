@@ -18,6 +18,8 @@ from torch.nn import functional as F
 
 # Lazy tensorboard import (see tensoraerospace.agent.metrics)
 from ..metrics import TorchSummaryWriter as SummaryWriter  # noqa: E402
+
+
 from ..metrics import create_metric_writer
 
 
@@ -491,11 +493,15 @@ class A2CLearner:
         if load_gradients:
             if actor_optim_path.exists():
                 new_agent.actor_optim.load_state_dict(
-                    torch.load(actor_optim_path, map_location=dev, weights_only=False)
+                    torch.load(
+                        actor_optim_path, map_location=dev, weights_only=False
+                    )
                 )
             if critic_optim_path.exists():
                 new_agent.critic_optim.load_state_dict(
-                    torch.load(critic_optim_path, map_location=dev, weights_only=False)
+                    torch.load(
+                        critic_optim_path, map_location=dev, weights_only=False
+                    )
                 )
 
         return new_agent
@@ -528,7 +534,9 @@ class A2CLearner:
 
         pathlike_prefixes = ("./", "../", "/", "~")
         if str(repo_name).startswith(pathlike_prefixes):
-            raise FileNotFoundError(f"Local directory not found: '{repo_name}'.")
+            raise FileNotFoundError(
+                f"Local directory not found: '{repo_name}'."
+            )
 
         from huggingface_hub import snapshot_download
 

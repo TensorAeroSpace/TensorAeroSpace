@@ -771,7 +771,8 @@ class ImprovedB747VecEnvTorch:
                 min=0.0,
             )
             term_tensor = (
-                term_tensor - float(self.early_termination_penalty_per_step) * remaining
+                term_tensor
+                - float(self.early_termination_penalty_per_step) * remaining
             )
         reward = torch.where(terminated, term_tensor, reward)
         if self.survival_bonus != 0.0:
