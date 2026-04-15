@@ -769,10 +769,22 @@ class SAC(BaseRLModel):
             env = env_cls(**env_params)
         else:
             env = get_class_from_string(config["env"]["name"])()
-        new_agent = cls(env=env, **config["policy"]["params"])
 
-        # If checkpoint was saved with CUDA but CUDA is not available now,
-        # force CPU load to avoid torch.load failures.
+        # Apply device fallback on policy params as well, so cls(...) below
+        # doesn't try to move networks onto a device that doesn't exist.
+        policy_params = dict(config["policy"]["params"])
+        if "device" in policy_params:
+            dev = str(policy_params["device"])
+            if dev.startswith("cuda") and not torch.cuda.is_available():
+                policy_params["device"] = "cpu"
+            elif dev.startswith("mps") and not (
+                hasattr(torch.backends, "mps") and torch.backends.mps.is_available()
+            ):
+                policy_params["device"] = "cpu"
+
+        new_agent = cls(env=env, **policy_params)
+
+        # Keep as a second-chance safety net in case device was not in params.
         if new_agent.device.type == "cuda" and not torch.cuda.is_available():
             new_agent.device = torch.device("cpu")
         if new_agent.device.type == "mps":
