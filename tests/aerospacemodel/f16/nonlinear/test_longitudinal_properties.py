@@ -5,13 +5,13 @@ import numpy as np
 import pytest
 from scipy.optimize import fsolve
 
-from tensoraerospace.aerospacemodel.f16.nonlinear.python.longitudinal import (
+from tensoraerospace.aerospacemodel.f16.nonlinear.longitudinal import (
     LongitudinalF16,
 )
-from tensoraerospace.aerospacemodel.f16.nonlinear.python.longitudinal.dynamics import (
+from tensoraerospace.aerospacemodel.f16.nonlinear.longitudinal.dynamics import (
     f16_ode_long,
 )
-from tensoraerospace.aerospacemodel.f16.nonlinear.python.longitudinal.params import (
+from tensoraerospace.aerospacemodel.f16.nonlinear.longitudinal.params import (
     default_parameters,
 )
 

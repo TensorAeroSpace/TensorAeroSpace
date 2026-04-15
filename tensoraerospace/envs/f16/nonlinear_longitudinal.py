@@ -1,7 +1,7 @@
 """Gymnasium environment wrapping the pure-numpy nonlinear F-16 longitudinal model.
 
 This is the side-by-side numpy counterpart to :mod:`linear_longitudial`. It
-wraps :class:`tensoraerospace.aerospacemodel.f16.nonlinear.python.longitudinal.LongitudinalF16`
+wraps :class:`tensoraerospace.aerospacemodel.f16.nonlinear.longitudinal.LongitudinalF16`
 which uses the cubic-spline aerodynamic tables ported from the matlab source.
 
 State vector exposed by the underlying model::
@@ -22,7 +22,7 @@ import gymnasium as gym
 import numpy as np
 from gymnasium import spaces
 
-from tensoraerospace.aerospacemodel.f16.nonlinear.python.longitudinal import (
+from tensoraerospace.aerospacemodel.f16.nonlinear.longitudinal import (
     LongitudinalF16,
 )
 

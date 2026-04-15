@@ -24,8 +24,8 @@ LONG_MATLAB_DIR = REPO_ROOT / "tensoraerospace/aerospacemodel/f16/nonlinear/long
 ANG_MATLAB_DIR = REPO_ROOT / "tensoraerospace/aerospacemodel/f16/nonlinear/angular/matlab_code"
 
 # Outputs (.npz tables) live in the new python/ subtree.
-LONG_OUT_DIR = REPO_ROOT / "tensoraerospace/aerospacemodel/f16/nonlinear/python/longitudinal/aero_tables"
-ANG_OUT_DIR = REPO_ROOT / "tensoraerospace/aerospacemodel/f16/nonlinear/python/angular/aero_tables"
+LONG_OUT_DIR = REPO_ROOT / "tensoraerospace/aerospacemodel/f16/nonlinear/longitudinal/aero_tables"
+ANG_OUT_DIR = REPO_ROOT / "tensoraerospace/aerospacemodel/f16/nonlinear/angular/aero_tables"
 
 
 # ---------- low-level matlab matrix parsing ----------

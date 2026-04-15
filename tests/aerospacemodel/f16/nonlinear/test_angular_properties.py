@@ -4,7 +4,7 @@ import pathlib
 import numpy as np
 import pytest
 
-from tensoraerospace.aerospacemodel.f16.nonlinear.python.angular import (
+from tensoraerospace.aerospacemodel.f16.nonlinear.angular import (
     AngularF16,
     initial_state,
 )

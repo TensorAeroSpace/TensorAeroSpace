@@ -3,10 +3,10 @@ import math
 import numpy as np
 import pytest
 
-from tensoraerospace.aerospacemodel.f16.nonlinear.python.angular.dynamics import (
+from tensoraerospace.aerospacemodel.f16.nonlinear.angular.dynamics import (
     f16_ode_6dof,
 )
-from tensoraerospace.aerospacemodel.f16.nonlinear.python.angular.params import (
+from tensoraerospace.aerospacemodel.f16.nonlinear.angular.params import (
     default_parameters,
 )
 

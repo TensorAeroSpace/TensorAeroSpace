@@ -10,7 +10,7 @@ def test_import_does_not_load_matlab():
     for mod in list(sys.modules):
         if mod.startswith("matlab"):
             sys.modules.pop(mod, None)
-    from tensoraerospace.aerospacemodel.f16.nonlinear.python.longitudinal import (  # noqa
+    from tensoraerospace.aerospacemodel.f16.nonlinear.longitudinal import (  # noqa
         LongitudinalF16,
         initial_state,
         set_initial_state,
@@ -21,7 +21,7 @@ def test_import_does_not_load_matlab():
 
 
 def test_run_step_returns_4d_state():
-    from tensoraerospace.aerospacemodel.f16.nonlinear.python.longitudinal import (
+    from tensoraerospace.aerospacemodel.f16.nonlinear.longitudinal import (
         LongitudinalF16,
         initial_state,
     )
@@ -34,7 +34,7 @@ def test_run_step_returns_4d_state():
 
 
 def test_run_step_accepts_numpy_array():
-    from tensoraerospace.aerospacemodel.f16.nonlinear.python.longitudinal import (
+    from tensoraerospace.aerospacemodel.f16.nonlinear.longitudinal import (
         LongitudinalF16,
         initial_state,
     )
@@ -45,7 +45,7 @@ def test_run_step_accepts_numpy_array():
 
 
 def test_run_step_rejects_wrong_action_dim():
-    from tensoraerospace.aerospacemodel.f16.nonlinear.python.longitudinal import (
+    from tensoraerospace.aerospacemodel.f16.nonlinear.longitudinal import (
         LongitudinalF16,
         initial_state,
     )
@@ -56,7 +56,7 @@ def test_run_step_rejects_wrong_action_dim():
 
 
 def test_selected_state_output_subset():
-    from tensoraerospace.aerospacemodel.f16.nonlinear.python.longitudinal import (
+    from tensoraerospace.aerospacemodel.f16.nonlinear.longitudinal import (
         LongitudinalF16,
         initial_state,
     )
@@ -67,7 +67,7 @@ def test_selected_state_output_subset():
 
 
 def test_integrator_choice_runs_both_modes():
-    from tensoraerospace.aerospacemodel.f16.nonlinear.python.longitudinal import (
+    from tensoraerospace.aerospacemodel.f16.nonlinear.longitudinal import (
         LongitudinalF16,
         initial_state,
     )
@@ -91,7 +91,7 @@ def test_integrator_choice_runs_both_modes():
 
 
 def test_unknown_integrator_raises():
-    from tensoraerospace.aerospacemodel.f16.nonlinear.python.longitudinal import (
+    from tensoraerospace.aerospacemodel.f16.nonlinear.longitudinal import (
         LongitudinalF16,
         initial_state,
     )
@@ -101,7 +101,7 @@ def test_unknown_integrator_raises():
 
 
 def test_set_initial_state_returns_array_with_overrides_applied():
-    from tensoraerospace.aerospacemodel.f16.nonlinear.python.longitudinal import (
+    from tensoraerospace.aerospacemodel.f16.nonlinear.longitudinal import (
         set_initial_state,
     )
 
@@ -111,7 +111,7 @@ def test_set_initial_state_returns_array_with_overrides_applied():
 
 
 def test_set_initial_state_rejects_unknown_key():
-    from tensoraerospace.aerospacemodel.f16.nonlinear.python.longitudinal import (
+    from tensoraerospace.aerospacemodel.f16.nonlinear.longitudinal import (
         set_initial_state,
     )
 
@@ -122,7 +122,7 @@ def test_set_initial_state_rejects_unknown_key():
 def test_set_initial_state_does_not_accumulate_overrides_across_calls():
     """Regression: set_initial_state must be pure. Two independent calls
     should NOT see each other's overrides."""
-    from tensoraerospace.aerospacemodel.f16.nonlinear.python.longitudinal import (
+    from tensoraerospace.aerospacemodel.f16.nonlinear.longitudinal import (
         set_initial_state,
     )
 
@@ -142,7 +142,7 @@ def test_list_state_survives_construction():
     """Regression: ModelBase._initialize_selected_state_index has a side
     effect of wiping self.list_state. The class must work around this so
     consumers can do `m.list_state.index('alpha')` after construction."""
-    from tensoraerospace.aerospacemodel.f16.nonlinear.python.longitudinal import (
+    from tensoraerospace.aerospacemodel.f16.nonlinear.longitudinal import (
         LongitudinalF16,
         initial_state,
     )
@@ -155,14 +155,14 @@ def test_list_state_survives_construction():
 
 def test_top_level_python_subpackage_reexports():
     """Importing from the top-level python.* path must yield the same classes."""
-    from tensoraerospace.aerospacemodel.f16.nonlinear.python import (
+    from tensoraerospace.aerospacemodel.f16.nonlinear import (
         AngularF16 as AngularF16_top,
     )
-    from tensoraerospace.aerospacemodel.f16.nonlinear.python import (
+    from tensoraerospace.aerospacemodel.f16.nonlinear import (
         LongitudinalF16 as LongitudinalF16_top,
     )
-    from tensoraerospace.aerospacemodel.f16.nonlinear.python.angular import AngularF16
-    from tensoraerospace.aerospacemodel.f16.nonlinear.python.longitudinal import (
+    from tensoraerospace.aerospacemodel.f16.nonlinear.angular import AngularF16
+    from tensoraerospace.aerospacemodel.f16.nonlinear.longitudinal import (
         LongitudinalF16,
     )
 

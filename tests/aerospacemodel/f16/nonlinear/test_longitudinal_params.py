@@ -2,7 +2,7 @@ import math
 
 import pytest
 
-from tensoraerospace.aerospacemodel.f16.nonlinear.python.longitudinal.params import (
+from tensoraerospace.aerospacemodel.f16.nonlinear.longitudinal.params import (
     F16LongParameters,
     default_parameters,
 )

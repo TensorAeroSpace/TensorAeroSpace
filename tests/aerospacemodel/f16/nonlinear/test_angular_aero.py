@@ -16,7 +16,7 @@ import math
 import numpy as np
 import pytest
 
-from tensoraerospace.aerospacemodel.f16.nonlinear.python.angular.aero import (
+from tensoraerospace.aerospacemodel.f16.nonlinear.angular.aero import (
     AERO_TABLE_DIR,
     get_cx,
     get_cy,
