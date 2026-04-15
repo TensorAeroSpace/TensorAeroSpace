@@ -6,6 +6,7 @@ import re
 from pathlib import Path
 from typing import Any, Optional, Union
 
+
 class _FallbackSummaryWriter:  # type: ignore
     """Fallback SummaryWriter when tensorboard is unavailable."""
 
@@ -34,6 +35,7 @@ def _get_summary_writer_class():
     """
     try:
         from torch.utils.tensorboard import SummaryWriter  # type: ignore
+
         return SummaryWriter
     except Exception:  # pragma: no cover - tensorboard optional at runtime
         return _FallbackSummaryWriter

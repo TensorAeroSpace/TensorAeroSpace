@@ -234,9 +234,7 @@ class Worker(mp.Process):
         # and env is ignored (the env will be created inside run()).
         self.env: Optional[gym.Env] = env if env_function is None else None
         if env_function is None and env is None:
-            raise ValueError(
-                "Worker requires either env_function (preferred) or env."
-            )
+            raise ValueError("Worker requires either env_function (preferred) or env.")
         self.gamma = GAMMA
         self.max_ep = MAX_EP
         self.max_ep_step = MAX_EP_STEP
@@ -732,16 +730,12 @@ class Agent:
         """
         p = Path(str(repo_name)).expanduser()
         if p.is_dir():
-            return cls.load(
-                p, env_function=env_function, load_gradients=load_gradients
-            )
+            return cls.load(p, env_function=env_function, load_gradients=load_gradients)
 
         # If it looks like an explicit filesystem path, raise immediately.
         pathlike_prefixes = ("./", "../", "/", "~")
         if str(repo_name).startswith(pathlike_prefixes):
-            raise FileNotFoundError(
-                f"Local directory not found: '{repo_name}'."
-            )
+            raise FileNotFoundError(f"Local directory not found: '{repo_name}'.")
 
         # Fall back to Hugging Face Hub download.
         from huggingface_hub import snapshot_download
