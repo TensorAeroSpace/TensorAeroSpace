@@ -203,8 +203,15 @@ def serialize_env(env):
     """
     import numpy as np
 
-    # Получаем начальное состояние и ссылку на сигнал из env
-    env_data = env.get_init_args()
+    # Получаем начальное состояние и ссылку на сигнал из env.
+    # Prefer direct access so mocks / plain TA envs keep working. If the env is a
+    # gymnasium wrapper (e.g. OrderEnforcing) that doesn't forward custom attrs,
+    # fall back to ``env.unwrapped``.
+    try:
+        env_data = env.get_init_args()
+    except AttributeError:
+        unwrapped = getattr(env, "unwrapped", env)
+        env_data = unwrapped.get_init_args()
 
     # Рекурсивно преобразуем все numpy массивы в списки
     def convert_numpy_to_list(obj):
