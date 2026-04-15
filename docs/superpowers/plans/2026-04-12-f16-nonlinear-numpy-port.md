@@ -12,6 +12,46 @@
 
 ---
 
+## Path Remap (override applied 2026-04-13)
+
+The plan body below references paths under `tensoraerospace/aerospacemodel/f16/nonlinear/longitudinal/...` and `.../angular/...`. **Per user request, the new pure-numpy code goes into a side-by-side `python/` subtree instead** so the existing matlab-backed code stays alive and untouched. Apply the following rewrite to every path in the plan body:
+
+| Plan body says | Use instead |
+|---|---|
+| `tensoraerospace/aerospacemodel/f16/nonlinear/_integrators.py` | `tensoraerospace/aerospacemodel/f16/nonlinear/python/_integrators.py` |
+| `tensoraerospace/aerospacemodel/f16/nonlinear/longitudinal/<file>` (any non-matlab file) | `tensoraerospace/aerospacemodel/f16/nonlinear/python/longitudinal/<file>` |
+| `tensoraerospace/aerospacemodel/f16/nonlinear/angular/<file>` (any non-matlab file) | `tensoraerospace/aerospacemodel/f16/nonlinear/python/angular/<file>` |
+| `tensoraerospace/aerospacemodel/f16/nonlinear/{long,ang}/aero_tables/...` | `tensoraerospace/aerospacemodel/f16/nonlinear/python/{long,ang}/aero_tables/...` |
+
+**Unchanged:**
+- `tensoraerospace/aerospacemodel/f16/nonlinear/longitudinal/matlab_code/` and the analogous angular dir — the extraction script reads `.m` from these original locations.
+- `tensoraerospace/aerospacemodel/f16/nonlinear/{longitudinal,angular}/{model.py, inital.py, __init__.py}` — the existing matlab-backed code is **not** rewritten or deleted. It coexists.
+- Test paths (`tests/aerospacemodel/f16/nonlinear/...`) — but the tests target the new `python/...` import path.
+
+**Tasks that no longer apply (skip them):**
+- Task 3.5 (delete legacy longitudinal tests) — skip. The legacy matlab-fake-based tests still test the still-existing matlab-backed code.
+- The "delete legacy angular tests" steps inside Task 4.7 — skip the deletes; still write the new property tests.
+- The "rewrite existing model.py / inital.py" steps in Tasks 3.4 and 4.6 — instead, **create** new files at `python/longitudinal/{model.py, inital.py}` and `python/angular/{model.py, inital.py}`.
+
+**New files needed for the python subtree to be importable:**
+- `tensoraerospace/aerospacemodel/f16/nonlinear/python/__init__.py` (empty, created by first implementer)
+- `tensoraerospace/aerospacemodel/f16/nonlinear/python/longitudinal/__init__.py` exporting `LongitudinalF16, initial_state, set_initial_state`
+- `tensoraerospace/aerospacemodel/f16/nonlinear/python/angular/__init__.py` exporting `AngularF16, initial_state, set_initial_state`
+
+**New public import paths (use these in tests and final docs):**
+```python
+from tensoraerospace.aerospacemodel.f16.nonlinear.python.longitudinal import (
+    LongitudinalF16, initial_state, set_initial_state,
+)
+from tensoraerospace.aerospacemodel.f16.nonlinear.python.angular import (
+    AngularF16, initial_state, set_initial_state,
+)
+```
+
+The `test_import_does_not_load_matlab` tests still apply: importing the new `python.*` modules must not pull `matlab` into `sys.modules`. (The existing legacy `nonlinear.longitudinal` import path still does — that's expected and not in scope.)
+
+---
+
 ## Pre-flight notes for the executing agent
 
 - The matlab `.m` files in `tensoraerospace/aerospacemodel/f16/nonlinear/{longitudinal,angular}/matlab_code/` are the **source of truth** for both the numerics and the equations of motion. Do not delete them; they stay as reference. Keep them at exactly the same path so the `.npz` extraction script can find them.

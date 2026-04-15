@@ -187,7 +187,9 @@ class Actor:
         self.number_inputs = len(selected_inputs)
         self.selected_states = selected_states
         self.cascade_tracking_state = (
-            cascade_tracking_state if cascade_tracking_state is not None else ["alpha", "wz"]
+            cascade_tracking_state
+            if cascade_tracking_state is not None
+            else ["alpha", "wz"]
         )
         self.number_states = len(selected_states)
         self.number_tracking_states = len(tracking_states)
@@ -331,9 +333,7 @@ class Actor:
         )
         # Note: PyTorch stores weight as (out_features, in_features), TF as (in, out).
         # We flatten the same way (just flatten the whole matrix) for storage.
-        store_weights["W1"][:, self.time_step] = (
-            params[0].detach().numpy().flatten()
-        )
+        store_weights["W1"][:, self.time_step] = params[0].detach().numpy().flatten()
 
         for counter, layer in enumerate(self.layers[1:]):
             store_weights["W" + str(counter + 2)] = np.zeros(
@@ -348,7 +348,9 @@ class Actor:
 
         return model, store_weights
 
-    def _forward_with_grad(self, model: nn.Sequential, nn_input: torch.Tensor) -> torch.Tensor:
+    def _forward_with_grad(
+        self, model: nn.Sequential, nn_input: torch.Tensor
+    ) -> torch.Tensor:
         """Run a forward pass ensuring all parameters require grad and input has grad.
 
         Args:
@@ -399,8 +401,7 @@ class Actor:
             # Compute dq_ref/dWb
             params = _get_trainable_parameters(self.model)
             grads = torch.autograd.grad(
-                q_ref_tensor, params,
-                create_graph=False, retain_graph=False
+                q_ref_tensor, params, create_graph=False, retain_graph=False
             )
             self.dq_ref_dWb = [g.detach().numpy() for g in grads]
 
@@ -446,16 +447,14 @@ class Actor:
             ut_tensor = self.model_q(nn_input_q)
             # dut/d(nn_input_q) = dut/dq_ref
             grad_input = torch.autograd.grad(
-                ut_tensor, nn_input_q,
-                create_graph=False, retain_graph=True
+                ut_tensor, nn_input_q, create_graph=False, retain_graph=True
             )
             self.dut_dq_ref = grad_input[0].detach().numpy()
 
             # dut/dWb_q
             params_q = _get_trainable_parameters(self.model_q)
             grads_q = torch.autograd.grad(
-                ut_tensor, params_q,
-                create_graph=False, retain_graph=False
+                ut_tensor, params_q, create_graph=False, retain_graph=False
             )
             self.dut_dWb = [g.detach().numpy() for g in grads_q]
 
@@ -484,8 +483,10 @@ class Actor:
             ut_tensor = self.model(nn_input)
             params = _get_trainable_parameters(self.model)
             grads = torch.autograd.grad(
-                ut_tensor, params,
-                create_graph=False, retain_graph=False,
+                ut_tensor,
+                params,
+                create_graph=False,
+                retain_graph=False,
             )
             self.dut_dWb = [g.detach().numpy() for g in grads]
 
@@ -796,7 +797,11 @@ class Actor:
             Jt1_after, _ = critic.evaluate_critic(xt1_est_after, xt_ref1)
 
     def compute_Adam_update(
-        self, count: int, gradient: np.ndarray, model: nn.Sequential, learning_rate: float
+        self,
+        count: int,
+        gradient: np.ndarray,
+        model: nn.Sequential,
+        learning_rate: float,
     ) -> Tuple[nn.Sequential, float]:
         """Compute an Adam-style weight update and apply it."""
 
@@ -822,7 +827,9 @@ class Actor:
         params = _get_trainable_parameters(model)
         with torch.no_grad():
             params[count] -= torch.tensor(
-                np.reshape(learning_rate * update, params[count].shape).astype(np.float32)
+                np.reshape(learning_rate * update, params[count].shape).astype(
+                    np.float32
+                )
             )
         # Implement WB_limits
         self._check_WB_limits_param(params[count])
@@ -929,8 +936,7 @@ class Actor:
             if self.activations[-1] == "sigmoid":
                 q_ref = max(
                     min(
-                        (2 * self.maximum_q_rate * q_ref_0)
-                        - self.maximum_q_rate,
+                        (2 * self.maximum_q_rate * q_ref_0) - self.maximum_q_rate,
                         np.reshape(self.maximum_q_rate, q_ref_0.shape),
                     ),
                     np.reshape(-self.maximum_q_rate, q_ref_0.shape),

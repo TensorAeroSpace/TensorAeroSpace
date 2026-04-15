@@ -105,8 +105,9 @@ known_third_party = ["numpy", "pandas", "matplotlib", "tensorflow", "torch", "ra
 # Конфигурация для pytest
 [tool.pytest.ini_options]
 minversion = "6.0"
-addopts = "-ra -q --strict-markers --strict-config"
+addopts = "-ra -q --strict-markers --strict-config --import-mode=importlib"
 testpaths = ["tests"]
+pythonpath = ["."]
 python_files = ["test_*.py", "*_test.py"]
 python_classes = ["Test*"]
 cache_dir = "/tmp/tensoraerospace_pytest_cache"

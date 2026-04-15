@@ -192,9 +192,7 @@ class LinearLongitudinalUltrastick(gym.Env):
         # Map initial_state to state_space
         initial_state_array = np.array(self.initial_state, dtype=np.float32).reshape(-1)
         observation = (
-            initial_state_array[self.state_space_indices]
-            .reshape(-1)
-            .astype(np.float32)
+            initial_state_array[self.state_space_indices].reshape(-1).astype(np.float32)
         )
         return observation, info
 
