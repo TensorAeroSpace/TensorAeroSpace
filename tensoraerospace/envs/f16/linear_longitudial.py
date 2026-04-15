@@ -251,39 +251,33 @@ class LinearLongitudinalF16(gym.Env):
     ) -> np.ndarray:
         """Reward function for RL environment in longitudinal aircraft control.
 
-        The first element of ``state`` is treated as the tracked state value
-        (e.g. ``alpha`` or ``theta`` depending on ``tracking_states``) and the
-        second element — as the corresponding angular rate used for damping.
+        Supports variable-length state vectors. The last two elements of the
+        flattened state are treated as ``[tracked_angle, angular_rate]`` so the
+        reward works for both 2-state ``[alpha, q]`` and 3-state
+        ``[theta, alpha, q]`` configurations.
 
         Args:
-            state (np.ndarray): Current tracked state vector.
-            ref_signal (np.ndarray): Reference signal to track.
-            ts (int): Time step between state update iterations.
+            state (np.ndarray): Current aircraft state (at least 2 elements).
+            ref_signal (np.ndarray): Target angle trajectory, shape ``(1, T)``.
+            ts (int): Current time step index.
 
         Returns:
             np.ndarray: Reward value for this step.
         """
+        state_flat = np.asarray(state, dtype=float).reshape(-1)
+        if state_flat.size < 2:
+            raise ValueError(
+                f"default_reward expects state with >=2 elements, got {state_flat.size}"
+            )
 
-        # Параметры для настройки функции вознаграждения
+        angle = float(state_flat[-2])
+        angular_rate = float(state_flat[-1])
+        angle_ref = float(np.asarray(ref_signal).reshape(-1)[ts])
 
-        state_vec = np.asarray(state).reshape(-1)
-        # Safe time-step index so that out-of-bounds ``ts`` does not raise
-        ts_safe = int(np.clip(ts, 0, ref_signal.shape[1] - 1))
-        tracked_val = float(state_vec[0])
-        ref_val = float(np.asarray(ref_signal[:, ts_safe]).reshape(-1)[0])
-
-        # Расчет ошибки по отслеживаемому состоянию
-        angle_error = abs(tracked_val - ref_val)
-
-        # Наказание за высокую угловую скорость (если она доступна во втором
-        # компоненте state)
-        rate_penalty = float(abs(state_vec[1])) if state_vec.size > 1 else 0.0
-
-        # Вознаграждение как функция ошибки и наказания за скорость.
-        # Можно настроить веса этих компонентов под предпочтения в управлении.
+        angle_error = abs(angle - angle_ref)
+        rate_penalty = abs(angular_rate)
         reward = -angle_error - 0.1 * rate_penalty
 
-        # Возвращаем как np.ndarray для совместимости с тестами
         return np.array(reward)
 
     # @staticmethod
