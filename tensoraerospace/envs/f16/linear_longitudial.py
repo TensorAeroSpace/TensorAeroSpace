@@ -243,31 +243,33 @@ class LinearLongitudinalF16(gym.Env):
     ) -> np.ndarray:
         """Reward function for RL environment in longitudinal aircraft control.
 
+        Supports variable-length state vectors. The last two elements of the
+        flattened state are treated as ``[tracked_angle, angular_rate]`` so the
+        reward works for both 2-state ``[alpha, q]`` and 3-state
+        ``[theta, alpha, q]`` configurations.
+
         Args:
-            state (np.ndarray): Current aircraft state [theta, omega_z].
-            ref_signal (np.ndarray): Target pitch angle to track.
-            ts (int): Time step between state update iterations.
+            state (np.ndarray): Current aircraft state (at least 2 elements).
+            ref_signal (np.ndarray): Target angle trajectory, shape ``(1, T)``.
+            ts (int): Current time step index.
 
         Returns:
             np.ndarray: Reward value for this step.
         """
+        state_flat = np.asarray(state, dtype=float).reshape(-1)
+        if state_flat.size < 2:
+            raise ValueError(
+                f"default_reward expects state with >=2 elements, got {state_flat.size}"
+            )
 
-        # Параметры для настройки функции вознаграждения
+        angle = float(state_flat[-2])
+        angular_rate = float(state_flat[-1])
+        angle_ref = float(np.asarray(ref_signal).reshape(-1)[ts])
 
-        theta, omega_z = state
-        theta_ref = ref_signal[:, ts]
+        angle_error = abs(angle - angle_ref)
+        rate_penalty = abs(angular_rate)
+        reward = -angle_error - 0.1 * rate_penalty
 
-        # Расчет ошибки угла атаки
-        angle_error = abs(theta - theta_ref)
-
-        # Наказание за высокую угловую скорость
-        omega_penalty = abs(omega_z)
-
-        # Вознаграждение как функция ошибки угла и наказания за скорость
-        # Можно настроить веса для этих компонентов в зависимости от предпочтений в управлении
-        reward = -angle_error - 0.1 * omega_penalty
-
-        # Возвращаем как np.ndarray для совместимости с тестами
         return np.array(reward)
 
     # @staticmethod

@@ -1870,10 +1870,38 @@ class PPO(BaseRLModel):
             raw_params = dict(config.get("env", {}).get("params", {}) or {})
             env_params = deserialize_env_params(raw_params)
             env_params = _filter_kwargs_for_init(env_cls, env_params)
+            # Fall back to CPU if the saved env requests a device that is not
+            # available (e.g. cuda on a CPU-only machine). Without this, env
+            # construction raises a cryptic CUDA-runtime error.
+            if "device" in env_params:
+                requested_device = str(env_params["device"])
+                if (
+                    requested_device.startswith("cuda")
+                    and not torch.cuda.is_available()
+                ):
+                    env_params["device"] = "cpu"
+                elif requested_device.startswith("mps") and not (
+                    getattr(torch.backends, "mps", None)
+                    and torch.backends.mps.is_available()
+                ):
+                    env_params["device"] = "cpu"
             env = env_cls(**env_params)
         else:
             env = get_class_from_string(config["env"]["name"])()
-        new_agent = cls(env=env, **config["policy"]["params"])
+        policy_params = dict(config["policy"]["params"])
+        if "device" in policy_params:
+            requested_device = str(policy_params["device"])
+            if (
+                requested_device.startswith("cuda")
+                and not torch.cuda.is_available()
+            ):
+                policy_params["device"] = "cpu"
+            elif requested_device.startswith("mps") and not (
+                getattr(torch.backends, "mps", None)
+                and torch.backends.mps.is_available()
+            ):
+                policy_params["device"] = "cpu"
+        new_agent = cls(env=env, **policy_params)
         # Load weights
         critic_state = torch.load(critic_path, map_location="cpu")
         actor_state = torch.load(actor_path, map_location="cpu")
