@@ -148,7 +148,10 @@ def serialize_env(env):
     import numpy as np
 
     # Получаем начальное состояние и ссылку на сигнал из env
-    env_data = env.get_init_args()
+    # gymnasium-wrapped environments (OrderEnforcing, etc.) don't forward
+    # custom attributes by default, so unwrap first.
+    unwrapped = env.unwrapped if hasattr(env, "unwrapped") else env
+    env_data = unwrapped.get_init_args()
 
     # Рекурсивно преобразуем все numpy массивы в списки
     def convert_numpy_to_list(obj):

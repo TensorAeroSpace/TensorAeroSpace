@@ -1726,7 +1726,7 @@ class PPO(BaseRLModel):
             "policy": {"name": agent_name, "params": policy_params},
         }
 
-    def save(self, path: Union[str, Path, None] = None) -> None:
+    def save(self, path: Union[str, Path, None] = None) -> Path:
         """Save the PPO model to disk.
 
         This method saves all components needed to restore the agent:
@@ -1745,6 +1745,9 @@ class PPO(BaseRLModel):
         Args:
             path: Directory where the model will be saved. If None, uses current
                 working directory. Defaults to None.
+
+        Returns:
+            Path to the created timestamped directory.
 
         Example:
             >>> agent.save('/path/to/models')
@@ -1801,6 +1804,8 @@ class PPO(BaseRLModel):
                 var=self.ret_rms.var,
                 count=self.ret_rms.count,
             )
+
+        return model_dir
 
     @classmethod
     def __load(cls, path: Union[str, Path]) -> "PPO":
