@@ -22,7 +22,6 @@ from .gail.model import GAIL as GAIL  # noqa: F401
 
 # Model-based HDP (standalone wrapper)
 from .hdp.model import HDP as HDP  # noqa: F401
-
 from .ihdp.model import IHDPAgent as IHDPAgent  # noqa: F401
 
 # Backward compatibility alias
