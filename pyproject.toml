@@ -25,16 +25,23 @@ pygame = "^2.6.1"
 cryptography = {version = ">=45.0.0", python = ">=3.10,<3.13"}
 requests = ">=2.33.0"
 numpy = ">=1.24.0"
-tensorflow = {version = "^2.15.0", optional = true}
-tensorflow-macos = {version = "2.15.0", markers = "sys_platform == 'darwin'", optional = true}
+# Pillow is a transitive dep via matplotlib/imageio; pin >=12.2.0 for CVE-2026-40192
+# (FITS GZIP decompression bomb, introduced in 10.3.0, fixed in 12.2.0).
+pillow = ">=12.2.0"
+# TensorFlow is optional (only used by the IHDP agent). Bumped from 2.15 to 2.20 so
+# keras>=3.13.2 is pulled in, fixing CVE-2026-1462 (untrusted deserialization).
+# keras>=3.13.2 requires Python >=3.11, so this extra is not installable on 3.10.
+# tensorflow-macos is deprecated — modern tensorflow supports macOS arm64 natively.
+tensorflow = {version = ">=2.20.0,<3.0.0", python = ">=3.11", optional = true}
+keras = {version = ">=3.13.2,<4.0.0", python = ">=3.11", optional = true}
 ray = {extras = ["tune"], version = "^2.52.0", optional = true}
 
 [tool.poetry.extras]
-tensorflow = ["tensorflow", "tensorflow-macos"]
+tensorflow = ["tensorflow", "keras"]
 ray = ["ray"]
 
 [tool.poetry.group.dev.dependencies]
-pytest = "^7.4.3"
+pytest = ">=9.0.3,<10.0.0"
 ruff = ">=0.1.5"
 ipykernel = "^6.26.0"
 docstr-coverage = "^2.3.1"
@@ -58,7 +65,7 @@ twine = "^6.2.0"
 importlib-metadata = "^6.0.0"
 
 [tool.poetry.group.test.dependencies]
-pytest = "^7.4.3"
+pytest = ">=9.0.3,<10.0.0"
 pytest-cov = "^5.0.0"
 pytest-xdist = "^3.0.0"
 pytest-mock = "^3.12.0"
