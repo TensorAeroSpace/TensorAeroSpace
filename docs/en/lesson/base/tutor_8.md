@@ -279,10 +279,10 @@ from tensoraerospace.agent import HDP
 from tensoraerospace.agent import IHDPAgent
 ```
 
-* **Type:** Neuro-dynamic programming (TensorFlow-based)
+* **Type:** Neuro-dynamic programming (PyTorch-based)
 * **Action space:** Continuous
 * **Key idea:** Extends HDP with integral action for steady-state error elimination.
-* **When to use:** Tracking problems where zero steady-state error is critical. Requires TensorFlow.
+* **When to use:** Tracking problems where zero steady-state error is critical.
 
 ### 4.12 MPC --- Model Predictive Control
 

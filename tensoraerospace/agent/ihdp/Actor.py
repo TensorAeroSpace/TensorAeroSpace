@@ -43,11 +43,10 @@ def _build_sequential(
     activations: tuple,
     seed: int,
 ) -> nn.Sequential:
-    """Build an ``nn.Sequential`` model matching the original TF architecture.
+    """Build an ``nn.Sequential`` model for the actor network.
 
-    Weight initialisation mirrors ``VarianceScaling(scale=0.01, fan_in,
-    truncated_normal)`` which yields ``trunc_normal_(std=sqrt(0.01 / fan_in))``.
-    Biases are initialised to zero (Keras default).
+    Weight initialisation uses variance-scaled truncated normal
+    ``trunc_normal_(std=sqrt(0.01 / fan_in))``; biases are zero-initialised.
 
     Args:
         input_dim: Number of input features.
@@ -79,10 +78,9 @@ def _build_sequential(
 
 
 def _get_trainable_parameters(model: nn.Sequential) -> list[torch.Tensor]:
-    """Return trainable parameters in the same order as TF ``trainable_variables``.
+    """Return trainable parameters in a stable order.
 
-    For each ``nn.Linear`` layer the order is ``[weight, bias]``, matching
-    the Keras convention of ``[kernel, bias]`` per ``Dense`` layer.
+    For each ``nn.Linear`` layer the order is ``[weight, bias]``.
 
     Args:
         model: The ``nn.Sequential`` model.

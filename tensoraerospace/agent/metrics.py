@@ -27,12 +27,7 @@ class _FallbackSummaryWriter:  # type: ignore
 
 
 def _get_summary_writer_class():
-    """Lazily import torch.utils.tensorboard.SummaryWriter.
-
-    Importing this module eagerly pulls TensorFlow into the process if
-    tensorboard is installed alongside it, which is expensive and noisy.
-    We defer the import until the first actual writer is constructed.
-    """
+    """Lazily import torch.utils.tensorboard.SummaryWriter."""
     try:
         from torch.utils.tensorboard import SummaryWriter  # type: ignore
 

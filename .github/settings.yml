@@ -10,7 +10,6 @@ repository:
     - aerospace
     - machine-learning
     - python
-    - tensorflow
     - pytorch
     - control-systems
     - simulation

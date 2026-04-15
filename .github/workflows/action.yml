@@ -9,6 +9,11 @@ on:
     types: [opened, synchronize, reopened, ready_for_review]
   workflow_dispatch:  # Позволяет запускать вручную
 
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
+
 jobs:
   test:
     name: 🐍 Test Python 3.10 on self-hosted
@@ -92,10 +97,6 @@ jobs:
               --cov=tensoraerospace \
               --cov-report=xml:coverage.xml \
               --cov-report=term-missing:skip-covered \
-              --ignore=tests/agents/ihdp_actor_test.py \
-              --ignore=tests/agents/ihdp_critic_test.py \
-              --ignore=tests/agents/ihdp_agent_test.py \
-              --ignore=tests/agents/ihdp_incremental_model_test.py \
               --ignore=tests/agents/a2c_narx_learner_test.py \
               --ignore=tests/optimization/ray_test.py | tee pytest-coverage.txt
 

@@ -98,7 +98,7 @@ for t in range(N - 1):
 
 -   :material-apple: **macOS (Intel/M‑series)**
 
-    On Apple Silicon use compatible Python versions (3.10–3.12) and `tensorflow-macos`.
+    Use a compatible Python version (3.10–3.12). PyTorch installs natively on Apple Silicon.
 
 </div>
 
@@ -131,9 +131,7 @@ for t in range(N - 1):
 
 ## CPU/GPU tips
 
-- The project uses both TensorFlow and PyTorch. If you need GPU support, install the frameworks for your platform:
-  - PyTorch with CUDA: follow the official installation guide for the version compatible with your CUDA stack.
-  - macOS (Apple Silicon): the `tensorflow-macos` package installs automatically (see project dependencies). Make sure you use a compatible Python version (3.10–3.12).
+- The project uses PyTorch. For GPU support, follow the official PyTorch installation guide for the build matching your CUDA stack.
 - If GPU acceleration is not required, the default PyPI wheels are usually enough.
 
 ## Run with Docker
@@ -202,11 +200,11 @@ Run the container (the image starts **JupyterLab by default**) and mount the exa
         pip install tensoraerospace
         ```
 
-??? question "TensorFlow/PyTorch version conflicts"
-    Install framework builds that match your platform (CUDA/CPU/macOS), then reinstall `tensoraerospace`.
+??? question "PyTorch version conflicts"
+    Install a PyTorch build that matches your platform (CUDA/CPU/macOS), then reinstall `tensoraerospace`.
 
 ??? question "macOS (M series)"
-    Use Python 3.10–3.12. Reinstall `tensorflow-macos` with a compatible version if needed.
+    Use Python 3.10–3.12. PyTorch installs natively on Apple Silicon from PyPI.
 
 ??? question "Permissions/network issues"
     Try a clean virtual environment or run inside Docker. For corporate proxies configure the `PIP_*` environment variables.

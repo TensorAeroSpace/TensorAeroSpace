@@ -21,11 +21,9 @@ from pathlib import Path
 import pytest
 
 # ---------------------------------------------------------------------------
-# Auto-skip tests that require optional dependencies (TensorFlow, Ray, etc.)
+# Auto-skip tests that require optional dependencies (Ray, tensorboard, etc.)
 # ---------------------------------------------------------------------------
 collect_ignore_glob: list[str] = []
-
-# IHDP is now PyTorch-based — no TensorFlow needed
 
 try:
     import ray  # noqa: F401
