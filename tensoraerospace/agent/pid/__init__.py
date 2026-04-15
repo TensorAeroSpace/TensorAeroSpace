@@ -453,10 +453,9 @@ class PID(BaseRLModel):
         # Compute DC gain for sign determination (Simulink-like automatic sign)
         try:
             # DC gain = -C @ inv(A) @ B (for stable systems)
-            dc_gain_arr = (
-                -C[track_state_idx : track_state_idx + 1, :]
-                @ np.linalg.solve(A, B[:, 0:1])
-            )
+            dc_gain_arr = -C[
+                track_state_idx : track_state_idx + 1, :
+            ] @ np.linalg.solve(A, B[:, 0:1])
             dc_gain = float(np.asarray(dc_gain_arr).reshape(-1)[0])
         except np.linalg.LinAlgError:
             dc_gain = -1.0  # Default for unstable systems

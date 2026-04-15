@@ -1896,10 +1896,7 @@ class PPO(BaseRLModel):
         policy_params = dict(config["policy"]["params"])
         if "device" in policy_params:
             requested_device = str(policy_params["device"])
-            if (
-                requested_device.startswith("cuda")
-                and not torch.cuda.is_available()
-            ):
+            if requested_device.startswith("cuda") and not torch.cuda.is_available():
                 policy_params["device"] = "cpu"
             elif requested_device.startswith("mps") and not (
                 getattr(torch.backends, "mps", None)
