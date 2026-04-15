@@ -66,16 +66,15 @@ except Exception:
                 yield x
 
 
-# Optional TensorBoard SummaryWriter (lazy import to avoid pulling in TF)
-from ..metrics import TorchSummaryWriter as SummaryWriter  # noqa: E402
-
-
 from ..base import (  # noqa: E402
     BaseRLModel,
     TheEnvironmentDoesNotMatch,
     get_class_from_string,
     serialize_env,
 )
+
+# Optional TensorBoard SummaryWriter (lazy import to avoid pulling in TF)
+from ..metrics import TorchSummaryWriter as SummaryWriter  # noqa: E402
 from ..metrics import create_metric_writer
 
 
@@ -811,9 +810,7 @@ class DDPG:
         """
         _ = (save_best, save_path, verbose)
         max_steps_i = int(max_steps) if max_steps is not None else 200
-        max_frames = int(
-            kwargs.pop("max_frames", int(num_episodes) * max_steps_i)
-        )
+        max_frames = int(kwargs.pop("max_frames", int(num_episodes) * max_steps_i))
         batch_size = int(kwargs.pop("batch_size", 64))
         gamma = float(kwargs.pop("gamma", 0.995))
         soft_tau = float(kwargs.pop("soft_tau", 5e-3))

@@ -1889,8 +1889,7 @@ class MPCAgent(BaseRLModel):
         # Fit scalers only on first call (or if forced) to avoid changing the
         # loss landscape mid-training.
         if self.normalize and (
-            force_refit_normalizers
-            or not getattr(self, "_normalizers_fitted", False)
+            force_refit_normalizers or not getattr(self, "_normalizers_fitted", False)
         ):
             self.fit_normalizers()
             self._normalizers_fitted = True

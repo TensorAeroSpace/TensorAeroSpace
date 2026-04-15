@@ -224,9 +224,7 @@ class NARX(nn.Module):
         # If it looks like an explicit filesystem path, raise immediately.
         pathlike_prefixes = ("./", "../", "/", "~")
         if str(repo_name).startswith(pathlike_prefixes):
-            raise FileNotFoundError(
-                f"Local directory not found: '{repo_name}'."
-            )
+            raise FileNotFoundError(f"Local directory not found: '{repo_name}'.")
 
         # Fall back to Hugging Face Hub download.
         from huggingface_hub import snapshot_download
