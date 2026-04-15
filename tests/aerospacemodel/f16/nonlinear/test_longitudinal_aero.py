@@ -3,7 +3,7 @@ import math
 import numpy as np
 import pytest
 
-from tensoraerospace.aerospacemodel.f16.nonlinear.python.longitudinal import aero
+from tensoraerospace.aerospacemodel.f16.nonlinear.longitudinal import aero
 
 _AERO_DIR = aero.AERO_TABLE_DIR
 

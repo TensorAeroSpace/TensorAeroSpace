@@ -3,11 +3,11 @@ import math
 import numpy as np
 import pytest
 
-from tensoraerospace.aerospacemodel.f16.nonlinear.python._integrators import euler
-from tensoraerospace.aerospacemodel.f16.nonlinear.python.longitudinal.dynamics import (
+from tensoraerospace.aerospacemodel.f16.nonlinear._integrators import euler
+from tensoraerospace.aerospacemodel.f16.nonlinear.longitudinal.dynamics import (
     f16_ode_long,
 )
-from tensoraerospace.aerospacemodel.f16.nonlinear.python.longitudinal.params import (
+from tensoraerospace.aerospacemodel.f16.nonlinear.longitudinal.params import (
     default_parameters,
 )
 

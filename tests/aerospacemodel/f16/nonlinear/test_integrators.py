@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 
-from tensoraerospace.aerospacemodel.f16.nonlinear.python._integrators import euler, rk4
+from tensoraerospace.aerospacemodel.f16.nonlinear._integrators import euler, rk4
 
 
 def _linear_rhs(x, u, t, params):

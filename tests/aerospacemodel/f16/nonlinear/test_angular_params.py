@@ -2,7 +2,7 @@ import math
 
 import pytest
 
-from tensoraerospace.aerospacemodel.f16.nonlinear.python.angular.params import (
+from tensoraerospace.aerospacemodel.f16.nonlinear.angular.params import (
     F16AngularParameters,
     default_parameters,
 )

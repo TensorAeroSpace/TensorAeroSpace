@@ -9,7 +9,7 @@ def test_import_does_not_load_matlab():
     for mod in list(sys.modules):
         if mod.startswith("matlab"):
             sys.modules.pop(mod, None)
-    from tensoraerospace.aerospacemodel.f16.nonlinear.python.angular import (  # noqa
+    from tensoraerospace.aerospacemodel.f16.nonlinear.angular import (  # noqa
         AngularF16,
         initial_state,
         set_initial_state,
@@ -20,7 +20,7 @@ def test_import_does_not_load_matlab():
 
 
 def test_run_step_returns_14d_state():
-    from tensoraerospace.aerospacemodel.f16.nonlinear.python.angular import (
+    from tensoraerospace.aerospacemodel.f16.nonlinear.angular import (
         AngularF16,
         initial_state,
     )
@@ -31,7 +31,7 @@ def test_run_step_returns_14d_state():
 
 
 def test_run_step_accepts_flat_list():
-    from tensoraerospace.aerospacemodel.f16.nonlinear.python.angular import (
+    from tensoraerospace.aerospacemodel.f16.nonlinear.angular import (
         AngularF16,
         initial_state,
     )
@@ -42,7 +42,7 @@ def test_run_step_accepts_flat_list():
 
 
 def test_run_step_rejects_wrong_action_dim():
-    from tensoraerospace.aerospacemodel.f16.nonlinear.python.angular import (
+    from tensoraerospace.aerospacemodel.f16.nonlinear.angular import (
         AngularF16,
         initial_state,
     )
@@ -53,7 +53,7 @@ def test_run_step_rejects_wrong_action_dim():
 
 
 def test_unknown_integrator_raises():
-    from tensoraerospace.aerospacemodel.f16.nonlinear.python.angular import (
+    from tensoraerospace.aerospacemodel.f16.nonlinear.angular import (
         AngularF16,
         initial_state,
     )
@@ -63,7 +63,7 @@ def test_unknown_integrator_raises():
 
 
 def test_integrator_choice_runs_both_modes_and_diverges():
-    from tensoraerospace.aerospacemodel.f16.nonlinear.python.angular import (
+    from tensoraerospace.aerospacemodel.f16.nonlinear.angular import (
         AngularF16,
         initial_state,
     )
@@ -85,7 +85,7 @@ def test_integrator_choice_runs_both_modes_and_diverges():
 def test_state_vector_ordering_matches_list_state():
     """The list_state ordering must match the matlab F16State_vec2struct
     convention: stab/dstab/ail/dail/dir/ddir interleaved (not grouped)."""
-    from tensoraerospace.aerospacemodel.f16.nonlinear.python.angular import (
+    from tensoraerospace.aerospacemodel.f16.nonlinear.angular import (
         AngularF16,
         initial_state,
     )
@@ -102,7 +102,7 @@ def test_set_initial_state_overrides_alpha_correctly():
     """Regression: the LEGACY inital.py grouped stab/ail/dir before
     derivatives, producing a permuted vector. The new pure version must
     put alpha at index 0 and dstab at index 9."""
-    from tensoraerospace.aerospacemodel.f16.nonlinear.python.angular import (
+    from tensoraerospace.aerospacemodel.f16.nonlinear.angular import (
         set_initial_state,
     )
 
@@ -117,7 +117,7 @@ def test_set_initial_state_overrides_alpha_correctly():
 
 
 def test_set_initial_state_does_not_accumulate_overrides():
-    from tensoraerospace.aerospacemodel.f16.nonlinear.python.angular import (
+    from tensoraerospace.aerospacemodel.f16.nonlinear.angular import (
         set_initial_state,
     )
 
@@ -132,7 +132,7 @@ def test_set_initial_state_does_not_accumulate_overrides():
 
 
 def test_set_initial_state_rejects_unknown_key():
-    from tensoraerospace.aerospacemodel.f16.nonlinear.python.angular import (
+    from tensoraerospace.aerospacemodel.f16.nonlinear.angular import (
         set_initial_state,
     )
 
