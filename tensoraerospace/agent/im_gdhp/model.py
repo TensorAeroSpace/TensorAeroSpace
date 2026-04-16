@@ -275,9 +275,7 @@ class IMGDHPAgent:
     # ------------------------------------------------------------------
     # Helpers
     # ------------------------------------------------------------------
-    def _reference_at(
-        self, reference_signal: np.ndarray, time_step: int
-    ) -> np.ndarray:
+    def _reference_at(self, reference_signal: np.ndarray, time_step: int) -> np.ndarray:
         """Fetch ``reference_signal[:, t]`` with safe clipping at the end."""
         ref_arr = np.asarray(reference_signal, dtype=np.float64)
         if ref_arr.ndim == 1:
@@ -297,9 +295,7 @@ class IMGDHPAgent:
         y_v = np.asarray(y, dtype=np.float64).reshape(-1) * self._obs_scale_np
         ref_v = np.asarray(ref, dtype=np.float64).reshape(-1)
         if ref_v.size < self.reference_size:
-            ref_v = np.concatenate(
-                [ref_v, np.zeros(self.reference_size - ref_v.size)]
-            )
+            ref_v = np.concatenate([ref_v, np.zeros(self.reference_size - ref_v.size)])
         elif ref_v.size > self.reference_size:
             ref_v = ref_v[: self.reference_size]
         # Reference is measured in the same physical unit as the tracked
@@ -313,9 +309,7 @@ class IMGDHPAgent:
             err = track - ref_v[: len(self.tracking_indices)]
         return np.concatenate([y_v, ref_v, err])
 
-    def _augment_torch(
-        self, y: torch.Tensor, ref: torch.Tensor
-    ) -> torch.Tensor:
+    def _augment_torch(self, y: torch.Tensor, ref: torch.Tensor) -> torch.Tensor:
         """Torch-compatible counterpart of :meth:`_augment`."""
         y_s = y * self._obs_scale_t
         ref_scale = float(self._obs_scale_t[self.tracking_indices[0]])
@@ -439,8 +433,7 @@ class IMGDHPAgent:
 
         ref_unit_scale = float(self._obs_scale_np[self.tracking_indices[0]])
         track_now_scaled = (
-            y_t_np[self.tracking_indices]
-            * self._obs_scale_np[self.tracking_indices]
+            y_t_np[self.tracking_indices] * self._obs_scale_np[self.tracking_indices]
         )
         if ref_now.size == 1 and len(self.tracking_indices) > 1:
             err_now = track_now_scaled - ref_now[0] * ref_unit_scale
@@ -527,13 +520,9 @@ class IMGDHPAgent:
         slow-moving target critic, which dampens the positive-feedback
         loop between actor and critic observed in long DHP runs.
         """
-        aug_t = torch.as_tensor(
-            aug_t_np, dtype=torch.float32, device=self.device
-        )
+        aug_t = torch.as_tensor(aug_t_np, dtype=torch.float32, device=self.device)
         aug_next_np = self._augment(y_next_np, ref_next_np)
-        aug_next = torch.as_tensor(
-            aug_next_np, dtype=torch.float32, device=self.device
-        )
+        aug_next = torch.as_tensor(aug_next_np, dtype=torch.float32, device=self.device)
 
         self.critic.train()
         bootstrap_net = (
@@ -591,18 +580,10 @@ class IMGDHPAgent:
         bootstrapping.
         """
         y_t = torch.as_tensor(y_t_np, dtype=torch.float32, device=self.device)
-        y_prev = torch.as_tensor(
-            y_prev_np, dtype=torch.float32, device=self.device
-        )
-        u_prev = torch.as_tensor(
-            u_prev_np, dtype=torch.float32, device=self.device
-        )
-        ref_now = torch.as_tensor(
-            ref_now_np, dtype=torch.float32, device=self.device
-        )
-        ref_next = torch.as_tensor(
-            ref_next_np, dtype=torch.float32, device=self.device
-        )
+        y_prev = torch.as_tensor(y_prev_np, dtype=torch.float32, device=self.device)
+        u_prev = torch.as_tensor(u_prev_np, dtype=torch.float32, device=self.device)
+        ref_now = torch.as_tensor(ref_now_np, dtype=torch.float32, device=self.device)
+        ref_next = torch.as_tensor(ref_next_np, dtype=torch.float32, device=self.device)
 
         A_mat = torch.as_tensor(
             self.incremental_model.A, dtype=torch.float32, device=self.device
