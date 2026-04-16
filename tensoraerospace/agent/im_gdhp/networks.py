@@ -105,9 +105,7 @@ class GDHPCritic(nn.Module):
         nn.init.uniform_(self.lambda_head.weight, -1e-3, 1e-3)
         nn.init.zeros_(self.lambda_head.bias)
 
-    def forward(
-        self, obs: torch.Tensor
-    ) -> tuple[torch.Tensor, torch.Tensor]:
+    def forward(self, obs: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
         """Return ``(J, λ)`` for a batch of augmented observations."""
         h = self.backbone(obs)
         j = self.j_head(h)

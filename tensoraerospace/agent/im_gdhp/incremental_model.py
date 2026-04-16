@@ -66,9 +66,7 @@ class IncrementalModelRLS:
         self._rng = np.random.default_rng(seed)
 
         n_theta = self.n_y + self.n_u
-        self.theta = self._rng.normal(
-            0.0, theta_init_scale, size=(n_theta, self.n_y)
-        )
+        self.theta = self._rng.normal(0.0, theta_init_scale, size=(n_theta, self.n_y))
         self.P = np.eye(n_theta, dtype=np.float64) * self.cov_init
 
         # Buffers used by the agent wrapper to form Δy, Δu.
