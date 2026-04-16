@@ -35,7 +35,10 @@ plugins:
               - Installation: guide/installation.md
               - Unity Environment: guide/unity_env.md
             - Aerospace Models:
-              - F16: model/f16.md
+              - F16:
+                - Linear Longitudinal: model/f16.md
+                - Nonlinear Longitudinal: model/f16_nonlinear_longitudinal.md
+                - Nonlinear 6-DoF Angular: model/f16_nonlinear_angular.md
               - B747: 
                 - Classic State-Space: model/b747.md
                 - Normalized State-Space: model/b747_imporove.md
@@ -65,6 +68,7 @@ plugins:
               - IHDP:
                 - Description: agent/ihdp.md
                 - Example with LinearLongitudinalF16‑v0: agent/ihdp/example.md
+              - IMGDHP: agent/imgdhp.md
               - HDP: agent/hdp.md
               - ADHDP: agent/adhdp.md
               - MPC: agent/mpc.md
@@ -143,7 +147,10 @@ plugins:
               - Установка: guide/installation.md
               - Unity-окружение: guide/unity_env.md
             - Объекты управления:
-              - F16: model/f16.md
+              - F16:
+                - Линейная продольная: model/f16.md
+                - Нелинейная продольная: model/f16_nonlinear_longitudinal.md
+                - Нелинейная 6-DoF угловая: model/f16_nonlinear_angular.md
               - B747: 
                 - Пространство состояний: model/b747.md
                 - Нормализованное управление: model/b747_imporove.md
@@ -172,6 +179,7 @@ plugins:
               - IHDP:
                 - Описание: agent/ihdp.md
                 - Пример LinearLongitudinalF16‑v0: agent/ihdp/example.md
+              - IMGDHP: agent/imgdhp.md
               - HDP: agent/hdp.md
               - ADHDP: agent/adhdp.md
               - MPC: agent/mpc.md
