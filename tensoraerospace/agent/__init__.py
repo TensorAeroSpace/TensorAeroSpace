@@ -24,6 +24,10 @@ from .gail.model import GAIL as GAIL  # noqa: F401
 from .hdp.model import HDP as HDP  # noqa: F401
 from .ihdp.model import IHDPAgent as IHDPAgent  # noqa: F401
 
+# Incremental Model-based GDHP (partial observability)
+from .im_gdhp.model import IMGDHPAgent as IMGDHPAgent  # noqa: F401
+from .im_gdhp.model import IMGDHPConfig as IMGDHPConfig  # noqa: F401
+
 # Backward compatibility alias
 from .mpc.mpc import MPC as MPC  # noqa: F401
 from .mpc.mpc import MPCAgent as MPCAgent  # noqa: F401
