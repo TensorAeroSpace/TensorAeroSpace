@@ -127,7 +127,7 @@ def _bounded_integral_cost(
     # = −2 · log(cosh(D)) — the form used below avoids NaNs at |D| ≫ 1.
     log_term = -2.0 * torch.log(torch.cosh(d_nn))
     Y_per = t * d_nn + 0.5 * log_term
-    return 2.0 * torch.dot(R * (u_bound ** 2), Y_per)
+    return 2.0 * torch.dot(R * (u_bound**2), Y_per)
 
 
 def _jacobians_per_output(
@@ -178,8 +178,9 @@ class ETDHPAgent:
         self,
         n_state: int,
         n_control: int,
-        state_transform: Callable[[np.ndarray, np.ndarray, int], np.ndarray]
-        | None = None,
+        state_transform: (
+            Callable[[np.ndarray, np.ndarray, int], np.ndarray] | None
+        ) = None,
         config: ETDHPConfig | None = None,
     ) -> None:
         self.n_state = int(n_state)
@@ -226,9 +227,7 @@ class ETDHPAgent:
         # statistics saturate quickly and behave worse than plain SGD.
         self.actor_opt = optim.SGD(self.actor.parameters(), lr=self.cfg.actor_lr)
         self.critic_opt = optim.SGD(self.critic.parameters(), lr=self.cfg.critic_lr)
-        self.model_opt = optim.Adam(
-            self.plant_model.parameters(), lr=self.cfg.model_lr
-        )
+        self.model_opt = optim.Adam(self.plant_model.parameters(), lr=self.cfg.model_lr)
 
         self.Q = torch.as_tensor(
             np.asarray(self.cfg.Q, dtype=np.float64),
@@ -324,9 +323,7 @@ class ETDHPAgent:
         """
         xs = torch.as_tensor(states, dtype=torch.float32, device=self.device)
         us = torch.as_tensor(actions, dtype=torch.float32, device=self.device)
-        xs_next = torch.as_tensor(
-            next_states, dtype=torch.float32, device=self.device
-        )
+        xs_next = torch.as_tensor(next_states, dtype=torch.float32, device=self.device)
         assert xs.shape[1] == self.n_state
         assert us.shape[1] == self.n_control
         assert xs_next.shape == xs.shape
@@ -452,9 +449,7 @@ class ETDHPAgent:
         self.actor.eval()
         with torch.no_grad():
             u_t, _ = self.actor(
-                torch.as_tensor(
-                    x_for_update, dtype=torch.float32, device=self.device
-                )
+                torch.as_tensor(x_for_update, dtype=torch.float32, device=self.device)
             )
         self._last_action = u_t.detach().cpu().numpy().astype(np.float64)
 
@@ -490,9 +485,7 @@ class ETDHPAgent:
         """
         loss_actor_fn = nn.MSELoss()
         loss_critic_fn = nn.MSELoss()
-        x_clean = torch.as_tensor(
-            x_np, dtype=torch.float32, device=self.device
-        ).clone()
+        x_clean = torch.as_tensor(x_np, dtype=torch.float32, device=self.device).clone()
 
         last_actor_loss = float("nan")
         last_critic_loss = float("nan")
@@ -595,8 +588,10 @@ class ETDHPAgent:
         """
         obs, _info = env.reset()
         self.reset()
-        ref = reference_signal if reference_signal is not None else getattr(
-            env, "reference_signal", None
+        ref = (
+            reference_signal
+            if reference_signal is not None
+            else getattr(env, "reference_signal", None)
         )
         dt = float(getattr(env, "dt", 1.0))
 
