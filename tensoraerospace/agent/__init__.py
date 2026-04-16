@@ -18,6 +18,10 @@ from .ddpg.model import DDPG as DDPG  # noqa: F401
 from .dqn.model import DQNAgent as DQNAgent  # noqa: F401
 from .dqn.model import Model as Model  # noqa: F401
 from .dsac.dsac import DSAC as DSAC  # noqa: F401
+
+# Event-triggered DHP (Sun et al., CEAS EuroGNC 2022)
+from .et_dhp.model import ETDHPAgent as ETDHPAgent  # noqa: F401
+from .et_dhp.model import ETDHPConfig as ETDHPConfig  # noqa: F401
 from .gail.model import GAIL as GAIL  # noqa: F401
 
 # Model-based HDP (standalone wrapper)
