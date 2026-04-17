@@ -1,6 +1,8 @@
-# Example: F-16 Control with IHDP (LinearLongitudinalF16-v0)
+# Walkthrough: F-16 control with IHDP (step-by-step)
 
-Below is a clear step-by-step example based on `example_ihdp_beautiful.ipynb`: from creating a reference signal to running IHDP and interpreting the plots. Answers to frequently asked questions are provided at the end.
+A clear step-by-step example based on `example_ihdp_beautiful.ipynb`: from creating the reference signal to running [IHDP](../../../agent/ihdp.md) and interpreting the plots. FAQ and practical tips are at the end.
+
+For the concise version of the same task, see [Example: IHDP on the linear F-16](example_ihdp.md). For the harder sinusoidal-tracking setup on the nonlinear plant, see [Example: IHDP on the nonlinear F-16](example_ihdp_nonlinear.md).
 
 -- [Step 1. Simulation time and reference signal](#step-1-simulation-time-and-reference-signal)
 
@@ -159,19 +161,19 @@ Compare the `alpha` trajectory with the reference signal and analyze the `wz` dy
 
 <!-- markdownlint-disable MD046 -->
 ```python
-env.model.plot_transient_process('alpha', tps, reference_signals[0], to_deg=True, figsize=(15, 4))
+env.unwrapped.model.plot_transient_process('alpha', tps, reference_signals[0], to_deg=True, figsize=(15, 4))
 ```
 <!-- markdownlint-enable MD046 -->
 
-![Angle of attack transient response](../../example/agent/ihdp/img/output_9_0.png){ width=960 }
+![Angle of attack transient response](img/output_9_0.png){ width=960 }
 
 <!-- markdownlint-disable MD046 -->
 ```python
-env.model.plot_state('wz', tps, to_deg=True, figsize=(15, 4))
+env.unwrapped.model.plot_state('wz', tps, to_deg=True, figsize=(15, 4))
 ```
 <!-- markdownlint-enable MD046 -->
 
-![Angular rate wz dynamics](../../example/agent/ihdp/img/output_10_1.png){ width=960 }
+![Angular rate wz dynamics](img/output_10_1.png){ width=960 }
 
 Expected signs of correct operation:
 
@@ -196,16 +198,21 @@ Expected signs of correct operation:
 
 ## Frequently asked questions and tips {#frequently-asked-questions-and-tips}
 
-- Why is persistent excitation (PE) added?
+- **Why is persistent excitation (PE) added?**
   For quality identification of the incremental model, the input must have rich dynamics; otherwise the actor and critic quickly "get stuck."
 
-- How to choose the critic's `Q_weights`?
+- **How to choose the critic's `Q_weights`?**
   Increasing the weight on the tracking error (e.g., on `alpha`) raises the priority of tracking accuracy relative to control effort.
 
-- What to do about control chattering?
+- **What to do about control chattering?**
   Reduce the `learning_rate`, increase `WB_limits` carefully, limit `maximum_input`/`maximum_q_rate`, and check feature scaling.
 
-- How to speed up convergence?
+- **How to speed up convergence?**
   Increase the actor/critic `learning_rate`, but monitor stability; increase the PE amplitude if identification is slow.
 
-See also the algorithm overview and hyperparameters: [IHDP](../../agent/ihdp.md).
+## See also
+
+- [IHDP algorithm overview and hyperparameters](../../../agent/ihdp.md)
+- [Example: IHDP on the linear F-16](example_ihdp.md) — concise variant of the same setup.
+- [Example: IHDP on the nonlinear F-16](example_ihdp_nonlinear.md) — sinusoidal tracking with feedforward.
+- [Example: IHDP with a mid-flight failure](../../failure/ihdp-failure.md) — how online identification recovers from a plant change.
