@@ -1,0 +1,92 @@
+name: 📊 Coveralls (develop)
+run-name: Coverage upload for develop — ${{ github.sha }}
+
+# Runs after a merge / direct push to develop and uploads the resulting
+# coverage report to Coveralls. Produces the "branch=develop" baseline
+# against which the PR-time workflow in `action.yml` computes diff-coverage.
+# Without this, PR diffs would compare to the (often stale) main baseline.
+
+on:
+  push:
+    branches:
+      - develop
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  coverage:
+    name: 🐍 Test + upload to Coveralls
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 🧹 Free up disk space
+        run: |
+          sudo rm -rf /usr/share/dotnet
+          sudo rm -rf /usr/local/lib/android
+          sudo rm -rf /opt/ghc
+          sudo rm -rf /opt/hostedtoolcache/CodeQL
+          docker system prune -af --volumes || true
+          sudo apt-get clean
+
+      - name: 📥 Checkout code
+        uses: actions/checkout@v5
+        with:
+          # Full history helps Coveralls attribute lines to commits.
+          fetch-depth: 0
+
+      - name: 🐍 Set up Python 3.10
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.10'
+
+      - name: 📦 Cache Poetry dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/pypoetry
+            ~/.cache/pip
+          key: ubuntu-latest-poetry-3.10-${{ hashFiles('**/poetry.lock') }}
+          restore-keys: |
+            ubuntu-latest-poetry-3.10-
+
+      - name: 🎭 Install Poetry
+        run: |
+          python -m ensurepip --upgrade || true
+          python -m pip install --upgrade pip
+          python -m pip install poetry
+
+      - name: ⚙️ Configure Poetry
+        run: |
+          poetry config virtualenvs.create true
+          poetry config virtualenvs.in-project true
+
+      - name: 🔄 Sync lock file
+        run: |
+          if ! poetry check --lock; then
+            echo "Lock file is outdated, updating..."
+            poetry lock
+          fi
+
+      - name: 📚 Install dependencies
+        run: |
+          poetry install --with dev
+
+      - name: 🧪 Run tests with coverage
+        run: |
+          poetry run pytest \
+            --cov=tensoraerospace \
+            --cov-report=xml:coverage.xml \
+            --cov-report=term-missing:skip-covered \
+            --ignore=tests/agents/a2c_narx_learner_test.py \
+            --ignore=tests/optimization/ray_test.py
+
+      - name: ☁️ Upload coverage to Coveralls
+        if: ${{ hashFiles('coverage.xml') != '' }}
+        uses: coverallsapp/github-action@v2
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          file: ./coverage.xml
+          format: cobertura
+          flag-name: develop
