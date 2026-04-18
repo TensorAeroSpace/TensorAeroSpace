@@ -31,8 +31,12 @@ All autograd happens inside this module; the caller only sees a
 
 from __future__ import annotations
 
+import dataclasses
+import datetime
+import json
 from dataclasses import dataclass, field
-from typing import Any, Callable, Sequence
+from pathlib import Path
+from typing import Any, Callable, Optional, Sequence, Union
 
 import numpy as np
 import torch
@@ -618,3 +622,281 @@ class ETDHPAgent:
             "ep_return": ep_return,
             "trigger_ratio": float(triggers) / max(1, steps),
         }
+
+    # ------------------------------------------------------------------
+    # Persistence — local save / load and Hugging Face Hub round-trip
+    # ------------------------------------------------------------------
+    def get_param_env(self) -> dict[str, Any]:
+        """Build a JSON-serialisable config for :meth:`save`.
+
+        The ``state_transform`` callable is never serialised — on load the
+        caller must supply it again via :meth:`from_pretrained` /
+        :meth:`_load_from_dir`. This matches how Gymnasium treats other
+        non-picklable env-side components.
+        """
+        agent_name = f"{self.__class__.__module__}.{self.__class__.__name__}"
+        cfg_dict = dataclasses.asdict(self.cfg)
+        # Drop runtime-only buffer.
+        cfg_dict.pop("history", None)
+        # Tuples → lists for JSON stability.
+        for key, value in list(cfg_dict.items()):
+            if isinstance(value, tuple):
+                cfg_dict[key] = list(value)
+        return {
+            "policy": {
+                "name": agent_name,
+                "params": {
+                    "n_state": self.n_state,
+                    "n_control": self.n_control,
+                },
+                "config": cfg_dict,
+            },
+        }
+
+    def save(
+        self,
+        path: Union[str, Path, None] = None,
+        *,
+        save_gradients: bool = False,
+    ) -> str:
+        """Write the agent to a directory.
+
+        Files produced:
+            * ``config.json`` — constructor kwargs + serialised
+              :class:`ETDHPConfig`.
+            * ``actor.pth`` / ``critic.pth`` / ``plant_model.pth`` —
+              PyTorch state dicts.
+            * ``event_trigger.json`` — supervisor counters and the
+              state captured at the last trigger.
+            * ``actor_optim.pth`` / ``critic_optim.pth`` /
+              ``model_optim.pth`` — optimiser state dicts (only when
+              ``save_gradients=True``).
+
+        Args:
+            path: Base directory (``None`` → CWD).
+            save_gradients: Persist optimiser states for resume.
+
+        Returns:
+            Absolute path to the created run directory.
+        """
+        base = Path.cwd() if path is None else Path(path)
+        date_str = datetime.datetime.now().strftime("%b%d_%H-%M-%S")
+        run_dir = base / f"{date_str}_{self.__class__.__name__}"
+        run_dir.mkdir(parents=True, exist_ok=True)
+
+        # Config
+        with open(run_dir / "config.json", "w", encoding="utf-8") as f:
+            json.dump(self.get_param_env(), f, indent=2)
+
+        # Torch networks
+        torch.save(self.actor.state_dict(), run_dir / "actor.pth")
+        torch.save(self.critic.state_dict(), run_dir / "critic.pth")
+        torch.save(self.plant_model.state_dict(), run_dir / "plant_model.pth")
+
+        # Event trigger internal state (array → list for JSON).
+        et = self.event_trigger
+        et_state = {
+            "rho": float(et.rho),
+            "trigger_first_step": bool(et.trigger_first_step),
+            "min_floor": float(et.min_floor),
+            "num_triggers": int(et.num_triggers),
+            "step_at_trigger": int(et.step_at_trigger),
+            "norm_state_at_trigger": float(et.norm_state_at_trigger),
+            "last_condition": float(et.last_condition),
+            "last_norm": float(et.last_norm),
+            "first_call_done": bool(et._first_call_done),
+            "state_at_trigger": (
+                et.state_at_trigger.tolist()
+                if et.state_at_trigger is not None
+                else None
+            ),
+        }
+        with open(run_dir / "event_trigger.json", "w", encoding="utf-8") as f:
+            json.dump(et_state, f, indent=2)
+
+        if save_gradients:
+            torch.save(self.actor_opt.state_dict(), run_dir / "actor_optim.pth")
+            torch.save(self.critic_opt.state_dict(), run_dir / "critic_optim.pth")
+            torch.save(self.model_opt.state_dict(), run_dir / "model_optim.pth")
+
+        return str(run_dir)
+
+    @classmethod
+    def _load_from_dir(
+        cls,
+        folder: Union[str, Path],
+        *,
+        state_transform: (
+            Callable[[np.ndarray, np.ndarray, int], np.ndarray] | None
+        ) = None,
+        load_gradients: bool = False,
+    ) -> "ETDHPAgent":
+        """Reconstruct an agent from a :meth:`save` directory.
+
+        Args:
+            folder: Directory previously created by :meth:`save`.
+            state_transform: Optional callable re-attached to the loaded
+                agent. ``save()`` cannot persist callables; supply the
+                same transform here if you used one during training.
+            load_gradients: Also restore optimiser state dicts.
+        """
+        folder_p = Path(folder)
+        config_path = folder_p / "config.json"
+        if not config_path.exists():
+            raise FileNotFoundError(f"Missing config.json in {str(folder_p)!r}")
+
+        with open(config_path, "r", encoding="utf-8") as f:
+            cfg = json.load(f)
+        policy = cfg.get("policy", {})
+        params = policy.get("params", {})
+        cfg_dict = dict(policy.get("config", {}))
+
+        # Device fallback (cuda/mps → cpu when unavailable).
+        dev = str(cfg_dict.get("device", "cpu"))
+        if dev.startswith("cuda") and not torch.cuda.is_available():
+            cfg_dict["device"] = "cpu"
+        elif dev.startswith("mps") and not (
+            hasattr(torch.backends, "mps") and torch.backends.mps.is_available()
+        ):
+            cfg_dict["device"] = "cpu"
+
+        agent_cfg = ETDHPConfig(**cfg_dict)
+        agent = cls(
+            n_state=params["n_state"],
+            n_control=params["n_control"],
+            state_transform=state_transform,
+            config=agent_cfg,
+        )
+
+        # Torch networks
+        agent.actor.load_state_dict(
+            torch.load(
+                folder_p / "actor.pth",
+                map_location=agent.device,
+                weights_only=False,
+            )
+        )
+        agent.critic.load_state_dict(
+            torch.load(
+                folder_p / "critic.pth",
+                map_location=agent.device,
+                weights_only=False,
+            )
+        )
+        agent.plant_model.load_state_dict(
+            torch.load(
+                folder_p / "plant_model.pth",
+                map_location=agent.device,
+                weights_only=False,
+            )
+        )
+
+        # Event trigger
+        et_path = folder_p / "event_trigger.json"
+        if et_path.exists():
+            with open(et_path, "r", encoding="utf-8") as f:
+                et_state = json.load(f)
+            et = agent.event_trigger
+            et.num_triggers = int(et_state.get("num_triggers", 0))
+            et.step_at_trigger = int(et_state.get("step_at_trigger", 0))
+            et.norm_state_at_trigger = float(et_state.get("norm_state_at_trigger", 0.0))
+            et.last_condition = float(et_state.get("last_condition", 0.0))
+            et.last_norm = float(et_state.get("last_norm", 0.0))
+            et._first_call_done = bool(et_state.get("first_call_done", False))
+            sat = et_state.get("state_at_trigger")
+            et.state_at_trigger = (
+                np.asarray(sat, dtype=np.float64) if sat is not None else None
+            )
+
+        # Optimiser states
+        if load_gradients:
+            for attr, fname in (
+                ("actor_opt", "actor_optim.pth"),
+                ("critic_opt", "critic_optim.pth"),
+                ("model_opt", "model_optim.pth"),
+            ):
+                pth = folder_p / fname
+                if pth.exists():
+                    getattr(agent, attr).load_state_dict(
+                        torch.load(
+                            pth,
+                            map_location=agent.device,
+                            weights_only=False,
+                        )
+                    )
+
+        return agent
+
+    @classmethod
+    def from_pretrained(
+        cls,
+        repo_name: str,
+        access_token: Optional[str] = None,
+        version: Optional[str] = None,
+        state_transform: (
+            Callable[[np.ndarray, np.ndarray, int], np.ndarray] | None
+        ) = None,
+        load_gradients: bool = False,
+    ) -> "ETDHPAgent":
+        """Load an agent from a local directory or the Hugging Face Hub.
+
+        Args:
+            repo_name: Local folder path, or ``namespace/repo_name`` on
+                the Hugging Face Hub.
+            access_token: Hub access token for private repos.
+            version: Hub revision / branch / tag.
+            state_transform: Re-attach the observation-to-regulation
+                transform used during training (optional but required
+                for tracking tasks).
+            load_gradients: Also restore optimiser state dicts.
+
+        Returns:
+            ETDHPAgent: Reconstructed agent.
+        """
+        p = Path(str(repo_name)).expanduser()
+        if p.is_dir():
+            return cls._load_from_dir(
+                p,
+                state_transform=state_transform,
+                load_gradients=load_gradients,
+            )
+
+        pathlike_prefixes = ("./", "../", "/", "~")
+        if str(repo_name).startswith(pathlike_prefixes):
+            raise FileNotFoundError(
+                f"Local directory not found: '{repo_name}'." " Please check the path."
+            )
+
+        from huggingface_hub import snapshot_download
+
+        folder_path = snapshot_download(
+            repo_id=repo_name, token=access_token, revision=version
+        )
+        return cls._load_from_dir(
+            folder_path,
+            state_transform=state_transform,
+            load_gradients=load_gradients,
+        )
+
+    def publish_to_hub(
+        self,
+        repo_name: str,
+        folder_path: Union[str, Path],
+        access_token: Optional[str] = None,
+    ) -> None:
+        """Upload a :meth:`save` directory to the Hugging Face Hub.
+
+        Args:
+            repo_name: Target repository id, e.g. ``"me/my-etdhp"``.
+            folder_path: Local folder produced by :meth:`save`.
+            access_token: Hub access token.
+        """
+        from huggingface_hub import HfApi
+
+        api = HfApi()
+        api.upload_folder(
+            folder_path=str(folder_path),
+            repo_id=repo_name,
+            repo_type="model",
+            token=access_token,
+        )
