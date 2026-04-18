@@ -100,13 +100,20 @@ def test_imgdhp_agent_reset_clears_rolling_history():
     from tensoraerospace.agent.im_gdhp import IMGDHPAgent, IMGDHPConfig
 
     cfg = IMGDHPConfig(
-        actor_hidden=(8, 8), critic_hidden=(8, 8),
-        actor_lr=1e-3, critic_lr=1e-3,
-        track_Q=[1.0], u_max=1.0, seed=0,
+        actor_hidden=(8, 8),
+        critic_hidden=(8, 8),
+        actor_lr=1e-3,
+        critic_lr=1e-3,
+        track_Q=[1.0],
+        u_max=1.0,
+        seed=0,
         warmup_steps=1,
     )
     agent = IMGDHPAgent(
-        n_obs=2, n_action=1, reference_size=1, tracking_indices=[0],
+        n_obs=2,
+        n_action=1,
+        reference_size=1,
+        tracking_indices=[0],
         config=cfg,
     )
     # A predict+learn cycle should populate the rolling buffer; reset clears it.
@@ -157,6 +164,7 @@ def test_et_dhp_event_trigger_reset_rearms():
 # --- SAC save/load missing branches ---------------------------------------
 def test_sac_close_before_train_is_safe():
     import gymnasium as gym
+
     from tensoraerospace.agent.sac import SAC
 
     env = gym.make("Pendulum-v1")

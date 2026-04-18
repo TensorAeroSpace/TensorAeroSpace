@@ -13,7 +13,9 @@ from tensoraerospace.envs.f16.nonlinear_longitudinal import (
 )
 
 
-def _ref_sin(n: int, amp_deg: float = 2.0, freq_hz: float = 0.1, dt: float = 0.01) -> np.ndarray:
+def _ref_sin(
+    n: int, amp_deg: float = 2.0, freq_hz: float = 0.1, dt: float = 0.01
+) -> np.ndarray:
     t = np.arange(n) * dt
     return (math.radians(amp_deg) * np.sin(2 * np.pi * freq_hz * t)).reshape(1, -1)
 
@@ -169,10 +171,14 @@ def test_action_clipping_bounds_effect_on_state():
     # should give the same next state as sending exactly ±max_action_value.
     ref = _ref_sin(10)
     env_big = NonlinearLongitudinalF16(
-        initial_state=np.zeros(4), reference_signal=ref, number_time_steps=10,
+        initial_state=np.zeros(4),
+        reference_signal=ref,
+        number_time_steps=10,
     )
     env_bounded = NonlinearLongitudinalF16(
-        initial_state=np.zeros(4), reference_signal=ref, number_time_steps=10,
+        initial_state=np.zeros(4),
+        reference_signal=ref,
+        number_time_steps=10,
     )
     env_big.reset()
     env_bounded.reset()

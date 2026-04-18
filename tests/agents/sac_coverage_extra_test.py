@@ -26,9 +26,7 @@ def test_filter_kwargs_for_init_drops_unexpected():
         def __init__(self, a: int, b: str = "x"):  # noqa: D401
             pass
 
-    filtered = SAC._filter_kwargs_for_init(
-        Dummy, {"a": 1, "b": "y", "c": "extra"}
-    )
+    filtered = SAC._filter_kwargs_for_init(Dummy, {"a": 1, "b": "y", "c": "extra"})
     assert filtered == {"a": 1, "b": "y"}
 
 
