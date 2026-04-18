@@ -41,8 +41,12 @@ any prior knowledge of the plant dynamics.
 
 from __future__ import annotations
 
+import dataclasses
+import datetime
+import json
 from dataclasses import dataclass, field
-from typing import Any, Sequence
+from pathlib import Path
+from typing import Any, Optional, Sequence, Union
 
 import numpy as np
 import torch
@@ -689,3 +693,241 @@ class IMGDHPAgent:
                     f"rls|eps|={last_metrics['rls_pred_error_norm']:.4f}"
                 )
         return self.history
+
+    # ------------------------------------------------------------------
+    # Persistence — local save / load and Hugging Face Hub round-trip
+    # ------------------------------------------------------------------
+    def get_param_env(self) -> dict[str, Any]:
+        """Build a JSON-serialisable config for :meth:`save`.
+
+        The agent has no bound environment (observations are fed in by
+        the caller), so only the constructor signature and config
+        dataclass are persisted.
+        """
+        agent_name = f"{self.__class__.__module__}.{self.__class__.__name__}"
+        cfg_dict = dataclasses.asdict(self.cfg)
+        # ``cfg.history`` is a runtime cache (per-episode metrics) — never
+        # persisted; reset to an empty dict on load.
+        cfg_dict.pop("history", None)
+        # Tuples → lists so the round-trip through JSON is type-stable.
+        for key, value in list(cfg_dict.items()):
+            if isinstance(value, tuple):
+                cfg_dict[key] = list(value)
+        return {
+            "policy": {
+                "name": agent_name,
+                "params": {
+                    "n_obs": self.n_obs,
+                    "n_action": self.n_action,
+                    "reference_size": self.reference_size,
+                    "tracking_indices": list(self.tracking_indices),
+                },
+                "config": cfg_dict,
+            },
+        }
+
+    def save(
+        self,
+        path: Union[str, Path, None] = None,
+        *,
+        save_gradients: bool = False,
+    ) -> str:
+        """Write the agent to a directory.
+
+        Files produced:
+            * ``config.json`` — constructor kwargs + serialised
+              :class:`IMGDHPConfig`.
+            * ``actor.pth`` / ``critic.pth`` / ``target_critic.pth`` —
+              PyTorch state dicts for the three networks.
+            * ``incremental_model.npz`` — RLS ``theta`` and ``P``
+              matrices plus scalar hyper-parameters.
+            * ``actor_optim.pth`` / ``critic_optim.pth`` — optimiser
+              state dicts (only when ``save_gradients=True``).
+
+        Args:
+            path: Base directory. If ``None``, uses CWD.
+            save_gradients: Persist optimiser states so training can
+                resume bitwise-identically from the checkpoint.
+
+        Returns:
+            Absolute path to the created run directory.
+        """
+        base = Path.cwd() if path is None else Path(path)
+        date_str = datetime.datetime.now().strftime("%b%d_%H-%M-%S")
+        run_dir = base / f"{date_str}_{self.__class__.__name__}"
+        run_dir.mkdir(parents=True, exist_ok=True)
+
+        # Config
+        with open(run_dir / "config.json", "w", encoding="utf-8") as f:
+            json.dump(self.get_param_env(), f, indent=2)
+
+        # Torch networks
+        torch.save(self.actor.state_dict(), run_dir / "actor.pth")
+        torch.save(self.critic.state_dict(), run_dir / "critic.pth")
+        torch.save(self.target_critic.state_dict(), run_dir / "target_critic.pth")
+
+        # RLS incremental model — theta + P + scalars.
+        rls = self.incremental_model
+        np.savez(
+            run_dir / "incremental_model.npz",
+            theta=rls.theta,
+            P=rls.P,
+            forgetting=np.asarray(rls.alpha),
+            cov_init=np.asarray(rls.cov_init),
+            num_updates=np.asarray(rls.num_updates),
+        )
+
+        if save_gradients:
+            torch.save(self.actor_opt.state_dict(), run_dir / "actor_optim.pth")
+            torch.save(self.critic_opt.state_dict(), run_dir / "critic_optim.pth")
+
+        return str(run_dir)
+
+    @classmethod
+    def _load_from_dir(
+        cls,
+        folder: Union[str, Path],
+        *,
+        load_gradients: bool = False,
+    ) -> "IMGDHPAgent":
+        """Reconstruct an agent from a :meth:`save` directory."""
+        folder_p = Path(folder)
+        config_path = folder_p / "config.json"
+        if not config_path.exists():
+            raise FileNotFoundError(f"Missing config.json in {str(folder_p)!r}")
+
+        with open(config_path, "r", encoding="utf-8") as f:
+            cfg = json.load(f)
+        policy = cfg.get("policy", {})
+        params = policy.get("params", {})
+        cfg_dict = dict(policy.get("config", {}))
+
+        # Device fallback — a checkpoint saved on cuda/mps must still load
+        # on a CPU-only host.
+        dev = str(cfg_dict.get("device", "cpu"))
+        if dev.startswith("cuda") and not torch.cuda.is_available():
+            cfg_dict["device"] = "cpu"
+        elif dev.startswith("mps") and not (
+            hasattr(torch.backends, "mps") and torch.backends.mps.is_available()
+        ):
+            cfg_dict["device"] = "cpu"
+
+        agent_cfg = IMGDHPConfig(**cfg_dict)
+        agent = cls(
+            n_obs=params["n_obs"],
+            n_action=params["n_action"],
+            reference_size=params.get("reference_size", 1),
+            tracking_indices=params.get("tracking_indices", [0]),
+            config=agent_cfg,
+        )
+
+        # Torch networks
+        agent.actor.load_state_dict(
+            torch.load(
+                folder_p / "actor.pth",
+                map_location=agent.device,
+                weights_only=False,
+            )
+        )
+        agent.critic.load_state_dict(
+            torch.load(
+                folder_p / "critic.pth",
+                map_location=agent.device,
+                weights_only=False,
+            )
+        )
+        target_path = folder_p / "target_critic.pth"
+        if target_path.exists():
+            agent.target_critic.load_state_dict(
+                torch.load(target_path, map_location=agent.device, weights_only=False)
+            )
+        else:
+            # Legacy checkpoint without a target critic — mirror online.
+            agent.target_critic.load_state_dict(agent.critic.state_dict())
+
+        # RLS incremental model
+        rls_path = folder_p / "incremental_model.npz"
+        if rls_path.exists():
+            with np.load(rls_path) as npz:
+                agent.incremental_model.theta = npz["theta"]
+                agent.incremental_model.P = npz["P"]
+                agent.incremental_model.alpha = float(npz["forgetting"])
+                agent.incremental_model.cov_init = float(npz["cov_init"])
+                agent.incremental_model.num_updates = int(npz["num_updates"])
+
+        # Optimiser states
+        if load_gradients:
+            actor_opt = folder_p / "actor_optim.pth"
+            critic_opt = folder_p / "critic_optim.pth"
+            if actor_opt.exists():
+                agent.actor_opt.load_state_dict(
+                    torch.load(actor_opt, map_location=agent.device, weights_only=False)
+                )
+            if critic_opt.exists():
+                agent.critic_opt.load_state_dict(
+                    torch.load(
+                        critic_opt, map_location=agent.device, weights_only=False
+                    )
+                )
+
+        return agent
+
+    @classmethod
+    def from_pretrained(
+        cls,
+        repo_name: str,
+        access_token: Optional[str] = None,
+        version: Optional[str] = None,
+        load_gradients: bool = False,
+    ) -> "IMGDHPAgent":
+        """Load an agent from a local directory or Hugging Face Hub.
+
+        Args:
+            repo_name: Local folder path, or ``namespace/repo_name`` on
+                the Hugging Face Hub.
+            access_token: Hub access token for private repos.
+            version: Hub revision / branch / tag.
+            load_gradients: Also restore optimiser state dicts.
+
+        Returns:
+            IMGDHPAgent: Reconstructed agent.
+        """
+        p = Path(str(repo_name)).expanduser()
+        if p.is_dir():
+            return cls._load_from_dir(p, load_gradients=load_gradients)
+
+        pathlike_prefixes = ("./", "../", "/", "~")
+        if str(repo_name).startswith(pathlike_prefixes):
+            raise FileNotFoundError(
+                f"Local directory not found: '{repo_name}'." " Please check the path."
+            )
+
+        from huggingface_hub import snapshot_download
+
+        folder_path = snapshot_download(
+            repo_id=repo_name, token=access_token, revision=version
+        )
+        return cls._load_from_dir(folder_path, load_gradients=load_gradients)
+
+    def publish_to_hub(
+        self,
+        repo_name: str,
+        folder_path: Union[str, Path],
+        access_token: Optional[str] = None,
+    ) -> None:
+        """Upload a :meth:`save` directory to the Hugging Face Hub.
+
+        Args:
+            repo_name: Target repository id, e.g. ``"me/my-imgdhp"``.
+            folder_path: Local folder produced by :meth:`save`.
+            access_token: Hub access token.
+        """
+        from huggingface_hub import HfApi
+
+        api = HfApi()
+        api.upload_folder(
+            folder_path=str(folder_path),
+            repo_id=repo_name,
+            repo_type="model",
+            token=access_token,
+        )
