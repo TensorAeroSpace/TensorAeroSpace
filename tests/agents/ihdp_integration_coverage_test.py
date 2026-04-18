@@ -172,7 +172,9 @@ def test_ihdp_critic_train_step_runs():
     # The critic's gradient step is run from inside agent.predict, so exercising
     # a roll-out implies the critic weights change.
     agent = _roll(type_PE="combined")
-    params_now = [p.detach().cpu().numpy().copy() for p in agent.critic.model.parameters()]
+    params_now = [
+        p.detach().cpu().numpy().copy() for p in agent.critic.model.parameters()
+    ]
     # After another step the params may differ (learning is stochastic but the
     # test here just checks the path ran without error).
     assert all(p is not None for p in params_now)

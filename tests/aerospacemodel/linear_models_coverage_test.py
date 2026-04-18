@@ -9,8 +9,8 @@ single pass.
 
 from __future__ import annotations
 
-import numpy as np
 import matplotlib
+import numpy as np
 import pytest
 
 matplotlib.use("Agg")
@@ -29,10 +29,9 @@ from tensoraerospace.aerospacemodel.supersonic.linear.longitudinal.model import 
 from tensoraerospace.aerospacemodel.supersonic.linear.longitudinal.output_based import (  # noqa: E402
     LongitudinalSuperSonic as LongSSOutput,
 )
-from tensoraerospace.aerospacemodel.ultrastick import Ultrastick  # noqa: E402
 from tensoraerospace.aerospacemodel.uav import LongitudinalUAV  # noqa: E402
+from tensoraerospace.aerospacemodel.ultrastick import Ultrastick  # noqa: E402
 from tensoraerospace.aerospacemodel.x15 import LongitudinalX15  # noqa: E402
-
 
 # Each spec: (class, n_states, n_controls, state_name, ctrl_name, plot_name).
 #
@@ -45,24 +44,24 @@ from tensoraerospace.aerospacemodel.x15 import LongitudinalX15  # noqa: E402
 # plot_output / get_output, so it's only in ``ALL_MODELS``. This split avoids
 # the test collector having to skip anything.
 ALL_MODELS: list[tuple] = [
-    (ELVRocket,              3, 1, "alpha", "ele"),
-    (LongitudinalUAV,        4, 1, "w",     "ele"),
-    (LongitudinalX15,        4, 1, "w",     "ele"),
-    (Ultrastick,             5, 2, "w",     "ele"),
-    (LongSS,                 4, 1, "q",     "ele"),
-    (LongSSOutput,           4, 1, "q",     "ele"),
-    (DirectionalSuperSonic,  5, 2, "v",     "ail"),
-    (LongitudinalF16,        4, 1, "alpha", "ele"),
+    (ELVRocket, 3, 1, "alpha", "ele"),
+    (LongitudinalUAV, 4, 1, "w", "ele"),
+    (LongitudinalX15, 4, 1, "w", "ele"),
+    (Ultrastick, 5, 2, "w", "ele"),
+    (LongSS, 4, 1, "q", "ele"),
+    (LongSSOutput, 4, 1, "q", "ele"),
+    (DirectionalSuperSonic, 5, 2, "v", "ail"),
+    (LongitudinalF16, 4, 1, "alpha", "ele"),
 ]
 
 PLOTTING_MODELS: list[tuple] = [
-    (ELVRocket,              3, 1, "alpha", "ele", "alpha"),
-    (LongitudinalUAV,        4, 1, "w",     "ele", "w"),
-    (LongitudinalX15,        4, 1, "w",     "ele", "w"),
-    (Ultrastick,             5, 2, "w",     "ele", "w"),
-    (LongSS,                 4, 1, "q",     "ele", "q"),
-    (LongSSOutput,           4, 1, "q",     "ele", "q"),
-    (DirectionalSuperSonic,  5, 2, "v",     "ail", "phi"),
+    (ELVRocket, 3, 1, "alpha", "ele", "alpha"),
+    (LongitudinalUAV, 4, 1, "w", "ele", "w"),
+    (LongitudinalX15, 4, 1, "w", "ele", "w"),
+    (Ultrastick, 5, 2, "w", "ele", "w"),
+    (LongSS, 4, 1, "q", "ele", "q"),
+    (LongSSOutput, 4, 1, "q", "ele", "q"),
+    (DirectionalSuperSonic, 5, 2, "v", "ail", "phi"),
 ]
 
 

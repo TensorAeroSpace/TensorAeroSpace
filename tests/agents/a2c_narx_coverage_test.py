@@ -142,9 +142,7 @@ def test_a2c_learner_learn_updates_nets(simple_env, learner):
     learner.learn(memory, steps=runner.steps, discount_rewards=True)
     params_after = [p.detach().clone() for p in learner.actor.parameters()]
     # At least one parameter must have moved.
-    deltas = [
-        float((a - b).abs().sum()) for a, b in zip(params_after, params_before)
-    ]
+    deltas = [float((a - b).abs().sum()) for a, b in zip(params_after, params_before)]
     assert max(deltas) > 0.0
 
 
@@ -176,9 +174,7 @@ def test_save_and_load_round_trip(tmp_path, simple_env, learner):
     # Load back with gradients.
     restored = A2CLearner._load(save_dir, load_gradients=True)
     # Actor weights match bitwise after round-trip.
-    for p_orig, p_new in zip(
-        learner.actor.parameters(), restored.actor.parameters()
-    ):
+    for p_orig, p_new in zip(learner.actor.parameters(), restored.actor.parameters()):
         torch.testing.assert_close(p_orig, p_new)
 
 
@@ -242,7 +238,9 @@ def test_from_pretrained_via_snapshot_download(tmp_path, learner, monkeypatch):
     # Stub snapshot_download so the Hub code path is exercised without network.
     save_dir = learner.save(tmp_path)
     fake_mod = types.ModuleType("huggingface_hub")
-    fake_mod.snapshot_download = lambda repo_id, token=None, revision=None: str(save_dir)
+    fake_mod.snapshot_download = lambda repo_id, token=None, revision=None: str(
+        save_dir
+    )
     monkeypatch.setitem(sys.modules, "huggingface_hub", fake_mod)
     # A repo id that does NOT look like a local path routes through snapshot_download.
     restored = A2CLearner.from_pretrained("some-user/some-repo")

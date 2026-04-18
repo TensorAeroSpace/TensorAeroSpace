@@ -142,7 +142,5 @@ def test_critic_compute_one_step_cost_method_exists_or_skip():
     # training loop, but the exact method name changed over time. Just
     # ensure at least one of the expected cost-related attributes exists.
     c = _mk()
-    has_any = any(
-        hasattr(c, name) for name in ("store_c", "ct", "compute_ct")
-    )
+    has_any = any(hasattr(c, name) for name in ("store_c", "ct", "compute_ct"))
     assert has_any
