@@ -1043,10 +1043,31 @@ class A2CWithNARXCritic(A2C):
         clip_grad_norm_(self.actor_optim, self.max_grad_norm)
         self.actor_optim.step()
 
-        # Logging
-        self.writer.add_scalar("Loss/Actor", actor_loss, global_step=steps)
-        self.writer.add_scalar("Loss/Critic", critic_loss, global_step=steps)
-        self.writer.add_scalar("Advantage/Mean", advantage.mean(), global_step=steps)
+        # Logging (canonical TB metrics).
         self.writer.add_scalar(
-            "Policy/Action_Std", norm_dists.stddev.mean(), global_step=steps
+            schema.LOSS_ACTOR, float(actor_loss.detach()), env_step=steps
+        )
+        self.writer.add_scalar(
+            schema.LOSS_CRITIC, float(critic_loss.detach()), env_step=steps
+        )
+        self.writer.add_scalar(
+            schema.A2C.ADVANTAGE_MEAN,
+            float(advantage.detach().mean()),
+            env_step=steps,
+        )
+        self.writer.add_scalar(
+            schema.POLICY_ACTION_STD,
+            float(norm_dists.stddev.detach().mean()),
+            env_step=steps,
+        )
+
+        # Training counters (mandatory minimum tier).
+        self.update_count += 1
+        self.writer.add_scalar(
+            schema.TRAIN_UPDATES, int(self.update_count), env_step=steps
+        )
+        self.writer.add_scalar(
+            schema.TRAIN_LR,
+            float(self.actor_optim.param_groups[0]["lr"]),
+            env_step=steps,
         )
