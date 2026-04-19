@@ -35,9 +35,13 @@ def test_vff_rls_converges_on_known_linear_system():
     rng = np.random.default_rng(0)
     G_true = np.array([[-2.0, 0.1], [0.05, -1.5]], dtype=np.float64)
     rls = VFFRLSEstimator(
-        n_y=2, n_u=2,
-        forgetting_min=0.8, forgetting_max=0.9999,
-        eps_sensitivity=5.0, cov_init=1e3, seed=0,
+        n_y=2,
+        n_u=2,
+        forgetting_min=0.8,
+        forgetting_max=0.9999,
+        eps_sensitivity=5.0,
+        cov_init=1e3,
+        seed=0,
     )
     for _ in range(500):
         du = rng.normal(size=2) * 0.5
@@ -54,8 +58,10 @@ def test_vff_rls_lambda_drops_on_large_residuals():
     on the initial tick.
     """
     rls = VFFRLSEstimator(
-        n_y=1, n_u=1,
-        forgetting_min=0.5, forgetting_max=0.999,
+        n_y=1,
+        n_u=1,
+        forgetting_min=0.5,
+        forgetting_max=0.999,
         eps_sensitivity=0.1,
     )
     rls.update(np.array([1.0]), np.array([10.0]))
@@ -167,12 +173,19 @@ def _run_closed_loop(agent, G_true, ref, n_steps=500):
 
 def _mk_agent(**cfg_overrides) -> AAINDIAgent:
     defaults = dict(
-        dt=0.01, ref_wn=5.0, ref_zeta=0.7,
-        u_magnitude_limit=25.0, u_rate_limit=200.0,
-        vff_forgetting_min=0.9, vff_forgetting_max=0.999,
-        vff_eps_sensitivity=2.0, vff_cov_init=10.0,
-        sensor_cutoff_hz=50.0, bias_forgetting=0.995,
-        enable_bias_correction=False, seed=0,
+        dt=0.01,
+        ref_wn=5.0,
+        ref_zeta=0.7,
+        u_magnitude_limit=25.0,
+        u_rate_limit=200.0,
+        vff_forgetting_min=0.9,
+        vff_forgetting_max=0.999,
+        vff_eps_sensitivity=2.0,
+        vff_cov_init=10.0,
+        sensor_cutoff_hz=50.0,
+        bias_forgetting=0.995,
+        enable_bias_correction=False,
+        seed=0,
     )
     defaults.update(cfg_overrides)
     return AAINDIAgent(n_state=3, n_control=3, config=AAINDIConfig(**defaults))
@@ -204,7 +217,8 @@ def test_aaindi_reference_can_be_2d_schedule():
 def test_aaindi_g_init_shape_mismatch_raises():
     with pytest.raises(ValueError, match="G_init"):
         AAINDIAgent(
-            n_state=3, n_control=2,
+            n_state=3,
+            n_control=2,
             config=AAINDIConfig(G_init=np.zeros((3, 3))),
         )
 
