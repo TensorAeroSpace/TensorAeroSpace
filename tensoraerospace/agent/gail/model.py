@@ -19,6 +19,8 @@ import torch.nn.functional as F
 import torch.optim as optim
 from torch.distributions import Normal
 
+from ..metrics import create_metric_writer, schema
+
 use_cuda = torch.cuda.is_available()
 device = torch.device("cuda" if use_cuda else "cpu")
 
@@ -148,6 +150,7 @@ class GAIL:
         mini_batch_size: int,
         epochs: int,
         data: np.ndarray,
+        log_dir: Union[str, Path, None] = None,
     ):
         """Initialize the GAIL algorithm.
 
@@ -158,6 +161,10 @@ class GAIL:
             mini_batch_size (int): Mini-batch size.
             epochs (int): Number of training epochs.
             data (Array): Expert demonstrations (states/actions).
+            log_dir: Optional TensorBoard log directory. When provided, a
+                ``MetricWriter`` is created and canonical metrics are
+                emitted during :meth:`learn`. When ``None`` (default),
+                no logging is performed.
         """
         self.env = env
         self.lr = learning_rate
@@ -177,6 +184,16 @@ class GAIL:
         self.discrim_criterion = nn.BCELoss()
         self.optimizer = optim.Adam(self.model.parameters(), lr=self.lr)
         self.optimizer_discrim = optim.Adam(self.discriminator.parameters(), lr=self.lr)
+
+        self.log_dir = Path(log_dir) if log_dir is not None else None
+        self.writer = (
+            create_metric_writer(self.log_dir, algo="gail")
+            if log_dir is not None
+            else None
+        )
+        self.global_env_step = 0
+        self.update_count = 0
+        self.discrim_update_count = 0
 
     def expert_reward(self, state: torch.Tensor, action: np.ndarray) -> np.ndarray:
         """Compute imitation reward using the discriminator."""
@@ -211,6 +228,7 @@ class GAIL:
         returns: torch.Tensor,
         advantages: torch.Tensor,
         clip_param: float = 0.2,
+        env_step: int = 0,
     ) -> None:
         """PPO update function.
 
@@ -223,6 +241,9 @@ class GAIL:
             returns (Tensor): Batch of discounted rewards.
             advantages (Tensor): Batch of advantage function values.
             clip_param (float, optional): Clipping constant.
+            env_step (int, optional): Cumulative environment-step counter
+                used as the x-axis for any TensorBoard scalars written
+                from inside this update. Defaults to 0.
         """
         for _ in range(ppo_epochs):
             for state, action, old_log_probs, return_, advantage in ppo_iter(
@@ -246,6 +267,34 @@ class GAIL:
                 self.optimizer.zero_grad()
                 loss.backward()
                 self.optimizer.step()
+
+                self.update_count += 1
+                if self.writer is not None:
+                    self.writer.add_scalar(
+                        schema.LOSS_ACTOR,
+                        float(actor_loss.detach()),
+                        env_step=env_step,
+                    )
+                    self.writer.add_scalar(
+                        schema.LOSS_CRITIC,
+                        float(critic_loss.detach()),
+                        env_step=env_step,
+                    )
+                    self.writer.add_scalar(
+                        schema.POLICY_ENTROPY,
+                        float(entropy.detach()),
+                        env_step=env_step,
+                    )
+                    self.writer.add_scalar(
+                        schema.TRAIN_UPDATES,
+                        int(self.update_count),
+                        env_step=env_step,
+                    )
+                    self.writer.add_scalar(
+                        schema.TRAIN_LR,
+                        float(self.optimizer.param_groups[0]["lr"]),
+                        env_step=env_step,
+                    )
 
     def train(
         self,
@@ -300,6 +349,16 @@ class GAIL:
         state = self.env.reset()[0].reshape(1, -1)
         early_stop = False
 
+        # Episode tracking — uses the ENVIRONMENT's reward (not the
+        # discriminator-derived imitation reward). The canonical
+        # rollout/episode_reward should reflect what the environment
+        # actually returned so it is comparable across algorithms.
+        self.global_env_step = 0
+        ep_reward = 0.0
+        ep_length = 0
+        last_terminated = False
+        last_truncated = False
+
         while frame_idx < max_frames and not early_stop:
             i_update += 1
 
@@ -323,6 +382,11 @@ class GAIL:
                 next_state, reward, terminated, truncated, info = self.env.step(
                     action.cpu().numpy()
                 )
+                self.global_env_step += 1
+                ep_reward += float(np.asarray(reward).sum())
+                ep_length += 1
+                last_terminated = bool(terminated)
+                last_truncated = bool(truncated)
                 done = terminated or truncated
                 next_state = next_state.reshape(1, -1)
                 reward = self.expert_reward(state, action.cpu().numpy())
@@ -338,6 +402,21 @@ class GAIL:
                 state = next_state
                 frame_idx += 1
 
+                if done:
+                    if self.writer is not None:
+                        self.writer.log_episode(
+                            reward=ep_reward,
+                            length=ep_length,
+                            env_step=self.global_env_step,
+                            terminated=last_terminated,
+                            truncated=last_truncated,
+                        )
+                    ep_reward = 0.0
+                    ep_length = 0
+                    # Many gymnasium envs do NOT auto-reset; reset so the
+                    # next env.step works on a valid initial state.
+                    state = self.env.reset()[0].reshape(1, -1)
+
                 if frame_idx % 1000 == 0:
                     test_reward = np.mean([self.test_env() for _ in range(10)])
                     print(test_reward)
@@ -345,7 +424,7 @@ class GAIL:
                     if test_reward > max_reward:
                         early_stop = True
 
-            next_state = torch.FloatTensor(next_state).to(device)
+            next_state = torch.FloatTensor(np.asarray(next_state)).to(device)
             with torch.no_grad():
                 _, next_value = self.model(next_state)
             returns = compute_gae(next_value, rewards, masks, values)
@@ -366,6 +445,7 @@ class GAIL:
                     log_probs,
                     returns,
                     advantage,
+                    env_step=self.global_env_step,
                 )
 
             expert_state_action = self.data[
@@ -390,6 +470,34 @@ class GAIL:
             )
             discrim_loss.backward()
             self.optimizer_discrim.step()
+
+            self.discrim_update_count += 1
+            if self.writer is not None:
+                # Discriminator accuracy under the inverted-label convention:
+                #   fake (policy) -> target 1, so D(policy) > 0.5 == "correct"
+                #   real (expert) -> target 0, so D(expert) < 0.5 == "correct"
+                with torch.no_grad():
+                    policy_correct = (fake.detach() > 0.5).float().mean()
+                    expert_correct = (real.detach() < 0.5).float().mean()
+                self.writer.add_scalar(
+                    schema.GAIL.LOSS_DISCRIMINATOR,
+                    float(discrim_loss.detach()),
+                    env_step=self.global_env_step,
+                )
+                self.writer.add_scalar(
+                    schema.GAIL.POLICY_ACCURACY,
+                    float(policy_correct),
+                    env_step=self.global_env_step,
+                )
+                self.writer.add_scalar(
+                    schema.GAIL.EXPERT_ACCURACY,
+                    float(expert_correct),
+                    env_step=self.global_env_step,
+                )
+
+        if self.writer is not None:
+            self.writer.flush()
+            self.writer.assert_contract_satisfied()
 
     # ------------------------------------------------------------------
     # Serialization helpers
