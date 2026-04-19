@@ -69,6 +69,7 @@ plugins:
               - IMGDHP: agent/imgdhp.md
               - ET-DHP: agent/et_dhp.md
               - AA-INDI: agent/aa_indi.md
+              - iADP: agent/iadp.md
               - HDP: agent/hdp.md
               - ADHDP: agent/adhdp.md
               - MPC: agent/mpc.md
@@ -100,6 +101,7 @@ plugins:
               - IMGDHP (Nonlinear F16): example/agent/imgdhp/example_imgdhp_nonlinear.md
               - ET-DHP (Nonlinear F16): example/agent/et_dhp/example_etdhp_nonlinear.md
               - AA-INDI (Nonlinear F16): example/agent/aa_indi/example_aaindi_nonlinear.md
+              - iADP (Nonlinear F16): example/agent/iadp/example_iadp_nonlinear.md
               - SAC F16: example/agent/sac/example-sac-f16.md
               - SAC B747: example/agent/sac/example-sac-b747.md
               - DSAC B747:
@@ -186,6 +188,7 @@ plugins:
               - IMGDHP: agent/imgdhp.md
               - ET-DHP: agent/et_dhp.md
               - AA-INDI: agent/aa_indi.md
+              - iADP: agent/iadp.md
               - HDP: agent/hdp.md
               - ADHDP: agent/adhdp.md
               - MPC: agent/mpc.md
@@ -217,6 +220,7 @@ plugins:
               - IMGDHP (Нелинейная F16): example/agent/imgdhp/example_imgdhp_nonlinear.md
               - ET-DHP (Нелинейная F16): example/agent/et_dhp/example_etdhp_nonlinear.md
               - AA-INDI (Нелинейная F16): example/agent/aa_indi/example_aaindi_nonlinear.md
+              - iADP (Нелинейная F16): example/agent/iadp/example_iadp_nonlinear.md
               - SAC F16: example/agent/sac/example-sac-f16.md
               - SAC B747: example/agent/sac/example-sac-b747.md
               - DSAC B747:
