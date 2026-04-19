@@ -78,14 +78,15 @@ def test_longitudinal_returns_positions_and_attitudes():
 
 
 def test_longitudinal_pitch_integrated_from_wz():
-    # constant wz = 0.1 rad/s for 10 steps of 0.1s -> theta(end) = 0.1 rad * 10 steps = 1.0 rad
+    # constant wz = 0.1 rad/s, dt = 0.1 s, 10 integration steps
+    # -> theta(end) = wz * dt * N = 0.1 * 0.1 * 10 = 0.1 rad
     state = np.zeros((11, 4))
     state[:, 1] = 0.1  # wz column
     pos, att = reconstruct_position_longitudinal(
         state, airspeed=100.0, dt=0.1, initial_pitch=0.0,
     )
     # theta is index 1 of attitude (roll, pitch, yaw)
-    np.testing.assert_allclose(att[-1, 1], 1.0, atol=1e-9)  # 0.1 * 10 = 1.0 rad
+    np.testing.assert_allclose(att[-1, 1], 0.1, atol=1e-9)
     # y stays zero
     np.testing.assert_allclose(pos[:, 1], 0.0, atol=1e-12)
 
