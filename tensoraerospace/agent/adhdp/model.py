@@ -39,7 +39,7 @@ from ..base import (
     get_class_from_string,
     serialize_env,
 )
-from ..metrics import create_metric_writer
+from ..metrics import create_metric_writer, schema
 
 
 def _as_flat_np(x: Any) -> np.ndarray:
@@ -450,7 +450,7 @@ class ADHDP(BaseRLModel):
         self.critic_optim = Adam(self.critic.parameters(), lr=float(critic_lr))
 
         self.log_dir = Path(log_dir) if log_dir is not None else None
-        self.writer = create_metric_writer(self.log_dir)
+        self.writer = create_metric_writer(self.log_dir, algo="adhdp")
         self.log_every_updates = int(log_every_updates)
         self._updates = 0
 
@@ -1246,26 +1246,47 @@ class ADHDP(BaseRLModel):
                 steps += 1
 
                 if (self._updates % int(self.log_every_updates)) == 0:
+                    # Mandatory training counters (Tier 1).
+                    self.writer.add_scalar(
+                        schema.TRAIN_UPDATES,
+                        int(self._updates),
+                        env_step=total_steps,
+                    )
+                    self.writer.add_scalar(
+                        schema.TRAIN_LR,
+                        float(self.actor_optim.param_groups[0]["lr"]),
+                        env_step=total_steps,
+                    )
                     # Log losses only when the corresponding network was actually updated.
                     if bool(do_critic):
                         self.writer.add_scalar(
-                            "loss/critic", float(critic_loss), self._updates
+                            schema.LOSS_CRITIC,
+                            float(critic_loss),
+                            env_step=total_steps,
                         )
                     if bool(do_actor):
                         self.writer.add_scalar(
-                            "loss/actor", float(actor_loss), self._updates
+                            schema.LOSS_ACTOR,
+                            float(actor_loss),
+                            env_step=total_steps,
                         )
                     # Phase + action diagnostics (helps debug saturation/drift)
                     self.writer.add_scalar(
-                        "train/do_critic",
+                        schema.ADHDP.DO_CRITIC,
                         1.0 if bool(do_critic) else 0.0,
-                        self._updates,
+                        env_step=total_steps,
                     )
                     self.writer.add_scalar(
-                        "train/do_actor", 1.0 if bool(do_actor) else 0.0, self._updates
+                        schema.ADHDP.DO_ACTOR,
+                        1.0 if bool(do_actor) else 0.0,
+                        env_step=total_steps,
                     )
-                    # Action saturation stats
-                    try:
+                    # Action saturation stats — guarded only by a narrow None check;
+                    # unknown tags are caught by the strict-whitelist writer.
+                    if (
+                        act is not None
+                        and getattr(self.env, "action_space", None) is not None
+                    ):
                         a = np.asarray(act, dtype=np.float32).reshape(-1)
                         hi = np.asarray(
                             self.env.action_space.high, dtype=np.float32
@@ -1273,22 +1294,28 @@ class ADHDP(BaseRLModel):
                         hi = np.maximum(np.abs(hi), 1e-6)
                         sat = float(np.mean(np.abs(a) >= 0.98 * hi))
                         self.writer.add_scalar(
-                            "action/mean_abs", float(np.mean(np.abs(a))), self._updates
+                            schema.POLICY_ACTION_ABS_MEAN,
+                            float(np.mean(np.abs(a))),
+                            env_step=total_steps,
                         )
                         self.writer.add_scalar(
-                            "action/sat_frac", float(sat), self._updates
+                            schema.ADHDP.ACTION_SAT_FRAC,
+                            float(sat),
+                            env_step=total_steps,
                         )
-                    except (TypeError, ValueError, AttributeError):
-                        pass
 
                 obs = next_obs
                 done = done_env
                 if max_steps_i is not None and steps >= max_steps_i:
                     break
 
-            self.writer.add_scalar("performance/episode_reward", float(ep_reward), ep)
-            self.writer.add_scalar("performance/episode_length", int(steps), ep)
-            self.writer.add_scalar("train/total_steps", int(total_steps), ep)
+            self.writer.log_episode(
+                reward=float(ep_reward),
+                length=int(steps),
+                env_step=int(total_steps),
+                terminated=bool(terminated),
+                truncated=bool(truncated),
+            )
             if pbar is not None:
                 try:
                     pbar.set_postfix(
@@ -1302,6 +1329,7 @@ class ADHDP(BaseRLModel):
                     pass
 
         self.writer.flush()
+        self.writer.assert_contract_satisfied()
         return {"total_steps": int(total_steps)}
 
     # ---- persistence (optional, aligned with other agents) ----
