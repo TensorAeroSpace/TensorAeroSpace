@@ -36,6 +36,18 @@ class _NoOpWriter:
     def add_scalar(self, *args, **kwargs):
         pass
 
+    def add_histogram(self, *args, **kwargs):
+        pass
+
+    def log_episode(self, *args, **kwargs):
+        pass
+
+    def flush(self):
+        pass
+
+    def assert_contract_satisfied(self):
+        pass
+
 
 def test_sac_train_one_episode():
     env = _TinyEnv(obs_dim=3, act_dim=2)
