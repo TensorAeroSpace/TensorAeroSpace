@@ -38,6 +38,10 @@ LOSS_ACTOR = "loss/actor"
 LOSS_CRITIC = "loss/critic"
 LOSS_ENTROPY = "loss/entropy"
 LOSS_VALUE = "loss/value"
+LOSS_POLICY = "loss/policy"
+
+# train/*
+TRAIN_REPLAY_SIZE = "train/replay_size"
 
 # policy/*
 POLICY_ENTROPY = "policy/entropy"
@@ -76,15 +80,13 @@ class PPO:
 class SAC:
     LOSS_Q1 = "loss/q1"
     LOSS_Q2 = "loss/q2"
-    LOSS_POLICY = "loss/policy"
     LOSS_ALPHA = "loss/alpha"
     ALPHA_VALUE = "policy/alpha"
     Q_MEAN = "value/q_mean"
     LOG_PI_MEAN = "policy/log_pi_mean"
-    REPLAY_SIZE = "train/replay_size"
 
 
-class DSAC:
+class DSAC(SAC):
     # DSAC reuses SAC.* names for the standard losses (loss/q1, loss/q2,
     # loss/policy, loss/alpha, policy/alpha, train/replay_size). Only
     # CAPS regularization terms live here.
@@ -98,14 +100,13 @@ class DQN:
     Q_TARGET_SA_MEAN = "value/q_target_mean"
     EPSILON = "train/epsilon"
     PER_BETA = "train/per_beta"
-    REPLAY_SIZE = "train/replay_size"
     TARGET_UPDATE = "train/target_update"
 
 
 class DDPG:
-    LOSS_POLICY = "loss/policy"
-    LOSS_VALUE = "loss/value"
-    REPLAY_SIZE = "train/replay_size"
+    """DDPG uses only common Tier 2 constants (LOSS_POLICY, LOSS_VALUE,
+    TRAIN_REPLAY_SIZE); no DDPG-specific tags at this time."""
+    pass
 
 
 class A2C:
@@ -147,7 +148,7 @@ HISTOGRAM_GROUPS: FrozenSet[str] = frozenset({"weights", "grads"})
 
 # Allowed second-level groups inside weights/<group>/<param> and grads/<group>/<param>.
 HISTOGRAM_SUBGROUPS: FrozenSet[str] = frozenset({
-    "actor", "critic", "policy", "value", "q1", "q2", "discriminator",
+    "actor", "critic", "policy", "value", "q", "q1", "q2", "discriminator",
 })
 
 # Multi-worker suffix pattern: any registered scalar tag may be suffixed with
@@ -166,7 +167,7 @@ def _collect_constants(namespace) -> FrozenSet[str]:
     return frozenset(
         v
         for k, v in items
-        if k.isupper() and isinstance(v, str) and not k.startswith("_")
+        if k.isupper() and isinstance(v, str) and not k.startswith("_") and "/" in v
     )
 
 
