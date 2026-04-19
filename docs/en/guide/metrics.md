@@ -318,6 +318,69 @@ self.writer.close()
     `add_histogram` call. This forces every agent to think about the X-axis
     and guarantees that runs overlay correctly on shared charts.
 
+## Wandb backend
+
+`MetricWriter` supports Weights & Biases as a second sink alongside
+TensorBoard. Both can be active at the same time — every `add_scalar` /
+`add_histogram` / `log_episode` call fans out to whichever sinks are
+enabled.
+
+### When wandb is enabled
+
+| `tb_log_dir` | `wandb_project` | `WANDB_API_KEY` | TB | wandb |
+|---|---|---|---|---|
+| set | — | — | ✅ | — |
+| set | — | set | ✅ | ✅ (project = `algo`) |
+| — | — | set | — | ✅ (project = `algo`) |
+| set | set | * | ✅ | ✅ (project as given) |
+| — | set | unset | — | ✅ (calls `wandb.login()` interactively) |
+| — | — | unset | — | — |
+
+### Example
+
+```python
+from tensoraerospace.agent.sac.sac import SAC
+
+# TensorBoard only (default)
+agent = SAC(env=env, log_dir="runs/sac")
+
+# Wandb only — set WANDB_API_KEY in env, then:
+agent = SAC(
+    env=env,
+    wandb_project="my-experiment",
+    wandb_tags=["sac", "pendulum"],
+)
+
+# Both backends in parallel
+agent = SAC(
+    env=env,
+    log_dir="runs/sac",
+    wandb_project="my-experiment",
+    wandb_config={"lr": 3e-4, "tau": 5e-3},
+)
+```
+
+### Per-agent kwargs
+
+Every RL agent's `__init__` accepts these keyword arguments alongside
+`log_dir`:
+
+| Kwarg | Type | Description |
+|---|---|---|
+| `wandb_project` | `str \| None` | Wandb project name. Defaults to `algo` if `WANDB_API_KEY` is set. |
+| `wandb_entity` | `str \| None` | Wandb team/user namespace. Defaults to whatever `wandb` itself resolves. |
+| `wandb_run_name` | `str \| None` | Display name for this run. Defaults to `<algo>-<timestamp>`. |
+| `wandb_tags` | `list[str] \| None` | Tags to attach to the run. Defaults to `[algo]`. |
+| `wandb_config` | `dict \| None` | Hyperparameters dict that wandb stores with the run. |
+
+### A3C limitation
+
+A3C runs workers in forked processes. The wandb sink is initialized only
+in the main process — workers continue to share the parent's TensorBoard
+event file via the `/worker_<id>` suffix. To get per-worker wandb runs,
+launch one process per worker externally (each with its own
+`WANDB_RUN_GROUP`) instead of using `Agent.train()` directly.
+
 ## Adding a new algorithm
 
 1. **Edit `tensoraerospace/agent/metrics/schema.py`.** Add a new class named
