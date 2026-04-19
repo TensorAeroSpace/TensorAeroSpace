@@ -46,6 +46,30 @@ class _LazyTorchSummaryWriter:
 TorchSummaryWriter = _LazyTorchSummaryWriter()
 
 
+class _TensorBoardSink:
+    """Sink that forwards metrics to a torch.utils.tensorboard.SummaryWriter."""
+
+    def __init__(self, log_dir: Optional[Union[str, Path]]) -> None:
+        log_path = str(log_dir) if log_dir is not None else None
+        self._writer = (
+            TorchSummaryWriter(log_dir=log_path)
+            if log_path is not None
+            else TorchSummaryWriter()
+        )
+
+    def add_scalar(self, tag: str, value: float, env_step: int) -> None:
+        self._writer.add_scalar(tag, value, env_step)
+
+    def add_histogram(self, tag: str, values, env_step: int) -> None:
+        self._writer.add_histogram(tag, values, env_step)
+
+    def flush(self) -> None:
+        self._writer.flush()
+
+    def close(self) -> None:
+        self._writer.close()
+
+
 class MetricWriter:
     """SummaryWriter wrapper that enforces the canonical metric schema.
 
@@ -72,12 +96,7 @@ class MetricWriter:
         required: Iterable[str] = MANDATORY_METRICS,
         algo: Optional[str] = None,
     ) -> None:
-        log_path = str(log_dir) if log_dir is not None else None
-        self._writer = (
-            TorchSummaryWriter(log_dir=log_path)
-            if log_path is not None
-            else TorchSummaryWriter()
-        )
+        self._sinks: list = [_TensorBoardSink(log_dir)]
         self._strict = strict
         self._required = tuple(required)
         self._algo = algo
@@ -94,7 +113,8 @@ class MetricWriter:
                 "or construct MetricWriter(strict=False)."
             )
         self._written.add(schema.strip_worker_suffix(tag))
-        self._writer.add_scalar(tag, value, env_step)
+        for sink in self._sinks:
+            sink.add_scalar(tag, value, env_step)
 
     def add_histogram(self, tag: str, values, env_step: int) -> None:
         if self._strict and not schema.is_registered_histogram(tag):
@@ -104,7 +124,8 @@ class MetricWriter:
                 "grads/<group>/<param> with <group> in "
                 f"{sorted(schema.HISTOGRAM_SUBGROUPS)}."
             )
-        self._writer.add_histogram(tag, values, env_step)
+        for sink in self._sinks:
+            sink.add_histogram(tag, values, env_step)
 
     # -- sugar -------------------------------------------------------------
 
@@ -135,10 +156,12 @@ class MetricWriter:
     # -- lifecycle ---------------------------------------------------------
 
     def flush(self) -> None:
-        self._writer.flush()
+        for sink in self._sinks:
+            sink.flush()
 
     def close(self) -> None:
-        self._writer.close()
+        for sink in self._sinks:
+            sink.close()
 
 
 def create_metric_writer(
