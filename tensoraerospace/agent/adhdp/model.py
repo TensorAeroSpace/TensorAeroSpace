@@ -1283,7 +1283,10 @@ class ADHDP(BaseRLModel):
                     )
                     # Action saturation stats — guarded only by a narrow None check;
                     # unknown tags are caught by the strict-whitelist writer.
-                    if act is not None and getattr(self.env, "action_space", None) is not None:
+                    if (
+                        act is not None
+                        and getattr(self.env, "action_space", None) is not None
+                    ):
                         a = np.asarray(act, dtype=np.float32).reshape(-1)
                         hi = np.asarray(
                             self.env.action_space.high, dtype=np.float32

@@ -9,7 +9,6 @@ import pytest
 from tensoraerospace.agent.metrics import schema
 from tests.agents.metrics_contract_smoke_test import assert_tags_present
 
-
 REQUIRED = {
     schema.ROLLOUT_EPISODE_REWARD,
     schema.ROLLOUT_EPISODE_LENGTH,
@@ -43,8 +42,8 @@ def test_dqn_train_writes_canonical_tags(tmp_path: Path):
         model=model,
         target_model=target_model,
         env=env,
-        train_nums=200,        # large enough for warmup + a few train_steps
-        buffer_size=64,        # small so warmup ends quickly
+        train_nums=200,  # large enough for warmup + a few train_steps
+        buffer_size=64,  # small so warmup ends quickly
         batch_size=16,
         learning_rate=1e-3,
         epsilon=0.5,

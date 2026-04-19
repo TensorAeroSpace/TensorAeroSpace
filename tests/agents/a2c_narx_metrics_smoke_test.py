@@ -9,7 +9,6 @@ import pytest
 from tensoraerospace.agent.metrics import schema
 from tests.agents.metrics_contract_smoke_test import assert_tags_present
 
-
 REQUIRED_LEARNER = {
     schema.TRAIN_UPDATES,
     schema.TRAIN_LR,

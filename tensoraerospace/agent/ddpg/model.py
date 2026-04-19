@@ -750,21 +750,25 @@ class DDPG:
         self.update_count += 1
         if self.writer is not None:
             self.writer.add_scalar(
-                schema.LOSS_POLICY, float(policy_loss.item()),
+                schema.LOSS_POLICY,
+                float(policy_loss.item()),
                 env_step=self.frame_idx,
             )
             self.writer.add_scalar(
-                schema.LOSS_VALUE, float(value_loss.item()),
+                schema.LOSS_VALUE,
+                float(value_loss.item()),
                 env_step=self.frame_idx,
             )
             with torch.no_grad():
                 action_abs_mean = self.policy_net(state).abs().mean().item()
             self.writer.add_scalar(
-                schema.POLICY_ACTION_ABS_MEAN, float(action_abs_mean),
+                schema.POLICY_ACTION_ABS_MEAN,
+                float(action_abs_mean),
                 env_step=self.frame_idx,
             )
             self.writer.add_scalar(
-                schema.TRAIN_UPDATES, self.update_count,
+                schema.TRAIN_UPDATES,
+                self.update_count,
                 env_step=self.frame_idx,
             )
             self.writer.add_scalar(
@@ -773,7 +777,8 @@ class DDPG:
                 env_step=self.frame_idx,
             )
             self.writer.add_scalar(
-                schema.TRAIN_REPLAY_SIZE, len(self.replay_buffer),
+                schema.TRAIN_REPLAY_SIZE,
+                len(self.replay_buffer),
                 env_step=self.frame_idx,
             )
 

@@ -9,7 +9,6 @@ import pytest
 from tensoraerospace.agent.metrics import schema
 from tests.agents.metrics_contract_smoke_test import assert_tags_present
 
-
 REQUIRED = {
     schema.ROLLOUT_EPISODE_REWARD,
     schema.ROLLOUT_EPISODE_LENGTH,
@@ -37,7 +36,9 @@ def test_a2c_train_writes_canonical_tags(tmp_path: Path):
     # Wrap Pendulum in a TimeLimit short enough to guarantee episode
     # termination within the smoke run. Default Pendulum-v1 truncates at 200,
     # which would not trigger inside the tiny rollout below.
-    env = gym.wrappers.TimeLimit(gym.make("Pendulum-v1").unwrapped, max_episode_steps=16)
+    env = gym.wrappers.TimeLimit(
+        gym.make("Pendulum-v1").unwrapped, max_episode_steps=16
+    )
     state_dim = env.observation_space.shape[0]
     action_dim = env.action_space.shape[0]
 

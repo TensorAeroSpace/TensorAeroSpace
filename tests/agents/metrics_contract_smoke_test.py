@@ -35,8 +35,7 @@ def assert_tags_present(log_dir: str, required: set[str]) -> None:
     found = read_event_scalar_tags(log_dir)
     missing = required - found
     assert not missing, (
-        f"Missing tags in {log_dir}: sorted={sorted(missing)} "
-        f"found={sorted(found)}"
+        f"Missing tags in {log_dir}: sorted={sorted(missing)} " f"found={sorted(found)}"
     )
 
 
