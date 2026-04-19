@@ -22,7 +22,7 @@ from ..base import (
     get_class_from_string,
     serialize_env,
 )
-from ..metrics import create_metric_writer
+from ..metrics import create_metric_writer, schema
 from .narx_critic import build_narx_features
 
 
@@ -301,6 +301,7 @@ class A2C(BaseRLModel):
         max_grad_norm=0.5,
         seed=None,
         device=None,
+        log_dir=None,
     ):
         """Initialize A2C agent.
 
@@ -317,13 +318,17 @@ class A2C(BaseRLModel):
             seed (int, optional): Random seed for reproducibility.
             device (str or torch.device, optional): Device to use
                 ('cpu' or 'cuda'). If None, auto-selects CUDA if available.
+            log_dir (str, optional): TensorBoard log directory. If None,
+                the default ``runs/`` directory of ``SummaryWriter`` is used.
         """
         self.env = env
         self.state = None
         self.done = True
         self.steps = 0
         self.episode_reward = 0
+        self.episode_length = 0
         self.episode_rewards = []
+        self.update_count = 0
 
         # Set device
         if device is None:
@@ -350,7 +355,8 @@ class A2C(BaseRLModel):
             self.critic.parameters(), lr=self.critic_lr
         )
 
-        self.writer = create_metric_writer()
+        self.log_dir = log_dir
+        self.writer = create_metric_writer(log_dir, algo="a2c")
 
         print(f"A2C initialized on device: {self.device}")
 
@@ -483,37 +489,20 @@ class A2C(BaseRLModel):
 
             self.state = next_state
             self.steps += 1
+            self.episode_length += 1
             self.episode_reward += reward
 
             if self.done:
                 self.episode_rewards.append(self.episode_reward)
-
-                # Логируем награду за эпизод
-                self.writer.add_scalar(
-                    "Performance/Episode_Reward",
-                    self.episode_reward,
-                    global_step=self.steps,
+                self.writer.log_episode(
+                    reward=float(self.episode_reward),
+                    length=int(self.episode_length),
+                    env_step=int(self.steps),
+                    terminated=bool(terminated),
+                    truncated=bool(truncated),
                 )
-
-                # Логируем скользящее среднее за последние 10 эпизодов
-                if len(self.episode_rewards) >= 10:
-                    avg_reward = np.mean(self.episode_rewards[-10:])
-                    self.writer.add_scalar(
-                        "Performance/Episode_Reward_Avg_10",
-                        avg_reward,
-                        global_step=self.steps,
-                    )
-
-                # Логируем скользящее среднее за последние 100 эпизодов
-                if len(self.episode_rewards) >= 100:
-                    avg_reward_100 = np.mean(self.episode_rewards[-100:])
-                    self.writer.add_scalar(
-                        "Performance/Episode_Reward_Avg_100",
-                        avg_reward_100,
-                        global_step=self.steps,
-                    )
-
                 self.episode_reward = 0
+                self.episode_length = 0
 
         return memory
 
@@ -580,36 +569,65 @@ class A2C(BaseRLModel):
         clip_grad_norm_(self.actor_optim, self.max_grad_norm)
         self.actor_optim.step()
 
-        # Reporting
-        self.writer.add_scalar("Loss/Log_probs", -logs_probs.mean(), global_step=steps)
-        self.writer.add_scalar("Loss/Entropy", entropy, global_step=steps)
+        # Reporting (canonical TB metrics).
+        # ``entropy`` and ``actor_loss`` still hold autograd graph references
+        # at this point; detach before casting to plain floats so we never
+        # accidentally extend the graph through the writer.
         self.writer.add_scalar(
-            "Loss/Entropy_beta", self.entropy_beta, global_step=steps
+            schema.LOSS_ENTROPY, float(entropy.detach()), env_step=steps
         )
-        self.writer.add_scalar("Loss/Actor", actor_loss, global_step=steps)
-        self.writer.add_scalar("Loss/Critic", critic_loss, global_step=steps)
+        self.writer.add_scalar(
+            schema.A2C.ENTROPY_BETA, float(self.entropy_beta), env_step=steps
+        )
+        self.writer.add_scalar(
+            schema.LOSS_ACTOR, float(actor_loss.detach()), env_step=steps
+        )
+        self.writer.add_scalar(
+            schema.LOSS_CRITIC, float(critic_loss.detach()), env_step=steps
+        )
 
-        # Advantage metrics (для диагностики)
+        # Advantage diagnostics
         self.writer.add_scalar(
-            "Advantage/Raw_Mean", advantage.mean(), global_step=steps
+            schema.A2C.ADVANTAGE_MEAN, float(advantage.mean()), env_step=steps
         )
-        self.writer.add_scalar("Advantage/Raw_Std", advantage.std(), global_step=steps)
         self.writer.add_scalar(
-            "Advantage/Normalized_Mean", advantage_normalized.mean(), global_step=steps
+            schema.A2C.ADVANTAGE_STD, float(advantage.std()), env_step=steps
+        )
+        self.writer.add_scalar(
+            schema.A2C.ADVANTAGE_NORMALIZED_MEAN,
+            float(advantage_normalized.mean()),
+            env_step=steps,
         )
 
         # Value and TD target metrics
-        self.writer.add_scalar("Value/Mean", value_updated.mean(), global_step=steps)
         self.writer.add_scalar(
-            "Value/TD_Target_Mean", td_target.mean(), global_step=steps
+            schema.VALUE_MEAN, float(value_updated.mean()), env_step=steps
         )
         self.writer.add_scalar(
-            "Value/Value_Before_Update", value.mean().item(), global_step=steps
+            schema.VALUE_TD_TARGET, float(td_target.mean()), env_step=steps
+        )
+        self.writer.add_scalar(
+            schema.A2C.VALUE_BEFORE_UPDATE,
+            float(value.detach().mean().item()),
+            env_step=steps,
         )
 
         # Policy statistics
         self.writer.add_scalar(
-            "Policy/Action_Std", norm_dists.stddev.mean(), global_step=steps
+            schema.POLICY_ACTION_STD,
+            float(norm_dists.stddev.detach().mean()),
+            env_step=steps,
+        )
+
+        # Training counters (mandatory minimum tier).
+        self.update_count += 1
+        self.writer.add_scalar(
+            schema.TRAIN_UPDATES, int(self.update_count), env_step=steps
+        )
+        self.writer.add_scalar(
+            schema.TRAIN_LR,
+            float(self.actor_optim.param_groups[0]["lr"]),
+            env_step=steps,
         )
 
     def train(
@@ -677,34 +695,44 @@ class A2C(BaseRLModel):
         total_steps = (episodes * episode_length) // steps_on_memory
         best_reward = -np.inf
 
-        for i in tqdm(range(total_steps), desc="Training"):
-            memory = self.run_episode(steps_on_memory)
-            self.learn(memory, self.steps, discount_rewards=discount_rewards)
+        try:
+            for i in tqdm(range(total_steps), desc="Training"):
+                memory = self.run_episode(steps_on_memory)
+                self.learn(memory, self.steps, discount_rewards=discount_rewards)
 
-            # Console logging
-            if i % log_freq == 0 and len(self.episode_rewards) > 0:
-                recent_rewards = self.episode_rewards[-10:]
-                avg_reward = np.mean(recent_rewards)
-                print(
-                    f"Step {self.steps} | "
-                    f"Episodes: {len(self.episode_rewards)} | "
-                    f"Avg Reward (last 10): {avg_reward:.2f}"
-                )
+                # Console logging
+                if i % log_freq == 0 and len(self.episode_rewards) > 0:
+                    recent_rewards = self.episode_rewards[-10:]
+                    avg_reward = np.mean(recent_rewards)
+                    print(
+                        f"Step {self.steps} | "
+                        f"Episodes: {len(self.episode_rewards)} | "
+                        f"Avg Reward (last 10): {avg_reward:.2f}"
+                    )
 
-                # Save best model
-                if avg_reward > best_reward:
-                    best_reward = avg_reward
-                    if save_path:
-                        best_path = Path(save_path) / "best_model"
-                        best_path.mkdir(parents=True, exist_ok=True)
-                        self.save(best_path)
+                    # Save best model
+                    if avg_reward > best_reward:
+                        best_reward = avg_reward
+                        if save_path:
+                            best_path = Path(save_path) / "best_model"
+                            best_path.mkdir(parents=True, exist_ok=True)
+                            self.save(best_path)
 
-            # Periodic checkpoint saving
-            if save_freq and i % save_freq == 0 and i > 0:
-                if save_path is None:
-                    save_path = Path.cwd() / "checkpoints"
-                checkpoint_path = Path(save_path) / f"checkpoint_step_{self.steps}"
-                self.save(checkpoint_path)
+                # Periodic checkpoint saving
+                if save_freq and i % save_freq == 0 and i > 0:
+                    if save_path is None:
+                        save_path = Path.cwd() / "checkpoints"
+                    checkpoint_path = (
+                        Path(save_path) / f"checkpoint_step_{self.steps}"
+                    )
+                    self.save(checkpoint_path)
+        finally:
+            # Flush + assert canonical metrics contract before returning. Wrap
+            # in try/finally so the contract check runs even when the training
+            # loop exits early via exception.
+            if hasattr(self, "writer") and self.writer is not None:
+                self.writer.flush()
+                self.writer.assert_contract_satisfied()
 
         return {
             "episode_rewards": self.episode_rewards,
