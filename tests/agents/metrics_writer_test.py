@@ -94,11 +94,10 @@ def test_close_does_not_raise(writer: MetricWriter):
     writer.close()
 
 
-def test_metricwriter_with_wandb_project_creates_two_sinks(
-    tmp_path: Path, monkeypatch
-):
+def test_metricwriter_with_wandb_project_creates_two_sinks(tmp_path: Path, monkeypatch):
     """When both tb_log_dir and wandb_project are passed, both sinks are active."""
     from unittest.mock import MagicMock
+
     from tensoraerospace.agent.metrics import writer as writer_mod
 
     mock_wandb = MagicMock()

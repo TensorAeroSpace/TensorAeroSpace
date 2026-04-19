@@ -13,7 +13,17 @@ import os
 import queue
 import threading
 from pathlib import Path
-from typing import Any, Dict, Generator, Mapping, Optional, Sequence, Tuple, Union, overload
+from typing import (
+    Any,
+    Dict,
+    Generator,
+    Mapping,
+    Optional,
+    Sequence,
+    Tuple,
+    Union,
+    overload,
+)
 
 import numpy as np
 import torch

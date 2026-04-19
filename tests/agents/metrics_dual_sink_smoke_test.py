@@ -7,10 +7,9 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from tensoraerospace.agent.metrics import writer as writer_mod
 from tensoraerospace.agent.metrics import schema
+from tensoraerospace.agent.metrics import writer as writer_mod
 from tests.agents.metrics_contract_smoke_test import assert_tags_present
-
 
 REQUIRED = {
     schema.ROLLOUT_EPISODE_REWARD,
@@ -31,6 +30,7 @@ def test_sac_writes_to_both_tb_and_wandb(tmp_path: Path, monkeypatch):
     pytest.importorskip("tensorboard")
 
     import gymnasium as gym
+
     from tensoraerospace.agent.sac.sac import SAC
 
     # Mock wandb so the test doesn't hit the network

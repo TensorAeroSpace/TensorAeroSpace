@@ -24,6 +24,7 @@ def mock_wandb(monkeypatch):
 
 def test_init_calls_wandb_init_with_kwargs(mock_wandb, monkeypatch):
     from tensoraerospace.agent.metrics.writer import _WandbSink
+
     mock, mock_run = mock_wandb
     monkeypatch.setenv("WANDB_API_KEY", "fake-key")
 
@@ -49,6 +50,7 @@ def test_init_calls_wandb_init_with_kwargs(mock_wandb, monkeypatch):
 
 def test_init_calls_login_when_api_key_missing(mock_wandb, monkeypatch):
     from tensoraerospace.agent.metrics.writer import _WandbSink
+
     mock, _ = mock_wandb
     monkeypatch.delenv("WANDB_API_KEY", raising=False)
 
@@ -60,6 +62,7 @@ def test_init_calls_login_when_api_key_missing(mock_wandb, monkeypatch):
 
 def test_add_scalar_calls_wandb_log(mock_wandb, monkeypatch):
     from tensoraerospace.agent.metrics.writer import _WandbSink
+
     mock, mock_run = mock_wandb
     monkeypatch.setenv("WANDB_API_KEY", "fake-key")
     sink = _WandbSink(project="p", entity=None, run_name=None, tags=None, config=None)
@@ -72,6 +75,7 @@ def test_add_scalar_calls_wandb_log(mock_wandb, monkeypatch):
 
 def test_add_histogram_wraps_in_wandb_histogram(mock_wandb, monkeypatch):
     from tensoraerospace.agent.metrics.writer import _WandbSink
+
     mock, mock_run = mock_wandb
     monkeypatch.setenv("WANDB_API_KEY", "fake-key")
     sink = _WandbSink(project="p", entity=None, run_name=None, tags=None, config=None)
@@ -88,6 +92,7 @@ def test_add_histogram_wraps_in_wandb_histogram(mock_wandb, monkeypatch):
 
 def test_close_calls_finish_once(mock_wandb, monkeypatch):
     from tensoraerospace.agent.metrics.writer import _WandbSink
+
     mock, mock_run = mock_wandb
     monkeypatch.setenv("WANDB_API_KEY", "fake-key")
     sink = _WandbSink(project="p", entity=None, run_name=None, tags=None, config=None)
@@ -100,6 +105,7 @@ def test_close_calls_finish_once(mock_wandb, monkeypatch):
 
 def test_flush_is_noop(mock_wandb, monkeypatch):
     from tensoraerospace.agent.metrics.writer import _WandbSink
+
     mock, _ = mock_wandb
     monkeypatch.setenv("WANDB_API_KEY", "fake-key")
     sink = _WandbSink(project="p", entity=None, run_name=None, tags=None, config=None)
@@ -111,6 +117,7 @@ def test_flush_is_noop(mock_wandb, monkeypatch):
 def test_two_sinks_log_to_their_own_runs(monkeypatch):
     """Two coexisting _WandbSink instances must not cross-write to each other."""
     from unittest.mock import MagicMock
+
     from tensoraerospace.agent.metrics import writer as writer_mod
     from tensoraerospace.agent.metrics.writer import _WandbSink
 
