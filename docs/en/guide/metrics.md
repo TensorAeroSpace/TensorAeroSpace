@@ -373,6 +373,80 @@ Every RL agent's `__init__` accepts these keyword arguments alongside
 | `wandb_tags` | `list[str] \| None` | Tags to attach to the run. Defaults to `[algo]`. |
 | `wandb_config` | `dict \| None` | Hyperparameters dict that wandb stores with the run. |
 
+### Authentication
+
+Three ways to authenticate with wandb:
+
+1. **`wandb login` CLI** (one-time setup) — runs interactively, stores the API key in `~/.netrc` so subsequent runs pick it up automatically.
+2. **`WANDB_API_KEY` env var** — easiest in CI; the key is read at sink-init time. If both `~/.netrc` and the env var are present, the env var wins.
+3. **Interactive prompt** — if no key is found and `wandb_project` is passed explicitly, `_WandbSink` calls `wandb.login()` which opens an interactive prompt (or a browser tab) to log in.
+
+In CI without a TTY, the interactive prompt fails — set `WANDB_API_KEY` as a pipeline secret.
+
+### Offline mode
+
+To run wandb without uploading anything (slow connections, air-gapped networks, debugging without polluting the cloud project):
+
+```bash
+export WANDB_MODE=offline
+```
+
+The sink still creates a local run directory under `wandb/`. Sync it later with:
+
+```bash
+wandb sync wandb/offline-run-*
+```
+
+To disable wandb entirely so that even the local run directory is not created, leave `WANDB_API_KEY` unset and do not pass `wandb_project`.
+
+### Hyperparameter tracking
+
+Use `wandb_config` to store training hyperparameters with the run. Wandb's UI then lets you sort, filter, and group runs by hyperparameter value:
+
+```python
+agent = SAC(
+    env=env,
+    wandb_project="sac-tuning",
+    wandb_config={
+        "lr": 3e-4,
+        "tau": 5e-3,
+        "batch_size": 256,
+        "buffer_size": 1_000_000,
+        "automatic_entropy_tuning": True,
+    },
+)
+```
+
+Anything passed in `wandb_config` is stored as a flat key-value snapshot with the run (visible in the wandb UI's "Config" panel) — separate from the time-series metrics. The snapshot is taken at `wandb.init()` time; later mutations to the dict are not reflected.
+
+### Grouping related runs
+
+For multi-seed experiments or hyperparameter sweeps, use the `WANDB_RUN_GROUP` env var to group related runs in the wandb UI:
+
+```bash
+export WANDB_RUN_GROUP="sac-pendulum-seed-sweep"
+
+for SEED in 0 1 2 3 4; do
+    python train_sac.py --seed=$SEED
+done
+```
+
+All five runs appear under one group in the wandb UI; the group view aggregates metrics with median plus percentile bands.
+
+### Best practices
+
+- **Always set `wandb_config`** for any run you might want to compare later. Two runs with identical metrics but no config are indistinguishable in the UI.
+- **Use `wandb_tags` for taxonomy** — `["sac", "pendulum", "ablation-no-target-update"]` instead of cramming everything into the run name. Tags are filterable in the UI.
+- **Do not put secrets in `wandb_config`.** It is uploaded verbatim and visible to anyone with project access.
+- **Pin `wandb_run_name`** for runs you'll reference in papers or reports. Wandb's auto-generated names (`prosperous-sea-42`) are catchy but not searchable; deterministic names like `sac-pendulum-seed-3-2026-04-20` are easier to cite.
+
+### Troubleshooting
+
+- **`wandb.errors.UsageError: api_key not configured`** — your `wandb login` ran for a different machine/user. Run `wandb login --relogin` or set `WANDB_API_KEY`.
+- **Run hangs at "Waiting for wandb.init()"** — usually a network or firewall issue. Try `export WANDB_MODE=offline` to verify training itself works, then sync later.
+- **Multiple agents in one Python process write to each other's runs** — should NOT happen. Each `_WandbSink` writes through its own captured run object (`self._run.log(...)`), not through wandb's module-level `wandb.log(...)` global state. If you observe this, file an issue.
+- **A3C workers do not appear in wandb** — by design (see the A3C limitation section below). Workers (forked) skip wandb-init even with `WANDB_API_KEY` set. To get per-worker wandb runs, launch one process per worker externally and rely on `WANDB_RUN_GROUP` to keep them together in the UI.
+
 ### A3C limitation
 
 A3C runs workers in forked processes. The wandb sink is initialized only
