@@ -42,6 +42,7 @@ import numpy as np
 import torch
 from torch import nn, optim
 
+from ..metrics import create_metric_writer, schema
 from .event_trigger import EventTrigger
 from .networks import ETDHPActor, ETDHPCritic, PlantModelNN
 
@@ -186,6 +187,7 @@ class ETDHPAgent:
             Callable[[np.ndarray, np.ndarray, int], np.ndarray] | None
         ) = None,
         config: ETDHPConfig | None = None,
+        log_dir: Union[str, Path, None] = None,
     ) -> None:
         self.n_state = int(n_state)
         self.n_control = int(n_control)
@@ -261,6 +263,19 @@ class ETDHPAgent:
             "condition": [],
             "norm_diff": [],
         }
+
+        # ----- Unified TensorBoard metrics -----
+        # Only create the writer when an explicit log_dir is provided so the
+        # default no-logging path stays a true no-op (existing tests don't
+        # pass log_dir and must continue working without TB side effects).
+        self.log_dir = Path(log_dir) if log_dir is not None else None
+        self.writer = (
+            create_metric_writer(self.log_dir, algo="etdhp")
+            if self.log_dir is not None
+            else None
+        )
+        self.global_env_step = 0
+        self.update_count = 0
 
     # ------------------------------------------------------------------
     # State transforms and housekeeping
@@ -462,6 +477,29 @@ class ETDHPAgent:
         self.history["norm_diff"].append(metrics["norm_diff"])
         self.history["actor_loss"].append(a_loss)
         self.history["critic_loss"].append(c_loss)
+
+        if self.writer is not None:
+            self.update_count += 1
+            self.writer.add_scalar(
+                schema.LOSS_ACTOR,
+                float(a_loss),
+                env_step=self.global_env_step,
+            )
+            self.writer.add_scalar(
+                schema.LOSS_CRITIC,
+                float(c_loss),
+                env_step=self.global_env_step,
+            )
+            self.writer.add_scalar(
+                schema.TRAIN_UPDATES,
+                int(self.update_count),
+                env_step=self.global_env_step,
+            )
+            self.writer.add_scalar(
+                schema.TRAIN_LR,
+                float(self.actor_opt.param_groups[0]["lr"]),
+                env_step=self.global_env_step,
+            )
         return metrics
 
     def last_action(self) -> np.ndarray:
@@ -608,6 +646,7 @@ class ETDHPAgent:
             self.predict(obs, ref, steps)
             action = self.last_action()
             obs_next, reward, done, truncated, _info = env.step(action)
+            self.global_env_step += 1
             metrics = self.learn(obs_next, ref, steps, dt=dt)
             triggers += int(metrics["triggered"])
             ep_return += float(reward)
@@ -616,11 +655,65 @@ class ETDHPAgent:
             if max_steps is not None and steps >= max_steps:
                 break
 
+        if self.writer is not None:
+            self.writer.log_episode(
+                reward=float(ep_return),
+                length=int(steps),
+                env_step=int(self.global_env_step),
+                terminated=bool(done),
+                truncated=bool(truncated),
+            )
+            self.writer.flush()
+            # Don't assert_contract_satisfied here — the user may call
+            # train_episode() multiple times; contract is for the entire
+            # training session and is checked in train().
+
         return {
             "steps": float(steps),
             "triggers": float(triggers),
             "ep_return": ep_return,
             "trigger_ratio": float(triggers) / max(1, steps),
+        }
+
+    def train(
+        self,
+        env: Any,
+        *,
+        num_episodes: int = 1,
+        max_steps: int | None = None,
+        reference_signal: np.ndarray | None = None,
+    ) -> dict[str, float]:
+        """Train ET-DHP for ``num_episodes`` episodes (unified interface).
+
+        Thin wrapper around :meth:`train_episode` that loops the requested
+        number of episodes, flushes the metrics writer, and asserts the
+        unified-metrics contract once the session has ended.
+
+        Args:
+            env: Gymnasium env.
+            num_episodes: Episode budget.
+            max_steps: Optional per-episode step cap.
+            reference_signal: Optional reference signal forwarded to
+                :meth:`train_episode`.
+
+        Returns:
+            Aggregated session-level summary.
+        """
+        summaries: list[dict[str, float]] = []
+        for _ in range(int(num_episodes)):
+            summary = self.train_episode(
+                env=env,
+                max_steps=max_steps,
+                reference_signal=reference_signal,
+            )
+            summaries.append(summary)
+        if self.writer is not None:
+            self.writer.flush()
+            self.writer.assert_contract_satisfied()
+        return {
+            "num_episodes": float(len(summaries)),
+            "total_steps": float(sum(s["steps"] for s in summaries)),
+            "total_triggers": float(sum(s["triggers"] for s in summaries)),
         }
 
     # ------------------------------------------------------------------
