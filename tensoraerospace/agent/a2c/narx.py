@@ -6,9 +6,8 @@ NARX (Nonlinear AutoRegressive with eXogenous inputs) representations.
 
 import datetime
 import json
-from collections.abc import Sequence
 from pathlib import Path
-from typing import Iterable, Optional, Union
+from typing import Any, Iterable, Mapping, Optional, Sequence, Union
 
 import numpy as np
 import torch
@@ -219,6 +218,11 @@ class A2CLearner:
         max_grad_norm: float = 0.5,
         device: torch.device | str | None = None,
         log_dir: str | None = None,
+        wandb_project: Optional[str] = None,
+        wandb_entity: Optional[str] = None,
+        wandb_run_name: Optional[str] = None,
+        wandb_tags: Optional[Sequence[str]] = None,
+        wandb_config: Optional[Mapping[str, Any]] = None,
     ):
         """Initialize learner with optimizers and hyperparameters.
 
@@ -249,7 +253,20 @@ class A2CLearner:
         self.actor_optim = torch.optim.Adam(actor.parameters(), lr=actor_lr)
         self.critic_optim = torch.optim.Adam(critic.parameters(), lr=critic_lr)
         self.log_dir = log_dir
-        self.writer = create_metric_writer(log_dir, algo="a2c-narx")
+        self.wandb_project = wandb_project
+        self.wandb_entity = wandb_entity
+        self.wandb_run_name = wandb_run_name
+        self.wandb_tags = wandb_tags
+        self.wandb_config = wandb_config
+        self.writer = create_metric_writer(
+            tb_log_dir=log_dir,
+            wandb_project=wandb_project,
+            wandb_entity=wandb_entity,
+            wandb_run_name=wandb_run_name,
+            wandb_tags=wandb_tags,
+            wandb_config=wandb_config,
+            algo="a2c-narx",
+        )
         self.update_count = 0
 
     def learn(

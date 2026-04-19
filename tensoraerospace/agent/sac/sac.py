@@ -10,7 +10,7 @@ import inspect
 import json
 from collections import deque
 from pathlib import Path
-from typing import Any, Deque, Dict, Optional, Tuple, Union, cast
+from typing import Any, Deque, Dict, Mapping, Optional, Sequence, Tuple, Union, cast
 
 import numpy as np
 import torch
@@ -80,6 +80,11 @@ class SAC(BaseRLModel):
         seed: int = 42,
         log_dir: Union[str, Path, None] = None,
         log_every_updates: int = 1,
+        wandb_project: Optional[str] = None,
+        wandb_entity: Optional[str] = None,
+        wandb_run_name: Optional[str] = None,
+        wandb_tags: Optional[Sequence[str]] = None,
+        wandb_config: Optional[Mapping[str, Any]] = None,
     ) -> None:
         """Initialize SAC agent, networks, replay buffer, and optimizers."""
         super().__init__()
@@ -101,7 +106,20 @@ class SAC(BaseRLModel):
         num_inputs = self.env.observation_space.shape[0]
         self.device = torch.device(device)
         self.log_dir = Path(log_dir) if log_dir is not None else None
-        self.writer = create_metric_writer(self.log_dir, algo="sac")
+        self.wandb_project = wandb_project
+        self.wandb_entity = wandb_entity
+        self.wandb_run_name = wandb_run_name
+        self.wandb_tags = wandb_tags
+        self.wandb_config = wandb_config
+        self.writer = create_metric_writer(
+            tb_log_dir=self.log_dir,
+            wandb_project=wandb_project,
+            wandb_entity=wandb_entity,
+            wandb_run_name=wandb_run_name,
+            wandb_tags=wandb_tags,
+            wandb_config=wandb_config,
+            algo="sac",
+        )
         # Cumulative env step at the time update_parameters() is invoked.
         # Updated by train()/train_vector() before each call.
         self._last_env_step = 0

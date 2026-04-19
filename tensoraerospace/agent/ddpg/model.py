@@ -11,7 +11,7 @@ import json
 import os
 import random
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Mapping, Optional, Sequence, Tuple, Union
 
 import numpy as np
 import torch
@@ -574,6 +574,11 @@ class DDPG:
         replay_buffer_size: int,
         normalize_observations: bool = True,
         device: Optional[Union[str, torch.device]] = None,
+        wandb_project: Optional[str] = None,
+        wandb_entity: Optional[str] = None,
+        wandb_run_name: Optional[str] = None,
+        wandb_tags: Optional[Sequence[str]] = None,
+        wandb_config: Optional[Mapping[str, Any]] = None,
     ) -> None:
         """Initialize DDPG agent.
 
@@ -658,6 +663,13 @@ class DDPG:
         self.value_criterion = nn.MSELoss()
 
         self.replay_buffer = ReplayBuffer(self.replay_buffer_size)
+
+        # Stored wandb kwargs forwarded to the lazy writer in learn().
+        self.wandb_project = wandb_project
+        self.wandb_entity = wandb_entity
+        self.wandb_run_name = wandb_run_name
+        self.wandb_tags = wandb_tags
+        self.wandb_config = wandb_config
 
         # TensorBoard writer (lazy init in learn to include run-time params)
         self.writer = None
@@ -896,7 +908,15 @@ class DDPG:
             try:
                 logdir = os.path.join("runs", "ddpg")
                 os.makedirs(logdir, exist_ok=True)
-                self.writer = create_metric_writer(logdir, algo="ddpg")
+                self.writer = create_metric_writer(
+                    tb_log_dir=logdir,
+                    wandb_project=self.wandb_project,
+                    wandb_entity=self.wandb_entity,
+                    wandb_run_name=self.wandb_run_name,
+                    wandb_tags=self.wandb_tags,
+                    wandb_config=self.wandb_config,
+                    algo="ddpg",
+                )
             except Exception:
                 self.writer = None
 

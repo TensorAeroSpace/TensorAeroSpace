@@ -9,6 +9,7 @@ import datetime
 import json
 import time
 from pathlib import Path
+from typing import Any, Mapping, Optional, Sequence
 
 import numpy as np
 import torch
@@ -302,6 +303,11 @@ class A2C(BaseRLModel):
         seed=None,
         device=None,
         log_dir=None,
+        wandb_project: Optional[str] = None,
+        wandb_entity: Optional[str] = None,
+        wandb_run_name: Optional[str] = None,
+        wandb_tags: Optional[Sequence[str]] = None,
+        wandb_config: Optional[Mapping[str, Any]] = None,
     ):
         """Initialize A2C agent.
 
@@ -356,7 +362,20 @@ class A2C(BaseRLModel):
         )
 
         self.log_dir = log_dir
-        self.writer = create_metric_writer(log_dir, algo="a2c")
+        self.wandb_project = wandb_project
+        self.wandb_entity = wandb_entity
+        self.wandb_run_name = wandb_run_name
+        self.wandb_tags = wandb_tags
+        self.wandb_config = wandb_config
+        self.writer = create_metric_writer(
+            tb_log_dir=log_dir,
+            wandb_project=wandb_project,
+            wandb_entity=wandb_entity,
+            wandb_run_name=wandb_run_name,
+            wandb_tags=wandb_tags,
+            wandb_config=wandb_config,
+            algo="a2c",
+        )
 
         print(f"A2C initialized on device: {self.device}")
 

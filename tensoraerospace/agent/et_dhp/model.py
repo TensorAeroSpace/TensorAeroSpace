@@ -34,9 +34,10 @@ from __future__ import annotations
 import dataclasses
 import datetime
 import json
+import os
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Callable, Optional, Sequence, Union
+from typing import Any, Callable, Mapping, Optional, Sequence, Union
 
 import numpy as np
 import torch
@@ -188,6 +189,11 @@ class ETDHPAgent:
         ) = None,
         config: ETDHPConfig | None = None,
         log_dir: Union[str, Path, None] = None,
+        wandb_project: Optional[str] = None,
+        wandb_entity: Optional[str] = None,
+        wandb_run_name: Optional[str] = None,
+        wandb_tags: Optional[Sequence[str]] = None,
+        wandb_config: Optional[Mapping[str, Any]] = None,
     ) -> None:
         self.n_state = int(n_state)
         self.n_control = int(n_control)
@@ -265,15 +271,32 @@ class ETDHPAgent:
         }
 
         # ----- Unified TensorBoard metrics -----
-        # Only create the writer when an explicit log_dir is provided so the
-        # default no-logging path stays a true no-op (existing tests don't
-        # pass log_dir and must continue working without TB side effects).
+        # Only create the writer when an explicit log_dir is provided, OR when
+        # a wandb backend has been requested (explicit project / WANDB_API_KEY
+        # in env). This keeps the default no-logging path a true no-op.
         self.log_dir = Path(log_dir) if log_dir is not None else None
-        self.writer = (
-            create_metric_writer(self.log_dir, algo="etdhp")
-            if self.log_dir is not None
-            else None
+        self.wandb_project = wandb_project
+        self.wandb_entity = wandb_entity
+        self.wandb_run_name = wandb_run_name
+        self.wandb_tags = wandb_tags
+        self.wandb_config = wandb_config
+        needs_writer = (
+            self.log_dir is not None
+            or wandb_project is not None
+            or os.environ.get("WANDB_API_KEY") is not None
         )
+        if needs_writer:
+            self.writer = create_metric_writer(
+                tb_log_dir=self.log_dir,
+                wandb_project=wandb_project,
+                wandb_entity=wandb_entity,
+                wandb_run_name=wandb_run_name,
+                wandb_tags=wandb_tags,
+                wandb_config=wandb_config,
+                algo="etdhp",
+            )
+        else:
+            self.writer = None
         self.global_env_step = 0
         self.update_count = 0
 

@@ -13,7 +13,7 @@ import os
 import queue
 import threading
 from pathlib import Path
-from typing import Any, Dict, Generator, Optional, Tuple, Union, overload
+from typing import Any, Dict, Generator, Mapping, Optional, Sequence, Tuple, Union, overload
 
 import numpy as np
 import torch
@@ -543,6 +543,11 @@ class PPO(BaseRLModel):
         save_best_model: bool = True,
         best_model_dir: Union[str, Path, None] = None,
         save_best_async: bool = True,
+        wandb_project: Optional[str] = None,
+        wandb_entity: Optional[str] = None,
+        wandb_run_name: Optional[str] = None,
+        wandb_tags: Optional[Sequence[str]] = None,
+        wandb_config: Optional[Mapping[str, Any]] = None,
     ) -> None:
         """Initialize agent with given environment and discount coefficient.
 
@@ -619,7 +624,20 @@ class PPO(BaseRLModel):
         self.best_reward = float("-inf")
         self.avg_rewards_list: list = []
         self.log_dir = Path(log_dir) if log_dir is not None else None
-        self.writer = create_metric_writer(self.log_dir, algo="ppo")
+        self.wandb_project = wandb_project
+        self.wandb_entity = wandb_entity
+        self.wandb_run_name = wandb_run_name
+        self.wandb_tags = wandb_tags
+        self.wandb_config = wandb_config
+        self.writer = create_metric_writer(
+            tb_log_dir=self.log_dir,
+            wandb_project=wandb_project,
+            wandb_entity=wandb_entity,
+            wandb_run_name=wandb_run_name,
+            wandb_tags=wandb_tags,
+            wandb_config=wandb_config,
+            algo="ppo",
+        )
         # Cumulative env-step counter for canonical TB metric x-axis. Incremented
         # after every self.env.step() call (per parallel env for vector envs).
         self.global_env_step = 0
