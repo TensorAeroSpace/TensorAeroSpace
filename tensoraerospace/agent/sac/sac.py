@@ -25,7 +25,7 @@ from ..base import (
     get_class_from_string,
     serialize_env,
 )
-from ..metrics import create_metric_writer
+from ..metrics import create_metric_writer, schema
 from .model import DeterministicPolicy, GaussianPolicy, QNetwork
 from .replay_memory import ReplayMemory
 from .utils import hard_update, soft_update
@@ -101,7 +101,10 @@ class SAC(BaseRLModel):
         num_inputs = self.env.observation_space.shape[0]
         self.device = torch.device(device)
         self.log_dir = Path(log_dir) if log_dir is not None else None
-        self.writer = create_metric_writer(self.log_dir)
+        self.writer = create_metric_writer(self.log_dir, algo="sac")
+        # Cumulative env step at the time update_parameters() is invoked.
+        # Updated by train()/train_vector() before each call.
+        self._last_env_step = 0
         self.log_every_updates = int(log_every_updates)
         if self.log_every_updates < 1:
             raise ValueError("log_every_updates must be >= 1")
@@ -324,18 +327,45 @@ class SAC(BaseRLModel):
             soft_update(self.critic_target, self.critic, self.tau)
 
         if (updates % int(self.log_every_updates)) == 0:
-            self.writer.add_scalar("Loss/QF1", qf1_loss.item(), updates)
-            self.writer.add_scalar("Loss/QF2", qf2_loss.item(), updates)
-            self.writer.add_scalar("Loss/Policy", policy_loss.item(), updates)
-            self.writer.add_scalar("Loss/Alpha", alpha_loss.item(), updates)
-            self.writer.add_scalar("Alpha/value", alpha_tlogs.item(), updates)
+            env_step = int(self._last_env_step)
+            self.writer.add_scalar(
+                schema.SAC.LOSS_Q1, qf1_loss.item(), env_step=env_step
+            )
+            self.writer.add_scalar(
+                schema.SAC.LOSS_Q2, qf2_loss.item(), env_step=env_step
+            )
+            self.writer.add_scalar(
+                schema.LOSS_POLICY, policy_loss.item(), env_step=env_step
+            )
+            self.writer.add_scalar(
+                schema.SAC.LOSS_ALPHA, alpha_loss.item(), env_step=env_step
+            )
+            self.writer.add_scalar(
+                schema.SAC.ALPHA_VALUE, alpha_tlogs.item(), env_step=env_step
+            )
+            # Mandatory minimum (rate-limited via the same gating).
+            self.writer.add_scalar(
+                schema.TRAIN_UPDATES, updates, env_step=env_step
+            )
+            self.writer.add_scalar(
+                schema.TRAIN_LR,
+                float(self.policy_optim.param_groups[0]["lr"]),
+                env_step=env_step,
+            )
+            self.writer.add_scalar(
+                schema.TRAIN_REPLAY_SIZE, len(self.memory), env_step=env_step
+            )
 
             if self.verbose_histogram:
                 for name, param in self.critic.named_parameters():
-                    self.writer.add_histogram(f"Critic/{name}", param, updates)
+                    self.writer.add_histogram(
+                        f"weights/critic/{name}", param, env_step=env_step
+                    )
 
                 for name, param in self.policy.named_parameters():
-                    self.writer.add_histogram(f"Policy/{name}", param, updates)
+                    self.writer.add_histogram(
+                        f"weights/policy/{name}", param, env_step=env_step
+                    )
 
         return (
             qf1_loss.item(),
@@ -381,6 +411,7 @@ class SAC(BaseRLModel):
         save_best_with_gradients = bool(kwargs.get("save_best_with_gradients", False))
         # Training Loop
         updates = 0
+        total_env_steps = 0
         best_reward = float("-inf")
         episode_rewards: list = []
         ep_iter = range(num_episodes)
@@ -390,18 +421,27 @@ class SAC(BaseRLModel):
             episode_reward = 0
             episode_steps = 0
             done = False
+            last_terminated = False
+            last_truncated = False
             state, _ = self.env.reset()
             while not done:
                 action = self.select_action(state)
                 if len(self.memory) > self.batch_size:
                     for _ in range(self.updates_per_step):
-                        # Update parameters of all the networks
+                        # Update parameters of all the networks. Stash the
+                        # current cumulative env-step so that update_parameters
+                        # can label its scalars with env_step (not the gradient
+                        # update counter).
+                        self._last_env_step = int(total_env_steps)
                         _c1, _c2, _pi, _ent, _a = self.update_parameters(
                             self.memory, self.batch_size, updates
                         )
                         updates += 1
 
                 next_state, reward, terminated, truncated, _ = self.env.step(action)
+                total_env_steps += 1
+                last_terminated = bool(terminated)
+                last_truncated = bool(truncated)
                 # Important: separate loop termination logic from bootstrap logic
                 # - terminate loop when (terminated or truncated)
                 # - for replay targets use done only when terminated
@@ -418,9 +458,12 @@ class SAC(BaseRLModel):
                 if max_steps is not None and episode_steps >= int(max_steps):
                     done = True
             episode_rewards.append(float(episode_reward))
-            self.writer.add_scalar("Performance/Reward", episode_reward, i_episode)
-            self.writer.add_scalar(
-                "Performance/EpisodeLength", episode_steps, i_episode
+            self.writer.log_episode(
+                reward=float(episode_reward),
+                length=int(episode_steps),
+                env_step=int(total_env_steps),
+                terminated=last_terminated,
+                truncated=last_truncated,
             )
             if save_best and episode_reward > best_reward:
                 best_reward = episode_reward
@@ -428,11 +471,9 @@ class SAC(BaseRLModel):
                     path=save_path,
                     save_gradients=save_best_with_gradients,
                 )
-                self.writer.add_scalar(
-                    "Performance/BestReward",
-                    best_reward,
-                    i_episode,
-                )
+
+        self.writer.flush()
+        self.writer.assert_contract_satisfied()
 
         return {
             "episode_rewards": episode_rewards,
@@ -491,6 +532,7 @@ class SAC(BaseRLModel):
         episodes_done = 0
 
         updates = 0
+        total_env_steps = 0
         best_mean_return = float("-inf")
         auto_reset = bool(getattr(self.env, "auto_reset", False))
 
@@ -553,6 +595,9 @@ class SAC(BaseRLModel):
             # SAC updates
             if len(self.memory) >= self.batch_size and step >= warmup_steps:
                 for _ in range(int(self.updates_per_step)):
+                    # Stash cumulative env step so update_parameters labels its
+                    # scalars with env_step rather than the gradient counter.
+                    self._last_env_step = int(total_env_steps)
                     self.update_parameters(self.memory, self.batch_size, updates)
                     updates += 1
 
@@ -564,11 +609,12 @@ class SAC(BaseRLModel):
                     r = float(ep_returns[i])
                     l = int(ep_lengths[i])
                     returns_window.append(r)
-                    self.writer.add_scalar(
-                        "Performance/EpisodeReward", r, episodes_done
-                    )
-                    self.writer.add_scalar(
-                        "Performance/EpisodeLength", l, episodes_done
+                    self.writer.log_episode(
+                        reward=r,
+                        length=l,
+                        env_step=int(total_env_steps),
+                        terminated=bool(terminated_np[i]),
+                        truncated=bool(truncated_np[i]),
                     )
                     ep_returns[i] = 0.0
                     ep_lengths[i] = 0
@@ -578,12 +624,18 @@ class SAC(BaseRLModel):
             if (step + 1) % log_every == 0:
                 mean_r = float(np.mean(returns_window)) if len(returns_window) else 0.0
                 self.writer.add_scalar(
-                    f"Performance/MeanReward{reward_window}",
-                    mean_r,
-                    step + 1,
+                    schema.TRAIN_REPLAY_SIZE, len(self.memory),
+                    env_step=total_env_steps,
                 )
-                self.writer.add_scalar("Train/ReplaySize", len(self.memory), step + 1)
-                self.writer.add_scalar("Train/Updates", updates, step + 1)
+                self.writer.add_scalar(
+                    schema.TRAIN_UPDATES, updates,
+                    env_step=total_env_steps,
+                )
+                self.writer.add_scalar(
+                    schema.TRAIN_LR,
+                    float(self.policy_optim.param_groups[0]["lr"]),
+                    env_step=total_env_steps,
+                )
                 pbar.set_postfix(
                     {
                         "mean_R": f"{mean_r:.3f}",
@@ -596,15 +648,12 @@ class SAC(BaseRLModel):
                 if save_best and mean_r > best_mean_return and episodes_done > 0:
                     best_mean_return = mean_r
                     self.save(path=save_path, save_gradients=save_best_with_gradients)
-                    self.writer.add_scalar(
-                        "Performance/BestMeanReward",
-                        best_mean_return,
-                        step + 1,
-                    )
 
             obs = next_obs
+            total_env_steps += num_envs
 
         self.writer.flush()
+        self.writer.assert_contract_satisfied()
 
     def close(self) -> None:
         """Flush and close TensorBoard writer."""
