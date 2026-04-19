@@ -132,13 +132,30 @@ class MetricWriter:
 
     def __init__(
         self,
-        log_dir: Optional[Union[str, Path]] = None,
+        tb_log_dir: Optional[Union[str, Path]] = None,
         *,
+        wandb_project: Optional[str] = None,
+        wandb_entity: Optional[str] = None,
+        wandb_run_name: Optional[str] = None,
+        wandb_tags: Optional[Sequence[str]] = None,
+        wandb_config: Optional[Mapping[str, Any]] = None,
         strict: bool = True,
         required: Iterable[str] = MANDATORY_METRICS,
         algo: Optional[str] = None,
     ) -> None:
-        self._sinks: list = [_TensorBoardSink(log_dir)]
+        self._sinks: list = []
+        if tb_log_dir is not None:
+            self._sinks.append(_TensorBoardSink(tb_log_dir))
+        if wandb_project is not None:
+            self._sinks.append(
+                _WandbSink(
+                    project=wandb_project,
+                    entity=wandb_entity,
+                    run_name=wandb_run_name,
+                    tags=wandb_tags,
+                    config=wandb_config,
+                )
+            )
         self._strict = strict
         self._required = tuple(required)
         self._algo = algo
@@ -213,4 +230,4 @@ def create_metric_writer(
     algo: Optional[str] = None,
 ) -> MetricWriter:
     """Factory used by agents — keeps call sites short."""
-    return MetricWriter(log_dir=log_dir, strict=strict, algo=algo)
+    return MetricWriter(tb_log_dir=log_dir, strict=strict, algo=algo)
