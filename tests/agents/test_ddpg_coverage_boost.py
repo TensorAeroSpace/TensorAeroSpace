@@ -75,11 +75,11 @@ class TestDDPGTensorBoard:
         # Set frame_idx for logging
         agent.frame_idx = 100
 
-        # Initialize writer (will use fallback if unavailable)
+        # Initialize the canonical strict-schema MetricWriter.
         try:
-            from torch.utils.tensorboard import SummaryWriter
+            from tensoraerospace.agent.metrics import create_metric_writer
 
-            agent.writer = SummaryWriter()
+            agent.writer = create_metric_writer(algo="ddpg")
         except Exception:
             pass
 
