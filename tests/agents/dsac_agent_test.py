@@ -48,6 +48,15 @@ class _NoOpWriter:
     def add_scalar(self, *args, **kwargs):
         pass
 
+    def add_histogram(self, *args, **kwargs):
+        pass
+
+    def log_episode(self, *args, **kwargs):
+        pass
+
+    def assert_contract_satisfied(self):
+        pass
+
     def flush(self):
         pass
 
