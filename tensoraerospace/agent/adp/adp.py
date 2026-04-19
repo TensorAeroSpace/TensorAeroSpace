@@ -43,7 +43,7 @@ from ..base import (
     get_class_from_string,
     serialize_env,
 )
-from ..metrics import create_metric_writer
+from ..metrics import create_metric_writer, schema
 from .networks import (
     DeterministicActor,
     JCritic,
@@ -473,7 +473,7 @@ class ADP(BaseRLModel):
             self.memory = None
 
         self.log_dir = Path(log_dir) if log_dir is not None else None
-        self.writer = create_metric_writer(self.log_dir)
+        self.writer = create_metric_writer(self.log_dir, algo="adp")
         self.log_every_updates = int(log_every_updates)
         if self.log_every_updates < 1:
             raise ValueError("log_every_updates must be >= 1")
@@ -1116,6 +1116,8 @@ class ADP(BaseRLModel):
             ep_reward = 0.0
             steps = 0
             done = False
+            terminated = False
+            truncated = False
             # Reset ADHDP PID integrator at episode start (important for stable warm-start/BC targets)
             if self.design == "adhdp":
                 try:
@@ -1388,25 +1390,28 @@ class ADP(BaseRLModel):
                     )
                     self._updates += 1
                     if (self._updates % self.log_every_updates) == 0:
+                        self.writer.add_scalar(
+                            schema.TRAIN_UPDATES,
+                            int(self._updates),
+                            env_step=total_steps,
+                        )
+                        self.writer.add_scalar(
+                            schema.TRAIN_LR,
+                            float(self.actor_optim.param_groups[0]["lr"]),
+                            env_step=total_steps,
+                        )
                         if critic_loss_t is not None:
                             self.writer.add_scalar(
-                                "loss/critic_lambda",
+                                schema.ADP.LOSS_CRITIC_LAMBDA,
                                 float(critic_loss_t.item()),
-                                self._updates,
+                                env_step=total_steps,
                             )
                         if actor_loss_t is not None:
                             self.writer.add_scalar(
-                                "loss/actor", float(actor_loss_t.item()), self._updates
+                                schema.LOSS_ACTOR,
+                                float(actor_loss_t.item()),
+                                env_step=total_steps,
                             )
-                        self.writer.add_scalar(
-                            "train/dhp_phase",
-                            (
-                                0.0
-                                if dhp_phase == "critic"
-                                else (1.0 if dhp_phase == "actor" else 2.0)
-                            ),
-                            self._updates,
-                        )
 
                 elif self.design == "gdhp":
                     # GDHP (Fig. 5): critic learns both J and lambda=dJ/dR.
@@ -1664,25 +1669,28 @@ class ADP(BaseRLModel):
                     )
                     self._updates += 1
                     if (self._updates % self.log_every_updates) == 0:
+                        self.writer.add_scalar(
+                            schema.TRAIN_UPDATES,
+                            int(self._updates),
+                            env_step=total_steps,
+                        )
+                        self.writer.add_scalar(
+                            schema.TRAIN_LR,
+                            float(self.actor_optim.param_groups[0]["lr"]),
+                            env_step=total_steps,
+                        )
                         if critic_loss_t is not None:
                             self.writer.add_scalar(
-                                "loss/critic_gdhp",
+                                schema.ADP.LOSS_CRITIC_GDHP,
                                 float(critic_loss_t.item()),
-                                self._updates,
+                                env_step=total_steps,
                             )
                         if actor_loss_t is not None:
                             self.writer.add_scalar(
-                                "loss/actor", float(actor_loss_t.item()), self._updates
+                                schema.LOSS_ACTOR,
+                                float(actor_loss_t.item()),
+                                env_step=total_steps,
                             )
-                        self.writer.add_scalar(
-                            "train/dhp_phase",
-                            (
-                                0.0
-                                if dhp_phase == "critic"
-                                else (1.0 if dhp_phase == "actor" else 2.0)
-                            ),
-                            self._updates,
-                        )
 
                 elif self.design == "hdp":
                     # HDP: critic learns J(R). Actor is improved via model-based one-step lookahead.
@@ -1945,27 +1953,28 @@ class ADP(BaseRLModel):
                     )
                     self._updates += 1
                     if (self._updates % self.log_every_updates) == 0:
+                        self.writer.add_scalar(
+                            schema.TRAIN_UPDATES,
+                            int(self._updates),
+                            env_step=total_steps,
+                        )
+                        self.writer.add_scalar(
+                            schema.TRAIN_LR,
+                            float(self.actor_optim.param_groups[0]["lr"]),
+                            env_step=total_steps,
+                        )
                         if critic_loss_t is not None:
                             self.writer.add_scalar(
-                                "loss/critic_hdp",
+                                schema.ADP.LOSS_CRITIC_HDP,
                                 float(critic_loss_t.item()),
-                                self._updates,
+                                env_step=total_steps,
                             )
                         if actor_loss_t is not None:
                             self.writer.add_scalar(
-                                "loss/actor_hdp",
+                                schema.ADP.LOSS_ACTOR_HDP,
                                 float(actor_loss_t.item()),
-                                self._updates,
+                                env_step=total_steps,
                             )
-                        self.writer.add_scalar(
-                            "train/dhp_phase",
-                            (
-                                0.0
-                                if dhp_phase == "critic"
-                                else (1.0 if dhp_phase == "actor" else 2.0)
-                            ),
-                            self._updates,
-                        )
 
                 elif self.design in ("addhp", "adgdhp"):
                     # ADGDHP: critic learns J(R,A) and its gradients wrt (R,A).
@@ -2320,27 +2329,28 @@ class ADP(BaseRLModel):
                     )
                     self._updates += 1
                     if (self._updates % self.log_every_updates) == 0:
+                        self.writer.add_scalar(
+                            schema.TRAIN_UPDATES,
+                            int(self._updates),
+                            env_step=total_steps,
+                        )
+                        self.writer.add_scalar(
+                            schema.TRAIN_LR,
+                            float(self.actor_optim.param_groups[0]["lr"]),
+                            env_step=total_steps,
+                        )
                         if critic_loss_t is not None:
                             self.writer.add_scalar(
-                                "loss/critic_adgdhp",
+                                schema.ADP.LOSS_CRITIC_GDHP,
                                 float(critic_loss_t.item()),
-                                self._updates,
+                                env_step=total_steps,
                             )
                         if actor_loss_t is not None:
                             self.writer.add_scalar(
-                                "loss/actor_adgdhp",
+                                schema.ADP.LOSS_ACTOR_GDHP,
                                 float(actor_loss_t.item()),
-                                self._updates,
+                                env_step=total_steps,
                             )
-                        self.writer.add_scalar(
-                            "train/dhp_phase",
-                            (
-                                0.0
-                                if dhp_phase == "critic"
-                                else (1.0 if dhp_phase == "actor" else 2.0)
-                            ),
-                            self._updates,
-                        )
 
                 else:
                     # Canonical ADHDP-style update on observation space:
@@ -2391,10 +2401,24 @@ class ADP(BaseRLModel):
                             self._updates += 1
                             if (self._updates % self.log_every_updates) == 0:
                                 self.writer.add_scalar(
-                                    "loss/critic", critic_loss, self._updates
+                                    schema.TRAIN_UPDATES,
+                                    int(self._updates),
+                                    env_step=total_steps,
                                 )
                                 self.writer.add_scalar(
-                                    "loss/actor", actor_loss, self._updates
+                                    schema.TRAIN_LR,
+                                    float(self.actor_optim.param_groups[0]["lr"]),
+                                    env_step=total_steps,
+                                )
+                                self.writer.add_scalar(
+                                    schema.LOSS_CRITIC,
+                                    float(critic_loss),
+                                    env_step=total_steps,
+                                )
+                                self.writer.add_scalar(
+                                    schema.LOSS_ACTOR,
+                                    float(actor_loss),
+                                    env_step=total_steps,
                                 )
                 elif self.design in ("adhdp", "ddpg"):
                     # For canonical ADHDP it is more stable to train on the utility U (cost),
@@ -2428,30 +2452,51 @@ class ADP(BaseRLModel):
                     self._updates += 1
                     if (self._updates % self.log_every_updates) == 0:
                         self.writer.add_scalar(
-                            "loss/critic", critic_loss, self._updates
+                            schema.TRAIN_UPDATES,
+                            int(self._updates),
+                            env_step=total_steps,
                         )
-                        self.writer.add_scalar("loss/actor", actor_loss, self._updates)
+                        self.writer.add_scalar(
+                            schema.TRAIN_LR,
+                            float(self.actor_optim.param_groups[0]["lr"]),
+                            env_step=total_steps,
+                        )
+                        self.writer.add_scalar(
+                            schema.LOSS_CRITIC,
+                            float(critic_loss),
+                            env_step=total_steps,
+                        )
+                        self.writer.add_scalar(
+                            schema.LOSS_ACTOR,
+                            float(actor_loss),
+                            env_step=total_steps,
+                        )
 
                 obs = next_obs
                 done = done_env
                 if max_steps_i is not None and steps >= max_steps_i:
                     break
 
-            self.writer.add_scalar("performance/episode_reward", float(ep_reward), ep)
-            self.writer.add_scalar("performance/episode_length", int(steps), ep)
-            self.writer.add_scalar("train/total_steps", int(total_steps), ep)
+            self.writer.log_episode(
+                reward=float(ep_reward),
+                length=int(steps),
+                env_step=int(total_steps),
+                terminated=bool(terminated),
+                truncated=bool(truncated),
+            )
             if bool(getattr(self, "_is_model_based_design", False)):
                 self.writer.add_scalar(
-                    "train/dhp_phase_episode",
+                    schema.ADP.DHP_PHASE_EPISODE,
                     (
                         0.0
                         if dhp_phase == "critic"
                         else (1.0 if dhp_phase == "actor" else 2.0)
                     ),
-                    ep,
+                    env_step=total_steps,
                 )
 
         self.writer.flush()
+        self.writer.assert_contract_satisfied()
         return {"total_steps": int(total_steps)}
 
     # ---- persistence (HF-style similar to SAC/DDPG) ----

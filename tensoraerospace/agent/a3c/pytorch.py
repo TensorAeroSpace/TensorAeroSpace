@@ -22,7 +22,7 @@ try:  # Prefer gymnasium when available for typing accuracy
 except ImportError:  # pragma: no cover - fallback for older environments
     import gym
 
-from ..metrics import create_metric_writer
+from ..metrics import create_metric_writer, schema
 from .shared_optim import SharedAdam
 from .utils import push_and_pull, record, set_init, v_wrap
 
@@ -187,6 +187,7 @@ class Worker(mp.Process):
         render: bool = False,
         writer: Optional["torch.utils.tensorboard.SummaryWriter"] = None,
         global_step: Optional[mp.Value] = None,
+        global_env_step: Optional[mp.Value] = None,
     ) -> None:
         """Initialize worker process.
 
@@ -214,7 +215,10 @@ class Worker(mp.Process):
             update_global_iter: Steps between syncs with global net.
             render: Whether to render (only worker 0 typically).
             writer: TensorBoard writer for metrics.
-            global_step: Shared global step counter.
+            global_step: Shared global update counter (push_and_pull count).
+            global_env_step: Shared global env-step counter (incremented
+                once per ``env.step``); used as the canonical TensorBoard
+                X-axis for all scalar writes.
         """
         super(Worker, self).__init__()
         self.name = "w%i" % name
@@ -242,6 +246,7 @@ class Worker(mp.Process):
         self.render = render
         self.writer = writer
         self.global_step = global_step
+        self.global_env_step = global_env_step
 
     def run(self) -> None:
         """Execute worker process containing agent training."""
@@ -279,11 +284,17 @@ class Worker(mp.Process):
                     low, high = -np.inf, np.inf
                 a_clipped = np.clip(a, low, high)
                 step_out = self.env.step(a_clipped)
+                # Bump the shared env-step counter exactly once per env.step.
+                # Used as the canonical TB X-axis for all scalar writes.
+                if self.global_env_step is not None:
+                    with self.global_env_step.get_lock():
+                        self.global_env_step.value += 1
                 if isinstance(step_out, tuple) and len(step_out) == 5:
                     s_, r, terminated, truncated, _ = step_out
                     done = terminated or truncated
                 else:
                     s_, r, done, _ = step_out
+                    terminated, truncated = done, False
                 if t == self.max_ep_step - 1:
                     done = True
                 ep_r += r
@@ -309,30 +320,48 @@ class Worker(mp.Process):
                         self.gamma,
                     )
 
-                    # Log training metrics to TensorBoard
-                    if self.writer is not None and self.global_step is not None:
-                        with self.global_step.get_lock():
-                            step = self.global_step.value
-                            self.global_step.value += 1
+                    # Log training metrics to TensorBoard using the
+                    # canonical schema. Per-worker scalars are suffixed
+                    # with /worker_<id> so the strict whitelist accepts
+                    # them (MetricWriter strips the suffix before lookup).
+                    if self.writer is not None and self.global_env_step is not None:
+                        # Update counter (shared across workers): preserves
+                        # the previous semantics (one bump per push_and_pull).
+                        if self.global_step is not None:
+                            with self.global_step.get_lock():
+                                self.global_step.value += 1
+                                update_count = self.global_step.value
+                        else:
+                            update_count = 0
+                        env_step_now = int(self.global_env_step.value)
+                        wid = self.worker_id
                         self.writer.add_scalar(
-                            f"Loss/{self.name}/total",
-                            metrics["loss"],
-                            step,
+                            f"{schema.LOSS_VALUE}/worker_{wid}",
+                            float(metrics["value_loss"]),
+                            env_step=env_step_now,
                         )
                         self.writer.add_scalar(
-                            f"Loss/{self.name}/value",
-                            metrics["value_loss"],
-                            step,
+                            f"{schema.LOSS_ACTOR}/worker_{wid}",
+                            float(metrics["policy_loss"]),
+                            env_step=env_step_now,
                         )
                         self.writer.add_scalar(
-                            f"Loss/{self.name}/policy",
-                            metrics["policy_loss"],
-                            step,
+                            f"{schema.LOSS_ENTROPY}/worker_{wid}",
+                            float(metrics["entropy"]),
+                            env_step=env_step_now,
+                        )
+                        # Mandatory train/* (one shared series across
+                        # workers; last writer wins per env_step, which
+                        # is fine for a global counter / lr).
+                        self.writer.add_scalar(
+                            schema.TRAIN_UPDATES,
+                            int(update_count),
+                            env_step=env_step_now,
                         )
                         self.writer.add_scalar(
-                            f"Loss/{self.name}/entropy",
-                            metrics["entropy"],
-                            step,
+                            schema.TRAIN_LR,
+                            float(self.opt.param_groups[0]["lr"]),
+                            env_step=env_step_now,
                         )
 
                     buffer_s, buffer_a, buffer_r = [], [], []
@@ -345,6 +374,10 @@ class Worker(mp.Process):
                             self.res_queue,
                             self.name,
                             self.writer,
+                            global_env_step=self.global_env_step,
+                            ep_length=t + 1,
+                            terminated=bool(terminated),
+                            truncated=bool(truncated),
                         )
                         break
                 s = s_
@@ -452,6 +485,10 @@ class Agent:
         self.global_ep = mp.Value("i", 0)
         self.global_ep_r = mp.Value("d", 0.0)
         self.global_step = mp.Value("i", 0)
+        # Canonical env-step counter; bumped exactly once per env.step
+        # inside Worker.run() and used as the X-axis for all scalar
+        # writes via the MetricWriter.
+        self.global_env_step = mp.Value("i", 0)
         # Queue type annotation kept as string to avoid requiring typing
         # extensions for multiprocessing types.
         self.res_queue: "mp.Queue" = mp.Queue()
@@ -459,7 +496,7 @@ class Agent:
         # TensorBoard writer
         self.writer: Optional["torch.utils.tensorboard.SummaryWriter"] = None
         try:
-            self.writer = create_metric_writer(log_dir)
+            self.writer = create_metric_writer(log_dir, algo="a3c")
         except Exception:
             self.writer = None
 
@@ -515,6 +552,7 @@ class Agent:
                 render=self.render,
                 writer=self.writer,
                 global_step=self.global_step,
+                global_env_step=self.global_env_step,
             )
             # directly call run without starting a new process
             w.run()
@@ -553,6 +591,7 @@ class Agent:
                 render=self.render if i == 0 else False,
                 writer=self.writer,
                 global_step=self.global_step,
+                global_env_step=self.global_env_step,
             )
             w.start()
             workers.append(w)
@@ -566,6 +605,16 @@ class Agent:
 
         for w in workers:
             w.join()
+
+        # Note: contract assertion is skipped in A3C because workers run in
+        # separate processes; the parent's MetricWriter._written set does
+        # not reflect what children wrote. The strict whitelist on each
+        # worker still fails-loud on bad tags inside that worker's process.
+        if self.writer is not None:
+            try:
+                self.writer.flush()
+            except Exception:
+                pass
 
         return {
             "global_ep": int(self.global_ep.value),

@@ -74,6 +74,15 @@ class _NoOpWriter:
     def add_scalar(self, *a, **kw):
         pass
 
+    def add_histogram(self, *a, **kw):
+        pass
+
+    def log_episode(self, *a, **kw):
+        pass
+
+    def assert_contract_satisfied(self):
+        pass
+
     def flush(self):
         pass
 

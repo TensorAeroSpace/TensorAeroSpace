@@ -28,7 +28,7 @@ from ..base import (
     get_class_from_string,
     serialize_env,
 )
-from ..metrics import create_metric_writer
+from ..metrics import create_metric_writer, schema
 from ..sac.replay_memory import ReplayMemory
 from ..sac.utils import soft_update
 from .flight_actor import NormalPolicyNet
@@ -128,7 +128,10 @@ class DSAC(BaseRLModel):
 
         self.device = torch.device(device)
         self.log_dir = Path(log_dir) if log_dir is not None else None
-        self.writer = create_metric_writer(self.log_dir)
+        self.writer = create_metric_writer(self.log_dir, algo="dsac")
+        # Cumulative env step at the time update_parameters() is invoked.
+        # Updated by train()/train_vector() before each call.
+        self._last_env_step = 0
 
         self.verbose_histogram = bool(verbose_histogram)
         self.log_every_updates = int(log_every_updates)
@@ -463,30 +466,55 @@ class DSAC(BaseRLModel):
                 soft_update(self.Z2_target, self.Z2, self.tau)
 
         if (updates % int(self.log_every_updates)) == 0:
-            self.writer.add_scalar("Loss/Z1", float(z1_loss.item()), updates)
-            self.writer.add_scalar("Loss/Z2", float(z2_loss.item()), updates)
-            self.writer.add_scalar("Loss/Policy", float(policy_loss.item()), updates)
-            self.writer.add_scalar("Loss/Alpha", float(alpha_loss.item()), updates)
-            self.writer.add_scalar("Alpha/value", float(alpha_tlogs.item()), updates)
-            try:
-                self.writer.add_scalar("Train/Q_mean", float(Q.mean().item()), updates)
-                self.writer.add_scalar(
-                    "Train/LogPi_mean", float(log_pi.mean().item()), updates
-                )
-                self.writer.add_scalar(
-                    "Train/CAPS_spatial", float(loss_spatial.item()), updates
-                )
-                self.writer.add_scalar(
-                    "Train/CAPS_temporal", float(loss_temporal.item()), updates
-                )
-                self.writer.add_scalar(
-                    "Train/ActionAbsMean",
-                    float(new_action.abs().mean().item()),
-                    updates,
-                )
-            except Exception:
-                # Keep training robust to occasional logging failures.
-                pass
+            env_step = int(self._last_env_step)
+            self.writer.add_scalar(
+                schema.SAC.LOSS_Q1, float(z1_loss.item()), env_step=env_step
+            )
+            self.writer.add_scalar(
+                schema.SAC.LOSS_Q2, float(z2_loss.item()), env_step=env_step
+            )
+            self.writer.add_scalar(
+                schema.LOSS_POLICY, float(policy_loss.item()), env_step=env_step
+            )
+            self.writer.add_scalar(
+                schema.SAC.LOSS_ALPHA, float(alpha_loss.item()), env_step=env_step
+            )
+            self.writer.add_scalar(
+                schema.SAC.ALPHA_VALUE, float(alpha_tlogs.item()), env_step=env_step
+            )
+            self.writer.add_scalar(
+                schema.SAC.Q_MEAN, float(Q.mean().item()), env_step=env_step
+            )
+            self.writer.add_scalar(
+                schema.SAC.LOG_PI_MEAN,
+                float(log_pi.mean().item()),
+                env_step=env_step,
+            )
+            self.writer.add_scalar(
+                schema.DSAC.CAPS_SPATIAL,
+                float(loss_spatial.item()),
+                env_step=env_step,
+            )
+            self.writer.add_scalar(
+                schema.DSAC.CAPS_TEMPORAL,
+                float(loss_temporal.item()),
+                env_step=env_step,
+            )
+            self.writer.add_scalar(
+                schema.POLICY_ACTION_ABS_MEAN,
+                float(new_action.abs().mean().item()),
+                env_step=env_step,
+            )
+            # Mandatory minimum (rate-limited via the same gating).
+            self.writer.add_scalar(schema.TRAIN_UPDATES, updates, env_step=env_step)
+            self.writer.add_scalar(
+                schema.TRAIN_LR,
+                float(self.policy_optim.param_groups[0]["lr"]),
+                env_step=env_step,
+            )
+            self.writer.add_scalar(
+                schema.TRAIN_REPLAY_SIZE, len(self.memory), env_step=env_step
+            )
 
         return (
             float(z1_loss.item()),
@@ -542,6 +570,8 @@ class DSAC(BaseRLModel):
             episode_steps = 0
             state, _ = self.env.reset()
             done = False
+            last_terminated = False
+            last_truncated = False
 
             while not done:
                 if total_numsteps < self.learning_starts:
@@ -555,12 +585,17 @@ class DSAC(BaseRLModel):
 
                 if len(self.memory) >= max(self.batch_size, self.learning_starts):
                     for _ in range(int(self.updates_per_step)):
+                        # Stash cumulative env step so update_parameters labels
+                        # its scalars with env_step, not the gradient counter.
+                        self._last_env_step = int(total_numsteps)
                         self.update_parameters(self.memory, self.batch_size, updates)
                         updates += 1
 
                 next_state, reward, terminated, truncated, _ = self.env.step(action)
                 done_env = bool(terminated or truncated)
                 done_bootstrap = float(bool(terminated))
+                last_terminated = bool(terminated)
+                last_truncated = bool(truncated)
 
                 episode_steps += 1
                 total_numsteps += 1
@@ -577,18 +612,20 @@ class DSAC(BaseRLModel):
                     done = True
 
             episode_rewards.append(float(episode_reward))
-            self.writer.add_scalar("Performance/Reward", episode_reward, i_episode)
-            self.writer.add_scalar(
-                "Performance/EpisodeLength", episode_steps, i_episode
+            self.writer.log_episode(
+                reward=float(episode_reward),
+                length=int(episode_steps),
+                env_step=int(total_numsteps),
+                terminated=bool(last_terminated),
+                truncated=bool(last_truncated),
             )
-            self.writer.add_scalar("Train/ReplaySize", len(self.memory), i_episode)
-            self.writer.add_scalar("Train/Updates", updates, i_episode)
-            self.writer.add_scalar("Train/TotalSteps", total_numsteps, i_episode)
 
             if save_best and episode_reward > best_reward:
                 best_reward = episode_reward
                 self.save(path=save_path, save_gradients=save_best_with_gradients)
-                self.writer.add_scalar("Performance/BestReward", best_reward, i_episode)
+
+        self.writer.flush()
+        self.writer.assert_contract_satisfied()
 
         return {
             "episode_rewards": episode_rewards,
@@ -639,9 +676,6 @@ class DSAC(BaseRLModel):
         ep_returns = np.zeros((num_envs,), dtype=np.float32)
         ep_lengths = np.zeros((num_envs,), dtype=np.int32)
 
-        term_count = 0
-        trunc_count = 0
-
         updates = 0
         best_mean_return = float("-inf")
         auto_reset = bool(getattr(self.env, "auto_reset", False))
@@ -688,8 +722,6 @@ class DSAC(BaseRLModel):
                 )
 
             done_np = np.logical_or(terminated_np, truncated_np)
-            term_count += int(np.sum(terminated_np))
-            trunc_count += int(np.sum(truncated_np))
 
             done_bootstrap_np = (
                 done_np.astype(np.float32)
@@ -711,6 +743,9 @@ class DSAC(BaseRLModel):
                 and step >= warmup_steps
             ):
                 for _ in range(int(self.updates_per_step)):
+                    # Stash cumulative env step so update_parameters labels its
+                    # scalars with env_step rather than the gradient counter.
+                    self._last_env_step = int(base_step + step + 1)
                     self.update_parameters(self.memory, self.batch_size, updates)
                     updates += 1
 
@@ -722,11 +757,12 @@ class DSAC(BaseRLModel):
                     l = int(ep_lengths[i])
                     returns_window[returns_ptr % len(returns_window)] = r_sum
                     returns_ptr += 1
-                    self.writer.add_scalar(
-                        "Performance/EpisodeReward", r_sum, episodes_done
-                    )
-                    self.writer.add_scalar(
-                        "Performance/EpisodeLength", l, episodes_done
+                    self.writer.log_episode(
+                        reward=r_sum,
+                        length=l,
+                        env_step=int(base_step + step + 1),
+                        terminated=bool(terminated_np[i]),
+                        truncated=bool(truncated_np[i]),
                     )
                     ep_returns[i] = 0.0
                     ep_lengths[i] = 0
@@ -742,18 +778,19 @@ class DSAC(BaseRLModel):
                     )
                     mean_r = float(np.mean(w))
                 self.writer.add_scalar(
-                    f"Performance/MeanReward{reward_window}", mean_r, global_step
+                    schema.TRAIN_REPLAY_SIZE,
+                    len(self.memory),
+                    env_step=global_step,
                 )
                 self.writer.add_scalar(
-                    "Train/ReplaySize", len(self.memory), global_step
-                )
-                self.writer.add_scalar("Train/Updates", updates, global_step)
-                self.writer.add_scalar("Train/TotalSteps", step + 1, global_step)
-                self.writer.add_scalar(
-                    "Diagnostics/TerminatedCount", term_count, global_step
+                    schema.TRAIN_UPDATES,
+                    updates,
+                    env_step=global_step,
                 )
                 self.writer.add_scalar(
-                    "Diagnostics/TruncatedCount", trunc_count, global_step
+                    schema.TRAIN_LR,
+                    float(self.policy_optim.param_groups[0]["lr"]),
+                    env_step=global_step,
                 )
                 pbar.set_postfix(
                     {
@@ -763,20 +800,16 @@ class DSAC(BaseRLModel):
                         "replay": len(self.memory),
                     }
                 )
-                term_count = 0
-                trunc_count = 0
 
                 if save_best and mean_r > best_mean_return and episodes_done > 0:
                     best_mean_return = mean_r
                     self.save(path=save_path, save_gradients=save_best_with_gradients)
-                    self.writer.add_scalar(
-                        "Performance/BestMeanReward", best_mean_return, global_step
-                    )
 
             obs = next_obs
 
         self._global_train_vector_step = base_step + total_steps
         self.writer.flush()
+        self.writer.assert_contract_satisfied()
 
     def get_param_env(self) -> Dict[str, Dict[str, Any]]:
         class_name = self.env.unwrapped.__class__.__name__

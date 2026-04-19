@@ -49,7 +49,9 @@ def test_adp_select_action_shape_and_bounds():
 
 def test_adp_train_smoke_online():
     env = _TinyEnv(obs_dim=4, act_dim=1, max_steps=3)
-    agent = ADP(env=env, device="cpu", use_replay=False, log_every_updates=10)
+    # log_every_updates=1 ensures the (gated) train/updates and train/lr metrics
+    # fire at least once — required by the canonical-metrics contract.
+    agent = ADP(env=env, device="cpu", use_replay=False, log_every_updates=1)
     agent.train(num_episodes=2, max_steps=3)
     # At least some updates happened
     assert getattr(agent, "_updates", 0) > 0
