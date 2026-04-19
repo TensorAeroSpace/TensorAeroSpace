@@ -2,8 +2,11 @@
 
 from __future__ import annotations
 
+import os
 from pathlib import Path
-from typing import Iterable, Optional, Set, Union
+from typing import Any, Iterable, Mapping, Optional, Sequence, Set, Union
+
+import wandb  # type: ignore[import-untyped]
 
 from . import schema
 from .contract import MANDATORY_METRICS, check_contract
@@ -68,6 +71,45 @@ class _TensorBoardSink:
 
     def close(self) -> None:
         self._writer.close()
+
+
+class _WandbSink:
+    """Sink that forwards metrics to Weights & Biases."""
+
+    def __init__(
+        self,
+        *,
+        project: str,
+        entity: Optional[str],
+        run_name: Optional[str],
+        tags: Optional[Sequence[str]],
+        config: Optional[Mapping[str, Any]],
+    ) -> None:
+        if not os.environ.get("WANDB_API_KEY"):
+            wandb.login()
+        self._run = wandb.init(
+            project=project,
+            entity=entity,
+            name=run_name,
+            tags=list(tags) if tags else None,
+            config=dict(config) if config else None,
+            reinit=True,
+            settings=wandb.Settings(start_method="thread"),
+        )
+
+    def add_scalar(self, tag: str, value: float, env_step: int) -> None:
+        wandb.log({tag: float(value)}, step=int(env_step))
+
+    def add_histogram(self, tag: str, values, env_step: int) -> None:
+        wandb.log({tag: wandb.Histogram(values)}, step=int(env_step))
+
+    def flush(self) -> None:
+        pass
+
+    def close(self) -> None:
+        if self._run is not None:
+            self._run.finish()
+            self._run = None
 
 
 class MetricWriter:
