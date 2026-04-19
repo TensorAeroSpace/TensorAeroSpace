@@ -125,6 +125,21 @@ plugins:
               - Simintech:
                 - Simintech: example/simintech/simintech.md
                 - Simintech to Python: example/simintech/simintechToPython.md
+            - Cookbook:
+              - "01 — Hello, TensorAeroSpace": cookbook/01_hello.md
+              - "02 — Anatomy of an env": cookbook/02_env_anatomy.md
+              - "03 — Crafting reference signals": cookbook/03_reference_signals.md
+              - "04 — Choosing an agent": cookbook/04_choosing_agent.md
+              - "05 — Deep-RL training end-to-end": cookbook/05_deep_rl_training.md
+              - "06 — Online-adaptive agents": cookbook/06_online_adaptive.md
+              - "07 — Optuna hyperparameter search": cookbook/07_optuna_search.md
+              - "08 — Save/load/publish to HuggingFace": cookbook/08_huggingface.md
+              - "09 — Fault-tolerance": cookbook/09_fault_tolerance.md
+              - "10 — Adding your own plant model": cookbook/10_custom_plant.md
+              - "11 — IHDP on the nonlinear F-16": cookbook/11_ihdp.md
+              - "12 — IM-GDHP on the nonlinear F-16": cookbook/12_imgdhp.md
+              - "13 — ET-DHP on the nonlinear F-16": cookbook/13_etdhp.md
+              - "14 — AA-INDI on the nonlinear F-16": cookbook/14_aaindi.md
             - Lessons:
               - Theory:
                 - "Lesson 1 — Introduction and State-Space": lesson/base/tutor_1.md
@@ -244,6 +259,21 @@ plugins:
               - Simintech:
                 - Simintech: example/simintech/simintech.md
                 - Simintech в Python: example/simintech/simintechToPython.md
+            - Cookbook:
+              - "01 — Hello, TensorAeroSpace": cookbook/01_hello.md
+              - "02 — Устройство среды": cookbook/02_env_anatomy.md
+              - "03 — Задающие сигналы": cookbook/03_reference_signals.md
+              - "04 — Как выбрать агента": cookbook/04_choosing_agent.md
+              - "05 — Обучение deep-RL от и до": cookbook/05_deep_rl_training.md
+              - "06 — Онлайн-адаптивные агенты": cookbook/06_online_adaptive.md
+              - "07 — Гиперпоиск через Optuna": cookbook/07_optuna_search.md
+              - "08 — Save/load/публикация в HuggingFace": cookbook/08_huggingface.md
+              - "09 — Отказоустойчивость": cookbook/09_fault_tolerance.md
+              - "10 — Добавить свой объект управления": cookbook/10_custom_plant.md
+              - "11 — IHDP на нелинейной F-16": cookbook/11_ihdp.md
+              - "12 — IM-GDHP на нелинейной F-16": cookbook/12_imgdhp.md
+              - "13 — ET-DHP на нелинейной F-16": cookbook/13_etdhp.md
+              - "14 — AA-INDI на нелинейной F-16": cookbook/14_aaindi.md
             - Уроки:
               - Теория:
                 - "Урок 1 — Введение и пространство состояний": lesson/base/tutor_1.md

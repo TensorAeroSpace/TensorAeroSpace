@@ -52,6 +52,14 @@ jobs:
             notebook: example/reinforcement_learning/example_aaindi_nonlinear_f16.ipynb
           - label: iadp-nonlinear-f16
             notebook: example/reinforcement_learning/example_iadp_nonlinear_f16.ipynb
+          - label: cookbook-01-hello
+            notebook: example/cookbook/recipe_01_hello.ipynb
+          - label: cookbook-03-signals
+            notebook: example/cookbook/recipe_03_reference_signals.ipynb
+          - label: cookbook-07-optuna
+            notebook: example/cookbook/recipe_07_optuna.ipynb
+          - label: cookbook-09-fault-tolerance
+            notebook: example/cookbook/recipe_09_fault_tolerance.ipynb
 
     steps:
       - name: 🧹 Free up disk space
