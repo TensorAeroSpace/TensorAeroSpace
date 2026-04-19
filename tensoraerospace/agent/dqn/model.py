@@ -7,7 +7,7 @@ buffer helpers) used in TensorAeroSpace.
 import json
 import time
 from pathlib import Path
-from typing import Any, Optional, Tuple, Union, cast
+from typing import Any, Mapping, Optional, Sequence, Tuple, Union, cast
 
 import gymnasium as gym
 import numpy as np
@@ -256,6 +256,11 @@ class DQNAgent:
         log_dir: str | None = None,
         verbose_histogram: bool = False,
         seed: int = 1,
+        wandb_project: Optional[str] = None,
+        wandb_entity: Optional[str] = None,
+        wandb_run_name: Optional[str] = None,
+        wandb_tags: Optional[Sequence[str]] = None,
+        wandb_config: Optional[Mapping[str, Any]] = None,
     ) -> None:
         """Initialize DQN agent and replay buffer.
 
@@ -289,7 +294,20 @@ class DQNAgent:
         self.target_model = target_model.to(self.device)
         self.optimizer = torch.optim.Adam(self.model.parameters(), lr=learning_rate)
         self.log_dir = Path(log_dir) if log_dir is not None else None
-        self.writer = create_metric_writer(self.log_dir, algo="dqn")
+        self.wandb_project = wandb_project
+        self.wandb_entity = wandb_entity
+        self.wandb_run_name = wandb_run_name
+        self.wandb_tags = wandb_tags
+        self.wandb_config = wandb_config
+        self.writer = create_metric_writer(
+            tb_log_dir=self.log_dir,
+            wandb_project=wandb_project,
+            wandb_entity=wandb_entity,
+            wandb_run_name=wandb_run_name,
+            wandb_tags=wandb_tags,
+            wandb_config=wandb_config,
+            algo="dqn",
+        )
 
         # parameters
         self.env = env  # gym environment
@@ -926,6 +944,11 @@ class PERNARXAgent:
         beta_increment_per_sample: float = 0.001,
         log_dir: str | None = None,
         verbose_histogram: bool = False,
+        wandb_project: Optional[str] = None,
+        wandb_entity: Optional[str] = None,
+        wandb_run_name: Optional[str] = None,
+        wandb_tags: Optional[Sequence[str]] = None,
+        wandb_config: Optional[Mapping[str, Any]] = None,
     ) -> None:
         """Initialize PER-NARX agent and buffers.
 
@@ -954,7 +977,20 @@ class PERNARXAgent:
         self.target_model = target_model.to(self.device)
         self.optimizer = torch.optim.Adam(self.model.parameters(), lr=learning_rate)
         self.log_dir = Path(log_dir) if log_dir is not None else None
-        self.writer = create_metric_writer(self.log_dir, algo="dqn-narx")
+        self.wandb_project = wandb_project
+        self.wandb_entity = wandb_entity
+        self.wandb_run_name = wandb_run_name
+        self.wandb_tags = wandb_tags
+        self.wandb_config = wandb_config
+        self.writer = create_metric_writer(
+            tb_log_dir=self.log_dir,
+            wandb_project=wandb_project,
+            wandb_entity=wandb_entity,
+            wandb_run_name=wandb_run_name,
+            wandb_tags=wandb_tags,
+            wandb_config=wandb_config,
+            algo="dqn-narx",
+        )
 
         # parameters
         self.env = env  # gym environment
