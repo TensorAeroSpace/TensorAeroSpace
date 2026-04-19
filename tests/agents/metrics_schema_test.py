@@ -6,7 +6,6 @@ import pytest
 
 from tensoraerospace.agent.metrics import schema
 
-
 _VALID_TAG = re.compile(r"^[a-z][a-z0-9_]*(/[a-z0-9_]+)+$")
 
 
@@ -68,10 +67,7 @@ def test_strip_worker_suffix_removes_trailing_worker_id():
         schema.strip_worker_suffix("rollout/episode_reward/worker_0")
         == "rollout/episode_reward"
     )
-    assert (
-        schema.strip_worker_suffix("loss/actor/worker_42")
-        == "loss/actor"
-    )
+    assert schema.strip_worker_suffix("loss/actor/worker_42") == "loss/actor"
     assert schema.strip_worker_suffix("loss/actor") == "loss/actor"
 
 
@@ -94,4 +90,5 @@ def test_is_registered_histogram_validates_two_level_prefix():
 
 def test_mandatory_subset_of_registry():
     from tensoraerospace.agent.metrics import MANDATORY_METRICS
+
     assert set(MANDATORY_METRICS).issubset(schema.REGISTRY)

@@ -344,9 +344,7 @@ class SAC(BaseRLModel):
                 schema.SAC.ALPHA_VALUE, alpha_tlogs.item(), env_step=env_step
             )
             # Mandatory minimum (rate-limited via the same gating).
-            self.writer.add_scalar(
-                schema.TRAIN_UPDATES, updates, env_step=env_step
-            )
+            self.writer.add_scalar(schema.TRAIN_UPDATES, updates, env_step=env_step)
             self.writer.add_scalar(
                 schema.TRAIN_LR,
                 float(self.policy_optim.param_groups[0]["lr"]),
@@ -624,11 +622,13 @@ class SAC(BaseRLModel):
             if (step + 1) % log_every == 0:
                 mean_r = float(np.mean(returns_window)) if len(returns_window) else 0.0
                 self.writer.add_scalar(
-                    schema.TRAIN_REPLAY_SIZE, len(self.memory),
+                    schema.TRAIN_REPLAY_SIZE,
+                    len(self.memory),
                     env_step=total_env_steps,
                 )
                 self.writer.add_scalar(
-                    schema.TRAIN_UPDATES, updates,
+                    schema.TRAIN_UPDATES,
+                    updates,
                     env_step=total_env_steps,
                 )
                 self.writer.add_scalar(

@@ -722,9 +722,7 @@ class A2C(BaseRLModel):
                 if save_freq and i % save_freq == 0 and i > 0:
                     if save_path is None:
                         save_path = Path.cwd() / "checkpoints"
-                    checkpoint_path = (
-                        Path(save_path) / f"checkpoint_step_{self.steps}"
-                    )
+                    checkpoint_path = Path(save_path) / f"checkpoint_step_{self.steps}"
                     self.save(checkpoint_path)
         finally:
             # Flush + assert canonical metrics contract before returning. Wrap

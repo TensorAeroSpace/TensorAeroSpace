@@ -8,8 +8,8 @@ import pytest
 
 from tensoraerospace.agent.metrics import (
     MANDATORY_METRICS,
-    MetricWriter,
     MetricsContractError,
+    MetricWriter,
     schema,
 )
 
@@ -49,19 +49,24 @@ def test_add_scalar_requires_env_step(writer: MetricWriter):
 
 def test_add_histogram_accepts_valid_prefix(writer: MetricWriter):
     import numpy as np
+
     writer.add_histogram("weights/actor/fc1.weight", np.zeros(8), env_step=1)
 
 
 def test_add_histogram_rejects_invalid_prefix(writer: MetricWriter):
     import numpy as np
+
     with pytest.raises(ValueError, match="Unknown histogram tag"):
         writer.add_histogram("parameters/actor", np.zeros(8), env_step=1)
 
 
 def test_log_episode_writes_mandatory_rollout_tier(writer: MetricWriter):
     writer.log_episode(
-        reward=12.5, length=200, env_step=200,
-        terminated=False, truncated=True,
+        reward=12.5,
+        length=200,
+        env_step=200,
+        terminated=False,
+        truncated=True,
     )
     written = writer._written  # internal but stable for tests
     assert schema.ROLLOUT_EPISODE_REWARD in written

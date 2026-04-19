@@ -12,7 +12,6 @@ from tensoraerospace.agent.metrics import (
 )
 from tests.agents.metrics_contract_smoke_test import assert_tags_present
 
-
 REQUIRED = {
     schema.ROLLOUT_EPISODE_REWARD,
     schema.ROLLOUT_EPISODE_LENGTH,
