@@ -99,10 +99,10 @@ class _WandbSink:
         )
 
     def add_scalar(self, tag: str, value: float, env_step: int) -> None:
-        wandb.log({tag: float(value)}, step=int(env_step))
+        self._run.log({tag: float(value)}, step=int(env_step))
 
     def add_histogram(self, tag: str, values, env_step: int) -> None:
-        wandb.log({tag: wandb.Histogram(values)}, step=int(env_step))
+        self._run.log({tag: wandb.Histogram(values)}, step=int(env_step))
 
     def flush(self) -> None:
         pass
@@ -114,21 +114,32 @@ class _WandbSink:
 
 
 class MetricWriter:
-    """SummaryWriter wrapper that enforces the canonical metric schema.
+    """Strict-whitelist writer that fans out metrics to one or more sinks.
+
+    Sinks are activated via the constructor:
+
+    * ``tb_log_dir`` set            -> TensorBoard sink active.
+    * ``wandb_project`` set         -> Weights & Biases sink active.
+
+    With both unset, the writer is a no-op for logging — but the strict
+    whitelist still rejects unregistered tags. Use ``create_metric_writer``
+    for environment-based auto-detection (e.g. ``WANDB_API_KEY``).
 
     Parameters
     ----------
-    log_dir
-        TensorBoard log directory.
-    strict
-        If True, ``add_scalar``/``add_histogram`` raise ``ValueError`` for tags
-        not in ``schema.REGISTRY`` (after stripping multi-worker suffix) or not
-        matching the histogram prefix rule.
-    required
-        Tuple of tags that must be written at least once during the writer's
-        lifetime. Checked by ``assert_contract_satisfied``.
-    algo
-        Optional algorithm label, included in error messages.
+    tb_log_dir : path or None
+        Directory for TensorBoard event files. Triggers TB sink.
+    wandb_project, wandb_entity, wandb_run_name, wandb_tags, wandb_config :
+        Wandb run configuration. Setting ``wandb_project`` triggers wandb
+        sink (calls ``wandb.login()`` if no API key is set).
+    strict : bool
+        If True (default), unknown tags raise ``ValueError``.
+    required : iterable[str]
+        Tags that must be written at least once before
+        ``assert_contract_satisfied()`` returns clean.
+    algo : str or None
+        Algorithm label included in error messages and used as default
+        wandb project / tag.
     """
 
     def __init__(

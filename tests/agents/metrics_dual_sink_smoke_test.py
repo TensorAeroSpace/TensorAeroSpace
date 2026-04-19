@@ -35,7 +35,8 @@ def test_sac_writes_to_both_tb_and_wandb(tmp_path: Path, monkeypatch):
 
     # Mock wandb so the test doesn't hit the network
     mock_wandb = MagicMock()
-    mock_wandb.init = MagicMock(return_value=MagicMock())
+    mock_run = MagicMock()
+    mock_wandb.init = MagicMock(return_value=mock_run)
     mock_wandb.Settings = MagicMock(return_value="S")
     mock_wandb.Histogram = MagicMock(side_effect=lambda v: ("H", v))
     monkeypatch.setattr(writer_mod, "wandb", mock_wandb, raising=False)
@@ -58,13 +59,13 @@ def test_sac_writes_to_both_tb_and_wandb(tmp_path: Path, monkeypatch):
     # TB side: tags appear in event files
     assert_tags_present(str(log_dir), REQUIRED)
 
-    # Wandb side: the same tags appear in mocked wandb.log calls
+    # Wandb side: the same tags appear in mocked run.log calls
     logged_keys = set()
-    for call in mock_wandb.log.call_args_list:
+    for call in mock_run.log.call_args_list:
         payload = call.args[0] if call.args else call.kwargs.get("data", {})
         logged_keys.update(payload.keys())
     missing = REQUIRED - logged_keys
     assert not missing, (
-        f"Tags missing from wandb.log calls: {sorted(missing)}; "
+        f"Tags missing from run.log calls: {sorted(missing)}; "
         f"got {sorted(logged_keys)}"
     )
