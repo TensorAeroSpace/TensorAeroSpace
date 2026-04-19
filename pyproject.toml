@@ -28,6 +28,7 @@ numpy = ">=1.24.0"
 # Pillow is a transitive dep via matplotlib/imageio; pin >=12.2.0 for CVE-2026-40192
 # (FITS GZIP decompression bomb, introduced in 10.3.0, fixed in 12.2.0).
 pillow = ">=12.2.0"
+wandb = ">=0.18,<1.0"
 ray = {extras = ["tune"], version = "^2.52.0", optional = true}
 
 [tool.poetry.extras]
