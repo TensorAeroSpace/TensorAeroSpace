@@ -125,6 +125,7 @@ class NonlinearAngularF16(gym.Env):
             name: np.array([self.initial_state[MODEL_STATE_ORDER.index(name)]])
             for name in self.chart_states
         }
+        self._live_renderer = None
         return self.initial_state.copy(), {}
 
     def step(self, action):
@@ -182,10 +183,66 @@ class NonlinearAngularF16(gym.Env):
             )
 
     def render(self):
-        # Placeholder — wired in the next task.
         if self.render_mode is None:
             return None
-        raise NotImplementedError("render() wiring follows in Task 6")
+        if self.render_mode == "human":
+            return self._render_human()
+        if self.render_mode == "rgb_array":
+            return self._render_rgb_array()
+        if self.render_mode == "live":
+            return self._render_live()
+        raise ValueError(f"Unknown render_mode: {self.render_mode!r}")
+
+    def _build_figure(self):
+        from tensoraerospace.visualization.flight_3d import build_flight_3d_figure
+        return build_flight_3d_figure(
+            positions=self.position_history,
+            attitudes=self.attitude_history,
+            time=self.time_history,
+            chart_data=self.chart_history,
+            trail_length=self.trail_length,
+        )
+
+    def _render_human(self):
+        # Don't auto-open the browser in tests; the caller invokes .show()
+        # explicitly when they want the figure displayed.
+        return self._build_figure()
+
+    def _render_rgb_array(self):
+        from io import BytesIO
+        try:
+            from PIL import Image
+        except ImportError as e:
+            raise ImportError(
+                "rgb_array render mode requires Pillow. "
+                "Install with `pip install Pillow`."
+            ) from e
+        fig = self._build_figure()
+        png_bytes = fig.to_image(format="png")  # requires kaleido
+        return np.array(Image.open(BytesIO(png_bytes)).convert("RGB"))
+
+    def _render_live(self):
+        from tensoraerospace.visualization.live import LivePlotlyRenderer
+        if not hasattr(self, "_live_renderer") or self._live_renderer is None:
+            self._live_renderer = LivePlotlyRenderer(trail_length=self.trail_length)
+            self._live_renderer.init_from(
+                self.position_history,
+                self.attitude_history,
+                self.time_history,
+                self.chart_history,
+            )
+            return self._live_renderer._fig
+        # Subsequent calls: append the latest step
+        self._live_renderer.extend(
+            position_row=self.position_history[-1],
+            attitude_row=self.attitude_history[-1],
+            t=float(self.time_history[-1]),
+            chart_row={
+                name: float(self.chart_history[name][-1])
+                for name in self.chart_states
+            },
+        )
+        return self._live_renderer._fig
 
     def close(self):
         return None

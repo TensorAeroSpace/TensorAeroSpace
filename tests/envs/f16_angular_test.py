@@ -83,3 +83,45 @@ def test_time_history_grows(env_factory):
     t = env.unwrapped.time_history
     assert len(t) == 3
     np.testing.assert_allclose(t, [0.0, 0.01, 0.02])
+
+
+def test_render_none_returns_none(env_factory):
+    env = env_factory(render_mode=None)
+    env.reset()
+    env.step(np.zeros(3))
+    assert env.render() is None
+
+
+def test_render_human_returns_figure(env_factory):
+    pytest.importorskip("plotly")
+    import plotly.graph_objects as go
+    env = env_factory(render_mode="human")
+    env.reset()
+    for _ in range(3):
+        env.step(np.zeros(3))
+    fig = env.render()
+    assert isinstance(fig, go.Figure)
+
+
+def test_render_rgb_array_returns_ndarray(env_factory):
+    pytest.importorskip("kaleido")
+    pytest.importorskip("PIL")
+    env = env_factory(render_mode="rgb_array")
+    env.reset()
+    for _ in range(3):
+        env.step(np.zeros(3))
+    arr = env.render()
+    assert isinstance(arr, np.ndarray)
+    assert arr.ndim == 3 and arr.shape[-1] in (3, 4)
+
+
+def test_render_live_returns_figurewidget(env_factory):
+    pytest.importorskip("anywidget")
+    import plotly.graph_objects as go
+    env = env_factory(render_mode="live")
+    env.reset()
+    fig = env.render()
+    assert isinstance(fig, go.FigureWidget)
+    # Subsequent step + render should not raise
+    env.step(np.zeros(3))
+    env.render()
