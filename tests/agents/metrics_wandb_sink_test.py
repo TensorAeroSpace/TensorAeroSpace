@@ -60,28 +60,28 @@ def test_init_calls_login_when_api_key_missing(mock_wandb, monkeypatch):
 
 def test_add_scalar_calls_wandb_log(mock_wandb, monkeypatch):
     from tensoraerospace.agent.metrics.writer import _WandbSink
-    mock, _ = mock_wandb
+    mock, mock_run = mock_wandb
     monkeypatch.setenv("WANDB_API_KEY", "fake-key")
     sink = _WandbSink(project="p", entity=None, run_name=None, tags=None, config=None)
-    mock.log.reset_mock()
+    mock_run.log.reset_mock()
 
     sink.add_scalar("loss/actor", 0.123, env_step=10)
 
-    mock.log.assert_called_once_with({"loss/actor": 0.123}, step=10)
+    mock_run.log.assert_called_once_with({"loss/actor": 0.123}, step=10)
 
 
 def test_add_histogram_wraps_in_wandb_histogram(mock_wandb, monkeypatch):
     from tensoraerospace.agent.metrics.writer import _WandbSink
-    mock, _ = mock_wandb
+    mock, mock_run = mock_wandb
     monkeypatch.setenv("WANDB_API_KEY", "fake-key")
     sink = _WandbSink(project="p", entity=None, run_name=None, tags=None, config=None)
-    mock.log.reset_mock()
+    mock_run.log.reset_mock()
 
     values = np.zeros(8)
     sink.add_histogram("weights/actor/fc1", values, env_step=5)
 
     mock.Histogram.assert_called_once_with(values)
-    mock.log.assert_called_once_with(
+    mock_run.log.assert_called_once_with(
         {"weights/actor/fc1": ("HISTOGRAM", values)}, step=5
     )
 
@@ -106,3 +106,31 @@ def test_flush_is_noop(mock_wandb, monkeypatch):
 
     # Should not raise; nothing to assert on the mock besides no exception.
     sink.flush()
+
+
+def test_two_sinks_log_to_their_own_runs(monkeypatch):
+    """Two coexisting _WandbSink instances must not cross-write to each other."""
+    from unittest.mock import MagicMock
+    from tensoraerospace.agent.metrics import writer as writer_mod
+    from tensoraerospace.agent.metrics.writer import _WandbSink
+
+    mock = MagicMock()
+    mock.Histogram = MagicMock(side_effect=lambda v: ("H", v))
+    mock.Settings = MagicMock(return_value="S")
+    run_a = MagicMock(name="run_a")
+    run_b = MagicMock(name="run_b")
+    mock.init = MagicMock(side_effect=[run_a, run_b])
+    monkeypatch.setattr(writer_mod, "wandb", mock, raising=False)
+    monkeypatch.setenv("WANDB_API_KEY", "fake")
+
+    sink_a = _WandbSink(project="A", entity=None, run_name=None, tags=None, config=None)
+    sink_b = _WandbSink(project="B", entity=None, run_name=None, tags=None, config=None)
+
+    sink_a.add_scalar("loss/actor", 1.0, env_step=1)
+    sink_b.add_scalar("loss/critic", 2.0, env_step=1)
+
+    run_a.log.assert_called_once_with({"loss/actor": 1.0}, step=1)
+    run_b.log.assert_called_once_with({"loss/critic": 2.0}, step=1)
+    # No cross-contamination
+    assert run_a.log.call_count == 1
+    assert run_b.log.call_count == 1

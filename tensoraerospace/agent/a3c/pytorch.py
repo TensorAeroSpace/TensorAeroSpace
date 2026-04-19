@@ -22,7 +22,7 @@ try:  # Prefer gymnasium when available for typing accuracy
 except ImportError:  # pragma: no cover - fallback for older environments
     import gym
 
-from ..metrics import create_metric_writer, schema
+from ..metrics import MetricWriter, create_metric_writer, schema
 from .shared_optim import SharedAdam
 from .utils import push_and_pull, record, set_init, v_wrap
 
@@ -506,7 +506,7 @@ class Agent:
         self.wandb_config = wandb_config
 
         # TensorBoard writer
-        self.writer: Optional["torch.utils.tensorboard.SummaryWriter"] = None
+        self.writer: Optional[MetricWriter] = None
         try:
             self.writer = create_metric_writer(
                 tb_log_dir=log_dir,
