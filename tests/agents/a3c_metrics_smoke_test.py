@@ -10,7 +10,6 @@ import pytest
 from tensoraerospace.agent.metrics import schema
 from tests.agents.metrics_contract_smoke_test import assert_tags_present
 
-
 # A3C Worker writes per-worker scalars with /worker_<id> suffix and a
 # small set of shared train/* scalars without a suffix. The smoke test
 # uses a single worker (worker_id == 0) running in the main process so

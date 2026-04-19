@@ -68,6 +68,7 @@ EVAL_EPISODE_LENGTH = "eval/episode_length"
 # Tier 3 — Per-algorithm extras
 # ---------------------------------------------------------------------------
 
+
 class PPO:
     APPROX_KL = "diagnostics/approx_kl"
     CLIP_FRACTION = "diagnostics/clip_fraction"
@@ -106,6 +107,7 @@ class DQN:
 class DDPG:
     """DDPG uses only common Tier 2 constants (LOSS_POLICY, LOSS_VALUE,
     TRAIN_REPLAY_SIZE); no DDPG-specific tags at this time."""
+
     pass
 
 
@@ -147,9 +149,18 @@ class GAIL:
 HISTOGRAM_GROUPS: FrozenSet[str] = frozenset({"weights", "grads"})
 
 # Allowed second-level groups inside weights/<group>/<param> and grads/<group>/<param>.
-HISTOGRAM_SUBGROUPS: FrozenSet[str] = frozenset({
-    "actor", "critic", "policy", "value", "q", "q1", "q2", "discriminator",
-})
+HISTOGRAM_SUBGROUPS: FrozenSet[str] = frozenset(
+    {
+        "actor",
+        "critic",
+        "policy",
+        "value",
+        "q",
+        "q1",
+        "q2",
+        "discriminator",
+    }
+)
 
 # Multi-worker suffix pattern: any registered scalar tag may be suffixed with
 # "/worker_<N>" where N is a non-negative integer.
@@ -173,6 +184,7 @@ def _collect_constants(namespace) -> FrozenSet[str]:
 
 def _build_registry() -> FrozenSet[str]:
     import sys
+
     module = sys.modules[__name__]
     parts = [_collect_constants(module)]
     for cls in (PPO, SAC, DSAC, DQN, DDPG, A2C, ADP, ADHDP, GAIL):

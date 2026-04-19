@@ -10,7 +10,6 @@ import pytest
 from tensoraerospace.agent.metrics import schema
 from tests.agents.metrics_contract_smoke_test import assert_tags_present
 
-
 REQUIRED = {
     schema.ROLLOUT_EPISODE_REWARD,
     schema.ROLLOUT_EPISODE_LENGTH,
@@ -33,6 +32,7 @@ def test_gail_writes_canonical_tags(tmp_path: Path):
     pytest.importorskip("tensorboard")
 
     import gymnasium as gym
+
     from tensoraerospace.agent.gail.model import GAIL
 
     env_inner = gym.make("Pendulum-v1")

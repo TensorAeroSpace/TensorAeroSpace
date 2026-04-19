@@ -408,7 +408,8 @@ class DQNAgent:
                     truncated=bool(truncated),
                 )
                 self.writer.add_scalar(
-                    schema.DQN.EPSILON, float(self.epsilon),
+                    schema.DQN.EPSILON,
+                    float(self.epsilon),
                     env_step=self.global_env_step,
                 )
                 self.episode_idx += 1
@@ -484,37 +485,45 @@ class DQNAgent:
         td_err_min = float(np.min(abs_td_error)) if abs_td_error.size > 0 else 0.0
 
         self.writer.add_scalar(
-            schema.DQN.LOSS_Q, float(loss.item()),
+            schema.DQN.LOSS_Q,
+            float(loss.item()),
             env_step=self.global_env_step,
         )
         self.writer.add_scalar(
-            schema.DQN.Q_PRED_SA_MEAN, q_pred_sa_mean,
+            schema.DQN.Q_PRED_SA_MEAN,
+            q_pred_sa_mean,
             env_step=self.global_env_step,
         )
         self.writer.add_scalar(
-            schema.DQN.Q_TARGET_SA_MEAN, q_target_sa_mean,
+            schema.DQN.Q_TARGET_SA_MEAN,
+            q_target_sa_mean,
             env_step=self.global_env_step,
         )
         self.writer.add_scalar(
-            schema.VALUE_TD_ERROR_MEAN, td_err_mean,
+            schema.VALUE_TD_ERROR_MEAN,
+            td_err_mean,
             env_step=self.global_env_step,
         )
         self.writer.add_scalar(
-            schema.VALUE_TD_ERROR_MAX, td_err_max,
+            schema.VALUE_TD_ERROR_MAX,
+            td_err_max,
             env_step=self.global_env_step,
         )
         self.writer.add_scalar(
-            schema.VALUE_TD_ERROR_MIN, td_err_min,
+            schema.VALUE_TD_ERROR_MIN,
+            td_err_min,
             env_step=self.global_env_step,
         )
         self.writer.add_scalar(
-            schema.DQN.PER_BETA, float(self.beta),
+            schema.DQN.PER_BETA,
+            float(self.beta),
             env_step=self.global_env_step,
         )
 
         self.global_step += 1
         self.writer.add_scalar(
-            schema.TRAIN_UPDATES, self.global_step,
+            schema.TRAIN_UPDATES,
+            self.global_step,
             env_step=self.global_env_step,
         )
         self.writer.add_scalar(
@@ -523,7 +532,8 @@ class DQNAgent:
             env_step=self.global_env_step,
         )
         self.writer.add_scalar(
-            schema.TRAIN_REPLAY_SIZE, int(self.num_in_buffer),
+            schema.TRAIN_REPLAY_SIZE,
+            int(self.num_in_buffer),
             env_step=self.global_env_step,
         )
 
@@ -534,7 +544,8 @@ class DQNAgent:
         ):
             for name, param in self.model.named_parameters():
                 self.writer.add_histogram(
-                    f"weights/q/{name}", param,
+                    f"weights/q/{name}",
+                    param,
                     env_step=self.global_env_step,
                 )
 
@@ -621,11 +632,13 @@ class DQNAgent:
         wrapped_env.close()
         # Log evaluation reward / length (canonical schema)
         self.writer.add_scalar(
-            schema.EVAL_EPISODE_REWARD, float(ep_reward),
+            schema.EVAL_EPISODE_REWARD,
+            float(ep_reward),
             env_step=self.global_env_step,
         )
         self.writer.add_scalar(
-            schema.EVAL_EPISODE_LENGTH, int(ep_length),
+            schema.EVAL_EPISODE_LENGTH,
+            int(ep_length),
             env_step=self.global_env_step,
         )
         return ep_reward
@@ -668,7 +681,8 @@ class DQNAgent:
         self.target_model.load_state_dict(self.model.state_dict())
         # Log target update event (canonical schema)
         self.writer.add_scalar(
-            schema.DQN.TARGET_UPDATE, 1,
+            schema.DQN.TARGET_UPDATE,
+            1,
             env_step=self.global_env_step,
         )
 
@@ -1042,7 +1056,8 @@ class PERNARXAgent:
                     truncated=bool(truncated),
                 )
                 self.writer.add_scalar(
-                    schema.DQN.EPSILON, float(self.epsilon),
+                    schema.DQN.EPSILON,
+                    float(self.epsilon),
                     env_step=self.global_env_step,
                 )
                 self.episode_idx += 1
@@ -1117,37 +1132,45 @@ class PERNARXAgent:
         td_err_min = float(np.min(abs_td_error)) if abs_td_error.size > 0 else 0.0
 
         self.writer.add_scalar(
-            schema.DQN.LOSS_Q, float(loss.item()),
+            schema.DQN.LOSS_Q,
+            float(loss.item()),
             env_step=self.global_env_step,
         )
         self.writer.add_scalar(
-            schema.DQN.Q_PRED_SA_MEAN, q_pred_sa_mean,
+            schema.DQN.Q_PRED_SA_MEAN,
+            q_pred_sa_mean,
             env_step=self.global_env_step,
         )
         self.writer.add_scalar(
-            schema.DQN.Q_TARGET_SA_MEAN, q_target_sa_mean,
+            schema.DQN.Q_TARGET_SA_MEAN,
+            q_target_sa_mean,
             env_step=self.global_env_step,
         )
         self.writer.add_scalar(
-            schema.VALUE_TD_ERROR_MEAN, td_err_mean,
+            schema.VALUE_TD_ERROR_MEAN,
+            td_err_mean,
             env_step=self.global_env_step,
         )
         self.writer.add_scalar(
-            schema.VALUE_TD_ERROR_MAX, td_err_max,
+            schema.VALUE_TD_ERROR_MAX,
+            td_err_max,
             env_step=self.global_env_step,
         )
         self.writer.add_scalar(
-            schema.VALUE_TD_ERROR_MIN, td_err_min,
+            schema.VALUE_TD_ERROR_MIN,
+            td_err_min,
             env_step=self.global_env_step,
         )
         self.writer.add_scalar(
-            schema.DQN.PER_BETA, float(self.beta),
+            schema.DQN.PER_BETA,
+            float(self.beta),
             env_step=self.global_env_step,
         )
 
         self.global_step += 1
         self.writer.add_scalar(
-            schema.TRAIN_UPDATES, self.global_step,
+            schema.TRAIN_UPDATES,
+            self.global_step,
             env_step=self.global_env_step,
         )
         self.writer.add_scalar(
@@ -1156,7 +1179,8 @@ class PERNARXAgent:
             env_step=self.global_env_step,
         )
         self.writer.add_scalar(
-            schema.TRAIN_REPLAY_SIZE, int(self.num_in_buffer),
+            schema.TRAIN_REPLAY_SIZE,
+            int(self.num_in_buffer),
             env_step=self.global_env_step,
         )
 
@@ -1167,7 +1191,8 @@ class PERNARXAgent:
         ):
             for name, param in self.model.named_parameters():
                 self.writer.add_histogram(
-                    f"weights/q/{name}", param,
+                    f"weights/q/{name}",
+                    param,
                     env_step=self.global_env_step,
                 )
 
@@ -1258,11 +1283,13 @@ class PERNARXAgent:
         env.close()
         # Log evaluation reward / length (canonical schema)
         self.writer.add_scalar(
-            schema.EVAL_EPISODE_REWARD, float(ep_reward),
+            schema.EVAL_EPISODE_REWARD,
+            float(ep_reward),
             env_step=self.global_env_step,
         )
         self.writer.add_scalar(
-            schema.EVAL_EPISODE_LENGTH, int(ep_length),
+            schema.EVAL_EPISODE_LENGTH,
+            int(ep_length),
             env_step=self.global_env_step,
         )
         return ep_reward
@@ -1324,7 +1351,8 @@ class PERNARXAgent:
         self.target_model.load_state_dict(self.model.state_dict())
         # Log target update event (canonical schema)
         self.writer.add_scalar(
-            schema.DQN.TARGET_UPDATE, 1,
+            schema.DQN.TARGET_UPDATE,
+            1,
             env_step=self.global_env_step,
         )
 

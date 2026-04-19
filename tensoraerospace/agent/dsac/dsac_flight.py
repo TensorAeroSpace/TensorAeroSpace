@@ -506,9 +506,7 @@ class DSAC(BaseRLModel):
                 env_step=env_step,
             )
             # Mandatory minimum (rate-limited via the same gating).
-            self.writer.add_scalar(
-                schema.TRAIN_UPDATES, updates, env_step=env_step
-            )
+            self.writer.add_scalar(schema.TRAIN_UPDATES, updates, env_step=env_step)
             self.writer.add_scalar(
                 schema.TRAIN_LR,
                 float(self.policy_optim.param_groups[0]["lr"]),
@@ -780,11 +778,13 @@ class DSAC(BaseRLModel):
                     )
                     mean_r = float(np.mean(w))
                 self.writer.add_scalar(
-                    schema.TRAIN_REPLAY_SIZE, len(self.memory),
+                    schema.TRAIN_REPLAY_SIZE,
+                    len(self.memory),
                     env_step=global_step,
                 )
                 self.writer.add_scalar(
-                    schema.TRAIN_UPDATES, updates,
+                    schema.TRAIN_UPDATES,
+                    updates,
                     env_step=global_step,
                 )
                 self.writer.add_scalar(

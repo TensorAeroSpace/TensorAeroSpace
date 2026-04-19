@@ -31,6 +31,7 @@ class _FallbackSummaryWriter:
 def _get_summary_writer_class():
     try:
         from torch.utils.tensorboard import SummaryWriter
+
         return SummaryWriter
     except Exception:
         return _FallbackSummaryWriter
@@ -121,7 +122,9 @@ class MetricWriter:
         self.add_scalar(schema.ROLLOUT_EPISODE_LENGTH, int(length), env_step)
         self.add_scalar(schema.ROLLOUT_TOTAL_STEPS, int(env_step), env_step)
         if terminated is not None:
-            self.add_scalar(schema.DIAG_TERMINATED_COUNT, int(bool(terminated)), env_step)
+            self.add_scalar(
+                schema.DIAG_TERMINATED_COUNT, int(bool(terminated)), env_step
+            )
         if truncated is not None:
             self.add_scalar(schema.DIAG_TRUNCATED_COUNT, int(bool(truncated)), env_step)
 
