@@ -9,7 +9,7 @@ from __future__ import annotations
 import datetime
 import json
 from pathlib import Path
-from typing import Any, Callable, Optional, Tuple, Union
+from typing import Any, Callable, Mapping, Optional, Sequence, Tuple, Union
 
 import numpy as np
 import torch
@@ -22,7 +22,7 @@ try:  # Prefer gymnasium when available for typing accuracy
 except ImportError:  # pragma: no cover - fallback for older environments
     import gym
 
-from ..metrics import create_metric_writer, schema
+from ..metrics import MetricWriter, create_metric_writer, schema
 from .shared_optim import SharedAdam
 from .utils import push_and_pull, record, set_init, v_wrap
 
@@ -443,6 +443,11 @@ class Agent:
         render: bool = False,
         run_in_main: bool = False,
         log_dir: str = "runs/a3c",
+        wandb_project: Optional[str] = None,
+        wandb_entity: Optional[str] = None,
+        wandb_run_name: Optional[str] = None,
+        wandb_tags: Optional[Sequence[str]] = None,
+        wandb_config: Optional[Mapping[str, Any]] = None,
     ) -> None:
         """Configure A3C agent wrapper.
 
@@ -493,10 +498,25 @@ class Agent:
         # extensions for multiprocessing types.
         self.res_queue: "mp.Queue" = mp.Queue()
 
+        # Store wandb kwargs for completeness/consistency.
+        self.wandb_project = wandb_project
+        self.wandb_entity = wandb_entity
+        self.wandb_run_name = wandb_run_name
+        self.wandb_tags = wandb_tags
+        self.wandb_config = wandb_config
+
         # TensorBoard writer
-        self.writer: Optional["torch.utils.tensorboard.SummaryWriter"] = None
+        self.writer: Optional[MetricWriter] = None
         try:
-            self.writer = create_metric_writer(log_dir, algo="a3c")
+            self.writer = create_metric_writer(
+                tb_log_dir=log_dir,
+                wandb_project=wandb_project,
+                wandb_entity=wandb_entity,
+                wandb_run_name=wandb_run_name,
+                wandb_tags=wandb_tags,
+                wandb_config=wandb_config,
+                algo="a3c",
+            )
         except Exception:
             self.writer = None
 

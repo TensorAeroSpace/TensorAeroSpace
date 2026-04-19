@@ -30,7 +30,7 @@ import datetime
 import inspect
 import json
 from pathlib import Path
-from typing import Any, Dict, Optional, Tuple, Union
+from typing import Any, Dict, Mapping, Optional, Sequence, Tuple, Union
 
 import numpy as np
 import torch
@@ -155,6 +155,11 @@ class ADP(BaseRLModel):
         # Paper Section III: alternating critic/action training cycles (keep the other fixed)
         dhp_critic_cycle_episodes: int = 0,
         dhp_action_cycle_episodes: int = 0,
+        wandb_project: Optional[str] = None,
+        wandb_entity: Optional[str] = None,
+        wandb_run_name: Optional[str] = None,
+        wandb_tags: Optional[Sequence[str]] = None,
+        wandb_config: Optional[Mapping[str, Any]] = None,
     ) -> None:
         super().__init__()
         self.env = env
@@ -473,7 +478,20 @@ class ADP(BaseRLModel):
             self.memory = None
 
         self.log_dir = Path(log_dir) if log_dir is not None else None
-        self.writer = create_metric_writer(self.log_dir, algo="adp")
+        self.wandb_project = wandb_project
+        self.wandb_entity = wandb_entity
+        self.wandb_run_name = wandb_run_name
+        self.wandb_tags = wandb_tags
+        self.wandb_config = wandb_config
+        self.writer = create_metric_writer(
+            tb_log_dir=self.log_dir,
+            wandb_project=wandb_project,
+            wandb_entity=wandb_entity,
+            wandb_run_name=wandb_run_name,
+            wandb_tags=wandb_tags,
+            wandb_config=wandb_config,
+            algo="adp",
+        )
         self.log_every_updates = int(log_every_updates)
         if self.log_every_updates < 1:
             raise ValueError("log_every_updates must be >= 1")

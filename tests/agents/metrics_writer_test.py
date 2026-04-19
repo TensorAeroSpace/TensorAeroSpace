@@ -16,7 +16,7 @@ from tensoraerospace.agent.metrics import (
 
 @pytest.fixture
 def writer(tmp_path: Path) -> MetricWriter:
-    return MetricWriter(log_dir=str(tmp_path / "tb"), algo="test")
+    return MetricWriter(tb_log_dir=str(tmp_path / "tb"), algo="test")
 
 
 def test_add_scalar_accepts_registered_tag(writer: MetricWriter):
@@ -38,7 +38,7 @@ def test_add_scalar_rejects_bad_worker_suffix(writer: MetricWriter):
 
 
 def test_add_scalar_strict_false_allows_anything(tmp_path: Path):
-    w = MetricWriter(log_dir=str(tmp_path / "tb"), strict=False)
+    w = MetricWriter(tb_log_dir=str(tmp_path / "tb"), strict=False)
     w.add_scalar("anything/at/all", 1.0, env_step=1)
 
 
@@ -92,3 +92,34 @@ def test_assert_contract_passes_when_complete(writer: MetricWriter):
 
 def test_close_does_not_raise(writer: MetricWriter):
     writer.close()
+
+
+def test_metricwriter_with_wandb_project_creates_two_sinks(tmp_path: Path, monkeypatch):
+    """When both tb_log_dir and wandb_project are passed, both sinks are active."""
+    from unittest.mock import MagicMock
+
+    from tensoraerospace.agent.metrics import writer as writer_mod
+
+    mock_wandb = MagicMock()
+    mock_wandb.init = MagicMock(return_value=MagicMock())
+    mock_wandb.Settings = MagicMock(return_value="S")
+    monkeypatch.setattr(writer_mod, "wandb", mock_wandb, raising=False)
+    monkeypatch.setenv("WANDB_API_KEY", "fake")
+
+    w = MetricWriter(
+        tb_log_dir=str(tmp_path / "tb"),
+        wandb_project="exp",
+        algo="test",
+    )
+    assert len(w._sinks) == 2  # noqa: SLF001 — internal but stable for tests
+
+
+def test_metricwriter_no_kwargs_creates_zero_sinks(monkeypatch):
+    """No tb_log_dir and no wandb activation => zero sinks (writer no-ops)."""
+    monkeypatch.delenv("WANDB_API_KEY", raising=False)
+    w = MetricWriter(algo="test")
+    assert len(w._sinks) == 0
+    # whitelist still enforced
+    w.add_scalar(schema.LOSS_ACTOR, 0.5, env_step=1)
+    with pytest.raises(ValueError):
+        w.add_scalar("not/in/schema", 0.5, env_step=1)

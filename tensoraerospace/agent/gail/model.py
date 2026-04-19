@@ -7,9 +7,10 @@ components used for imitation learning within TensorAeroSpace.
 import datetime
 import json
 import math
+import os
 import random
 from pathlib import Path
-from typing import Any, Optional, Union
+from typing import Any, Mapping, Optional, Sequence, Union
 
 import gymnasium as gym
 import numpy as np
@@ -151,6 +152,11 @@ class GAIL:
         epochs: int,
         data: np.ndarray,
         log_dir: Union[str, Path, None] = None,
+        wandb_project: Optional[str] = None,
+        wandb_entity: Optional[str] = None,
+        wandb_run_name: Optional[str] = None,
+        wandb_tags: Optional[Sequence[str]] = None,
+        wandb_config: Optional[Mapping[str, Any]] = None,
     ):
         """Initialize the GAIL algorithm.
 
@@ -186,11 +192,28 @@ class GAIL:
         self.optimizer_discrim = optim.Adam(self.discriminator.parameters(), lr=self.lr)
 
         self.log_dir = Path(log_dir) if log_dir is not None else None
-        self.writer = (
-            create_metric_writer(self.log_dir, algo="gail")
-            if log_dir is not None
-            else None
+        self.wandb_project = wandb_project
+        self.wandb_entity = wandb_entity
+        self.wandb_run_name = wandb_run_name
+        self.wandb_tags = wandb_tags
+        self.wandb_config = wandb_config
+        needs_writer = (
+            log_dir is not None
+            or wandb_project is not None
+            or os.environ.get("WANDB_API_KEY") is not None
         )
+        if needs_writer:
+            self.writer = create_metric_writer(
+                tb_log_dir=self.log_dir,
+                wandb_project=wandb_project,
+                wandb_entity=wandb_entity,
+                wandb_run_name=wandb_run_name,
+                wandb_tags=wandb_tags,
+                wandb_config=wandb_config,
+                algo="gail",
+            )
+        else:
+            self.writer = None
         self.global_env_step = 0
         self.update_count = 0
         self.discrim_update_count = 0

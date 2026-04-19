@@ -25,7 +25,7 @@ import datetime
 import inspect
 import json
 from pathlib import Path
-from typing import Any, Dict, Optional, Tuple, Union
+from typing import Any, Dict, Mapping, Optional, Sequence, Tuple, Union
 
 import numpy as np
 import torch
@@ -151,6 +151,11 @@ class ADHDP(BaseRLModel):
         actor_bc_decay: float = 1.0,
         log_dir: Union[str, Path, None] = None,
         log_every_updates: int = 500,
+        wandb_project: Optional[str] = None,
+        wandb_entity: Optional[str] = None,
+        wandb_run_name: Optional[str] = None,
+        wandb_tags: Optional[Sequence[str]] = None,
+        wandb_config: Optional[Mapping[str, Any]] = None,
     ) -> None:
         """Initialize the ADHDP agent.
 
@@ -450,7 +455,20 @@ class ADHDP(BaseRLModel):
         self.critic_optim = Adam(self.critic.parameters(), lr=float(critic_lr))
 
         self.log_dir = Path(log_dir) if log_dir is not None else None
-        self.writer = create_metric_writer(self.log_dir, algo="adhdp")
+        self.wandb_project = wandb_project
+        self.wandb_entity = wandb_entity
+        self.wandb_run_name = wandb_run_name
+        self.wandb_tags = wandb_tags
+        self.wandb_config = wandb_config
+        self.writer = create_metric_writer(
+            tb_log_dir=self.log_dir,
+            wandb_project=wandb_project,
+            wandb_entity=wandb_entity,
+            wandb_run_name=wandb_run_name,
+            wandb_tags=wandb_tags,
+            wandb_config=wandb_config,
+            algo="adhdp",
+        )
         self.log_every_updates = int(log_every_updates)
         self._updates = 0
 
