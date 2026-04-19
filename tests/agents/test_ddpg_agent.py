@@ -287,8 +287,14 @@ class TestDDPGLearn:
 
     def test_learn_warmup(self):
         """Test that warmup period is respected."""
+        from tensoraerospace.agent.metrics import MetricWriter
+
         env = _FakeEnv()
         agent = DDPG(env=env, value_lr=1e-3, policy_lr=1e-3, replay_buffer_size=100)
+        # Inject a writer with no mandatory-metric contract: this test only
+        # collects warmup transitions, so train/updates and train/lr will never
+        # be written and the default contract check would fail.
+        agent.writer = MetricWriter(required=())
 
         initial_weight = agent.value_net.linear1.weight.data.clone()
 

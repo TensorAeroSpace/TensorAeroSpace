@@ -75,7 +75,7 @@ from ..base import (  # noqa: E402
 
 # Optional TensorBoard SummaryWriter (lazy import to avoid pulling in TF)
 from ..metrics import TorchSummaryWriter as SummaryWriter  # noqa: E402
-from ..metrics import create_metric_writer
+from ..metrics import create_metric_writer, schema
 
 
 class RunningMeanStd:
@@ -661,6 +661,7 @@ class DDPG:
 
         # TensorBoard writer (lazy init in learn to include run-time params)
         self.writer = None
+        self.update_count = 0
 
     def _normalize_observation(self, obs: np.ndarray) -> np.ndarray:
         """Normalize observation using running statistics.
@@ -746,21 +747,35 @@ class DDPG:
             )
 
         # Log training metrics if writer is available
+        self.update_count += 1
         if self.writer is not None:
-            try:
-                self.writer.add_scalar(
-                    "loss/policy", float(policy_loss.item()), self.frame_idx
-                )
-                self.writer.add_scalar(
-                    "loss/value", float(value_loss.item()), self.frame_idx
-                )
-                with torch.no_grad():
-                    mean_action = self.policy_net(state).mean().item()
-                self.writer.add_scalar(
-                    "policy/mean_action", float(mean_action), self.frame_idx
-                )
-            except Exception:
-                pass
+            self.writer.add_scalar(
+                schema.LOSS_POLICY, float(policy_loss.item()),
+                env_step=self.frame_idx,
+            )
+            self.writer.add_scalar(
+                schema.LOSS_VALUE, float(value_loss.item()),
+                env_step=self.frame_idx,
+            )
+            with torch.no_grad():
+                action_abs_mean = self.policy_net(state).abs().mean().item()
+            self.writer.add_scalar(
+                schema.POLICY_ACTION_ABS_MEAN, float(action_abs_mean),
+                env_step=self.frame_idx,
+            )
+            self.writer.add_scalar(
+                schema.TRAIN_UPDATES, self.update_count,
+                env_step=self.frame_idx,
+            )
+            self.writer.add_scalar(
+                schema.TRAIN_LR,
+                float(self.policy_optimizer.param_groups[0]["lr"]),
+                env_step=self.frame_idx,
+            )
+            self.writer.add_scalar(
+                schema.TRAIN_REPLAY_SIZE, len(self.replay_buffer),
+                env_step=self.frame_idx,
+            )
 
     def train(
         self,
@@ -876,7 +891,7 @@ class DDPG:
             try:
                 logdir = os.path.join("runs", "ddpg")
                 os.makedirs(logdir, exist_ok=True)
-                self.writer = create_metric_writer(logdir)
+                self.writer = create_metric_writer(logdir, algo="ddpg")
             except Exception:
                 self.writer = None
 
@@ -885,6 +900,9 @@ class DDPG:
                 state = self.env.reset()[0]
                 self.ou_noise.reset()
                 episode_reward = 0
+                episode_length = 0
+                terminated = False
+                truncated = False
                 # Collect states for batch normalization update
                 episode_states = []
 
@@ -936,6 +954,7 @@ class DDPG:
 
                     state = next_state
                     episode_reward += reward
+                    episode_length += 1
                     self.frame_idx += 1
                     pbar.update(1)
                     pbar.set_postfix(
@@ -959,14 +978,17 @@ class DDPG:
 
                 # Log per-episode reward
                 if self.writer is not None:
-                    try:
-                        self.writer.add_scalar(
-                            "Performance/Reward",
-                            float(episode_reward),
-                            len(self.rewards),
-                        )
-                    except Exception:
-                        pass
+                    self.writer.log_episode(
+                        reward=float(episode_reward),
+                        length=int(episode_length),
+                        env_step=int(self.frame_idx),
+                        terminated=bool(terminated),
+                        truncated=bool(truncated),
+                    )
+
+        if self.writer is not None:
+            self.writer.assert_contract_satisfied()
+            self.writer.flush()
 
     def _collect_grads(self, model: nn.Module) -> Dict[str, Optional[torch.Tensor]]:
         """Collect parameter gradients of a model as CPU tensors.
