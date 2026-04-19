@@ -1,3 +1,11 @@
-from .inital import initial_state as initial_state
-from .inital import set_initial_state as set_initial_state
-from .model import AngularF16 as AngularF16
+"""Pure-numpy F-16 6-DoF angular nonlinear model."""
+
+from .inital import initial_state, initial_state_dict, set_initial_state
+from .model import AngularF16
+
+__all__ = [
+    "AngularF16",
+    "initial_state",
+    "initial_state_dict",
+    "set_initial_state",
+]

@@ -218,6 +218,21 @@ Train critic for 5 episodes (actor frozen), then actor for 5 episodes (critic fr
 
 - `ImprovedB747Env` — Boeing 747 longitudinal dynamics with tracking reference
 
+## Unified training interface
+
+ADHDP implements the shared unified `train()` signature from
+`BaseRLModel`:
+
+```python
+agent.train(num_episodes=200, max_steps=500)
+```
+
+ADHDP-specific options accepted via `**kwargs`:
+
+- `show_progress` (`bool`, legacy alias for `verbose`) — controls the
+  tqdm progress bar.
+- `progress_desc` (`str`) — tqdm description label.
+
 ## API Reference
 
 ::: tensoraerospace.agent.adhdp.model.ADHDP

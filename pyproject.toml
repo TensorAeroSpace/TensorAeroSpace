@@ -28,16 +28,9 @@ numpy = ">=1.24.0"
 # Pillow is a transitive dep via matplotlib/imageio; pin >=12.2.0 for CVE-2026-40192
 # (FITS GZIP decompression bomb, introduced in 10.3.0, fixed in 12.2.0).
 pillow = ">=12.2.0"
-# TensorFlow is optional (only used by the IHDP agent). Bumped from 2.15 to 2.20 so
-# keras>=3.13.2 is pulled in, fixing CVE-2026-1462 (untrusted deserialization).
-# keras>=3.13.2 requires Python >=3.11, so this extra is not installable on 3.10.
-# tensorflow-macos is deprecated — modern tensorflow supports macOS arm64 natively.
-tensorflow = {version = ">=2.20.0,<3.0.0", python = ">=3.11", optional = true}
-keras = {version = ">=3.13.2,<4.0.0", python = ">=3.11", optional = true}
 ray = {extras = ["tune"], version = "^2.52.0", optional = true}
 
 [tool.poetry.extras]
-tensorflow = ["tensorflow", "keras"]
 ray = ["ray"]
 
 [tool.poetry.group.dev.dependencies]
@@ -107,13 +100,14 @@ profile = "black"
 multi_line_output = 3
 line_length = 88
 known_first_party = ["tensoraerospace"]
-known_third_party = ["numpy", "pandas", "matplotlib", "tensorflow", "torch", "ray", "optuna"]
+known_third_party = ["numpy", "pandas", "matplotlib", "torch", "ray", "optuna"]
 
 # Конфигурация для pytest
 [tool.pytest.ini_options]
 minversion = "6.0"
-addopts = "-ra -q --strict-markers --strict-config"
+addopts = "-ra -q --strict-markers --strict-config --import-mode=importlib"
 testpaths = ["tests"]
+pythonpath = ["."]
 python_files = ["test_*.py", "*_test.py"]
 python_classes = ["Test*"]
 cache_dir = "/tmp/tensoraerospace_pytest_cache"
@@ -169,7 +163,6 @@ module = [
     "matplotlib.*",
     "pandas.*",
     "scipy.*",
-    "tensorflow.*",
     "torch.*",
     "ray.*",
     "optuna.*",

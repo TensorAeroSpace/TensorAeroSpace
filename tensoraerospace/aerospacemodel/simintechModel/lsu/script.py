@@ -36,7 +36,7 @@ if __name__ == "__main__":
     tps = convert_tp_to_sec_tp(tp, dt=dt)
     number_time_steps = len(tp)  # Количество временных шагов
     reference_signals = np.reshape(
-        unit_step(degree=1, tp=tp, time_step=0.5, output_rad=True), [1, -1]
+        unit_step(degree=1, tp=tp, time_step=0.005, output_rad=True), [1, -1]
     )  # Заданный сигнал
 
     f = open("sit_in_1.dat", "w")

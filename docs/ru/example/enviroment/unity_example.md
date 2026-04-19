@@ -113,13 +113,13 @@ _Рисунок 2.1. Визуализация процесса обучения 
 Обучение на нескольких GPU ускоряет процесс, позволяет использовать более сложные модели и параллелить сбор опыта.
 
 ```bash
-FROM tensorflow/tensorflow:2.4.0-gpu-jupyter
+FROM pytorch/pytorch:2.2.0-cuda12.1-cudnn8-runtime
 
-RUN pip install mlagents==1.1.0 scipy==1.5.4
-RUN mkdir /tf/logs
-COPY a3c_example.py /tf
+RUN pip install mlagents==1.1.0 scipy==1.5.4 tensorboard==2.17.0
+RUN mkdir /workspace/logs
+COPY a3c_example.py /workspace
 
-ENTRYPOINT tensorboard --logdir /tf/logs --port 8889 --host 0.0.0.0 & python a3c_example.py
+ENTRYPOINT tensorboard --logdir /workspace/logs --port 8889 --host 0.0.0.0 & python /workspace/a3c_example.py
 ```
 
 ## Открытые источники (документация)

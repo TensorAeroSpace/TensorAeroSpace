@@ -16,5 +16,5 @@ def test_f4c_getters_deg_rad_and_plot():
     # to_deg/to_rad branches
     s_deg = m.get_state("theta", to_deg=True)
     s_rad = m.get_state("theta", to_rad=True)
-    assert s_deg.shape == s_rad.shape == (steps - 1,)
+    assert s_deg.shape == s_rad.shape == (steps,)
     # skip plot_output due to strict list_state reset in base; ensure getters covered

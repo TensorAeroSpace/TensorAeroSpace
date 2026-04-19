@@ -1,0 +1,142 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 960" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#334155"/>
+    </marker>
+    <marker id="arrow-dash" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#64748b"/>
+    </marker>
+    <marker id="arrow-red" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#dc2626"/>
+    </marker>
+    <marker id="arrow-green" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#047857"/>
+    </marker>
+    <marker id="arrow-blue" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#0369a1"/>
+    </marker>
+    <marker id="arrow-orange" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#d97706"/>
+    </marker>
+  </defs>
+
+  <!-- Title -->
+  <text x="640" y="36" text-anchor="middle" font-size="22" font-weight="700" fill="#0f172a">Event-Triggered Dual Heuristic Programming (ET-DHP)</text>
+  <text x="640" y="60" text-anchor="middle" font-size="14" fill="#475569">Адаптивный критик с ограниченным актором и липшицевым триггером обновлений</text>
+
+  <!-- =========  ROW 1  ========= -->
+  <rect x="40" y="110" width="220" height="120" rx="12" fill="#eff6ff" stroke="#1d4ed8" stroke-width="2"/>
+  <text x="150" y="140" text-anchor="middle" font-size="15" font-weight="700" fill="#1e3a8a">Объект / среда</text>
+  <text x="150" y="170" text-anchor="middle" font-size="13" fill="#1e293b">x_{k+1} = f(x_k, u_k)</text>
+  <text x="150" y="200" text-anchor="middle" font-size="12" fill="#475569">(неизвестная динамика)</text>
+
+  <rect x="330" y="110" width="300" height="120" rx="12" fill="#fef9c3" stroke="#ca8a04" stroke-width="2"/>
+  <text x="480" y="140" text-anchor="middle" font-size="15" font-weight="700" fill="#713f12">Событийный триггер (Липшиц)</text>
+  <text x="480" y="170" text-anchor="middle" font-size="13" fill="#1e293b">срабатывает при ‖x_k − x_et‖ &gt;</text>
+  <text x="480" y="192" text-anchor="middle" font-size="13" fill="#1e293b">ρ ‖x_et‖ · (1 − (2ρ)^Δk) / (1 − 2ρ)</text>
+  <text x="480" y="214" text-anchor="middle" font-size="11" fill="#475569">ρ ∈ (0, 0.5)</text>
+
+  <polygon points="720,170 810,120 900,170 810,220" fill="#fde68a" stroke="#ca8a04" stroke-width="2"/>
+  <text x="810" y="165" text-anchor="middle" font-size="14" font-weight="700" fill="#713f12">Событие?</text>
+  <text x="810" y="184" text-anchor="middle" font-size="11" fill="#475569">обновить / удержать</text>
+
+  <rect x="970" y="120" width="250" height="100" rx="12" fill="#f1f5f9" stroke="#475569" stroke-width="2" stroke-dasharray="4 4"/>
+  <text x="1095" y="150" text-anchor="middle" font-size="14" font-weight="700" fill="#1e293b">Удержать u_{k−1}</text>
+  <text x="1095" y="174" text-anchor="middle" font-size="11" fill="#475569">пропустить обучение</text>
+  <text x="1095" y="195" text-anchor="middle" font-size="11" fill="#475569">(экономия вычислений)</text>
+
+  <line x1="262" y1="170" x2="328" y2="170" stroke="#334155" stroke-width="2" marker-end="url(#arrow)"/>
+  <text x="295" y="161" text-anchor="middle" font-size="12" fill="#334155" font-weight="600">x_k</text>
+
+  <line x1="632" y1="170" x2="718" y2="170" stroke="#334155" stroke-width="2" marker-end="url(#arrow)"/>
+
+  <line x1="900" y1="170" x2="968" y2="170" stroke="#64748b" stroke-width="2" stroke-dasharray="6 4" marker-end="url(#arrow-dash)"/>
+  <text x="934" y="161" text-anchor="middle" font-size="12" fill="#64748b" font-weight="600">нет</text>
+
+  <path d="M 1095 120 L 1095 88 L 150 88 L 150 108" stroke="#64748b" stroke-width="2" stroke-dasharray="6 4" fill="none" marker-end="url(#arrow-dash)"/>
+  <text x="620" y="80" text-anchor="middle" font-size="12" fill="#64748b" font-weight="600">u_{k−1} — удерживается между срабатываниями</text>
+
+  <path d="M 810 222 L 810 270" stroke="#334155" stroke-width="2" fill="none" marker-end="url(#arrow)"/>
+  <text x="828" y="250" text-anchor="start" font-size="12" fill="#334155" font-weight="600">да → обновление</text>
+
+  <!-- =========  ROW 2  ========= -->
+  <rect x="40" y="300" width="280" height="150" rx="12" fill="#ecfdf5" stroke="#047857" stroke-width="2"/>
+  <text x="180" y="330" text-anchor="middle" font-size="15" font-weight="700" fill="#064e3b">Модель объекта  f_θ</text>
+  <text x="180" y="358" text-anchor="middle" font-size="12" fill="#1e293b">предобучена на PE-данных</text>
+  <text x="180" y="381" text-anchor="middle" font-size="13" fill="#1e293b">(x_k, u_k)  →  x̂_{k+1}</text>
+  <text x="180" y="412" text-anchor="middle" font-size="12" fill="#047857" font-weight="600">Якобианы через autograd:</text>
+  <text x="180" y="432" text-anchor="middle" font-size="13" fill="#1e293b">F = ∂f/∂x,   G = ∂f/∂u</text>
+
+  <rect x="500" y="300" width="260" height="150" rx="12" fill="#faf5ff" stroke="#7c3aed" stroke-width="2"/>
+  <text x="630" y="330" text-anchor="middle" font-size="15" font-weight="700" fill="#4c1d95">Критик сопряж. переменных</text>
+  <text x="630" y="360" text-anchor="middle" font-size="14" fill="#1e293b">λ(x) = ∂J/∂x</text>
+  <text x="630" y="382" text-anchor="middle" font-size="11" fill="#475569">(tanh MLP без bias)</text>
+  <text x="630" y="410" text-anchor="middle" font-size="12" fill="#7c3aed" font-weight="600">Цель SGD:</text>
+  <text x="630" y="432" text-anchor="middle" font-size="12" fill="#1e293b">λ* = γ Fᵀ λ(x_{k+1}) + ∂r/∂x</text>
+
+  <rect x="940" y="300" width="300" height="150" rx="12" fill="#fef2f2" stroke="#dc2626" stroke-width="2"/>
+  <text x="1090" y="330" text-anchor="middle" font-size="15" font-weight="700" fill="#7f1d1d">Оптимальное управление</text>
+  <text x="1090" y="368" text-anchor="middle" font-size="14" fill="#1e293b">u* = u_b · tanh(</text>
+  <text x="1090" y="392" text-anchor="middle" font-size="14" fill="#1e293b">−γ / (2 u_b) · R⁻¹ Gᵀ λ(x_{k+1}) )</text>
+  <text x="1090" y="426" text-anchor="middle" font-size="11" fill="#475569">замкнутая форма Modares–Lewis</text>
+
+  <path d="M 810 270 L 810 284 L 180 284 L 180 298" stroke="#334155" stroke-width="2" fill="none" marker-end="url(#arrow)"/>
+
+  <line x1="322" y1="375" x2="498" y2="375" stroke="#334155" stroke-width="2" marker-end="url(#arrow)"/>
+  <text x="410" y="366" text-anchor="middle" font-size="12" fill="#334155" font-weight="600">x̂_{k+1}</text>
+
+  <path d="M 322 420 C 410 420, 410 420, 498 420" stroke="#047857" stroke-width="2" stroke-dasharray="5 3" fill="none" marker-end="url(#arrow-green)"/>
+  <text x="410" y="412" text-anchor="middle" font-size="11" fill="#047857" font-weight="600">F</text>
+
+  <line x1="762" y1="375" x2="938" y2="375" stroke="#7c3aed" stroke-width="2" marker-end="url(#arrow-red)"/>
+  <text x="850" y="366" text-anchor="middle" font-size="12" fill="#7c3aed" font-weight="600">λ(x_{k+1})</text>
+
+  <path d="M 180 452 L 180 496 L 1090 496 L 1090 452" stroke="#047857" stroke-width="2" stroke-dasharray="5 3" fill="none" marker-end="url(#arrow-green)"/>
+  <text x="620" y="488" text-anchor="middle" font-size="12" fill="#047857" font-weight="600">G  (якобиан управления)</text>
+
+  <!-- =========  ROW 3  ========= -->
+  <rect x="200" y="620" width="380" height="150" rx="12" fill="#fef3c7" stroke="#d97706" stroke-width="2"/>
+  <text x="390" y="650" text-anchor="middle" font-size="15" font-weight="700" fill="#78350f">Ограниченный актор π_θ</text>
+  <text x="390" y="678" text-anchor="middle" font-size="14" fill="#1e293b">u = u_b · tanh( D(x) )</text>
+  <text x="390" y="701" text-anchor="middle" font-size="11" fill="#475569">без bias → u(0) = 0 (точная неподвижная точка)</text>
+  <text x="390" y="728" text-anchor="middle" font-size="12" fill="#d97706" font-weight="600">Потеря SGD: MSE(u, u*)</text>
+  <text x="390" y="750" text-anchor="middle" font-size="11" fill="#475569">num_epochs_per_trigger проходов на срабатывание</text>
+
+  <rect x="720" y="620" width="520" height="150" rx="12" fill="#f0f9ff" stroke="#0369a1" stroke-width="2"/>
+  <text x="980" y="650" text-anchor="middle" font-size="15" font-weight="700" fill="#0c4a6e">Функция стоимости (Abu-Khalaf–Lewis)</text>
+  <text x="980" y="680" text-anchor="middle" font-size="14" fill="#1e293b">r = xᵀ Q x + Y(u)</text>
+  <text x="980" y="706" text-anchor="middle" font-size="12" fill="#1e293b">Y(u) = 2 u_b² · diag(R) · [ tanh(D)·D + ½ log(1 − tanh²(D)) ]</text>
+  <text x="980" y="732" text-anchor="middle" font-size="11" fill="#475569">делает u = u_b·tanh(D) точным оптимумом квадратичной задачи</text>
+  <text x="980" y="754" text-anchor="middle" font-size="11" fill="#0369a1" font-weight="600">даёт ∂r/∂x для цели критика</text>
+
+  <path d="M 1090 452 L 1090 540 L 390 540 L 390 618" stroke="#dc2626" stroke-width="2.5" fill="none" marker-end="url(#arrow-red)"/>
+  <text x="730" y="531" text-anchor="middle" font-size="12" fill="#dc2626" font-weight="700">u*  (цель SGD для актора)</text>
+
+  <path d="M 980 618 L 980 568 L 630 568 L 630 452" stroke="#0369a1" stroke-width="2" stroke-dasharray="5 3" fill="none" marker-end="url(#arrow-blue)"/>
+  <text x="800" y="561" text-anchor="middle" font-size="12" fill="#0369a1" font-weight="600">∂r/∂x  (цель для λ)</text>
+
+  <path d="M 200 695 L 20 695 L 20 170 L 38 170" stroke="#d97706" stroke-width="2.5" fill="none" marker-end="url(#arrow-orange)"/>
+  <text x="30" y="430" text-anchor="start" font-size="12" fill="#d97706" font-weight="700">u_k → объект</text>
+
+  <!-- =========  Legend  ========= -->
+  <rect x="40" y="830" width="1200" height="100" rx="10" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1"/>
+  <text x="60" y="858" font-size="13" font-weight="700" fill="#0f172a">Обозначения</text>
+
+  <line x1="60" y1="884" x2="100" y2="884" stroke="#334155" stroke-width="2" marker-end="url(#arrow)"/>
+  <text x="108" y="888" font-size="12" fill="#334155">поток данных (измерения / состояние)</text>
+
+  <line x1="400" y1="884" x2="440" y2="884" stroke="#64748b" stroke-width="2" stroke-dasharray="6 4" marker-end="url(#arrow-dash)"/>
+  <text x="448" y="888" font-size="12" fill="#334155">удерживаемое управление — без вычислений</text>
+
+  <line x1="800" y1="884" x2="840" y2="884" stroke="#047857" stroke-width="2" stroke-dasharray="5 3" marker-end="url(#arrow-green)"/>
+  <text x="848" y="888" font-size="12" fill="#334155">якобианы модели (F, G)</text>
+
+  <line x1="60" y1="912" x2="100" y2="912" stroke="#dc2626" stroke-width="2" marker-end="url(#arrow-red)"/>
+  <text x="108" y="916" font-size="12" fill="#334155">цель SGD для актора (u*)</text>
+
+  <line x1="400" y1="912" x2="440" y2="912" stroke="#0369a1" stroke-width="2" stroke-dasharray="5 3" marker-end="url(#arrow-blue)"/>
+  <text x="448" y="916" font-size="12" fill="#334155">вклад стоимости в цель λ</text>
+
+  <line x1="800" y1="912" x2="840" y2="912" stroke="#d97706" stroke-width="2.5" marker-end="url(#arrow-orange)"/>
+  <text x="848" y="916" font-size="12" fill="#334155">команда, подаваемая на объект</text>
+</svg>

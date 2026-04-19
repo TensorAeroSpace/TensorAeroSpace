@@ -77,13 +77,13 @@ class LinearLongitudinalUltrastick(gym.Env):
         self.action_space = spaces.Box(
             low=-25,
             high=25,
-            shape=(len(self.control_space), 1),
+            shape=(len(self.control_space),),
             dtype=np.float32,
         )
         self.observation_space = spaces.Box(
             low=-np.inf,
             high=np.inf,
-            shape=(len(self.state_space), 1),
+            shape=(len(self.state_space),),
             dtype=np.float32,
         )
 
@@ -107,7 +107,8 @@ class LinearLongitudinalUltrastick(gym.Env):
         Returns:
             float: Control evaluation.
         """
-        ref_val = float(np.asarray(ref_signal[:, ts]).reshape(-1)[0])
+        ts_safe = int(np.clip(ts, 0, ref_signal.shape[1] - 1))
+        ref_val = float(np.asarray(ref_signal[:, ts_safe]).reshape(-1)[0])
         return -float(abs(float(state[0]) - ref_val))
 
     def _get_info(self):
@@ -150,10 +151,10 @@ class LinearLongitudinalUltrastick(gym.Env):
             self.ref_signal,
             self.current_step,
         )
-        self.done = self.current_step >= self.number_time_steps - 2
+        self.done = self.current_step >= self.number_time_steps - 1
         info = self._get_info()
         return (
-            next_state.reshape([-1, 1]).astype(np.float32),
+            np.asarray(next_state).reshape(-1).astype(np.float32),
             reward,
             self.done,
             False,
@@ -191,9 +192,7 @@ class LinearLongitudinalUltrastick(gym.Env):
         # Map initial_state to state_space
         initial_state_array = np.array(self.initial_state, dtype=np.float32).reshape(-1)
         observation = (
-            initial_state_array[self.state_space_indices]
-            .reshape([-1, 1])
-            .astype(np.float32)
+            initial_state_array[self.state_space_indices].reshape(-1).astype(np.float32)
         )
         return observation, info
 
@@ -519,7 +518,7 @@ class ImprovedUltrastickEnv(gym.Env):
 
         # Termination
         terminated = bool(abs(theta) > self.max_pitch_rad)
-        truncated = bool(self.current_step >= self.number_time_steps - 2)
+        truncated = bool(self.current_step >= self.number_time_steps - 1)
 
         info: dict[str, Any] = {
             "elevator_deg": float(elev_deg),

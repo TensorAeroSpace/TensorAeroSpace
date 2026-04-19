@@ -76,8 +76,9 @@ class IQN(nn.Module):
             nn.ReLU(),
         )
 
-        self.const_pi_vec = (
-            torch.arange(start=0, end=self.C, device=self.device) * torch.pi
+        self.register_buffer(
+            "const_pi_vec",
+            torch.arange(start=1, end=self.C + 1) * torch.pi,
         )
         self.embedding_layer = nn.Sequential(
             nn.Linear(self.C, self.H),

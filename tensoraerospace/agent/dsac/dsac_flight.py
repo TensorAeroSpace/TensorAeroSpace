@@ -406,12 +406,12 @@ class DSAC(BaseRLModel):
         # CAPS spatial smoothness (dsac-flight style: on mean, not tanh(action))
         a_det = self.policy.get_mean(s)
         a_near = self.policy.get_mean(torch.normal(mean=s, std=self.caps_noise_std))
-        loss_spatial = torch.mean((a_det - a_near) ** 2)
-        loss_spatial = loss_spatial * self.caps_lambda_smoothness / new_action.shape[0]
+        loss_spatial = torch.mean((a_det - a_near) ** 2) * self.caps_lambda_smoothness
 
         # CAPS temporal smoothness
-        loss_temporal = torch.mean((new_action - next_action) ** 2)
-        loss_temporal = loss_temporal * self.caps_lambda_temporal / new_action.shape[0]
+        loss_temporal = (
+            torch.mean((new_action - next_action) ** 2) * self.caps_lambda_temporal
+        )
 
         # Risk-distorted expectation for actor objective
         taus_exp = ZNet.generate_taus(
@@ -499,18 +499,45 @@ class DSAC(BaseRLModel):
     # -----------------------------
     # Training loops (same API)
     # -----------------------------
-    def train(self, *args, **kwargs) -> None:
-        num_episodes = (
-            int(args[0]) if len(args) > 0 else int(kwargs.get("num_episodes", 1))
-        )
-        save_best = bool(kwargs.get("save_best", False))
-        save_path = kwargs.get("save_path", None)
+    def train(
+        self,
+        num_episodes: int = 1,
+        *,
+        max_steps: Optional[int] = None,
+        save_best: bool = False,
+        save_path: Optional[str] = None,
+        verbose: bool = True,
+        **kwargs: Any,
+    ) -> dict:
+        """Train DSAC for ``num_episodes`` (unified interface).
+
+        Args:
+            num_episodes: Number of training episodes.
+            max_steps: Optional per-episode step cap.
+            save_best: If True, checkpoint the best-reward model.
+            save_path: Destination for best-reward checkpoints.
+            verbose: If True, display a tqdm progress bar.
+            **kwargs: Algorithm-specific options:
+
+                - ``save_best_with_gradients`` (bool): save optimizer
+                  gradients alongside model weights.
+
+        Returns:
+            dict: Training metrics (``episode_rewards``, ``best_reward``,
+            ``updates``, ``total_steps``).
+        """
+        num_episodes = int(num_episodes)
+        save_best = bool(save_best)
         save_best_with_gradients = bool(kwargs.get("save_best_with_gradients", False))
 
         total_numsteps = 0
         updates = 0
         best_reward = float("-inf")
-        for i_episode in tqdm(range(num_episodes), desc="DSAC", unit="episode"):
+        episode_rewards: list = []
+        ep_iter = range(num_episodes)
+        if verbose:
+            ep_iter = tqdm(ep_iter, desc="DSAC", unit="episode")
+        for i_episode in ep_iter:
             episode_reward = 0.0
             episode_steps = 0
             state, _ = self.env.reset()
@@ -546,7 +573,10 @@ class DSAC(BaseRLModel):
                 self.memory.push(state, action, r, next_state, done_bootstrap)
                 state = next_state
                 done = done_env
+                if max_steps is not None and episode_steps >= int(max_steps):
+                    done = True
 
+            episode_rewards.append(float(episode_reward))
             self.writer.add_scalar("Performance/Reward", episode_reward, i_episode)
             self.writer.add_scalar(
                 "Performance/EpisodeLength", episode_steps, i_episode
@@ -559,6 +589,13 @@ class DSAC(BaseRLModel):
                 best_reward = episode_reward
                 self.save(path=save_path, save_gradients=save_best_with_gradients)
                 self.writer.add_scalar("Performance/BestReward", best_reward, i_episode)
+
+        return {
+            "episode_rewards": episode_rewards,
+            "best_reward": float(best_reward) if episode_rewards else float("-inf"),
+            "updates": int(updates),
+            "total_steps": int(total_numsteps),
+        }
 
     def train_vector(
         self,

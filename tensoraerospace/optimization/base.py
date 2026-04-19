@@ -77,11 +77,14 @@ class HyperParamOptimizationOptuna(HyperParamOptimizationBase):
         """
         return self.study.best_trial.params
 
-    def plot_parms(self, figsize: tuple[float, float] = (15.0, 5.0)) -> None:
+    def plot_parms(self, figsize: tuple[float, float] = (15.0, 5.0)) -> "plt.Figure":
         """Plot trial values over the optimization history.
 
         Args:
             figsize: Matplotlib figure size. Defaults to ``(15, 5)``.
+
+        Returns:
+            matplotlib.figure.Figure: The created figure.
         """
         x = []
         x_labels = []
@@ -100,3 +103,4 @@ class HyperParamOptimizationOptuna(HyperParamOptimizationBase):
         ax.set_title("Hyperparameter search history")
         ax.set_ylabel("Значение функции", fontsize=15)
         ax.set_xlabel("Итерации", fontsize=15)
+        return fig

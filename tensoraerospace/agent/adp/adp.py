@@ -1062,17 +1062,35 @@ class ADP(BaseRLModel):
 
         return float(critic_loss_t.item()), float(actor_loss_t.item())
 
-    def train(self, *args, **kwargs) -> None:
-        """Train for a number of episodes.
+    def train(
+        self,
+        num_episodes: int = 1,
+        *,
+        max_steps: Optional[int] = None,
+        save_best: bool = False,
+        save_path: Optional[str] = None,
+        verbose: bool = True,
+        **kwargs: Any,
+    ) -> dict:
+        """Train the ADP / ACD agent (unified interface).
 
         Args:
-            num_episodes (int): Number of episodes.
-            max_steps (int | None): Optional per-episode cap.
+            num_episodes: Number of episodes to run.
+            max_steps: Optional per-episode step cap. ``None`` lets the
+                environment decide when to terminate.
+            save_best: Currently unused by ADP; accepted for API
+                consistency.
+            save_path: Currently unused by ADP; accepted for API
+                consistency.
+            verbose: Reserved for symmetry with other agents.
+            **kwargs: Algorithm-specific options (forwarded, ignored
+                here).
+
+        Returns:
+            dict: Empty dict placeholder for API compatibility.
         """
-        num_episodes = (
-            int(args[0]) if len(args) > 0 else int(kwargs.get("num_episodes", 1))
-        )
-        max_steps = kwargs.get("max_steps", None)
+        _ = (save_best, save_path, verbose, kwargs)
+        num_episodes = int(num_episodes)
         max_steps_i = int(max_steps) if max_steps is not None else None
 
         total_steps = 0
@@ -2434,6 +2452,7 @@ class ADP(BaseRLModel):
                 )
 
         self.writer.flush()
+        return {"total_steps": int(total_steps)}
 
     # ---- persistence (HF-style similar to SAC/DDPG) ----
     def get_param_env(self) -> Dict[str, Dict[str, Any]]:

@@ -26,10 +26,10 @@ def test_get_state_and_control_and_errors():
     env.run_step(np.array([0.0]))
 
     rho_hist = env.get_state("rho")
-    assert rho_hist.shape[0] == env.number_time_steps - 1
+    assert rho_hist.shape[0] == env.number_time_steps
 
     u_hist = env.get_control("u2")
-    assert u_hist.shape[0] == env.number_time_steps - 1
+    assert u_hist.shape[0] == env.number_time_steps
 
     with pytest.raises(Exception):
         env.get_state("bad")
@@ -63,6 +63,6 @@ def test_comsat_initialization_and_run_step():
     x1 = model.run_step(np.array([100.0]))
     assert x1.shape[0] == 3
 
-    assert model.get_state("rho").shape[0] == steps - 1
-    assert model.get_state("rho_dot").shape[0] == steps - 1
+    assert model.get_state("rho").shape[0] == steps
+    assert model.get_state("rho_dot").shape[0] == steps
     assert model.get_output("theta_dot").shape[0] == model.time_step - 1

@@ -25,5 +25,10 @@ EXPOSE 8888
 # Default: run JupyterLab. Keep ENTRYPOINT minimal so `docker run ... <cmd>`
 # does not accidentally append a second Jupyter command/args (which previously
 # caused duplicate root_dir errors).
+#
+# NOTE: JupyterLab will generate a random access token at startup and print it
+# to the container logs. Retrieve it via `docker logs <container>` (or use
+# `jupyter server list` inside the container). Do not disable the token on
+# network-reachable deployments.
 ENTRYPOINT ["poetry", "run"]
-CMD ["jupyter", "lab", "--notebook-dir=/app", "--ip=0.0.0.0", "--no-browser", "--allow-root", "--port=8888", "--ServerApp.token=", "--ServerApp.password="]
+CMD ["jupyter", "lab", "--notebook-dir=/app", "--ip=0.0.0.0", "--no-browser", "--allow-root", "--port=8888"]

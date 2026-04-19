@@ -22,12 +22,19 @@ def test_damping_degree_no_peaks_returns_zero():
 
 
 def test_rise_time_none_when_thresholds_not_reached():
+    # Updated after B3 fix: rise_time now uses system_signal for y_final.
+    # Use a negative system response so low/high thresholds (positive) are
+    # never reached, exercising the None-return path.
     c = np.ones(10)
-    s = np.zeros(10)
+    s = -np.ones(10)
     assert rise_time(c, s, low_threshold=0.1, high_threshold=0.9) is None
 
 
-def test_settling_time_full_length_when_never_within_range():
+def test_settling_time_zero_when_never_leaves_range():
+    # Updated after B3/B6 fix: settling_time now uses system_signal for the
+    # steady-state estimate and returns 0 when the signal never exits the
+    # ±threshold band (a zero signal trivially stays within any relative band
+    # around its own zero mean).
     c = np.ones(10)
     s = np.zeros(10)
-    assert settling_time(c, s, threshold=0.01) == len(s)
+    assert settling_time(c, s, threshold=0.01) == 0

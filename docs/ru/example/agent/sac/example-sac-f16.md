@@ -6,7 +6,7 @@ import gymnasium as gym
 import itertools
 import torch
 import numpy as np
-from gym.spaces import Box
+from gymnasium.spaces import Box
 from tqdm import tqdm
 
 from tensoraerospace.utils import generate_time_period, convert_tp_to_sec_tp

@@ -61,6 +61,7 @@ class LinearLongitudinalMissileModel(gym.Env):
         else:
             self.reward_func = self.reward
 
+        # Constructor already invokes initialise_system internally.
         self.model = MissileModel(
             initial_state,
             number_time_steps=number_time_steps,
@@ -73,21 +74,18 @@ class LinearLongitudinalMissileModel(gym.Env):
         ]
 
         self.ref_signal = reference_signal
-        self.model.initialise_system(
-            x0=initial_state, number_time_steps=number_time_steps
-        )
         self.number_time_steps = number_time_steps
 
         self.action_space = spaces.Box(
             low=-60,
             high=60,
-            shape=(len(self.control_space), 1),
+            shape=(len(self.control_space),),
             dtype=np.float32,
         )
         self.observation_space = spaces.Box(
             low=-np.inf,
             high=np.inf,
-            shape=(len(self.state_space), 1),
+            shape=(len(self.state_space),),
             dtype=np.float32,
         )
 
@@ -110,7 +108,8 @@ class LinearLongitudinalMissileModel(gym.Env):
         Returns:
             reward (float): Control performance evaluation.
         """
-        return -float(np.abs(state[0] - ref_signal[:, ts]).item())
+        ts_safe = int(np.clip(ts, 0, ref_signal.shape[1] - 1))
+        return -float(np.abs(state[0] - ref_signal[:, ts_safe]).item())
 
     def step(self, action: np.ndarray):
         """Execute a simulation step.
@@ -134,10 +133,16 @@ class LinearLongitudinalMissileModel(gym.Env):
             self.reference_signal,
             self.current_step,
         )
-        self.done = self.current_step >= self.number_time_steps - 2
+        self.done = self.current_step >= self.number_time_steps - 1
         info = self._get_info()
 
-        return next_state.reshape([-1, 1]), reward, self.done, False, info
+        return (
+            np.asarray(next_state).reshape(-1).astype(np.float32),
+            reward,
+            self.done,
+            False,
+            info,
+        )
 
     def reset(self, seed=None, options=None):
         """Reset simulation environment to initial conditions.
@@ -150,19 +155,17 @@ class LinearLongitudinalMissileModel(gym.Env):
 
         self.current_step = 0
         self.done = False
+        # Constructor already invokes initialise_system internally.
         self.model = MissileModel(
             self.initial_state,
             number_time_steps=self.number_time_steps,
             selected_state_output=None,
         )
-        self.model.initialise_system(
-            x0=self.initial_state, number_time_steps=self.number_time_steps
-        )
         info = self._get_info()
 
         observation = np.array(self.initial_state, dtype=np.float32)[
             self.model.selected_state_index
-        ].reshape([-1, 1])
+        ].reshape(-1)
         return observation, info
 
     def render(self):
@@ -245,19 +248,26 @@ class ImprovedMissileEnv(gym.Env):
         self.w_smooth = 0.01
         self.w_jerk = 0.001
 
-        # Store init args for (de)serialization helpers
-        self.init_args = locals()
+        # Store init args for (de)serialization helpers (only public
+        # __init__ parameters — avoid capturing locals() which includes
+        # derived variables)
+        self.init_args = {
+            "initial_state": initial_state,
+            "reference_signal": reference_signal,
+            "number_time_steps": number_time_steps,
+            "dt": dt,
+            "initial_elevator_deg": initial_elevator_deg,
+            "use_initial_action_on_first_step": use_initial_action_on_first_step,
+        }
 
         # Underlying model (keep full state output order: [u, w, q, theta])
+        # Constructor already invokes initialise_system internally.
         self.model = MissileModel(
             self.initial_state,
             number_time_steps=self.number_time_steps,
             selected_state_output=None,
             t0=0,
             dt=self.dt,
-        )
-        self.model.initialise_system(
-            x0=self.initial_state, number_time_steps=self.number_time_steps
         )
 
     @property
@@ -381,7 +391,7 @@ class ImprovedMissileEnv(gym.Env):
             reward = -100.0
             terminated = True
 
-        truncated = self.current_step >= self.number_time_steps - 2
+        truncated = self.current_step >= self.number_time_steps - 1
 
         return (
             self._get_obs(),

@@ -4,8 +4,12 @@ This module contains the core GAIL implementation and supporting neural network
 components used for imitation learning within TensorAeroSpace.
 """
 
+import datetime
+import json
 import math
 import random
+from pathlib import Path
+from typing import Any, Optional, Union
 
 import gymnasium as gym
 import numpy as np
@@ -127,9 +131,9 @@ class Discriminator(nn.Module):
 
     def forward(self, x):
         """Compute discriminator probability for state-action pairs."""
-        x = F.tanh(self.linear1(x))
-        x = F.tanh(self.linear2(x))
-        prob = F.sigmoid(self.linear3(x))
+        x = torch.tanh(self.linear1(x))
+        x = torch.tanh(self.linear2(x))
+        prob = torch.sigmoid(self.linear3(x))
         return prob
 
 
@@ -243,6 +247,43 @@ class GAIL:
                 loss.backward()
                 self.optimizer.step()
 
+    def train(
+        self,
+        num_episodes: int = 100,
+        *,
+        max_steps: Optional[int] = None,
+        save_best: bool = False,
+        save_path: Optional[str] = None,
+        verbose: bool = True,
+        **kwargs: Any,
+    ) -> dict:
+        """Train GAIL (unified interface wrapper around :meth:`learn`).
+
+        Args:
+            num_episodes: Number of episodes. Combined with
+                ``max_steps`` to produce a ``max_frames`` budget unless
+                ``max_frames`` is supplied explicitly via ``**kwargs``.
+            max_steps: Max steps per episode. Defaults to
+                ``self.max_steps`` when not provided.
+            save_best: Reserved for API consistency.
+            save_path: Reserved for API consistency.
+            verbose: Reserved for symmetry.
+            **kwargs: GAIL-specific options:
+
+                - ``max_frames`` (int): override the computed budget.
+                - ``max_reward`` (float, default ``inf``): early-stop
+                  threshold on mean test reward.
+
+        Returns:
+            dict: Empty dict (GAIL does not yet collect metrics).
+        """
+        _ = (save_best, save_path, verbose)
+        per_ep = int(max_steps) if max_steps is not None else int(self.max_steps)
+        max_frames = int(kwargs.pop("max_frames", int(num_episodes) * per_ep))
+        max_reward = float(kwargs.pop("max_reward", float("inf")))
+        self.learn(max_frames=max_frames, max_reward=max_reward)
+        return {}
+
     def learn(self, max_frames: int, max_reward: float) -> None:
         """Agent training function.
 
@@ -272,9 +313,13 @@ class GAIL:
 
             for _ in range(self.max_steps):
                 state = torch.FloatTensor(state).to(device)
-                dist, value = self.model(state)
+                with torch.no_grad():
+                    dist, value = self.model(state)
 
-                action = dist.sample()
+                    action = dist.sample()
+                    log_prob = dist.log_prob(action)
+                    entropy += dist.entropy().mean()
+
                 next_state, reward, terminated, truncated, info = self.env.step(
                     action.cpu().numpy()
                 )
@@ -282,16 +327,13 @@ class GAIL:
                 next_state = next_state.reshape(1, -1)
                 reward = self.expert_reward(state, action.cpu().numpy())
 
-                log_prob = dist.log_prob(action)
-                entropy += dist.entropy().mean()
-
-                log_probs.append(log_prob)
-                values.append(value)
+                log_probs.append(log_prob.detach())
+                values.append(value.detach())
                 rewards.append(torch.FloatTensor(reward).to(device))
                 masks.append(torch.FloatTensor([1 - done]).unsqueeze(1).to(device))
 
-                states.append(state)
-                actions.append(action)
+                states.append(state.detach())
+                actions.append(action.detach())
 
                 state = next_state
                 frame_idx += 1
@@ -304,7 +346,8 @@ class GAIL:
                         early_stop = True
 
             next_state = torch.FloatTensor(next_state).to(device)
-            _, next_value = self.model(next_state)
+            with torch.no_grad():
+                _, next_value = self.model(next_state)
             returns = compute_gae(next_value, rewards, masks, values)
 
             returns = torch.cat(returns).detach()
@@ -333,6 +376,13 @@ class GAIL:
             fake = self.discriminator(state_action)
             real = self.discriminator(expert_state_action)
             self.optimizer_discrim.zero_grad()
+            # NOTE: Label convention here is inverted relative to the canonical
+            # GAIL paper: policy (fake) -> 1, expert (real) -> 0. This is
+            # intentional and consistent with `expert_reward`, which returns
+            # `-log(D(s,a))`. Under this convention D ~ 0 for expert-like
+            # state-action pairs, so `-log(D)` yields a HIGH reward when the
+            # policy behaves like the expert. Flipping the labels without also
+            # updating `expert_reward` would break training.
             discrim_loss = self.discrim_criterion(
                 fake, torch.ones((states.shape[0], 1)).to(device)
             ) + self.discrim_criterion(
@@ -340,3 +390,225 @@ class GAIL:
             )
             discrim_loss.backward()
             self.optimizer_discrim.step()
+
+    # ------------------------------------------------------------------
+    # Serialization helpers
+    # ------------------------------------------------------------------
+
+    def get_param_env(self) -> dict:
+        """Return serializable configuration of environment and policy."""
+        class_name = self.__class__.__name__
+        module_name = self.__class__.__module__
+        agent_name = f"{module_name}.{class_name}"
+
+        env_name = (
+            f"{self.env.unwrapped.__class__.__module__}"
+            f".{self.env.unwrapped.__class__.__name__}"
+        )
+
+        policy_params = {
+            "learning_rate": self.lr,
+            "max_steps": self.max_steps,
+            "mini_batch_size": self.mini_batch_size,
+            "epochs": self.epochs,
+            "num_inputs": self.num_inputs,
+            "num_outputs": self.num_outputs,
+        }
+
+        return {
+            "env": {"name": env_name, "params": {}},
+            "policy": {"name": agent_name, "params": policy_params},
+        }
+
+    def save(
+        self,
+        path: Union[str, Path, None] = None,
+        save_gradients: bool = False,
+    ) -> Path:
+        """Save GAIL model to the specified directory.
+
+        Saves actor-critic network, discriminator network, and configuration.
+        Optionally saves optimizer states for resuming training.
+
+        Args:
+            path (str | Path | None): Base save directory.  If *None*, saves to
+                the current working directory.
+            save_gradients (bool): If True, also save optimizer state dicts.
+
+        Returns:
+            Path: The directory where the model was saved.
+        """
+        if path is None:
+            path = Path.cwd()
+        else:
+            path = Path(path)
+
+        date_str = datetime.datetime.now().strftime("%b%d_%H-%M-%S")
+        save_dir = path / f"{date_str}_{self.__class__.__name__}"
+        save_dir.mkdir(parents=True, exist_ok=True)
+
+        config_path = save_dir / "config.json"
+        model_path = save_dir / "actor_critic.pth"
+        discriminator_path = save_dir / "discriminator.pth"
+        optimizer_path = save_dir / "optimizer.pth"
+        optimizer_discrim_path = save_dir / "optimizer_discrim.pth"
+
+        # Save configuration
+        config = self.get_param_env()
+        with open(config_path, "w", encoding="utf-8") as f:
+            json.dump(config, f, indent=2)
+
+        # Save network weights
+        torch.save(self.model.state_dict(), model_path)
+        torch.save(self.discriminator.state_dict(), discriminator_path)
+
+        # Optionally save optimizer states
+        if save_gradients:
+            torch.save(self.optimizer.state_dict(), optimizer_path)
+            torch.save(self.optimizer_discrim.state_dict(), optimizer_discrim_path)
+
+        return save_dir
+
+    @classmethod
+    def _load(
+        cls,
+        path: Union[str, Path],
+        env: Optional[gym.Env] = None,
+        data: Optional[np.ndarray] = None,
+        load_gradients: bool = False,
+    ) -> "GAIL":
+        """Load a GAIL agent from a checkpoint directory.
+
+        Args:
+            path: Directory containing saved model files.
+            env: Environment instance.  Required because GAIL needs
+                an environment to set up its networks.
+            data: Expert demonstration data.  May be *None* if only
+                inference is needed (a dummy array is created).
+            load_gradients: If True, restore optimizer states.
+
+        Returns:
+            GAIL: Reconstructed agent.
+        """
+        path = Path(path)
+        config_path = path / "config.json"
+        model_path = path / "actor_critic.pth"
+        discriminator_path = path / "discriminator.pth"
+        optimizer_path = path / "optimizer.pth"
+        optimizer_discrim_path = path / "optimizer_discrim.pth"
+
+        with open(config_path, "r", encoding="utf-8") as f:
+            config = json.load(f)
+
+        policy_params = config["policy"]["params"]
+
+        if env is None:
+            raise ValueError(
+                "GAIL requires an 'env' argument when loading because "
+                "the environment cannot be reconstructed from the config alone."
+            )
+
+        if data is None:
+            # Create a small dummy array so the constructor does not fail.
+            num_inputs = policy_params["num_inputs"]
+            num_outputs = policy_params["num_outputs"]
+            data = np.zeros((1, num_inputs + num_outputs), dtype=np.float32)
+
+        new_agent = cls(
+            env=env,
+            learning_rate=policy_params["learning_rate"],
+            max_steps=policy_params["max_steps"],
+            mini_batch_size=policy_params["mini_batch_size"],
+            epochs=policy_params["epochs"],
+            data=data,
+        )
+
+        # Restore network weights
+        map_loc = device
+        new_agent.model.load_state_dict(
+            torch.load(model_path, map_location=map_loc, weights_only=False)
+        )
+        new_agent.discriminator.load_state_dict(
+            torch.load(discriminator_path, map_location=map_loc, weights_only=False)
+        )
+
+        # Optionally restore optimizer states
+        if load_gradients:
+            if optimizer_path.exists():
+                new_agent.optimizer.load_state_dict(
+                    torch.load(optimizer_path, map_location=map_loc, weights_only=False)
+                )
+            if optimizer_discrim_path.exists():
+                new_agent.optimizer_discrim.load_state_dict(
+                    torch.load(
+                        optimizer_discrim_path,
+                        map_location=map_loc,
+                        weights_only=False,
+                    )
+                )
+
+        return new_agent
+
+    @classmethod
+    def from_pretrained(
+        cls,
+        repo_name: str,
+        env: Optional[gym.Env] = None,
+        data: Optional[np.ndarray] = None,
+        access_token: Optional[str] = None,
+        version: Optional[str] = None,
+        load_gradients: bool = False,
+    ) -> "GAIL":
+        """Load pretrained model from a local directory or Hugging Face Hub.
+
+        Args:
+            repo_name: Path to a local folder **or** a Hugging Face repo id
+                (e.g. ``"namespace/repo_name"``).
+            env: Environment instance (required).
+            data: Expert demonstration data (optional).
+            access_token: Hugging Face access token for private repos.
+            version: Revision / branch / tag on Hugging Face.
+            load_gradients: Restore optimizer states for continued training.
+
+        Returns:
+            GAIL: Initialized agent.
+        """
+        p = Path(str(repo_name)).expanduser()
+        if p.is_dir():
+            return cls._load(p, env=env, data=data, load_gradients=load_gradients)
+
+        # If it looks like an explicit filesystem path, raise immediately.
+        pathlike_prefixes = ("./", "../", "/", "~")
+        if str(repo_name).startswith(pathlike_prefixes):
+            raise FileNotFoundError(f"Local directory not found: '{repo_name}'.")
+
+        # Fall back to Hugging Face Hub download.
+        from huggingface_hub import snapshot_download
+
+        folder_path = snapshot_download(
+            repo_id=repo_name, token=access_token, revision=version
+        )
+        return cls._load(folder_path, env=env, data=data, load_gradients=load_gradients)
+
+    def publish_to_hub(
+        self,
+        repo_name: str,
+        folder_path: Union[str, Path],
+        access_token: Optional[str] = None,
+    ) -> None:
+        """Upload a saved model folder to Hugging Face Hub.
+
+        Args:
+            repo_name: Repository id on Hugging Face (e.g. ``"user/my-gail"``).
+            folder_path: Local folder produced by :meth:`save`.
+            access_token: Hugging Face access token.
+        """
+        from huggingface_hub import HfApi
+
+        api = HfApi()
+        api.upload_folder(
+            folder_path=str(folder_path),
+            repo_id=repo_name,
+            repo_type="model",
+            token=access_token,
+        )

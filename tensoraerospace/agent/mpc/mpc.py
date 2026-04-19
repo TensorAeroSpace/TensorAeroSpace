@@ -931,6 +931,7 @@ class MPCAgent(BaseRLModel):
 
         # --- Learned model ---
         self.normalize = bool(normalize)
+        self._normalizers_fitted = False
         self.model_predict_delta = bool(model_predict_delta)
         self._hidden_layers_cfg: Sequence[int] = tuple(int(h) for h in hidden_layers)
         self._activation_name: Literal["relu", "tanh", "gelu"] = activation
@@ -1851,6 +1852,7 @@ class MPCAgent(BaseRLModel):
         self.y_scaler = MPCStandardScaler.fit(y).to(
             device=self.device, dtype=self.dtype
         )
+        self._normalizers_fitted = True
 
     def train_dynamics(
         self,
@@ -1859,10 +1861,17 @@ class MPCAgent(BaseRLModel):
         batch_size: int = 1024,
         steps_per_epoch: int | None = None,
         loss: Literal["mse", "huber"] = "mse",
+        force_refit_normalizers: bool = False,
     ) -> dict[str, float]:
         """Train the dynamics model on transitions stored in the replay buffer.
 
         The model is trained on samples from `self.memory`.
+
+        Args:
+            force_refit_normalizers: If True, re-fit the normalizers even if
+                they have already been fitted. Default is False — normalizers
+                are fit only on the first call to avoid changing the loss
+                landscape mid-training.
         """
 
         epochs = int(epochs)
@@ -1877,9 +1886,13 @@ class MPCAgent(BaseRLModel):
                 f"need {batch_size}"
             )
 
-        # Fit scalers once (unless normalize disabled)
-        if self.normalize:
+        # Fit scalers only on first call (or if forced) to avoid changing the
+        # loss landscape mid-training.
+        if self.normalize and (
+            force_refit_normalizers or not getattr(self, "_normalizers_fitted", False)
+        ):
             self.fit_normalizers()
+            self._normalizers_fitted = True
 
         if steps_per_epoch is None:
             steps_per_epoch = max(1, int(len(self.memory) // batch_size))
@@ -2111,15 +2124,41 @@ class MPCAgent(BaseRLModel):
         new_agent = cls(env=env, **policy_params)
 
         # --- load weights/optim
-        state = torch.load(
-            model_path, map_location=new_agent.device, weights_only=False
-        )
+        try:
+            state = torch.load(
+                model_path, map_location=new_agent.device, weights_only=True
+            )
+        except Exception:
+            # Legacy checkpoint format — use weights_only=False but warn.
+            import warnings
+
+            warnings.warn(
+                "Loading MPC model checkpoint with weights_only=False. "
+                "Only load checkpoints from trusted sources.",
+                stacklevel=2,
+            )
+            state = torch.load(
+                model_path, map_location=new_agent.device, weights_only=False
+            )
         new_agent.model.load_state_dict(state)
 
         if load_gradients and optim_path.exists():
-            opt_state = torch.load(
-                optim_path, map_location=new_agent.device, weights_only=False
-            )
+            try:
+                opt_state = torch.load(
+                    optim_path, map_location=new_agent.device, weights_only=True
+                )
+            except Exception:
+                # Legacy optimizer checkpoint — fall back with a security warning.
+                import warnings
+
+                warnings.warn(
+                    "Loading MPC optimizer checkpoint with weights_only=False. "
+                    "Only load checkpoints from trusted sources.",
+                    stacklevel=2,
+                )
+                opt_state = torch.load(
+                    optim_path, map_location=new_agent.device, weights_only=False
+                )
             new_agent.model_opt.load_state_dict(opt_state)
 
         if norms_path.exists():

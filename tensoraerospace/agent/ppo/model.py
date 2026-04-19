@@ -721,7 +721,9 @@ class PPO(BaseRLModel):
             if deterministic:
                 action_t = mean_action_t
             action_exec_t = torch.clamp(action_t, low, high)
-            log_prob_t = dist.log_prob(action_exec_t).sum(dim=-1, keepdim=True)
+            # Compute log_prob from the UNCLAMPED sampled action to avoid biased
+            # gradients when actions saturate at the bounds.
+            log_prob_t = dist.log_prob(action_t).sum(dim=-1, keepdim=True)
         return action_exec_t, mean_action_t, log_prob_t
 
     def _act_tensor_batch(
@@ -758,7 +760,9 @@ class PPO(BaseRLModel):
             if deterministic:
                 action_t = mean_action_t
             action_exec_t = torch.clamp(action_t, low, high)
-            log_prob_t = dist.log_prob(action_exec_t).sum(dim=-1, keepdim=True)
+            # Compute log_prob from the UNCLAMPED sampled action to avoid biased
+            # gradients when actions saturate at the bounds.
+            log_prob_t = dist.log_prob(action_t).sum(dim=-1, keepdim=True)
         return action_exec_t, mean_action_t, log_prob_t
 
     def _is_vector_env(self, obs: Any) -> bool:
@@ -841,7 +845,9 @@ class PPO(BaseRLModel):
                     value = self.critic(obs)
                     action, dist = self.actor(obs)
                     env_action = torch.clamp(action, low, high)
-                    logp = dist.log_prob(env_action).sum(dim=-1, keepdim=True)
+                    # Compute log_prob from the UNCLAMPED sampled action to avoid
+                    # biased gradients when actions saturate at the bounds.
+                    logp = dist.log_prob(action).sum(dim=-1, keepdim=True)
                 step_return = self.env.step(env_action)
                 if len(step_return) > 4:
                     next_obs, reward, terminated, truncated, info = step_return
@@ -865,7 +871,10 @@ class PPO(BaseRLModel):
                 reward_t = self._to_tensor(reward, dtype=torch.float32).view(-1, 1)
 
                 buf_states.append(obs)
-                buf_actions.append(env_action)
+                # Store the UNCLAMPED sampled action so that old/new log-probs
+                # are computed w.r.t. the same point in the distribution's
+                # support (matching the unclamped log_prob computed above).
+                buf_actions.append(action)
                 buf_logp.append(logp)
                 buf_rewards.append(reward_t)
                 buf_dones.append(done_t)
@@ -1351,7 +1360,9 @@ class PPO(BaseRLModel):
         actions2 = torch.stack(actions).detach()
         rewards2 = torch.cat(rewards)
         dones2 = torch.cat(dones)
-        values2 = torch.cat(values).flatten()
+        # Explicitly build a 1D tensor of values so rollout_len=1 does not
+        # collapse into a scalar (which would break indexing below).
+        values2 = torch.cat([v.view(1) for v in values])
         probs2 = torch.cat(probs).detach()
 
         returns2 = []
@@ -1361,14 +1372,25 @@ class PPO(BaseRLModel):
             g2 = delta2 + gamma * self.gae_lambda * (1 - dones2[i]) * g2
             returns2.insert(0, g2 + values2[i].view(-1, 1))
 
-        # Compute advantages without recreating a tensor from a list of tensors
-        returns_tensor = torch.cat(returns2).detach().squeeze()
+        # Compute advantages without recreating a tensor from a list of tensors.
+        # Use view(-1) to preserve the batch dim when rollout_len == 1
+        # (bare .squeeze() would turn a 1-elem tensor into a 0-d scalar).
+        returns_tensor = torch.cat(returns2).detach().view(-1)
         adv2 = returns_tensor - values2[:-1]
         # adv = (adv - adv.mean()) / (adv.std() + 1e-10)
 
         return states2, actions2, returns2, adv2, rewards2, probs2
 
-    def train(self) -> None:
+    def train(
+        self,
+        num_episodes: Optional[int] = None,
+        *,
+        max_steps: Optional[int] = None,
+        save_best: bool = False,
+        save_path: Optional[str] = None,
+        verbose: bool = True,
+        **kwargs: Any,
+    ) -> dict:
         """Train the PPO agent through interaction with the environment.
 
         This method implements the complete PPO training loop:
@@ -1378,17 +1400,40 @@ class PPO(BaseRLModel):
             4. Log metrics to TensorBoard
             5. Periodically evaluate policy performance
 
-        The training loop continues for max_episodes, with each episode consisting
-        of rollout_len environment steps. Policy updates are performed using
-        num_epochs of optimization over mini-batches of size batch_size.
+        Args:
+            num_episodes: Number of training episodes. When ``None``
+                (the default), PPO falls back to ``self.max_episodes``
+                which was set at construction time. This preserves the
+                original no-argument call style.
+            max_steps: Optional override for ``self.rollout_len`` so
+                callers can shorten each rollout via the unified API.
+            save_best: Reserved for unified interface; PPO already
+                handles best-model saving via its internal background
+                saver, so this flag is currently a no-op.
+            save_path: Reserved for unified interface (see
+                ``save_best``).
+            verbose: Reserved for symmetry with other agents.
+            **kwargs: Additional algorithm-specific keyword arguments
+                (currently ignored by PPO).
 
-        Training can be stopped early using KL divergence thresholds (target_kl)
-        or by setting self.target = True.
+        Returns:
+            dict: Training metrics dictionary with episode rewards
+            collected so far, the final running average and any
+            early-stopping flag PPO may have triggered.
+
+        Training can be stopped early using KL divergence thresholds
+        (``target_kl``) or by setting ``self.target = True``.
 
         Note:
-            All metrics are logged to TensorBoard including actor/critic losses,
-            rewards, entropy, KL divergence, clip fraction, and explained variance.
+            All metrics are logged to TensorBoard including actor/critic
+            losses, rewards, entropy, KL divergence, clip fraction, and
+            explained variance.
         """
+        _ = (save_best, save_path, verbose, kwargs)
+        if num_episodes is not None:
+            self.max_episodes = int(num_episodes)
+        if max_steps is not None:
+            self.rollout_len = int(max_steps)
         try:
             # Detect vector env and use batched training loop
             reset_return = self.env.reset()
@@ -1398,7 +1443,11 @@ class PPO(BaseRLModel):
                 state0 = reset_return
             if self._is_vector_env(state0):
                 self._train_vector(initial_obs=state0)
-                return
+                return {
+                    "episode_rewards": list(getattr(self, "ep_reward", []) or []),
+                    "avg_rewards": list(getattr(self, "avg_rewards_list", []) or []),
+                    "best_reward": float(getattr(self, "best_reward", float("-inf"))),
+                }
 
             # Non-vector env fallback (original loop)
             for episode in tqdm(range(self.max_episodes)):
@@ -1431,19 +1480,29 @@ class PPO(BaseRLModel):
                 rollout_states = []  # For obs normalization update
                 for step in range(self.rollout_len):
                     rollout_states.append(state)
-                    action, mu, prob = self._act_tensor(state)
-                    # Normalize state for value function if needed
+                    # Inline actor forward so we can store the UNCLAMPED sampled
+                    # action alongside its log-prob. Storing the clamped action
+                    # while computing log-prob from the unclamped sample (or
+                    # vice versa) produces inconsistent old/new log-probs in the
+                    # PPO ratio and biases the policy gradient when actions
+                    # saturate at the bounds.
                     state_normalized = (
                         self._normalize_obs(state) if self.normalize_obs else state
                     )
+                    state_t = torch.as_tensor(
+                        np.array([state_normalized]),
+                        dtype=torch.float32,
+                        device=self.device,
+                    )
                     with torch.no_grad():
-                        value = self.critic(
-                            torch.as_tensor(
-                                np.array([state_normalized]),
-                                dtype=torch.float32,
-                                device=self.device,
-                            )
-                        )
+                        action_raw_t, dist_t = self.actor(state_t)
+                        mu_t = dist_t.mean
+                        # `action_raw_t` is the unclamped sampled action; this is
+                        # the point at which we compute log_prob for PPO.
+                        prob = dist_t.log_prob(action_raw_t).sum(dim=-1, keepdim=True)
+                        value = self.critic(state_t)
+                    action = action_raw_t  # unclamped, stored in buffer
+                    mu = mu_t
                     # Clip action to environment bounds to avoid invalid controls
                     env_action = action.detach().cpu().numpy()[0]
                     try:
@@ -1529,7 +1588,7 @@ class PPO(BaseRLModel):
                 probs = torch.cat(probs).detach()
 
                 # Reward normalization (normalize returns)
-                if self.normalize_reward:
+                if self.normalize_reward and hasattr(self, "ret_rms"):
                     returns_np = returns.cpu().numpy().flatten()
                     self.ret_rms.update(returns_np)
                     returns = torch.clamp(
@@ -1648,6 +1707,11 @@ class PPO(BaseRLModel):
             self.close()
 
         # print("Training completed. Average rewards list:", self.avg_rewards_list)
+        return {
+            "episode_rewards": list(getattr(self, "ep_reward", []) or []),
+            "avg_rewards": list(getattr(self, "avg_rewards_list", []) or []),
+            "best_reward": float(getattr(self, "best_reward", float("-inf"))),
+        }
 
     def get_param_env(self) -> Dict[str, Dict[str, Any]]:
         """Get environment and agent parameters for serialization.
