@@ -28,7 +28,7 @@ from ..base import (
     get_class_from_string,
     serialize_env,
 )
-from ..metrics import create_metric_writer
+from ..metrics import create_metric_writer, schema
 
 
 def _state_dict_cpu(module: torch.nn.Module) -> Dict[str, torch.Tensor]:
@@ -619,7 +619,10 @@ class PPO(BaseRLModel):
         self.best_reward = float("-inf")
         self.avg_rewards_list: list = []
         self.log_dir = Path(log_dir) if log_dir is not None else None
-        self.writer = create_metric_writer(self.log_dir)
+        self.writer = create_metric_writer(self.log_dir, algo="ppo")
+        # Cumulative env-step counter for canonical TB metric x-axis. Incremented
+        # after every self.env.step() call (per parallel env for vector envs).
+        self.global_env_step = 0
 
         # Best-checkpoint saving (optional, async by default)
         self.save_best_model = bool(save_best_model)
@@ -849,6 +852,8 @@ class PPO(BaseRLModel):
                     # biased gradients when actions saturate at the bounds.
                     logp = dist.log_prob(action).sum(dim=-1, keepdim=True)
                 step_return = self.env.step(env_action)
+                # Vector env: env.step() advances n_envs steps in parallel.
+                self.global_env_step += int(n_envs)
                 if len(step_return) > 4:
                     next_obs, reward, terminated, truncated, info = step_return
                     terminated_t = self._to_tensor(
@@ -1039,24 +1044,73 @@ class PPO(BaseRLModel):
                 reward_p10 = float(avg_reward)
                 reward_p90 = float(avg_reward)
 
-            # Log
-            self.writer.add_scalar("Loss/Actor", avg_aloss, episode)
-            self.writer.add_scalar("Loss/Critic", avg_closs, episode)
-            self.writer.add_scalar("Performance/Reward", avg_reward, episode)
-            self.writer.add_scalar("Performance/RewardMedian", reward_median, episode)
-            self.writer.add_scalar("Performance/RewardP10", reward_p10, episode)
-            self.writer.add_scalar("Performance/RewardP90", reward_p90, episode)
-            self.writer.add_scalar("Performance/Entropy", avg_entropy, episode)
+            # Log canonical TB metrics. PPO logs per-rollout-epoch *aggregates*
+            # (mean across the rollout's finished episodes), not per individual
+            # finished episode -- so we write rollout/* tags directly instead of
+            # using log_episode() which would force terminated/truncated to 0/1.
+            env_step = int(self.global_env_step)
             self.writer.add_scalar(
-                "Performance/Episode Length", avg_episode_length, episode
+                schema.ROLLOUT_EPISODE_REWARD, float(avg_reward), env_step=env_step
             )
-            self.writer.add_scalar("Diagnostics/Approx KL", avg_kl, episode)
-            self.writer.add_scalar("Diagnostics/Clip Fraction", avg_clipfrac, episode)
             self.writer.add_scalar(
-                "Diagnostics/Explained Variance", float(explained_var), episode
+                schema.ROLLOUT_EPISODE_LENGTH,
+                float(avg_episode_length),
+                env_step=env_step,
             )
-            self.writer.add_scalar("Diagnostics/TerminatedCount", term_events, episode)
-            self.writer.add_scalar("Diagnostics/TruncatedCount", trunc_events, episode)
+            self.writer.add_scalar(
+                schema.ROLLOUT_TOTAL_STEPS, env_step, env_step=env_step
+            )
+            self.writer.add_scalar(
+                schema.PPO.REWARD_MEDIAN, float(reward_median), env_step=env_step
+            )
+            self.writer.add_scalar(
+                schema.PPO.REWARD_P10, float(reward_p10), env_step=env_step
+            )
+            self.writer.add_scalar(
+                schema.PPO.REWARD_P90, float(reward_p90), env_step=env_step
+            )
+            self.writer.add_scalar(
+                schema.LOSS_ACTOR, float(avg_aloss), env_step=env_step
+            )
+            self.writer.add_scalar(
+                schema.LOSS_CRITIC, float(avg_closs), env_step=env_step
+            )
+            self.writer.add_scalar(
+                schema.POLICY_ENTROPY, float(avg_entropy), env_step=env_step
+            )
+            self.writer.add_scalar(
+                schema.PPO.APPROX_KL, float(avg_kl), env_step=env_step
+            )
+            self.writer.add_scalar(
+                schema.PPO.CLIP_FRACTION, float(avg_clipfrac), env_step=env_step
+            )
+            self.writer.add_scalar(
+                schema.PPO.EXPLAINED_VARIANCE,
+                float(explained_var),
+                env_step=env_step,
+            )
+            self.writer.add_scalar(
+                schema.DIAG_TERMINATED_COUNT,
+                float(term_events),
+                env_step=env_step,
+            )
+            self.writer.add_scalar(
+                schema.DIAG_TRUNCATED_COUNT,
+                float(trunc_events),
+                env_step=env_step,
+            )
+            # Per-epoch training counters. We use ``episode + 1`` (rollout-epoch
+            # index) as a proxy for the number of training updates -- the exact
+            # number of mini-batch SGD steps per epoch depends on KL early
+            # stopping which is hard to track exactly here.
+            self.writer.add_scalar(
+                schema.TRAIN_UPDATES, int(episode + 1), env_step=env_step
+            )
+            self.writer.add_scalar(
+                schema.TRAIN_LR,
+                float(self.a_opt.param_groups[0]["lr"]),
+                env_step=env_step,
+            )
 
             # Periodic "evaluation" for vector env:
             # We don't run a separate single-env rollout here (would require an eval env).
@@ -1064,7 +1118,11 @@ class PPO(BaseRLModel):
             if (episode + 1) % int(self.eval_freq) == 0:
                 # Use median as a more stable evaluation metric than mean (robust to rare crashes)
                 eval_reward = float(reward_median)
-                self.writer.add_scalar("Evaluation/Reward", eval_reward, episode)
+                self.writer.add_scalar(
+                    schema.EVAL_EPISODE_REWARD,
+                    float(eval_reward),
+                    env_step=env_step,
+                )
                 if eval_reward > self.best_reward:
                     self.best_reward = float(eval_reward)
                     print(
@@ -1313,6 +1371,8 @@ class PPO(BaseRLModel):
             # Use deterministic actions for evaluation (no sampling)
             action, mean_action, delta = self.act(state, deterministic=True)
             step_return = self.env.step(mean_action[0])
+            # Single-env evaluation step: advance counter by 1.
+            self.global_env_step += 1
             if len(step_return) > 4:
                 next_state, reward, terminated, truncated, info = step_return
                 done = terminated or truncated
@@ -1514,6 +1574,8 @@ class PPO(BaseRLModel):
                     except Exception:
                         pass
                     step_return = self.env.step(env_action)
+                    # Single-env training step: advance counter by 1.
+                    self.global_env_step += 1
                     if len(step_return) > 4:
                         next_state, reward, terminated, trunkated, info = step_return
                         done = terminated or trunkated
@@ -1671,26 +1733,66 @@ class PPO(BaseRLModel):
                 avg_approx_kl = np.mean(all_approx_kl)
                 avg_clip_fraction = np.mean(all_clip_fractions)
 
-                # Log to TensorBoard
-                self.writer.add_scalar("Loss/Actor", avg_aloss, episode)
-                self.writer.add_scalar("Loss/Critic", avg_closs, episode)
-                self.writer.add_scalar("Performance/Reward", avg_reward, episode)
-                self.writer.add_scalar("Performance/Entropy", avg_entropy, episode)
+                # Log canonical TB metrics. As in vector training we write
+                # rollout/* directly because these are per-rollout-epoch
+                # aggregates rather than per finished-episode events.
+                env_step = int(self.global_env_step)
                 self.writer.add_scalar(
-                    "Performance/Episode Length", avg_episode_length, episode
-                )
-                self.writer.add_scalar("Diagnostics/Approx KL", avg_approx_kl, episode)
-                self.writer.add_scalar(
-                    "Diagnostics/Clip Fraction", avg_clip_fraction, episode
+                    schema.ROLLOUT_EPISODE_REWARD,
+                    float(avg_reward),
+                    env_step=env_step,
                 )
                 self.writer.add_scalar(
-                    "Diagnostics/Explained Variance", explained_var, episode
+                    schema.ROLLOUT_EPISODE_LENGTH,
+                    float(avg_episode_length),
+                    env_step=env_step,
+                )
+                self.writer.add_scalar(
+                    schema.ROLLOUT_TOTAL_STEPS, env_step, env_step=env_step
+                )
+                self.writer.add_scalar(
+                    schema.LOSS_ACTOR, float(avg_aloss), env_step=env_step
+                )
+                self.writer.add_scalar(
+                    schema.LOSS_CRITIC, float(avg_closs), env_step=env_step
+                )
+                self.writer.add_scalar(
+                    schema.POLICY_ENTROPY, float(avg_entropy), env_step=env_step
+                )
+                self.writer.add_scalar(
+                    schema.PPO.APPROX_KL,
+                    float(avg_approx_kl),
+                    env_step=env_step,
+                )
+                self.writer.add_scalar(
+                    schema.PPO.CLIP_FRACTION,
+                    float(avg_clip_fraction),
+                    env_step=env_step,
+                )
+                self.writer.add_scalar(
+                    schema.PPO.EXPLAINED_VARIANCE,
+                    float(explained_var),
+                    env_step=env_step,
+                )
+                # Per-epoch training counters (rollout-epoch index as proxy
+                # for the number of optimizer updates).
+                self.writer.add_scalar(
+                    schema.TRAIN_UPDATES, int(episode + 1), env_step=env_step
+                )
+                self.writer.add_scalar(
+                    schema.TRAIN_LR,
+                    float(self.a_opt.param_groups[0]["lr"]),
+                    env_step=env_step,
                 )
 
                 # Periodic evaluation
                 if (episode + 1) % self.eval_freq == 0:
                     eval_reward = self.test_reward()
-                    self.writer.add_scalar("Evaluation/Reward", eval_reward, episode)
+                    self.writer.add_scalar(
+                        schema.EVAL_EPISODE_REWARD,
+                        float(eval_reward),
+                        env_step=int(self.global_env_step),
+                    )
                     # Save best model
                     if eval_reward > self.best_reward:
                         self.best_reward = eval_reward
@@ -1703,8 +1805,13 @@ class PPO(BaseRLModel):
                             episode=int(episode + 1),
                         )
         finally:
-            # Ensure any pending best-checkpoint write is completed.
-            self.close()
+            # Flush + assert canonical metrics contract before ensuring any
+            # pending best-checkpoint write is completed.
+            try:
+                self.writer.flush()
+                self.writer.assert_contract_satisfied()
+            finally:
+                self.close()
 
         # print("Training completed. Average rewards list:", self.avg_rewards_list)
         return {
