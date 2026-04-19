@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import datetime as _dt
 import os
 from pathlib import Path
 from typing import Any, Iterable, Mapping, Optional, Sequence, Set, Union
@@ -224,10 +225,53 @@ class MetricWriter:
 
 
 def create_metric_writer(
-    log_dir: Optional[Union[str, Path]] = None,
+    tb_log_dir: Optional[Union[str, Path]] = None,
     *,
+    wandb_project: Optional[str] = None,
+    wandb_entity: Optional[str] = None,
+    wandb_run_name: Optional[str] = None,
+    wandb_tags: Optional[Sequence[str]] = None,
+    wandb_config: Optional[Mapping[str, Any]] = None,
     strict: bool = True,
     algo: Optional[str] = None,
 ) -> MetricWriter:
-    """Factory used by agents — keeps call sites short."""
-    return MetricWriter(tb_log_dir=log_dir, strict=strict, algo=algo)
+    """Construct a MetricWriter with auto-detection of the wandb backend.
+
+    Activation rules:
+      * tb_log_dir set                          -> TB sink active.
+      * wandb_project set                       -> wandb sink active (calls
+                                                   wandb.login() if no key).
+      * WANDB_API_KEY in env, no wandb_project  -> wandb sink active with
+                                                   project = algo (or
+                                                   "tensoraerospace").
+
+    In multi-worker (forked) processes, wandb is skipped.
+    """
+    import multiprocessing
+
+    is_main_process = multiprocessing.current_process().name == "MainProcess"
+
+    wandb_enabled = is_main_process and (
+        wandb_project is not None or os.environ.get("WANDB_API_KEY") is not None
+    )
+
+    if wandb_enabled:
+        resolved_project = wandb_project or algo or "tensoraerospace"
+        if wandb_run_name is None:
+            ts = _dt.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
+            wandb_run_name = f"{algo or 'run'}-{ts}"
+        if wandb_tags is None and algo is not None:
+            wandb_tags = [algo]
+    else:
+        resolved_project = None
+
+    return MetricWriter(
+        tb_log_dir=tb_log_dir,
+        wandb_project=resolved_project,
+        wandb_entity=wandb_entity,
+        wandb_run_name=wandb_run_name,
+        wandb_tags=wandb_tags,
+        wandb_config=wandb_config,
+        strict=strict,
+        algo=algo,
+    )
