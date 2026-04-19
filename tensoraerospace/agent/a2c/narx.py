@@ -17,8 +17,7 @@ from torch import nn
 from torch.nn import functional as F
 
 # Lazy tensorboard import (see tensoraerospace.agent.metrics)
-from ..metrics import TorchSummaryWriter as SummaryWriter  # noqa: E402
-from ..metrics import create_metric_writer
+from ..metrics import MetricWriter, create_metric_writer, schema  # noqa: E402
 
 
 def clip_grad_norm_(module: torch.optim.Optimizer, max_grad_norm: float) -> None:
@@ -219,6 +218,7 @@ class A2CLearner:
         critic_lr: float = 4e-3,
         max_grad_norm: float = 0.5,
         device: torch.device | str | None = None,
+        log_dir: str | None = None,
     ):
         """Initialize learner with optimizers and hyperparameters.
 
@@ -230,6 +230,8 @@ class A2CLearner:
             actor_lr: Learning rate for actor.
             critic_lr: Learning rate for critic.
             max_grad_norm: Gradient clipping norm.
+            log_dir: TensorBoard log directory. If None, the default
+                ``runs/`` directory of ``SummaryWriter`` is used.
         """
         self.gamma = gamma
         self.max_grad_norm = max_grad_norm
@@ -246,7 +248,9 @@ class A2CLearner:
         self.entropy_beta = entropy_beta
         self.actor_optim = torch.optim.Adam(actor.parameters(), lr=actor_lr)
         self.critic_optim = torch.optim.Adam(critic.parameters(), lr=critic_lr)
-        self.writer = create_metric_writer()
+        self.log_dir = log_dir
+        self.writer = create_metric_writer(log_dir, algo="a2c-narx")
+        self.update_count = 0
 
     def learn(
         self,
@@ -296,16 +300,16 @@ class A2CLearner:
         ]
         if actor_grads:
             self.writer.add_histogram(
-                "gradients/actor",
+                "grads/actor/all",
                 torch.cat(actor_grads).detach().cpu(),
-                global_step=steps,
+                env_step=steps,
             )
         self.writer.add_histogram(
-            "parameters/actor",
+            "weights/actor/all",
             torch.cat([p.data.view(-1) for p in self.actor.parameters()])
             .detach()
             .cpu(),
-            global_step=steps,
+            env_step=steps,
         )
         self.actor_optim.step()
 
@@ -319,30 +323,48 @@ class A2CLearner:
         ]
         if critic_grads:
             self.writer.add_histogram(
-                "gradients/critic",
+                "grads/critic/all",
                 torch.cat(critic_grads).detach().cpu(),
-                global_step=steps,
+                env_step=steps,
             )
         self.writer.add_histogram(
-            "parameters/critic",
+            "weights/critic/all",
             torch.cat([p.data.view(-1) for p in self.critic.parameters()])
             .detach()
             .cpu(),
-            global_step=steps,
+            env_step=steps,
         )
         self.critic_optim.step()
 
-        # reports
+        # Reports (canonical TB metrics).
         self.writer.add_scalar(
-            "losses/log_probs", -logs_probs.mean(), global_step=steps
+            schema.LOSS_ENTROPY, float(entropy.detach()), env_step=steps
         )
-        self.writer.add_scalar("losses/entropy", entropy, global_step=steps)
         self.writer.add_scalar(
-            "losses/entropy_beta", self.entropy_beta, global_step=steps
+            schema.A2C.ENTROPY_BETA, float(self.entropy_beta), env_step=steps
         )
-        self.writer.add_scalar("losses/actor", actor_loss, global_step=steps)
-        self.writer.add_scalar("losses/advantage", advantage.mean(), global_step=steps)
-        self.writer.add_scalar("losses/critic", critic_loss, global_step=steps)
+        self.writer.add_scalar(
+            schema.LOSS_ACTOR, float(actor_loss.detach()), env_step=steps
+        )
+        self.writer.add_scalar(
+            schema.A2C.ADVANTAGE_MEAN,
+            float(advantage.detach().mean()),
+            env_step=steps,
+        )
+        self.writer.add_scalar(
+            schema.LOSS_CRITIC, float(critic_loss.detach()), env_step=steps
+        )
+
+        # Training counters (mandatory minimum tier).
+        self.update_count += 1
+        self.writer.add_scalar(
+            schema.TRAIN_UPDATES, int(self.update_count), env_step=steps
+        )
+        self.writer.add_scalar(
+            schema.TRAIN_LR,
+            float(self.actor_optim.param_groups[0]["lr"]),
+            env_step=steps,
+        )
 
     # ------------------------------------------------------------------
     # Serialization helpers
@@ -564,7 +586,7 @@ class A2CLearner:
 class Runner:
     """Environment interaction loop used to collect training data."""
 
-    def __init__(self, env: Env, actor: nn.Module, writer: SummaryWriter):
+    def __init__(self, env: Env, actor: nn.Module, writer: MetricWriter):
         """Create runner for data collection.
 
         Args:
@@ -578,6 +600,7 @@ class Runner:
         self.done = True
         self.steps = 0
         self.episode_reward = 0
+        self.episode_length = 0
         self.episode_rewards = []
         # Initialize previous action as zeros; adjust the size based on your action space
         self.prev_action = np.zeros(self.env.action_space.shape)
@@ -592,6 +615,7 @@ class Runner:
     def reset(self) -> None:
         """Reset environment and episode state."""
         self.episode_reward = 0
+        self.episode_length = 0
         self.done = False
         self.state, info = self.env.reset()
         self.state = self._flatten_observation(self.state)
@@ -642,13 +666,17 @@ class Runner:
             self.prev_action = actions_clipped[0]  # Update the previous action
             self.state = next_state
             self.steps += 1
+            self.episode_length += 1
             self.episode_reward += reward
 
             if self.done:
                 self.episode_rewards.append(self.episode_reward)
-                # Assuming writer is defined and configured globally
-                self.writer.add_scalar(
-                    "episode_reward", self.episode_reward, global_step=self.steps
+                self.writer.log_episode(
+                    reward=float(self.episode_reward),
+                    length=int(self.episode_length),
+                    env_step=int(self.steps),
+                    terminated=bool(terminated),
+                    truncated=bool(truncated),
                 )
 
         return memory
