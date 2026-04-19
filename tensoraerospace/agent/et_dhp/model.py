@@ -700,6 +700,19 @@ class ETDHPAgent:
             Aggregated session-level summary.
         """
         summaries: list[dict[str, float]] = []
+        if self.writer is not None:
+            # Guarantee the mandatory train/* tier even if no event-trigger
+            # ever fires (high rho / aggressive trigger_floor configs).
+            self.writer.add_scalar(
+                schema.TRAIN_UPDATES,
+                int(self.update_count),
+                env_step=int(self.global_env_step),
+            )
+            self.writer.add_scalar(
+                schema.TRAIN_LR,
+                float(self.actor_opt.param_groups[0]["lr"]),
+                env_step=int(self.global_env_step),
+            )
         for _ in range(int(num_episodes)):
             summary = self.train_episode(
                 env=env,
