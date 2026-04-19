@@ -5,9 +5,11 @@ from .kinematics import (
     reconstruct_position_6dof,
     reconstruct_position_longitudinal,
 )
+from .live import LivePlotlyRenderer
 
 __all__ = [
     "build_flight_3d_figure",
+    "LivePlotlyRenderer",
     "reconstruct_position_6dof",
     "reconstruct_position_longitudinal",
 ]
