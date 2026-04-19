@@ -48,6 +48,8 @@ jobs:
             notebook: example/reinforcement_learning/example_ihdp_nonlinear_f16.ipynb
           - label: etdhp-nonlinear-f16
             notebook: example/reinforcement_learning/example_etdhp_nonlinear_f16.ipynb
+          - label: aaindi-nonlinear-f16
+            notebook: example/reinforcement_learning/example_aaindi_nonlinear_f16.ipynb
 
     steps:
       - name: 🧹 Free up disk space
