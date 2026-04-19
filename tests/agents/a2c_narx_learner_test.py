@@ -142,13 +142,13 @@ def test_clip_grad_norm():
 
 def test_runner_initialization():
     """Test Runner initialization."""
-    from torch.utils.tensorboard import SummaryWriter
+    from tensoraerospace.agent.metrics import MetricWriter
 
     env = _DummyEnv()
     state_dim = env.observation_space.shape[0]
     n_actions = env.action_space.shape[0]
     actor = Actor(state_dim, n_actions)
-    writer = SummaryWriter()
+    writer = MetricWriter(strict=False, required=())
 
     runner = Runner(env, actor, writer)
 
@@ -159,13 +159,13 @@ def test_runner_initialization():
 
 def test_runner_run():
     """Test Runner.run() method."""
-    from torch.utils.tensorboard import SummaryWriter
+    from tensoraerospace.agent.metrics import MetricWriter
 
     env = _DummyEnv()
     state_dim = env.observation_space.shape[0]
     n_actions = env.action_space.shape[0]
     actor = Actor(state_dim, n_actions)
-    writer = SummaryWriter()
+    writer = MetricWriter(strict=False, required=())
 
     runner = Runner(env, actor, writer)
     memory = runner.run(max_steps=5)
@@ -256,14 +256,14 @@ def test_a2c_learner_update_step():
 
 def test_a2c_learner_with_runner():
     """Test A2CLearner integration with Runner."""
-    from torch.utils.tensorboard import SummaryWriter
+    from tensoraerospace.agent.metrics import MetricWriter
 
     env = _DummyEnv()
     state_dim = env.observation_space.shape[0]
     n_actions = env.action_space.shape[0]
     actor = Actor(state_dim, n_actions)
     critic = Critic(state_dim)
-    writer = SummaryWriter()
+    writer = MetricWriter(strict=False, required=())
 
     learner = A2CLearner(
         actor=actor,
@@ -293,7 +293,7 @@ def test_actor_gradient_flow():
 
 def test_runner_early_termination():
     """Test Runner with early episode termination."""
-    from torch.utils.tensorboard import SummaryWriter
+    from tensoraerospace.agent.metrics import MetricWriter
 
     class _TerminatingEnv(_DummyEnv):
         def __init__(self):
@@ -319,7 +319,7 @@ def test_runner_early_termination():
     state_dim = env.observation_space.shape[0]
     n_actions = env.action_space.shape[0]
     actor = Actor(state_dim, n_actions)
-    writer = SummaryWriter()
+    writer = MetricWriter(strict=False, required=())
 
     runner = Runner(env, actor, writer)
     memory = runner.run(max_steps=10)
