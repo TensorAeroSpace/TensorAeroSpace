@@ -9,6 +9,8 @@ import numpy as np
 import torch
 from torch import nn
 
+from ..metrics import schema
+
 
 def v_wrap(np_array, dtype=np.float32):
     """Convert a NumPy array to a PyTorch tensor.
@@ -113,7 +115,18 @@ def push_and_pull(opt, lnet, gnet, done, s_, bs, ba, br, gamma):
     }
 
 
-def record(global_ep, global_ep_r, ep_r, res_queue, name, writer=None):
+def record(
+    global_ep,
+    global_ep_r,
+    ep_r,
+    res_queue,
+    name,
+    writer=None,
+    global_env_step=None,
+    ep_length=None,
+    terminated=None,
+    truncated=None,
+):
     """Record episode results and update global counters.
 
     Args:
@@ -121,13 +134,22 @@ def record(global_ep, global_ep_r, ep_r, res_queue, name, writer=None):
         global_ep_r (multiprocessing.Value): Global moving-average reward.
         ep_r (float): Episode reward.
         res_queue (multiprocessing.Queue): Queue used to store the moving average.
-        name (str): Worker/process name (used for logging keys).
-        writer (torch.utils.tensorboard.SummaryWriter, optional): TensorBoard
-            writer. If not provided, nothing is written.
+        name (str): Worker/process name (used for logging keys; e.g. ``"w0"``).
+        writer (MetricWriter, optional): Canonical metric writer (or any
+            object exposing ``add_scalar(tag, value, env_step)``). If
+            not provided, nothing is written.
+        global_env_step (multiprocessing.Value, optional): Shared
+            env-step counter. Required to write canonical scalars; when
+            ``None`` writing is skipped.
+        ep_length (int, optional): Number of env steps in the finished
+            episode. Logged as ``rollout/episode_length`` if provided.
+        terminated (bool, optional): Whether the episode ended via
+            terminal state. Logged as ``diagnostics/terminated_count``.
+        truncated (bool, optional): Whether the episode ended via time
+            limit / truncation. Logged as ``diagnostics/truncated_count``.
     """
     with global_ep.get_lock():
         global_ep.value += 1
-        ep_idx = global_ep.value
     with global_ep_r.get_lock():
         if global_ep_r.value == 0.0:
             global_ep_r.value = ep_r
@@ -137,7 +159,41 @@ def record(global_ep, global_ep_r, ep_r, res_queue, name, writer=None):
 
     res_queue.put(moving_avg)
 
-    # Log to TensorBoard if writer is provided
-    if writer is not None:
-        writer.add_scalar(f"Performance/{name}/episode_reward", ep_r, ep_idx)
-        writer.add_scalar(f"Performance/{name}/moving_avg_reward", moving_avg, ep_idx)
+    # Log canonical rollout/* tags with /worker_<id> suffix.
+    if writer is not None and global_env_step is not None:
+        # Extract integer worker id from name like "w0", "w1", ...
+        worker_id = (
+            int(name.lstrip("w"))
+            if isinstance(name, str) and name.startswith("w")
+            else 0
+        )
+        env_step_now = int(global_env_step.value)
+        suffix = f"/worker_{worker_id}"
+        writer.add_scalar(
+            f"{schema.ROLLOUT_EPISODE_REWARD}{suffix}",
+            float(ep_r),
+            env_step=env_step_now,
+        )
+        if ep_length is not None:
+            writer.add_scalar(
+                f"{schema.ROLLOUT_EPISODE_LENGTH}{suffix}",
+                int(ep_length),
+                env_step=env_step_now,
+            )
+        writer.add_scalar(
+            f"{schema.ROLLOUT_TOTAL_STEPS}{suffix}",
+            env_step_now,
+            env_step=env_step_now,
+        )
+        if terminated is not None:
+            writer.add_scalar(
+                schema.DIAG_TERMINATED_COUNT,
+                int(bool(terminated)),
+                env_step=env_step_now,
+            )
+        if truncated is not None:
+            writer.add_scalar(
+                schema.DIAG_TRUNCATED_COUNT,
+                int(bool(truncated)),
+                env_step=env_step_now,
+            )
