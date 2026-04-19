@@ -30,6 +30,10 @@ numpy = ">=1.24.0"
 # (FITS GZIP decompression bomb, introduced in 10.3.0, fixed in 12.2.0).
 pillow = ">=12.2.0"
 wandb = ">=0.18,<1.0"
+# anywidget is the FigureWidget backend for plotly's "live" render mode
+# (per-step in-Jupyter updates). Without it, importing FigureWidget raises
+# at runtime (ipywidgets alone is not enough on plotly 6.x).
+anywidget = ">=0.9,<1.0"
 ray = {extras = ["tune"], version = "^2.52.0", optional = true}
 
 [tool.poetry.extras]
