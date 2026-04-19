@@ -1,0 +1,140 @@
+name: 📓 Notebook smoke
+run-name: Execute key notebooks end-to-end on develop
+
+# Runs after a merge to develop and re-executes a curated set of Jupyter
+# notebooks with ``jupyter nbconvert --execute``. Any cell error fails the
+# job — so API regressions in agents or envs (e.g. a rename that silently
+# breaks an example) are caught before they hit main.
+#
+# Notebooks are chosen to maximise API coverage per second of CI time:
+#   * linear F-16 env (Gymnasium contract)
+#   * PID (classical baseline)
+#   * IHDP on linear F-16 (PyTorch migration)
+#   * IHDP on nonlinear F-16 (F-16 NumPy port + feedforward)
+#   * ET-DHP on nonlinear F-16 (new event-triggered agent)
+# IM-GDHP is intentionally omitted — 80 training episodes push runtime
+# above 15 min. Heavy SAC/PPO/DSAC/MPC notebooks are unit-tested instead.
+
+on:
+  push:
+    branches:
+      - develop
+  workflow_dispatch:
+  # Optional: surface regressions on release branches before they reach main.
+  # pull_request:
+  #   branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  execute:
+    name: 📓 ${{ matrix.label }}
+    runs-on: ubuntu-latest
+    # Hard cap per notebook. Heaviest in the matrix (ET-DHP) clocks ≈ 5–7 min.
+    timeout-minutes: 20
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - label: env-linear-f16
+            notebook: example/environments/example-env-LinearLongitudinalF16.ipynb
+          - label: pid-use
+            notebook: example/pid_controllers/pid_use.ipynb
+          - label: ihdp-linear
+            notebook: example/general_examples/example_ihdp.ipynb
+          - label: ihdp-nonlinear-f16
+            notebook: example/reinforcement_learning/example_ihdp_nonlinear_f16.ipynb
+          - label: etdhp-nonlinear-f16
+            notebook: example/reinforcement_learning/example_etdhp_nonlinear_f16.ipynb
+          - label: aaindi-nonlinear-f16
+            notebook: example/reinforcement_learning/example_aaindi_nonlinear_f16.ipynb
+          - label: iadp-nonlinear-f16
+            notebook: example/reinforcement_learning/example_iadp_nonlinear_f16.ipynb
+          - label: cookbook-01-hello
+            notebook: example/cookbook/recipe_01_hello.ipynb
+          - label: cookbook-03-signals
+            notebook: example/cookbook/recipe_03_reference_signals.ipynb
+          - label: cookbook-07-optuna
+            notebook: example/cookbook/recipe_07_optuna.ipynb
+          - label: cookbook-09-fault-tolerance
+            notebook: example/cookbook/recipe_09_fault_tolerance.ipynb
+
+    steps:
+      - name: 🧹 Free up disk space
+        run: |
+          sudo rm -rf /usr/share/dotnet
+          sudo rm -rf /usr/local/lib/android
+          sudo rm -rf /opt/ghc
+          sudo rm -rf /opt/hostedtoolcache/CodeQL
+          docker system prune -af --volumes || true
+          sudo apt-get clean
+
+      - name: 📥 Checkout code
+        uses: actions/checkout@v5
+
+      - name: 🐍 Set up Python 3.10
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.10'
+
+      - name: 📦 Cache Poetry dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/pypoetry
+            ~/.cache/pip
+          key: ubuntu-latest-poetry-3.10-${{ hashFiles('**/poetry.lock') }}
+          restore-keys: |
+            ubuntu-latest-poetry-3.10-
+
+      - name: 🎭 Install Poetry
+        run: |
+          python -m ensurepip --upgrade || true
+          python -m pip install --upgrade pip
+          python -m pip install poetry
+
+      - name: ⚙️ Configure Poetry
+        run: |
+          poetry config virtualenvs.create true
+          poetry config virtualenvs.in-project true
+
+      - name: 🔄 Sync lock file
+        run: |
+          if ! poetry check --lock; then
+            echo "Lock file is outdated, updating..."
+            poetry lock
+          fi
+
+      - name: 📚 Install dependencies (+ jupyter group)
+        run: |
+          # The ``jupyter`` group is defined in pyproject.toml; install it
+          # along with dev so ``nbconvert`` and its deps are available.
+          poetry install --with dev,jupyter || poetry install --with dev
+
+      - name: 📓 Execute notebook
+        env:
+          # Avoid interactive display backends in CI; force Agg for matplotlib.
+          MPLBACKEND: Agg
+          # Suppress "CUDA not available" chatter from PyTorch.
+          PYTHONWARNINGS: ignore::UserWarning
+        run: |
+          set -euo pipefail
+          # Write executed output to a scratch path so we don't dirty the tree.
+          OUT=/tmp/nb_out_$(basename "${{ matrix.notebook }}" .ipynb).ipynb
+          poetry run jupyter nbconvert \
+            --to notebook \
+            --execute \
+            --ExecutePreprocessor.timeout=900 \
+            --output "$OUT" \
+            "${{ matrix.notebook }}"
+
+      - name: 📤 Upload executed notebook on failure
+        if: failure()
+        uses: actions/upload-artifact@v7
+        continue-on-error: true
+        with:
+          name: failed-${{ matrix.label }}
+          path: /tmp/nb_out_*.ipynb
+          retention-days: 7

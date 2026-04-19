@@ -104,8 +104,8 @@ def overshoot(control_signal: np.ndarray, system_signal: np.ndarray) -> float:
         float: Overshoot value in percent.
 
     """
-    # Assume steady-state value is the average value of last 10% of system response
-    y_final = np.mean(control_signal[int(0.9 * len(control_signal)) :])
+    # Steady-state value is the average value of last 10% of system response
+    y_final = np.mean(system_signal[int(0.9 * len(system_signal)) :])
 
     # Maximum value of system response function
     M = np.max(system_signal)
@@ -135,27 +135,25 @@ def settling_time(
     Returns:
         Optional[int]: System settling time in system_signal array indices. If system did not reach steady-state value in given threshold range, returns None.
     """
-    # Assume steady-state value is the average value of last 10% of system response
-    y_final = np.mean(control_signal[int(0.9 * len(control_signal)) :])
+    # Steady-state value is the average value of last 10% of system response
+    y_final = np.mean(system_signal[int(0.9 * len(system_signal)) :])
 
     # Define range boundaries within steady-state value
     lower_bound = y_final * (1 - threshold)
     upper_bound = y_final * (1 + threshold)
 
-    # Find indices where signal first enters this range
-    within_range_indices = np.where(
-        (system_signal >= lower_bound) & (system_signal <= upper_bound)
+    # Find indices where signal is OUTSIDE the ±threshold band
+    out_of_range = np.where(
+        (system_signal < lower_bound) | (system_signal > upper_bound)
     )[0]
 
-    # If signal never enters range, return entire simulation time
-    if len(within_range_indices) == 0:
-        return len(system_signal)
+    # If signal never left the band, it was already settled from the start
+    if len(out_of_range) == 0:
+        return 0
 
-    # Get longest series
-    longest_series = find_longest_repeating_series(within_range_indices.tolist())
-
-    # Return start of longest series
-    return longest_series[0]
+    # Settling time is the moment immediately after the signal last exited
+    # the band (after which it stays inside forever).
+    return int(out_of_range[-1]) + 1
 
 
 def damping_degree(system_signal: np.ndarray) -> float:
@@ -184,9 +182,13 @@ def damping_degree(system_signal: np.ndarray) -> float:
     amplitudes = system_signal[peaks]
 
     # Damping degree calculation
-    y_values = 1 - (amplitudes[1:] / amplitudes[:-1])
-
-    return np.mean(y_values)
+    denom = amplitudes[:-1]
+    # Guard against division by (near-)zero peaks
+    safe_denom = np.where(np.abs(denom) > 1e-12, denom, np.nan)
+    y_values = 1 - (amplitudes[1:] / safe_denom)
+    if np.all(np.isnan(y_values)):
+        return 0.0
+    return float(np.nanmean(y_values))
 
 
 def static_error(control_signal: np.ndarray, system_signal: np.ndarray) -> float:
@@ -255,8 +257,8 @@ def rise_time(
         Optional[float]: Rise time expressed in array indices (samples). Returns
         ``None`` if thresholds cannot be detected.
     """
-    # Установившееся значение
-    y_final = np.mean(control_signal[int(0.9 * len(control_signal)) :])
+    # Установившееся значение (по отклику системы)
+    y_final = np.mean(system_signal[int(0.9 * len(system_signal)) :])
 
     # Пороговые значения
     low_val = y_final * low_threshold

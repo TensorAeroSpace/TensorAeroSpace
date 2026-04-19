@@ -299,11 +299,11 @@ class LongitudinalF16(ModelBase):
             )
         index = self.selected_states.index(state_name)
         if to_deg:
-            return np.rad2deg(self.store_states[index][: self.number_time_steps - 1])
+            return np.rad2deg(self.store_states[index][: self.number_time_steps])
         if to_rad:
-            values_deg = self.store_states[index][: self.number_time_steps - 1]
+            values_deg = self.store_states[index][: self.number_time_steps]
             return np.deg2rad(values_deg)
-        return self.store_states[index][: self.number_time_steps - 1]
+        return self.store_states[index][: self.number_time_steps]
 
     def get_control(
         self, control_name: str, to_deg: bool = False, to_rad: bool = False
@@ -343,8 +343,8 @@ class LongitudinalF16(ModelBase):
         index = self.selected_input.index(control_name)
         if to_deg:
             rad_deg_input = np.rad2deg(self.store_input[index])
-            return rad_deg_input[: self.number_time_steps - 1]
+            return rad_deg_input[: self.number_time_steps]
         if to_rad:
-            values_rad = self.store_input[index][: self.number_time_steps - 1]
+            values_rad = self.store_input[index][: self.number_time_steps]
             return np.deg2rad(values_rad)
-        return self.store_input[index][: self.number_time_steps - 1]
+        return self.store_input[index][: self.number_time_steps]

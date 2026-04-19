@@ -13,6 +13,21 @@ from tensoraerospace.aerospacemodel.utils.constant import (
 class LongitudinalX15(ModelBase):
     """North American X-15 in longitudinal control channel.
 
+    .. warning::
+        **This linearized model uses the FPS (foot-pound-second) unit
+        system**, NOT SI. The A/B matrices are taken directly from the
+        reference Simulink source
+        ``tensoraerospace/aerospacemodel/simulinkModel/x15/x15_data.m``
+        where ``g = 32.174 ft/s^2`` and the trim velocity
+        ``U0 = 1936 ft/s`` (~Mach 1.8 at altitude). Linear velocities
+        ``u`` and ``w`` are perturbations in **ft/s**, and the gravity
+        term ``A[0,3] = -32.174`` is in **ft/s^2**.
+
+        If SI-valued states are fed in (e.g. ``u`` in m/s), the dynamics
+        will be silently inconsistent with the matrices. Callers that
+        operate in SI must convert (1 m/s = 3.28084 ft/s) at the
+        environment boundary.
+
     Args:
         x0: Initial state of the control object.
         number_time_steps: Number of time steps.
@@ -21,19 +36,21 @@ class LongitudinalX15(ModelBase):
         dt (float, optional): Discretization frequency. Defaults to 0.01.
 
     Action space:
-        ele: elevator [deg]
+        ele: elevator [rad] (input saturation at ``|ele| <= 25 deg``,
+            rate limit ``60 deg/s``, both converted to radians
+            internally).
 
-    State space:
-        u: Longitudinal aircraft velocity [m/s]
-        w: Normal aircraft velocity [m/s]
-        q: Pitch angular velocity [deg/s]
-        theta: Pitch [deg]
+    State space (FPS units):
+        u: Longitudinal aircraft velocity perturbation [ft/s]
+        w: Normal aircraft velocity perturbation [ft/s]
+        q: Pitch angular velocity [rad/s]
+        theta: Pitch angle [rad]
 
-    Output space:
-        u: Longitudinal aircraft velocity [m/s]
-        w: Normal aircraft velocity [m/s]
-        q: Pitch angular velocity [deg/s]
-        theta: Pitch [deg]
+    Output space (FPS units):
+        u: Longitudinal aircraft velocity perturbation [ft/s]
+        w: Normal aircraft velocity perturbation [ft/s]
+        q: Pitch angular velocity [rad/s]
+        theta: Pitch angle [rad]
     """
 
     def __init__(
@@ -99,7 +116,20 @@ class LongitudinalX15(ModelBase):
         self.initialise_system(x0, number_time_steps)
 
     def import_linear_system(self):
-        """Saved linearized matrices"""
+        """Saved linearized matrices.
+
+        **Units**: matrices are in FPS (foot-pound-second) system,
+        matching the reference Simulink file ``x15_data.m``. In the
+        A matrix the last column of the first row is
+        ``-g = -32.174 ft/s^2`` and ``A[1,2] = U0 = 1936 ft/s`` is the
+        trim airspeed, not an SI (m/s) quantity. See the class
+        docstring for a full unit list.
+        """
+        # State order: [u, w, q, theta] — perturbation longitudinal
+        # velocity (ft/s), perturbation normal velocity (ft/s), pitch
+        # rate (rad/s), pitch angle (rad).
+        # A[0,3] = -g (ft/s^2), A[1,2] = U0 (ft/s). Do NOT rescale these
+        # without also rescaling B and the rest of the column.
         self.A = np.array(
             [
                 [-0.0087, -0.0190, 0, -32.174],
@@ -264,10 +294,10 @@ class LongitudinalX15(ModelBase):
             )
         index = self.selected_states.index(state_name)
         if to_deg:
-            return np.rad2deg(self.store_states[index][: self.number_time_steps - 1])
+            return np.rad2deg(self.store_states[index][: self.number_time_steps])
         if to_rad:
-            return np.deg2rad(self.store_states[index][: self.number_time_steps - 1])
-        return self.store_states[index][: self.number_time_steps - 1]
+            return np.deg2rad(self.store_states[index][: self.number_time_steps])
+        return self.store_states[index][: self.number_time_steps]
 
     def get_control(
         self, control_name: str, to_deg: bool = False, to_rad: bool = False
@@ -299,10 +329,10 @@ class LongitudinalX15(ModelBase):
             )
         index = self.selected_input.index(control_name)
         if to_deg:
-            return np.rad2deg(self.store_input[index])[: self.number_time_steps - 1]
+            return np.rad2deg(self.store_input[index])[: self.number_time_steps]
         if to_rad:
-            return np.deg2rad(self.store_input[index][: self.number_time_steps - 1])
-        return self.store_input[index][: self.number_time_steps - 1]
+            return np.deg2rad(self.store_input[index][: self.number_time_steps])
+        return self.store_input[index][: self.number_time_steps]
 
     def get_output(
         self, state_name: str, to_deg: bool = False, to_rad: bool = False

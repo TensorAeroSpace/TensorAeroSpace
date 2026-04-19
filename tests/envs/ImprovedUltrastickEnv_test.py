@@ -150,11 +150,11 @@ def test_improved_ultrastick_truncation_flag(monkeypatch):
 
     monkeypatch.setattr(ultramod, "Ultrastick", _StubUltrastickModel)
     initial_state = np.zeros(5, dtype=np.float32)
-    reference_signal = np.zeros((1, 3), dtype=np.float32)
+    reference_signal = np.zeros((1, 2), dtype=np.float32)
     env = ImprovedUltrastickEnv(
         initial_state=initial_state,
         reference_signal=reference_signal,
-        number_time_steps=3,
+        number_time_steps=2,
         dt=0.01,
         use_initial_action_on_first_step=False,
     )

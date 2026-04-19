@@ -65,6 +65,41 @@ agent.save('./runs')
 !!! tip
     For continuous action spaces keep `GaussianPolicy` with `automatic_entropy_tuning=True` to stabilize exploration.
 
+## Unified training interface
+
+All TensorAeroSpace RL agents share a common `train()` signature defined on
+`BaseRLModel`:
+
+```python
+def train(
+    self,
+    num_episodes: int = 100,
+    *,
+    max_steps: Optional[int] = None,
+    save_best: bool = False,
+    save_path: Optional[str] = None,
+    verbose: bool = True,
+    **kwargs,
+) -> dict
+```
+
+For SAC the algorithm-specific options accepted via `**kwargs` are:
+
+- `save_best_with_gradients` (`bool`): include optimizer gradients in
+  best-model checkpoints.
+
+Example:
+
+```python
+stats = agent.train(
+    num_episodes=100,
+    max_steps=500,
+    save_best=True,
+    save_path='./runs/sac_best',
+)
+print(stats['best_reward'], len(stats['episode_rewards']))
+```
+
 ## Practical tips
 
 - Increase `batch_size` and `memory_capacity` for steadier gradients

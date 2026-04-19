@@ -69,20 +69,18 @@ class LinearLongitudinalLAPAN(gym.Env):
         self.action_space = spaces.Box(
             low=-25,
             high=25,
-            shape=(len(self.control_space), 1),
+            shape=(len(self.control_space),),
             dtype=np.float32,
         )
         self.observation_space = spaces.Box(
             low=-np.inf,
             high=np.inf,
-            shape=(len(self.state_space), 1),
+            shape=(len(self.state_space),),
             dtype=np.float32,
         )
 
         self.ref_signal = reference_signal
-        self.model.initialise_system(
-            x0=initial_state, number_time_steps=number_time_steps
-        )
+        # Constructor already invokes initialise_system internally.
         self.number_time_steps = number_time_steps
         self.current_step = 0
         self.done = False
@@ -99,7 +97,8 @@ class LinearLongitudinalLAPAN(gym.Env):
         Returns:
             float: Reward value (lower is better in the legacy formulation).
         """
-        return -float(np.abs(state[0] - ref_signal[:, ts]).item())
+        ts_safe = int(np.clip(ts, 0, ref_signal.shape[1] - 1))
+        return -float(np.abs(state[0] - ref_signal[:, ts_safe]).item())
 
     def _get_info(self) -> dict[str, float]:
         """Return auxiliary info for Gym API (currently empty)."""
@@ -126,10 +125,10 @@ class LinearLongitudinalLAPAN(gym.Env):
             self.ref_signal,
             self.current_step,
         )
-        self.done = self.current_step >= self.number_time_steps - 2
+        self.done = self.current_step >= self.number_time_steps - 1
         info = self._get_info()
         return (
-            next_state.reshape([-1, 1]),
+            np.asarray(next_state).reshape(-1).astype(np.float32),
             float(reward),
             self.done,
             False,
@@ -152,6 +151,7 @@ class LinearLongitudinalLAPAN(gym.Env):
 
         self.current_step = 0
         self.done = False
+        # Constructor already invokes initialise_system internally.
         self.model = LAPAN(
             self.initial_state,
             number_time_steps=self.number_time_steps,
@@ -159,14 +159,10 @@ class LinearLongitudinalLAPAN(gym.Env):
             t0=0,
         )
         self.ref_signal = self.reference_signal
-        self.model.initialise_system(
-            x0=self.initial_state,
-            number_time_steps=self.number_time_steps,
-        )
         info = self._get_info()
         observation = np.array(self.initial_state, dtype=np.float32)[
             self.model.selected_state_index
-        ].reshape([-1, 1])
+        ].reshape(-1)
         return observation, info
 
     def render(self) -> None:
@@ -246,20 +242,25 @@ class ImprovedLAPANEnv(gym.Env):
         self.w_smooth = 0.01
         self.w_jerk = 0.001
 
-        # Store init args for helpers
-        self.init_args = locals()
+        # Store init args for helpers (only public __init__ parameters —
+        # avoid capturing locals() which includes derived variables)
+        self.init_args = {
+            "initial_state": initial_state,
+            "reference_signal": reference_signal,
+            "number_time_steps": number_time_steps,
+            "dt": dt,
+            "initial_elevator_deg": initial_elevator_deg,
+            "use_initial_action_on_first_step": use_initial_action_on_first_step,
+        }
 
         # Underlying LAPAN model (keep full state output order)
+        # Constructor already invokes initialise_system internally.
         self.model = LAPAN(
             self.initial_state,
             number_time_steps=self.number_time_steps,
             selected_state_output=None,
             t0=0,
             dt=self.dt,
-        )
-        self.model.initialise_system(
-            x0=self.initial_state,
-            number_time_steps=self.number_time_steps,
         )
 
     # Helper indices based on LAPAN state order [u, w, q, theta]
@@ -387,7 +388,7 @@ class ImprovedLAPANEnv(gym.Env):
             reward = -100.0
             terminated = True
 
-        truncated = self.current_step >= self.number_time_steps - 2
+        truncated = self.current_step >= self.number_time_steps - 1
 
         return (
             self._get_obs(),

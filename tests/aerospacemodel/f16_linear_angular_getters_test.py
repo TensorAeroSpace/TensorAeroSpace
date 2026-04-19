@@ -40,9 +40,9 @@ def _make_light_instance():
 def test_get_state_aliases_and_conversions():
     m = _make_light_instance()
     # exercise aliases
-    assert m.get_state("wz").shape[0] == m.number_time_steps - 1
-    assert m.get_state("wx").shape[0] == m.number_time_steps - 1
-    assert m.get_state("wy").shape[0] == m.number_time_steps - 1
+    assert m.get_state("wz").shape[0] == m.number_time_steps
+    assert m.get_state("wx").shape[0] == m.number_time_steps
+    assert m.get_state("wy").shape[0] == m.number_time_steps
     # conversions
     assert np.allclose(m.get_state("alpha", to_deg=True), 0)
     assert np.allclose(m.get_state("alpha", to_rad=True), 0)
@@ -51,7 +51,7 @@ def test_get_state_aliases_and_conversions():
 def test_get_control_aliases_and_conversions():
     m = _make_light_instance()
     # aliases
-    assert m.get_control("stab").shape[0] == m.number_time_steps - 1
-    assert m.get_control("dir").shape[0] == m.number_time_steps - 1
+    assert m.get_control("stab").shape[0] == m.number_time_steps
+    assert m.get_control("dir").shape[0] == m.number_time_steps
     # conversion branch
     assert np.allclose(m.get_control("ele", to_deg=True), 0)

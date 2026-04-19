@@ -17,7 +17,7 @@ tps = convert_tp_to_sec_tp(tp, dt=dt)
 number_time_steps = len(tp)  # Количество временных шагов
 # Reference signal for angular velocity control
 REFERENCE_SIGNAL = np.reshape(
-    unit_step(degree=0.1, tp=tp, time_step=10, output_rad=True), [1, -1]
+    unit_step(degree=0.1, tp=tp, time_step=0.1, output_rad=True), [1, -1]
 )  # Заданный сигнал угловой скорости
 NUMBER_TIME_STEPS = 1000
 INITIAL_STATE_ENV = np.array([6371.0, 0.0, 0.001])
@@ -54,7 +54,7 @@ def test_step_function(env_setup):
     assert reward <= 0, "Reward should be non-positive (negative tracking error)."
     assert isinstance(done, bool), "Done should be a boolean."
     assert isinstance(info, dict), "Info should be a dictionary."
-    assert next_state.shape == (3, 1), "Next state should have shape (3, 1)."
+    assert next_state.shape == (3,), "Next state should have shape (3,)."
 
 
 def test_reset_function(env_setup):
@@ -66,4 +66,4 @@ def test_reset_function(env_setup):
     state, info = env.reset()
     assert env.current_step == 0, "Reset should set step back to zero."
     assert not env.done, "Reset should set done to False."
-    assert state.shape == (3, 1), "Reset state should have shape (3, 1)."
+    assert state.shape == (3,), "Reset state should have shape (3,)."

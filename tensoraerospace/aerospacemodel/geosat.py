@@ -69,12 +69,13 @@ class GeoSat(ModelBase):
         self.state_space = self.selected_states
         self.action_space = self.selected_input
         # ele
-        # Limitations of the system
+        # Limitations of the system (model works in radians)
+        # Magnitude: ±25 deg -> radians; Rate: ±60 deg/s -> rad/s
         self.input_magnitude_limits = [
-            25,
+            float(np.deg2rad(25.0)),
         ]
         self.input_rate_limits = [
-            60,
+            float(np.deg2rad(60.0)),
         ]
 
         # Store the number of inputs, states and outputs
@@ -91,12 +92,24 @@ class GeoSat(ModelBase):
         self.initialise_system(x0, number_time_steps)
 
     def import_linear_system(self):
-        """Load (set) stored linearized system matrices."""
+        """Load (set) stored linearized system matrices.
+
+        Values are taken from the authoritative Simulink reference model
+        ``tensoraerospace/aerospacemodel/simulinkModel/geosat/geosat_data.m``,
+        which is the source of truth for this linearization.
+
+        NOTE: The Russian/English markdown docs under ``docs/**/model/geosat.md``
+        currently list slightly different coefficients (0.7757, -0.1775, 0.1513).
+        Those values actually correspond to the ComSat model (see
+        ``simulinkModel/comsat/comsat_data.m``) and the docs are likely a
+        copy/paste error. The Simulink ``.m`` reference is trusted here.
+        TODO: reconcile ``docs/**/model/geosat.md`` with the Simulink source.
+        """
         self.A = np.array(
             [
                 [0.0, 1.0, 0.0],
-                [0.01036, 0, 0.7757],
-                [0, -0.1775, 0],
+                [0.01036, 0, 0.7753],
+                [0, -0.1774, 0],
             ]
         )
 
@@ -104,7 +117,7 @@ class GeoSat(ModelBase):
             [
                 [0.0],
                 [0.0],
-                [0.1513],
+                [0.1512],
             ]
         )
 
@@ -256,10 +269,10 @@ class GeoSat(ModelBase):
             )
         index = self.selected_states.index(state_name)
         if to_deg:
-            return np.rad2deg(self.store_states[index][: self.number_time_steps - 1])
+            return np.rad2deg(self.store_states[index][: self.number_time_steps])
         if to_rad:
-            return np.deg2rad(self.store_states[index][: self.number_time_steps - 1])
-        return self.store_states[index][: self.number_time_steps - 1]
+            return np.deg2rad(self.store_states[index][: self.number_time_steps])
+        return self.store_states[index][: self.number_time_steps]
 
     def get_control(
         self, control_name: str, to_deg: bool = False, to_rad: bool = False
@@ -288,10 +301,10 @@ class GeoSat(ModelBase):
             )
         index = self.selected_input.index(control_name)
         if to_deg:
-            return np.rad2deg(self.store_input[index])[: self.number_time_steps - 1]
+            return np.rad2deg(self.store_input[index])[: self.number_time_steps]
         if to_rad:
-            return np.deg2rad(self.store_input[index][: self.number_time_steps - 1])
-        return self.store_input[index][: self.number_time_steps - 1]
+            return np.deg2rad(self.store_input[index][: self.number_time_steps])
+        return self.store_input[index][: self.number_time_steps]
 
     def get_output(
         self, state_name: str, to_deg: bool = False, to_rad: bool = False

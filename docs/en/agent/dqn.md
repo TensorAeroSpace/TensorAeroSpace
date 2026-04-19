@@ -150,6 +150,21 @@ agent.train()
 !!! tip
     For continuous action spaces use discretization or switch to DDPG/SAC.
 
+## Unified training interface
+
+DQN supports the shared unified `train()` signature from `BaseRLModel`:
+
+```python
+# Legacy call (still works):
+agent.train()
+
+# Unified call – overrides self.train_nums to num_episodes * max_steps:
+agent.train(num_episodes=100, max_steps=200)
+```
+
+When `num_episodes` and `max_steps` are both omitted, the agent uses
+the `train_nums` step budget set at construction time.
+
 ## API reference
 
 ::: tensoraerospace.agent.dqn.model.Model

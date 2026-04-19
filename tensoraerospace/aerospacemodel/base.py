@@ -170,7 +170,7 @@ class ModelBase:
             raise Exception(
                 "Invalid formatting specified, choose one type: to_rad or to_deg."
             )
-        if control_name not in self.list_state:
+        if control_name not in self.control_list:
             raise Exception(f"{control_name} is not in the control signals list")
         if not self.control_history:
             self.control_history = control2dict(self.u_history, self.control_list)
@@ -188,6 +188,7 @@ class ModelBase:
         to_deg: bool = False,
         to_rad: bool = False,
         figsize: tuple = (10, 10),
+        close: bool = False,
     ):
         """Plot control object states.
 
@@ -198,6 +199,9 @@ class ModelBase:
             time (np.ndarray): Time array for plotting.
             lang (str): Label language. Defaults to "rus".
             figsize (tuple): Figure size. Defaults to (10, 10).
+            close (bool): If True, close the figure with ``plt.close(fig)``
+                before returning (useful for batch processing to avoid
+                memory accumulation). Defaults to False.
 
         Returns:
             plt.Figure: Plot of selected state.
@@ -225,15 +229,17 @@ class ModelBase:
         else:
             label = state_to_latex_eng[state_name]
             label_time = "t, sec."
-        fig = plt.figure(figsize=figsize)
-        plt.clf()
-        plt.plot(
+        fig, ax = plt.subplots(figsize=figsize)
+        ax.plot(
             time[: self.time_step - 1], state_hist[: self.time_step - 1], label=label
         )
-        plt.legend()
-        plt.xlabel(label_time)
-        plt.ylabel(label)
-        plt.grid(True)
+        ax.legend()
+        ax.set_xlabel(label_time)
+        ax.set_ylabel(label)
+        ax.grid(True)
+        if close:
+            plt.close(fig)
+        return fig
 
     def plot_error(
         self,
@@ -246,6 +252,7 @@ class ModelBase:
         figsize: tuple = (10, 10),
         xlim: list = [13, 20],
         ylim: list = [-3, 3],
+        close: bool = False,
     ):
         """Plot control error.
 
@@ -261,6 +268,9 @@ class ModelBase:
             figsize (tuple): Figure size. Defaults to (10, 10).
             xlim (list): X-axis limits. Defaults to [13, 20].
             ylim (list): Y-axis limits. Defaults to [-3, 3].
+            close (bool): If True, close the figure with ``plt.close(fig)``
+                before returning (useful for batch processing to avoid
+                memory accumulation). Defaults to False.
 
         Returns:
             plt.Figure: Plot of transient process.
@@ -276,20 +286,22 @@ class ModelBase:
         else:
             label = r"$\varepsilon$, deg"
             label_time = "t, sec."
-        fig = plt.figure(figsize=figsize)
-        plt.clf()
-        plt.xlim(xlim)
-        plt.ylim(ylim)
-        plt.plot(
+        fig, ax = plt.subplots(figsize=figsize)
+        ax.set_xlim(xlim)
+        ax.set_ylim(ylim)
+        ax.plot(
             time[: self.time_step - 1],
             error[: self.time_step - 1],
             label=label,
             color="red",
         )
-        plt.legend()
-        plt.xlabel(label_time)
-        plt.ylabel(label)
-        plt.grid(True)
+        ax.legend()
+        ax.set_xlabel(label_time)
+        ax.set_ylabel(label)
+        ax.grid(True)
+        if close:
+            plt.close(fig)
+        return fig
 
     def plot_transient_process(
         self,
@@ -300,6 +312,7 @@ class ModelBase:
         to_deg: bool = False,
         to_rad: bool = False,
         figsize: tuple = (10, 10),
+        close: bool = False,
     ):
         """Plot transient process.
 
@@ -311,6 +324,9 @@ class ModelBase:
             to_rad (bool): Convert to radians. Defaults to False.
             lang (str): Label language. Defaults to "rus".
             figsize (tuple): Figure size. Defaults to (10, 10).
+            close (bool): If True, close the figure with ``plt.close(fig)``
+                before returning (useful for batch processing to avoid
+                memory accumulation). Defaults to False.
 
         Returns:
             plt.Figure: Plot of transient process.
@@ -327,29 +343,31 @@ class ModelBase:
             label = state_to_latex_eng[state_name]
             label_ref = ref_state_to_latex_eng[state_name]
             label_time = "t, sec."
-        fig = plt.figure(figsize=figsize)
-        plt.clf()
+        fig, ax = plt.subplots(figsize=figsize)
         if to_deg:
-            plt.plot(
+            ax.plot(
                 time[: self.time_step - 1],
                 np.rad2deg(ref_signal[: self.time_step - 1]),
                 label=label_ref,
                 color="red",
             )
         else:
-            plt.plot(
+            ax.plot(
                 time[: self.time_step - 1],
                 ref_signal[: self.time_step - 1],
                 label=label_ref,
                 color="red",
             )
-        plt.plot(
+        ax.plot(
             time[: self.time_step - 1], state_hist[: self.time_step - 1], label=label
         )
-        plt.legend()
-        plt.xlabel(label_time)
-        plt.ylabel(label)
-        plt.grid(True)
+        ax.legend()
+        ax.set_xlabel(label_time)
+        ax.set_ylabel(label)
+        ax.grid(True)
+        if close:
+            plt.close(fig)
+        return fig
 
     def plot_control(
         self,
@@ -359,6 +377,7 @@ class ModelBase:
         to_deg: bool = False,
         to_rad: bool = False,
         figsize: tuple = (10, 10),
+        close: bool = False,
     ):
         """Plot control signals.
 
@@ -369,6 +388,9 @@ class ModelBase:
             time (np.ndarray): Time array for plotting.
             lang (str): Label language. Defaults to "rus".
             figsize (tuple): Figure size. Defaults to (10, 10).
+            close (bool): If True, close the figure with ``plt.close(fig)``
+                before returning (useful for batch processing to avoid
+                memory accumulation). Defaults to False.
 
         Returns:
             plt.Figure: Plot of selected control signal.
@@ -383,15 +405,17 @@ class ModelBase:
         else:
             label = control_to_latex_eng[control_name]
             label_time = "t, sec."
-        fig = plt.figure(figsize=figsize)
-        plt.clf()
-        plt.plot(
+        fig, ax = plt.subplots(figsize=figsize)
+        ax.plot(
             time[: self.time_step - 1],
             state_hist[: self.time_step - 1],
             label=label,
             color="green",
         )
-        plt.legend()
-        plt.xlabel(label_time)
-        plt.ylabel(label)
-        plt.grid(True)
+        ax.legend()
+        ax.set_xlabel(label_time)
+        ax.set_ylabel(label)
+        ax.grid(True)
+        if close:
+            plt.close(fig)
+        return fig

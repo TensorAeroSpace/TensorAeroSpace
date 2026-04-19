@@ -1,100 +1,91 @@
-import os
+"""F-16 nonlinear longitudinal model — pure-numpy implementation.
 
-import matlab.engine
+State: [alpha, wz, stab, dstab]. Control: [stab_act].
+"""
+
+from __future__ import annotations
+
+from typing import Literal, Sequence, Union
+
 import numpy as np
 
 from tensoraerospace.aerospacemodel.base import ModelBase
 
+from .._integrators import euler, rk4
+from .dynamics import f16_ode_long
+from .params import F16LongParameters, default_parameters
+
+ArrayLike = Union[np.ndarray, Sequence[Sequence[float]], Sequence[float]]
+
 
 class LongitudinalF16(ModelBase):
-    r"""F-16 aircraft ✈ in isolated longitudinal channel.
+    """F-16 in isolated longitudinal channel.
 
-    Action space:
-        stab_act: elevator [rad]
-
-    State space:
-        alpha: angle of attack [rad]
-        wz: pitch angular velocity [rad/s]
-        stab: elevator position [rad]
-        dstab: elevator angular velocity [rad/s]
-
-    Example usage:
-        >>> model = LongitudinalF16(initial_state)
-        >>> x_t = model.run_step([ [0], ])
-
-    Args:
-        x0: Initial state.
-        t0: (Optional) Initial time.
-        dt: (Optional) Discretization step.
+    Action: stab_act (elevator command, rad).
+    State: alpha, wz, stab, dstab (rad / rad·s⁻¹).
     """
 
-    def __init__(self, x0, selected_state_output=None, t0=0, dt: float = 0.01):
-        super(LongitudinalF16, self).__init__(x0, selected_state_output, t0, dt)
-        self.matlab_files_path = os.path.join(os.path.dirname(__file__), "matlab_code")
-        self.eng = matlab.engine.start_matlab()  # Start Matlab instance
-        self.eng.addpath(self.matlab_files_path)
-        self.list_state = ["alpha", "wz", "stab", "dstab"]
-        self.control_list = [
-            "stab",
-        ]
-        self.action_space_length = len(self.control_list)
-        self.param = self.eng.airplane_parameters()  # Get control object parameters
-        self.x_history = [x0]
-        self._initialize_selected_state_index(
-            self.selected_state_output, self.list_state
-        )
+    def __init__(
+        self,
+        x0: ArrayLike,
+        selected_state_output=None,
+        t0: float = 0,
+        dt: float = 0.01,
+        integrator: Literal["euler", "rk4"] = "euler",
+    ) -> None:
+        x0_arr = np.asarray(x0, dtype=np.float64).reshape(-1)
+        if x0_arr.size != 4:
+            raise ValueError(
+                f"x0 must have 4 elements (alpha, wz, stab, dstab); got {x0_arr.size}"
+            )
+        super().__init__(x0_arr, selected_state_output, t0, dt)
+        # ModelBase._initialize_selected_state_index has the side effect of
+        # resetting self.list_state and self.control_list to []. Compute
+        # them locally, pass to that method, then reassign so they survive.
+        _list_state = ["alpha", "wz", "stab", "dstab"]
+        _control_list = ["stab"]
+        self.action_space_length = len(_control_list)
+        self.param: F16LongParameters = default_parameters()
+        self.x_history = [x0_arr.reshape(4, 1)]
+        self._initialize_selected_state_index(self.selected_state_output, _list_state)
+        self.list_state = _list_state
+        self.control_list = _control_list
 
-    def get_param(self):
-        """Get control object parameters.
+        if integrator == "euler":
+            self._step_fn = euler
+        elif integrator == "rk4":
+            self._step_fn = rk4
+        else:
+            raise ValueError(f"unknown integrator: {integrator!r}")
+        self._integrator_name = integrator
 
-        Returns:
-            Control object parameters.
-        """
+    def get_param(self) -> F16LongParameters:
         return self.param
 
-    def set_param(self, new_param):
-        """Set new control object parameters.
-
-        Args:
-           new_param: Control object parameters.
-        """
+    def set_param(self, new_param: F16LongParameters) -> None:
         self.param = new_param
 
-    def run_step(self, u: matlab.double):
-        """Calculate control object state.
+    @property
+    def current_state(self) -> np.ndarray:
+        """Most recent state as a flat 1-D ndarray (alpha, wz, stab, dstab)."""
+        return np.asarray(self.x_history[-1], dtype=np.float64).reshape(-1)
 
-        Control signal format:
-
-        >>> stab_act = 0
-        >>> [
-        >>>    [stab_act],
-        >>> ]
-
-        Args:
-            u: Control signal.
-
-        Returns:
-            Control object state.
-
-        Usage example:
-
-        >>> from tensoraerospace.aerospacemodel.f16.nonlinear.longitudinal import initial_state, LongitudinalF16
-        >>> model = LongitudinalF16(initial_state)
-        >>> x_t = model.run_step([ [0], ])
-        """
-        if not isinstance(u, matlab.double):
-            u = matlab.double(u)
-        if len(list(u)) != self.action_space_length:
-            raise Exception(
+    def run_step(self, u: ArrayLike) -> np.ndarray:
+        u_arr = np.asarray(u, dtype=np.float64).reshape(-1)
+        if u_arr.size != self.action_space_length:
+            raise ValueError(
                 "Размерность управляющего вектора задана неверно."
-                + f" Текущее значение {len(list(u))}, не соответсвует {self.action_space_length}"
+                f" Текущее значение {u_arr.size}, не соответсвует {self.action_space_length}"
             )
-        x_t = self.eng.step(
-            self.x_history[-1], self.dt, u, self.t0, self.time_step, self.param
-        )
-        self.x_history.append(x_t)
-        self.u_history.append(u)
+        x_prev = np.asarray(self.x_history[-1], dtype=np.float64).reshape(-1)
+        t_now = self.t0 + self.dt * self.time_step
+        x_next = self._step_fn(f16_ode_long, x_prev, u_arr, t_now, self.dt, self.param)
+
+        x_next_col = x_next.reshape(4, 1)
+        self.x_history.append(x_next_col)
+        self.u_history.append(u_arr.reshape(-1, 1))
         self.time_step += 1
+
         if self.selected_state_output:
-            return np.array(x_t[self.selected_state_index])
-        return np.array(x_t)
+            return x_next_col[self.selected_state_index]
+        return x_next_col

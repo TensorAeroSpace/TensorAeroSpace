@@ -67,13 +67,24 @@ class unity_discrete_env(gym.Wrapper):
         self.action_space = Discrete(3**7)
         self.env = env
 
-    def reset(self):
-        """Reset the underlying environment.
+    def reset(self, seed=None, options=None):
+        """Reset the underlying environment (Gymnasium API).
+
+        Args:
+            seed: Random seed (forwarded for API compatibility; the underlying
+                Unity wrapper does not accept it).
+            options: Reset options (forwarded for API compatibility).
 
         Returns:
-            Any: First observation returned by the wrapped Unity environment.
+            tuple: ``(observation, info)`` following the Gymnasium API. If the
+            wrapped Unity environment still follows the legacy Gym API and
+            returns a single observation, an empty info dict is appended.
         """
-        return self.env.reset()
+        result = self.env.reset()
+        # Handle both legacy gym (just obs) and modern gymnasium (obs, info)
+        if isinstance(result, tuple) and len(result) == 2:
+            return result
+        return result, {}
 
     def step(self, action):
         """Convert a discrete action into a 7D continuous action and step.

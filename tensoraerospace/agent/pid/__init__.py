@@ -135,16 +135,12 @@ class PID(BaseRLModel):
         # - derivative on measurement (prevents derivative kick on setpoint steps)
         # - simple anti-windup via conditional integration when output saturates
 
-        # Coerce scalar-like inputs (numpy 0-d/1-element arrays, torch scalars)
-        setpoint_f = float(np.asarray(setpoint).reshape(-1)[0])
-        measurement_f = float(np.asarray(measurement).reshape(-1)[0])
-
-        error = setpoint_f - measurement_f
+        error = float(setpoint) - float(measurement)
         dt = float(self.dt) if self.dt is not None else 0.0
 
         # Derivative term (on measurement)
         if dt > 0:
-            derivative = -(measurement_f - float(self.prev_measurement)) / dt
+            derivative = -(float(measurement) - float(self.prev_measurement)) / dt
             integral_candidate = float(self.integral) + error * dt
         else:
             derivative = 0.0
@@ -178,7 +174,7 @@ class PID(BaseRLModel):
 
         self.integral = float(integral_candidate)
         self.prev_error = float(error)
-        self.prev_measurement = measurement_f
+        self.prev_measurement = float(measurement)
         return float(output)
 
     def reset(self) -> None:
@@ -346,6 +342,7 @@ class PID(BaseRLModel):
         n_iterations: int = 100,
         verbose: bool = True,
         mode: str = "step_response",
+        control_input_idx: int = 0,
     ) -> MATLABTuneResult:
         """MATLAB-style PID tuning using state-space model optimization.
 
@@ -373,6 +370,10 @@ class PID(BaseRLModel):
                 - "step_response": Minimize settling time, overshoot, static error
                 - "tracking": Minimize RMSE and phase lag for signal tracking
                 Defaults to "step_response".
+            control_input_idx (int): Index of the control input column of B
+                used to compute the DC gain. For MIMO plants where the tracked
+                output is not controlled by the first input, set this to the
+                correct column. Defaults to 0 (backward compatible).
 
         Returns:
             MATLABTuneResult: Optimized PID parameters and performance metrics.
@@ -453,10 +454,10 @@ class PID(BaseRLModel):
         # Compute DC gain for sign determination (Simulink-like automatic sign)
         try:
             # DC gain = -C @ inv(A) @ B (for stable systems)
-            dc_gain_arr = -C[
+            dc_gain_mat = -C[
                 track_state_idx : track_state_idx + 1, :
-            ] @ np.linalg.solve(A, B[:, 0:1])
-            dc_gain = float(np.asarray(dc_gain_arr).reshape(-1)[0])
+            ] @ np.linalg.solve(A, B[:, control_input_idx : control_input_idx + 1])
+            dc_gain = float(np.asarray(dc_gain_mat).reshape(-1)[0])
         except np.linalg.LinAlgError:
             dc_gain = -1.0  # Default for unstable systems
 

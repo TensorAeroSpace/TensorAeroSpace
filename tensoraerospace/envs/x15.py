@@ -19,10 +19,15 @@ from tensoraerospace.aerospacemodel import LongitudinalX15
 class LinearLongitudinalX15(gym.Env):
     """Simulation of LongitudinalX15 in OpenAI Gym for training agents.
 
-    State vector: [u, alpha, q, theta]
+    .. warning::
+        The underlying :class:`LongitudinalX15` uses **FPS units**
+        (ft, lb, s). Linear velocities in the state vector are in
+        ft/s, not m/s.
+
+    State vector: ``[u, w, q, theta]`` (FPS units)
     where:
-        u - flight velocity (ft/s)
-        alpha - angle of attack (rad)
+        u - longitudinal velocity perturbation (ft/s)
+        w - normal velocity perturbation (ft/s)
         q - pitch rate (rad/s)
         theta - pitch angle (rad)
 
@@ -42,49 +47,50 @@ class LinearLongitudinalX15(gym.Env):
         initial_state: np.ndarray | list[float],
         reference_signal: np.ndarray | Callable,
         number_time_steps: int,
-        tracking_states: list[str] = ["theta", "q"],
-        state_space: tuple[float, float] = ["theta", "q"],
-        control_space: tuple[float, float] = ["ele"],
-        output_space: tuple[float, float] = ["theta", "q"],
+        tracking_states: list[str] | None = None,
+        state_space: list[str] | None = None,
+        control_space: list[str] | None = None,
+        output_space: list[str] | None = None,
         reward_func: Callable | None = None,
     ) -> None:
         super().__init__()
         self.initial_state = initial_state
         self.number_time_steps = number_time_steps
-        self.selected_state_output = output_space
-        self.tracking_states = tracking_states
-        self.state_space = state_space
-        self.control_space = control_space
-        self.output_space = output_space
+        self.tracking_states = (
+            tracking_states if tracking_states is not None else ["theta", "q"]
+        )
+        self.state_space = state_space if state_space is not None else ["theta", "q"]
+        self.control_space = control_space if control_space is not None else ["ele"]
+        self.output_space = output_space if output_space is not None else ["theta", "q"]
+        self.selected_state_output = self.output_space
         self.reference_signal = reference_signal
         if reward_func:
             self.reward_func = reward_func
         else:
             self.reward_func = self.reward
 
+        # Constructor already invokes initialise_system internally.
         self.model = LongitudinalX15(
             initial_state,
             number_time_steps=number_time_steps,
-            selected_state_output=output_space,
+            selected_state_output=self.output_space,
             t0=0,
         )
         self.indices_tracking_states = [
-            state_space.index(tracking_states[i]) for i in range(len(tracking_states))
+            self.state_space.index(self.tracking_states[i])
+            for i in range(len(self.tracking_states))
         ]
 
         self.ref_signal = reference_signal
-        self.model.initialise_system(
-            x0=initial_state, number_time_steps=number_time_steps
-        )
         self.number_time_steps = number_time_steps
 
         self.action_space = spaces.Box(
-            low=-60, high=60, shape=(len(control_space), 1), dtype=np.float32
+            low=-60, high=60, shape=(len(self.control_space),), dtype=np.float32
         )
         self.observation_space = spaces.Box(
             low=-np.inf,
             high=np.inf,
-            shape=(len(state_space), 1),
+            shape=(len(self.state_space),),
             dtype=np.float32,
         )
 
@@ -107,7 +113,8 @@ class LinearLongitudinalX15(gym.Env):
         Returns:
             reward (float): Control performance evaluation.
         """
-        return -float(np.abs(state[0] - ref_signal[:, ts]).item())
+        ts_safe = int(np.clip(ts, 0, ref_signal.shape[1] - 1))
+        return -float(np.abs(state[0] - ref_signal[:, ts_safe]).item())
 
     def step(self, action: np.ndarray):
         """Execute a simulation step.
@@ -123,15 +130,22 @@ class LinearLongitudinalX15(gym.Env):
             logging (any): Additional information (not used).
         """
         self.current_step += 1
+        action = np.asarray(action).reshape(-1)
         next_state = self.model.run_step(action)
         reward = self.reward_func(
             next_state[self.indices_tracking_states],
             self.reference_signal,
             self.current_step,
         )
-        self.done = self.current_step >= self.number_time_steps - 2
+        self.done = self.current_step >= self.number_time_steps - 1
         info = self._get_info()
-        return next_state.reshape([-1, 1]), reward, self.done, False, info
+        return (
+            np.asarray(next_state).reshape(-1).astype(np.float32),
+            reward,
+            self.done,
+            False,
+            info,
+        )
 
     def reset(self, seed=None, options=None):
         """Reset simulation environment to initial conditions.
@@ -142,6 +156,7 @@ class LinearLongitudinalX15(gym.Env):
         """
         super().reset(seed=seed)
 
+        # Constructor already invokes initialise_system internally.
         self.model = None
         self.model = LongitudinalX15(
             self.initial_state,
@@ -150,14 +165,11 @@ class LinearLongitudinalX15(gym.Env):
             t0=0,
         )
         self.ref_signal = self.reference_signal
-        self.model.initialise_system(
-            x0=self.initial_state, number_time_steps=self.number_time_steps
-        )
         info = self._get_info()
         self.current_step = 0
         observation = np.array(self.initial_state, dtype=np.float32)[
             self.model.selected_state_index
-        ].reshape([-1, 1])
+        ].reshape(-1)
         return observation, info
 
     def render(self):
@@ -206,9 +218,13 @@ class ImprovedX15Env(gym.Env):
 
         Args:
             initial_state (np.ndarray): Initial state vector
-                [u, alpha, q, theta] where u is flight velocity (ft/s),
-                alpha is angle of attack (rad), q is pitch rate (rad/s),
-                theta is pitch angle (rad).
+                ``[u, w, q, theta]`` in **FPS units** matching the
+                :class:`LongitudinalX15` linearization. ``u`` is the
+                longitudinal velocity perturbation (ft/s), ``w`` is
+                the normal velocity perturbation (ft/s), ``q`` is the
+                pitch rate (rad/s) and ``theta`` is the pitch angle
+                (rad). Note that the trim airspeed baked into the
+                A matrix is ``U0 = 1936 ft/s``.
             reference_signal (np.ndarray): Reference pitch angle
                 trajectory in radians. Shape: (1, number_time_steps).
             number_time_steps (int): Total number of simulation time
@@ -226,7 +242,7 @@ class ImprovedX15Env(gym.Env):
 
         # Normalization parameters and physical constraints
         # X-15 is experimental rocket plane with larger pitch envelope
-        self.max_pitch_rad = np.deg2rad(5)  # |theta| <= 30 deg
+        self.max_pitch_rad = np.deg2rad(30.0)  # |theta| <= 30 deg
         self.max_pitch_rate_rad_s = np.deg2rad(10.0)  # |q| <= 10 deg/s
         self.max_elevator_angle_deg = 20.0  # |ele| <= 20 deg
 
@@ -256,7 +272,7 @@ class ImprovedX15Env(gym.Env):
         )
         self.use_initial_action_on_first_step = bool(use_initial_action_on_first_step)
         self.previous_action = float(self.initial_action_norm)
-        self.pre_previous_action = 0.0
+        self.pre_previous_action = float(self.initial_action_norm)
         self._last_reward = 0.0
         # Reward scale for Q-value range stability
         self.reward_scale = 0.1
@@ -269,21 +285,27 @@ class ImprovedX15Env(gym.Env):
         self.w_smooth = 1e-4  # Smoothness (|Δu|)
         self.w_jerk = 1e-5  # Jitter suppression (|Δ²u|)
 
-        # Store initialization arguments for serialization
-        self.init_args = locals()
+        # Store initialization arguments for serialization (only public
+        # __init__ parameters — avoid capturing locals() which includes
+        # derived variables)
+        self.init_args = {
+            "initial_state": initial_state,
+            "reference_signal": reference_signal,
+            "number_time_steps": number_time_steps,
+            "dt": dt,
+            "initial_elevator_deg": initial_elevator_deg,
+            "use_initial_action_on_first_step": use_initial_action_on_first_step,
+        }
 
         # Model
         # Important: keep full state output to unambiguously address q/theta
+        # Constructor already invokes initialise_system internally.
         self.model = LongitudinalX15(
             self.initial_state,
             number_time_steps=self.number_time_steps,
             selected_state_output=None,
             t0=0,
             dt=self.dt,
-        )
-        self.model.initialise_system(
-            x0=self.initial_state,
-            number_time_steps=self.number_time_steps,
         )
 
         # Visualization parameters (lazy pygame initialization)
@@ -472,7 +494,7 @@ class ImprovedX15Env(gym.Env):
             reward = -100.0
             terminated = True
 
-        truncated = self.current_step >= self.number_time_steps - 2
+        truncated = self.current_step >= self.number_time_steps - 1
 
         return (
             self._get_obs(),

@@ -27,11 +27,13 @@ def test_b747_initialization_and_run_step():
         model.run_step(np.array([0.0]))
 
     # State and control histories have expected lengths
+    # get_state slices to number_time_steps (from store_states of length N+1)
+    # get_control slices to number_time_steps (from store_input of length N)
     theta_hist = model.get_state("theta")
-    assert theta_hist.shape[0] == steps - 1
+    assert theta_hist.shape[0] == steps
 
     ele_hist = model.get_control("ele")
-    assert ele_hist.shape[0] == steps - 1
+    assert ele_hist.shape[0] == steps
 
     # Output retrieval without unit conversion
     out_q = model.get_output("q")

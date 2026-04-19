@@ -21,19 +21,9 @@ from pathlib import Path
 import pytest
 
 # ---------------------------------------------------------------------------
-# Auto-skip tests that require optional dependencies (TensorFlow, Ray, etc.)
+# Auto-skip tests that require optional dependencies (Ray, tensorboard, etc.)
 # ---------------------------------------------------------------------------
 collect_ignore_glob: list[str] = []
-
-try:
-    import tensorflow  # noqa: F401
-except ImportError:
-    collect_ignore_glob += [
-        "agents/ihdp_actor_test.py",
-        "agents/ihdp_critic_test.py",
-        "agents/ihdp_agent_test.py",
-        "agents/ihdp_incremental_model_test.py",
-    ]
 
 try:
     import ray  # noqa: F401
@@ -47,9 +37,33 @@ except ImportError:
 
 # Ensure the repository root is importable even when tests change cwd to /tmp
 # and/or when pytest uses importlib import mode.
+# NOTE: We always move _REPO_ROOT to position 0 so that root packages (e.g.
+# scripts/) take precedence over same-named packages inside tests/ subdirs
+# (e.g. tests/scripts/ would shadow scripts/ if tests/ comes first).
 _REPO_ROOT = Path(__file__).resolve().parents[1]
-if str(_REPO_ROOT) not in sys.path:
-    sys.path.insert(0, str(_REPO_ROOT))
+if str(_REPO_ROOT) in sys.path:
+    sys.path.remove(str(_REPO_ROOT))
+sys.path.insert(0, str(_REPO_ROOT))
+
+
+def pytest_configure(config) -> None:  # noqa: ANN001
+    """Re-anchor root-level packages after all conftest files have loaded.
+
+    pytest loads tests/scripts/conftest.py before collection starts, which
+    registers tests/scripts/ as the 'scripts' package in sys.modules.  We
+    clear that stale entry here (pytest_configure runs after all conftest
+    imports but before collection) so the first real import resolves to the
+    root scripts/ package via the sys.path we set above.
+    """
+    _stale = [
+        k for k in list(sys.modules) if k == "scripts" or k.startswith("scripts.")
+    ]
+    for _key in _stale:
+        # Only remove entries that point inside tests/ — leave the real one.
+        mod = sys.modules[_key]
+        mod_file = getattr(mod, "__file__", None) or ""
+        if "tests" + os.sep + "scripts" in mod_file or "tests/scripts" in mod_file:
+            del sys.modules[_key]
 
 
 def _tmp_root_prefer_tmp() -> Path:

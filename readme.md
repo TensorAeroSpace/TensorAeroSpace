@@ -181,20 +181,24 @@ for t in range(N - 1):
 
 ## 🤖 Supported Algorithms
 
-| Algorithm | Type | HuggingFace Export | Status |
-|-----------|------|:------------------:|:------:|
-| **IHDP** | Incremental Heuristic Dynamic Programming | ❌ | ✅ |
-| **DQN** | Deep Q-Learning | ❌ | ✅ |
-| **DDPG** | Deep Deterministic Policy Gradient | ❌ | ✅ |
-| **SAC** | Soft Actor-Critic | ✅ | ✅ |
-| **DSAC** | Distributional Soft Actor-Critic | ✅ | ✅ |
-| **A3C** | Asynchronous Advantage Actor-Critic | ❌ | ✅ |
-| **PPO** | Proximal Policy Optimization | ✅ | ✅ |
-| **GAIL** | Imitation Learning (Adversarial) | ❌ | ✅ |
-| **MPC** | Model Predictive Control | ✅ | ✅ |
-| **A2C** | Advantage Actor-Critic | ✅ | ✅ |
-| **A2C-NARX** | A2C with NARX Critic | ❌ | ✅ |
-| **PID** | Proportional-Integral-Derivative | ✅ | ✅ |
+| Algorithm | Type | Save/Load | HuggingFace Hub | Status |
+|-----------|------|:---------:|:---------------:|:------:|
+| **SAC** | Soft Actor-Critic | ✅ | ✅ `from_pretrained` / `publish_to_hub` | ✅ |
+| **PPO** | Proximal Policy Optimization | ✅ | ✅ `from_pretrained` / `publish_to_hub` | ✅ |
+| **DDPG** | Deep Deterministic Policy Gradient | ✅ | ✅ `from_pretrained` / `publish_to_hub` | ✅ |
+| **DSAC** | Distributional Soft Actor-Critic | ✅ | ✅ `from_pretrained` / `publish_to_hub` | ✅ |
+| **DQN** | Deep Q-Learning | ✅ | ✅ `from_pretrained` / `publish_to_hub` | ✅ |
+| **A2C** | Advantage Actor-Critic | ✅ | ✅ `from_pretrained` / `publish_to_hub` | ✅ |
+| **A2C-NARX** | A2C with NARX Critic | ✅ | ✅ `from_pretrained` / `publish_to_hub` | ✅ |
+| **A3C** | Asynchronous Advantage Actor-Critic | ✅ | ✅ `from_pretrained` / `publish_to_hub` | ✅ |
+| **GAIL** | Imitation Learning (Adversarial) | ✅ | ✅ `from_pretrained` / `publish_to_hub` | ✅ |
+| **MPC** | Model Predictive Control | ✅ | ✅ `from_pretrained` / `publish_to_hub` | ✅ |
+| **ADP** | Adaptive Dynamic Programming | ✅ | ✅ `from_pretrained` / `publish_to_hub` | ✅ |
+| **ADHDP** | Action-Dependent HDP | ✅ | ✅ `from_pretrained` / `publish_to_hub` | ✅ |
+| **HDP** | Heuristic Dynamic Programming | ✅ | ✅ `from_pretrained` / `publish_to_hub` | ✅ |
+| **PID** | Proportional-Integral-Derivative | ✅ | ✅ `from_pretrained` / `publish_to_hub` | ✅ |
+| **IHDP** | Incremental Heuristic Dynamic Programming | ✅ | ❌ | ✅ |
+| **NARX** | Nonlinear Autoregressive Network | ✅ | ✅ `from_pretrained` / `publish_to_hub` | ✅ |
 
 ## ✈️ Aircraft & Spacecraft Models
 

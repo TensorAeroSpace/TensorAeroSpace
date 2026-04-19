@@ -62,6 +62,7 @@ class LinearLongitudinalF4C(gym.Env):
         else:
             self.reward_func = self.reward
 
+        # Constructor already invokes initialise_system internally.
         self.model = LongitudinalF4C(
             initial_state,
             number_time_steps=number_time_steps,
@@ -74,16 +75,13 @@ class LinearLongitudinalF4C(gym.Env):
         ]
 
         self.ref_signal = reference_signal
-        self.model.initialise_system(
-            x0=initial_state, number_time_steps=number_time_steps
-        )
         self.number_time_steps = number_time_steps
         # Action space in degrees for compatibility; clamped to ±20 deg
         self.max_elevator_angle_deg = 20.0
         self.action_space = spaces.Box(
             low=-self.max_elevator_angle_deg,
             high=self.max_elevator_angle_deg,
-            shape=(len(self.control_space), 1),
+            shape=(len(self.control_space),),
             dtype=np.float32,
         )
         # Устанавливаем разумные границы для observation_space
@@ -91,7 +89,7 @@ class LinearLongitudinalF4C(gym.Env):
         self.observation_space = spaces.Box(
             low=-1000.0,
             high=1000.0,
-            shape=(len(self.state_space), 1),
+            shape=(len(self.state_space),),
             dtype=np.float32,
         )
 
@@ -114,7 +112,8 @@ class LinearLongitudinalF4C(gym.Env):
         Returns:
             reward (float): Control performance evaluation.
         """
-        return -float(np.abs(state[0] - ref_signal[:, ts]).item())
+        ts_safe = int(np.clip(ts, 0, ref_signal.shape[1] - 1))
+        return -float(np.abs(state[0] - ref_signal[:, ts_safe]).item())
 
     def step(self, action: np.ndarray):
         """Execute a simulation step.
@@ -141,11 +140,11 @@ class LinearLongitudinalF4C(gym.Env):
             self.reference_signal,
             self.current_step,
         )
-        self.done = self.current_step >= self.number_time_steps - 2
+        self.done = self.current_step >= self.number_time_steps - 1
         info = self._get_info()
 
         return (
-            next_state.reshape([-1, 1]).astype(np.float32),
+            np.asarray(next_state).reshape(-1).astype(np.float32),
             reward,
             self.done,
             False,
@@ -161,6 +160,7 @@ class LinearLongitudinalF4C(gym.Env):
         """
         super().reset(seed=seed)
 
+        # Constructor already invokes initialise_system internally.
         self.model = LongitudinalF4C(
             self.initial_state,
             number_time_steps=self.number_time_steps,
@@ -168,14 +168,11 @@ class LinearLongitudinalF4C(gym.Env):
             t0=0,
         )
         self.ref_signal = self.reference_signal
-        self.model.initialise_system(
-            x0=self.initial_state, number_time_steps=self.number_time_steps
-        )
         info = self._get_info()
         self.current_step = 0
         observation = np.array(self.initial_state, dtype=np.float32)[
             self.model.selected_state_index
-        ].reshape([-1, 1])
+        ].reshape(-1)
         return observation, info
 
     def render(self):
@@ -274,7 +271,7 @@ class F4CPitchEnvNormalized(gym.Env):
         self.initial_elevator_rad = float(np.deg2rad(self.initial_elevator_deg))
         self.use_initial_action_on_first_step = bool(use_initial_action_on_first_step)
         self.previous_action = float(self.initial_action_norm)
-        self.pre_previous_action = 0.0
+        self.pre_previous_action = float(self.initial_action_norm)
         self._last_reward = 0.0
         # Reward scale for Q-value range stability
         self.reward_scale = 0.1
@@ -288,21 +285,27 @@ class F4CPitchEnvNormalized(gym.Env):
         self.w_smooth = 0.01  # Smoothness (|Δu|)
         self.w_jerk = 0.001  # Jitter suppression (|Δ²u|)
 
-        # Store initialization arguments for serialization
-        self.init_args = locals()
+        # Store initialization arguments for serialization (only public
+        # __init__ parameters — avoid capturing locals() which includes
+        # derived variables)
+        self.init_args = {
+            "initial_state": initial_state,
+            "reference_signal": reference_signal,
+            "number_time_steps": number_time_steps,
+            "dt": dt,
+            "initial_elevator_deg": initial_elevator_deg,
+            "use_initial_action_on_first_step": use_initial_action_on_first_step,
+        }
 
         # Model
         # Important: keep full state output to unambiguously address q/theta
+        # Constructor already invokes initialise_system internally.
         self.model = LongitudinalF4C(
             self.initial_state,
             number_time_steps=self.number_time_steps,
             selected_state_output=None,
             t0=0,
             dt=self.dt,
-        )
-        self.model.initialise_system(
-            x0=self.initial_state,
-            number_time_steps=self.number_time_steps,
         )
 
         # Visualization parameters (lazy pygame initialization)
@@ -490,7 +493,7 @@ class F4CPitchEnvNormalized(gym.Env):
             reward = -100.0
             terminated = True
 
-        truncated = self.current_step >= self.number_time_steps - 2
+        truncated = self.current_step >= self.number_time_steps - 1
 
         return (
             self._get_obs(),

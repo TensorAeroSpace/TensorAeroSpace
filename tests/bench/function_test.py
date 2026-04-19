@@ -62,8 +62,13 @@ def test_settling_time_enters_and_stays():
 
 
 def test_settling_time_returns_length_when_never_enters():
+    # Updated after B3/B6 fix: settling_time now uses system_signal for the
+    # steady-state estimate and returns out_of_range[-1] + 1. Construct a
+    # system that is still outside its ±threshold band at the final sample
+    # (a large spike at the end), so settling_time == len(system).
     control = np.ones(20, dtype=float)
-    system = np.zeros(20, dtype=float)  # never within 5%
+    system = np.ones(20, dtype=float)
+    system[-1] = 5.0  # big deviation at the very end -> never settles
     idx = settling_time(control, system, threshold=0.05)
     assert idx == len(system)
 
@@ -102,8 +107,11 @@ def test_rise_time_between_thresholds():
 
 
 def test_rise_time_returns_none_when_no_crossing():
+    # Updated after B3 fix: rise_time now uses system_signal for y_final.
+    # Use a negative system response so positive low/high thresholds are
+    # never crossed, exercising the None-return path.
     control = np.ones(10, dtype=float)
-    system = np.zeros(10, dtype=float)  # never crosses thresholds
+    system = -np.ones(10, dtype=float)
     assert rise_time(control, system, low_threshold=0.1, high_threshold=0.9) is None
 
 

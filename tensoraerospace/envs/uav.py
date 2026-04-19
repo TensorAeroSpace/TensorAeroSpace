@@ -34,21 +34,23 @@ class LinearLongitudinalUAV(gym.Env):
         initial_state: np.ndarray | list[float],
         reference_signal: np.ndarray | Callable,
         number_time_steps: int,
-        tracking_states: list[str] = ["theta", "q"],
-        state_space: tuple[float, float] = ["theta", "q"],
-        control_space: tuple[float, float] = ["ele"],
-        output_space: tuple[float, float] = ["theta", "q"],
+        tracking_states: list[str] | None = None,
+        state_space: list[str] | None = None,
+        control_space: list[str] | None = None,
+        output_space: list[str] | None = None,
         reward_func: Callable | None = None,
     ) -> None:
         """Initialize UAV longitudinal environment."""
         super().__init__()
         self.initial_state = initial_state
         self.number_time_steps = number_time_steps
-        self.selected_state_output = output_space
-        self.tracking_states = tracking_states
-        self.state_space = state_space
-        self.control_space = control_space
-        self.output_space = output_space
+        self.tracking_states = (
+            tracking_states if tracking_states is not None else ["theta", "q"]
+        )
+        self.state_space = state_space if state_space is not None else ["theta", "q"]
+        self.control_space = control_space if control_space is not None else ["ele"]
+        self.output_space = output_space if output_space is not None else ["theta", "q"]
+        self.selected_state_output = self.output_space
         self.reference_signal = reference_signal
         if reward_func:
             self.reward_func = reward_func
@@ -58,11 +60,12 @@ class LinearLongitudinalUAV(gym.Env):
         self.model = LongitudinalUAV(
             initial_state,
             number_time_steps=number_time_steps,
-            selected_state_output=output_space,
+            selected_state_output=self.output_space,
             t0=0,
         )
         self.indices_tracking_states = [
-            state_space.index(tracking_states[i]) for i in range(len(tracking_states))
+            self.state_space.index(self.tracking_states[i])
+            for i in range(len(self.tracking_states))
         ]
 
         self.ref_signal = reference_signal
@@ -71,10 +74,10 @@ class LinearLongitudinalUAV(gym.Env):
         )
         self.number_time_steps = number_time_steps
         self.action_space = spaces.Box(
-            low=-60, high=60, shape=(len(control_space), 1), dtype=np.float32
+            low=-60, high=60, shape=(len(self.control_space),), dtype=np.float32
         )
         self.observation_space = spaces.Box(
-            low=-np.inf, high=np.inf, shape=(len(state_space), 1), dtype=np.float32
+            low=-np.inf, high=np.inf, shape=(len(self.state_space),), dtype=np.float32
         )
 
         self.current_step = 0
@@ -96,7 +99,8 @@ class LinearLongitudinalUAV(gym.Env):
         Returns:
             float: Control evaluation reward.
         """
-        return -float(np.abs(state[0] - ref_signal[:, ts]).item())
+        ts_safe = int(np.clip(ts, 0, ref_signal.shape[1] - 1))
+        return -float(np.abs(state[0] - ref_signal[:, ts_safe]).item())
 
     def step(
         self, action: np.ndarray
@@ -115,17 +119,18 @@ class LinearLongitudinalUAV(gym.Env):
                 - info (dict): Additional information.
         """
         self.current_step += 1
+        action = np.asarray(action).reshape(-1)
         next_state = self.model.run_step(action)
         reward = self.reward_func(
             next_state[self.indices_tracking_states],
             self.reference_signal,
             self.current_step,
         )
-        self.done = self.current_step >= self.number_time_steps - 2
+        self.done = self.current_step >= self.number_time_steps - 1
         info = self._get_info()
 
         return (
-            next_state.reshape([-1, 1]),
+            np.asarray(next_state).reshape(-1).astype(np.float32),
             float(reward),
             self.done,
             False,
@@ -163,7 +168,7 @@ class LinearLongitudinalUAV(gym.Env):
         self.current_step = 0
         observation = np.array(self.initial_state, dtype=np.float32)[
             self.model.selected_state_index
-        ].reshape([-1, 1])
+        ].reshape(-1)
         return observation, info
 
     def render(self) -> None:

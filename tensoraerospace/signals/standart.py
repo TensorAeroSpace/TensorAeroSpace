@@ -49,30 +49,26 @@ def unit_step(
     return np.asarray(float(degree) * mask)
 
 
-def sinusoid(tp: np.ndarray, frequency: float, amplitude: int) -> np.ndarray:
+def sinusoid(tp: np.ndarray, frequency: float, amplitude: float) -> np.ndarray:
     """Generate sinusoidal signal for frequency analysis.
 
-    Creates a sinusoidal signal commonly used for frequency response analysis
+    Creates a standard sinusoidal signal used for frequency response analysis
     and harmonic testing of control systems.
-
-    Note:
-        Current implementation uses np.sin(tp * amplitude) * frequency.
-        For standard sinusoidal behavior, consider using:
-        amplitude * np.sin(2 * np.pi * frequency * tp)
 
     Args:
         tp: Time array in seconds.
-        frequency: Signal frequency multiplier (note: not in Hz).
-        amplitude: Signal amplitude multiplier (note: affects phase).
+        frequency: Signal frequency in Hz (cycles per unit time).
+        amplitude: Signal peak amplitude.
 
     Returns:
-        Sinusoidal signal array of the same shape as tp.
+        Sinusoidal signal array of the same shape as tp, following
+        amplitude * sin(2*pi*frequency*tp).
 
     Examples:
         >>> t = np.linspace(0, 10, 1000)
         >>> sine = sinusoid(t, frequency=1.0, amplitude=1.0)
     """
-    return np.asarray(np.sin(tp * amplitude) * frequency)
+    return np.asarray(amplitude * np.sin(2 * np.pi * frequency * tp))
 
 
 def constant_line(tp: np.ndarray, value_state: float = 2) -> np.ndarray:
