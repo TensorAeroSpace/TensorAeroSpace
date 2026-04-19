@@ -18,7 +18,7 @@ from gymnasium.spaces import Discrete
 from huggingface_hub import HfApi, snapshot_download
 from tqdm import tqdm
 
-from ..metrics import create_metric_writer
+from ..metrics import create_metric_writer, schema
 
 # Select device for computation
 _DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -289,7 +289,7 @@ class DQNAgent:
         self.target_model = target_model.to(self.device)
         self.optimizer = torch.optim.Adam(self.model.parameters(), lr=learning_rate)
         self.log_dir = Path(log_dir) if log_dir is not None else None
-        self.writer = create_metric_writer(self.log_dir)
+        self.writer = create_metric_writer(self.log_dir, algo="dqn")
 
         # parameters
         self.env = env  # gym environment
@@ -325,6 +325,7 @@ class DQNAgent:
         self.abs_error_upper = 1
         self.verbose_histogram = verbose_histogram
         self.global_step = 0
+        self.global_env_step = 0
         self.episode_idx = 0
 
     def train(
@@ -365,9 +366,11 @@ class DQNAgent:
             self.train_nums = int(max_steps)
         obs, _info = self.env.reset()
         episode_reward = 0.0
+        episode_length = 0
         pbar = tqdm(range(1, self.train_nums), desc="DQNAgent Train", unit="step")
         recent_loss = None
         for t in pbar:
+            self.global_env_step = t
             input_obs = obs.reshape([1, -1])
             best_action, _q_values = self.model.action_value(input_obs)
             # input the obs to the network model
@@ -375,6 +378,7 @@ class DQNAgent:
             next_obs, reward, terminated, truncated, info = self.env.step(action)
             done = bool(terminated or truncated)
             episode_reward += float(reward)
+            episode_length += 1
             if t == 1:
                 p = self.p1
             else:
@@ -395,18 +399,29 @@ class DQNAgent:
             if t % self.target_update_iter == 0:
                 self.update_target_model()
             if done:
-                # Episode end logging
-                self.writer.add_scalar(
-                    "Performance/Reward", episode_reward, self.episode_idx
+                # Episode end logging (canonical schema)
+                self.writer.log_episode(
+                    reward=float(episode_reward),
+                    length=int(episode_length),
+                    env_step=int(self.global_env_step),
+                    terminated=bool(terminated),
+                    truncated=bool(truncated),
                 )
                 self.writer.add_scalar(
-                    "Exploration/Epsilon", self.epsilon, self.episode_idx
+                    schema.DQN.EPSILON, float(self.epsilon),
+                    env_step=self.global_env_step,
                 )
                 self.episode_idx += 1
                 episode_reward = 0.0
+                episode_length = 0
                 obs, info = self.env.reset()
             else:
                 obs = next_obs
+        self.writer.flush()
+        # Note: don't assert_contract_satisfied() if max_steps is so small that the
+        # warmup never ends and no train_step() ever runs. The smoke test uses a
+        # small-but-sufficient budget that does cross the warmup threshold.
+        self.writer.assert_contract_satisfied()
         return {"episodes": int(self.episode_idx)}
 
     def train_step(self) -> Any:
@@ -468,13 +483,49 @@ class DQNAgent:
         td_err_max = float(np.max(abs_td_error)) if abs_td_error.size > 0 else 0.0
         td_err_min = float(np.min(abs_td_error)) if abs_td_error.size > 0 else 0.0
 
-        self.writer.add_scalar("Loss/DQN", float(loss.item()), self.global_step)
-        self.writer.add_scalar("Q/PredSA/Mean", q_pred_sa_mean, self.global_step)
-        self.writer.add_scalar("Q/TargetSA/Mean", q_target_sa_mean, self.global_step)
-        self.writer.add_scalar("TD-Error/Mean", td_err_mean, self.global_step)
-        self.writer.add_scalar("TD-Error/Max", td_err_max, self.global_step)
-        self.writer.add_scalar("TD-Error/Min", td_err_min, self.global_step)
-        self.writer.add_scalar("PER/Beta", float(self.beta), self.global_step)
+        self.writer.add_scalar(
+            schema.DQN.LOSS_Q, float(loss.item()),
+            env_step=self.global_env_step,
+        )
+        self.writer.add_scalar(
+            schema.DQN.Q_PRED_SA_MEAN, q_pred_sa_mean,
+            env_step=self.global_env_step,
+        )
+        self.writer.add_scalar(
+            schema.DQN.Q_TARGET_SA_MEAN, q_target_sa_mean,
+            env_step=self.global_env_step,
+        )
+        self.writer.add_scalar(
+            schema.VALUE_TD_ERROR_MEAN, td_err_mean,
+            env_step=self.global_env_step,
+        )
+        self.writer.add_scalar(
+            schema.VALUE_TD_ERROR_MAX, td_err_max,
+            env_step=self.global_env_step,
+        )
+        self.writer.add_scalar(
+            schema.VALUE_TD_ERROR_MIN, td_err_min,
+            env_step=self.global_env_step,
+        )
+        self.writer.add_scalar(
+            schema.DQN.PER_BETA, float(self.beta),
+            env_step=self.global_env_step,
+        )
+
+        self.global_step += 1
+        self.writer.add_scalar(
+            schema.TRAIN_UPDATES, self.global_step,
+            env_step=self.global_env_step,
+        )
+        self.writer.add_scalar(
+            schema.TRAIN_LR,
+            float(self.optimizer.param_groups[0]["lr"]),
+            env_step=self.global_env_step,
+        )
+        self.writer.add_scalar(
+            schema.TRAIN_REPLAY_SIZE, int(self.num_in_buffer),
+            env_step=self.global_env_step,
+        )
 
         if (
             self.verbose_histogram
@@ -482,9 +533,11 @@ class DQNAgent:
             and (self.global_step % 1000 == 0)
         ):
             for name, param in self.model.named_parameters():
-                self.writer.add_histogram(f"DQN/{name}", param, self.global_step)
+                self.writer.add_histogram(
+                    f"weights/q/{name}", param,
+                    env_step=self.global_env_step,
+                )
 
-        self.global_step += 1
         return float(loss.item())
 
     def sum_tree_sample(self, k: int):
@@ -548,6 +601,7 @@ class DQNAgent:
         done = False
         # one episode until done
         ep_reward = 0
+        ep_length = 0
         while not done:
             input_obs = obs.reshape([1, -1])
             action, _q_values = self.model.action_value(
@@ -559,14 +613,20 @@ class DQNAgent:
             done = bool(terminated or truncated)
             obs = next_obs
             ep_reward += reward
+            ep_length += 1
             if render:  # visually show
                 wrapped_env.env.render()
                 wrapped_env.capture_frame()
             time.sleep(0.05)
         wrapped_env.close()
-        # Log evaluation reward
+        # Log evaluation reward / length (canonical schema)
         self.writer.add_scalar(
-            "Performance/EvalReward", float(ep_reward), self.global_step
+            schema.EVAL_EPISODE_REWARD, float(ep_reward),
+            env_step=self.global_env_step,
+        )
+        self.writer.add_scalar(
+            schema.EVAL_EPISODE_LENGTH, int(ep_length),
+            env_step=self.global_env_step,
         )
         return ep_reward
 
@@ -606,8 +666,11 @@ class DQNAgent:
         """Target neural network update function."""
 
         self.target_model.load_state_dict(self.model.state_dict())
-        # Log target update event
-        self.writer.add_scalar("Target/Update", 1, self.global_step)
+        # Log target update event (canonical schema)
+        self.writer.add_scalar(
+            schema.DQN.TARGET_UPDATE, 1,
+            env_step=self.global_env_step,
+        )
 
     def get_target_value(self, obs: np.ndarray) -> np.ndarray:
         """Compute Q-values using the target network."""
@@ -877,7 +940,7 @@ class PERNARXAgent:
         self.target_model = target_model.to(self.device)
         self.optimizer = torch.optim.Adam(self.model.parameters(), lr=learning_rate)
         self.log_dir = Path(log_dir) if log_dir is not None else None
-        self.writer = create_metric_writer(self.log_dir)
+        self.writer = create_metric_writer(self.log_dir, algo="dqn-narx")
 
         # parameters
         self.env = env  # gym environment
@@ -911,6 +974,7 @@ class PERNARXAgent:
         self.abs_error_upper = 1
         self.verbose_histogram = verbose_histogram
         self.global_step = 0
+        self.global_env_step = 0
         self.episode_idx = 0
 
     def train(
@@ -936,9 +1000,11 @@ class PERNARXAgent:
         obs, _info = self.env.reset()
         prev_action = [0]
         episode_reward = 0.0
+        episode_length = 0
         pbar = tqdm(range(1, self.train_nums), desc="PERNARXAgent Train", unit="step")
         recent_loss = None
         for t in pbar:
+            self.global_env_step = t
             print(obs, prev_action)
             best_action, _q_values = self.model.action_value(obs[None])
 
@@ -946,6 +1012,7 @@ class PERNARXAgent:
             next_obs, reward, terminated, truncated, _info = self.env.step(action)
             done = bool(terminated or truncated)
             episode_reward += float(reward)
+            episode_length += 1
             if t == 1:
                 p = self.p1
             else:
@@ -966,18 +1033,28 @@ class PERNARXAgent:
             if t % self.target_update_iter == 0:
                 self.update_target_model()
             if done:
-                # Episode end logging
-                self.writer.add_scalar(
-                    "Performance/Reward", episode_reward, self.episode_idx
+                # Episode end logging (canonical schema)
+                self.writer.log_episode(
+                    reward=float(episode_reward),
+                    length=int(episode_length),
+                    env_step=int(self.global_env_step),
+                    terminated=bool(terminated),
+                    truncated=bool(truncated),
                 )
                 self.writer.add_scalar(
-                    "Exploration/Epsilon", self.epsilon, self.episode_idx
+                    schema.DQN.EPSILON, float(self.epsilon),
+                    env_step=self.global_env_step,
                 )
                 self.episode_idx += 1
                 episode_reward = 0.0
+                episode_length = 0
                 obs, _info = self.env.reset()  # one episode end
             else:
                 obs = next_obs
+        self.writer.flush()
+        # Note: don't assert_contract_satisfied() if max_steps is so small that the
+        # warmup never ends and no train_step() ever runs.
+        self.writer.assert_contract_satisfied()
         return {"episodes": int(self.episode_idx)}
 
     def train_step(self) -> Any:
@@ -1039,13 +1116,49 @@ class PERNARXAgent:
         td_err_max = float(np.max(abs_td_error)) if abs_td_error.size > 0 else 0.0
         td_err_min = float(np.min(abs_td_error)) if abs_td_error.size > 0 else 0.0
 
-        self.writer.add_scalar("Loss/DQN", float(loss.item()), self.global_step)
-        self.writer.add_scalar("Q/PredSA/Mean", q_pred_sa_mean, self.global_step)
-        self.writer.add_scalar("Q/TargetSA/Mean", q_target_sa_mean, self.global_step)
-        self.writer.add_scalar("TD-Error/Mean", td_err_mean, self.global_step)
-        self.writer.add_scalar("TD-Error/Max", td_err_max, self.global_step)
-        self.writer.add_scalar("TD-Error/Min", td_err_min, self.global_step)
-        self.writer.add_scalar("PER/Beta", float(self.beta), self.global_step)
+        self.writer.add_scalar(
+            schema.DQN.LOSS_Q, float(loss.item()),
+            env_step=self.global_env_step,
+        )
+        self.writer.add_scalar(
+            schema.DQN.Q_PRED_SA_MEAN, q_pred_sa_mean,
+            env_step=self.global_env_step,
+        )
+        self.writer.add_scalar(
+            schema.DQN.Q_TARGET_SA_MEAN, q_target_sa_mean,
+            env_step=self.global_env_step,
+        )
+        self.writer.add_scalar(
+            schema.VALUE_TD_ERROR_MEAN, td_err_mean,
+            env_step=self.global_env_step,
+        )
+        self.writer.add_scalar(
+            schema.VALUE_TD_ERROR_MAX, td_err_max,
+            env_step=self.global_env_step,
+        )
+        self.writer.add_scalar(
+            schema.VALUE_TD_ERROR_MIN, td_err_min,
+            env_step=self.global_env_step,
+        )
+        self.writer.add_scalar(
+            schema.DQN.PER_BETA, float(self.beta),
+            env_step=self.global_env_step,
+        )
+
+        self.global_step += 1
+        self.writer.add_scalar(
+            schema.TRAIN_UPDATES, self.global_step,
+            env_step=self.global_env_step,
+        )
+        self.writer.add_scalar(
+            schema.TRAIN_LR,
+            float(self.optimizer.param_groups[0]["lr"]),
+            env_step=self.global_env_step,
+        )
+        self.writer.add_scalar(
+            schema.TRAIN_REPLAY_SIZE, int(self.num_in_buffer),
+            env_step=self.global_env_step,
+        )
 
         if (
             self.verbose_histogram
@@ -1053,9 +1166,11 @@ class PERNARXAgent:
             and (self.global_step % 1000 == 0)
         ):
             for name, param in self.model.named_parameters():
-                self.writer.add_histogram(f"DQN/{name}", param, self.global_step)
+                self.writer.add_histogram(
+                    f"weights/q/{name}", param,
+                    env_step=self.global_env_step,
+                )
 
-        self.global_step += 1
         return float(loss.item())
 
     def sum_tree_sample(self, k: int):
@@ -1122,6 +1237,7 @@ class PERNARXAgent:
             # Fallback if environment doesn't follow Gymnasium API exactly
             obs = obs_info
         done, ep_reward = False, 0
+        ep_length = 0
         # one episode until done
         while not done:
             action, _q_values = self.model.action_value(
@@ -1135,13 +1251,19 @@ class PERNARXAgent:
                 next_obs, reward, done, _info = step_out
             obs = next_obs
             ep_reward += reward
+            ep_length += 1
             if render:  # visually show
                 env.render()
             time.sleep(0.05)
         env.close()
-        # Log evaluation reward
+        # Log evaluation reward / length (canonical schema)
         self.writer.add_scalar(
-            "Performance/EvalReward", float(ep_reward), self.global_step
+            schema.EVAL_EPISODE_REWARD, float(ep_reward),
+            env_step=self.global_env_step,
+        )
+        self.writer.add_scalar(
+            schema.EVAL_EPISODE_LENGTH, int(ep_length),
+            env_step=self.global_env_step,
         )
         return ep_reward
 
@@ -1200,6 +1322,11 @@ class PERNARXAgent:
         """Target neural network update function."""
 
         self.target_model.load_state_dict(self.model.state_dict())
+        # Log target update event (canonical schema)
+        self.writer.add_scalar(
+            schema.DQN.TARGET_UPDATE, 1,
+            env_step=self.global_env_step,
+        )
 
     def get_target_value(self, obs: np.ndarray) -> np.ndarray:
         """Get Q-values from target neural network.
