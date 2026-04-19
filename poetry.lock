@@ -6931,4 +6931,4 @@ ray = ["ray"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.10,<3.13"
-content-hash = "4e478feb14c693e238439e1ec0510d65529e21b1bdb2fb766e2ff8870f373d09"
+content-hash = "0a4d48ec1a6380285de6f42dd9b2d844357ce1e9247352da4dce9f930956cb9c"
