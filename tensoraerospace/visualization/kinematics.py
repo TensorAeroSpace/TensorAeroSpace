@@ -118,14 +118,10 @@ def reconstruct_position_longitudinal(
     if initial_position is not None:
         pos[0] = np.asarray(initial_position, dtype=np.float64).reshape(3)
     att[0, 1] = initial_pitch
-    # Integrate pitch first. ``wz`` from the longitudinal F-16 model is
-    # consumed here as a per-step pitch increment (radians/step), not a
-    # rate (radians/second), so the time step is intentionally NOT
-    # multiplied in: theta[t+1] = theta[t] + wz[t]. The position
-    # integration below still uses dt.
+    # Integrate pitch first
     for t in range(T - 1):
         wz = state[t, 1]
-        att[t + 1, 1] = att[t, 1] + wz
+        att[t + 1, 1] = att[t, 1] + wz * dt
     # Then integrate position with the pitch trajectory
     for t in range(T - 1):
         alpha = state[t, 0]
