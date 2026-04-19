@@ -197,9 +197,7 @@ class AAINDIAgent:
         self._u_prev = np.zeros(self.n_control, dtype=np.float64)
         self._omega_prev: np.ndarray | None = None
         self._omega_dot_prev: np.ndarray | None = None
-        self._omega_dot_cached: np.ndarray = np.zeros(
-            self.n_state, dtype=np.float64
-        )
+        self._omega_dot_cached: np.ndarray = np.zeros(self.n_state, dtype=np.float64)
         # Integrator state for the optional outer-loop error-injection
         # feedback (ref_error_ki > 0).
         self._int_err = np.zeros(self.n_state, dtype=np.float64)
@@ -535,9 +533,7 @@ class AAINDIAgent:
         if deriv_path.exists():
             with np.load(deriv_path) as npz:
                 agent.deriv._y = npz["y"]
-                agent.deriv._prev_x = (
-                    npz["prev_x"] if bool(npz["has_prev"]) else None
-                )
+                agent.deriv._prev_x = npz["prev_x"] if bool(npz["has_prev"]) else None
 
         # Loop state (reference model + PI integrator + last command + cache).
         # Older checkpoints (before this field was added) simply skip this
@@ -579,8 +575,7 @@ class AAINDIAgent:
         pathlike_prefixes = ("./", "../", "/", "~")
         if str(repo_name).startswith(pathlike_prefixes):
             raise FileNotFoundError(
-                f"Local directory not found: '{repo_name}'."
-                " Please check the path."
+                f"Local directory not found: '{repo_name}'." " Please check the path."
             )
 
         from huggingface_hub import snapshot_download
