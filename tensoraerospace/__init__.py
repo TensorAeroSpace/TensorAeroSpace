@@ -25,6 +25,11 @@ register(
 )
 
 register(
+    id="NonlinearAngularF16-v0",
+    entry_point="tensoraerospace.envs:NonlinearAngularF16",
+)
+
+register(
     id="LinearLongitudinalB747-v0",
     entry_point="tensoraerospace.envs:LinearLongitudinalB747",
 )

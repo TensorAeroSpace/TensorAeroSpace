@@ -35,6 +35,7 @@ plugins:
               - Installation: guide/installation.md
               - Unity Environment: guide/unity_env.md
               - TensorBoard Metrics: guide/metrics.md
+              - 3D Flight Visualization: guide/3d-visualization.md
             - Aerospace Models:
               - F16:
                 - Linear Longitudinal: model/f16.md
@@ -171,6 +172,7 @@ plugins:
               - Установка: guide/installation.md
               - Unity-окружение: guide/unity_env.md
               - Метрики TensorBoard: guide/metrics.md
+              - 3D-визуализация полёта: guide/3d-visualization.md
             - Объекты управления:
               - F16:
                 - Линейная продольная: model/f16.md
