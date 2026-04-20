@@ -111,6 +111,7 @@ class NonlinearAngularF16(gym.Env):
         self.attitude_history = np.zeros((0, 3))
         self.time_history = np.zeros((0,))
         self.chart_history: dict[str, np.ndarray] = {}
+        self._live_renderer = None
 
     def reset(self, *, seed=None, options=None):
         super().reset(seed=seed)
