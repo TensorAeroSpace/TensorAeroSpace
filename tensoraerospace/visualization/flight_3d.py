@@ -6,24 +6,29 @@ import numpy as np
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
+_GLYPH_BODY = np.array(
+    [
+        [3.0, 0.0, 0.0],  # nose
+        [-1.5, 0.5, 0.0],  # tail-right
+        [-1.5, -0.5, 0.0],  # tail-left
+    ]
+)
 
-_GLYPH_BODY = np.array([
-    [3.0, 0.0, 0.0],   # nose
-    [-1.5, 0.5, 0.0],  # tail-right
-    [-1.5, -0.5, 0.0], # tail-left
-])
+_GLYPH_WING = np.array(
+    [
+        [0.0, 0.0, 0.0],  # root
+        [0.0, 3.0, 0.0],  # right tip
+        [0.0, -3.0, 0.0],  # left tip
+    ]
+)
 
-_GLYPH_WING = np.array([
-    [0.0, 0.0, 0.0],   # root
-    [0.0, 3.0, 0.0],   # right tip
-    [0.0, -3.0, 0.0],  # left tip
-])
-
-_GLYPH_TAIL = np.array([
-    [-1.5, 0.0, 0.0],  # base
-    [-1.5, 0.0, 1.0],  # top
-    [-2.0, 0.0, 0.0],  # back
-])
+_GLYPH_TAIL = np.array(
+    [
+        [-1.5, 0.0, 0.0],  # base
+        [-1.5, 0.0, 1.0],  # top
+        [-2.0, 0.0, 0.0],  # back
+    ]
+)
 
 
 def _make_glyph_mesh(
@@ -42,6 +47,7 @@ def _make_glyph_mesh(
         visible regardless of how big the flight envelope is.
     """
     from .kinematics import _body_to_inertial_matrix
+
     R = _body_to_inertial_matrix(attitude[0], attitude[1], attitude[2])
     vertices = np.vstack([_GLYPH_BODY, _GLYPH_WING, _GLYPH_TAIL]) * float(scale)
     transformed = vertices @ R.T + position
@@ -50,10 +56,17 @@ def _make_glyph_mesh(
     j = [1, 4, 7]
     k = [2, 5, 8]
     return go.Mesh3d(
-        x=transformed[:, 0], y=transformed[:, 1], z=transformed[:, 2],
-        i=i, j=j, k=k,
-        color="crimson", opacity=0.95, name="aircraft",
-        hoverinfo="skip", showlegend=False,
+        x=transformed[:, 0],
+        y=transformed[:, 1],
+        z=transformed[:, 2],
+        i=i,
+        j=j,
+        k=k,
+        color="crimson",
+        opacity=0.95,
+        name="aircraft",
+        hoverinfo="skip",
+        showlegend=False,
     )
 
 
@@ -104,7 +117,8 @@ def build_flight_3d_figure(
 
     specs = [[{"type": "scene"}]] + [[{"type": "xy"}]] * n_charts
     fig = make_subplots(
-        rows=1 + n_charts, cols=1,
+        rows=1 + n_charts,
+        cols=1,
         row_heights=row_heights,
         specs=specs,
         vertical_spacing=0.02,
@@ -125,30 +139,37 @@ def build_flight_3d_figure(
             y=trail_positions[:, 1],
             z=trail_positions[:, 2],
             mode="lines+markers",
-            marker=dict(size=2, color=trail_time, colorscale="Viridis",
-                        showscale=False),
+            marker=dict(
+                size=2, color=trail_time, colorscale="Viridis", showscale=False
+            ),
             line=dict(width=4, color="rgba(70, 100, 200, 0.7)"),
             name="trail",
         ),
-        row=1, col=1,
+        row=1,
+        col=1,
     )
 
     # Aircraft glyph at final pose, sized proportionally to the trail extent
     glyph_scale = _autoscale_glyph(trail_positions)
     fig.add_trace(
         _make_glyph_mesh(positions[-1], attitudes[-1], scale=glyph_scale),
-        row=1, col=1,
+        row=1,
+        col=1,
     )
 
     # Chart strip
     for i, (name, values) in enumerate(chart_data.items(), start=2):
         fig.add_trace(
             go.Scatter(
-                x=time, y=values, mode="lines",
-                name=name, line=dict(width=2),
+                x=time,
+                y=values,
+                mode="lines",
+                name=name,
+                line=dict(width=2),
                 hovertemplate=f"{name}: %{{y:.4f}}<br>t=%{{x:.2f}}s<extra></extra>",
             ),
-            row=i, col=1,
+            row=i,
+            col=1,
         )
         fig.update_yaxes(title_text=name, row=i, col=1)
 

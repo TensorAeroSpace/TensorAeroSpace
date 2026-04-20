@@ -37,20 +37,24 @@ def _body_to_inertial_matrix(roll: float, pitch: float, yaw: float) -> np.ndarra
     cr, sr = np.cos(roll), np.sin(roll)
     cp, sp = np.cos(pitch), np.sin(pitch)
     cy, sy = np.cos(yaw), np.sin(yaw)
-    return np.array([
-        [cy * cp, -cy * sp * sr - sy * cr, -cy * sp * cr + sy * sr],
-        [sy * cp, -sy * sp * sr + cy * cr, -sy * sp * cr - cy * sr],
-        [sp,       cp * sr,                 cp * cr],
-    ])
+    return np.array(
+        [
+            [cy * cp, -cy * sp * sr - sy * cr, -cy * sp * cr + sy * sr],
+            [sy * cp, -sy * sp * sr + cy * cr, -sy * sp * cr - cy * sr],
+            [sp, cp * sr, cp * cr],
+        ]
+    )
 
 
 def _body_velocity(airspeed: float, alpha: float, beta: float) -> np.ndarray:
     """Velocity vector in the body frame for given airspeed, AoA, sideslip."""
-    return airspeed * np.array([
-        np.cos(alpha) * np.cos(beta),
-        np.sin(beta),
-        np.sin(alpha) * np.cos(beta),
-    ])
+    return airspeed * np.array(
+        [
+            np.cos(alpha) * np.cos(beta),
+            np.sin(beta),
+            np.sin(alpha) * np.cos(beta),
+        ]
+    )
 
 
 def reconstruct_position_6dof(

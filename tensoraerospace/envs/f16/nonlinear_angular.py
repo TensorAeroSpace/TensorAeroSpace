@@ -32,10 +32,21 @@ from tensoraerospace.visualization.kinematics import (
     _body_velocity,
 )
 
-
 MODEL_STATE_ORDER = [
-    "alpha", "beta", "wx", "wy", "wz", "gamma", "psi", "theta",
-    "stab", "dstab", "ail", "dail", "dir", "ddir",
+    "alpha",
+    "beta",
+    "wx",
+    "wy",
+    "wz",
+    "gamma",
+    "psi",
+    "theta",
+    "stab",
+    "dstab",
+    "ail",
+    "dail",
+    "dir",
+    "ddir",
 ]
 
 DEFAULT_CHART_STATES = ("alpha", "beta", "wx", "wy", "wz", "stab", "ail", "dir")
@@ -97,11 +108,16 @@ class NonlinearAngularF16(gym.Env):
 
         self.max_action_value = 25.0  # deg
         self.observation_space = spaces.Box(
-            low=-np.inf, high=np.inf, shape=(14,), dtype=np.float64,
+            low=-np.inf,
+            high=np.inf,
+            shape=(14,),
+            dtype=np.float64,
         )
         self.action_space = spaces.Box(
-            low=-self.max_action_value, high=self.max_action_value,
-            shape=(3,), dtype=np.float64,
+            low=-self.max_action_value,
+            high=self.max_action_value,
+            shape=(3,),
+            dtype=np.float64,
         )
 
         # Filled in reset()
@@ -116,7 +132,10 @@ class NonlinearAngularF16(gym.Env):
     def reset(self, *, seed=None, options=None):
         super().reset(seed=seed)
         self.model = AngularF16(
-            x0=self.initial_state, t0=0, dt=self.dt, integrator=self.integrator,
+            x0=self.initial_state,
+            t0=0,
+            dt=self.dt,
+            integrator=self.integrator,
         )
         self._step_index = 0
         self.position_history = np.zeros((1, 3), dtype=np.float64)
@@ -136,7 +155,9 @@ class NonlinearAngularF16(gym.Env):
 
         # Clip to bounds, convert to radians
         action_clipped = np.clip(
-            action, -self.max_action_value, self.max_action_value,
+            action,
+            -self.max_action_value,
+            self.max_action_value,
         )
         u_rad = np.deg2rad(action_clipped)
 
@@ -173,14 +194,20 @@ class NonlinearAngularF16(gym.Env):
         new_pos = self.position_history[-1] + v_inertial * self.dt
 
         self.position_history = np.vstack([self.position_history, new_pos[None, :]])
-        self.attitude_history = np.vstack([
-            self.attitude_history, self._extract_attitude(next_state).reshape(1, 3),
-        ])
-        self.time_history = np.append(self.time_history, self._step_index * self.dt + self.dt)
+        self.attitude_history = np.vstack(
+            [
+                self.attitude_history,
+                self._extract_attitude(next_state).reshape(1, 3),
+            ]
+        )
+        self.time_history = np.append(
+            self.time_history, self._step_index * self.dt + self.dt
+        )
         for name in self.chart_states:
             idx = MODEL_STATE_ORDER.index(name)
             self.chart_history[name] = np.append(
-                self.chart_history[name], next_state[idx],
+                self.chart_history[name],
+                next_state[idx],
             )
 
     def render(self):
@@ -196,6 +223,7 @@ class NonlinearAngularF16(gym.Env):
 
     def _build_figure(self):
         from tensoraerospace.visualization.flight_3d import build_flight_3d_figure
+
         return build_flight_3d_figure(
             positions=self.position_history,
             attitudes=self.attitude_history,
@@ -211,6 +239,7 @@ class NonlinearAngularF16(gym.Env):
 
     def _render_rgb_array(self):
         from io import BytesIO
+
         try:
             from PIL import Image
         except ImportError as e:
@@ -224,6 +253,7 @@ class NonlinearAngularF16(gym.Env):
 
     def _render_live(self):
         from tensoraerospace.visualization.live import LivePlotlyRenderer
+
         if not hasattr(self, "_live_renderer") or self._live_renderer is None:
             self._live_renderer = LivePlotlyRenderer(trail_length=self.trail_length)
             self._live_renderer.init_from(
@@ -239,8 +269,7 @@ class NonlinearAngularF16(gym.Env):
             attitude_row=self.attitude_history[-1],
             t=float(self.time_history[-1]),
             chart_row={
-                name: float(self.chart_history[name][-1])
-                for name in self.chart_states
+                name: float(self.chart_history[name][-1]) for name in self.chart_states
             },
         )
         return self._live_renderer._fig

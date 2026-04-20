@@ -258,9 +258,9 @@ class NonlinearLongitudinalF16(gym.Env):
         self.attitude_history = np.array([[0.0, self.initial_pitch, 0.0]])
         self.time_history = np.zeros((1,), dtype=np.float64)
         self.chart_history = {
-            name: np.array([
-                self.model.x_history[0].reshape(-1)[MODEL_STATE_ORDER.index(name)]
-            ])
+            name: np.array(
+                [self.model.x_history[0].reshape(-1)[MODEL_STATE_ORDER.index(name)]]
+            )
             for name in self.chart_states
         }
         self._live_renderer = None
@@ -301,16 +301,21 @@ class NonlinearLongitudinalF16(gym.Env):
         new_pos = self.position_history[-1] + v_inertial * self.dt
 
         self.position_history = np.vstack([self.position_history, new_pos[None, :]])
-        self.attitude_history = np.vstack([
-            self.attitude_history, np.array([[0.0, new_pitch, 0.0]]),
-        ])
+        self.attitude_history = np.vstack(
+            [
+                self.attitude_history,
+                np.array([[0.0, new_pitch, 0.0]]),
+            ]
+        )
         self.time_history = np.append(
-            self.time_history, self.time_history[-1] + self.dt,
+            self.time_history,
+            self.time_history[-1] + self.dt,
         )
         for name in self.chart_states:
             idx = MODEL_STATE_ORDER.index(name)
             self.chart_history[name] = np.append(
-                self.chart_history[name], next_state[idx],
+                self.chart_history[name],
+                next_state[idx],
             )
 
     def render(self):
@@ -320,6 +325,7 @@ class NonlinearLongitudinalF16(gym.Env):
             return self._build_figure()
         if self.render_mode == "rgb_array":
             from io import BytesIO
+
             try:
                 from PIL import Image
             except ImportError as e:
@@ -332,6 +338,7 @@ class NonlinearLongitudinalF16(gym.Env):
             return np.array(Image.open(BytesIO(png_bytes)).convert("RGB"))
         if self.render_mode == "live":
             from tensoraerospace.visualization.live import LivePlotlyRenderer
+
             if self._live_renderer is None:
                 self._live_renderer = LivePlotlyRenderer(
                     trail_length=self.trail_length,
@@ -357,6 +364,7 @@ class NonlinearLongitudinalF16(gym.Env):
 
     def _build_figure(self):
         from tensoraerospace.visualization.flight_3d import build_flight_3d_figure
+
         return build_flight_3d_figure(
             positions=self.position_history,
             attitudes=self.attitude_history,

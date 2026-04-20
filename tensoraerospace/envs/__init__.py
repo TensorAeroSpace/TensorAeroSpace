@@ -22,11 +22,11 @@ from .f4c import LinearLongitudinalF4C as LinearLongitudinalF4C
 from .f16.linear_longitudial import (  # noqa: F401
     LinearLongitudinalF16 as LinearLongitudinalF16,
 )
-from .f16.nonlinear_longitudinal import (  # noqa: F401
-    NonlinearLongitudinalF16 as NonlinearLongitudinalF16,
-)
 from .f16.nonlinear_angular import (  # noqa: F401
     NonlinearAngularF16 as NonlinearAngularF16,
+)
+from .f16.nonlinear_longitudinal import (  # noqa: F401
+    NonlinearLongitudinalF16 as NonlinearLongitudinalF16,
 )
 from .geostat import GeoSatEnv as GeoSatEnv  # noqa: F401
 from .lapan import ImprovedLAPANEnv as ImprovedLAPANEnv  # noqa: F401
