@@ -46,7 +46,10 @@ class LivePlotlyRenderer:
     ) -> go.FigureWidget:
         """Build the initial figure and return it as a FigureWidget for display."""
         base_fig = build_flight_3d_figure(
-            positions, attitudes, time, dict(chart_data),
+            positions,
+            attitudes,
+            time,
+            dict(chart_data),
             trail_length=self._trail_length,
             height=self._height,
         )
@@ -75,9 +78,9 @@ class LivePlotlyRenderer:
             trail.y = list(trail.y) + [float(position_row[1])]
             trail.z = list(trail.z) + [float(position_row[2])]
             if self._trail_length is not None and len(trail.x) > self._trail_length:
-                trail.x = list(trail.x)[-self._trail_length:]
-                trail.y = list(trail.y)[-self._trail_length:]
-                trail.z = list(trail.z)[-self._trail_length:]
+                trail.x = list(trail.x)[-self._trail_length :]
+                trail.y = list(trail.y)[-self._trail_length :]
+                trail.z = list(trail.z)[-self._trail_length :]
 
             # Aircraft glyph = first mesh3d trace; rebuild it in place,
             # autoscaling against the current trail extent.

@@ -12,6 +12,7 @@ def env_factory():
         from tensoraerospace.envs.f16.nonlinear_longitudinal import (
             NonlinearLongitudinalF16,
         )
+
         defaults = dict(
             initial_state=np.zeros(4),
             reference_signal=np.zeros((1, 100)),
@@ -21,6 +22,7 @@ def env_factory():
         )
         defaults.update(overrides)
         return NonlinearLongitudinalF16(**defaults)
+
     return _make
 
 
@@ -55,6 +57,7 @@ def test_chart_history_default_states(env_factory):
 def test_render_human_returns_figure(env_factory):
     pytest.importorskip("plotly")
     import plotly.graph_objects as go
+
     env = env_factory(render_mode="human")
     env.reset()
     for _ in range(5):

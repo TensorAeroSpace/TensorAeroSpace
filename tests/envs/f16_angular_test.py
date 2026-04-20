@@ -12,6 +12,7 @@ def env_factory():
         from tensoraerospace.envs.f16.nonlinear_angular import (
             NonlinearAngularF16,
         )
+
         defaults = dict(
             initial_state=np.zeros(14),
             number_time_steps=10,
@@ -20,6 +21,7 @@ def env_factory():
         )
         defaults.update(overrides)
         return NonlinearAngularF16(**defaults)
+
     return _make
 
 
@@ -95,6 +97,7 @@ def test_render_none_returns_none(env_factory):
 def test_render_human_returns_figure(env_factory):
     pytest.importorskip("plotly")
     import plotly.graph_objects as go
+
     env = env_factory(render_mode="human")
     env.reset()
     for _ in range(3):
@@ -118,6 +121,7 @@ def test_render_rgb_array_returns_ndarray(env_factory):
 def test_render_live_returns_figurewidget(env_factory):
     pytest.importorskip("anywidget")
     import plotly.graph_objects as go
+
     env = env_factory(render_mode="live")
     env.reset()
     fig = env.render()

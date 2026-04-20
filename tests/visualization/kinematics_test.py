@@ -33,7 +33,9 @@ def test_6dof_straight_and_level_grows_along_x():
     np.testing.assert_allclose(pos[:, 1], 0.0, atol=1e-12)
     np.testing.assert_allclose(pos[:, 2], 0.0, atol=1e-12)
     # x grows by 100 * 0.1 = 10 m per step
-    np.testing.assert_allclose(pos[-1, 0], 100.0 * 0.1 * 9, atol=1e-9)  # 9 integration steps over T=10 rows
+    np.testing.assert_allclose(
+        pos[-1, 0], 100.0 * 0.1 * 9, atol=1e-9
+    )  # 9 integration steps over T=10 rows
 
 
 def test_6dof_climb_at_45_deg_pitch():
@@ -57,7 +59,9 @@ def test_6dof_pure_roll_no_motion_change():
 def test_6dof_initial_position_offset():
     state = np.tile(_state_6dof(), (3, 1))
     pos = reconstruct_position_6dof(
-        state, airspeed=10.0, dt=1.0,
+        state,
+        airspeed=10.0,
+        dt=1.0,
         initial_position=np.array([100.0, 200.0, 300.0]),
     )
     np.testing.assert_allclose(pos[0], [100.0, 200.0, 300.0])
@@ -83,7 +87,10 @@ def test_longitudinal_pitch_integrated_from_wz():
     state = np.zeros((11, 4))
     state[:, 1] = 0.1  # wz column
     pos, att = reconstruct_position_longitudinal(
-        state, airspeed=100.0, dt=0.1, initial_pitch=0.0,
+        state,
+        airspeed=100.0,
+        dt=0.1,
+        initial_pitch=0.0,
     )
     # theta is index 1 of attitude (roll, pitch, yaw)
     np.testing.assert_allclose(att[-1, 1], 0.1, atol=1e-9)
@@ -94,6 +101,9 @@ def test_longitudinal_pitch_integrated_from_wz():
 def test_longitudinal_initial_pitch_applied():
     state = np.zeros((3, 4))  # wz = 0
     pos, att = reconstruct_position_longitudinal(
-        state, airspeed=100.0, dt=0.1, initial_pitch=np.pi / 6,
+        state,
+        airspeed=100.0,
+        dt=0.1,
+        initial_pitch=np.pi / 6,
     )
     np.testing.assert_allclose(att[:, 1], np.pi / 6)
