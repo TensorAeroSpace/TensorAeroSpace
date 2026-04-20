@@ -66,7 +66,7 @@ class LivePlotlyRenderer:
         if self._fig is None:
             raise RuntimeError("Call init_from(...) before extend(...).")
 
-        from .flight_3d import _make_glyph_mesh
+        from .flight_3d import _autoscale_glyph, _make_glyph_mesh
 
         with self._fig.batch_update():
             # Trail = first scatter3d trace
@@ -79,8 +79,11 @@ class LivePlotlyRenderer:
                 trail.y = list(trail.y)[-self._trail_length:]
                 trail.z = list(trail.z)[-self._trail_length:]
 
-            # Aircraft glyph = first mesh3d trace; rebuild it in place
-            new_glyph = _make_glyph_mesh(position_row, attitude_row)
+            # Aircraft glyph = first mesh3d trace; rebuild it in place,
+            # autoscaling against the current trail extent.
+            trail_xyz = np.column_stack([trail.x, trail.y, trail.z])
+            scale = _autoscale_glyph(trail_xyz)
+            new_glyph = _make_glyph_mesh(position_row, attitude_row, scale=scale)
             for mesh in self._fig.data:
                 if mesh.type == "mesh3d":
                     mesh.x = new_glyph.x

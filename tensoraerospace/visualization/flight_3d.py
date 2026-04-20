@@ -26,15 +26,24 @@ _GLYPH_TAIL = np.array([
 ])
 
 
-def _make_glyph_mesh(position: np.ndarray, attitude: np.ndarray) -> go.Mesh3d:
+def _make_glyph_mesh(
+    position: np.ndarray,
+    attitude: np.ndarray,
+    *,
+    scale: float = 1.0,
+) -> go.Mesh3d:
     """Build a small triangular glyph oriented by attitude and placed at position.
 
     attitude: (3,) (roll, pitch, yaw) radians.
     position: (3,)
+    scale: multiplier for the glyph size; canonical body length is 3m, so
+        ``scale=10`` produces a 30m body, ``scale=100`` a 300m body. Use
+        a scale proportional to the trail extent so the glyph stays
+        visible regardless of how big the flight envelope is.
     """
     from .kinematics import _body_to_inertial_matrix
     R = _body_to_inertial_matrix(attitude[0], attitude[1], attitude[2])
-    vertices = np.vstack([_GLYPH_BODY, _GLYPH_WING, _GLYPH_TAIL])
+    vertices = np.vstack([_GLYPH_BODY, _GLYPH_WING, _GLYPH_TAIL]) * float(scale)
     transformed = vertices @ R.T + position
     # Indices into the 9-vertex array: body=0..2, wing=3..5, tail=6..8
     i = [0, 3, 6]
@@ -46,6 +55,24 @@ def _make_glyph_mesh(position: np.ndarray, attitude: np.ndarray) -> go.Mesh3d:
         color="crimson", opacity=0.95, name="aircraft",
         hoverinfo="skip", showlegend=False,
     )
+
+
+def _autoscale_glyph(positions: np.ndarray) -> float:
+    """Pick a glyph scale proportional to the trail's largest dimension.
+
+    Targets ~5% of the bounding-box diagonal so the aircraft is clearly
+    visible without dominating the scene. Falls back to scale=1.0 for
+    near-stationary trails.
+    """
+    if len(positions) < 2:
+        return 1.0
+    extent = positions.max(axis=0) - positions.min(axis=0)
+    diag = float(np.linalg.norm(extent))
+    if diag < 1e-6:
+        return 1.0
+    # Canonical body length is 3 m; scale so that body length == 5% of diag.
+    target_body = 0.05 * diag
+    return target_body / 3.0
 
 
 def build_flight_3d_figure(
@@ -106,9 +133,10 @@ def build_flight_3d_figure(
         row=1, col=1,
     )
 
-    # Aircraft glyph at final pose
+    # Aircraft glyph at final pose, sized proportionally to the trail extent
+    glyph_scale = _autoscale_glyph(trail_positions)
     fig.add_trace(
-        _make_glyph_mesh(positions[-1], attitudes[-1]),
+        _make_glyph_mesh(positions[-1], attitudes[-1], scale=glyph_scale),
         row=1, col=1,
     )
 
