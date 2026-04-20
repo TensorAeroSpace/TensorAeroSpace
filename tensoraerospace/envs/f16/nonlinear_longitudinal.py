@@ -16,7 +16,7 @@ Control vector::
 from __future__ import annotations
 
 import math
-from typing import Callable
+from typing import Callable, Optional, Sequence
 
 import gymnasium as gym
 import numpy as np
@@ -24,6 +24,10 @@ from gymnasium import spaces
 
 from tensoraerospace.aerospacemodel.f16.nonlinear.longitudinal import (
     LongitudinalF16,
+)
+from tensoraerospace.visualization.kinematics import (
+    _body_to_inertial_matrix,
+    _body_velocity,
 )
 
 MODEL_STATE_ORDER = ["alpha", "wz", "stab", "dstab"]
@@ -71,6 +75,8 @@ class NonlinearLongitudinalF16(gym.Env):
     before being handed to the underlying numpy model.
     """
 
+    metadata = {"render_modes": ["human", "rgb_array", "live"]}
+
     def __init__(
         self,
         initial_state: np.ndarray,
@@ -86,6 +92,11 @@ class NonlinearLongitudinalF16(gym.Env):
         integrator: str = "euler",
         control_bias: float = 0.0,
         feedforward_fn: Callable[[int, np.ndarray], float] | None = None,
+        airspeed: float = 200.0,
+        render_mode: Optional[str] = None,
+        chart_states: Sequence[str] = ("alpha", "wz", "stab"),
+        trail_length: Optional[int] = None,
+        initial_pitch: float = 0.0,
     ) -> None:
         super().__init__()
 
@@ -144,6 +155,18 @@ class NonlinearLongitudinalF16(gym.Env):
         self.current_step = 0
         self.done = False
 
+        self.airspeed = float(airspeed)
+        self.render_mode = render_mode
+        self.chart_states = tuple(chart_states)
+        self.trail_length = trail_length
+        self.initial_pitch = float(initial_pitch)
+        # Initialised in reset()
+        self.position_history = np.zeros((0, 3))
+        self.attitude_history = np.zeros((0, 3))
+        self.time_history = np.zeros((0,))
+        self.chart_history: dict[str, np.ndarray] = {}
+        self._live_renderer = None
+
     @staticmethod
     def _build_model_initial_state(
         init_state: np.ndarray, state_names: list[str]
@@ -189,6 +212,9 @@ class NonlinearLongitudinalF16(gym.Env):
         self.current_step += 1
 
         next_state = self.model.run_step(action_rad)
+        # Track histories using the FULL 4-element model state (next_state may
+        # be a sliced observation, depending on selected_state_output).
+        self._update_history(self.model.current_state)
 
         reward = 1.0
         if self.use_reward:
@@ -227,6 +253,18 @@ class NonlinearLongitudinalF16(gym.Env):
         observation = np.asarray(model_x0, dtype=np.float32)[
             self.model.selected_state_index
         ].reshape(-1)
+
+        self.position_history = np.zeros((1, 3), dtype=np.float64)
+        self.attitude_history = np.array([[0.0, self.initial_pitch, 0.0]])
+        self.time_history = np.zeros((1,), dtype=np.float64)
+        self.chart_history = {
+            name: np.array([
+                self.model.x_history[0].reshape(-1)[MODEL_STATE_ORDER.index(name)]
+            ])
+            for name in self.chart_states
+        }
+        self._live_renderer = None
+
         return observation, info
 
     def close(self) -> None:
@@ -245,3 +283,84 @@ class NonlinearLongitudinalF16(gym.Env):
         rate_penalty = float(abs(state_vec[1])) if state_vec.size > 1 else 0.0
         reward = -angle_error - 0.1 * rate_penalty
         return np.array(reward)
+
+    def _update_history(self, next_state: np.ndarray) -> None:
+        """Append one row to position/attitude/time/chart histories."""
+        next_state = np.asarray(next_state, dtype=np.float64).reshape(-1)
+        prev_pitch = self.attitude_history[-1, 1]
+        # Pull previous full model state for body-velocity computation.
+        if hasattr(self.model, "x_history") and len(self.model.x_history) >= 2:
+            prev_model_state = self.model.x_history[-2].reshape(-1)
+        else:
+            prev_model_state = next_state  # fallback: use current state
+        alpha = prev_model_state[0]
+        wz = prev_model_state[1]
+        new_pitch = prev_pitch + wz * self.dt
+        v_body = _body_velocity(self.airspeed, alpha, beta=0.0)
+        v_inertial = _body_to_inertial_matrix(0.0, prev_pitch, 0.0) @ v_body
+        new_pos = self.position_history[-1] + v_inertial * self.dt
+
+        self.position_history = np.vstack([self.position_history, new_pos[None, :]])
+        self.attitude_history = np.vstack([
+            self.attitude_history, np.array([[0.0, new_pitch, 0.0]]),
+        ])
+        self.time_history = np.append(
+            self.time_history, self.time_history[-1] + self.dt,
+        )
+        for name in self.chart_states:
+            idx = MODEL_STATE_ORDER.index(name)
+            self.chart_history[name] = np.append(
+                self.chart_history[name], next_state[idx],
+            )
+
+    def render(self):
+        if self.render_mode is None:
+            return None
+        if self.render_mode == "human":
+            return self._build_figure()
+        if self.render_mode == "rgb_array":
+            from io import BytesIO
+            try:
+                from PIL import Image
+            except ImportError as e:
+                raise ImportError(
+                    "rgb_array render mode requires Pillow. "
+                    "Install with `pip install Pillow`."
+                ) from e
+            fig = self._build_figure()
+            png_bytes = fig.to_image(format="png")
+            return np.array(Image.open(BytesIO(png_bytes)).convert("RGB"))
+        if self.render_mode == "live":
+            from tensoraerospace.visualization.live import LivePlotlyRenderer
+            if self._live_renderer is None:
+                self._live_renderer = LivePlotlyRenderer(
+                    trail_length=self.trail_length,
+                )
+                self._live_renderer.init_from(
+                    self.position_history,
+                    self.attitude_history,
+                    self.time_history,
+                    self.chart_history,
+                )
+                return self._live_renderer._fig
+            self._live_renderer.extend(
+                position_row=self.position_history[-1],
+                attitude_row=self.attitude_history[-1],
+                t=float(self.time_history[-1]),
+                chart_row={
+                    name: float(self.chart_history[name][-1])
+                    for name in self.chart_states
+                },
+            )
+            return self._live_renderer._fig
+        raise ValueError(f"Unknown render_mode: {self.render_mode!r}")
+
+    def _build_figure(self):
+        from tensoraerospace.visualization.flight_3d import build_flight_3d_figure
+        return build_flight_3d_figure(
+            positions=self.position_history,
+            attitudes=self.attitude_history,
+            time=self.time_history,
+            chart_data=self.chart_history,
+            trail_length=self.trail_length,
+        )
