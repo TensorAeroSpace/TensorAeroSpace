@@ -129,6 +129,18 @@ markers = [
     "integration: marks tests as integration tests",
     "unit: marks tests as unit tests",
 ]
+# Silence noise that is not actionable for this project right now:
+#   - Gymnasium v1.0 wrapper-attribute deprecation: every direct
+#     `env.<custom_attr>` access through a wrapper warns. Migrating to
+#     `env.get_wrapper_attr(...)` everywhere is a separate, repo-wide effort.
+#   - Gymnasium passive-env-checker UserWarnings about non-strictly-compliant
+#     reward/obs types from third-party envs (e.g. Pendulum-v1 used in smoke
+#     tests). These are env-side cosmetics, not test failures.
+filterwarnings = [
+    "ignore:.*to get variables from other wrappers is deprecated.*:UserWarning",
+    "ignore:.*The reward returned by.*:UserWarning",
+    "ignore:.*The obs returned by the.*:UserWarning",
+]
 
 # Конфигурация для coverage
 [tool.coverage.run]
