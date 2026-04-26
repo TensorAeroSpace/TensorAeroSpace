@@ -160,6 +160,8 @@ def rollout(
 
     done = False
     steps = 0
+    terminated = False
+    truncated = False
     while not done:
         if agent is None:
             if baseline in (None, "random"):

@@ -211,10 +211,16 @@ class LongitudinalCessna170(ModelBase):
         Z_aero = -q_dyn * S * CL
         My_aero = q_dyn * S * cbar * Cm
 
-        # Simple thrust model along body X
+        # Simple thrust model along body X.
+        # Use a smooth quadratic fade-out towards V_max instead of a linear
+        # max(0, 1 - V/Vmax), which has a zero-slope corner (abrupt change in
+        # derivative) at V == V_max and can destabilize solvers/controllers.
         T0 = self.params["T_static"]
         Vmax = self.params["V_max"]
-        thrust = max(0.0, 1.0 - V / max(Vmax, 1e-3)) * T0
+        ratio = V / max(Vmax, 1e-3)
+        linear_factor = max(0.0, 1.0 - ratio)
+        thrust_factor = linear_factor * linear_factor  # smooth at V=Vmax
+        thrust = thrust_factor * T0
         thrust *= np.clip(throttle, 0.0, 1.0)
 
         X_total = X_aero + thrust

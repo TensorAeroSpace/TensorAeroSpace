@@ -19,11 +19,11 @@ def test_supersonic_directional_model_smoke_and_getters():
         assert x1.shape[0] == 5
 
     # Getters should return arrays of expected lengths
-    assert model.get_state("phi").shape[0] == steps - 1
+    assert model.get_state("phi").shape[0] == steps
     assert model.get_state("wx").shape == model.get_state("p").shape  # alias
     assert model.get_state("wy").shape == model.get_state("r").shape  # alias
-    assert model.get_control("ail").shape[0] == steps - 1
-    assert model.get_control("dir").shape[0] == steps - 1  # alias to rud
+    assert model.get_control("ail").shape[0] == steps
+    assert model.get_control("dir").shape[0] == steps  # alias to rud
     # Outputs are sized by time_step-1
     assert model.get_output("beta").shape[0] == model.time_step - 1
 

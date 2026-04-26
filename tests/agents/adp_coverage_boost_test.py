@@ -1044,7 +1044,9 @@ class TestDHPBaseline:
 class TestADPFromPretrained:
     def test_from_pretrained_local(self):
         env = _TinyEnv(obs_dim=4, act_dim=1)
-        agent = ADP(env=env, device="cpu", design="ddpg")
+        # log_every_updates=1 ensures the canonical train/updates + train/lr
+        # metrics fire so the contract assertion at the end of train() passes.
+        agent = ADP(env=env, device="cpu", design="ddpg", log_every_updates=1)
         agent.train(num_episodes=1, max_steps=3)
         with tempfile.TemporaryDirectory() as tmpdir:
             run_dir = agent.save(path=tmpdir)

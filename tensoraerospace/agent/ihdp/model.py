@@ -4,7 +4,13 @@ This module defines the high-level IHDPAgent class that composes Actor, Critic,
 and IncrementalModel components.
 """
 
+import datetime
+import json
+from pathlib import Path
+from typing import Any, Optional, Union
+
 import numpy as np
+import torch
 
 from .Actor import Actor
 from .Critic import Critic
@@ -99,6 +105,10 @@ class IHDPAgent(object):
         self.selected_input = selected_input
         self.number_time_steps = number_time_steps
         self.indices_tracking_states = indices_tracking_states
+        # Keep the original settings dicts so ``save()`` can replay them.
+        self.actor_settings = dict(actor_settings)
+        self.critic_settings = dict(critic_settings)
+        self.incremental_settings = dict(incremental_settings)
 
         self.actor = Actor(
             selected_input,
@@ -120,6 +130,12 @@ class IHDPAgent(object):
             actor_settings["maximum_q_rate"],
             actor_settings["cascade_actor"],
             actor_settings["NN_initial"],
+            use_integral_correction=actor_settings.get(
+                "use_integral_correction", False
+            ),
+            integral_gain=actor_settings.get("integral_gain", 0.0),
+            integral_clamp_deg=actor_settings.get("integral_clamp_deg", 5.0),
+            integral_warmup_steps=actor_settings.get("integral_warmup_steps", 500),
         )
         self.actor.build_actor_model()
 
@@ -178,7 +194,39 @@ class IHDPAgent(object):
             )
 
         xt_ref = np.reshape(reference_signals[:, time_step], [-1, 1])
-        ut = self.actor.run_actor_online(xt_tracked, xt_ref)
+        # Cascade actor needs the full observation: outer loop reads the
+        # primary tracked state (alpha), inner loop reads the rate state
+        # (wz). Both indices are stored on the actor; passing only the
+        # alpha row would make ``xt[wz_idx, :]`` fall out of bounds.
+        if getattr(self.actor, "cascaded_actor", False):
+            xt_for_actor = xt
+        else:
+            xt_for_actor = xt_tracked
+        ut = self.actor.run_actor_online(xt_for_actor, xt_ref)
+
+        # Optional integral correction. IHDP minimises a quadratic LQ
+        # cost without an integral term, so the policy keeps a small
+        # persistent steady-state offset on setpoint-tracking. Adding
+        # ``-K_I · ∫err dτ`` (with anti-windup) on top of the actor's
+        # output drives the offset to zero without changing the policy
+        # network or its training rule.
+        if getattr(self.actor, "use_integral_correction", False):
+            primary_err = float(xt_ref.reshape(-1)[0] - xt_tracked.reshape(-1)[0])
+            if time_step >= self.actor.integral_warmup_steps:
+                self.actor.integral_state = float(
+                    np.clip(
+                        self.actor.integral_state
+                        + primary_err * self.incremental_settings["dt"],
+                        -self.actor.integral_clamp,
+                        self.actor.integral_clamp,
+                    )
+                )
+            ut = np.clip(
+                np.asarray(ut, dtype=float)
+                - self.actor.integral_gain * self.actor.integral_state,
+                -self.actor.maximum_input,
+                self.actor.maximum_input,
+            )
 
         G = self.incremental_model.identify_incremental_model_LS(xt, ut)
         xt1_est = self.incremental_model.evaluate_incremental_model()
@@ -236,3 +284,167 @@ class IHDPAgent(object):
             xt = xt.flatten().reshape([-1, 1])
 
         return xt
+
+    # ------------------------------------------------------------------
+    # Persistence — local save / load and Hugging Face Hub round-trip
+    # ------------------------------------------------------------------
+    def get_param_env(self) -> dict[str, Any]:
+        """Build a JSON-serialisable config for :meth:`save`.
+
+        Mirrors the structure used by other TensorAeroSpace agents:
+        ``policy.name`` identifies the agent class, ``policy.params``
+        captures everything the constructor needs.
+        """
+        agent_name = f"{self.__class__.__module__}.{self.__class__.__name__}"
+        return {
+            "policy": {
+                "name": agent_name,
+                "params": {
+                    "actor_settings": _json_clean(self.actor_settings),
+                    "critic_settings": _json_clean(self.critic_settings),
+                    "incremental_settings": _json_clean(self.incremental_settings),
+                    "tracking_states": list(self.tracking_states),
+                    "selected_states": list(self.selected_states),
+                    "selected_input": list(self.selected_input),
+                    "number_time_steps": int(self.number_time_steps),
+                    "indices_tracking_states": list(self.indices_tracking_states),
+                },
+            },
+        }
+
+    def save(
+        self,
+        path: Union[str, Path, None] = None,
+    ) -> str:
+        """Write the agent to a directory.
+
+        Files produced:
+            * ``config.json`` — constructor kwargs (settings dicts +
+              tracking/state metadata).
+            * ``actor.pth`` / ``critic.pth`` — ``state_dict`` of the
+              actor and critic inner ``torch.nn`` networks.
+
+        Args:
+            path: Base directory (``None`` → CWD).
+
+        Returns:
+            Absolute path to the created run directory.
+        """
+        base = Path.cwd() if path is None else Path(path)
+        date_str = datetime.datetime.now().strftime("%b%d_%H-%M-%S")
+        run_dir = base / f"{date_str}_{self.__class__.__name__}"
+        run_dir.mkdir(parents=True, exist_ok=True)
+
+        with open(run_dir / "config.json", "w", encoding="utf-8") as f:
+            json.dump(self.get_param_env(), f, indent=2)
+
+        torch.save(self.actor.model.state_dict(), run_dir / "actor.pth")
+        torch.save(self.critic.model.state_dict(), run_dir / "critic.pth")
+        return str(run_dir)
+
+    @classmethod
+    def _load_from_dir(cls, folder: Union[str, Path]) -> "IHDPAgent":
+        """Reconstruct an agent from a :meth:`save` directory."""
+        folder_p = Path(folder)
+        config_path = folder_p / "config.json"
+        if not config_path.exists():
+            raise FileNotFoundError(f"Missing config.json in {str(folder_p)!r}")
+
+        with open(config_path, "r", encoding="utf-8") as f:
+            cfg = json.load(f)
+        policy = cfg.get("policy", {})
+        params = policy.get("params", {})
+
+        agent = cls(
+            actor_settings=params["actor_settings"],
+            critic_settings=params["critic_settings"],
+            incremental_settings=params["incremental_settings"],
+            tracking_states=params["tracking_states"],
+            selected_states=params["selected_states"],
+            selected_input=params["selected_input"],
+            number_time_steps=params["number_time_steps"],
+            indices_tracking_states=params["indices_tracking_states"],
+        )
+
+        actor_path = folder_p / "actor.pth"
+        critic_path = folder_p / "critic.pth"
+        if actor_path.exists():
+            agent.actor.model.load_state_dict(
+                torch.load(actor_path, map_location="cpu", weights_only=False)
+            )
+        if critic_path.exists():
+            agent.critic.model.load_state_dict(
+                torch.load(critic_path, map_location="cpu", weights_only=False)
+            )
+        return agent
+
+    @classmethod
+    def from_pretrained(
+        cls,
+        repo_name: str,
+        access_token: Optional[str] = None,
+        version: Optional[str] = None,
+    ) -> "IHDPAgent":
+        """Load an agent from a local directory or Hugging Face Hub.
+
+        Args:
+            repo_name: Local folder path, or ``namespace/repo_name`` on
+                the Hugging Face Hub.
+            access_token: Hub access token for private repos.
+            version: Hub revision / branch / tag.
+
+        Returns:
+            IHDPAgent: Reconstructed agent.
+        """
+        p = Path(str(repo_name)).expanduser()
+        if p.is_dir():
+            return cls._load_from_dir(p)
+
+        pathlike_prefixes = ("./", "../", "/", "~")
+        if str(repo_name).startswith(pathlike_prefixes):
+            raise FileNotFoundError(
+                f"Local directory not found: '{repo_name}'." " Please check the path."
+            )
+
+        from huggingface_hub import snapshot_download
+
+        folder_path = snapshot_download(
+            repo_id=repo_name, token=access_token, revision=version
+        )
+        return cls._load_from_dir(folder_path)
+
+    def publish_to_hub(
+        self,
+        repo_name: str,
+        folder_path: Union[str, Path],
+        access_token: Optional[str] = None,
+    ) -> None:
+        """Upload a :meth:`save` directory to the Hugging Face Hub.
+
+        Args:
+            repo_name: Target repository id, e.g. ``"me/my-ihdp"``.
+            folder_path: Local folder produced by :meth:`save`.
+            access_token: Hub access token.
+        """
+        from huggingface_hub import HfApi
+
+        api = HfApi()
+        api.upload_folder(
+            folder_path=str(folder_path),
+            repo_id=repo_name,
+            repo_type="model",
+            token=access_token,
+        )
+
+
+def _json_clean(obj: Any) -> Any:
+    """Recursively coerce tuples/numpy-scalars into JSON-safe Python types."""
+    if isinstance(obj, dict):
+        return {k: _json_clean(v) for k, v in obj.items()}
+    if isinstance(obj, (list, tuple)):
+        return [_json_clean(v) for v in obj]
+    if isinstance(obj, np.ndarray):
+        return obj.tolist()
+    if isinstance(obj, np.generic):
+        return obj.item()
+    return obj

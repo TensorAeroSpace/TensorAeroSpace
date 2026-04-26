@@ -39,8 +39,8 @@ def create_comsat_env(dt=0.01, total_time=20.0):
     reference_signals = unit_step(
         degree=0.002,  # Target angular velocity
         tp=tp,
-        time_step=int(10.0 / dt),  # Step at 10 seconds
-        output_rad=True,
+        time_step=10.0,  # Step at 10 seconds
+        output_rad=False,  # 0.002 is already in rad/s (target angular velocity)
     ).reshape(1, -1)
 
     # Add initial baseline

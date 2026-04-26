@@ -7,7 +7,7 @@
 [![Documentation Status](https://readthedocs.org/projects/tensoraerospace/badge/?version=latest)](https://tensoraerospace.readthedocs.io/en/latest/?badge=latest)
 [![Hugging Face](https://img.shields.io/badge/%F0%9F%A4%97%20Hugging%20Face-TensorAeroSpace-FFD21E)](https://huggingface.co/TensorAeroSpace)
 [![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/TensorAeroSpace/TensorAeroSpace)
-[![Python](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
+[![Python](https://img.shields.io/badge/python-3.10--3.13-blue.svg)](https://www.python.org/downloads/)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![GitHub stars](https://img.shields.io/github/stars/tensoraerospace/tensoraerospace.svg)](https://github.com/tensoraerospace/tensoraerospace/stargazers)
 [![Coverage Status](https://coveralls.io/repos/github/TensorAeroSpace/TensorAeroSpace/badge.svg?branch=develop)](https://coveralls.io/github/TensorAeroSpace/TensorAeroSpace?branch=develop)
@@ -53,7 +53,7 @@
 | **CPU** | 4 cores, AVX | 8+ cores, AVX2/FMA |
 | **RAM** | 8 GB | 16–32 GB for RL/Simulink |
 | **GPU** | Optional | NVIDIA RTX with ≥8 GB VRAM for SAC/DSAC/PPO, CUDA 12.2 support |
-| **Python** | 3.10–3.12 | 3.11/3.12 |
+| **Python** | 3.10–3.13 | 3.11/3.12 |
 | **Additional** | Git, Poetry or pip, Docker (optional) | MATLAB/Simulink R2022b+ (for simulink-example), Unity 2021.3.5f1/2023.2.20f1 |
 
 ### 📦 Installation
@@ -181,20 +181,24 @@ for t in range(N - 1):
 
 ## 🤖 Supported Algorithms
 
-| Algorithm | Type | HuggingFace Export | Status |
-|-----------|------|:------------------:|:------:|
-| **IHDP** | Incremental Heuristic Dynamic Programming | ❌ | ✅ |
-| **DQN** | Deep Q-Learning | ❌ | ✅ |
-| **DDPG** | Deep Deterministic Policy Gradient | ❌ | ✅ |
-| **SAC** | Soft Actor-Critic | ✅ | ✅ |
-| **DSAC** | Distributional Soft Actor-Critic | ✅ | ✅ |
-| **A3C** | Asynchronous Advantage Actor-Critic | ❌ | ✅ |
-| **PPO** | Proximal Policy Optimization | ✅ | ✅ |
-| **GAIL** | Imitation Learning (Adversarial) | ❌ | ✅ |
-| **MPC** | Model Predictive Control | ✅ | ✅ |
-| **A2C** | Advantage Actor-Critic | ✅ | ✅ |
-| **A2C-NARX** | A2C with NARX Critic | ❌ | ✅ |
-| **PID** | Proportional-Integral-Derivative | ✅ | ✅ |
+| Algorithm | Type | Save/Load | HuggingFace Hub | Status |
+|-----------|------|:---------:|:---------------:|:------:|
+| **SAC** | Soft Actor-Critic | ✅ | ✅ `from_pretrained` / `publish_to_hub` | ✅ |
+| **PPO** | Proximal Policy Optimization | ✅ | ✅ `from_pretrained` / `publish_to_hub` | ✅ |
+| **DDPG** | Deep Deterministic Policy Gradient | ✅ | ✅ `from_pretrained` / `publish_to_hub` | ✅ |
+| **DSAC** | Distributional Soft Actor-Critic | ✅ | ✅ `from_pretrained` / `publish_to_hub` | ✅ |
+| **DQN** | Deep Q-Learning | ✅ | ✅ `from_pretrained` / `publish_to_hub` | ✅ |
+| **A2C** | Advantage Actor-Critic | ✅ | ✅ `from_pretrained` / `publish_to_hub` | ✅ |
+| **A2C-NARX** | A2C with NARX Critic | ✅ | ✅ `from_pretrained` / `publish_to_hub` | ✅ |
+| **A3C** | Asynchronous Advantage Actor-Critic | ✅ | ✅ `from_pretrained` / `publish_to_hub` | ✅ |
+| **GAIL** | Imitation Learning (Adversarial) | ✅ | ✅ `from_pretrained` / `publish_to_hub` | ✅ |
+| **MPC** | Model Predictive Control | ✅ | ✅ `from_pretrained` / `publish_to_hub` | ✅ |
+| **ADP** | Adaptive Dynamic Programming | ✅ | ✅ `from_pretrained` / `publish_to_hub` | ✅ |
+| **ADHDP** | Action-Dependent HDP | ✅ | ✅ `from_pretrained` / `publish_to_hub` | ✅ |
+| **HDP** | Heuristic Dynamic Programming | ✅ | ✅ `from_pretrained` / `publish_to_hub` | ✅ |
+| **PID** | Proportional-Integral-Derivative | ✅ | ✅ `from_pretrained` / `publish_to_hub` | ✅ |
+| **IHDP** | Incremental Heuristic Dynamic Programming | ✅ | ❌ | ✅ |
+| **NARX** | Nonlinear Autoregressive Network | ✅ | ✅ `from_pretrained` / `publish_to_hub` | ✅ |
 
 ## ✈️ Aircraft & Spacecraft Models
 

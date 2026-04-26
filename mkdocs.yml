@@ -34,8 +34,13 @@ plugins:
             - User Guide:
               - Installation: guide/installation.md
               - Unity Environment: guide/unity_env.md
+              - TensorBoard Metrics: guide/metrics.md
+              - 3D Flight Visualization: guide/3d-visualization.md
             - Aerospace Models:
-              - F16: model/f16.md
+              - F16:
+                - Linear Longitudinal: model/f16.md
+                - Nonlinear Longitudinal: model/f16_nonlinear_longitudinal.md
+                - Nonlinear 6-DoF Angular: model/f16_nonlinear_angular.md
               - B747: 
                 - Classic State-Space: model/b747.md
                 - Normalized State-Space: model/b747_imporove.md
@@ -62,9 +67,11 @@ plugins:
               
             - Agents:
               - PID: agent/pid.md
-              - IHDP:
-                - Description: agent/ihdp.md
-                - Example with LinearLongitudinalF16‑v0: agent/ihdp/example.md
+              - IHDP: agent/ihdp.md
+              - IMGDHP: agent/imgdhp.md
+              - ET-DHP: agent/et_dhp.md
+              - AA-INDI: agent/aa_indi.md
+              - iADP: agent/iadp.md
               - HDP: agent/hdp.md
               - ADHDP: agent/adhdp.md
               - MPC: agent/mpc.md
@@ -86,10 +93,18 @@ plugins:
                 - PPO vs PID (B747): comparison/ppo_vs_pid_b747.md
                 - DSAC vs PID (B747): comparison/dsac_vs_pid_b747.md
                 - DSAC vs PPO vs MPC vs PID (B747): comparison/all_vs_pid_b747.md
+                - IHDP & IM-GDHP vs PID (Nonlinear F-16): comparison/ihdp_imgdhp_vs_pid_f16_nonlinear.md
               - Signals: signals/signals.md
             - Examples:
               - Environments: example/enviroment/gymnasium.md
-              - IHDP: example/agent/ihdp/example_ihdp.md
+              - IHDP:
+                - Linear F16: example/agent/ihdp/example_ihdp.md
+                - Walkthrough (step-by-step): example/agent/ihdp/example_ihdp_walkthrough.md
+                - Nonlinear F16 (α-tracking): example/agent/ihdp/example_ihdp_nonlinear.md
+              - IMGDHP (Nonlinear F16): example/agent/imgdhp/example_imgdhp_nonlinear.md
+              - ET-DHP (Nonlinear F16): example/agent/et_dhp/example_etdhp_nonlinear.md
+              - AA-INDI (Nonlinear F16): example/agent/aa_indi/example_aaindi_nonlinear.md
+              - iADP (Nonlinear F16): example/agent/iadp/example_iadp_nonlinear.md
               - SAC F16: example/agent/sac/example-sac-f16.md
               - SAC B747: example/agent/sac/example-sac-b747.md
               - DSAC B747:
@@ -113,6 +128,21 @@ plugins:
               - Simintech:
                 - Simintech: example/simintech/simintech.md
                 - Simintech to Python: example/simintech/simintechToPython.md
+            - Cookbook:
+              - "01 — Hello, TensorAeroSpace": cookbook/01_hello.md
+              - "02 — Anatomy of an env": cookbook/02_env_anatomy.md
+              - "03 — Crafting reference signals": cookbook/03_reference_signals.md
+              - "04 — Choosing an agent": cookbook/04_choosing_agent.md
+              - "05 — Deep-RL training end-to-end": cookbook/05_deep_rl_training.md
+              - "06 — Online-adaptive agents": cookbook/06_online_adaptive.md
+              - "07 — Optuna hyperparameter search": cookbook/07_optuna_search.md
+              - "08 — Save/load/publish to HuggingFace": cookbook/08_huggingface.md
+              - "09 — Fault-tolerance": cookbook/09_fault_tolerance.md
+              - "10 — Adding your own plant model": cookbook/10_custom_plant.md
+              - "11 — IHDP on the nonlinear F-16": cookbook/11_ihdp.md
+              - "12 — IM-GDHP on the nonlinear F-16": cookbook/12_imgdhp.md
+              - "13 — ET-DHP on the nonlinear F-16": cookbook/13_etdhp.md
+              - "14 — AA-INDI on the nonlinear F-16": cookbook/14_aaindi.md
             - Lessons:
               - Theory:
                 - "Lesson 1 — Introduction and State-Space": lesson/base/tutor_1.md
@@ -142,8 +172,13 @@ plugins:
             - Инструкции:
               - Установка: guide/installation.md
               - Unity-окружение: guide/unity_env.md
+              - Метрики TensorBoard: guide/metrics.md
+              - 3D-визуализация полёта: guide/3d-visualization.md
             - Объекты управления:
-              - F16: model/f16.md
+              - F16:
+                - Линейная продольная: model/f16.md
+                - Нелинейная продольная: model/f16_nonlinear_longitudinal.md
+                - Нелинейная 6-DoF угловая: model/f16_nonlinear_angular.md
               - B747: 
                 - Пространство состояний: model/b747.md
                 - Нормализованное управление: model/b747_imporove.md
@@ -169,9 +204,11 @@ plugins:
               - Unity окружение: model/unity_env.md
             - Алгоритмы управления:
               - PID: agent/pid.md
-              - IHDP:
-                - Описание: agent/ihdp.md
-                - Пример LinearLongitudinalF16‑v0: agent/ihdp/example.md
+              - IHDP: agent/ihdp.md
+              - IMGDHP: agent/imgdhp.md
+              - ET-DHP: agent/et_dhp.md
+              - AA-INDI: agent/aa_indi.md
+              - iADP: agent/iadp.md
               - HDP: agent/hdp.md
               - ADHDP: agent/adhdp.md
               - MPC: agent/mpc.md
@@ -193,10 +230,18 @@ plugins:
                 - PPO vs PID (B747): comparison/ppo_vs_pid_b747.md
                 - DSAC vs PID (B747): comparison/dsac_vs_pid_b747.md
                 - DSAC vs PPO vs MPC vs PID (B747): comparison/all_vs_pid_b747.md
+                - IHDP и IM-GDHP vs PID (нелинейная F-16): comparison/ihdp_imgdhp_vs_pid_f16_nonlinear.md
               - Сигналы: signals/signals.md
             - Примеры:
               - Окружения: example/enviroment/gymnasium.md
-              - IHDP: example/agent/ihdp/example_ihdp.md
+              - IHDP:
+                - Линейная F16: example/agent/ihdp/example_ihdp.md
+                - Пошаговый пример: example/agent/ihdp/example_ihdp_walkthrough.md
+                - Нелинейная F16 (слежение α): example/agent/ihdp/example_ihdp_nonlinear.md
+              - IMGDHP (Нелинейная F16): example/agent/imgdhp/example_imgdhp_nonlinear.md
+              - ET-DHP (Нелинейная F16): example/agent/et_dhp/example_etdhp_nonlinear.md
+              - AA-INDI (Нелинейная F16): example/agent/aa_indi/example_aaindi_nonlinear.md
+              - iADP (Нелинейная F16): example/agent/iadp/example_iadp_nonlinear.md
               - SAC F16: example/agent/sac/example-sac-f16.md
               - SAC B747: example/agent/sac/example-sac-b747.md
               - DSAC B747:
@@ -220,6 +265,21 @@ plugins:
               - Simintech:
                 - Simintech: example/simintech/simintech.md
                 - Simintech в Python: example/simintech/simintechToPython.md
+            - Cookbook:
+              - "01 — Hello, TensorAeroSpace": cookbook/01_hello.md
+              - "02 — Устройство среды": cookbook/02_env_anatomy.md
+              - "03 — Задающие сигналы": cookbook/03_reference_signals.md
+              - "04 — Как выбрать агента": cookbook/04_choosing_agent.md
+              - "05 — Обучение deep-RL от и до": cookbook/05_deep_rl_training.md
+              - "06 — Онлайн-адаптивные агенты": cookbook/06_online_adaptive.md
+              - "07 — Гиперпоиск через Optuna": cookbook/07_optuna_search.md
+              - "08 — Save/load/публикация в HuggingFace": cookbook/08_huggingface.md
+              - "09 — Отказоустойчивость": cookbook/09_fault_tolerance.md
+              - "10 — Добавить свой объект управления": cookbook/10_custom_plant.md
+              - "11 — IHDP на нелинейной F-16": cookbook/11_ihdp.md
+              - "12 — IM-GDHP на нелинейной F-16": cookbook/12_imgdhp.md
+              - "13 — ET-DHP на нелинейной F-16": cookbook/13_etdhp.md
+              - "14 — AA-INDI на нелинейной F-16": cookbook/14_aaindi.md
             - Уроки:
               - Теория:
                 - "Урок 1 — Введение и пространство состояний": lesson/base/tutor_1.md

@@ -14,10 +14,10 @@ dt = 0.01
 tp = generate_time_period(tn=20, dt=dt)
 NUMBER_TIME_STEPS = 1000
 REFERENCE_SIGNAL = np.reshape(
-    unit_step(degree=5, tp=tp, time_step=10, output_rad=True), [1, -1]
+    unit_step(degree=5, tp=tp, time_step=0.1, output_rad=True), [1, -1]
 )
 REFERENCE_SIGNAL_SMALL = np.reshape(
-    unit_step(degree=0.1, tp=tp, time_step=10, output_rad=True), [1, -1]
+    unit_step(degree=0.1, tp=tp, time_step=0.1, output_rad=True), [1, -1]
 )
 
 

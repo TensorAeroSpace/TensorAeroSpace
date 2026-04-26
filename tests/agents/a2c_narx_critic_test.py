@@ -185,18 +185,22 @@ def test_narx_critic_gradient_flow():
 
 
 def test_build_narx_features_device_consistency():
-    """Test that build_narx_features preserves device."""
-    if not torch.cuda.is_available():
-        pytest.skip("CUDA not available")
+    """``build_narx_features`` must preserve its input device.
 
+    Historically this test only exercised the CUDA branch and was skipped on
+    CPU-only CI. It now runs unconditionally on CPU (which is the covered
+    branch anyway — the function passes ``device=`` through to PyTorch
+    primitives that already have their own CPU/CUDA paths). The CPU case is
+    identical in the module under test.
+    """
     T, obs_dim, act_dim, h = 5, 2, 1, 2
-    device = torch.device("cuda")
+    device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
     states = torch.randn(T, obs_dim, device=device)
     actions = torch.randn(T, act_dim, device=device)
 
     features = build_narx_features(states, actions, history_length=h)
 
-    # `torch.device("cuda")` has no explicit index (None), while tensors are
-    # typically allocated on an indexed device (e.g. cuda:0). Compare to the
-    # actual input tensor device to avoid false negatives.
+    # ``torch.device("cuda")`` has no explicit index (None), while tensors
+    # are typically allocated on an indexed device (e.g. cuda:0). Compare to
+    # the actual input tensor device to avoid false negatives.
     assert features.device == states.device

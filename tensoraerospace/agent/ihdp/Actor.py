@@ -4,19 +4,103 @@ This module defines the Actor component used by the IHDP agent.
 """
 
 import glob
+import math
 from typing import Any, Tuple
 
 import numpy as np
-import tensorflow as tf
-from tensorflow.keras.layers import Dense, Flatten
-from tensorflow.keras.models import Model as KModel
+import torch
+import torch.nn as nn
+
+
+def _activation_from_string(name: str) -> nn.Module:
+    """Convert an activation function name string to a PyTorch module.
+
+    Args:
+        name: Activation name ('sigmoid', 'tanh', 'relu', 'linear').
+
+    Returns:
+        Corresponding ``nn.Module`` activation layer.
+
+    Raises:
+        ValueError: If the activation name is not recognised.
+    """
+    name = name.lower()
+    if name == "sigmoid":
+        return nn.Sigmoid()
+    elif name == "tanh":
+        return nn.Tanh()
+    elif name == "relu":
+        return nn.ReLU()
+    elif name == "linear":
+        return nn.Identity()
+    else:
+        raise ValueError(f"Unsupported activation: {name}")
+
+
+def _build_sequential(
+    input_dim: int,
+    layers: tuple,
+    activations: tuple,
+    seed: int,
+) -> nn.Sequential:
+    """Build an ``nn.Sequential`` model for the actor network.
+
+    Weight initialisation uses variance-scaled truncated normal
+    ``trunc_normal_(std=sqrt(0.01 / fan_in))``; biases are zero-initialised.
+
+    Args:
+        input_dim: Number of input features.
+        layers: Tuple of neuron counts per layer.
+        activations: Tuple of activation names per layer.
+        seed: Random seed for reproducibility.
+
+    Returns:
+        A ``nn.Sequential`` model.
+    """
+    torch.manual_seed(seed)
+
+    modules = []
+    in_features = input_dim
+    for i, (neurons, act_name) in enumerate(zip(layers, activations)):
+        linear = nn.Linear(in_features, neurons)
+        # VarianceScaling(scale=0.01, mode='fan_in', distribution='truncated_normal')
+        fan_in = in_features
+        std = math.sqrt(0.01 / fan_in)
+        nn.init.trunc_normal_(linear.weight, mean=0.0, std=std)
+        nn.init.zeros_(linear.bias)
+        modules.append(linear)
+        modules.append(_activation_from_string(act_name))
+        in_features = neurons
+
+    model = nn.Sequential(*modules)
+    model.eval()  # Default to eval mode (no dropout / batchnorm)
+    return model
+
+
+def _get_trainable_parameters(model: nn.Sequential) -> list[torch.Tensor]:
+    """Return trainable parameters in a stable order.
+
+    For each ``nn.Linear`` layer the order is ``[weight, bias]``.
+
+    Args:
+        model: The ``nn.Sequential`` model.
+
+    Returns:
+        Ordered list of parameter tensors.
+    """
+    params = []
+    for module in model:
+        if isinstance(module, nn.Linear):
+            params.append(module.weight)
+            params.append(module.bias)
+    return params
 
 
 class Actor:
     """Actor Model in IHDP.
 
     Provides Actor class with Actor function approximator (NN).
-    Actor creates neural network model using Tensorflow and can train network online.
+    Actor creates neural network model using PyTorch and can train network online.
     User can choose number of layers, number of neurons, batch size, number of epochs and activation functions.
 
     Args:
@@ -70,8 +154,12 @@ class Actor:
         maximum_q_rate: float = 20,
         cascaded_actor: bool = False,
         NN_initial: int | None = None,
-        cascade_tracking_state: list[str] = ["alpha", "wz"],
+        cascade_tracking_state: list[str] | None = None,
         model_path: str | None = None,
+        use_integral_correction: bool = False,
+        integral_gain: float = 0.0,
+        integral_clamp_deg: float = 5.0,
+        integral_warmup_steps: int = 500,
     ) -> None:
         """Initialize IHDP Actor network and hyperparameters.
 
@@ -97,10 +185,36 @@ class Actor:
             NN_initial: Optional weight initializer seed.
             cascade_tracking_state: Tracking states for cascade mode.
             model_path: Path to load/save model weights.
+            use_integral_correction: Enable an integral compensation term
+                added to the actor's control output. IHDP minimizes a
+                quadratic LQ-functional and therefore has no integral
+                action — the closed loop has a small but persistent
+                steady-state offset on setpoint-tracking. Enabling this
+                flag adds ``-K_I · ∫(ref − y) dτ`` to ``u`` (with
+                anti-windup clipping) which removes the offset without
+                touching the actor architecture or the existing IHDP
+                training loop.
+            integral_gain: ``K_I`` (units: ``deg / (rad·s)`` of integral
+                state on the ``stab`` channel). Tuned empirically; values
+                in the range 10..25 work well for the F-16 alpha-tracking
+                benchmark. Ignored if ``use_integral_correction`` is False.
+            integral_clamp_deg: Anti-windup limit on the integrator
+                state, in degrees. Caps the magnitude of accumulated
+                error so a long initial transient cannot saturate the
+                actuator after settling. Default ``5°``.
+            integral_warmup_steps: Number of steps after which the
+                integrator starts accumulating. Set this to be at least
+                as long as the persistent-excitation pulse, so the
+                integrator does not "see" the PE injection as a real
+                tracking error. Default ``500`` (==5 s at dt=0.01s).
         """
         self.number_inputs = len(selected_inputs)
         self.selected_states = selected_states
-        self.cascade_tracking_state = cascade_tracking_state
+        self.cascade_tracking_state = (
+            cascade_tracking_state
+            if cascade_tracking_state is not None
+            else ["alpha", "wz"]
+        )
         self.number_states = len(selected_states)
         self.number_tracking_states = len(tracking_states)
         self.indices_tracking_states = indices_tracking_states
@@ -161,17 +275,50 @@ class Actor:
         self.dq_ref_dWb = None
         self.store_q = np.zeros((1, self.number_time_steps))
 
+        # Integral-correction layer — kills the residual steady-state
+        # offset of the LQR-style policy. State is held inside the actor
+        # so :meth:`restart_actor` resets it together with the other
+        # episode-level attributes.
+        self.use_integral_correction = bool(use_integral_correction)
+        self.integral_gain = float(integral_gain)
+        self.integral_clamp = math.radians(float(integral_clamp_deg))
+        self.integral_warmup_steps = int(integral_warmup_steps)
+        self.integral_state = 0.0
+
     def build_actor_model(self):
         """Function creating Actor network. This is a fully connected network.
         Can define number of layers, number of neurons per layer, and activation functions.
+
+        In cascade mode the actor decomposes into two SISO sub-networks:
+            * outer ``model``    : alpha_error (scalar)  -> q_ref
+            * inner ``model_q``  : q_error     (scalar)  -> u
+
+        Both sub-networks therefore have ``input_dim=1`` regardless of the
+        number of tracking states declared on the agent. The cascade
+        ``indices_tracking_states`` rewrite (which advertises ``[alpha_idx,
+        wz_idx]`` so that :meth:`run_actor_online` can address both rows of
+        the augmented observation) is applied AFTER both sub-models have
+        been built — otherwise ``create_NN`` would size ``model_q`` for a
+        2-element input and matrix multiplication would fail at runtime.
         """
 
-        # First Neural Network
+        # First Neural Network — outer (alpha_error -> q_ref). Built while
+        # ``indices_tracking_states`` is still single-element so input_dim=1.
         self.model, self.store_weights = self.create_NN(self.store_weights, 120)
 
-        # Second Neural Network for the cascaded actor
+        # Second Neural Network for the cascaded actor (q_error -> u).
+        # Same single-element indices view is needed here so that
+        # ``create_NN`` produces input_dim=1.
         if self.cascaded_actor:
             print("It is assumed that the input to the NNs is the tracking error.")
+            self.model_q, self.store_weights_q = self.create_NN(
+                self.store_weights_q, 120
+            )
+
+            # Now switch to the cascade-aware indices so that
+            # ``run_actor_online`` / ``evaluate_actor`` can index both the
+            # primary tracked state (alpha) and the inner-loop state (wz)
+            # in the augmented observation vector returned by the env.
             tracking_states = self.cascade_tracking_state
             self.indices_tracking_states = [
                 self.selected_states.index(tracking_states[i])
@@ -179,17 +326,17 @@ class Actor:
             ]
             self.number_tracking_states = len(tracking_states)
 
-            self.model_q, self.store_weights_q = self.create_NN(
-                self.store_weights_q, 120
-            )
-
-        for count in range(len(self.model.trainable_variables) * 2):
+        params = _get_trainable_parameters(self.model)
+        n_params = len(params)
+        if self.cascaded_actor:
+            n_params += len(_get_trainable_parameters(self.model_q))
+        for count in range(n_params):
             self.momentum_dict[count] = 0
             self.rmsprop_dict[count] = 0
 
     def save_model(self):
         """Save model."""
-        self.model.save_weights("actor_weight.h5")
+        torch.save(self.model.state_dict(), "actor_weight.pt")
 
     def save_dut_dWb(self):
         """Save gradient."""
@@ -200,15 +347,15 @@ class Actor:
         """Load gradient."""
         line = []
         for file in glob.glob("./actor_dut_dWb/*"):
-            line.append(tf.constant((np.load(file, allow_pickle=True))))
+            line.append(np.load(file, allow_pickle=True))
         self.dut_dWb = line
         self.dut_dWb_1 = line
 
     def load_model(self):
         """Load model weights."""
-        self.model.load_weights(self.model_path)
+        self.model.load_state_dict(torch.load(self.model_path))
 
-    def create_NN(self, store_weights: dict, seed: int) -> Tuple[KModel, dict]:
+    def create_NN(self, store_weights: dict, seed: int) -> Tuple[nn.Sequential, dict]:
         """Create NN with user input.
 
         Args:
@@ -221,12 +368,6 @@ class Actor:
 
         """
 
-        # initializer = tf.keras.initializers.GlorotNormal()
-        initializer = tf.keras.initializers.VarianceScaling(
-            scale=0.01, mode="fan_in", distribution="truncated_normal", seed=seed
-        )
-        model = tf.keras.Sequential()
-
         # Determine input dimension based on number of tracked states
         input_dim = (
             len(self.indices_tracking_states)
@@ -234,33 +375,20 @@ class Actor:
             else 1
         )
 
-        # Create model with correct input dimension
-        model.add(
-            Dense(
-                self.layers[0],
-                activation=self.activations[0],
-                kernel_initializer=initializer,
-                input_shape=(input_dim,),
-                name="dense_1",
-            )
-        )
+        model = _build_sequential(input_dim, self.layers, self.activations, seed)
+        params = _get_trainable_parameters(model)
 
+        # Store initial weights (kernel / weight matrices only, matching TF convention)
+        # In TF: trainable_variables[0] = W1, [2] = W2, ...  (even indices are kernels)
+        # params[0] = W1 (weight), params[1] = b1 (bias), params[2] = W2, ...
         store_weights["W1"] = np.zeros(
             (input_dim * self.layers[0], self.number_time_steps + 1)
         )
-        store_weights["W1"][:, self.time_step] = (
-            model.trainable_variables[0].numpy().flatten()
-        )
+        # Note: PyTorch stores weight as (out_features, in_features), TF as (in, out).
+        # We flatten the same way (just flatten the whole matrix) for storage.
+        store_weights["W1"][:, self.time_step] = params[0].detach().numpy().flatten()
 
         for counter, layer in enumerate(self.layers[1:]):
-            model.add(
-                Dense(
-                    self.layers[counter + 1],
-                    activation=self.activations[counter + 1],
-                    kernel_initializer=initializer,
-                    name="dense_" + str(counter + 2),
-                )
-            )
             store_weights["W" + str(counter + 2)] = np.zeros(
                 (
                     self.layers[counter] * self.layers[counter + 1],
@@ -268,10 +396,27 @@ class Actor:
                 )
             )
             store_weights["W" + str(counter + 2)][:, self.time_step] = (
-                model.trainable_variables[(counter + 1) * 2].numpy().flatten()
+                params[(counter + 1) * 2].detach().numpy().flatten()
             )
 
         return model, store_weights
+
+    def _forward_with_grad(
+        self, model: nn.Sequential, nn_input: torch.Tensor
+    ) -> torch.Tensor:
+        """Run a forward pass ensuring all parameters require grad and input has grad.
+
+        Args:
+            model: The nn.Sequential model.
+            nn_input: Input tensor.
+
+        Returns:
+            Output tensor from the model (with grad_fn attached).
+        """
+        # Ensure parameters require grad
+        for p in model.parameters():
+            p.requires_grad_(True)
+        return model(nn_input)
 
     def run_actor_online(self, xt: np.ndarray, xt_ref: np.ndarray) -> np.ndarray:
         """Generate system input with given and real states.
@@ -298,28 +443,37 @@ class Actor:
                     xt[self.indices_tracking_states[0], :], [-1, 1]
                 )
             alphat_error = np.reshape(tracked_states - xt_ref, [-1, 1])
-            nn_input_alpha = tf.constant(np.array([alphat_error]).astype("float32"))
+            nn_input_alpha = torch.tensor(
+                np.array([alphat_error]).astype("float32"), requires_grad=False
+            )
 
-            with tf.GradientTape() as tape:
-                tape.watch(self.model.trainable_variables)
-                q_ref = self.model(nn_input_alpha)
-            self.dq_ref_dWb = tape.gradient(q_ref, self.model.trainable_variables)
+            # Forward pass through model (alpha -> q_ref) with gradient tracking
+            for p in self.model.parameters():
+                p.requires_grad_(True)
+            q_ref_tensor = self.model(nn_input_alpha)
+            # Compute dq_ref/dWb
+            params = _get_trainable_parameters(self.model)
+            grads = torch.autograd.grad(
+                q_ref_tensor, params, create_graph=False, retain_graph=False
+            )
+            self.dq_ref_dWb = [g.detach().numpy() for g in grads]
 
+            q_ref_val = q_ref_tensor.detach().numpy()
             if self.activations[-1] == "sigmoid":
                 q_ref = max(
                     min(
-                        (2 * self.maximum_q_rate * q_ref.numpy()) - self.maximum_q_rate,
-                        np.reshape(self.maximum_q_rate, q_ref.numpy().shape),
+                        (2 * self.maximum_q_rate * q_ref_val) - self.maximum_q_rate,
+                        np.reshape(self.maximum_q_rate, q_ref_val.shape),
                     ),
-                    np.reshape(-self.maximum_q_rate, q_ref.numpy().shape),
+                    np.reshape(-self.maximum_q_rate, q_ref_val.shape),
                 )
             elif self.activations[-1] == "tanh":
                 q_ref = max(
                     min(
-                        (self.maximum_q_rate * q_ref.numpy()),
-                        np.reshape(self.maximum_q_rate, q_ref.numpy().shape),
+                        (self.maximum_q_rate * q_ref_val),
+                        np.reshape(self.maximum_q_rate, q_ref_val.shape),
                     ),
-                    np.reshape(-self.maximum_q_rate, q_ref.numpy().shape),
+                    np.reshape(-self.maximum_q_rate, q_ref_val.shape),
                 )
 
             self.store_q[:, self.time_step] = q_ref
@@ -336,19 +490,28 @@ class Actor:
             qt_error = np.reshape(
                 tracked_states_q - np.reshape(q_ref, tracked_states_q.shape), [-1, 1]
             )
-            nn_input_q = tf.constant(np.array([qt_error]).astype("float32"))
+            nn_input_q = torch.tensor(
+                np.array([qt_error]).astype("float32"), requires_grad=True
+            )
 
-            with tf.GradientTape() as tape:
-                tape.watch(nn_input_q)
-                ut = self.model_q(nn_input_q)
+            # Forward pass through model_q (q_error -> ut) - get dut/dq_ref (via input grad)
+            for p in self.model_q.parameters():
+                p.requires_grad_(True)
+            ut_tensor = self.model_q(nn_input_q)
+            # dut/d(nn_input_q) = dut/dq_ref
+            grad_input = torch.autograd.grad(
+                ut_tensor, nn_input_q, create_graph=False, retain_graph=True
+            )
+            self.dut_dq_ref = grad_input[0].detach().numpy()
 
-            self.dut_dq_ref = tape.gradient(ut, nn_input_q)
+            # dut/dWb_q
+            params_q = _get_trainable_parameters(self.model_q)
+            grads_q = torch.autograd.grad(
+                ut_tensor, params_q, create_graph=False, retain_graph=False
+            )
+            self.dut_dWb = [g.detach().numpy() for g in grads_q]
 
-            with tf.GradientTape() as tape:
-                tape.watch(self.model_q.trainable_variables)
-                ut = self.model_q(nn_input_q)
-
-            self.dut_dWb = tape.gradient(ut, self.model_q.trainable_variables)
+            ut = ut_tensor.detach().numpy()
 
         else:
             self.xt = xt
@@ -363,30 +526,42 @@ class Actor:
                 )
             xt_error = np.reshape(tracked_states - xt_ref, [-1, 1])
             # Create input data with correct dimension for model
-            nn_input = tf.constant(xt_error.flatten().reshape(1, -1).astype("float32"))
+            nn_input = torch.tensor(
+                xt_error.flatten().reshape(1, -1).astype("float32"),
+                requires_grad=False,
+            )
 
-            with tf.GradientTape() as tape:
-                tape.watch(self.model.trainable_variables)
-                ut = self.model(nn_input)
-            self.dut_dWb = tape.gradient(ut, self.model.trainable_variables)
+            for p in self.model.parameters():
+                p.requires_grad_(True)
+            ut_tensor = self.model(nn_input)
+            params = _get_trainable_parameters(self.model)
+            grads = torch.autograd.grad(
+                ut_tensor,
+                params,
+                create_graph=False,
+                retain_graph=False,
+            )
+            self.dut_dWb = [g.detach().numpy() for g in grads]
+
+            ut = ut_tensor.detach().numpy()
 
         e0 = self.compute_persistent_excitation()
 
         if self.activations[-1] == "sigmoid":
             self.ut = max(
                 min(
-                    (2 * self.maximum_input * ut.numpy()) - self.maximum_input + e0,
-                    np.reshape(self.maximum_input, ut.numpy().shape),
+                    (2 * self.maximum_input * ut) - self.maximum_input + e0,
+                    np.reshape(self.maximum_input, ut.shape),
                 ),
-                np.reshape(-self.maximum_input, ut.numpy().shape),
+                np.reshape(-self.maximum_input, ut.shape),
             )
         elif self.activations[-1] == "tanh":
             ut = max(
                 min(
-                    (self.maximum_input * ut.numpy()),
-                    np.reshape(self.maximum_input, ut.numpy().shape),
+                    (self.maximum_input * ut),
+                    np.reshape(self.maximum_input, ut.shape),
                 ),
-                np.reshape(-self.maximum_input, ut.numpy().shape),
+                np.reshape(-self.maximum_input, ut.shape),
             )
 
             self.ut = max(
@@ -417,17 +592,19 @@ class Actor:
         )
 
         chain_rule = chain_rule.flatten()[0]
+        params = _get_trainable_parameters(self.model)
         for count in range(len(self.dut_dWb)):
             update = chain_rule * self.dut_dWb[count]
-            self.model.trainable_variables[count].assign_sub(
-                np.reshape(
-                    self.learning_rate * update,
-                    self.model.trainable_variables[count].shape,
+            with torch.no_grad():
+                params[count] -= torch.tensor(
+                    np.reshape(
+                        self.learning_rate * update,
+                        params[count].shape,
+                    ).astype(np.float32)
                 )
-            )
 
             # Implement WB_limits: the weights and biases can not have values whose absolute value exceeds WB_limits
-            self.model = self.check_WB_limits(count, self.model)
+            self._check_WB_limits_param(params[count])
 
     def train_actor_online_adaptive_alpha(
         self,
@@ -449,11 +626,8 @@ class Actor:
             xt_ref1: Reference state at next time step.
         """
         Ec_actor_before = 0.5 * np.square(Jt1)
-        # print("ACTOR LOSS xt1 before= ", Ec_actor_before)
-        weight_cache = [
-            tf.Variable(self.model.trainable_variables[i].numpy())
-            for i in range(len(self.model.trainable_variables))
-        ]
+        params = _get_trainable_parameters(self.model)
+        weight_cache = [p.detach().clone() for p in params]
         network_improvement = False
         n_reductions = 0
         while not network_improvement and self.time_step > self.start_training:
@@ -465,7 +639,6 @@ class Actor:
             xt1_est_after = incremental_model.evaluate_incremental_model(ut_after)
             Jt1_after, _ = critic.evaluate_critic(xt1_est_after, xt_ref1)
             Ec_actor_after = 0.5 * np.square(Jt1_after)
-            # print("ACTOR LOSS xt1 after= ", Ec_actor_after)
 
             # Code for checking whether the learning rate of the actor should be halved
             if Ec_actor_after <= Ec_actor_before or n_reductions > 10:
@@ -475,18 +648,15 @@ class Actor:
                         2 * self.learning_rate,
                         self.learning_rate_0 * 2**self.learning_rate_exponent_limit,
                     )
-                    # print("ACTOR LEARNING_RATE = ", self.learning_rate)
             else:
                 n_reductions += 1
                 self.learning_rate = max(
                     self.learning_rate / 2,
                     self.learning_rate_0 / 2**self.learning_rate_exponent_limit,
                 )
-                for WB_count in range(len(self.model.trainable_variables)):
-                    self.model.trainable_variables[WB_count].assign(
-                        weight_cache[WB_count].numpy()
-                    )
-                # print("ACTOR LEARNING_RATE = ", self.learning_rate)
+                with torch.no_grad():
+                    for WB_count, p in enumerate(params):
+                        p.copy_(weight_cache[WB_count])
 
     def train_actor_online_adam(
         self,
@@ -499,9 +669,6 @@ class Actor:
     ) -> None:
         """Train the actor online using Adam updates."""
         if self.cascaded_actor:
-            # Ec_actor_before = 0.5 * np.square(Jt1)
-            # print("ACTOR LOSS xt1 before= ", Ec_actor_before)
-
             # Train the actor
             Jt1 = Jt1.flatten()[0]
             chain_rule = Jt1 * np.matmul(
@@ -556,12 +723,7 @@ class Actor:
             ut_after = self.evaluate_actor()
             xt1_est_after = incremental_model.evaluate_incremental_model(ut_after)
             Jt1_after, _ = critic.evaluate_critic(xt1_est_after, xt_ref1)
-            # Ec_actor_after = 0.5 * np.square(Jt1_after)
-            # print("ACTOR LOSS xt1 after= ", Ec_actor_after)
         else:
-            # Ec_actor_before = 0.5 * np.square(Jt1)
-            # print("ACTOR LOSS xt1 before= ", Ec_actor_before)
-
             # Train the actor
             Jt1 = Jt1.flatten()[0]
             chain_rule = Jt1 * np.matmul(
@@ -580,8 +742,6 @@ class Actor:
             ut_after = self.evaluate_actor()
             xt1_est_after = incremental_model.evaluate_incremental_model(ut_after)
             Jt1_after, _ = critic.evaluate_critic(xt1_est_after, xt_ref1)
-            # Ec_actor_after = 0.5 * np.square(Jt1_after)
-            # print("ACTOR LOSS xt1 after= ", Ec_actor_after)
 
     def train_actor_online_alpha_decay(
         self, Jt1, dJt1_dxt1, G, incremental_model, critic, xt_ref1
@@ -589,9 +749,6 @@ class Actor:
         """Train the actor with a learning rate that decays over time."""
 
         if self.cascaded_actor:
-            # Ec_actor_before = 0.5 * np.square(Jt1)
-            # print("ACTOR LOSS xt1 before= ", Ec_actor_before)
-
             # Train the actor
             Jt1 = Jt1.flatten()[0]
             chain_rule = Jt1 * np.matmul(
@@ -600,6 +757,7 @@ class Actor:
 
             chain_rule = chain_rule.flatten()[0]
             if self.time_step > self.start_training and np.abs(self.ut) < 25:
+                params_q = _get_trainable_parameters(self.model_q)
                 for count in range(len(self.dut_dWb)):
                     if self.activations[-1] == "sigmoid":
                         gradient = (
@@ -607,20 +765,21 @@ class Actor:
                         )
                     elif self.activations[-1] == "tanh":
                         gradient = self.maximum_input * chain_rule * self.dut_dWb[count]
-                    self.model_q.trainable_variables[count].assign_sub(
-                        np.reshape(
-                            self.learning_rate_cascaded * gradient,
-                            self.model_q.trainable_variables[count].shape,
+                    with torch.no_grad():
+                        params_q[count] -= torch.tensor(
+                            np.reshape(
+                                self.learning_rate_cascaded * gradient,
+                                params_q[count].shape,
+                            ).astype(np.float32)
                         )
-                    )
 
-                    # Implement WB_limits: the weights and biases can not have values whose absolute value
-                    # exceeds WB_limits
-                    self.model_q = self.check_WB_limits(count, self.model_q)
+                    # Implement WB_limits
+                    self._check_WB_limits_param(params_q[count])
                     if count % 2 == 1:
-                        self.model_q.trainable_variables[count].assign(
-                            np.zeros(self.model_q.trainable_variables[count].shape)
-                        )
+                        with torch.no_grad():
+                            params_q[count].zero_()
+
+                params = _get_trainable_parameters(self.model)
                 for count in range(len(self.dq_ref_dWb)):
                     if self.activations[-1] == "sigmoid":
                         gradient = (
@@ -637,17 +796,17 @@ class Actor:
                             * self.dut_dq_ref
                             * self.dq_ref_dWb[count]
                         )
-                    self.model.trainable_variables[count].assign_sub(
-                        np.reshape(
-                            self.learning_rate * gradient,
-                            self.model.trainable_variables[count].shape,
+                    with torch.no_grad():
+                        params[count] -= torch.tensor(
+                            np.reshape(
+                                self.learning_rate * gradient,
+                                params[count].shape,
+                            ).astype(np.float32)
                         )
-                    )
-                    self.model = self.check_WB_limits(count, self.model)
+                    self._check_WB_limits_param(params[count])
                     if count % 2 == 1:
-                        self.model.trainable_variables[count].assign(
-                            np.zeros(self.model.trainable_variables[count].shape)
-                        )
+                        with torch.no_grad():
+                            params[count].zero_()
 
                 # Update the learning rate
                 self.learning_rate = max(self.learning_rate * 0.9995, 0.0001)
@@ -656,15 +815,9 @@ class Actor:
                 )
             # Code for checking if the actor NN error with the new weights has changed sign
             ut_after = self.evaluate_actor()
-            # incremental_model.identify_incremental_model_LS(self.xt, ut_after)
             xt1_est_after = incremental_model.evaluate_incremental_model(ut_after)
             Jt1_after, _ = critic.evaluate_critic(xt1_est_after, xt_ref1)
-            # Ec_actor_after = 0.5 * np.square(Jt1_after)
-            # print("ACTOR LOSS xt1 after= ", Ec_actor_after)
         else:
-            # Ec_actor_before = 0.5 * np.square(Jt1)
-            # print("ACTOR LOSS xt1 before= ", Ec_actor_before)
-
             # Train the actor
             Jt1 = Jt1.flatten()[0]
             chain_rule = Jt1 * np.matmul(
@@ -673,20 +826,21 @@ class Actor:
 
             chain_rule = chain_rule.flatten()[0]
             if self.time_step > self.start_training:
+                params = _get_trainable_parameters(self.model)
                 for count in range(len(self.dut_dWb)):
                     gradient = chain_rule * self.dut_dWb[count]
-                    self.model.trainable_variables[count].assign_sub(
-                        np.reshape(
-                            self.learning_rate * gradient,
-                            self.model.trainable_variables[count].shape,
+                    with torch.no_grad():
+                        params[count] -= torch.tensor(
+                            np.reshape(
+                                self.learning_rate * gradient,
+                                params[count].shape,
+                            ).astype(np.float32)
                         )
-                    )
-                    # Implement WB_limits: the weights and biases can not have values whose absolute value exceeds WB_limits
-                    self.model = self.check_WB_limits(count, self.model)
+                    # Implement WB_limits
+                    self._check_WB_limits_param(params[count])
                     if count % 2 == 1:
-                        self.model.trainable_variables[count].assign(
-                            np.zeros(self.model.trainable_variables[count].shape)
-                        )
+                        with torch.no_grad():
+                            params[count].zero_()
                 # Update the learning rate
                 self.learning_rate = max(self.learning_rate * 0.995, 0.001)
 
@@ -694,12 +848,14 @@ class Actor:
             ut_after = self.evaluate_actor()
             xt1_est_after = incremental_model.evaluate_incremental_model(ut_after)
             Jt1_after, _ = critic.evaluate_critic(xt1_est_after, xt_ref1)
-            # Ec_actor_after = 0.5 * np.square(Jt1_after)
-            # print("ACTOR LOSS xt1 after= ", Ec_actor_after)
 
     def compute_Adam_update(
-        self, count: int, gradient: np.ndarray, model: KModel, learning_rate: float
-    ) -> Tuple[KModel, float]:
+        self,
+        count: int,
+        gradient: np.ndarray,
+        model: nn.Sequential,
+        learning_rate: float,
+    ) -> Tuple[nn.Sequential, float]:
         """Compute an Adam-style weight update and apply it."""
 
         momentum = (
@@ -720,30 +876,36 @@ class Actor:
         )
 
         update = momentum_corrected / (np.sqrt(rmsprop_corrected) + self.epsilon)
-        model.trainable_variables[count].assign_sub(
-            np.reshape(learning_rate * update, model.trainable_variables[count].shape)
-        )
-        # Implement WB_limits: the weights and biases can not have values whose absolute value
-        # exceeds WB_limits
-        model = self.check_WB_limits(count, model)
-        if count % 2 == 1:
-            model.trainable_variables[count].assign(
-                np.zeros(model.trainable_variables[count].shape)
-            )
 
-        if count == len(model.trainable_variables) - 1:
+        params = _get_trainable_parameters(model)
+        with torch.no_grad():
+            params[count] -= torch.tensor(
+                np.reshape(learning_rate * update, params[count].shape).astype(
+                    np.float32
+                )
+            )
+        # Implement WB_limits
+        self._check_WB_limits_param(params[count])
+        if count % 2 == 1:
+            with torch.no_grad():
+                params[count].zero_()
+
+        if count == len(params) - 1:
             learning_rate = max(learning_rate * 0.9995, 0.0001)
 
         return model, learning_rate
 
-    def check_WB_limits(self, count: int, model: KModel) -> KModel:
+    def check_WB_limits(self, count: int, model: nn.Sequential) -> nn.Sequential:
         """Clamp weights/biases that exceed the configured WB_limits."""
-
-        WB_variable = model.trainable_variables[count].numpy()
-        WB_variable[WB_variable > self.WB_limits] = self.WB_limits
-        WB_variable[WB_variable < -self.WB_limits] = -self.WB_limits
-        model.trainable_variables[count].assign(WB_variable)
+        params = _get_trainable_parameters(model)
+        with torch.no_grad():
+            params[count].clamp_(-self.WB_limits, self.WB_limits)
         return model
+
+    def _check_WB_limits_param(self, param: torch.Tensor) -> None:
+        """Clamp a single parameter tensor in-place to [-WB_limits, WB_limits]."""
+        with torch.no_grad():
+            param.clamp_(-self.WB_limits, self.WB_limits)
 
     def compute_persistent_excitation(self, *args: int) -> float:
         """Compute the persistent excitation term for the current time step."""
@@ -781,15 +943,17 @@ class Actor:
         self.time_step += 1
         self.dut_dWb_1 = self.dut_dWb
 
+        params = _get_trainable_parameters(self.model)
         for counter in range(len(self.layers)):
             self.store_weights["W" + str(counter + 1)][:, self.time_step] = (
-                self.model.trainable_variables[counter * 2].numpy().flatten()
+                params[counter * 2].detach().numpy().flatten()
             )
 
         if self.cascaded_actor:
+            params_q = _get_trainable_parameters(self.model_q)
             for counter in range(len(self.layers)):
                 self.store_weights_q["W" + str(counter + 1)][:, self.time_step] = (
-                    self.model_q.trainable_variables[counter * 2].numpy().flatten()
+                    params_q[counter * 2].detach().numpy().flatten()
                 )
 
     def evaluate_actor(self, *args: Any) -> np.ndarray:
@@ -818,25 +982,25 @@ class Actor:
                     xt[self.indices_tracking_states[0], :], [-1, 1]
                 )
             xt_error = np.reshape(tracked_states - xt_ref, [-1, 1])
-            nn_input = tf.constant(np.array([xt_error]).astype("float32"))
+            nn_input = torch.tensor(np.array([xt_error]).astype("float32"))
 
-            q_ref_0 = self.model(nn_input)
+            with torch.no_grad():
+                q_ref_0 = self.model(nn_input).numpy()
             if self.activations[-1] == "sigmoid":
                 q_ref = max(
                     min(
-                        (2 * self.maximum_q_rate * q_ref_0.numpy())
-                        - self.maximum_q_rate,
-                        np.reshape(self.maximum_q_rate, q_ref_0.numpy().shape),
+                        (2 * self.maximum_q_rate * q_ref_0) - self.maximum_q_rate,
+                        np.reshape(self.maximum_q_rate, q_ref_0.shape),
                     ),
-                    np.reshape(-self.maximum_q_rate, q_ref_0.numpy().shape),
+                    np.reshape(-self.maximum_q_rate, q_ref_0.shape),
                 )
             elif self.activations[-1] == "tanh":
                 q_ref = max(
                     min(
-                        (self.maximum_q_rate * q_ref_0.numpy()),
-                        np.reshape(self.maximum_q_rate, q_ref_0.numpy().shape),
+                        (self.maximum_q_rate * q_ref_0),
+                        np.reshape(self.maximum_q_rate, q_ref_0.shape),
                     ),
-                    np.reshape(-self.maximum_q_rate, q_ref_0.numpy().shape),
+                    np.reshape(-self.maximum_q_rate, q_ref_0.shape),
                 )
 
             # Check if xt already contains only tracked states
@@ -851,9 +1015,10 @@ class Actor:
             xt_error_q = np.reshape(
                 tracked_states - np.reshape(q_ref, tracked_states.shape), [-1, 1]
             )
-            nn_input_q = tf.constant(np.array([xt_error_q]).astype("float32"))
+            nn_input_q = torch.tensor(np.array([xt_error_q]).astype("float32"))
 
-            ut = self.model_q(nn_input_q).numpy()
+            with torch.no_grad():
+                ut = self.model_q(nn_input_q).numpy()
 
         else:
             # Check if xt already contains only tracked states
@@ -864,9 +1029,10 @@ class Actor:
                     xt[self.indices_tracking_states, :], [-1, 1]
                 )
             xt_error = np.reshape(tracked_states - xt_ref, [-1, 1])
-            nn_input = tf.constant(np.array([xt_error]).astype("float32"))
+            nn_input = torch.tensor(np.array([xt_error]).astype("float32"))
 
-            ut = self.model(nn_input).numpy()
+            with torch.no_grad():
+                ut = self.model(nn_input).numpy()
 
         if len(args) == 1:
             e0 = self.compute_persistent_excitation(time_step)
@@ -910,7 +1076,11 @@ class Actor:
         # Attributes related to the Adam optimizer
         self.Adam_opt = None
 
+        # Reset the integral-correction state on a fresh episode.
+        self.integral_state = 0.0
+
         # Restart momentum and rmsprop
-        for count in range(len(self.model.trainable_variables)):
+        params = _get_trainable_parameters(self.model)
+        for count in range(len(params)):
             self.momentum_dict[count] = 0
             self.rmsprop_dict[count] = 0

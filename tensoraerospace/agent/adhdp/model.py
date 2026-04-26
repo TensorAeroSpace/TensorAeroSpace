@@ -25,11 +25,12 @@ import datetime
 import inspect
 import json
 from pathlib import Path
-from typing import Any, Dict, Optional, Tuple, Union
+from typing import Any, Dict, Mapping, Optional, Sequence, Tuple, Union
 
 import numpy as np
 import torch
 import torch.nn.functional as F
+from huggingface_hub import snapshot_download
 from torch.optim import Adam
 
 from ..adp.networks import DeterministicActor, QCritic
@@ -38,7 +39,7 @@ from ..base import (
     get_class_from_string,
     serialize_env,
 )
-from ..metrics import create_metric_writer
+from ..metrics import create_metric_writer, schema
 
 
 def _as_flat_np(x: Any) -> np.ndarray:
@@ -150,6 +151,11 @@ class ADHDP(BaseRLModel):
         actor_bc_decay: float = 1.0,
         log_dir: Union[str, Path, None] = None,
         log_every_updates: int = 500,
+        wandb_project: Optional[str] = None,
+        wandb_entity: Optional[str] = None,
+        wandb_run_name: Optional[str] = None,
+        wandb_tags: Optional[Sequence[str]] = None,
+        wandb_config: Optional[Mapping[str, Any]] = None,
     ) -> None:
         """Initialize the ADHDP agent.
 
@@ -449,7 +455,20 @@ class ADHDP(BaseRLModel):
         self.critic_optim = Adam(self.critic.parameters(), lr=float(critic_lr))
 
         self.log_dir = Path(log_dir) if log_dir is not None else None
-        self.writer = create_metric_writer(self.log_dir)
+        self.wandb_project = wandb_project
+        self.wandb_entity = wandb_entity
+        self.wandb_run_name = wandb_run_name
+        self.wandb_tags = wandb_tags
+        self.wandb_config = wandb_config
+        self.writer = create_metric_writer(
+            tb_log_dir=self.log_dir,
+            wandb_project=wandb_project,
+            wandb_entity=wandb_entity,
+            wandb_run_name=wandb_run_name,
+            wandb_tags=wandb_tags,
+            wandb_config=wandb_config,
+            algo="adhdp",
+        )
         self.log_every_updates = int(log_every_updates)
         self._updates = 0
 
@@ -1041,13 +1060,37 @@ class ADHDP(BaseRLModel):
                 p.requires_grad_(r)
         return float(last)
 
-    def train(self, *args, **kwargs) -> None:
-        num_episodes = (
-            int(args[0]) if len(args) > 0 else int(kwargs.get("num_episodes", 1))
-        )
-        max_steps = kwargs.get("max_steps", None)
+    def train(
+        self,
+        num_episodes: int = 1,
+        *,
+        max_steps: Optional[int] = None,
+        save_best: bool = False,
+        save_path: Optional[str] = None,
+        verbose: bool = True,
+        **kwargs: Any,
+    ) -> dict:
+        """Train the ADHDP agent (unified interface).
+
+        Args:
+            num_episodes: Number of training episodes.
+            max_steps: Optional per-episode step cap.
+            save_best: Unused by ADHDP; accepted for API consistency.
+            save_path: Unused by ADHDP; accepted for API consistency.
+            verbose: If True, show a tqdm progress bar.
+            **kwargs: Algorithm-specific options. Recognized keys:
+
+                - ``show_progress`` (bool, legacy): overrides ``verbose``.
+                - ``progress_desc`` (str): tqdm description label.
+
+        Returns:
+            dict: Training summary dictionary. Currently minimal.
+        """
+        _ = (save_best, save_path)
+        num_episodes = int(num_episodes)
         max_steps_i = int(max_steps) if max_steps is not None else None
-        show_progress = bool(kwargs.get("show_progress", True))
+        # Legacy ``show_progress`` takes precedence if explicitly provided.
+        show_progress = bool(kwargs.get("show_progress", verbose))
         progress_desc = str(kwargs.get("progress_desc", "ADHDP train"))
 
         if self.warmstart_actor_episodes > 0:
@@ -1221,26 +1264,47 @@ class ADHDP(BaseRLModel):
                 steps += 1
 
                 if (self._updates % int(self.log_every_updates)) == 0:
+                    # Mandatory training counters (Tier 1).
+                    self.writer.add_scalar(
+                        schema.TRAIN_UPDATES,
+                        int(self._updates),
+                        env_step=total_steps,
+                    )
+                    self.writer.add_scalar(
+                        schema.TRAIN_LR,
+                        float(self.actor_optim.param_groups[0]["lr"]),
+                        env_step=total_steps,
+                    )
                     # Log losses only when the corresponding network was actually updated.
                     if bool(do_critic):
                         self.writer.add_scalar(
-                            "loss/critic", float(critic_loss), self._updates
+                            schema.LOSS_CRITIC,
+                            float(critic_loss),
+                            env_step=total_steps,
                         )
                     if bool(do_actor):
                         self.writer.add_scalar(
-                            "loss/actor", float(actor_loss), self._updates
+                            schema.LOSS_ACTOR,
+                            float(actor_loss),
+                            env_step=total_steps,
                         )
                     # Phase + action diagnostics (helps debug saturation/drift)
                     self.writer.add_scalar(
-                        "train/do_critic",
+                        schema.ADHDP.DO_CRITIC,
                         1.0 if bool(do_critic) else 0.0,
-                        self._updates,
+                        env_step=total_steps,
                     )
                     self.writer.add_scalar(
-                        "train/do_actor", 1.0 if bool(do_actor) else 0.0, self._updates
+                        schema.ADHDP.DO_ACTOR,
+                        1.0 if bool(do_actor) else 0.0,
+                        env_step=total_steps,
                     )
-                    # Action saturation stats
-                    try:
+                    # Action saturation stats — guarded only by a narrow None check;
+                    # unknown tags are caught by the strict-whitelist writer.
+                    if (
+                        act is not None
+                        and getattr(self.env, "action_space", None) is not None
+                    ):
                         a = np.asarray(act, dtype=np.float32).reshape(-1)
                         hi = np.asarray(
                             self.env.action_space.high, dtype=np.float32
@@ -1248,22 +1312,28 @@ class ADHDP(BaseRLModel):
                         hi = np.maximum(np.abs(hi), 1e-6)
                         sat = float(np.mean(np.abs(a) >= 0.98 * hi))
                         self.writer.add_scalar(
-                            "action/mean_abs", float(np.mean(np.abs(a))), self._updates
+                            schema.POLICY_ACTION_ABS_MEAN,
+                            float(np.mean(np.abs(a))),
+                            env_step=total_steps,
                         )
                         self.writer.add_scalar(
-                            "action/sat_frac", float(sat), self._updates
+                            schema.ADHDP.ACTION_SAT_FRAC,
+                            float(sat),
+                            env_step=total_steps,
                         )
-                    except (TypeError, ValueError, AttributeError):
-                        pass
 
                 obs = next_obs
                 done = done_env
                 if max_steps_i is not None and steps >= max_steps_i:
                     break
 
-            self.writer.add_scalar("performance/episode_reward", float(ep_reward), ep)
-            self.writer.add_scalar("performance/episode_length", int(steps), ep)
-            self.writer.add_scalar("train/total_steps", int(total_steps), ep)
+            self.writer.log_episode(
+                reward=float(ep_reward),
+                length=int(steps),
+                env_step=int(total_steps),
+                terminated=bool(terminated),
+                truncated=bool(truncated),
+            )
             if pbar is not None:
                 try:
                     pbar.set_postfix(
@@ -1277,6 +1347,8 @@ class ADHDP(BaseRLModel):
                     pass
 
         self.writer.flush()
+        self.writer.assert_contract_satisfied()
+        return {"total_steps": int(total_steps)}
 
     # ---- persistence (optional, aligned with other agents) ----
     def get_param_env(self) -> Dict[str, Dict[str, Any]]:
@@ -1432,4 +1504,78 @@ class ADHDP(BaseRLModel):
         agent.critic = torch.load(
             critic_path, map_location=agent.device, weights_only=False
         )
+        return agent
+
+    @classmethod
+    def from_pretrained(
+        cls,
+        repo_name: str,
+        access_token: Optional[str] = None,
+        version: Optional[str] = None,
+        load_gradients: bool = False,
+    ) -> "ADHDP":
+        """Load pretrained model from local directory or Hugging Face Hub.
+
+        Args:
+            repo_name: Path to local folder with weights or repository name
+                in format ``namespace/repo_name`` on Hugging Face Hub.
+            access_token: Access token for private HF repository.
+            version: Revision / branch / tag of HF repository.
+            load_gradients: If ``True``, also load optimizer states so
+                training can be continued (requires ``save_gradients=True``
+                at save time).
+
+        Returns:
+            ADHDP: Fully initialised agent with loaded weights.
+        """
+        # 1) Try local loading (absolute / relative path)
+        p = Path(str(repo_name)).expanduser()
+        if p.is_dir():
+            return cls._load_from_dir(p, load_gradients=load_gradients)
+
+        # 2) If the path looks like a file-system path but doesn't exist – error
+        pathlike_prefixes = ("./", "../", "/", "~")
+        if str(repo_name).startswith(pathlike_prefixes):
+            if not p.exists() or not p.is_dir():
+                raise FileNotFoundError(
+                    f"Local directory not found: '{repo_name}'."
+                    " Please check the path."
+                )
+            return cls._load_from_dir(p, load_gradients=load_gradients)
+
+        # 3) Otherwise treat as a Hugging Face Hub repo id
+        folder_path = snapshot_download(
+            repo_id=repo_name, token=access_token, revision=version
+        )
+        return cls._load_from_dir(folder_path, load_gradients=load_gradients)
+
+    @classmethod
+    def _load_from_dir(
+        cls,
+        folder: Union[str, Path],
+        *,
+        load_gradients: bool = False,
+    ) -> "ADHDP":
+        """Reconstruct an ADHDP agent from a ``save()`` directory.
+
+        This is a thin wrapper around :meth:`from_dir` that also optionally
+        restores optimiser state dicts when *load_gradients* is ``True``.
+        """
+        folder_p = Path(folder)
+        agent = cls.from_dir(folder_p)
+
+        if load_gradients:
+            actor_optim_path = folder_p / "actor_optim.pth"
+            critic_optim_path = folder_p / "critic_optim.pth"
+            if actor_optim_path.exists():
+                state = torch.load(
+                    actor_optim_path, map_location=agent.device, weights_only=False
+                )
+                agent.actor_optim.load_state_dict(state)
+            if critic_optim_path.exists():
+                state = torch.load(
+                    critic_optim_path, map_location=agent.device, weights_only=False
+                )
+                agent.critic_optim.load_state_dict(state)
+
         return agent

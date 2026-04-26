@@ -1,0 +1,89 @@
+name: 📚 Docs build
+run-name: mkdocs build --strict
+
+# Fails the build on any mkdocs/mkdocstrings warning — broken internal links,
+# missing images, invalid ``::: module.path`` references, stale nav entries,
+# and griffe docstring issues. Runs on PRs so authors see the break before
+# merge, and on push to develop as a safety net for direct commits.
+#
+# Cost: ~30 seconds including Poetry install (cached).
+
+on:
+  pull_request:
+    branches:
+      - main
+      - develop
+    types: [opened, synchronize, reopened, ready_for_review]
+  push:
+    branches:
+      - develop
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  mkdocs:
+    name: 🏗️ mkdocs build --strict
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v5
+
+      - name: 🐍 Set up Python 3.10
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.10'
+
+      - name: 📦 Cache Poetry dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/pypoetry
+            ~/.cache/pip
+          key: ubuntu-latest-poetry-3.10-${{ hashFiles('**/poetry.lock') }}
+          restore-keys: |
+            ubuntu-latest-poetry-3.10-
+
+      - name: 🎭 Install Poetry
+        run: |
+          python -m ensurepip --upgrade || true
+          python -m pip install --upgrade pip
+          python -m pip install poetry
+
+      - name: ⚙️ Configure Poetry
+        run: |
+          poetry config virtualenvs.create true
+          poetry config virtualenvs.in-project true
+
+      - name: 🔄 Sync lock file
+        run: |
+          if ! poetry check --lock; then
+            echo "Lock file is outdated, updating..."
+            poetry lock
+          fi
+
+      - name: 📚 Install dependencies
+        run: |
+          # The dev group carries mkdocs, mkdocs-material, mkdocstrings,
+          # mkdocs-static-i18n, and griffe — everything mkdocs build needs.
+          poetry install --with dev
+
+      - name: 🏗️ Build site (strict)
+        run: |
+          # ``--strict`` promotes every warning to an error. Broken links,
+          # missing referenced Python modules, invalid ``::: …`` targets,
+          # griffe type-annotation warnings — all fail the build.
+          poetry run mkdocs build --strict --clean
+
+      - name: 📤 Upload built site on failure
+        if: failure()
+        uses: actions/upload-artifact@v7
+        continue-on-error: true
+        with:
+          name: mkdocs-site-${{ github.sha }}
+          path: site/
+          retention-days: 7

@@ -23,7 +23,7 @@ Steps and code to reproduce the performance problem:
 - OS / Hardware: [CPU/GPU specs]
 - Python version:
 - TensorAeroSpace version:
-- Frameworks (TensorFlow/PyTorch/etc.) and versions:
+- PyTorch version:
 
 ## 💡 Expected vs. Actual
 - Expected: [e.g., training finishes in <5 min]

@@ -9,39 +9,48 @@ on:
     types: [opened, synchronize, reopened, ready_for_review]
   workflow_dispatch:  # Позволяет запускать вручную
 
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
+
 jobs:
   test:
-    name: 🐍 Test Python 3.10 on self-hosted
+    name: 🐍 Test Python ${{ matrix.python-version }}
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ['3.10', '3.11', '3.12', '3.13']
 
     steps:
     - name: 🧹 Free up disk space
       run: |
         echo "Disk usage before cleanup:"
-        
-        
+
+
         # Remove large unnecessary packages
         sudo rm -rf /usr/share/dotnet
         sudo rm -rf /usr/local/lib/android
         sudo rm -rf /opt/ghc
         sudo rm -rf /opt/hostedtoolcache/CodeQL
-        
+
         # Clean Docker
         docker system prune -af --volumes || true
-        
+
         # Clean apt cache
         sudo apt-get clean
-        
+
         echo "Disk usage after cleanup:"
-        
-    
+
+
     - name: 📥 Checkout code
       uses: actions/checkout@v5
 
-    - name: 🐍 Set up Python 3.10
+    - name: 🐍 Set up Python ${{ matrix.python-version }}
       uses: actions/setup-python@v6
       with:
-        python-version: '3.10'
+        python-version: ${{ matrix.python-version }}
 
     - name: 📦 Cache Poetry dependencies
       uses: actions/cache@v4
@@ -49,9 +58,9 @@ jobs:
         path: |
           ~/.cache/pypoetry
           ~/.cache/pip
-        key: ubuntu-latest-poetry-3.10-${{ hashFiles('**/poetry.lock') }}
+        key: ubuntu-latest-poetry-${{ matrix.python-version }}-${{ hashFiles('**/poetry.lock') }}
         restore-keys: |
-          ubuntu-latest-poetry-3.10-
+          ubuntu-latest-poetry-${{ matrix.python-version }}-
 
     - name: 🎭 Install Poetry
       run: |
@@ -73,7 +82,7 @@ jobs:
 
     - name: 📚 Install dependencies
       run: |
-        poetry install --with dev
+        poetry install --with dev,test
 
     - name: 🔍 Lint with flake8 (Ubuntu only)
       run: |
@@ -83,28 +92,21 @@ jobs:
     - name: 🧪 Run tests with pytest
       run: |
         poetry run pytest tests/ -v --tb=short --junitxml=pytest.xml \
-          --ignore=tests/agents/ihdp_actor_test.py \
-          --ignore=tests/agents/ihdp_critic_test.py \
-          --ignore=tests/agents/ihdp_agent_test.py \
-          --ignore=tests/agents/ihdp_incremental_model_test.py \
           --ignore=tests/agents/a2c_narx_learner_test.py \
           --ignore=tests/optimization/ray_test.py
 
     - name: Run tests with coverage
+      if: matrix.python-version == '3.11'
       run: |
         poetry run pytest --maxfail=1 --disable-warnings \
               --cov=tensoraerospace \
               --cov-report=xml:coverage.xml \
               --cov-report=term-missing:skip-covered \
-              --ignore=tests/agents/ihdp_actor_test.py \
-              --ignore=tests/agents/ihdp_critic_test.py \
-              --ignore=tests/agents/ihdp_agent_test.py \
-              --ignore=tests/agents/ihdp_incremental_model_test.py \
               --ignore=tests/agents/a2c_narx_learner_test.py \
               --ignore=tests/optimization/ray_test.py | tee pytest-coverage.txt
 
     - name: Upload coverage to Coveralls
-      if: ${{ success() && hashFiles('coverage.xml') != '' }}
+      if: ${{ matrix.python-version == '3.11' && success() && hashFiles('coverage.xml') != '' }}
       uses: coverallsapp/github-action@v2
       continue-on-error: true
       with:
@@ -113,8 +115,8 @@ jobs:
         format: cobertura
 
     - name: 💬 Pytest coverage comment
-      if: github.event_name == 'pull_request'
-      uses: MishaKav/pytest-coverage-comment@main
+      if: github.event_name == 'pull_request' && matrix.python-version == '3.11'
+      uses: MishaKav/pytest-coverage-comment@v1.1.52
       with:
         pytest-coverage-path: ./pytest-coverage.txt
         pytest-xml-coverage-path: ./coverage.xml
@@ -129,12 +131,12 @@ jobs:
         remove-links-to-files: true
         remove-links-to-lines: true
         remove-link-from-badge: true
-        unique-id-for-comment: python3.10
+        unique-id-for-comment: python3.11
         junitxml-path: ./pytest.xml
         junitxml-title: 🧪 TensorAeroSpace Test Results
 
     - name: 🔗 Add Coveralls link comment
-      if: github.event_name == 'pull_request'
+      if: github.event_name == 'pull_request' && matrix.python-version == '3.11'
       run: |
         PCT=$(python - <<'PY'
         import xml.etree.ElementTree as ET
@@ -151,7 +153,7 @@ jobs:
         - Coverage: ${PCT}% — [Coveralls report](https://coveralls.io/github/${{ github.repository }}?branch=${{ github.head_ref }})
         MD
     - name: 💬 Post sticky PR comment (Coveralls link)
-      if: github.event_name == 'pull_request'
+      if: github.event_name == 'pull_request' && matrix.python-version == '3.11'
       uses: marocchino/sticky-pull-request-comment@v3
       with:
         recreate: true
@@ -169,12 +171,27 @@ jobs:
         # Clean pip cache
         pip cache purge || true
         echo "Disk usage after test cleanup:"
-        
+
+
+  test-matrix-result:
+    name: ✅ All Python versions passed
+    runs-on: ubuntu-latest
+    needs: test
+    if: always()
+    steps:
+      - name: ❗ Fail if any matrix Python version failed
+        run: |
+          echo "Aggregated result of the test matrix: ${{ needs.test.result }}"
+          if [ "${{ needs.test.result }}" != "success" ]; then
+            echo "::error::Tests did not pass on every Python version (3.10/3.11/3.12/3.13). Blocking the PR."
+            exit 1
+          fi
+          echo "All Python versions (3.10/3.11/3.12/3.13) passed."
 
   docs-coverage:
     name: 📚 Documentation Coverage
     runs-on: ubuntu-latest
-    needs: test
+    needs: test-matrix-result
 
     steps:
     - name: 🧹 Free up disk space
@@ -300,7 +317,7 @@ jobs:
   security:
     name: 🔒 Security Scan
     runs-on: ubuntu-latest
-    needs: test
+    needs: test-matrix-result
 
     steps:
     - name: 🧹 Free up disk space
@@ -341,7 +358,7 @@ jobs:
   build:
     name: 🏗️ Build Package
     runs-on: ubuntu-latest
-    needs: [test, docs-coverage]
+    needs: [test-matrix-result, docs-coverage]
 
     steps:
     - name: 🧹 Free up disk space

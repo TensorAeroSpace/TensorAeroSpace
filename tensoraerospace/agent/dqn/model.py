@@ -7,7 +7,7 @@ buffer helpers) used in TensorAeroSpace.
 import json
 import time
 from pathlib import Path
-from typing import Any, Tuple, Union, cast
+from typing import Any, Mapping, Optional, Sequence, Tuple, Union, cast
 
 import gymnasium as gym
 import numpy as np
@@ -15,12 +15,10 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from gymnasium.spaces import Discrete
+from huggingface_hub import HfApi, snapshot_download
 from tqdm import tqdm
 
-from ..metrics import create_metric_writer
-
-np.random.seed(1)
-torch.manual_seed(1)
+from ..metrics import create_metric_writer, schema
 
 # Select device for computation
 _DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -219,8 +217,8 @@ class DQNAgent:
     """DQN Agent.
 
     Args:
-        model (tf.keras.Model): Deep Q-network model.
-        target_model (tf.keras.Model): Target deep Q-network model.
+        model (torch.nn.Module): Deep Q-network model.
+        target_model (torch.nn.Module): Target deep Q-network model.
         env (gym.Env): Gym/Gymnasium environment.
         learning_rate (float, optional): Learning rate.
         epsilon (float, optional): Environment exploration probability.
@@ -257,6 +255,12 @@ class DQNAgent:
         beta_increment_per_sample: float = 0.001,
         log_dir: str | None = None,
         verbose_histogram: bool = False,
+        seed: int = 1,
+        wandb_project: Optional[str] = None,
+        wandb_entity: Optional[str] = None,
+        wandb_run_name: Optional[str] = None,
+        wandb_tags: Optional[Sequence[str]] = None,
+        wandb_config: Optional[Mapping[str, Any]] = None,
     ) -> None:
         """Initialize DQN agent and replay buffer.
 
@@ -279,14 +283,31 @@ class DQNAgent:
             beta_increment_per_sample: Increment for beta per sample.
             log_dir: Directory for TensorBoard logs.
             verbose_histogram: Whether to log histograms extensively.
+            seed: Random seed for numpy and torch. Defaults to 1.
         """
+        np.random.seed(seed)
+        torch.manual_seed(seed)
+
         # Models and optimizer
         self.device = _DEVICE
         self.model = model.to(self.device)
         self.target_model = target_model.to(self.device)
         self.optimizer = torch.optim.Adam(self.model.parameters(), lr=learning_rate)
         self.log_dir = Path(log_dir) if log_dir is not None else None
-        self.writer = create_metric_writer(self.log_dir)
+        self.wandb_project = wandb_project
+        self.wandb_entity = wandb_entity
+        self.wandb_run_name = wandb_run_name
+        self.wandb_tags = wandb_tags
+        self.wandb_config = wandb_config
+        self.writer = create_metric_writer(
+            tb_log_dir=self.log_dir,
+            wandb_project=wandb_project,
+            wandb_entity=wandb_entity,
+            wandb_run_name=wandb_run_name,
+            wandb_tags=wandb_tags,
+            wandb_config=wandb_config,
+            algo="dqn",
+        )
 
         # parameters
         self.env = env  # gym environment
@@ -322,16 +343,52 @@ class DQNAgent:
         self.abs_error_upper = 1
         self.verbose_histogram = verbose_histogram
         self.global_step = 0
+        self.global_env_step = 0
         self.episode_idx = 0
 
-    def train(self) -> None:
-        """Function for training."""
+    def train(
+        self,
+        num_episodes: Optional[int] = None,
+        *,
+        max_steps: Optional[int] = None,
+        save_best: bool = False,
+        save_path: Optional[str] = None,
+        verbose: bool = True,
+        **kwargs: Any,
+    ) -> dict:
+        """Train the DQN agent (unified interface).
 
+        DQN is frame-based internally. ``num_episodes`` is treated as an
+        episode target that is multiplied by ``max_steps`` to derive a
+        total training-step budget. When ``max_steps`` is omitted, the
+        original ``self.train_nums`` budget set at construction is used.
+
+        Args:
+            num_episodes: Target number of episodes. Converted to a
+                step budget via ``num_episodes * max_steps`` when
+                ``max_steps`` is provided.
+            max_steps: Approximate maximum steps per episode.
+            save_best: Reserved for API consistency.
+            save_path: Reserved for API consistency.
+            verbose: Reserved for symmetry.
+            **kwargs: Currently unused.
+
+        Returns:
+            dict: Empty dict for API compatibility.
+        """
+        _ = (save_best, save_path, verbose, kwargs)
+        if num_episodes is not None and max_steps is not None:
+            self.train_nums = int(num_episodes) * int(max_steps)
+        elif max_steps is not None:
+            # Allow overriding the step cap without touching num_episodes.
+            self.train_nums = int(max_steps)
         obs, _info = self.env.reset()
         episode_reward = 0.0
+        episode_length = 0
         pbar = tqdm(range(1, self.train_nums), desc="DQNAgent Train", unit="step")
         recent_loss = None
         for t in pbar:
+            self.global_env_step = t
             input_obs = obs.reshape([1, -1])
             best_action, _q_values = self.model.action_value(input_obs)
             # input the obs to the network model
@@ -339,6 +396,7 @@ class DQNAgent:
             next_obs, reward, terminated, truncated, info = self.env.step(action)
             done = bool(terminated or truncated)
             episode_reward += float(reward)
+            episode_length += 1
             if t == 1:
                 p = self.p1
             else:
@@ -359,18 +417,31 @@ class DQNAgent:
             if t % self.target_update_iter == 0:
                 self.update_target_model()
             if done:
-                # Episode end logging
-                self.writer.add_scalar(
-                    "Performance/Reward", episode_reward, self.episode_idx
+                # Episode end logging (canonical schema)
+                self.writer.log_episode(
+                    reward=float(episode_reward),
+                    length=int(episode_length),
+                    env_step=int(self.global_env_step),
+                    terminated=bool(terminated),
+                    truncated=bool(truncated),
                 )
                 self.writer.add_scalar(
-                    "Exploration/Epsilon", self.epsilon, self.episode_idx
+                    schema.DQN.EPSILON,
+                    float(self.epsilon),
+                    env_step=self.global_env_step,
                 )
                 self.episode_idx += 1
                 episode_reward = 0.0
+                episode_length = 0
                 obs, info = self.env.reset()
             else:
                 obs = next_obs
+        self.writer.flush()
+        # Note: don't assert_contract_satisfied() if max_steps is so small that the
+        # warmup never ends and no train_step() ever runs. The smoke test uses a
+        # small-but-sufficient budget that does cross the warmup threshold.
+        self.writer.assert_contract_satisfied()
+        return {"episodes": int(self.episode_idx)}
 
     def train_step(self) -> Any:
         """Function for training step.
@@ -431,13 +502,58 @@ class DQNAgent:
         td_err_max = float(np.max(abs_td_error)) if abs_td_error.size > 0 else 0.0
         td_err_min = float(np.min(abs_td_error)) if abs_td_error.size > 0 else 0.0
 
-        self.writer.add_scalar("Loss/DQN", float(loss.item()), self.global_step)
-        self.writer.add_scalar("Q/PredSA/Mean", q_pred_sa_mean, self.global_step)
-        self.writer.add_scalar("Q/TargetSA/Mean", q_target_sa_mean, self.global_step)
-        self.writer.add_scalar("TD-Error/Mean", td_err_mean, self.global_step)
-        self.writer.add_scalar("TD-Error/Max", td_err_max, self.global_step)
-        self.writer.add_scalar("TD-Error/Min", td_err_min, self.global_step)
-        self.writer.add_scalar("PER/Beta", float(self.beta), self.global_step)
+        self.writer.add_scalar(
+            schema.DQN.LOSS_Q,
+            float(loss.item()),
+            env_step=self.global_env_step,
+        )
+        self.writer.add_scalar(
+            schema.DQN.Q_PRED_SA_MEAN,
+            q_pred_sa_mean,
+            env_step=self.global_env_step,
+        )
+        self.writer.add_scalar(
+            schema.DQN.Q_TARGET_SA_MEAN,
+            q_target_sa_mean,
+            env_step=self.global_env_step,
+        )
+        self.writer.add_scalar(
+            schema.VALUE_TD_ERROR_MEAN,
+            td_err_mean,
+            env_step=self.global_env_step,
+        )
+        self.writer.add_scalar(
+            schema.VALUE_TD_ERROR_MAX,
+            td_err_max,
+            env_step=self.global_env_step,
+        )
+        self.writer.add_scalar(
+            schema.VALUE_TD_ERROR_MIN,
+            td_err_min,
+            env_step=self.global_env_step,
+        )
+        self.writer.add_scalar(
+            schema.DQN.PER_BETA,
+            float(self.beta),
+            env_step=self.global_env_step,
+        )
+
+        self.global_step += 1
+        self.writer.add_scalar(
+            schema.TRAIN_UPDATES,
+            self.global_step,
+            env_step=self.global_env_step,
+        )
+        self.writer.add_scalar(
+            schema.TRAIN_LR,
+            float(self.optimizer.param_groups[0]["lr"]),
+            env_step=self.global_env_step,
+        )
+        self.writer.add_scalar(
+            schema.TRAIN_REPLAY_SIZE,
+            int(self.num_in_buffer),
+            env_step=self.global_env_step,
+        )
 
         if (
             self.verbose_histogram
@@ -445,9 +561,12 @@ class DQNAgent:
             and (self.global_step % 1000 == 0)
         ):
             for name, param in self.model.named_parameters():
-                self.writer.add_histogram(f"DQN/{name}", param, self.global_step)
+                self.writer.add_histogram(
+                    f"weights/q/{name}",
+                    param,
+                    env_step=self.global_env_step,
+                )
 
-        self.global_step += 1
         return float(loss.item())
 
     def sum_tree_sample(self, k: int):
@@ -465,10 +584,14 @@ class DQNAgent:
         is_weights = np.empty((k, 1))
         self.beta = min(1.0, self.beta + self.beta_increment_per_sample)
         # calculate max_weight
-        min_prob = (
-            np.min(self.replay_buffer.tree[-self.replay_buffer.capacity :])
-            / self.replay_buffer.total_p
-        )
+        # Only consider filled leaves (buffer may not be full yet, so many leaves are 0).
+        leaves = self.replay_buffer.tree[-self.replay_buffer.capacity :]
+        filled_leaves = leaves[leaves > 0]
+        if len(filled_leaves) == 0:
+            min_prob = 1.0  # uniform fallback
+        else:
+            min_prob = np.min(filled_leaves) / self.replay_buffer.total_p
+        min_prob = max(min_prob, 1e-8)  # guard against division by zero
         max_weight = np.power(self.buffer_size * min_prob, -self.beta)
         segment = self.replay_buffer.total_p / k
         for i in range(k):
@@ -507,6 +630,7 @@ class DQNAgent:
         done = False
         # one episode until done
         ep_reward = 0
+        ep_length = 0
         while not done:
             input_obs = obs.reshape([1, -1])
             action, _q_values = self.model.action_value(
@@ -518,14 +642,22 @@ class DQNAgent:
             done = bool(terminated or truncated)
             obs = next_obs
             ep_reward += reward
+            ep_length += 1
             if render:  # visually show
                 wrapped_env.env.render()
                 wrapped_env.capture_frame()
             time.sleep(0.05)
         wrapped_env.close()
-        # Log evaluation reward
+        # Log evaluation reward / length (canonical schema)
         self.writer.add_scalar(
-            "Performance/EvalReward", float(ep_reward), self.global_step
+            schema.EVAL_EPISODE_REWARD,
+            float(ep_reward),
+            env_step=self.global_env_step,
+        )
+        self.writer.add_scalar(
+            schema.EVAL_EPISODE_LENGTH,
+            int(ep_length),
+            env_step=self.global_env_step,
         )
         return ep_reward
 
@@ -565,8 +697,12 @@ class DQNAgent:
         """Target neural network update function."""
 
         self.target_model.load_state_dict(self.model.state_dict())
-        # Log target update event
-        self.writer.add_scalar("Target/Update", 1, self.global_step)
+        # Log target update event (canonical schema)
+        self.writer.add_scalar(
+            schema.DQN.TARGET_UPDATE,
+            1,
+            env_step=self.global_env_step,
+        )
 
     def get_target_value(self, obs: np.ndarray) -> np.ndarray:
         """Compute Q-values using the target network."""
@@ -625,13 +761,153 @@ class DQNAgent:
         with open(config_path, "w", encoding="utf-8") as f:
             json.dump(config, f)
 
+    @classmethod
+    def load(
+        cls,
+        path: Union[str, Path],
+        env: Any,
+        *,
+        load_gradients: bool = False,
+    ) -> "DQNAgent":
+        """Load a DQNAgent from a directory created by :meth:`save`.
+
+        Args:
+            path: Directory that contains ``model.pth``, ``target_model.pth``
+                and ``config.json`` (as written by :meth:`save`).
+            env: A Gymnasium-compatible environment. The environment is
+                required because it is not serialised alongside the weights.
+            load_gradients: If ``True`` and ``optimizer.pth`` exists, also
+                restore the optimiser state so training can be continued.
+
+        Returns:
+            DQNAgent: Fully initialised agent with loaded weights.
+        """
+        folder = Path(path)
+        config_path = folder / "config.json"
+        model_path = folder / "model.pth"
+        target_model_path = folder / "target_model.pth"
+        optim_path = folder / "optimizer.pth"
+
+        if not config_path.exists():
+            raise FileNotFoundError(f"Missing config.json in {str(folder)!r}")
+        if not model_path.exists():
+            raise FileNotFoundError(f"Missing model.pth in {str(folder)!r}")
+
+        with open(config_path, "r", encoding="utf-8") as f:
+            config = json.load(f)
+
+        # Reconstruct online & target networks from saved full objects
+        loaded_model = torch.load(model_path, map_location=_DEVICE, weights_only=False)
+        loaded_target = (
+            torch.load(target_model_path, map_location=_DEVICE, weights_only=False)
+            if target_model_path.exists()
+            else torch.load(model_path, map_location=_DEVICE, weights_only=False)
+        )
+
+        agent = cls(
+            model=loaded_model,
+            target_model=loaded_target,
+            env=env,
+            learning_rate=config.get("learning_rate", 0.0012),
+            epsilon=config.get("epsilon", 0.1),
+            epsilon_dacay=config.get("epsilon_decay", 0.995),
+            min_epsilon=config.get("min_epsilon", 0.01),
+            gamma=config.get("gamma", 0.9),
+            batch_size=config.get("batch_size", 8),
+            target_update_iter=config.get("target_update_iter", 400),
+            train_nums=config.get("train_nums", 5000),
+            buffer_size=config.get("buffer_size", 200),
+            alpha=config.get("alpha", 0.4),
+            beta=config.get("beta", 0.4),
+        )
+
+        # The constructor moves models to device and creates a *new* optimizer;
+        # replace them with the loaded objects that are already on _DEVICE.
+        agent.model = loaded_model
+        agent.target_model = loaded_target
+
+        if load_gradients and optim_path.exists():
+            state = torch.load(optim_path, map_location=_DEVICE, weights_only=False)
+            agent.optimizer.load_state_dict(state)
+
+        return agent
+
+    @classmethod
+    def from_pretrained(
+        cls,
+        repo_name: str,
+        env: Any,
+        access_token: Optional[str] = None,
+        version: Optional[str] = None,
+        load_gradients: bool = False,
+    ) -> "DQNAgent":
+        """Load pretrained model from local directory or Hugging Face Hub.
+
+        Args:
+            repo_name: Path to local folder with weights **or** repository
+                name in format ``namespace/repo_name`` on Hugging Face Hub.
+            env: A Gymnasium-compatible environment (required for
+                reconstruction).
+            access_token: Access token for private HF repository.
+            version: Revision / branch / tag of HF repository.
+            load_gradients: If ``True``, also load optimiser states for
+                continuing training.
+
+        Returns:
+            DQNAgent: Initialised agent with loaded weights.
+        """
+        # 1) Try local loading (absolute / relative path)
+        p = Path(str(repo_name)).expanduser()
+        if p.is_dir():
+            return cls.load(p, env=env, load_gradients=load_gradients)
+
+        # 2) If it looks like a file-system path but doesn't exist -> error
+        pathlike_prefixes = ("./", "../", "/", "~")
+        if str(repo_name).startswith(pathlike_prefixes):
+            if not p.exists() or not p.is_dir():
+                raise FileNotFoundError(
+                    f"Local directory not found: '{repo_name}'."
+                    " Please check the path."
+                )
+            return cls.load(p, env=env, load_gradients=load_gradients)
+
+        # 3) Otherwise treat as a Hugging Face Hub repo id
+        folder_path = snapshot_download(
+            repo_id=repo_name, token=access_token, revision=version
+        )
+        return cls.load(folder_path, env=env, load_gradients=load_gradients)
+
+    def publish_to_hub(
+        self,
+        repo_name: str,
+        folder_path: Union[str, Path],
+        access_token: Optional[str] = None,
+    ) -> None:
+        """Publish saved model to Hugging Face Hub.
+
+        Args:
+            repo_name: Repository id on Hugging Face Hub
+                (e.g. ``"my-org/dqn-cartpole"``).
+            folder_path: Local folder that contains saved weights
+                (as written by :meth:`save`).
+            access_token: HF access token. If ``None``, the token cached
+                by ``huggingface-cli login`` will be used.
+        """
+        api = HfApi()
+        api.upload_folder(
+            folder_path=str(folder_path),
+            repo_id=repo_name,
+            repo_type="model",
+            token=access_token,
+        )
+
 
 class PERNARXAgent:
     """DQN Agent with NARX training model.
 
     Args:
-        model (tf.keras.Model): Deep Q-network model.
-        target_model (tf.keras.Model): Target deep Q-network model.
+        model (torch.nn.Module): Deep Q-network model.
+        target_model (torch.nn.Module): Target deep Q-network model.
         env (gym.Env): Gym environment.
         learning_rate (float, optional): Learning rate.
         epsilon (float, optional): Environment exploration probability.
@@ -668,6 +944,11 @@ class PERNARXAgent:
         beta_increment_per_sample: float = 0.001,
         log_dir: str | None = None,
         verbose_histogram: bool = False,
+        wandb_project: Optional[str] = None,
+        wandb_entity: Optional[str] = None,
+        wandb_run_name: Optional[str] = None,
+        wandb_tags: Optional[Sequence[str]] = None,
+        wandb_config: Optional[Mapping[str, Any]] = None,
     ) -> None:
         """Initialize PER-NARX agent and buffers.
 
@@ -696,7 +977,20 @@ class PERNARXAgent:
         self.target_model = target_model.to(self.device)
         self.optimizer = torch.optim.Adam(self.model.parameters(), lr=learning_rate)
         self.log_dir = Path(log_dir) if log_dir is not None else None
-        self.writer = create_metric_writer(self.log_dir)
+        self.wandb_project = wandb_project
+        self.wandb_entity = wandb_entity
+        self.wandb_run_name = wandb_run_name
+        self.wandb_tags = wandb_tags
+        self.wandb_config = wandb_config
+        self.writer = create_metric_writer(
+            tb_log_dir=self.log_dir,
+            wandb_project=wandb_project,
+            wandb_entity=wandb_entity,
+            wandb_run_name=wandb_run_name,
+            wandb_tags=wandb_tags,
+            wandb_config=wandb_config,
+            algo="dqn-narx",
+        )
 
         # parameters
         self.env = env  # gym environment
@@ -730,17 +1024,37 @@ class PERNARXAgent:
         self.abs_error_upper = 1
         self.verbose_histogram = verbose_histogram
         self.global_step = 0
+        self.global_env_step = 0
         self.episode_idx = 0
 
-    def train(self) -> None:
-        """Function for training."""
+    def train(
+        self,
+        num_episodes: Optional[int] = None,
+        *,
+        max_steps: Optional[int] = None,
+        save_best: bool = False,
+        save_path: Optional[str] = None,
+        verbose: bool = True,
+        **kwargs: Any,
+    ) -> dict:
+        """Train the PERNARX variant (unified interface).
 
+        See :meth:`DQNAgent.train` for semantics. Arguments mirror the
+        canonical unified signature.
+        """
+        _ = (save_best, save_path, verbose, kwargs)
+        if num_episodes is not None and max_steps is not None:
+            self.train_nums = int(num_episodes) * int(max_steps)
+        elif max_steps is not None:
+            self.train_nums = int(max_steps)
         obs, _info = self.env.reset()
         prev_action = [0]
         episode_reward = 0.0
+        episode_length = 0
         pbar = tqdm(range(1, self.train_nums), desc="PERNARXAgent Train", unit="step")
         recent_loss = None
         for t in pbar:
+            self.global_env_step = t
             print(obs, prev_action)
             best_action, _q_values = self.model.action_value(obs[None])
 
@@ -748,6 +1062,7 @@ class PERNARXAgent:
             next_obs, reward, terminated, truncated, _info = self.env.step(action)
             done = bool(terminated or truncated)
             episode_reward += float(reward)
+            episode_length += 1
             if t == 1:
                 p = self.p1
             else:
@@ -768,18 +1083,30 @@ class PERNARXAgent:
             if t % self.target_update_iter == 0:
                 self.update_target_model()
             if done:
-                # Episode end logging
-                self.writer.add_scalar(
-                    "Performance/Reward", episode_reward, self.episode_idx
+                # Episode end logging (canonical schema)
+                self.writer.log_episode(
+                    reward=float(episode_reward),
+                    length=int(episode_length),
+                    env_step=int(self.global_env_step),
+                    terminated=bool(terminated),
+                    truncated=bool(truncated),
                 )
                 self.writer.add_scalar(
-                    "Exploration/Epsilon", self.epsilon, self.episode_idx
+                    schema.DQN.EPSILON,
+                    float(self.epsilon),
+                    env_step=self.global_env_step,
                 )
                 self.episode_idx += 1
                 episode_reward = 0.0
+                episode_length = 0
                 obs, _info = self.env.reset()  # one episode end
             else:
                 obs = next_obs
+        self.writer.flush()
+        # Note: don't assert_contract_satisfied() if max_steps is so small that the
+        # warmup never ends and no train_step() ever runs.
+        self.writer.assert_contract_satisfied()
+        return {"episodes": int(self.episode_idx)}
 
     def train_step(self) -> Any:
         """Function for training step.
@@ -840,13 +1167,58 @@ class PERNARXAgent:
         td_err_max = float(np.max(abs_td_error)) if abs_td_error.size > 0 else 0.0
         td_err_min = float(np.min(abs_td_error)) if abs_td_error.size > 0 else 0.0
 
-        self.writer.add_scalar("Loss/DQN", float(loss.item()), self.global_step)
-        self.writer.add_scalar("Q/PredSA/Mean", q_pred_sa_mean, self.global_step)
-        self.writer.add_scalar("Q/TargetSA/Mean", q_target_sa_mean, self.global_step)
-        self.writer.add_scalar("TD-Error/Mean", td_err_mean, self.global_step)
-        self.writer.add_scalar("TD-Error/Max", td_err_max, self.global_step)
-        self.writer.add_scalar("TD-Error/Min", td_err_min, self.global_step)
-        self.writer.add_scalar("PER/Beta", float(self.beta), self.global_step)
+        self.writer.add_scalar(
+            schema.DQN.LOSS_Q,
+            float(loss.item()),
+            env_step=self.global_env_step,
+        )
+        self.writer.add_scalar(
+            schema.DQN.Q_PRED_SA_MEAN,
+            q_pred_sa_mean,
+            env_step=self.global_env_step,
+        )
+        self.writer.add_scalar(
+            schema.DQN.Q_TARGET_SA_MEAN,
+            q_target_sa_mean,
+            env_step=self.global_env_step,
+        )
+        self.writer.add_scalar(
+            schema.VALUE_TD_ERROR_MEAN,
+            td_err_mean,
+            env_step=self.global_env_step,
+        )
+        self.writer.add_scalar(
+            schema.VALUE_TD_ERROR_MAX,
+            td_err_max,
+            env_step=self.global_env_step,
+        )
+        self.writer.add_scalar(
+            schema.VALUE_TD_ERROR_MIN,
+            td_err_min,
+            env_step=self.global_env_step,
+        )
+        self.writer.add_scalar(
+            schema.DQN.PER_BETA,
+            float(self.beta),
+            env_step=self.global_env_step,
+        )
+
+        self.global_step += 1
+        self.writer.add_scalar(
+            schema.TRAIN_UPDATES,
+            self.global_step,
+            env_step=self.global_env_step,
+        )
+        self.writer.add_scalar(
+            schema.TRAIN_LR,
+            float(self.optimizer.param_groups[0]["lr"]),
+            env_step=self.global_env_step,
+        )
+        self.writer.add_scalar(
+            schema.TRAIN_REPLAY_SIZE,
+            int(self.num_in_buffer),
+            env_step=self.global_env_step,
+        )
 
         if (
             self.verbose_histogram
@@ -854,9 +1226,12 @@ class PERNARXAgent:
             and (self.global_step % 1000 == 0)
         ):
             for name, param in self.model.named_parameters():
-                self.writer.add_histogram(f"DQN/{name}", param, self.global_step)
+                self.writer.add_histogram(
+                    f"weights/q/{name}",
+                    param,
+                    env_step=self.global_env_step,
+                )
 
-        self.global_step += 1
         return float(loss.item())
 
     def sum_tree_sample(self, k: int):
@@ -874,10 +1249,14 @@ class PERNARXAgent:
         is_weights = np.empty((k, 1))
         self.beta = min(1.0, self.beta + self.beta_increment_per_sample)
         # calculate max_weight
-        min_prob = (
-            np.min(self.replay_buffer.tree[-self.replay_buffer.capacity :])
-            / self.replay_buffer.total_p
-        )
+        # Only consider filled leaves (buffer may not be full yet, so many leaves are 0).
+        leaves = self.replay_buffer.tree[-self.replay_buffer.capacity :]
+        filled_leaves = leaves[leaves > 0]
+        if len(filled_leaves) == 0:
+            min_prob = 1.0  # uniform fallback
+        else:
+            min_prob = np.min(filled_leaves) / self.replay_buffer.total_p
+        min_prob = max(min_prob, 1e-8)  # guard against division by zero
         max_weight = np.power(self.buffer_size * min_prob, -self.beta)
         segment = self.replay_buffer.total_p / k
         for i in range(k):
@@ -919,6 +1298,7 @@ class PERNARXAgent:
             # Fallback if environment doesn't follow Gymnasium API exactly
             obs = obs_info
         done, ep_reward = False, 0
+        ep_length = 0
         # one episode until done
         while not done:
             action, _q_values = self.model.action_value(
@@ -932,13 +1312,21 @@ class PERNARXAgent:
                 next_obs, reward, done, _info = step_out
             obs = next_obs
             ep_reward += reward
+            ep_length += 1
             if render:  # visually show
                 env.render()
             time.sleep(0.05)
         env.close()
-        # Log evaluation reward
+        # Log evaluation reward / length (canonical schema)
         self.writer.add_scalar(
-            "Performance/EvalReward", float(ep_reward), self.global_step
+            schema.EVAL_EPISODE_REWARD,
+            float(ep_reward),
+            env_step=self.global_env_step,
+        )
+        self.writer.add_scalar(
+            schema.EVAL_EPISODE_LENGTH,
+            int(ep_length),
+            env_step=self.global_env_step,
         )
         return ep_reward
 
@@ -997,6 +1385,12 @@ class PERNARXAgent:
         """Target neural network update function."""
 
         self.target_model.load_state_dict(self.model.state_dict())
+        # Log target update event (canonical schema)
+        self.writer.add_scalar(
+            schema.DQN.TARGET_UPDATE,
+            1,
+            env_step=self.global_env_step,
+        )
 
     def get_target_value(self, obs: np.ndarray) -> np.ndarray:
         """Get Q-values from target neural network.

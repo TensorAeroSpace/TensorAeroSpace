@@ -33,14 +33,14 @@ class PositionalEncoding(nn.Module):
         super(PositionalEncoding, self).__init__()
         self.dropout = nn.Dropout(p=dropout)
 
-        pe = torch.zeros(max_len, d_model)
-        position = torch.arange(0, max_len, dtype=torch.float).unsqueeze(1)
+        position = torch.arange(max_len).unsqueeze(1)
         div_term = torch.exp(
-            torch.arange(0, d_model, 2).float() * (-math.log(10000.0) / d_model)
+            torch.arange(0, d_model, 2) * (-math.log(10000.0) / d_model)
         )
-        pe[:, 0::2] = torch.sin(position * div_term)
-        pe[:, 1::2] = torch.cos(position * div_term)
-        pe = pe.unsqueeze(0).transpose(0, 1)
+        # Build as (1, max_len, d_model) for batch-first
+        pe = torch.zeros(1, max_len, d_model)
+        pe[0, :, 0::2] = torch.sin(position * div_term)
+        pe[0, :, 1::2] = torch.cos(position * div_term)
         self.register_buffer("pe", pe)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
@@ -48,12 +48,13 @@ class PositionalEncoding(nn.Module):
 
         Args:
             x (torch.Tensor): Input tensor of shape
-                ``(seq_len, batch_size, d_model)``.
+                ``(batch_size, seq_len, d_model)``.
 
         Returns:
             torch.Tensor: Tensor with positional encoding applied.
         """
-        x = x + self.pe[: x.size(0), :]
+        # x shape: (batch, seq_len, d_model)
+        x = x + self.pe[:, : x.size(1), :]
         return self.dropout(x)
 
 
@@ -102,7 +103,7 @@ class TransformerDynamicsModel(nn.Module):
         self.seq_len = seq_len
         self.embedding = nn.Linear(input_dim, d_model)
 
-        # self.pos_encoder = PositionalEncoding(d_model, dropout)
+        self.pos_encoder = PositionalEncoding(d_model, dropout)
 
         encoder_layers = nn.TransformerEncoderLayer(
             d_model=d_model,
@@ -111,8 +112,13 @@ class TransformerDynamicsModel(nn.Module):
             dropout=dropout,
             batch_first=True,
         )
+        # enable_nested_tensor=False silences the PyTorch warning about
+        # incompatibility with odd nhead values; we don't rely on the nested
+        # fast-path here, so this is a no-op for performance.
         self.transformer_encoder = nn.TransformerEncoder(
-            encoder_layers, num_layers=num_encoder_layers
+            encoder_layers,
+            num_layers=num_encoder_layers,
+            enable_nested_tensor=False,
         )
         self.fc_out = nn.Linear(d_model, output_dim)
 
@@ -130,7 +136,7 @@ class TransformerDynamicsModel(nn.Module):
         x = x.unsqueeze(1)  # x: (batch_size, seq_len=1, input_dim)
 
         x = self.embedding(x)  # (batch_size, seq_len, d_model)
-        # x = self.pos_encoder(x)
+        x = self.pos_encoder(x)
         x = self.transformer_encoder(x)  # (batch_size, seq_len, d_model)
         x = x.squeeze(1)  # (batch_size, d_model)
         x = self.fc_out(x)  # (batch_size, output_dim)

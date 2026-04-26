@@ -35,10 +35,10 @@ class LinearLongitudinalF16(gym.Env):
         initial_state: np.ndarray,
         reference_signal: np.ndarray,
         number_time_steps: int,
-        tracking_states: list = ["alpha", "q"],
-        state_space: list = ["alpha", "q"],
-        control_space: list = ["ele"],
-        output_space: list = ["alpha", "q"],
+        tracking_states: list[str] | None = None,
+        state_space: list[str] | None = None,
+        control_space: list[str] | None = None,
+        output_space: list[str] | None = None,
         reward_func: callable = None,
         use_reward: bool = True,
     ) -> None:
@@ -61,10 +61,12 @@ class LinearLongitudinalF16(gym.Env):
         self.initial_state = initial_state
         self.reference_signal = reference_signal
         self.number_time_steps = number_time_steps
-        self.tracking_states = tracking_states
-        self.state_space = state_space
-        self.control_space = control_space
-        self.output_space = output_space
+        self.tracking_states = (
+            tracking_states if tracking_states is not None else ["alpha", "q"]
+        )
+        self.state_space = state_space if state_space is not None else ["alpha", "q"]
+        self.control_space = control_space if control_space is not None else ["ele"]
+        self.output_space = output_space if output_space is not None else ["alpha", "q"]
         self.use_reward = use_reward
         self.reward_func = (
             reward_func if reward_func is not None else self.default_reward
@@ -81,14 +83,21 @@ class LinearLongitudinalF16(gym.Env):
         )
 
         self.indices_tracking_states = [
-            state_space.index(tracking_states[i]) for i in range(len(tracking_states))
+            self.state_space.index(self.tracking_states[i])
+            for i in range(len(self.tracking_states))
         ]
 
         self.action_space = spaces.Box(
-            low=-0.5, high=0.5, shape=(len(control_space), 1), dtype=np.float32
+            low=-self.max_action_value,
+            high=self.max_action_value,
+            shape=(len(self.control_space),),
+            dtype=np.float32,
         )
         self.observation_space = spaces.Box(
-            low=-np.inf, high=np.inf, shape=(len(state_space), 1), dtype=np.float32
+            low=-np.inf,
+            high=np.inf,
+            shape=(len(self.state_space),),
+            dtype=np.float32,
         )
 
         self.current_step = 0
@@ -163,13 +172,13 @@ class LinearLongitudinalF16(gym.Env):
             reward = self.reward_func(
                 next_state, self.reference_signal, self.current_step
             )
-        self.done = self.current_step >= self.number_time_steps - 2
+        self.done = self.current_step >= self.number_time_steps - 1
         info = self._get_info()
 
         reward_value = float(np.asarray(reward, dtype=float).squeeze())
 
         return (
-            next_state.reshape([-1, 1]),
+            np.asarray(next_state).reshape(-1).astype(np.float32),
             reward_value,
             self.done,
             False,
@@ -197,20 +206,19 @@ class LinearLongitudinalF16(gym.Env):
         # Пересобираем начальное состояние под модель
         model_x0 = self._build_model_initial_state(self.initial_state, self.state_space)
 
+        # Constructor already calls initialise_system internally, so no
+        # explicit call is needed here.
         self.model = LongitudinalF16(
             model_x0,
             number_time_steps=self.number_time_steps,
             selected_state_output=self.state_space,
-        )
-        self.model.initialise_system(
-            x0=model_x0, number_time_steps=self.number_time_steps
         )
         info = self._get_info()
 
         return (
             np.array(model_x0, dtype=np.float32)[
                 self.model.selected_state_index
-            ].reshape([-1, 1]),
+            ].reshape(-1),
             info,
         )
 

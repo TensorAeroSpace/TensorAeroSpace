@@ -18,7 +18,7 @@ def env_setup():
 
     # Reference signal
     reference_signals = unit_step(
-        degree=0.001, tp=tp, time_step=10, output_rad=True
+        degree=0.001, tp=tp, time_step=0.1, output_rad=True
     ).reshape(1, -1)
 
     # Initial state: [rho (km), rho_dot (m/s), theta_dot (rad/s)]
@@ -201,7 +201,7 @@ def test_initial_action_handling(env_setup):
     tp = generate_time_period(tn=20, dt=dt)
     number_time_steps = len(tp)
     reference_signals = unit_step(
-        degree=0.001, tp=tp, time_step=10, output_rad=True
+        degree=0.001, tp=tp, time_step=0.1, output_rad=True
     ).reshape(1, -1)
     initial_state = np.array([6371.0, 0.0, 0.001])
 

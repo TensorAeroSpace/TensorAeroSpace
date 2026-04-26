@@ -237,10 +237,10 @@ class LinearLongitudinalB747(gym.Env):
                     self.reference_signal,
                     self.current_step,
                 )
-        self.done = self.current_step >= self.number_time_steps - 2
+        self.done = self.current_step >= self.number_time_steps - 1
 
         return (
-            np.array(next_state, dtype=np.float32).reshape(-1, 1),
+            np.array(next_state, dtype=np.float32).reshape(-1),
             reward,
             self.done,
             False,
@@ -290,7 +290,7 @@ class LinearLongitudinalB747(gym.Env):
                 next_state[2] = np.rad2deg(next_state[2])
             if next_state.shape[0] >= 4:
                 next_state[3] = np.rad2deg(next_state[3])
-        observation = next_state.astype(np.float32).reshape(-1, 1)
+        observation = next_state.astype(np.float32).reshape(-1)
         return observation, self._get_info()
 
     def render(self):
@@ -343,6 +343,7 @@ class ImprovedB747Env(gym.Env):
         early_termination_penalty: float = 0.0,
         early_termination_penalty_per_step: float = 0.0,
         include_reference_in_obs: bool = False,
+        render_mode: Optional[str] = None,
     ):
         """Initialize ImprovedB747Env environment.
 
@@ -390,7 +391,13 @@ class ImprovedB747Env(gym.Env):
             raise ValueError(
                 f"reward_mode must be 'tracking' or 'step_response', got {reward_mode!r}"
             )
+        if render_mode is not None and render_mode not in self.metadata["render_modes"]:
+            raise ValueError(
+                f"render_mode must be one of {self.metadata['render_modes']} "
+                f"or None, got {render_mode!r}"
+            )
         super().__init__()
+        self.render_mode = render_mode
 
         # Normalization parameters and physical constraints
         self.max_pitch_rad = np.deg2rad(20.0)  # |theta| <= 20 deg
@@ -893,7 +900,7 @@ class ImprovedB747Env(gym.Env):
 
         # Termination conditions
         terminated = bool(abs(theta) > self.max_pitch_rad)
-        truncated = self.current_step >= self.number_time_steps - 2
+        truncated = self.current_step >= self.number_time_steps - 1
 
         # --------------------------------------------------------------
         # Survival shaping (optional):
@@ -905,7 +912,7 @@ class ImprovedB747Env(gym.Env):
             remaining_steps = float(
                 max(
                     0,
-                    int(self.number_time_steps - 2) - int(self.current_step),
+                    int(self.number_time_steps - 1) - int(self.current_step),
                 )
             )
             reward = float(-100.0 - self.early_termination_penalty) - float(
@@ -1325,7 +1332,7 @@ class ImprovedB747Env(gym.Env):
         txt = self._font.render(info, True, (240, 240, 240))
         self._screen.blit(txt, (16, 16))
 
-    def render(self, mode: str = "human"):
+    def render(self):
         """2D flight visualization using Pygame.
 
         Features:
@@ -1333,11 +1340,10 @@ class ImprovedB747Env(gym.Env):
             - Elevator indicator: horizontal scale [-25, 25] deg
             - HUD: step, current/target pitch, reward
 
-        Args:
-            mode (str): Render mode. Only "human" is supported.
-                Defaults to "human".
+        Render mode is controlled by the ``render_mode`` argument passed at
+        environment construction (Gymnasium 0.26+ API).
         """
-        if mode != "human" or self._pygame_closed or self.state is None:
+        if self.render_mode != "human" or self._pygame_closed or self.state is None:
             return
 
         self._init_pygame()

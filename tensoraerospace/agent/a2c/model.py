@@ -9,6 +9,7 @@ import datetime
 import json
 import time
 from pathlib import Path
+from typing import Any, Mapping, Optional, Sequence
 
 import numpy as np
 import torch
@@ -22,7 +23,7 @@ from ..base import (
     get_class_from_string,
     serialize_env,
 )
-from ..metrics import create_metric_writer
+from ..metrics import create_metric_writer, schema
 from .narx_critic import build_narx_features
 
 
@@ -301,6 +302,12 @@ class A2C(BaseRLModel):
         max_grad_norm=0.5,
         seed=None,
         device=None,
+        log_dir=None,
+        wandb_project: Optional[str] = None,
+        wandb_entity: Optional[str] = None,
+        wandb_run_name: Optional[str] = None,
+        wandb_tags: Optional[Sequence[str]] = None,
+        wandb_config: Optional[Mapping[str, Any]] = None,
     ):
         """Initialize A2C agent.
 
@@ -317,13 +324,17 @@ class A2C(BaseRLModel):
             seed (int, optional): Random seed for reproducibility.
             device (str or torch.device, optional): Device to use
                 ('cpu' or 'cuda'). If None, auto-selects CUDA if available.
+            log_dir (str, optional): TensorBoard log directory. If None,
+                the default ``runs/`` directory of ``SummaryWriter`` is used.
         """
         self.env = env
         self.state = None
         self.done = True
         self.steps = 0
         self.episode_reward = 0
+        self.episode_length = 0
         self.episode_rewards = []
+        self.update_count = 0
 
         # Set device
         if device is None:
@@ -350,7 +361,21 @@ class A2C(BaseRLModel):
             self.critic.parameters(), lr=self.critic_lr
         )
 
-        self.writer = create_metric_writer()
+        self.log_dir = log_dir
+        self.wandb_project = wandb_project
+        self.wandb_entity = wandb_entity
+        self.wandb_run_name = wandb_run_name
+        self.wandb_tags = wandb_tags
+        self.wandb_config = wandb_config
+        self.writer = create_metric_writer(
+            tb_log_dir=log_dir,
+            wandb_project=wandb_project,
+            wandb_entity=wandb_entity,
+            wandb_run_name=wandb_run_name,
+            wandb_tags=wandb_tags,
+            wandb_config=wandb_config,
+            algo="a2c",
+        )
 
         print(f"A2C initialized on device: {self.device}")
 
@@ -483,37 +508,20 @@ class A2C(BaseRLModel):
 
             self.state = next_state
             self.steps += 1
+            self.episode_length += 1
             self.episode_reward += reward
 
             if self.done:
                 self.episode_rewards.append(self.episode_reward)
-
-                # Логируем награду за эпизод
-                self.writer.add_scalar(
-                    "Performance/Episode_Reward",
-                    self.episode_reward,
-                    global_step=self.steps,
+                self.writer.log_episode(
+                    reward=float(self.episode_reward),
+                    length=int(self.episode_length),
+                    env_step=int(self.steps),
+                    terminated=bool(terminated),
+                    truncated=bool(truncated),
                 )
-
-                # Логируем скользящее среднее за последние 10 эпизодов
-                if len(self.episode_rewards) >= 10:
-                    avg_reward = np.mean(self.episode_rewards[-10:])
-                    self.writer.add_scalar(
-                        "Performance/Episode_Reward_Avg_10",
-                        avg_reward,
-                        global_step=self.steps,
-                    )
-
-                # Логируем скользящее среднее за последние 100 эпизодов
-                if len(self.episode_rewards) >= 100:
-                    avg_reward_100 = np.mean(self.episode_rewards[-100:])
-                    self.writer.add_scalar(
-                        "Performance/Episode_Reward_Avg_100",
-                        avg_reward_100,
-                        global_step=self.steps,
-                    )
-
                 self.episode_reward = 0
+                self.episode_length = 0
 
         return memory
 
@@ -580,40 +588,74 @@ class A2C(BaseRLModel):
         clip_grad_norm_(self.actor_optim, self.max_grad_norm)
         self.actor_optim.step()
 
-        # Reporting
-        self.writer.add_scalar("Loss/Log_probs", -logs_probs.mean(), global_step=steps)
-        self.writer.add_scalar("Loss/Entropy", entropy, global_step=steps)
+        # Reporting (canonical TB metrics).
+        # ``entropy`` and ``actor_loss`` still hold autograd graph references
+        # at this point; detach before casting to plain floats so we never
+        # accidentally extend the graph through the writer.
         self.writer.add_scalar(
-            "Loss/Entropy_beta", self.entropy_beta, global_step=steps
+            schema.LOSS_ENTROPY, float(entropy.detach()), env_step=steps
         )
-        self.writer.add_scalar("Loss/Actor", actor_loss, global_step=steps)
-        self.writer.add_scalar("Loss/Critic", critic_loss, global_step=steps)
+        self.writer.add_scalar(
+            schema.A2C.ENTROPY_BETA, float(self.entropy_beta), env_step=steps
+        )
+        self.writer.add_scalar(
+            schema.LOSS_ACTOR, float(actor_loss.detach()), env_step=steps
+        )
+        self.writer.add_scalar(
+            schema.LOSS_CRITIC, float(critic_loss.detach()), env_step=steps
+        )
 
-        # Advantage metrics (для диагностики)
+        # Advantage diagnostics
         self.writer.add_scalar(
-            "Advantage/Raw_Mean", advantage.mean(), global_step=steps
+            schema.A2C.ADVANTAGE_MEAN, float(advantage.mean()), env_step=steps
         )
-        self.writer.add_scalar("Advantage/Raw_Std", advantage.std(), global_step=steps)
         self.writer.add_scalar(
-            "Advantage/Normalized_Mean", advantage_normalized.mean(), global_step=steps
+            schema.A2C.ADVANTAGE_STD, float(advantage.std()), env_step=steps
+        )
+        self.writer.add_scalar(
+            schema.A2C.ADVANTAGE_NORMALIZED_MEAN,
+            float(advantage_normalized.mean()),
+            env_step=steps,
         )
 
         # Value and TD target metrics
-        self.writer.add_scalar("Value/Mean", value_updated.mean(), global_step=steps)
         self.writer.add_scalar(
-            "Value/TD_Target_Mean", td_target.mean(), global_step=steps
+            schema.VALUE_MEAN, float(value_updated.mean()), env_step=steps
         )
         self.writer.add_scalar(
-            "Value/Value_Before_Update", value.mean().item(), global_step=steps
+            schema.VALUE_TD_TARGET, float(td_target.mean()), env_step=steps
+        )
+        self.writer.add_scalar(
+            schema.A2C.VALUE_BEFORE_UPDATE,
+            float(value.detach().mean().item()),
+            env_step=steps,
         )
 
         # Policy statistics
         self.writer.add_scalar(
-            "Policy/Action_Std", norm_dists.stddev.mean(), global_step=steps
+            schema.POLICY_ACTION_STD,
+            float(norm_dists.stddev.detach().mean()),
+            env_step=steps,
+        )
+
+        # Training counters (mandatory minimum tier).
+        self.update_count += 1
+        self.writer.add_scalar(
+            schema.TRAIN_UPDATES, int(self.update_count), env_step=steps
+        )
+        self.writer.add_scalar(
+            schema.TRAIN_LR,
+            float(self.actor_optim.param_groups[0]["lr"]),
+            env_step=steps,
         )
 
     def train(
         self,
+        num_episodes=None,
+        *,
+        max_steps=None,
+        save_best: bool = False,
+        verbose: bool = True,
         steps_on_memory=128,
         episodes=2000,
         episode_length=300,
@@ -621,57 +663,93 @@ class A2C(BaseRLModel):
         log_freq=10,
         save_freq=None,
         save_path=None,
+        **kwargs,
     ):
-        """Train the agent.
+        """Train the A2C agent (unified interface with legacy kwargs).
+
+        The method accepts both the canonical unified-API parameters
+        (``num_episodes``, ``max_steps``, ``save_best``, ``save_path``,
+        ``verbose``) and A2C's historical keyword-only options
+        (``steps_on_memory``, ``episodes``, ``episode_length`` …) so
+        existing notebooks continue to work unchanged.
 
         Args:
-            steps_on_memory (int): Number of steps to collect before learning.
-                Defaults to 128.
-            episodes (int): Total number of training episodes. Defaults to 2000.
-            episode_length (int): Maximum episode length. Defaults to 300.
-            discount_rewards (bool): Whether to use Monte Carlo returns (True)
-                or TD(0) (False). Defaults to True (recommended for stability).
-            log_freq (int): Frequency of console logging (in iterations).
-                Defaults to 10.
-            save_freq (int, optional): Frequency of saving checkpoints (in iterations).
-                If None, does not save during training.
+            num_episodes (int, optional): Unified-API alias for
+                ``episodes``. When provided, it overrides the legacy
+                ``episodes`` keyword.
+            max_steps (int, optional): Unified-API alias for
+                ``episode_length``. When provided, it overrides the
+                legacy ``episode_length`` keyword.
+            save_best (bool): Kept for API consistency – A2C always
+                saves the best model if ``save_path`` is provided.
+            verbose (bool): Reserved for symmetry with other agents.
+            steps_on_memory (int): Number of steps to collect before
+                learning. Defaults to 128.
+            episodes (int): Total number of training episodes. Defaults
+                to 2000.
+            episode_length (int): Maximum episode length. Defaults to
+                300.
+            discount_rewards (bool): Whether to use Monte Carlo returns
+                (True) or TD(0) (False). Defaults to True (recommended
+                for stability).
+            log_freq (int): Frequency of console logging (in
+                iterations). Defaults to 10.
+            save_freq (int, optional): Frequency of saving checkpoints
+                (in iterations). If None, does not save during
+                training.
             save_path (str, optional): Base path for saving checkpoints.
-                If None, uses current directory / 'checkpoints'.
+                If None, uses current directory / ``checkpoints``.
+            **kwargs: Ignored; present for forward-compat with the
+                unified interface.
 
         Returns:
             dict: Training statistics including episode rewards.
         """
+        _ = (save_best, verbose, kwargs)
+        # Unified-API overrides: translate to legacy names.
+        if num_episodes is not None:
+            episodes = int(num_episodes)
+        if max_steps is not None:
+            episode_length = int(max_steps)
         total_steps = (episodes * episode_length) // steps_on_memory
         best_reward = -np.inf
 
-        for i in tqdm(range(total_steps), desc="Training"):
-            memory = self.run_episode(steps_on_memory)
-            self.learn(memory, self.steps, discount_rewards=discount_rewards)
+        try:
+            for i in tqdm(range(total_steps), desc="Training"):
+                memory = self.run_episode(steps_on_memory)
+                self.learn(memory, self.steps, discount_rewards=discount_rewards)
 
-            # Console logging
-            if i % log_freq == 0 and len(self.episode_rewards) > 0:
-                recent_rewards = self.episode_rewards[-10:]
-                avg_reward = np.mean(recent_rewards)
-                print(
-                    f"Step {self.steps} | "
-                    f"Episodes: {len(self.episode_rewards)} | "
-                    f"Avg Reward (last 10): {avg_reward:.2f}"
-                )
+                # Console logging
+                if i % log_freq == 0 and len(self.episode_rewards) > 0:
+                    recent_rewards = self.episode_rewards[-10:]
+                    avg_reward = np.mean(recent_rewards)
+                    print(
+                        f"Step {self.steps} | "
+                        f"Episodes: {len(self.episode_rewards)} | "
+                        f"Avg Reward (last 10): {avg_reward:.2f}"
+                    )
 
-                # Save best model
-                if avg_reward > best_reward:
-                    best_reward = avg_reward
-                    if save_path:
-                        best_path = Path(save_path) / "best_model"
-                        best_path.mkdir(parents=True, exist_ok=True)
-                        self.save(best_path)
+                    # Save best model
+                    if avg_reward > best_reward:
+                        best_reward = avg_reward
+                        if save_path:
+                            best_path = Path(save_path) / "best_model"
+                            best_path.mkdir(parents=True, exist_ok=True)
+                            self.save(best_path)
 
-            # Periodic checkpoint saving
-            if save_freq and i % save_freq == 0 and i > 0:
-                if save_path is None:
-                    save_path = Path.cwd() / "checkpoints"
-                checkpoint_path = Path(save_path) / f"checkpoint_step_{self.steps}"
-                self.save(checkpoint_path)
+                # Periodic checkpoint saving
+                if save_freq and i % save_freq == 0 and i > 0:
+                    if save_path is None:
+                        save_path = Path.cwd() / "checkpoints"
+                    checkpoint_path = Path(save_path) / f"checkpoint_step_{self.steps}"
+                    self.save(checkpoint_path)
+        finally:
+            # Flush + assert canonical metrics contract before returning. Wrap
+            # in try/finally so the contract check runs even when the training
+            # loop exits early via exception.
+            if hasattr(self, "writer") and self.writer is not None:
+                self.writer.flush()
+                self.writer.assert_contract_satisfied()
 
         return {
             "episode_rewards": self.episode_rewards,
@@ -879,6 +957,24 @@ class A2C(BaseRLModel):
             new_agent = cls.__load(folder_path)
             return new_agent
 
+    def publish_to_hub(self, repo_name, folder_path, access_token=None):
+        """Publish model to Hugging Face Hub.
+
+        Args:
+            repo_name (str): Repository name in Hub.
+            folder_path (str): Path to model folder.
+            access_token (str, optional): Access token for authentication.
+        """
+        from huggingface_hub import HfApi
+
+        api = HfApi()
+        api.upload_folder(
+            folder_path=folder_path,
+            repo_id=repo_name,
+            repo_type="model",
+            token=access_token,
+        )
+
 
 class A2CWithNARXCritic(A2C):
     """A2C variant that uses a NARX critic with history-aware features."""
@@ -964,10 +1060,31 @@ class A2CWithNARXCritic(A2C):
         clip_grad_norm_(self.actor_optim, self.max_grad_norm)
         self.actor_optim.step()
 
-        # Logging
-        self.writer.add_scalar("Loss/Actor", actor_loss, global_step=steps)
-        self.writer.add_scalar("Loss/Critic", critic_loss, global_step=steps)
-        self.writer.add_scalar("Advantage/Mean", advantage.mean(), global_step=steps)
+        # Logging (canonical TB metrics).
         self.writer.add_scalar(
-            "Policy/Action_Std", norm_dists.stddev.mean(), global_step=steps
+            schema.LOSS_ACTOR, float(actor_loss.detach()), env_step=steps
+        )
+        self.writer.add_scalar(
+            schema.LOSS_CRITIC, float(critic_loss.detach()), env_step=steps
+        )
+        self.writer.add_scalar(
+            schema.A2C.ADVANTAGE_MEAN,
+            float(advantage.detach().mean()),
+            env_step=steps,
+        )
+        self.writer.add_scalar(
+            schema.POLICY_ACTION_STD,
+            float(norm_dists.stddev.detach().mean()),
+            env_step=steps,
+        )
+
+        # Training counters (mandatory minimum tier).
+        self.update_count += 1
+        self.writer.add_scalar(
+            schema.TRAIN_UPDATES, int(self.update_count), env_step=steps
+        )
+        self.writer.add_scalar(
+            schema.TRAIN_LR,
+            float(self.actor_optim.param_groups[0]["lr"]),
+            env_step=steps,
         )

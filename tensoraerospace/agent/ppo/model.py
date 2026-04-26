@@ -13,7 +13,17 @@ import os
 import queue
 import threading
 from pathlib import Path
-from typing import Any, Dict, Generator, Optional, Tuple, Union, overload
+from typing import (
+    Any,
+    Dict,
+    Generator,
+    Mapping,
+    Optional,
+    Sequence,
+    Tuple,
+    Union,
+    overload,
+)
 
 import numpy as np
 import torch
@@ -28,7 +38,7 @@ from ..base import (
     get_class_from_string,
     serialize_env,
 )
-from ..metrics import create_metric_writer
+from ..metrics import create_metric_writer, schema
 
 
 def _state_dict_cpu(module: torch.nn.Module) -> Dict[str, torch.Tensor]:
@@ -543,6 +553,11 @@ class PPO(BaseRLModel):
         save_best_model: bool = True,
         best_model_dir: Union[str, Path, None] = None,
         save_best_async: bool = True,
+        wandb_project: Optional[str] = None,
+        wandb_entity: Optional[str] = None,
+        wandb_run_name: Optional[str] = None,
+        wandb_tags: Optional[Sequence[str]] = None,
+        wandb_config: Optional[Mapping[str, Any]] = None,
     ) -> None:
         """Initialize agent with given environment and discount coefficient.
 
@@ -619,7 +634,23 @@ class PPO(BaseRLModel):
         self.best_reward = float("-inf")
         self.avg_rewards_list: list = []
         self.log_dir = Path(log_dir) if log_dir is not None else None
-        self.writer = create_metric_writer(self.log_dir)
+        self.wandb_project = wandb_project
+        self.wandb_entity = wandb_entity
+        self.wandb_run_name = wandb_run_name
+        self.wandb_tags = wandb_tags
+        self.wandb_config = wandb_config
+        self.writer = create_metric_writer(
+            tb_log_dir=self.log_dir,
+            wandb_project=wandb_project,
+            wandb_entity=wandb_entity,
+            wandb_run_name=wandb_run_name,
+            wandb_tags=wandb_tags,
+            wandb_config=wandb_config,
+            algo="ppo",
+        )
+        # Cumulative env-step counter for canonical TB metric x-axis. Incremented
+        # after every self.env.step() call (per parallel env for vector envs).
+        self.global_env_step = 0
 
         # Best-checkpoint saving (optional, async by default)
         self.save_best_model = bool(save_best_model)
@@ -721,7 +752,9 @@ class PPO(BaseRLModel):
             if deterministic:
                 action_t = mean_action_t
             action_exec_t = torch.clamp(action_t, low, high)
-            log_prob_t = dist.log_prob(action_exec_t).sum(dim=-1, keepdim=True)
+            # Compute log_prob from the UNCLAMPED sampled action to avoid biased
+            # gradients when actions saturate at the bounds.
+            log_prob_t = dist.log_prob(action_t).sum(dim=-1, keepdim=True)
         return action_exec_t, mean_action_t, log_prob_t
 
     def _act_tensor_batch(
@@ -758,7 +791,9 @@ class PPO(BaseRLModel):
             if deterministic:
                 action_t = mean_action_t
             action_exec_t = torch.clamp(action_t, low, high)
-            log_prob_t = dist.log_prob(action_exec_t).sum(dim=-1, keepdim=True)
+            # Compute log_prob from the UNCLAMPED sampled action to avoid biased
+            # gradients when actions saturate at the bounds.
+            log_prob_t = dist.log_prob(action_t).sum(dim=-1, keepdim=True)
         return action_exec_t, mean_action_t, log_prob_t
 
     def _is_vector_env(self, obs: Any) -> bool:
@@ -841,8 +876,12 @@ class PPO(BaseRLModel):
                     value = self.critic(obs)
                     action, dist = self.actor(obs)
                     env_action = torch.clamp(action, low, high)
-                    logp = dist.log_prob(env_action).sum(dim=-1, keepdim=True)
+                    # Compute log_prob from the UNCLAMPED sampled action to avoid
+                    # biased gradients when actions saturate at the bounds.
+                    logp = dist.log_prob(action).sum(dim=-1, keepdim=True)
                 step_return = self.env.step(env_action)
+                # Vector env: env.step() advances n_envs steps in parallel.
+                self.global_env_step += int(n_envs)
                 if len(step_return) > 4:
                     next_obs, reward, terminated, truncated, info = step_return
                     terminated_t = self._to_tensor(
@@ -865,7 +904,10 @@ class PPO(BaseRLModel):
                 reward_t = self._to_tensor(reward, dtype=torch.float32).view(-1, 1)
 
                 buf_states.append(obs)
-                buf_actions.append(env_action)
+                # Store the UNCLAMPED sampled action so that old/new log-probs
+                # are computed w.r.t. the same point in the distribution's
+                # support (matching the unclamped log_prob computed above).
+                buf_actions.append(action)
                 buf_logp.append(logp)
                 buf_rewards.append(reward_t)
                 buf_dones.append(done_t)
@@ -1030,24 +1072,73 @@ class PPO(BaseRLModel):
                 reward_p10 = float(avg_reward)
                 reward_p90 = float(avg_reward)
 
-            # Log
-            self.writer.add_scalar("Loss/Actor", avg_aloss, episode)
-            self.writer.add_scalar("Loss/Critic", avg_closs, episode)
-            self.writer.add_scalar("Performance/Reward", avg_reward, episode)
-            self.writer.add_scalar("Performance/RewardMedian", reward_median, episode)
-            self.writer.add_scalar("Performance/RewardP10", reward_p10, episode)
-            self.writer.add_scalar("Performance/RewardP90", reward_p90, episode)
-            self.writer.add_scalar("Performance/Entropy", avg_entropy, episode)
+            # Log canonical TB metrics. PPO logs per-rollout-epoch *aggregates*
+            # (mean across the rollout's finished episodes), not per individual
+            # finished episode -- so we write rollout/* tags directly instead of
+            # using log_episode() which would force terminated/truncated to 0/1.
+            env_step = int(self.global_env_step)
             self.writer.add_scalar(
-                "Performance/Episode Length", avg_episode_length, episode
+                schema.ROLLOUT_EPISODE_REWARD, float(avg_reward), env_step=env_step
             )
-            self.writer.add_scalar("Diagnostics/Approx KL", avg_kl, episode)
-            self.writer.add_scalar("Diagnostics/Clip Fraction", avg_clipfrac, episode)
             self.writer.add_scalar(
-                "Diagnostics/Explained Variance", float(explained_var), episode
+                schema.ROLLOUT_EPISODE_LENGTH,
+                float(avg_episode_length),
+                env_step=env_step,
             )
-            self.writer.add_scalar("Diagnostics/TerminatedCount", term_events, episode)
-            self.writer.add_scalar("Diagnostics/TruncatedCount", trunc_events, episode)
+            self.writer.add_scalar(
+                schema.ROLLOUT_TOTAL_STEPS, env_step, env_step=env_step
+            )
+            self.writer.add_scalar(
+                schema.PPO.REWARD_MEDIAN, float(reward_median), env_step=env_step
+            )
+            self.writer.add_scalar(
+                schema.PPO.REWARD_P10, float(reward_p10), env_step=env_step
+            )
+            self.writer.add_scalar(
+                schema.PPO.REWARD_P90, float(reward_p90), env_step=env_step
+            )
+            self.writer.add_scalar(
+                schema.LOSS_ACTOR, float(avg_aloss), env_step=env_step
+            )
+            self.writer.add_scalar(
+                schema.LOSS_CRITIC, float(avg_closs), env_step=env_step
+            )
+            self.writer.add_scalar(
+                schema.POLICY_ENTROPY, float(avg_entropy), env_step=env_step
+            )
+            self.writer.add_scalar(
+                schema.PPO.APPROX_KL, float(avg_kl), env_step=env_step
+            )
+            self.writer.add_scalar(
+                schema.PPO.CLIP_FRACTION, float(avg_clipfrac), env_step=env_step
+            )
+            self.writer.add_scalar(
+                schema.PPO.EXPLAINED_VARIANCE,
+                float(explained_var),
+                env_step=env_step,
+            )
+            self.writer.add_scalar(
+                schema.DIAG_TERMINATED_COUNT,
+                float(term_events),
+                env_step=env_step,
+            )
+            self.writer.add_scalar(
+                schema.DIAG_TRUNCATED_COUNT,
+                float(trunc_events),
+                env_step=env_step,
+            )
+            # Per-epoch training counters. We use ``episode + 1`` (rollout-epoch
+            # index) as a proxy for the number of training updates -- the exact
+            # number of mini-batch SGD steps per epoch depends on KL early
+            # stopping which is hard to track exactly here.
+            self.writer.add_scalar(
+                schema.TRAIN_UPDATES, int(episode + 1), env_step=env_step
+            )
+            self.writer.add_scalar(
+                schema.TRAIN_LR,
+                float(self.a_opt.param_groups[0]["lr"]),
+                env_step=env_step,
+            )
 
             # Periodic "evaluation" for vector env:
             # We don't run a separate single-env rollout here (would require an eval env).
@@ -1055,7 +1146,11 @@ class PPO(BaseRLModel):
             if (episode + 1) % int(self.eval_freq) == 0:
                 # Use median as a more stable evaluation metric than mean (robust to rare crashes)
                 eval_reward = float(reward_median)
-                self.writer.add_scalar("Evaluation/Reward", eval_reward, episode)
+                self.writer.add_scalar(
+                    schema.EVAL_EPISODE_REWARD,
+                    float(eval_reward),
+                    env_step=env_step,
+                )
                 if eval_reward > self.best_reward:
                     self.best_reward = float(eval_reward)
                     print(
@@ -1304,6 +1399,8 @@ class PPO(BaseRLModel):
             # Use deterministic actions for evaluation (no sampling)
             action, mean_action, delta = self.act(state, deterministic=True)
             step_return = self.env.step(mean_action[0])
+            # Single-env evaluation step: advance counter by 1.
+            self.global_env_step += 1
             if len(step_return) > 4:
                 next_state, reward, terminated, truncated, info = step_return
                 done = terminated or truncated
@@ -1351,7 +1448,9 @@ class PPO(BaseRLModel):
         actions2 = torch.stack(actions).detach()
         rewards2 = torch.cat(rewards)
         dones2 = torch.cat(dones)
-        values2 = torch.cat(values).flatten()
+        # Explicitly build a 1D tensor of values so rollout_len=1 does not
+        # collapse into a scalar (which would break indexing below).
+        values2 = torch.cat([v.view(1) for v in values])
         probs2 = torch.cat(probs).detach()
 
         returns2 = []
@@ -1361,14 +1460,25 @@ class PPO(BaseRLModel):
             g2 = delta2 + gamma * self.gae_lambda * (1 - dones2[i]) * g2
             returns2.insert(0, g2 + values2[i].view(-1, 1))
 
-        # Compute advantages without recreating a tensor from a list of tensors
-        returns_tensor = torch.cat(returns2).detach().squeeze()
+        # Compute advantages without recreating a tensor from a list of tensors.
+        # Use view(-1) to preserve the batch dim when rollout_len == 1
+        # (bare .squeeze() would turn a 1-elem tensor into a 0-d scalar).
+        returns_tensor = torch.cat(returns2).detach().view(-1)
         adv2 = returns_tensor - values2[:-1]
         # adv = (adv - adv.mean()) / (adv.std() + 1e-10)
 
         return states2, actions2, returns2, adv2, rewards2, probs2
 
-    def train(self) -> None:
+    def train(
+        self,
+        num_episodes: Optional[int] = None,
+        *,
+        max_steps: Optional[int] = None,
+        save_best: bool = False,
+        save_path: Optional[str] = None,
+        verbose: bool = True,
+        **kwargs: Any,
+    ) -> dict:
         """Train the PPO agent through interaction with the environment.
 
         This method implements the complete PPO training loop:
@@ -1378,17 +1488,40 @@ class PPO(BaseRLModel):
             4. Log metrics to TensorBoard
             5. Periodically evaluate policy performance
 
-        The training loop continues for max_episodes, with each episode consisting
-        of rollout_len environment steps. Policy updates are performed using
-        num_epochs of optimization over mini-batches of size batch_size.
+        Args:
+            num_episodes: Number of training episodes. When ``None``
+                (the default), PPO falls back to ``self.max_episodes``
+                which was set at construction time. This preserves the
+                original no-argument call style.
+            max_steps: Optional override for ``self.rollout_len`` so
+                callers can shorten each rollout via the unified API.
+            save_best: Reserved for unified interface; PPO already
+                handles best-model saving via its internal background
+                saver, so this flag is currently a no-op.
+            save_path: Reserved for unified interface (see
+                ``save_best``).
+            verbose: Reserved for symmetry with other agents.
+            **kwargs: Additional algorithm-specific keyword arguments
+                (currently ignored by PPO).
 
-        Training can be stopped early using KL divergence thresholds (target_kl)
-        or by setting self.target = True.
+        Returns:
+            dict: Training metrics dictionary with episode rewards
+            collected so far, the final running average and any
+            early-stopping flag PPO may have triggered.
+
+        Training can be stopped early using KL divergence thresholds
+        (``target_kl``) or by setting ``self.target = True``.
 
         Note:
-            All metrics are logged to TensorBoard including actor/critic losses,
-            rewards, entropy, KL divergence, clip fraction, and explained variance.
+            All metrics are logged to TensorBoard including actor/critic
+            losses, rewards, entropy, KL divergence, clip fraction, and
+            explained variance.
         """
+        _ = (save_best, save_path, verbose, kwargs)
+        if num_episodes is not None:
+            self.max_episodes = int(num_episodes)
+        if max_steps is not None:
+            self.rollout_len = int(max_steps)
         try:
             # Detect vector env and use batched training loop
             reset_return = self.env.reset()
@@ -1398,7 +1531,11 @@ class PPO(BaseRLModel):
                 state0 = reset_return
             if self._is_vector_env(state0):
                 self._train_vector(initial_obs=state0)
-                return
+                return {
+                    "episode_rewards": list(getattr(self, "ep_reward", []) or []),
+                    "avg_rewards": list(getattr(self, "avg_rewards_list", []) or []),
+                    "best_reward": float(getattr(self, "best_reward", float("-inf"))),
+                }
 
             # Non-vector env fallback (original loop)
             for episode in tqdm(range(self.max_episodes)):
@@ -1431,19 +1568,29 @@ class PPO(BaseRLModel):
                 rollout_states = []  # For obs normalization update
                 for step in range(self.rollout_len):
                     rollout_states.append(state)
-                    action, mu, prob = self._act_tensor(state)
-                    # Normalize state for value function if needed
+                    # Inline actor forward so we can store the UNCLAMPED sampled
+                    # action alongside its log-prob. Storing the clamped action
+                    # while computing log-prob from the unclamped sample (or
+                    # vice versa) produces inconsistent old/new log-probs in the
+                    # PPO ratio and biases the policy gradient when actions
+                    # saturate at the bounds.
                     state_normalized = (
                         self._normalize_obs(state) if self.normalize_obs else state
                     )
+                    state_t = torch.as_tensor(
+                        np.array([state_normalized]),
+                        dtype=torch.float32,
+                        device=self.device,
+                    )
                     with torch.no_grad():
-                        value = self.critic(
-                            torch.as_tensor(
-                                np.array([state_normalized]),
-                                dtype=torch.float32,
-                                device=self.device,
-                            )
-                        )
+                        action_raw_t, dist_t = self.actor(state_t)
+                        mu_t = dist_t.mean
+                        # `action_raw_t` is the unclamped sampled action; this is
+                        # the point at which we compute log_prob for PPO.
+                        prob = dist_t.log_prob(action_raw_t).sum(dim=-1, keepdim=True)
+                        value = self.critic(state_t)
+                    action = action_raw_t  # unclamped, stored in buffer
+                    mu = mu_t
                     # Clip action to environment bounds to avoid invalid controls
                     env_action = action.detach().cpu().numpy()[0]
                     try:
@@ -1455,6 +1602,8 @@ class PPO(BaseRLModel):
                     except Exception:
                         pass
                     step_return = self.env.step(env_action)
+                    # Single-env training step: advance counter by 1.
+                    self.global_env_step += 1
                     if len(step_return) > 4:
                         next_state, reward, terminated, trunkated, info = step_return
                         done = terminated or trunkated
@@ -1529,7 +1678,7 @@ class PPO(BaseRLModel):
                 probs = torch.cat(probs).detach()
 
                 # Reward normalization (normalize returns)
-                if self.normalize_reward:
+                if self.normalize_reward and hasattr(self, "ret_rms"):
                     returns_np = returns.cpu().numpy().flatten()
                     self.ret_rms.update(returns_np)
                     returns = torch.clamp(
@@ -1612,26 +1761,66 @@ class PPO(BaseRLModel):
                 avg_approx_kl = np.mean(all_approx_kl)
                 avg_clip_fraction = np.mean(all_clip_fractions)
 
-                # Log to TensorBoard
-                self.writer.add_scalar("Loss/Actor", avg_aloss, episode)
-                self.writer.add_scalar("Loss/Critic", avg_closs, episode)
-                self.writer.add_scalar("Performance/Reward", avg_reward, episode)
-                self.writer.add_scalar("Performance/Entropy", avg_entropy, episode)
+                # Log canonical TB metrics. As in vector training we write
+                # rollout/* directly because these are per-rollout-epoch
+                # aggregates rather than per finished-episode events.
+                env_step = int(self.global_env_step)
                 self.writer.add_scalar(
-                    "Performance/Episode Length", avg_episode_length, episode
-                )
-                self.writer.add_scalar("Diagnostics/Approx KL", avg_approx_kl, episode)
-                self.writer.add_scalar(
-                    "Diagnostics/Clip Fraction", avg_clip_fraction, episode
+                    schema.ROLLOUT_EPISODE_REWARD,
+                    float(avg_reward),
+                    env_step=env_step,
                 )
                 self.writer.add_scalar(
-                    "Diagnostics/Explained Variance", explained_var, episode
+                    schema.ROLLOUT_EPISODE_LENGTH,
+                    float(avg_episode_length),
+                    env_step=env_step,
+                )
+                self.writer.add_scalar(
+                    schema.ROLLOUT_TOTAL_STEPS, env_step, env_step=env_step
+                )
+                self.writer.add_scalar(
+                    schema.LOSS_ACTOR, float(avg_aloss), env_step=env_step
+                )
+                self.writer.add_scalar(
+                    schema.LOSS_CRITIC, float(avg_closs), env_step=env_step
+                )
+                self.writer.add_scalar(
+                    schema.POLICY_ENTROPY, float(avg_entropy), env_step=env_step
+                )
+                self.writer.add_scalar(
+                    schema.PPO.APPROX_KL,
+                    float(avg_approx_kl),
+                    env_step=env_step,
+                )
+                self.writer.add_scalar(
+                    schema.PPO.CLIP_FRACTION,
+                    float(avg_clip_fraction),
+                    env_step=env_step,
+                )
+                self.writer.add_scalar(
+                    schema.PPO.EXPLAINED_VARIANCE,
+                    float(explained_var),
+                    env_step=env_step,
+                )
+                # Per-epoch training counters (rollout-epoch index as proxy
+                # for the number of optimizer updates).
+                self.writer.add_scalar(
+                    schema.TRAIN_UPDATES, int(episode + 1), env_step=env_step
+                )
+                self.writer.add_scalar(
+                    schema.TRAIN_LR,
+                    float(self.a_opt.param_groups[0]["lr"]),
+                    env_step=env_step,
                 )
 
                 # Periodic evaluation
                 if (episode + 1) % self.eval_freq == 0:
                     eval_reward = self.test_reward()
-                    self.writer.add_scalar("Evaluation/Reward", eval_reward, episode)
+                    self.writer.add_scalar(
+                        schema.EVAL_EPISODE_REWARD,
+                        float(eval_reward),
+                        env_step=int(self.global_env_step),
+                    )
                     # Save best model
                     if eval_reward > self.best_reward:
                         self.best_reward = eval_reward
@@ -1644,10 +1833,20 @@ class PPO(BaseRLModel):
                             episode=int(episode + 1),
                         )
         finally:
-            # Ensure any pending best-checkpoint write is completed.
-            self.close()
+            # Flush + assert canonical metrics contract before ensuring any
+            # pending best-checkpoint write is completed.
+            try:
+                self.writer.flush()
+                self.writer.assert_contract_satisfied()
+            finally:
+                self.close()
 
         # print("Training completed. Average rewards list:", self.avg_rewards_list)
+        return {
+            "episode_rewards": list(getattr(self, "ep_reward", []) or []),
+            "avg_rewards": list(getattr(self, "avg_rewards_list", []) or []),
+            "best_reward": float(getattr(self, "best_reward", float("-inf"))),
+        }
 
     def get_param_env(self) -> Dict[str, Dict[str, Any]]:
         """Get environment and agent parameters for serialization.

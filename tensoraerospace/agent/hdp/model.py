@@ -9,8 +9,9 @@ J(R), actor improved via one-step lookahead with known linearized dynamics).
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
-from typing import Any, Union
+from typing import Any, Optional, Union
 
 import torch
 
@@ -208,8 +209,12 @@ class HDP(ADP):
             ValueError: If environment lacks required attributes (filt_A, filt_B,
                 reference_signal).
         """
-        # Ensure caller-provided design flag does not override the dedicated HDP setup.
+        # Ensure caller-provided flags do not override the dedicated HDP setup.
+        # These may appear in kwargs when loading from a saved config via
+        # ADP.__load -> cls(env=env, **policy_params).
         kwargs.pop("design", None)
+        kwargs.pop("use_replay", None)
+        kwargs.pop("use_target_networks", None)
         super().__init__(
             env,
             design="hdp",
@@ -243,4 +248,75 @@ class HDP(ADP):
             dhp_critic_cycle_episodes=dhp_critic_cycle_episodes,
             dhp_action_cycle_episodes=dhp_action_cycle_episodes,
             **kwargs,
+        )
+
+    # ------------------------------------------------------------------
+    # Serialization: save / load / from_pretrained / publish_to_hub
+    # ------------------------------------------------------------------
+    # HDP inherits full implementations from ADP.  The explicit wrappers
+    # below provide HDP-specific docstrings, correct type annotations,
+    # and ensure the methods appear in ``dir(HDP)`` / help output.
+
+    def save(
+        self, path: Union[str, Path, None] = None, *, save_gradients: bool = False
+    ) -> str:
+        """Save the HDP agent (actor, critic, config) to *path*.
+
+        Creates a timestamped subdirectory containing ``config.json``,
+        ``actor.pth``, ``critic.pth`` (and optionally optimizer state dicts).
+
+        Args:
+            path: Base directory.  Defaults to the current working directory.
+            save_gradients: Also persist optimizer states for resumed training.
+
+        Returns:
+            str: Path to the created checkpoint directory.
+        """
+        return super().save(path=path, save_gradients=save_gradients)
+
+    @classmethod
+    def from_pretrained(
+        cls,
+        repo_name: str,
+        access_token: Optional[str] = None,
+        version: Optional[str] = None,
+        *,
+        load_gradients: bool = False,
+    ) -> "HDP":
+        """Load a pretrained HDP agent from a local directory or Hugging Face Hub.
+
+        Args:
+            repo_name: Local folder path **or** Hugging Face repo id
+                (``"namespace/repo"``).
+            access_token: Hugging Face access token for private repos.
+            version: Revision / branch / tag on Hugging Face.
+            load_gradients: Restore optimizer states for continued training.
+
+        Returns:
+            HDP: Fully initialized agent with restored weights.
+        """
+        return super().from_pretrained(
+            repo_name,
+            access_token=access_token,
+            version=version,
+            load_gradients=load_gradients,
+        )
+
+    def publish_to_hub(
+        self,
+        repo_name: str,
+        folder_path: Union[str, Path],
+        access_token: Optional[str] = None,
+    ) -> None:
+        """Upload a saved HDP checkpoint folder to Hugging Face Hub.
+
+        Args:
+            repo_name: Repository id (e.g. ``"user/my-hdp-agent"``).
+            folder_path: Local directory produced by :meth:`save`.
+            access_token: Hugging Face access token.
+        """
+        super().publish_to_hub(
+            repo_name=repo_name,
+            folder_path=str(folder_path),
+            access_token=access_token,
         )

@@ -6,7 +6,7 @@
 [![ru](https://img.shields.io/badge/lang-ru-green.svg)](./README.ru-ru.md)
 [![Documentation Status](https://readthedocs.org/projects/tensoraerospace/badge/?version=latest)](https://tensoraerospace.readthedocs.io/en/latest/?badge=latest)
 [![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/TensorAeroSpace/TensorAeroSpace)
-[![Python](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
+[![Python](https://img.shields.io/badge/python-3.10--3.13-blue.svg)](https://www.python.org/downloads/)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![GitHub stars](https://img.shields.io/github/stars/tensoraerospace/tensoraerospace.svg)](https://github.com/tensoraerospace/tensoraerospace/stargazers)
 
@@ -57,7 +57,7 @@
 | **CPU** | 4 ядра, AVX | 8+ ядер, AVX2/FMA |
 | **RAM** | 8 ГБ | 16–32 ГБ для RL/Simulink |
 | **GPU** | Необязательно | NVIDIA RTX с ≥8 ГБ VRAM для SAC/DSAC/PPO, поддержка CUDA 12.2 |
-| **Python** | 3.10–3.12 | 3.11/3.12 |
+| **Python** | 3.10–3.13 | 3.11/3.12 |
 | **Доп. ПО** | Git, Poetry или pip, Docker (опционально) | MATLAB/Simulink R2022b+ (для simulink-example), Unity 2021.3.5f1/2023.2.20f1 |
 
 ### 📦 Установка
@@ -169,18 +169,24 @@ for t in range(N - 1):
 
 ## 🤖 Поддерживаемые алгоритмы
 
-| Алгоритм | Тип | Экспорт в HuggingFace | Статус |
-|----------|-----|:---------------------:|:------:|
-| **IHDP** | Инкрементальное эвристическое динамическое программирование | ❌ | ✅ |
-| **DQN** | Глубокое Q-обучение | ❌ | ✅ |
-| **SAC** | Мягкий актор-критик | ✅ | ✅ |
-| **DSAC** | Дистрибутивный мягкий актор-критик | ✅ | ✅ |
-| **A3C** | Асинхронный актор-критик с преимуществом | ❌ | ✅ |
-| **PPO** | Проксимальная оптимизация политики | ✅ | ✅ |
-| **MPC** | Модельно-предиктивное управление | ✅ | ✅ |
-| **A2C** | Актор-критик с преимуществом | ✅ | ✅ |
-| **A2C-NARX** | A2C с NARX критиком | ❌ | ✅ |
-| **PID** | Пропорционально-интегрально-дифференциальный регулятор | ✅ | ✅ |
+| Алгоритм | Тип | Save/Load | HuggingFace Hub | Статус |
+|----------|-----|:---------:|:---------------:|:------:|
+| **SAC** | Мягкий актор-критик | ✅ | ✅ `from_pretrained` / `publish_to_hub` | ✅ |
+| **PPO** | Проксимальная оптимизация политики | ✅ | ✅ `from_pretrained` / `publish_to_hub` | ✅ |
+| **DDPG** | Глубокий детерминированный градиент политики | ✅ | ✅ `from_pretrained` / `publish_to_hub` | ✅ |
+| **DSAC** | Дистрибутивный мягкий актор-критик | ✅ | ✅ `from_pretrained` / `publish_to_hub` | ✅ |
+| **DQN** | Глубокое Q-обучение | ✅ | ✅ `from_pretrained` / `publish_to_hub` | ✅ |
+| **A2C** | Актор-критик с преимуществом | ✅ | ✅ `from_pretrained` / `publish_to_hub` | ✅ |
+| **A2C-NARX** | A2C с NARX критиком | ✅ | ✅ `from_pretrained` / `publish_to_hub` | ✅ |
+| **A3C** | Асинхронный актор-критик | ✅ | ✅ `from_pretrained` / `publish_to_hub` | ✅ |
+| **GAIL** | Имитационное обучение (состязательное) | ✅ | ✅ `from_pretrained` / `publish_to_hub` | ✅ |
+| **MPC** | Модельно-предиктивное управление | ✅ | ✅ `from_pretrained` / `publish_to_hub` | ✅ |
+| **ADP** | Адаптивное динамическое программирование | ✅ | ✅ `from_pretrained` / `publish_to_hub` | ✅ |
+| **ADHDP** | Действие-зависимое HDP | ✅ | ✅ `from_pretrained` / `publish_to_hub` | ✅ |
+| **HDP** | Эвристическое динамическое программирование | ✅ | ✅ `from_pretrained` / `publish_to_hub` | ✅ |
+| **PID** | ПИД-регулятор | ✅ | ✅ `from_pretrained` / `publish_to_hub` | ✅ |
+| **IHDP** | Инкрементальное эвристическое ДП | ✅ | ❌ | ✅ |
+| **NARX** | Нелинейная авторегрессия | ✅ | ✅ `from_pretrained` / `publish_to_hub` | ✅ |
 
 ## ✈️ Модели самолетов и космических аппаратов
 

@@ -10,34 +10,39 @@ packages = [
 ]
 
 [tool.poetry.dependencies]
-python = ">=3.10,<3.13"
+python = ">=3.10,<3.14"
 optuna = "^3.4.0"
 matplotlib = "^3.8.1"
 pandas = "^2.1.3"
-scipy = "^1.11.3"
+scipy = ">=1.14,<2.0"
 moviepy = "^1.0.3"
 gymnasium = "^0.29.1"
 torch = "^2.2.0"
 huggingface-hub = "^0.22.2"
 seaborn = "^0.13.2"
 plotly = "^6.2.0"
+kaleido = ">=0.2.1,<2.0"
 pygame = "^2.6.1"
-cryptography = {version = ">=45.0.0", python = ">=3.10,<3.13"}
+cryptography = {version = ">=45.0.0", python = ">=3.10,<3.14"}
 requests = ">=2.33.0"
 numpy = ">=1.24.0"
 # Pillow is a transitive dep via matplotlib/imageio; pin >=12.2.0 for CVE-2026-40192
 # (FITS GZIP decompression bomb, introduced in 10.3.0, fixed in 12.2.0).
 pillow = ">=12.2.0"
-# TensorFlow is optional (only used by the IHDP agent). Bumped from 2.15 to 2.20 so
-# keras>=3.13.2 is pulled in, fixing CVE-2026-1462 (untrusted deserialization).
-# keras>=3.13.2 requires Python >=3.11, so this extra is not installable on 3.10.
-# tensorflow-macos is deprecated — modern tensorflow supports macOS arm64 natively.
-tensorflow = {version = ">=2.20.0,<3.0.0", python = ">=3.11", optional = true}
-keras = {version = ">=3.13.2,<4.0.0", python = ">=3.11", optional = true}
+wandb = ">=0.18,<1.0"
+# anywidget is the FigureWidget backend for plotly's "live" render mode
+# (per-step in-Jupyter updates). Without it, importing FigureWidget raises
+# at runtime (ipywidgets alone is not enough on plotly 6.x).
+anywidget = ">=0.9,<1.0"
+# tensorboard is a base/core component: the unified metrics writer
+# (tensoraerospace.agent.metrics) wraps torch.utils.tensorboard.SummaryWriter,
+# and several metrics smoke tests rely on it. Keep it as a default install
+# (`poetry install`, `pip install tensoraerospace`) rather than an optional
+# extra so the metrics layer works out of the box.
+tensorboard = ">=2.15"
 ray = {extras = ["tune"], version = "^2.52.0", optional = true}
 
 [tool.poetry.extras]
-tensorflow = ["tensorflow", "keras"]
 ray = ["ray"]
 
 [tool.poetry.group.dev.dependencies]
@@ -85,7 +90,7 @@ build-backend = "poetry.core.masonry.api"
 # Конфигурация для black
 [tool.black]
 line-length = 88
-target-version = ['py310', 'py311', 'py312']
+target-version = ['py310', 'py311', 'py312', 'py313']
 include = '\.pyi?$'
 extend-exclude = '''
 /(
@@ -107,13 +112,14 @@ profile = "black"
 multi_line_output = 3
 line_length = 88
 known_first_party = ["tensoraerospace"]
-known_third_party = ["numpy", "pandas", "matplotlib", "tensorflow", "torch", "ray", "optuna"]
+known_third_party = ["numpy", "pandas", "matplotlib", "torch", "ray", "optuna"]
 
 # Конфигурация для pytest
 [tool.pytest.ini_options]
 minversion = "6.0"
-addopts = "-ra -q --strict-markers --strict-config"
+addopts = "-ra -q --strict-markers --strict-config --import-mode=importlib"
 testpaths = ["tests"]
+pythonpath = ["."]
 python_files = ["test_*.py", "*_test.py"]
 python_classes = ["Test*"]
 cache_dir = "/tmp/tensoraerospace_pytest_cache"
@@ -122,6 +128,18 @@ markers = [
     "slow: marks tests as slow (deselect with '-m \"not slow\"')",
     "integration: marks tests as integration tests",
     "unit: marks tests as unit tests",
+]
+# Silence noise that is not actionable for this project right now:
+#   - Gymnasium v1.0 wrapper-attribute deprecation: every direct
+#     `env.<custom_attr>` access through a wrapper warns. Migrating to
+#     `env.get_wrapper_attr(...)` everywhere is a separate, repo-wide effort.
+#   - Gymnasium passive-env-checker UserWarnings about non-strictly-compliant
+#     reward/obs types from third-party envs (e.g. Pendulum-v1 used in smoke
+#     tests). These are env-side cosmetics, not test failures.
+filterwarnings = [
+    "ignore:.*to get variables from other wrappers is deprecated.*:UserWarning",
+    "ignore:.*The reward returned by.*:UserWarning",
+    "ignore:.*The obs returned by the.*:UserWarning",
 ]
 
 # Конфигурация для coverage
@@ -169,7 +187,6 @@ module = [
     "matplotlib.*",
     "pandas.*",
     "scipy.*",
-    "tensorflow.*",
     "torch.*",
     "ray.*",
     "optuna.*",

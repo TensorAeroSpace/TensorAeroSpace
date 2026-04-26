@@ -52,13 +52,13 @@ def load_dsac_checkpoint(folder: Path, env: Any, *, device: str = "cpu") -> DSAC
 
     # Load state_dict-based checkpoints (dsac-flight style)
     policy_sd = torch.load(
-        folder / "policy.pth", map_location=device, weights_only=False
+        folder / "policy.pth", map_location=device, weights_only=True
     )
     critic_sd = torch.load(
-        folder / "critic.pth", map_location=device, weights_only=False
+        folder / "critic.pth", map_location=device, weights_only=True
     )
     critic_t_sd = torch.load(
-        folder / "critic_target.pth", map_location=device, weights_only=False
+        folder / "critic_target.pth", map_location=device, weights_only=True
     )
 
     agent.policy.load_state_dict(policy_sd)
@@ -76,7 +76,7 @@ def load_dsac_checkpoint(folder: Path, env: Any, *, device: str = "cpu") -> DSAC
     log_alpha_path = folder / "log_alpha.pth"
     if getattr(agent, "automatic_entropy_tuning", False) and log_alpha_path.exists():
         loaded_alpha = torch.load(
-            log_alpha_path, map_location=device, weights_only=False
+            log_alpha_path, map_location=device, weights_only=True
         )
         log_alpha_t = getattr(agent, "log_alpha", None)
         if (

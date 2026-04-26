@@ -4,8 +4,10 @@ This module provides helper classes and functions used to train A2C agents with
 NARX (Nonlinear AutoRegressive with eXogenous inputs) representations.
 """
 
-from collections.abc import Sequence
-from typing import Iterable
+import datetime
+import json
+from pathlib import Path
+from typing import Any, Iterable, Mapping, Optional, Sequence, Union
 
 import numpy as np
 import torch
@@ -13,30 +15,8 @@ from gymnasium import Env
 from torch import nn
 from torch.nn import functional as F
 
-try:
-    from torch.utils.tensorboard import SummaryWriter  # type: ignore
-except Exception:  # pragma: no cover - tensorboard optional at runtime
-
-    class SummaryWriter:  # type: ignore
-        """Fallback SummaryWriter when tensorboard is unavailable."""
-
-        def __init__(self, *args, **kwargs) -> None:
-            pass
-
-        def add_scalar(self, *args, **kwargs) -> None:
-            pass
-
-        def add_histogram(self, *args, **kwargs) -> None:
-            pass
-
-        def flush(self) -> None:
-            pass
-
-        def close(self) -> None:
-            pass
-
-
-from ..metrics import create_metric_writer
+# Lazy tensorboard import (see tensoraerospace.agent.metrics)
+from ..metrics import MetricWriter, create_metric_writer, schema  # noqa: E402
 
 
 def clip_grad_norm_(module: torch.optim.Optimizer, max_grad_norm: float) -> None:
@@ -237,6 +217,12 @@ class A2CLearner:
         critic_lr: float = 4e-3,
         max_grad_norm: float = 0.5,
         device: torch.device | str | None = None,
+        log_dir: str | None = None,
+        wandb_project: Optional[str] = None,
+        wandb_entity: Optional[str] = None,
+        wandb_run_name: Optional[str] = None,
+        wandb_tags: Optional[Sequence[str]] = None,
+        wandb_config: Optional[Mapping[str, Any]] = None,
     ):
         """Initialize learner with optimizers and hyperparameters.
 
@@ -248,6 +234,8 @@ class A2CLearner:
             actor_lr: Learning rate for actor.
             critic_lr: Learning rate for critic.
             max_grad_norm: Gradient clipping norm.
+            log_dir: TensorBoard log directory. If None, the default
+                ``runs/`` directory of ``SummaryWriter`` is used.
         """
         self.gamma = gamma
         self.max_grad_norm = max_grad_norm
@@ -264,7 +252,22 @@ class A2CLearner:
         self.entropy_beta = entropy_beta
         self.actor_optim = torch.optim.Adam(actor.parameters(), lr=actor_lr)
         self.critic_optim = torch.optim.Adam(critic.parameters(), lr=critic_lr)
-        self.writer = create_metric_writer()
+        self.log_dir = log_dir
+        self.wandb_project = wandb_project
+        self.wandb_entity = wandb_entity
+        self.wandb_run_name = wandb_run_name
+        self.wandb_tags = wandb_tags
+        self.wandb_config = wandb_config
+        self.writer = create_metric_writer(
+            tb_log_dir=log_dir,
+            wandb_project=wandb_project,
+            wandb_entity=wandb_entity,
+            wandb_run_name=wandb_run_name,
+            wandb_tags=wandb_tags,
+            wandb_config=wandb_config,
+            algo="a2c-narx",
+        )
+        self.update_count = 0
 
     def learn(
         self,
@@ -314,16 +317,16 @@ class A2CLearner:
         ]
         if actor_grads:
             self.writer.add_histogram(
-                "gradients/actor",
+                "grads/actor/all",
                 torch.cat(actor_grads).detach().cpu(),
-                global_step=steps,
+                env_step=steps,
             )
         self.writer.add_histogram(
-            "parameters/actor",
+            "weights/actor/all",
             torch.cat([p.data.view(-1) for p in self.actor.parameters()])
             .detach()
             .cpu(),
-            global_step=steps,
+            env_step=steps,
         )
         self.actor_optim.step()
 
@@ -337,36 +340,270 @@ class A2CLearner:
         ]
         if critic_grads:
             self.writer.add_histogram(
-                "gradients/critic",
+                "grads/critic/all",
                 torch.cat(critic_grads).detach().cpu(),
-                global_step=steps,
+                env_step=steps,
             )
         self.writer.add_histogram(
-            "parameters/critic",
+            "weights/critic/all",
             torch.cat([p.data.view(-1) for p in self.critic.parameters()])
             .detach()
             .cpu(),
-            global_step=steps,
+            env_step=steps,
         )
         self.critic_optim.step()
 
-        # reports
+        # Reports (canonical TB metrics).
         self.writer.add_scalar(
-            "losses/log_probs", -logs_probs.mean(), global_step=steps
+            schema.LOSS_ENTROPY, float(entropy.detach()), env_step=steps
         )
-        self.writer.add_scalar("losses/entropy", entropy, global_step=steps)
         self.writer.add_scalar(
-            "losses/entropy_beta", self.entropy_beta, global_step=steps
+            schema.A2C.ENTROPY_BETA, float(self.entropy_beta), env_step=steps
         )
-        self.writer.add_scalar("losses/actor", actor_loss, global_step=steps)
-        self.writer.add_scalar("losses/advantage", advantage.mean(), global_step=steps)
-        self.writer.add_scalar("losses/critic", critic_loss, global_step=steps)
+        self.writer.add_scalar(
+            schema.LOSS_ACTOR, float(actor_loss.detach()), env_step=steps
+        )
+        self.writer.add_scalar(
+            schema.A2C.ADVANTAGE_MEAN,
+            float(advantage.detach().mean()),
+            env_step=steps,
+        )
+        self.writer.add_scalar(
+            schema.LOSS_CRITIC, float(critic_loss.detach()), env_step=steps
+        )
+
+        # Training counters (mandatory minimum tier).
+        self.update_count += 1
+        self.writer.add_scalar(
+            schema.TRAIN_UPDATES, int(self.update_count), env_step=steps
+        )
+        self.writer.add_scalar(
+            schema.TRAIN_LR,
+            float(self.actor_optim.param_groups[0]["lr"]),
+            env_step=steps,
+        )
+
+    # ------------------------------------------------------------------
+    # Serialization helpers
+    # ------------------------------------------------------------------
+
+    def get_param_env(self) -> dict:
+        """Return serializable configuration needed to reconstruct the learner."""
+        class_name = self.__class__.__name__
+        module_name = self.__class__.__module__
+        agent_name = f"{module_name}.{class_name}"
+
+        # Infer dimensions from the actor network
+        first_linear = None
+        for m in self.actor.modules():
+            if isinstance(m, nn.Linear):
+                first_linear = m
+                break
+        state_dim = first_linear.in_features if first_linear is not None else 0
+        n_actions = self.actor.n_actions
+
+        policy_params = {
+            "gamma": self.gamma,
+            "entropy_beta": self.entropy_beta,
+            "actor_lr": self.actor_optim.defaults["lr"],
+            "critic_lr": self.critic_optim.defaults["lr"],
+            "max_grad_norm": self.max_grad_norm,
+            "state_dim": state_dim,
+            "n_actions": n_actions,
+            "device": str(self.device),
+        }
+
+        return {
+            "policy": {"name": agent_name, "params": policy_params},
+        }
+
+    def save(
+        self,
+        path: Union[str, Path, None] = None,
+        save_gradients: bool = False,
+    ) -> Path:
+        """Save A2CLearner model to the specified directory.
+
+        Saves actor network, critic network, and configuration.
+        Optionally saves optimizer states for resuming training.
+
+        Args:
+            path (str | Path | None): Base save directory.  If *None*, saves
+                to the current working directory.
+            save_gradients (bool): If True, also persist optimizer state dicts.
+
+        Returns:
+            Path: The directory where the model was saved.
+        """
+        if path is None:
+            path = Path.cwd()
+        else:
+            path = Path(path)
+
+        date_str = datetime.datetime.now().strftime("%b%d_%H-%M-%S")
+        save_dir = path / f"{date_str}_{self.__class__.__name__}"
+        save_dir.mkdir(parents=True, exist_ok=True)
+
+        config_path = save_dir / "config.json"
+        actor_path = save_dir / "actor.pth"
+        critic_path = save_dir / "critic.pth"
+        actor_optim_path = save_dir / "actor_optim.pth"
+        critic_optim_path = save_dir / "critic_optim.pth"
+
+        config = self.get_param_env()
+        with open(config_path, "w", encoding="utf-8") as f:
+            json.dump(config, f, indent=2)
+
+        torch.save(self.actor.state_dict(), actor_path)
+        torch.save(self.critic.state_dict(), critic_path)
+
+        if save_gradients:
+            torch.save(self.actor_optim.state_dict(), actor_optim_path)
+            torch.save(self.critic_optim.state_dict(), critic_optim_path)
+
+        return save_dir
+
+    @classmethod
+    def _load(
+        cls,
+        path: Union[str, Path],
+        env: Optional[Env] = None,
+        load_gradients: bool = False,
+    ) -> "A2CLearner":
+        """Load an A2CLearner from a checkpoint directory.
+
+        Args:
+            path: Directory containing saved model files.
+            env: Optional environment (used to infer dimensions when the
+                config does not contain them).
+            load_gradients: If True, restore optimizer states.
+
+        Returns:
+            A2CLearner: Reconstructed learner.
+        """
+        path = Path(path)
+        config_path = path / "config.json"
+        actor_path = path / "actor.pth"
+        critic_path = path / "critic.pth"
+        actor_optim_path = path / "actor_optim.pth"
+        critic_optim_path = path / "critic_optim.pth"
+
+        with open(config_path, "r", encoding="utf-8") as f:
+            config = json.load(f)
+
+        policy_params = config["policy"]["params"]
+
+        state_dim = policy_params["state_dim"]
+        n_actions = policy_params["n_actions"]
+        dev = policy_params.get("device", "cpu")
+
+        # Device fallback
+        if dev == "cuda" and not torch.cuda.is_available():
+            dev = "cpu"
+        if dev == "mps" and not (
+            hasattr(torch.backends, "mps") and torch.backends.mps.is_available()
+        ):
+            dev = "cpu"
+
+        actor = Actor(state_dim, n_actions)
+        critic = Critic(state_dim)
+
+        # Restore weights
+        actor.load_state_dict(
+            torch.load(actor_path, map_location=dev, weights_only=False)
+        )
+        critic.load_state_dict(
+            torch.load(critic_path, map_location=dev, weights_only=False)
+        )
+
+        new_agent = cls(
+            actor=actor,
+            critic=critic,
+            gamma=policy_params.get("gamma", 0.9),
+            entropy_beta=policy_params.get("entropy_beta", 0.01),
+            actor_lr=policy_params.get("actor_lr", 4e-4),
+            critic_lr=policy_params.get("critic_lr", 4e-3),
+            max_grad_norm=policy_params.get("max_grad_norm", 0.5),
+            device=dev,
+        )
+
+        if load_gradients:
+            if actor_optim_path.exists():
+                new_agent.actor_optim.load_state_dict(
+                    torch.load(actor_optim_path, map_location=dev, weights_only=False)
+                )
+            if critic_optim_path.exists():
+                new_agent.critic_optim.load_state_dict(
+                    torch.load(critic_optim_path, map_location=dev, weights_only=False)
+                )
+
+        return new_agent
+
+    @classmethod
+    def from_pretrained(
+        cls,
+        repo_name: str,
+        env: Optional[Env] = None,
+        access_token: Optional[str] = None,
+        version: Optional[str] = None,
+        load_gradients: bool = False,
+    ) -> "A2CLearner":
+        """Load pretrained model from a local directory or Hugging Face Hub.
+
+        Args:
+            repo_name: Path to a local folder **or** a Hugging Face repo id
+                (e.g. ``"namespace/repo_name"``).
+            env: Optional environment instance.
+            access_token: Hugging Face access token for private repos.
+            version: Revision / branch / tag on Hugging Face.
+            load_gradients: Restore optimizer states for continued training.
+
+        Returns:
+            A2CLearner: Initialized learner.
+        """
+        p = Path(str(repo_name)).expanduser()
+        if p.is_dir():
+            return cls._load(p, env=env, load_gradients=load_gradients)
+
+        pathlike_prefixes = ("./", "../", "/", "~")
+        if str(repo_name).startswith(pathlike_prefixes):
+            raise FileNotFoundError(f"Local directory not found: '{repo_name}'.")
+
+        from huggingface_hub import snapshot_download
+
+        folder_path = snapshot_download(
+            repo_id=repo_name, token=access_token, revision=version
+        )
+        return cls._load(folder_path, env=env, load_gradients=load_gradients)
+
+    def publish_to_hub(
+        self,
+        repo_name: str,
+        folder_path: Union[str, Path],
+        access_token: Optional[str] = None,
+    ) -> None:
+        """Upload a saved model folder to Hugging Face Hub.
+
+        Args:
+            repo_name: Repository id on Hugging Face (e.g. ``"user/my-a2c"``).
+            folder_path: Local folder produced by :meth:`save`.
+            access_token: Hugging Face access token.
+        """
+        from huggingface_hub import HfApi
+
+        api = HfApi()
+        api.upload_folder(
+            folder_path=str(folder_path),
+            repo_id=repo_name,
+            repo_type="model",
+            token=access_token,
+        )
 
 
 class Runner:
     """Environment interaction loop used to collect training data."""
 
-    def __init__(self, env: Env, actor: nn.Module, writer: SummaryWriter):
+    def __init__(self, env: Env, actor: nn.Module, writer: MetricWriter):
         """Create runner for data collection.
 
         Args:
@@ -380,6 +617,7 @@ class Runner:
         self.done = True
         self.steps = 0
         self.episode_reward = 0
+        self.episode_length = 0
         self.episode_rewards = []
         # Initialize previous action as zeros; adjust the size based on your action space
         self.prev_action = np.zeros(self.env.action_space.shape)
@@ -394,6 +632,7 @@ class Runner:
     def reset(self) -> None:
         """Reset environment and episode state."""
         self.episode_reward = 0
+        self.episode_length = 0
         self.done = False
         self.state, info = self.env.reset()
         self.state = self._flatten_observation(self.state)
@@ -444,13 +683,17 @@ class Runner:
             self.prev_action = actions_clipped[0]  # Update the previous action
             self.state = next_state
             self.steps += 1
+            self.episode_length += 1
             self.episode_reward += reward
 
             if self.done:
                 self.episode_rewards.append(self.episode_reward)
-                # Assuming writer is defined and configured globally
-                self.writer.add_scalar(
-                    "episode_reward", self.episode_reward, global_step=self.steps
+                self.writer.log_episode(
+                    reward=float(self.episode_reward),
+                    length=int(self.episode_length),
+                    env_step=int(self.steps),
+                    terminated=bool(terminated),
+                    truncated=bool(truncated),
                 )
 
         return memory
