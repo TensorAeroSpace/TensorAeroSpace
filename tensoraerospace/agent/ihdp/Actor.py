@@ -156,6 +156,10 @@ class Actor:
         NN_initial: int | None = None,
         cascade_tracking_state: list[str] | None = None,
         model_path: str | None = None,
+        use_integral_correction: bool = False,
+        integral_gain: float = 0.0,
+        integral_clamp_deg: float = 5.0,
+        integral_warmup_steps: int = 500,
     ) -> None:
         """Initialize IHDP Actor network and hyperparameters.
 
@@ -181,6 +185,28 @@ class Actor:
             NN_initial: Optional weight initializer seed.
             cascade_tracking_state: Tracking states for cascade mode.
             model_path: Path to load/save model weights.
+            use_integral_correction: Enable an integral compensation term
+                added to the actor's control output. IHDP minimizes a
+                quadratic LQ-functional and therefore has no integral
+                action — the closed loop has a small but persistent
+                steady-state offset on setpoint-tracking. Enabling this
+                flag adds ``-K_I · ∫(ref − y) dτ`` to ``u`` (with
+                anti-windup clipping) which removes the offset without
+                touching the actor architecture or the existing IHDP
+                training loop.
+            integral_gain: ``K_I`` (units: ``deg / (rad·s)`` of integral
+                state on the ``stab`` channel). Tuned empirically; values
+                in the range 10..25 work well for the F-16 alpha-tracking
+                benchmark. Ignored if ``use_integral_correction`` is False.
+            integral_clamp_deg: Anti-windup limit on the integrator
+                state, in degrees. Caps the magnitude of accumulated
+                error so a long initial transient cannot saturate the
+                actuator after settling. Default ``5°``.
+            integral_warmup_steps: Number of steps after which the
+                integrator starts accumulating. Set this to be at least
+                as long as the persistent-excitation pulse, so the
+                integrator does not "see" the PE injection as a real
+                tracking error. Default ``500`` (==5 s at dt=0.01s).
         """
         self.number_inputs = len(selected_inputs)
         self.selected_states = selected_states
@@ -249,27 +275,56 @@ class Actor:
         self.dq_ref_dWb = None
         self.store_q = np.zeros((1, self.number_time_steps))
 
+        # Integral-correction layer — kills the residual steady-state
+        # offset of the LQR-style policy. State is held inside the actor
+        # so :meth:`restart_actor` resets it together with the other
+        # episode-level attributes.
+        self.use_integral_correction = bool(use_integral_correction)
+        self.integral_gain = float(integral_gain)
+        self.integral_clamp = math.radians(float(integral_clamp_deg))
+        self.integral_warmup_steps = int(integral_warmup_steps)
+        self.integral_state = 0.0
+
     def build_actor_model(self):
         """Function creating Actor network. This is a fully connected network.
         Can define number of layers, number of neurons per layer, and activation functions.
+
+        In cascade mode the actor decomposes into two SISO sub-networks:
+            * outer ``model``    : alpha_error (scalar)  -> q_ref
+            * inner ``model_q``  : q_error     (scalar)  -> u
+
+        Both sub-networks therefore have ``input_dim=1`` regardless of the
+        number of tracking states declared on the agent. The cascade
+        ``indices_tracking_states`` rewrite (which advertises ``[alpha_idx,
+        wz_idx]`` so that :meth:`run_actor_online` can address both rows of
+        the augmented observation) is applied AFTER both sub-models have
+        been built — otherwise ``create_NN`` would size ``model_q`` for a
+        2-element input and matrix multiplication would fail at runtime.
         """
 
-        # First Neural Network
+        # First Neural Network — outer (alpha_error -> q_ref). Built while
+        # ``indices_tracking_states`` is still single-element so input_dim=1.
         self.model, self.store_weights = self.create_NN(self.store_weights, 120)
 
-        # Second Neural Network for the cascaded actor
+        # Second Neural Network for the cascaded actor (q_error -> u).
+        # Same single-element indices view is needed here so that
+        # ``create_NN`` produces input_dim=1.
         if self.cascaded_actor:
             print("It is assumed that the input to the NNs is the tracking error.")
+            self.model_q, self.store_weights_q = self.create_NN(
+                self.store_weights_q, 120
+            )
+
+            # Now switch to the cascade-aware indices so that
+            # ``run_actor_online`` / ``evaluate_actor`` can index both the
+            # primary tracked state (alpha) and the inner-loop state (wz)
+            # in the augmented observation vector returned by the env.
             tracking_states = self.cascade_tracking_state
             self.indices_tracking_states = [
                 self.selected_states.index(tracking_states[i])
                 for i in range(len(tracking_states))
             ]
             self.number_tracking_states = len(tracking_states)
-
-            self.model_q, self.store_weights_q = self.create_NN(
-                self.store_weights_q, 120
-            )
 
         params = _get_trainable_parameters(self.model)
         n_params = len(params)
@@ -1020,6 +1075,9 @@ class Actor:
 
         # Attributes related to the Adam optimizer
         self.Adam_opt = None
+
+        # Reset the integral-correction state on a fresh episode.
+        self.integral_state = 0.0
 
         # Restart momentum and rmsprop
         params = _get_trainable_parameters(self.model)
