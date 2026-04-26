@@ -134,7 +134,7 @@ def test_check_WB_limits_clips_saturated_weights():
         c.check_WB_limits(count)
     # After clipping, no weight magnitude should exceed WB_limits.
     for p in c.model.parameters():
-        assert float(p.abs().max()) <= 0.5 + 1e-6
+        assert float(p.detach().abs().max()) <= 0.5 + 1e-6
 
 
 def test_critic_compute_one_step_cost_method_exists_or_skip():

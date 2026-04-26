@@ -112,8 +112,13 @@ class TransformerDynamicsModel(nn.Module):
             dropout=dropout,
             batch_first=True,
         )
+        # enable_nested_tensor=False silences the PyTorch warning about
+        # incompatibility with odd nhead values; we don't rely on the nested
+        # fast-path here, so this is a no-op for performance.
         self.transformer_encoder = nn.TransformerEncoder(
-            encoder_layers, num_layers=num_encoder_layers
+            encoder_layers,
+            num_layers=num_encoder_layers,
+            enable_nested_tensor=False,
         )
         self.fc_out = nn.Linear(d_model, output_dim)
 
