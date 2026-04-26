@@ -60,9 +60,7 @@ class _TensorBoardSink:
         # between writer creation and the eventual close()/__del__ —
         # otherwise the background thread will hit FileNotFoundError on
         # the original relative path.
-        log_path = (
-            os.path.abspath(str(log_dir)) if log_dir is not None else None
-        )
+        log_path = os.path.abspath(str(log_dir)) if log_dir is not None else None
         self._writer = (
             TorchSummaryWriter(log_dir=log_path)
             if log_path is not None
