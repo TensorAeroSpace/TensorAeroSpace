@@ -147,7 +147,11 @@ jobs:
   dependency-check:
     name: 🔒 Dependency Security Check
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    # 5 min was not enough — `poetry install --with dev` alone takes 3-4 min on a
+    # cold cache, and `safety check` adds another 1-2 min for the PyUp DB pull.
+    # Bumped to 15 min and added the official poetry cache so warm runs finish
+    # in under 4 min.
+    timeout-minutes: 15
 
     steps:
     - name: 🧹 Free up disk space (diagnostic + cleanup)
@@ -174,12 +178,23 @@ jobs:
       uses: actions/setup-python@v6
       with:
         python-version: '3.10'
+        cache: 'pip'
 
     - name: 🎭 Install Poetry
       run: |
         python -m ensurepip --upgrade || true
         python -m pip install --upgrade pip
         python -m pip install poetry
+
+    - name: 💾 Cache poetry virtualenv
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.cache/pypoetry/virtualenvs
+          ~/.cache/pypoetry/cache
+        key: poetry-venv-${{ runner.os }}-py3.10-${{ hashFiles('poetry.lock') }}
+        restore-keys: |
+          poetry-venv-${{ runner.os }}-py3.10-
 
     - name: 🔄 Check and update lock file if needed
       run: |
@@ -192,9 +207,19 @@ jobs:
       run: |
         poetry install --with dev
 
-    - name: 🔍 Check for known security vulnerabilities
+    - name: 🔍 Check for known security vulnerabilities (pip-audit)
+      # `safety check` was deprecated June 2024 and replaced by `safety scan`,
+      # which now requires a free-tier login on CI. We use PyPA's `pip-audit`
+      # instead — open source, no account needed, much faster cold-start.
+      # `--ignore-vuln` covers the well-known pip/setuptools advisories that
+      # are unfixable in our supported Python range; non-blocking on remaining
+      # findings with `|| true` so the job is informational, not gating.
       run: |
-        poetry run safety check || echo "⚠️ Security vulnerabilities found, but not failing the build"
+        python -m pip install --quiet pip-audit
+        poetry run pip-audit \
+          --ignore-vuln GHSA-4xh5-x5gv-qwph \
+          --ignore-vuln GHSA-mr82-8j83-vxmv \
+          || echo "⚠️ Security vulnerabilities found, but not failing the build"
 
     - name: 📋 Show dependency tree
       run: |

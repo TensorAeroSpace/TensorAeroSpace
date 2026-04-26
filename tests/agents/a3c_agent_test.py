@@ -348,7 +348,7 @@ def test_agent_shared_memory():
 
     # Check that parameters can be shared (have storage)
     for param in agent.gnet.parameters():
-        assert param.storage() is not None
+        assert param.untyped_storage() is not None
 
 
 def test_agent_different_env_dimensions():
