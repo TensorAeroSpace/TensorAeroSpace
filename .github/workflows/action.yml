@@ -82,7 +82,7 @@ jobs:
 
     - name: 📚 Install dependencies
       run: |
-        poetry install --with dev
+        poetry install --with dev,test
 
     - name: 🔍 Lint with flake8 (Ubuntu only)
       run: |
