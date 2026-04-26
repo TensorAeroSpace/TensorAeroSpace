@@ -130,6 +130,12 @@ class IHDPAgent(object):
             actor_settings["maximum_q_rate"],
             actor_settings["cascade_actor"],
             actor_settings["NN_initial"],
+            use_integral_correction=actor_settings.get(
+                "use_integral_correction", False
+            ),
+            integral_gain=actor_settings.get("integral_gain", 0.0),
+            integral_clamp_deg=actor_settings.get("integral_clamp_deg", 5.0),
+            integral_warmup_steps=actor_settings.get("integral_warmup_steps", 500),
         )
         self.actor.build_actor_model()
 
@@ -188,7 +194,39 @@ class IHDPAgent(object):
             )
 
         xt_ref = np.reshape(reference_signals[:, time_step], [-1, 1])
-        ut = self.actor.run_actor_online(xt_tracked, xt_ref)
+        # Cascade actor needs the full observation: outer loop reads the
+        # primary tracked state (alpha), inner loop reads the rate state
+        # (wz). Both indices are stored on the actor; passing only the
+        # alpha row would make ``xt[wz_idx, :]`` fall out of bounds.
+        if getattr(self.actor, "cascaded_actor", False):
+            xt_for_actor = xt
+        else:
+            xt_for_actor = xt_tracked
+        ut = self.actor.run_actor_online(xt_for_actor, xt_ref)
+
+        # Optional integral correction. IHDP minimises a quadratic LQ
+        # cost without an integral term, so the policy keeps a small
+        # persistent steady-state offset on setpoint-tracking. Adding
+        # ``-K_I · ∫err dτ`` (with anti-windup) on top of the actor's
+        # output drives the offset to zero without changing the policy
+        # network or its training rule.
+        if getattr(self.actor, "use_integral_correction", False):
+            primary_err = float(xt_ref.reshape(-1)[0] - xt_tracked.reshape(-1)[0])
+            if time_step >= self.actor.integral_warmup_steps:
+                self.actor.integral_state = float(
+                    np.clip(
+                        self.actor.integral_state
+                        + primary_err * self.incremental_settings["dt"],
+                        -self.actor.integral_clamp,
+                        self.actor.integral_clamp,
+                    )
+                )
+            ut = np.clip(
+                np.asarray(ut, dtype=float)
+                - self.actor.integral_gain * self.actor.integral_state,
+                -self.actor.maximum_input,
+                self.actor.maximum_input,
+            )
 
         G = self.incremental_model.identify_incremental_model_LS(xt, ut)
         xt1_est = self.incremental_model.evaluate_incremental_model()

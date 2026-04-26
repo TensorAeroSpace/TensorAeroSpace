@@ -93,6 +93,7 @@ plugins:
                 - PPO vs PID (B747): comparison/ppo_vs_pid_b747.md
                 - DSAC vs PID (B747): comparison/dsac_vs_pid_b747.md
                 - DSAC vs PPO vs MPC vs PID (B747): comparison/all_vs_pid_b747.md
+                - IHDP & IM-GDHP vs PID (Nonlinear F-16): comparison/ihdp_imgdhp_vs_pid_f16_nonlinear.md
               - Signals: signals/signals.md
             - Examples:
               - Environments: example/enviroment/gymnasium.md
@@ -229,6 +230,7 @@ plugins:
                 - PPO vs PID (B747): comparison/ppo_vs_pid_b747.md
                 - DSAC vs PID (B747): comparison/dsac_vs_pid_b747.md
                 - DSAC vs PPO vs MPC vs PID (B747): comparison/all_vs_pid_b747.md
+                - IHDP и IM-GDHP vs PID (нелинейная F-16): comparison/ihdp_imgdhp_vs_pid_f16_nonlinear.md
               - Сигналы: signals/signals.md
             - Примеры:
               - Окружения: example/enviroment/gymnasium.md
