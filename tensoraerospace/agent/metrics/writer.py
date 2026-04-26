@@ -54,7 +54,15 @@ class _TensorBoardSink:
     """Sink that forwards metrics to a torch.utils.tensorboard.SummaryWriter."""
 
     def __init__(self, log_dir: Optional[Union[str, Path]]) -> None:
-        log_path = str(log_dir) if log_dir is not None else None
+        # Resolve the log dir to an absolute path *up front* so that the
+        # SummaryWriter's background EventFileWriter thread can still flush
+        # events even if the caller (or a pytest fixture) changes cwd
+        # between writer creation and the eventual close()/__del__ —
+        # otherwise the background thread will hit FileNotFoundError on
+        # the original relative path.
+        log_path = (
+            os.path.abspath(str(log_dir)) if log_dir is not None else None
+        )
         self._writer = (
             TorchSummaryWriter(log_dir=log_path)
             if log_path is not None
