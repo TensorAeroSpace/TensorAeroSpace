@@ -35,6 +35,10 @@ class F16AngularParameters:
     rcgx: float = field(init=False)
     hEx: float = 0.0
 
+    # Split-stab differential command (rad). Set by AngularF16.run_step
+    # when split_stab=True; 0.0 means symmetric (legacy) operation.
+    delta_stab_cmd: float = 0.0
+
     Tstab: float = 0.03
     Xistab: float = 0.707
     maxabsstab: float = field(default_factory=lambda: math.radians(25))

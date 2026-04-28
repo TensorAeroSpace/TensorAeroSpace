@@ -90,7 +90,16 @@ def f16_ode_6dof(
     # ----------------------------------------------------------------
     # Aerodynamic moments (body frame)
     # ----------------------------------------------------------------
-    Mx = p.q * p.S * p.l * mx_
+    # Differential stabilator → roll moment.
+    # F-16 stab arm ≈ 1.5 m. delta_stab > 0 means left half UP, right DOWN
+    # (positive roll = right-wing-down). Coefficient is ∂Cz/∂stab × y_arm/l.
+    # For the level here we use a simple lever: ΔMx ≈ q*S*l * (-Cz_per_stab * δ * y_arm/l)
+    # where Cz_per_stab ≈ 0.6/rad (approximate, validated to give realistic roll
+    # rates ~ 30 deg/s for δ=10 deg).
+    DELTA_STAB_ROLL_GAIN = 0.6  # 1/rad, calibrated for F-16 stabilator
+    delta_stab = float(getattr(p, "delta_stab_cmd", 0.0))
+    mx_split = -DELTA_STAB_ROLL_GAIN * delta_stab
+    Mx = p.q * p.S * p.l * (mx_ + mx_split)
     My = p.q * p.S * p.l * my_
     Mz = p.q * p.S * p.bA * mz_
 

@@ -33,28 +33,22 @@ class AngularF16(ModelBase):
         t0: float = 0,
         dt: float = 0.01,
         integrator: Literal["euler", "rk4"] = "euler",
+        split_stab: bool = False,
     ) -> None:
         x0_arr = np.asarray(x0, dtype=np.float64).reshape(-1)
         if x0_arr.size != 14:
             raise ValueError(f"x0 must have 14 elements; got {x0_arr.size}")
         super().__init__(x0_arr, selected_state_output, t0, dt)
+        self.split_stab = split_stab
         _list_state = [
-            "alpha",
-            "beta",
-            "wx",
-            "wy",
-            "wz",
-            "gamma",
-            "psi",
-            "theta",
-            "stab",
-            "dstab",
-            "ail",
-            "dail",
-            "dir",
-            "ddir",
+            "alpha", "beta", "wx", "wy", "wz",
+            "gamma", "psi", "theta",
+            "stab", "dstab", "ail", "dail", "dir", "ddir",
         ]
-        _control_list = ["stab", "ail", "dir"]
+        if split_stab:
+            _control_list = ["stab_left", "stab_right", "ail", "dir"]
+        else:
+            _control_list = ["stab", "ail", "dir"]
         self.action_space_length = len(_control_list)
         self.param: F16AngularParameters = default_parameters()
         self.x_history = [x0_arr.reshape(14, 1)]
@@ -92,9 +86,21 @@ class AngularF16(ModelBase):
                 f" Текущее значение {u_arr.size}, не соответсвует {self.action_space_length}"
             )
 
+        if self.split_stab:
+            # u = [stab_left, stab_right, ail, dir]; convert to (stab_mean, ail, dir)
+            # plus a differential delta carried via params for ODE roll-moment term.
+            stab_mean = 0.5 * (u_arr[0] + u_arr[1])
+            delta_stab = 0.5 * (u_arr[0] - u_arr[1])  # +ve delta = LWD (left up)
+            u_legacy = np.array([stab_mean, u_arr[2], u_arr[3]], dtype=np.float64)
+            # Stash on params (read by ODE; reset to 0 each step for safety)
+            self.param.delta_stab_cmd = float(delta_stab)
+        else:
+            u_legacy = u_arr
+            self.param.delta_stab_cmd = 0.0
+
         x_prev = np.asarray(self.x_history[-1], dtype=np.float64).reshape(-1)
         t_now = self.t0 + self.dt * self.time_step
-        x_next = self._step_fn(f16_ode_6dof, x_prev, u_arr, t_now, self.dt, self.param)
+        x_next = self._step_fn(f16_ode_6dof, x_prev, u_legacy, t_now, self.dt, self.param)
 
         x_next_col = x_next.reshape(14, 1)
         self.x_history.append(x_next_col)
