@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import numpy as np
-import pytest
 
 from tensoraerospace.aerospacemodel.f16.nonlinear.angular import AngularF16
 

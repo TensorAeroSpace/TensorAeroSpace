@@ -8,6 +8,10 @@ State vector (14 elements):
 
 Control vector (3 elements):
     [stab_act, ail_act, dir_act]
+
+Note: split-stab differential is communicated through
+``params.delta_stab_cmd`` (set by AngularF16.run_step in split_stab
+mode), not via the control vector. This keeps the ODE arity stable.
 """
 
 from __future__ import annotations
@@ -91,15 +95,14 @@ def f16_ode_6dof(
     # Aerodynamic moments (body frame)
     # ----------------------------------------------------------------
     # Differential stabilator → roll moment.
-    # F-16 stab arm ≈ 1.5 m. delta_stab > 0 means left half UP, right DOWN
-    # (positive roll = right-wing-down). Coefficient is ∂Cz/∂stab × y_arm/l.
-    # For the level here we use a simple lever: ΔMx ≈ q*S*l * (-Cz_per_stab * δ * y_arm/l)
-    # where Cz_per_stab ≈ 0.6/rad (approximate, validated to give realistic roll
-    # rates ~ 30 deg/s for δ=10 deg).
-    DELTA_STAB_ROLL_GAIN = 0.6  # 1/rad, calibrated for F-16 stabilator
-    delta_stab = float(getattr(p, "delta_stab_cmd", 0.0))
-    mx_split = -DELTA_STAB_ROLL_GAIN * delta_stab
-    Mx = p.q * p.S * p.l * (mx_ + mx_split)
+    # delta_stab > 0 means left half UP, right DOWN (positive roll =
+    # right-wing-down). The gated branch preserves bit-identical behaviour
+    # for symmetric/legacy operation (delta_stab == 0.0 → exact same Mx).
+    delta_stab = float(p.delta_stab_cmd)
+    if delta_stab != 0.0:
+        Mx = p.q * p.S * p.l * (mx_ - p.delta_stab_roll_gain * delta_stab)
+    else:
+        Mx = p.q * p.S * p.l * mx_
     My = p.q * p.S * p.l * my_
     Mz = p.q * p.S * p.bA * mz_
 

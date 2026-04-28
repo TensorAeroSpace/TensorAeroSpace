@@ -38,6 +38,9 @@ class F16AngularParameters:
     # Split-stab differential command (rad). Set by AngularF16.run_step
     # when split_stab=True; 0.0 means symmetric (legacy) operation.
     delta_stab_cmd: float = 0.0
+    # Differential-stabilator roll-moment gain (1/rad). Calibrated for the
+    # F-16 stabilator to give realistic roll rates ~30 deg/s for δ=10 deg.
+    delta_stab_roll_gain: float = 0.6
 
     Tstab: float = 0.03
     Xistab: float = 0.707

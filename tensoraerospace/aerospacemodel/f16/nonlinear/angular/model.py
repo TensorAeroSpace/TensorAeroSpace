@@ -23,7 +23,10 @@ ArrayLike = Union[np.ndarray, Sequence[Sequence[float]], Sequence[float]]
 class AngularF16(ModelBase):
     """F-16 with full 6-DoF angular dynamics (numpy version).
 
-    Action: stab_act, ail_act, dir_act (rad).
+    Action (default, split_stab=False): [stab_act, ail_act, dir_act] (rad).
+    Action when split_stab=True:        [stab_left, stab_right, ail, dir] (rad);
+        differential = (L - R)/2 generates a roll moment via
+        F16AngularParameters.delta_stab_roll_gain.
     """
 
     def __init__(
