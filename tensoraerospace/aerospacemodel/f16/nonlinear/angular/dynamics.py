@@ -85,6 +85,20 @@ def f16_ode_6dof(
     mz_ = get_mz(alpha, beta, stab, p.lef, wz, p.V, p.bA, p.sb)
 
     # ----------------------------------------------------------------
+    # Apply damage corrections (no-op if damage_state is None)
+    # ----------------------------------------------------------------
+    damage_state = p.damage_state
+    damage_geo = p.damage_geometry
+    if damage_state is not None and damage_geo is not None:
+        from ..damage import aero_corrections as _ac
+        cy = cy + _ac.delta_cy(alpha, beta, damage_geo, damage_state)
+        cx = cx + _ac.delta_cx(alpha, beta, damage_geo, damage_state)
+        cz = cz + _ac.delta_cz(alpha, beta, damage_geo, damage_state)
+        mx_ = mx_ + _ac.delta_mx(alpha, beta, damage_geo, damage_state)
+        my_ = my_ + _ac.delta_my(alpha, beta, damage_geo, damage_state)
+        mz_ = mz_ + _ac.delta_mz(alpha, beta, damage_geo, damage_state)
+
+    # ----------------------------------------------------------------
     # Aerodynamic forces (body frame)
     # ----------------------------------------------------------------
     X = -p.q * p.S * cx

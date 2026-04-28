@@ -42,6 +42,13 @@ class F16AngularParameters:
     # F-16 stabilator to give realistic roll rates ~30 deg/s for δ=10 deg.
     delta_stab_roll_gain: float = 0.6
 
+    # Damage subsystem hooks (set by AngularF16.run_step before each
+    # integrator step). None = healthy aircraft. The damage_state and
+    # damage_geometry are passed through params (rather than as ODE args)
+    # to keep the ODE arity stable for legacy callers.
+    damage_state: object = None
+    damage_geometry: object = None
+
     Tstab: float = 0.03
     Xistab: float = 0.707
     maxabsstab: float = field(default_factory=lambda: math.radians(25))

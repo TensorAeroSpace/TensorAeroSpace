@@ -54,6 +54,11 @@ class AngularF16(ModelBase):
             _control_list = ["stab", "ail", "dir"]
         self.action_space_length = len(_control_list)
         self.param: F16AngularParameters = default_parameters()
+
+        # Damage subsystem (None = healthy aircraft, legacy behaviour)
+        self.damage_state = None
+        self.damage_geometry = None
+
         self.x_history = [x0_arr.reshape(14, 1)]
         # NOTE: _initialize_selected_state_index resets self.list_state and
         # self.control_list to [] as a side effect (ModelBase behaviour).
@@ -100,6 +105,15 @@ class AngularF16(ModelBase):
         else:
             u_legacy = u_arr
             self.param.delta_stab_cmd = 0.0
+
+        # If damage is active, stash a reference on params so the ODE can
+        # read it. Cleared each step.
+        if self.damage_state is not None and self.damage_geometry is not None:
+            self.param.damage_state = self.damage_state
+            self.param.damage_geometry = self.damage_geometry
+        else:
+            self.param.damage_state = None
+            self.param.damage_geometry = None
 
         x_prev = np.asarray(self.x_history[-1], dtype=np.float64).reshape(-1)
         t_now = self.t0 + self.dt * self.time_step
