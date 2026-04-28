@@ -27,6 +27,9 @@ import numpy as np
 from gymnasium import spaces
 
 from tensoraerospace.aerospacemodel.f16.nonlinear.angular import AngularF16
+from tensoraerospace.aerospacemodel.f16.nonlinear.damage import (
+    DamageManager, DamageProfile, load_f16_geometry,
+)
 from tensoraerospace.visualization.kinematics import (
     _body_to_inertial_matrix,
     _body_velocity,
@@ -85,6 +88,10 @@ class NonlinearAngularF16(gym.Env):
         render_mode: Optional[str] = None,
         chart_states: Sequence[str] = DEFAULT_CHART_STATES,
         trail_length: Optional[int] = None,
+        damage_profile: Optional[DamageProfile] = None,
+        damage_observable: bool = False,
+        damage_event_callback=None,
+        split_stab: bool = False,
     ) -> None:
         super().__init__()
         if initial_state.shape != (14,):
@@ -105,20 +112,32 @@ class NonlinearAngularF16(gym.Env):
         self.render_mode = render_mode
         self.chart_states = tuple(chart_states)
         self.trail_length = trail_length
+        self.split_stab = split_stab
+        self.damage_profile = damage_profile
+        self.damage_observable = damage_observable
+        self.damage_event_callback = damage_event_callback
 
         self.max_action_value = 25.0  # deg
-        self.observation_space = spaces.Box(
-            low=-np.inf,
-            high=np.inf,
-            shape=(14,),
-            dtype=np.float64,
-        )
+
+        action_shape = (4,) if split_stab else (3,)
         self.action_space = spaces.Box(
-            low=-self.max_action_value,
-            high=self.max_action_value,
-            shape=(3,),
-            dtype=np.float64,
+            low=-self.max_action_value, high=self.max_action_value,
+            shape=action_shape, dtype=np.float64,
         )
+
+        # Observation: 14 model states + optional damage state vector
+        obs_size = 14
+        if damage_observable:
+            geo = load_f16_geometry()
+            obs_size += len(geo.section_names())  # section_loss vector
+            obs_size += 1  # engine.thrust_factor
+        self.observation_space = spaces.Box(
+            low=-np.inf, high=np.inf, shape=(obs_size,), dtype=np.float64,
+        )
+        self._geo_for_obs = (
+            load_f16_geometry() if (damage_observable or damage_profile) else None
+        )
+        self.damage_manager: Optional[DamageManager] = None
 
         # Filled in reset()
         self.model: AngularF16 | None = None
@@ -136,8 +155,23 @@ class NonlinearAngularF16(gym.Env):
             t0=0,
             dt=self.dt,
             integrator=self.integrator,
+            split_stab=self.split_stab,
         )
         self._step_index = 0
+
+        # Damage manager
+        if self.damage_profile is not None or self.damage_observable:
+            geo = self._geo_for_obs
+            self.damage_manager = DamageManager(
+                geometry=geo, params=self.model.param,
+                profile=(self.damage_profile or DamageProfile(events=[])),
+            )
+            if options and "damage_profile" in options:
+                self.damage_manager.set_profile(options["damage_profile"])
+            self.damage_manager.reset(seed=seed)
+            self.model.damage_state = self.damage_manager.state
+            self.model.damage_geometry = geo
+
         self.position_history = np.zeros((1, 3), dtype=np.float64)
         self.attitude_history = self._extract_attitude(self.initial_state).reshape(1, 3)
         self.time_history = np.zeros((1,), dtype=np.float64)
@@ -146,34 +180,64 @@ class NonlinearAngularF16(gym.Env):
             for name in self.chart_states
         }
         self._live_renderer = None
-        return self.initial_state.copy(), {}
+
+        obs = self._build_observation(self.initial_state)
+        return obs, {}
 
     def step(self, action):
         action = np.asarray(action, dtype=np.float64).reshape(-1)
-        if action.shape != (3,):
-            raise ValueError(f"action must be (3,); got {action.shape}")
-
-        # Clip to bounds, convert to radians
-        action_clipped = np.clip(
-            action,
-            -self.max_action_value,
-            self.max_action_value,
-        )
+        expected = (4,) if self.split_stab else (3,)
+        if action.shape != expected:
+            raise ValueError(f"action must be {expected}; got {action.shape}")
+        action_clipped = np.clip(action, -self.max_action_value, self.max_action_value)
         u_rad = np.deg2rad(action_clipped)
 
-        # Step the model
+        # Time bookkeeping (BEFORE stepping the model)
+        t_prev = self._step_index * self.dt
+        t_now = (self._step_index + 1) * self.dt
+
+        # Damage events
+        triggered_labels: list[str] = []
+        if self.damage_manager is not None:
+            triggered = self.damage_manager.update(t_now, t_prev)
+            for ev in triggered:
+                if self.damage_event_callback:
+                    self.damage_event_callback(ev, self.damage_manager.state)
+                triggered_labels.append(ev.label or ev.event_type)
+
         assert self.model is not None
         self.model.run_step(u_rad)
         next_state = self.model.current_state.copy()
 
         # Update tracking
         self._update_history(next_state)
-
         self._step_index += 1
         terminated = False
         truncated = self._step_index >= self.number_time_steps
         reward = 0.0
-        return next_state, reward, terminated, truncated, {}
+
+        info: dict = {}
+        if self.damage_manager is not None:
+            info["damage_state"] = self.damage_manager.state.snapshot()
+            if triggered_labels:
+                info["damage_events_triggered"] = triggered_labels
+
+        obs = self._build_observation(next_state)
+        return obs, reward, terminated, truncated, info
+
+    def _build_observation(self, model_state: np.ndarray) -> np.ndarray:
+        if not self.damage_observable or self.damage_manager is None:
+            return model_state.copy()
+        geo = self._geo_for_obs
+        names = geo.section_names()
+        loss_vec = np.array(
+            [self.damage_manager.state.section_loss.get(n, 0.0) for n in names],
+            dtype=np.float64,
+        )
+        thrust_vec = np.array(
+            [self.damage_manager.state.engine.thrust_factor], dtype=np.float64
+        )
+        return np.concatenate([model_state, loss_vec, thrust_vec])
 
     def _extract_attitude(self, state: np.ndarray) -> np.ndarray:
         """(roll, pitch, yaw) = (gamma, theta, psi) from the state vector."""
