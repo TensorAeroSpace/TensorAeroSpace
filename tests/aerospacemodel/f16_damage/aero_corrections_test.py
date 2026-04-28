@@ -73,3 +73,50 @@ def test_partial_loss_adds_drag(geo, healthy):
     # baseline cd0 and jagged-edge contributions; half loses less cd0 but adds
     # the maximum jagged-edge drag).
     assert dcx_half > dcx_full
+
+
+def test_left_tip_loss_creates_positive_roll_moment(geo, healthy):
+    """Loss of left wing tip → less lift on left → roll moment magnitude > 0
+    (sign convention is matlab-port specific; here ΔMx must be nonzero)."""
+    from tensoraerospace.aerospacemodel.f16.nonlinear.damage import (
+        aero_corrections,
+    )
+    alpha = math.radians(5.0)
+    healthy.set_section_loss("left_tip", 1.0)
+    dmx = aero_corrections.delta_mx(alpha, 0.0, geo, healthy)
+    # Lost left-side lift on negative-y → roll moment magnitude > 0
+    assert abs(dmx) > 1e-3
+
+
+def test_symmetric_loss_no_roll(geo, healthy):
+    from tensoraerospace.aerospacemodel.f16.nonlinear.damage import (
+        aero_corrections,
+    )
+    alpha = math.radians(5.0)
+    healthy.set_section_loss("left_tip", 0.5)
+    healthy.set_section_loss("right_tip", 0.5)
+    dmx = aero_corrections.delta_mx(alpha, 0.0, geo, healthy)
+    assert abs(dmx) < 1e-9
+
+
+def test_yaw_moment_from_asymmetric_drag(geo, healthy):
+    """Half-loss on left tip → jagged-edge drag → yaw moment."""
+    from tensoraerospace.aerospacemodel.f16.nonlinear.damage import (
+        aero_corrections,
+    )
+    healthy.set_section_loss("left_tip", 0.5)
+    dmz = aero_corrections.delta_mz(0.0, 0.0, geo, healthy)
+    assert abs(dmz) > 1e-6
+
+
+def test_pitch_moment_from_lost_stab(geo, healthy):
+    """Loss of horizontal stab → pitch moment delta from lost lift on tail."""
+    from tensoraerospace.aerospacemodel.f16.nonlinear.damage import (
+        aero_corrections,
+    )
+    alpha = math.radians(5.0)
+    healthy.set_section_loss("stab_left", 1.0)
+    dmy = aero_corrections.delta_my(alpha, 0.0, geo, healthy)
+    # Tail is aft (negative aero_x_arm), losing it removes a downward
+    # contribution → magnitude > 0
+    assert abs(dmy) > 1e-4

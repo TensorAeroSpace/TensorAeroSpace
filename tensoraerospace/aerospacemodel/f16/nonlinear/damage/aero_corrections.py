@@ -72,3 +72,72 @@ def delta_cz(alpha: float, beta: float, geo: BaseGeometry, state: DamageState) -
             VTAIL_BETA_GAIN = 0.40  # 1/rad
             delta -= VTAIL_BETA_GAIN * beta * f
     return float(delta)
+
+
+def _max_half_span(geo: BaseGeometry) -> float:
+    """Largest absolute span_position over wing sections (used for normalisation)."""
+    return max(
+        (abs(s.span_position) for s in geo.sections if s.type == "wing"),
+        default=1.0,
+    )
+
+
+def delta_mx(alpha: float, beta: float, geo: BaseGeometry, state: DamageState) -> float:
+    """Roll-moment coefficient delta from asymmetric lift loss.
+
+    ΔMx (dimensionless) = -Σ cl_α_s · α · f_s · (area_s/S_base) · (y_arm_s/b_base)
+    where b_base = 2 · max half-span (for normalisation: cmx = Mx/(q·S·l)).
+    """
+    S_base = _base_wing_area(geo)
+    if S_base <= 0.0:
+        return 0.0
+    b_base = 2.0 * _max_half_span(geo)
+    return float(-sum(
+        s.cl_alpha_contribution * alpha * state.section_loss.get(s.name, 0.0)
+        * (s.area / S_base) * (s.span_position / b_base)
+        for s in geo.sections if s.type == "wing"
+    ))
+
+
+def delta_mz(alpha: float, beta: float, geo: BaseGeometry, state: DamageState) -> float:
+    """Yaw-moment coefficient delta from asymmetric drag.
+
+    Uses local ΔCx contribution on each section (lost cd0 + jagged-edge drag),
+    multiplied by its y-arm.
+    """
+    S_base = _base_wing_area(geo)
+    if S_base <= 0.0:
+        return 0.0
+    b_base = 2.0 * _max_half_span(geo)
+    out = 0.0
+    for s in geo.sections:
+        f = state.section_loss.get(s.name, 0.0)
+        if f <= 0.0:
+            continue
+        local_dcx = -s.cd0_contribution * f
+        if s.type == "wing":
+            local_dcx += _JAGGED_DRAG_COEF * f * (1.0 - f) * (s.area / S_base)
+        out += local_dcx * (s.span_position / b_base)
+    return float(out)
+
+
+def delta_my(alpha: float, beta: float, geo: BaseGeometry, state: DamageState) -> float:
+    """Pitch-moment coefficient delta from lost lift × x-arm.
+
+    Normalised by S_base × bA_base (area-weighted MAC).
+    """
+    S_base = _base_wing_area(geo)
+    if S_base <= 0.0:
+        return 0.0
+    # bA_base for normalisation: area-weighted chord over wing sections
+    wing_area_chord_sum = sum(
+        s.chord * s.area for s in geo.sections if s.type == "wing"
+    )
+    bA_base = wing_area_chord_sum / S_base if S_base > 0 else 1.0
+    if bA_base == 0.0:
+        return 0.0
+    return float(-sum(
+        s.cl_alpha_contribution * alpha * state.section_loss.get(s.name, 0.0)
+        * (s.area / S_base) * (s.aero_x_arm / bA_base)
+        for s in geo.sections if s.type in ("wing", "stab")
+    ))
