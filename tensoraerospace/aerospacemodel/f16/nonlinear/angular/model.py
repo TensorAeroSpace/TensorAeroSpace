@@ -94,20 +94,32 @@ class AngularF16(ModelBase):
                 f" Текущее значение {u_arr.size}, не соответсвует {self.action_space_length}"
             )
 
+        # Apply control-surface failures BEFORE split-stab merging.
+        # The failure layer mutates the raw user command (the 4-element
+        # split form or the 3-element legacy form), then split-stab
+        # merging proceeds with the failure-modified values.
+        if self.damage_state is not None:
+            from ..damage.controls import (
+                ANGULAR_LEGACY_INDEX, ANGULAR_SPLIT_STAB_INDEX,
+                apply_control_failures,
+            )
+            mapping = (
+                ANGULAR_SPLIT_STAB_INDEX if self.split_stab else ANGULAR_LEGACY_INDEX
+            )
+            u_arr = apply_control_failures(u_arr, self.damage_state, mapping)
+
         if self.split_stab:
             # u = [stab_left, stab_right, ail, dir]; convert to (stab_mean, ail, dir)
             # plus a differential delta carried via params for ODE roll-moment term.
             stab_mean = 0.5 * (u_arr[0] + u_arr[1])
             delta_stab = 0.5 * (u_arr[0] - u_arr[1])  # +ve delta = LWD (left up)
             u_legacy = np.array([stab_mean, u_arr[2], u_arr[3]], dtype=np.float64)
-            # Stash on params (read by ODE; reset to 0 each step for safety)
             self.param.delta_stab_cmd = float(delta_stab)
         else:
             u_legacy = u_arr
             self.param.delta_stab_cmd = 0.0
 
-        # If damage is active, stash a reference on params so the ODE can
-        # read it. Cleared each step.
+        # Damage hooks for ODE corrections (Phase 3)
         if self.damage_state is not None and self.damage_geometry is not None:
             self.param.damage_state = self.damage_state
             self.param.damage_geometry = self.damage_geometry
