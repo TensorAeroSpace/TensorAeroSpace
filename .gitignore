@@ -218,6 +218,8 @@ wandb/
 # Data files
 data/
 datasets/
+# Allow package data directories inside tensoraerospace source tree
+!tensoraerospace/**/data/
 *.csv
 *.json
 *.parquet

@@ -1,0 +1,206 @@
+# F-16 baseline geometry, calibrated so totals match F16AngularParameters
+# (m=9295.44 kg, S=27.87 m², bA=3.45 m, Jx/Jy/Jz/Jxz from params.py).
+#
+# Sources: NASA TM-1538 (F-16 aerodynamic data), Stevens & Lewis "Aircraft
+# Control and Simulation" Ch. 3. Where the spec defines bA=3.45 (actually MAC),
+# we use that for chord on wing sections.
+#
+# Coordinate frame (body): x forward, y right, z down. CG of the aircraft is
+# the origin (rcgx will recompute on damage).
+#
+# Calibration:
+#   Wing total area: 5.85+4.45+3.65 (x2 sides) = 27.90 m² (within 1% of 27.87)
+#   Total mass: 7824.44 + 1120 + 180 + 110 + 61 = 9295.44 kg (exact match)
+
+sections:
+  # ----- WING (6 sections, 3 per side, areas total to ~27.90 m²) -----
+  - name: left_root
+    side: left
+    type: wing
+    area: 5.85
+    span_position: -1.20
+    chord: 4.20
+    sweep: 0.70
+    mass: 280.0
+    cg_local: [0.50, -1.20, 0.10]
+    inertia_local: [120.0, 480.0, 380.0, 0.0]
+    cl_alpha_contribution: 0.85
+    cd0_contribution: 0.0050
+    aero_x_arm: 0.50
+
+  - name: left_mid
+    side: left
+    type: wing
+    area: 4.45
+    span_position: -2.80
+    chord: 2.80
+    sweep: 0.70
+    mass: 180.0
+    cg_local: [0.20, -2.80, 0.05]
+    inertia_local: [200.0, 380.0, 220.0, 0.0]
+    cl_alpha_contribution: 0.65
+    cd0_contribution: 0.0030
+    aero_x_arm: 0.20
+
+  - name: left_tip
+    side: left
+    type: wing
+    area: 3.65
+    span_position: -4.30
+    chord: 1.80
+    sweep: 0.70
+    mass: 100.0
+    cg_local: [-0.10, -4.30, 0.02]
+    inertia_local: [220.0, 280.0, 120.0, 0.0]
+    cl_alpha_contribution: 0.55
+    cd0_contribution: 0.0020
+    aero_x_arm: -0.10
+
+  - name: right_root
+    side: right
+    type: wing
+    area: 5.85
+    span_position: 1.20
+    chord: 4.20
+    sweep: 0.70
+    mass: 280.0
+    cg_local: [0.50, 1.20, 0.10]
+    inertia_local: [120.0, 480.0, 380.0, 0.0]
+    cl_alpha_contribution: 0.85
+    cd0_contribution: 0.0050
+    aero_x_arm: 0.50
+
+  - name: right_mid
+    side: right
+    type: wing
+    area: 4.45
+    span_position: 2.80
+    chord: 2.80
+    sweep: 0.70
+    mass: 180.0
+    cg_local: [0.20, 2.80, 0.05]
+    inertia_local: [200.0, 380.0, 220.0, 0.0]
+    cl_alpha_contribution: 0.65
+    cd0_contribution: 0.0030
+    aero_x_arm: 0.20
+
+  - name: right_tip
+    side: right
+    type: wing
+    area: 3.65
+    span_position: 4.30
+    chord: 1.80
+    sweep: 0.70
+    mass: 100.0
+    cg_local: [-0.10, 4.30, 0.02]
+    inertia_local: [220.0, 280.0, 120.0, 0.0]
+    cl_alpha_contribution: 0.55
+    cd0_contribution: 0.0020
+    aero_x_arm: -0.10
+
+  # ----- HORIZONTAL STABILATOR (2 sections, all-moving) -----
+  - name: stab_left
+    side: left
+    type: stab
+    area: 2.40
+    span_position: -1.60
+    chord: 1.80
+    sweep: 0.45
+    mass: 90.0
+    cg_local: [-4.50, -1.60, 0.00]
+    inertia_local: [60.0, 180.0, 130.0, 0.0]
+    cl_alpha_contribution: 0.18
+    cd0_contribution: 0.0010
+    controls_input: stab_left
+    aero_x_arm: -4.50
+
+  - name: stab_right
+    side: right
+    type: stab
+    area: 2.40
+    span_position: 1.60
+    chord: 1.80
+    sweep: 0.45
+    mass: 90.0
+    cg_local: [-4.50, 1.60, 0.00]
+    inertia_local: [60.0, 180.0, 130.0, 0.0]
+    cl_alpha_contribution: 0.18
+    cd0_contribution: 0.0010
+    controls_input: stab_right
+    aero_x_arm: -4.50
+
+  # ----- VERTICAL TAIL -----
+  - name: vtail
+    side: center
+    type: vtail
+    area: 5.10
+    span_position: 0.0
+    chord: 2.50
+    sweep: 0.78
+    mass: 110.0
+    cg_local: [-4.20, 0.00, -1.50]
+    inertia_local: [220.0, 240.0, 60.0, 0.0]
+    cl_alpha_contribution: 0.0
+    cd0_contribution: 0.0015
+    aero_x_arm: -4.20
+
+  # ----- CONTROL SURFACES (rudder + ailerons) -----
+  - name: rudder
+    side: center
+    type: control
+    area: 1.10
+    span_position: 0.0
+    chord: 0.80
+    sweep: 0.78
+    mass: 25.0
+    cg_local: [-4.80, 0.0, -2.20]
+    inertia_local: [40.0, 50.0, 12.0, 0.0]
+    cl_alpha_contribution: 0.0
+    cd0_contribution: 0.0005
+    controls_input: rudder
+    aero_x_arm: -4.80
+
+  - name: aileron_left
+    side: left
+    type: control
+    area: 0.60
+    span_position: -3.80
+    chord: 0.55
+    sweep: 0.70
+    mass: 18.0
+    cg_local: [-0.20, -3.80, 0.02]
+    inertia_local: [10.0, 28.0, 18.0, 0.0]
+    cl_alpha_contribution: 0.0
+    cd0_contribution: 0.0004
+    controls_input: aileron_left
+    aero_x_arm: -0.20
+
+  - name: aileron_right
+    side: right
+    type: control
+    area: 0.60
+    span_position: 3.80
+    chord: 0.55
+    sweep: 0.70
+    mass: 18.0
+    cg_local: [-0.20, 3.80, 0.02]
+    inertia_local: [10.0, 28.0, 18.0, 0.0]
+    cl_alpha_contribution: 0.0
+    cd0_contribution: 0.0004
+    controls_input: aileron_right
+    aero_x_arm: -0.20
+
+  # ----- FUSELAGE (single lumped section, holds the bulk of the mass) -----
+  - name: fuselage_main
+    side: center
+    type: fuselage
+    area: 0.0
+    span_position: 0.0
+    chord: 0.0
+    sweep: 0.0
+    mass: 7824.44
+    cg_local: [0.0, 0.0, 0.0]
+    inertia_local: [10000.0, 80000.0, 73000.0, 1300.0]
+    cl_alpha_contribution: 0.0
+    cd0_contribution: 0.0050
+    aero_x_arm: 0.0
