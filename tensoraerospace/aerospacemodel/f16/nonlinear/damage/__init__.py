@@ -19,6 +19,7 @@ from .state import (
     EngineState,
     StructuralState,
 )
+from .random import RandomDamageProfileGenerator  # noqa: E402
 
 __all__ = [
     "AeroSection", "BaseGeometry",
@@ -29,4 +30,5 @@ __all__ = [
     "WING_STRIKE_LEFT_TIP", "WING_STRIKE_LEFT_HALF",
     "ELEVATOR_JAM_NEUTRAL", "ELEVATOR_JAM_PITCH_UP",
     "RUDDER_LOST", "ENGINE_FLAMEOUT", "BIRDSTRIKE_COMPOUND",
+    "RandomDamageProfileGenerator",
 ]
