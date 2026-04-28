@@ -74,3 +74,41 @@ def recompute_mass_geometry(geo: BaseGeometry, state: DamageState) -> Dict:
     bA_eff = float(chord_num / s_eff) if s_eff > 0.0 else 0.0
 
     return {"m": m_eff, "S": s_eff, "b": b_eff, "bA": bA_eff, "cg": cg}
+
+
+def recompute_inertia(
+    geo: BaseGeometry, state: DamageState, cg: np.ndarray
+) -> Dict[str, float]:
+    """Compute aircraft inertias about `cg` using Huygens-Steiner.
+
+    For each surviving section: J_about_cg = J_local_about_section_cg +
+    m_eff * (parallel-axis offsets).
+    """
+    cg = np.asarray(cg, dtype=np.float64).reshape(3)
+    Jx = Jy = Jz = Jxz = 0.0
+    for s in geo.sections:
+        f = state.section_loss.get(s.name, 0.0)
+        m_eff = s.mass * (1.0 - f)
+        if m_eff <= 0.0:
+            continue
+        Ixx_l, Iyy_l, Izz_l, Ixz_l = s.inertia_local
+        # Scale local inertia by remaining mass fraction (uniform-density assumption)
+        scale = (1.0 - f)
+        Ixx_l *= scale
+        Iyy_l *= scale
+        Izz_l *= scale
+        Ixz_l *= scale
+        rx = s.cg_local[0] - cg[0]
+        ry = s.cg_local[1] - cg[1]
+        rz = s.cg_local[2] - cg[2]
+        # Parallel-axis: I_about_cg = I_local + m * (r⊥)²
+        Jx += Ixx_l + m_eff * (ry**2 + rz**2)
+        Jy += Iyy_l + m_eff * (rx**2 + rz**2)
+        Jz += Izz_l + m_eff * (rx**2 + ry**2)
+        Jxz += Ixz_l - m_eff * rx * rz  # off-diagonal: -m*rx*rz
+    # Apply structural extras
+    Jx += state.structural.extra_inertia_delta[0]
+    Jy += state.structural.extra_inertia_delta[1]
+    Jz += state.structural.extra_inertia_delta[2]
+    Jxz += state.structural.extra_inertia_delta[3]
+    return {"Jx": float(Jx), "Jy": float(Jy), "Jz": float(Jz), "Jxz": float(Jxz)}

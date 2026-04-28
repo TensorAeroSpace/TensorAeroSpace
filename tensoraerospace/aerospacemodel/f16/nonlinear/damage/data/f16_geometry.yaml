@@ -208,7 +208,7 @@ sections:
     sweep: 0.0
     mass: 7824.44
     cg_local: [0.0, 0.0, 0.0]
-    inertia_local: [10000.0, 80000.0, 73000.0, 1300.0]
+    inertia_local: [2716.0, 76101.0, 59465.0, 1300.0]
     cl_alpha_contribution: 0.0
     cd0_contribution: 0.0050
     aero_x_arm: 0.0
