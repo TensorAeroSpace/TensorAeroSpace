@@ -46,6 +46,9 @@ class LongitudinalF16(ModelBase):
         _control_list = ["stab"]
         self.action_space_length = len(_control_list)
         self.param: F16LongParameters = default_parameters()
+        # Damage subsystem (None = healthy aircraft, legacy behaviour)
+        self.damage_state = None
+        self.damage_geometry = None
         self.x_history = [x0_arr.reshape(4, 1)]
         self._initialize_selected_state_index(self.selected_state_output, _list_state)
         self.list_state = _list_state
@@ -77,6 +80,13 @@ class LongitudinalF16(ModelBase):
                 "Размерность управляющего вектора задана неверно."
                 f" Текущее значение {u_arr.size}, не соответсвует {self.action_space_length}"
             )
+        # Damage hooks for ODE corrections (Phase 3 / Phase 7.2)
+        if self.damage_state is not None and self.damage_geometry is not None:
+            self.param.damage_state = self.damage_state
+            self.param.damage_geometry = self.damage_geometry
+        else:
+            self.param.damage_state = None
+            self.param.damage_geometry = None
         x_prev = np.asarray(self.x_history[-1], dtype=np.float64).reshape(-1)
         t_now = self.t0 + self.dt * self.time_step
         x_next = self._step_fn(f16_ode_long, x_prev, u_arr, t_now, self.dt, self.param)

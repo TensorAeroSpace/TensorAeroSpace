@@ -37,6 +37,11 @@ class F16LongParameters:
     Oy: float = 3000.0
     V: float = 150.0
     q: float = field(init=False)
+    # Damage subsystem hooks (set by LongitudinalF16.run_step before each
+    # integrator step). None = healthy aircraft. Routed via params (rather
+    # than as ODE args) to keep the ODE arity stable for legacy callers.
+    damage_state: object = None
+    damage_geometry: object = None
 
     def __post_init__(self) -> None:
         self.rcgx = -0.05 * self.bA
