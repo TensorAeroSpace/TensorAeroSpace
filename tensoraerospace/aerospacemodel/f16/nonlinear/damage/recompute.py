@@ -79,25 +79,30 @@ def recompute_mass_geometry(geo: BaseGeometry, state: DamageState) -> Dict:
 def recompute_inertia(
     geo: BaseGeometry, state: DamageState, cg: np.ndarray
 ) -> Dict[str, float]:
-    """Compute aircraft inertias about `cg` using Huygens-Steiner.
+    """Compute aircraft inertias about `cg` using Huygens–Steiner.
 
-    For each surviving section: J_about_cg = J_local_about_section_cg +
-    m_eff * (parallel-axis offsets).
+    Returns the diagonal moments (Jx, Jy, Jz) and the cross-product Jxy.
+
+    Note on convention: this F-16 model uses Jxy (x-y plane product of
+    inertia) as its active off-diagonal coupling — see params.py and
+    dynamics.py. The fourth element of `AeroSection.inertia_local` is
+    interpreted as Jxy = ∫x·y dm (positive integrand, parallel-axis
+    offset is +m·rx·ry).
     """
     cg = np.asarray(cg, dtype=np.float64).reshape(3)
-    Jx = Jy = Jz = Jxz = 0.0
+    Jx = Jy = Jz = Jxy = 0.0
     for s in geo.sections:
         f = state.section_loss.get(s.name, 0.0)
         m_eff = s.mass * (1.0 - f)
         if m_eff <= 0.0:
             continue
-        Ixx_l, Iyy_l, Izz_l, Ixz_l = s.inertia_local
+        Ixx_l, Iyy_l, Izz_l, Ixy_l = s.inertia_local
         # Scale local inertia by remaining mass fraction (uniform-density assumption)
         scale = (1.0 - f)
         Ixx_l *= scale
         Iyy_l *= scale
         Izz_l *= scale
-        Ixz_l *= scale
+        Ixy_l *= scale
         rx = s.cg_local[0] - cg[0]
         ry = s.cg_local[1] - cg[1]
         rz = s.cg_local[2] - cg[2]
@@ -105,10 +110,10 @@ def recompute_inertia(
         Jx += Ixx_l + m_eff * (ry**2 + rz**2)
         Jy += Iyy_l + m_eff * (rx**2 + rz**2)
         Jz += Izz_l + m_eff * (rx**2 + ry**2)
-        Jxz += Ixz_l - m_eff * rx * rz  # off-diagonal: -m*rx*rz
+        Jxy += Ixy_l + m_eff * rx * ry  # product of inertia: +m*rx*ry
     # Apply structural extras
     Jx += state.structural.extra_inertia_delta[0]
     Jy += state.structural.extra_inertia_delta[1]
     Jz += state.structural.extra_inertia_delta[2]
-    Jxz += state.structural.extra_inertia_delta[3]
-    return {"Jx": float(Jx), "Jy": float(Jy), "Jz": float(Jz), "Jxz": float(Jxz)}
+    Jxy += state.structural.extra_inertia_delta[3]
+    return {"Jx": float(Jx), "Jy": float(Jy), "Jz": float(Jz), "Jxy": float(Jxy)}

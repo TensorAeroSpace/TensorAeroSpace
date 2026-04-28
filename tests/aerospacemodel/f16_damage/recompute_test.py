@@ -77,13 +77,15 @@ def test_healthy_inertia_matches_baseline(geo, healthy):
     from tensoraerospace.aerospacemodel.f16.nonlinear.damage.recompute import (
         recompute_inertia,
     )
-    import numpy as np
     out = recompute_inertia(geo, healthy, cg=geo.center_of_mass())
     p = F16AngularParameters()
     # Baseline inertias: tolerance 5% (geometry quantisation)
     assert out["Jx"] == pytest.approx(p.Jx, rel=0.05)
     assert out["Jy"] == pytest.approx(p.Jy, rel=0.05)
     assert out["Jz"] == pytest.approx(p.Jz, rel=0.05)
+    # Cross-product Jxy: F-16 baseline is 1331.4 (the active off-diagonal
+    # coupling in this model's body-axis convention).
+    assert out["Jxy"] == pytest.approx(p.Jxy, rel=0.05)
 
 
 def test_steiner_known_two_point_masses():

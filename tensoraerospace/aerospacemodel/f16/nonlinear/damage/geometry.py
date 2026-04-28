@@ -14,7 +14,7 @@ from typing import Literal, Optional, Tuple
 import numpy as np
 
 Vec3 = Tuple[float, float, float]
-Inertia4 = Tuple[float, float, float, float]  # Ixx, Iyy, Izz, Ixz
+Inertia4 = Tuple[float, float, float, float]  # Ixx, Iyy, Izz, Ixy
 
 
 @dataclass(frozen=True)
@@ -41,7 +41,7 @@ class AeroSection:
 
     mass: float                     # kg
     cg_local: Vec3                  # body-frame cg of the section, m
-    inertia_local: Inertia4         # Ixx, Iyy, Izz, Ixz about section cg
+    inertia_local: Inertia4         # Ixx, Iyy, Izz, Ixy about section cg
 
     cl_alpha_contribution: float    # 1/rad, this section's share of ∂Cy/∂α
     cd0_contribution: float         # this section's share of Cx0
