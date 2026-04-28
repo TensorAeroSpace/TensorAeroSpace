@@ -27,7 +27,7 @@ sections:
     type: wing
     area: 5.85
     span_position: -1.20
-    chord: 4.20
+    chord: 4.64
     sweep: 0.70
     mass: 280.0
     cg_local: [0.50, -1.20, 0.10]
@@ -41,7 +41,7 @@ sections:
     type: wing
     area: 4.45
     span_position: -2.80
-    chord: 2.80
+    chord: 3.09
     sweep: 0.70
     mass: 180.0
     cg_local: [0.20, -2.80, 0.05]
@@ -55,7 +55,7 @@ sections:
     type: wing
     area: 3.65
     span_position: -4.30
-    chord: 1.80
+    chord: 1.99
     sweep: 0.70
     mass: 100.0
     cg_local: [-0.10, -4.30, 0.02]
@@ -69,7 +69,7 @@ sections:
     type: wing
     area: 5.85
     span_position: 1.20
-    chord: 4.20
+    chord: 4.64
     sweep: 0.70
     mass: 280.0
     cg_local: [0.50, 1.20, 0.10]
@@ -83,7 +83,7 @@ sections:
     type: wing
     area: 4.45
     span_position: 2.80
-    chord: 2.80
+    chord: 3.09
     sweep: 0.70
     mass: 180.0
     cg_local: [0.20, 2.80, 0.05]
@@ -97,7 +97,7 @@ sections:
     type: wing
     area: 3.65
     span_position: 4.30
-    chord: 1.80
+    chord: 1.99
     sweep: 0.70
     mass: 100.0
     cg_local: [-0.10, 4.30, 0.02]
