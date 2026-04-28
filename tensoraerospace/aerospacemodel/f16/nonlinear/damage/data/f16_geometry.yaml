@@ -11,6 +11,14 @@
 # Calibration:
 #   Wing total area: 5.85+4.45+3.65 (x2 sides) = 27.90 m² (within 1% of 27.87)
 #   Total mass: 7824.44 + 1120 + 180 + 110 + 61 = 9295.44 kg (exact match)
+#
+# Each section's `cl_alpha_contribution` is the per-section CL_α (1/rad) —
+# i.e., how much that section's local strip raises Cy per radian of α at the
+# whole-aircraft level. The aggregate Σ(cl_α_s · area_s)/S_total should give
+# the aircraft-level Cy_α. For the F-16 baseline that is ~4.5 /rad.
+#
+# `cd0_contribution` is each section's *additive* contribution to the
+# aircraft Cx0 — they sum directly to the aircraft Cx0.
 
 sections:
   # ----- WING (6 sections, 3 per side, areas total to ~27.90 m²) -----
@@ -24,7 +32,7 @@ sections:
     mass: 280.0
     cg_local: [0.50, -1.20, 0.10]
     inertia_local: [120.0, 480.0, 380.0, 0.0]
-    cl_alpha_contribution: 0.85
+    cl_alpha_contribution: 5.20
     cd0_contribution: 0.0050
     aero_x_arm: 0.50
 
@@ -38,7 +46,7 @@ sections:
     mass: 180.0
     cg_local: [0.20, -2.80, 0.05]
     inertia_local: [200.0, 380.0, 220.0, 0.0]
-    cl_alpha_contribution: 0.65
+    cl_alpha_contribution: 4.00
     cd0_contribution: 0.0030
     aero_x_arm: 0.20
 
@@ -52,7 +60,7 @@ sections:
     mass: 100.0
     cg_local: [-0.10, -4.30, 0.02]
     inertia_local: [220.0, 280.0, 120.0, 0.0]
-    cl_alpha_contribution: 0.55
+    cl_alpha_contribution: 3.40
     cd0_contribution: 0.0020
     aero_x_arm: -0.10
 
@@ -66,7 +74,7 @@ sections:
     mass: 280.0
     cg_local: [0.50, 1.20, 0.10]
     inertia_local: [120.0, 480.0, 380.0, 0.0]
-    cl_alpha_contribution: 0.85
+    cl_alpha_contribution: 5.20
     cd0_contribution: 0.0050
     aero_x_arm: 0.50
 
@@ -80,7 +88,7 @@ sections:
     mass: 180.0
     cg_local: [0.20, 2.80, 0.05]
     inertia_local: [200.0, 380.0, 220.0, 0.0]
-    cl_alpha_contribution: 0.65
+    cl_alpha_contribution: 4.00
     cd0_contribution: 0.0030
     aero_x_arm: 0.20
 
@@ -94,7 +102,7 @@ sections:
     mass: 100.0
     cg_local: [-0.10, 4.30, 0.02]
     inertia_local: [220.0, 280.0, 120.0, 0.0]
-    cl_alpha_contribution: 0.55
+    cl_alpha_contribution: 3.40
     cd0_contribution: 0.0020
     aero_x_arm: -0.10
 
@@ -109,7 +117,7 @@ sections:
     mass: 90.0
     cg_local: [-4.50, -1.60, 0.00]
     inertia_local: [60.0, 180.0, 130.0, 0.0]
-    cl_alpha_contribution: 0.18
+    cl_alpha_contribution: 1.10
     cd0_contribution: 0.0010
     controls_input: stab_left
     aero_x_arm: -4.50
@@ -124,7 +132,7 @@ sections:
     mass: 90.0
     cg_local: [-4.50, 1.60, 0.00]
     inertia_local: [60.0, 180.0, 130.0, 0.0]
-    cl_alpha_contribution: 0.18
+    cl_alpha_contribution: 1.10
     cd0_contribution: 0.0010
     controls_input: stab_right
     aero_x_arm: -4.50

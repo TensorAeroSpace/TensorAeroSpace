@@ -49,3 +49,14 @@ def test_section_sides_consistent(base_geo):
             assert s.side == "left", f"{s.name} side={s.side}"
         if s.name.startswith("right_") or s.name.endswith("_right"):
             assert s.side == "right", f"{s.name} side={s.side}"
+
+
+def test_aircraft_cy_alpha_in_realistic_range(base_geo):
+    """The aggregate Cy_α from per-section cl_alpha_contribution × area
+    should give the aircraft-level lift-curve slope of ~4.5 /rad."""
+    s_base = base_geo.total_wing_area()
+    cy_alpha = sum(
+        s.cl_alpha_contribution * s.area for s in base_geo.sections
+    ) / s_base
+    # F-16 baseline is around 4.0–5.0 /rad depending on Mach
+    assert 3.5 <= cy_alpha <= 5.5, f"Cy_α = {cy_alpha:.3f} /rad not in [3.5, 5.5]"
