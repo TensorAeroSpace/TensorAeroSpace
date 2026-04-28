@@ -134,3 +134,38 @@ def test_left_tip_loss_reduces_jx(geo, healthy):
     out = recompute_inertia(geo, healthy, cg=new_cg)
     # Jx primarily comes from y-distance of mass; losing a tip reduces it
     assert out["Jx"] < base["Jx"]
+
+
+def test_apply_to_params_updates_in_place(geo, healthy):
+    from tensoraerospace.aerospacemodel.f16.nonlinear.damage.recompute import (
+        apply_to_params,
+    )
+    p = F16AngularParameters()
+    base_m = p.m
+    healthy.set_section_loss("left_tip", 1.0)
+    apply_to_params(p, geo, healthy)
+    assert p.m < base_m
+    assert p.S < 27.87  # baseline S
+    assert p.rcgx == pytest.approx(-0.05 * p.bA, rel=1e-9)
+
+
+def test_apply_to_params_healthy_is_idempotent(geo, healthy):
+    from tensoraerospace.aerospacemodel.f16.nonlinear.damage.recompute import (
+        apply_to_params,
+    )
+    p_baseline = F16AngularParameters()
+    p_recomputed = F16AngularParameters()
+    apply_to_params(p_recomputed, geo, healthy)
+    assert p_recomputed.m == pytest.approx(p_baseline.m, rel=0.01)
+    assert p_recomputed.S == pytest.approx(p_baseline.S, rel=0.01)
+
+
+def test_structural_mass_delta_applies(geo, healthy):
+    """From Task 5.2 — verify structural extra_mass_delta_kg is honoured."""
+    from tensoraerospace.aerospacemodel.f16.nonlinear.damage.recompute import (
+        recompute_mass_geometry,
+    )
+    healthy.structural.extra_mass_delta_kg = -200.0
+    out = recompute_mass_geometry(geo, healthy)
+    base = recompute_mass_geometry(geo, DamageState.healthy(geo))
+    assert out["m"] == pytest.approx(base["m"] - 200.0, rel=0.001)

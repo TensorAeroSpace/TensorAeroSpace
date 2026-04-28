@@ -117,3 +117,33 @@ def recompute_inertia(
     Jz += state.structural.extra_inertia_delta[2]
     Jxy += state.structural.extra_inertia_delta[3]
     return {"Jx": float(Jx), "Jy": float(Jy), "Jz": float(Jz), "Jxy": float(Jxy)}
+
+
+def apply_to_params(params, geo: BaseGeometry, state: DamageState) -> None:
+    """Mutate an F16AngularParameters/F16LongParameters in place.
+
+    Updates m, S, bA, Jx, Jy, Jz, Jxy, rcgx, l (where applicable).
+
+    Note: Jxy (not Jxz) is the active off-diagonal in this F-16 model's
+    body-frame convention; see params.py and dynamics.py.
+
+    hasattr probes for ``Jxy`` and ``l`` are intentional interface
+    polymorphism: F16AngularParameters has both fields; F16LongParameters
+    has only the longitudinal subset. This is NOT defensive getattr — it
+    allows the same function to serve both dataclass types without an
+    isinstance branch.
+    """
+    mg = recompute_mass_geometry(geo, state)
+    inertia = recompute_inertia(geo, state, cg=mg["cg"])
+    params.m = mg["m"]
+    params.S = mg["S"]
+    params.bA = mg["bA"]
+    if hasattr(params, "l"):
+        params.l = mg["b"]
+    params.Jx = inertia["Jx"]
+    params.Jy = inertia["Jy"]
+    params.Jz = inertia["Jz"]
+    if hasattr(params, "Jxy"):
+        params.Jxy = inertia["Jxy"]
+    # rcgx convention from params.__post_init__
+    params.rcgx = -0.05 * params.bA
