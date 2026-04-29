@@ -56,3 +56,14 @@ def test_damage_state_applied_each_frame():
     assert m is not None
     body = m.group(1)
     assert "applyDamageState(" in body
+
+
+def test_camera_follows_aircraft_each_frame():
+    """updateCamera() must be invoked from setFrame() so all preset
+    modes (3D / Top / Left / Right) track aircraft.position as the
+    plane moves through the scene."""
+    html = _make_html()
+    assert "function updateCamera" in html
+    m = re.search(r"function setFrame\([^)]*\)\s*\{(.*?)\n    \}", html, re.DOTALL)
+    assert m is not None
+    assert "updateCamera()" in m.group(1)

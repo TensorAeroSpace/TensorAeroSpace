@@ -52,39 +52,68 @@
     controls.minDistance = 5;
     controls.maxDistance = 1500;
 
+    // Camera modes: each frame, after the aircraft is repositioned,
+    // updateCamera() places the camera so the view follows the aircraft.
+    //  - "3d":    OrbitControls drives the camera; we just keep target at
+    //             aircraft so the user's orbit angle is preserved while
+    //             the centre of orbit moves with the plane.
+    //  - "top":   straight overhead, fixed offset (+y in world).
+    //  - "left":  body's left flank (-z in world).
+    //  - "right": body's right flank (+z in world).
+    let cameraMode = "3d";
+
+    // Offsets used by the follow-cam modes (world coords).
+    const FOLLOW_OFFSETS = {
+        top:   new THREE.Vector3(0,  60,   0),
+        left:  new THREE.Vector3(0,   5, -35),
+        right: new THREE.Vector3(0,   5,  35),
+        // 3d offset is initial only — OrbitControls owns it after that.
+        "3d":  new THREE.Vector3(30, 20,  30),
+    };
+
+    function updateCamera() {
+        const p = aircraft.position;
+        if (cameraMode === "3d") {
+            // OrbitControls: keep target on the aircraft so the user's
+            // orbit angle / distance stays the same while the centre of
+            // orbit follows the plane. Camera position is updated by
+            // OrbitControls.update() (called in animate()).
+            controls.target.copy(p);
+        } else {
+            const offset = FOLLOW_OFFSETS[cameraMode];
+            camera.position.set(
+                p.x + offset.x, p.y + offset.y, p.z + offset.z,
+            );
+            camera.lookAt(p);
+        }
+    }
+
     function preset3DCamera() {
+        cameraMode = "3d";
         controls.enabled = true;
         const p = aircraft.position;
-        camera.position.set(p.x + 30, p.y + 20, p.z + 30);
+        const off = FOLLOW_OFFSETS["3d"];
+        camera.position.set(p.x + off.x, p.y + off.y, p.z + off.z);
         controls.target.copy(p);
         controls.update();
     }
 
     function presetTopDown() {
-        controls.enabled = true;
-        const p = aircraft.position;
-        camera.position.set(p.x, p.y + 60, p.z);
-        controls.target.copy(p);
-        controls.update();
+        cameraMode = "top";
+        controls.enabled = false;
+        updateCamera();
     }
 
     function presetLeftSide() {
-        controls.enabled = true;
-        const p = aircraft.position;
-        // body.y < 0 = aircraft's left side; in three.js z = body.y, so left
-        // side is at three.z < 0. Camera there looks at the left flank.
-        camera.position.set(p.x, p.y + 5, p.z - 35);
-        controls.target.copy(p);
-        controls.update();
+        cameraMode = "left";
+        controls.enabled = false;
+        updateCamera();
     }
 
     function presetRightSide() {
-        controls.enabled = true;
-        const p = aircraft.position;
-        // body.y > 0 = aircraft's right side
-        camera.position.set(p.x, p.y + 5, p.z + 35);
-        controls.target.copy(p);
-        controls.update();
+        cameraMode = "right";
+        controls.enabled = false;
+        updateCamera();
     }
 
     // ---- Procedural F-16 mesh ----
@@ -494,6 +523,9 @@
 
         // Apply damage state for this time
         applyDamageState(damageStateAt(traj.time[idx]));
+
+        // Camera tracks the aircraft each frame regardless of preset mode.
+        updateCamera();
 
         // Update HUD
         document.getElementById("hud-time").textContent =
