@@ -21,7 +21,10 @@
     // ---- Scene setup ----
     const sceneEl = document.getElementById("scene");
     const renderer = new THREE.WebGLRenderer({ antialias: true });
-    renderer.setPixelRatio(window.devicePixelRatio);
+    // Cap DPR at 2 — going to 3+ on retina screens triples pixel count
+    // for negligible visual gain on this geometry density (Three.js
+    // best practice: render-pixel-ratio).
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     renderer.setSize(sceneEl.clientWidth, sceneEl.clientHeight);
     sceneEl.appendChild(renderer.domElement);
 
@@ -167,11 +170,40 @@
         nozzle:    0x303030,
     };
 
+    // Material cache (Three.js best practice: material-reuse). Many
+    // aircraft sub-parts share colors. Sharing the same Material instance
+    // lets the renderer batch state changes and roughly halves the unique
+    // material count for this scene.
+    //
+    // CAVEAT: meshes whose material gets MUTATED at runtime (damage tint
+    // on wing sections / control surfaces, exhaust fade) need their own
+    // material so the mutation doesn't leak. Pass {unique: true} for them.
+    const _stdMatCache = new Map();
     function _stdMat(color, opts) {
-        return new THREE.MeshStandardMaterial({
-            color, metalness: 0.55, roughness: 0.4,
-            side: THREE.DoubleSide, ...opts,
+        opts = opts || {};
+        const unique = opts.unique === true;
+        const metalness = opts.metalness ?? 0.55;
+        const roughness = opts.roughness ?? 0.4;
+        const opacity = opts.opacity ?? 1.0;
+        const transparent = !!opts.transparent;
+        const emissive = opts.emissive ?? 0;
+        const cacheKey = [
+            color, metalness, roughness, opacity, transparent, emissive,
+        ].join("|");
+        if (!unique) {
+            const hit = _stdMatCache.get(cacheKey);
+            if (hit) return hit;
+        }
+        const cleanOpts = Object.assign({}, opts);
+        delete cleanOpts.unique;
+        const mat = new THREE.MeshStandardMaterial({
+            color, metalness, roughness, opacity, transparent,
+            side: THREE.DoubleSide,
+            ...(emissive ? { emissive } : {}),
+            ...cleanOpts,
         });
+        if (!unique) _stdMatCache.set(cacheKey, mat);
+        return mat;
     }
 
     function _quadGeom(c0, c1, c2, c3) {
@@ -1025,6 +1057,27 @@
     const aircraft = buildAircraft(log.geometry);
     scene.add(aircraft);
 
+    // Static-decoration meshes never move relative to the aircraft, so
+    // we can disable per-frame local-matrix recomputation on them. The
+    // aircraft Group itself still updates each frame; children inherit
+    // its world matrix automatically. Hinge-pivoted control surfaces
+    // (stab_*, aileron_*, rudder) DO change their local rotation, so
+    // they must keep matrixAutoUpdate=true.
+    const _MOVING_NAMES = new Set([
+        "stab_left", "stab_right", "aileron_left", "aileron_right",
+        "rudder", "exhaust",
+    ]);
+    aircraft.traverse((obj) => {
+        if (obj === aircraft) return;
+        // Walk up to find which top-level child this belongs to so we
+        // can skip the entire hinge-group subtree.
+        let p = obj;
+        while (p && p.parent && p.parent !== aircraft) p = p.parent;
+        if (p && _MOVING_NAMES.has(p.name)) return;
+        obj.matrixAutoUpdate = false;
+        obj.updateMatrix();
+    });
+
     // ---- Instrument-panel helpers ----
     function _setNeedle(id, value, vmin, vmax, degMin, degMax) {
         const el = document.getElementById(id);
@@ -1275,6 +1328,10 @@
     function _resetSection(mesh) {
         mesh.position.set(0, 0, 0);
         mesh.rotation.set(0, 0, 0);
+        // Damage-tracked meshes have matrixAutoUpdate=false (set after
+        // buildAircraft), so we need to recompute the local matrix
+        // explicitly after mutating position / rotation.
+        mesh.updateMatrix();
     }
 
     function advanceDamageAnimations(currentTime, lossMap) {
@@ -1307,6 +1364,8 @@
                 anim.rotBase.y + phase * 0.8,
                 anim.rotBase.z + phase * 1.2,
             );
+            // matrixAutoUpdate is off on this mesh — recompute manually
+            mesh.updateMatrix();
         }
 
         // Detect new damage transitions and start animations.
