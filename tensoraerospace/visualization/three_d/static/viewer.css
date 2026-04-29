@@ -35,7 +35,7 @@ html, body {
 #hud .value { font-family: "SF Mono", "Consolas", monospace; }
 #controls {
     position: absolute;
-    bottom: 12px;
+    bottom: 212px;            /* sit just above the 200 px instrument panel */
     left: 12px;
     right: 12px;
     background: var(--hud-bg);
@@ -44,6 +44,8 @@ html, body {
     display: flex;
     align-items: center;
     gap: 10px;
+    z-index: 6;               /* above panel (z=5) and scene */
+    pointer-events: auto;
 }
 #controls button {
     background: var(--accent);
