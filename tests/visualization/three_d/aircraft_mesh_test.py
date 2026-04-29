@@ -48,17 +48,37 @@ def test_html_has_body_to_three_helper():
                      html) is not None
 
 
-def test_html_handles_all_section_types():
+def test_html_uses_lathe_geometry_for_fuselage():
     html = _make_html()
-    for t in ("wing", "stab", "vtail", "control", "fuselage"):
-        assert f'"{t}"' in html or f"'{t}'" in html, f"missing branch for {t}"
+    assert "LatheGeometry" in html
 
 
-def test_aircraft_uses_log_geometry_sections():
-    """The mesh builder must iterate over log.geometry.sections so the
-    visual stays in sync with the YAML / DamageState."""
+def test_html_has_canopy_intake_pitot_nozzle():
     html = _make_html()
-    assert "geometry.sections" in html
+    for piece in ("fuselage_canopy", "fuselage_intake", "nozzle"):
+        assert piece in html
+
+
+def test_html_has_named_wing_sections():
+    """Each YAML wing section name must appear as a mesh.name in the
+    rendered viewer.js for damage visualization to find them."""
+    html = _make_html()
+    for s in ("left_root", "left_mid", "left_tip",
+              "right_root", "right_mid", "right_tip",
+              "stab_left", "stab_right",
+              "vtail", "rudder",
+              "aileron_left", "aileron_right",
+              "fuselage_main"):
+        assert s in html, f"section name missing: {s}"
+
+
+def test_html_has_right_wing_polygons():
+    """The hand-tuned right-wing planform must be in the bundled JS."""
+    html = _make_html()
+    assert "RIGHT_WING_POLYGONS" in html
+    assert "right_root" in html
+    assert "right_mid" in html
+    assert "right_tip" in html
 
 
 def test_camera_distance_increased_for_aircraft_scale():
@@ -67,7 +87,8 @@ def test_camera_distance_increased_for_aircraft_scale():
     assert "camera.position.set(45, 30, 45)" in html
 
 
-def test_section_meshes_named_after_section_name():
-    """mesh.name is set so Phase E can find sections by name."""
+def test_section_meshes_have_names():
+    """Mesh names are set so damage viz can find sections by name."""
     html = _make_html()
-    assert "mesh.name = s.name" in html
+    # The new builder uses mesh.name = name for flat panels
+    assert 'mesh.name = name' in html

@@ -35,10 +35,11 @@ def test_html_has_engine_exhaust():
 
 def test_html_has_camera_presets():
     html = _make_html()
-    assert "function presetFree" in html
-    assert "function presetChase" in html
+    assert "function preset3DCamera" in html
     assert "function presetTopDown" in html
-    for btn in ("btn-cam-free", "btn-cam-chase", "btn-cam-top"):
+    assert "function presetLeftSide" in html
+    assert "function presetRightSide" in html
+    for btn in ("btn-cam-3d", "btn-cam-top", "btn-cam-left", "btn-cam-right"):
         assert btn in html
 
 
