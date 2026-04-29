@@ -43,8 +43,14 @@ def test_render_save_to_writes_html(tmp_path):
 
 def test_env_render_dispatches_to_3d_web(tmp_path, monkeypatch):
     """env.render() with render_mode='3d_web' must produce an HTML, not
-    open a browser, when redirected via patched webbrowser.open."""
+    open a browser, when redirected via patched webbrowser.open.
+
+    Sets TENSORAEROSPACE_3D_OUT so the default-output picks tmp_path
+    instead of leaving a flight_3d_viewer.html in the test runner's cwd.
+    """
     import webbrowser
+    monkeypatch.setenv("TENSORAEROSPACE_3D_OUT",
+                       str(tmp_path / "flight.html"))
     env = _make_env_after_run(render_mode="3d_web")
 
     opened: list[str] = []
@@ -55,6 +61,20 @@ def test_env_render_dispatches_to_3d_web(tmp_path, monkeypatch):
     assert out.exists()
     assert len(opened) == 1
     assert opened[0].startswith("file://")
+
+
+def test_render_default_output_path_respects_env_var(tmp_path, monkeypatch):
+    """Setting TENSORAEROSPACE_3D_OUT redirects the default output."""
+    import webbrowser
+    monkeypatch.setenv("TENSORAEROSPACE_3D_OUT",
+                       str(tmp_path / "custom.html"))
+    monkeypatch.setattr(webbrowser, "open", lambda url: True)
+
+    from tensoraerospace.visualization.three_d import render
+    env = _make_env_after_run()
+    out = render(env, open_in_browser=False, inline=False)
+    assert out == tmp_path / "custom.html"
+    assert out.exists()
 
 
 def test_render_inline_returns_iframe_html():
