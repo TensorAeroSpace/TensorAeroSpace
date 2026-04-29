@@ -37,6 +37,157 @@ for _ in range(2000):
 
 A runnable version of this snippet ships at `example/f16_damage_dogfight_demo.py`.
 
+## How the damage model works
+
+The damage subsystem turns the F-16 into a piecewise-time-varying plant.
+It does this with three linked layers: a **section-based geometry**, a
+**damage state** evolved by scheduled events, and a **runtime physics
+recompute** that feeds updated parameters and aero-coefficient deltas
+back into the existing F-16 ODEs.
+
+### Layer 1 — Section-based geometry
+
+The aircraft is decomposed into 13 named sections (6 wing + 2 stabilator
+halves + vertical tail + 3 control surfaces + fuselage). Each section
+carries the data needed to compute its own contribution to the
+aircraft-level totals: position (`span_position`, `aero_x_arm`, `cg_local`),
+size (`area`, `chord`, `sweep`), inertial properties (`mass`, local
+`inertia_local`), and aerodynamic coefficients (`cl_alpha_contribution`,
+`cd0_contribution`).
+
+![F-16 section layout (top-down view)](img/damage_section_layout.png)
+
+The section data lives declaratively in
+`tensoraerospace/aerospacemodel/f16/nonlinear/damage/data/f16_geometry.yaml`
+and is loaded into a `BaseGeometry` object through `load_f16_geometry()`.
+Geometry is calibrated so that the sum of section contributions matches
+the existing `F16AngularParameters` baseline within ~1 % for mass and
+area, and ~5 % for the inertia tensor — see the calibration tests in
+`tests/aerospacemodel/f16_damage/presets_test.py`.
+
+### Layer 2 — DamageState evolved by events
+
+`DamageState` is a mutable runtime object describing the current health
+of every section, every control surface, and the engine. It tracks four
+sub-states:
+
+- `section_loss: dict[str, float]` — fraction in `[0, 1]` of each section
+  that is missing.
+- `control_failures: dict[str, ControlFailure]` — per-surface failure
+  modes (`jam`, `efficiency_loss`, `lost`, `free_floating`).
+- `engine: EngineState` — `thrust_factor` and `hard_failure` flag.
+- `structural: StructuralState` — additional mass / CG / inertia deltas
+  not tied to a specific section (e.g., dropped stores, ice accretion).
+
+A `DamageProfile` is a list of `DamageEvent` entries each scheduled at a
+specific `trigger_time`. The `DamageManager` (owned by the env) processes
+the schedule on every step:
+
+```python
+def update(self, t_current, t_previous):
+    triggered = [
+        e for e in self.profile.events
+        if t_previous < e.trigger_time <= t_current
+    ]
+    for ev in triggered:
+        self._apply_event(ev)        # mutates DamageState
+    if triggered:
+        apply_to_params(self.params, self.geometry, self.state)
+    return triggered
+```
+
+Multiple events can stack (compound failures), and an injected one-shot
+event can be added at runtime via `damage_manager.inject_event(...)` —
+useful for RL curricula where damage is sampled per episode.
+
+![DamageProfile timeline example](img/damage_event_timeline.png)
+
+### Layer 3 — Runtime physics recompute
+
+When at least one event triggers, three physics computations run, in
+order:
+
+**(a) Mass-geometry recompute.** Per-section masses scale by `(1 - f_s)`
+and the aircraft-level `m`, wing area `S`, span `b`, MAC `bA`, and CG
+position are recomputed by mass-weighted aggregation. Symmetric tip loss
+keeps the CG centred; asymmetric loss shifts it towards the surviving
+side.
+
+**(b) Inertia recompute via Huygens-Steiner.** For each surviving section
+with effective mass `m_s_eff`, the parallel-axis theorem gives:
+
+$$J_{xx,\text{aircraft}} = \sum_s \Bigl[I_{xx,s} \cdot (1-f_s) + m_s^{eff} \cdot \bigl((y_s - y_{cg})^2 + (z_s - z_{cg})^2\bigr)\Bigr]$$
+
+with analogous forms for `Jyy`, `Jzz`, and the off-diagonal `Jxy`. The
+`+m·rx·ry` sign on the Jxy parallel-axis term is correct for this
+codebase's body-frame convention (where `Jxy` — not `Jxz` — is the
+active off-diagonal coupling in `f16_ode_6dof`; see
+`F16AngularParameters.Jxy = 1331.4`).
+
+![Parameter recompute curves](img/damage_recompute_curves.png)
+
+The plot above shows how `m`, `S`, `Jx`, and `cg_y` evolve as a function
+of wing-tip loss fraction. Symmetric loss (blue) decays linearly without
+disturbing the CG; asymmetric (red) introduces a CG shift that grows
+with `f`.
+
+**(c) Strip-theory aerodynamic corrections.** Each section contributes
+its own additive delta to the aircraft-level coefficients on top of the
+baseline lookup tables. For lift:
+
+$$\Delta C_y \;=\; -\sum_s c_{l\alpha,s} \cdot \alpha \cdot f_s \cdot \frac{\text{area}_s}{S_{\text{base}}}$$
+
+and analogously for drag (`ΔCx`, with an extra jagged-edge term that
+peaks at `f = 0.5`), side-force (`ΔCz`, dominated by vertical tail),
+and the three moment coefficients (`ΔMx, ΔMy, ΔMz`). The moment deltas
+include the section's lever arm: roll moment `ΔMx ∝ Δlift × y_arm`, so
+losing a single tip produces a net rolling moment, while symmetric loss
+cancels.
+
+![Strip-theory aero corrections](img/damage_strip_theory.png)
+
+The two panels show this duality. **Left**: symmetric tip loss reduces
+`Cy` proportionally — at `α = 10°` and 60 % bilateral loss, `ΔCy ≈ -0.10`,
+i.e. ~12 % of the healthy lift. **Right**: asymmetric (left-only) loss
+generates a roll-moment delta `ΔMx` that scales with both `α` and `f` —
+this is the physics behind the dogfight scenario in
+`example/f16_damage_dogfight_demo.py`.
+
+### Putting it together — what the agent sees
+
+Once damage is active, every step of the F-16 ODE picks up the corrections
+through a single hook:
+
+```python
+# inside f16_ode_6dof
+cy = get_cy(...) + delta_cy(α, β, geo, damage_state)
+mx = get_mx(...) + delta_mx(α, β, geo, damage_state)
+# ... etc for cx, cz, my, mz
+```
+
+The actuator commands also pass through `apply_control_failures(u, state)`
+before reaching the integrator, so a jammed control surface produces a
+non-trivial output independent of the agent's command. The agent therefore
+does not need any explicit damage-state input: the dynamics it observes
+**are** the damaged plant.
+
+### Worked example — wing tip loss in flight
+
+`example/f16_damage_dogfight_demo.py` runs the angular F-16 with
+`damage_profile=WING_STRIKE_LEFT_TIP` (full loss of `left_tip` at
+t = 10 s). With zero stick command, the trajectory shows the asymmetry
+clearly — pre-damage the aircraft holds straight-and-level; post-damage
+a roll moment develops and `ω_x` grows to several deg/s within seconds.
+
+![Healthy vs damaged trajectory under zero command](img/damage_demo_trajectory.png)
+
+The roll-rate `ω_x` panel is the most direct demonstration: in the healthy
+run it stays at zero, but after t = 10 s the damaged run accelerates —
+this is exactly the moment imbalance produced by `delta_mx` in the
+strip-theory layer. Pitch-rate `ω_z` and elevator stay in their pre-damage
+ranges because the loss is not coupled to the pitch axis. The α channel
+shows a small drift as the lift coefficient decreases.
+
 ## Built-in scenarios
 
 | Preset | Trigger | Effect |
