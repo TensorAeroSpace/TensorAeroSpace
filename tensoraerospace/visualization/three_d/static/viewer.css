@@ -364,11 +364,13 @@ html, body {
     top: 12px;
     right: 12px;
     width: 340px;
+    min-width: 220px;
+    max-width: 80vw;
     max-height: calc(100vh - 280px);
     overflow-y: auto;
     background: var(--hud-bg);
     border-radius: 6px;
-    padding: 8px 10px;
+    padding: 8px 10px 8px 14px;       /* extra left padding for resize gutter */
     z-index: 7;
     user-select: none;
     display: none;
@@ -380,6 +382,20 @@ html, body {
     background: #4a505a;
     border-radius: 3px;
 }
+#charts-panel .charts-resize-handle {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 6px;
+    height: 100%;
+    cursor: ew-resize;
+    background: transparent;
+    transition: background 0.15s;
+}
+#charts-panel .charts-resize-handle:hover,
+#charts-panel.resizing .charts-resize-handle {
+    background: rgba(74, 144, 226, 0.5);
+}
 #charts-panel .charts-title {
     color: var(--hud-fg);
     font-size: 11px;
@@ -389,17 +405,104 @@ html, body {
     margin-bottom: 6px;
     padding-bottom: 4px;
     border-bottom: 1px solid #2a2a3a;
+    display: flex;
+    align-items: center;
+    gap: 6px;
 }
+#charts-panel .charts-title .charts-title-text {
+    flex: 1;
+}
+#charts-panel .charts-size-group {
+    display: flex;
+    gap: 2px;
+    margin-right: 4px;
+}
+#charts-panel .charts-size-btn,
+#charts-panel .charts-menu-btn {
+    background: #2a2a3a;
+    color: #b0b0c0;
+    border: 1px solid #3a3f47;
+    border-radius: 3px;
+    font-family: inherit;
+    font-size: 10px;
+    font-weight: 700;
+    padding: 2px 6px;
+    cursor: pointer;
+    line-height: 1;
+}
+#charts-panel .charts-size-btn:hover,
+#charts-panel .charts-menu-btn:hover {
+    background: #3a3a4a;
+    color: var(--hud-fg);
+}
+#charts-panel .charts-size-btn.active {
+    background: var(--accent);
+    color: white;
+    border-color: var(--accent);
+}
+#charts-panel .charts-menu-btn { padding: 2px 7px; }
+
+#charts-panel .charts-menu {
+    background: #1a1d22;
+    border: 1px solid #3a3f47;
+    border-radius: 4px;
+    padding: 6px 8px;
+    margin-bottom: 6px;
+    font-size: 10px;
+    line-height: 1.6;
+    display: none;
+    grid-template-columns: 1fr 1fr;
+    gap: 2px 12px;
+}
+#charts-panel .charts-menu.open { display: grid; }
+#charts-panel .charts-menu label {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    color: #b0b0c0;
+    cursor: pointer;
+    letter-spacing: 0.4px;
+}
+#charts-panel .charts-menu label:hover { color: var(--hud-fg); }
+#charts-panel .charts-menu input[type="checkbox"] {
+    accent-color: var(--accent);
+    margin: 0;
+    cursor: pointer;
+}
+
 #charts-panel .chart {
     margin-bottom: 4px;
+    position: relative;
 }
+#charts-panel .chart.hidden { display: none; }
 #charts-panel .chart svg {
     display: block;
     width: 100%;
-    height: 56px;
+    height: var(--chart-height, 56px);
     background: #14171c;
     border: 1px solid #2a2a3a;
     border-radius: 3px;
+    transition: height 0.15s;
+}
+#charts-panel .chart-hide-btn {
+    position: absolute;
+    top: 1px;
+    right: 1px;
+    background: transparent;
+    color: #4a505a;
+    border: none;
+    cursor: pointer;
+    font-size: 14px;
+    line-height: 1;
+    padding: 1px 5px;
+    border-radius: 3px;
+    opacity: 0;
+    transition: opacity 0.15s, color 0.15s, background 0.15s;
+}
+#charts-panel .chart:hover .chart-hide-btn { opacity: 1; }
+#charts-panel .chart-hide-btn:hover {
+    background: rgba(240, 64, 48, 0.6);
+    color: white;
 }
 #charts-panel .chart-axis {
     stroke: #2a2a3a;

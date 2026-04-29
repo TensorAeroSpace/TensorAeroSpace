@@ -1028,10 +1028,14 @@
           fmt: (v) => v.toFixed(2) },
     ];
 
-    // Chart geometry (in viewBox units, matched to the SVG aspect).
+    // Chart geometry (in viewBox units, matched to the SVG aspect via
+    // preserveAspectRatio="none"). The SVG itself stretches to fill the
+    // panel width and the height set by --chart-height (S/M/L preset).
     const CHART_W = 340, CHART_H = 56;
     const CHART_PAD_L = 4, CHART_PAD_R = 4;
     const CHART_PAD_T = 14, CHART_PAD_B = 4;
+    const CHART_HEIGHTS = { S: 40, M: 56, L: 90 };
+    const CHARTS_STORAGE_KEY = "f16-viewer-charts-v1";
 
     function _buildChart(spec) {
         // Sample the series — full resolution is 6000 pts on a 60 s run,
@@ -1105,26 +1109,154 @@
         return wrap;
     }
 
+    function _loadChartsState() {
+        try {
+            const raw = localStorage.getItem(CHARTS_STORAGE_KEY);
+            if (raw) return JSON.parse(raw);
+        } catch (_) { /* localStorage may be unavailable in private mode */ }
+        return {};
+    }
+    function _saveChartsState(state) {
+        try {
+            localStorage.setItem(CHARTS_STORAGE_KEY, JSON.stringify(state));
+        } catch (_) {}
+    }
+    const chartsState = Object.assign(
+        { width: 340, size: "M", hidden: [] },
+        _loadChartsState(),
+    );
+
+    function _applyChartHeight(size) {
+        const h = CHART_HEIGHTS[size] || CHART_HEIGHTS.M;
+        const panel = document.getElementById("charts-panel");
+        if (panel) panel.style.setProperty("--chart-height", h + "px");
+        chartsState.size = size;
+        _saveChartsState(chartsState);
+        // Refresh active class on size buttons
+        for (const k of Object.keys(CHART_HEIGHTS)) {
+            const btn = document.getElementById("charts-size-" + k);
+            if (btn) btn.classList.toggle("active", k === size);
+        }
+    }
+
+    function _setChartHidden(key, hidden) {
+        const wrap = document.getElementById("chart-wrap-" + key);
+        if (wrap) wrap.classList.toggle("hidden", hidden);
+        const idx = chartsState.hidden.indexOf(key);
+        if (hidden && idx === -1) chartsState.hidden.push(key);
+        if (!hidden && idx !== -1) chartsState.hidden.splice(idx, 1);
+        _saveChartsState(chartsState);
+        // Sync menu checkbox
+        const cb = document.getElementById("chart-cb-" + key);
+        if (cb) cb.checked = !hidden;
+    }
+
     function _initChartsPanel() {
         const panel = document.getElementById("charts-panel");
         if (!panel) return;
-        // Make the inline "display" reflect the CSS default so the
-        // toggle logic in `_updateCharts` and the keyboard handler can
-        // read it directly.
         panel.style.display = "none";
+        panel.style.width = chartsState.width + "px";
+
+        // Resize handle (drag the left edge to widen / narrow the panel)
+        const handle = document.createElement("div");
+        handle.className = "charts-resize-handle";
+        handle.title = "Drag to resize";
+        panel.appendChild(handle);
+
+        let dragStartX = 0, dragStartW = 0;
+        const onMove = (e) => {
+            // Drag left grows the panel (it's anchored to right: 12px).
+            const dx = dragStartX - e.clientX;
+            const w = Math.max(220, Math.min(window.innerWidth * 0.8,
+                                             dragStartW + dx));
+            panel.style.width = w + "px";
+            chartsState.width = w;
+        };
+        const onUp = () => {
+            window.removeEventListener("mousemove", onMove);
+            window.removeEventListener("mouseup", onUp);
+            panel.classList.remove("resizing");
+            _saveChartsState(chartsState);
+        };
+        handle.addEventListener("mousedown", (e) => {
+            dragStartX = e.clientX;
+            dragStartW = panel.getBoundingClientRect().width;
+            panel.classList.add("resizing");
+            window.addEventListener("mousemove", onMove);
+            window.addEventListener("mouseup", onUp);
+            e.preventDefault();
+        });
+
+        // Title bar with size buttons + settings menu toggle
         const title = document.createElement("div");
         title.className = "charts-title";
-        title.textContent = "Flight parameters";
+        title.innerHTML = `
+            <span class="charts-title-text">Flight parameters</span>
+            <span class="charts-size-group">
+                <button class="charts-size-btn" id="charts-size-S" title="Small">S</button>
+                <button class="charts-size-btn" id="charts-size-M" title="Medium">M</button>
+                <button class="charts-size-btn" id="charts-size-L" title="Large">L</button>
+            </span>
+            <button class="charts-menu-btn" id="charts-menu-btn" title="Show/hide charts">⋯</button>
+        `;
         panel.appendChild(title);
-        for (const spec of chartSpecs) {
-            panel.appendChild(_buildChart(spec));
+
+        for (const k of Object.keys(CHART_HEIGHTS)) {
+            const b = title.querySelector("#charts-size-" + k);
+            if (b) b.addEventListener("click", () => _applyChartHeight(k));
         }
+
+        // Visibility menu (one checkbox per chart)
+        const menu = document.createElement("div");
+        menu.className = "charts-menu";
+        menu.id = "charts-menu";
+        for (const spec of chartSpecs) {
+            const lbl = document.createElement("label");
+            lbl.innerHTML =
+                `<input type="checkbox" id="chart-cb-${spec.key}"
+                        ${chartsState.hidden.indexOf(spec.key) === -1 ? "checked" : ""}>
+                 <span>${spec.label}</span>`;
+            const cb = lbl.querySelector("input");
+            cb.addEventListener("change", () =>
+                _setChartHidden(spec.key, !cb.checked));
+            menu.appendChild(lbl);
+        }
+        panel.appendChild(menu);
+
+        const menuBtn = title.querySelector("#charts-menu-btn");
+        if (menuBtn) {
+            menuBtn.addEventListener("click", () =>
+                menu.classList.toggle("open"));
+        }
+
+        // Build all charts
+        for (const spec of chartSpecs) {
+            const wrap = _buildChart(spec);
+            wrap.id = "chart-wrap-" + spec.key;
+            // Per-chart hide button (× in the corner, visible on hover)
+            const hide = document.createElement("button");
+            hide.className = "chart-hide-btn";
+            hide.title = "Hide this chart";
+            hide.textContent = "×";
+            hide.addEventListener("click", () =>
+                _setChartHidden(spec.key, true));
+            wrap.appendChild(hide);
+            if (chartsState.hidden.indexOf(spec.key) !== -1) {
+                wrap.classList.add("hidden");
+            }
+            panel.appendChild(wrap);
+        }
+
+        // Apply persisted size last so the CSS variable is set after all
+        // chart SVGs exist.
+        _applyChartHeight(chartsState.size);
     }
 
     function _updateCharts(idx) {
         const panel = document.getElementById("charts-panel");
         if (!panel || panel.style.display === "none") return;
         for (const spec of chartSpecs) {
+            if (chartsState.hidden.indexOf(spec.key) !== -1) continue;
             const cur = document.getElementById("chart-cur-" + spec.key);
             const val = document.getElementById("chart-val-" + spec.key);
             if (cur) {
