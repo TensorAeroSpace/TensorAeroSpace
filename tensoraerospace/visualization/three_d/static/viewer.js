@@ -52,6 +52,31 @@
     controls.minDistance = 5;
     controls.maxDistance = 1500;
 
+    function presetFree() {
+        controls.enabled = true;
+        camera.position.set(45, 30, 45);
+        controls.target.set(0, 0, 0);
+        controls.update();
+    }
+
+    function presetChase() {
+        // Camera ~25 m behind and 8 m above the aircraft, looking forward.
+        // Updated each frame inside setFrame() when chaseMode is on.
+        chaseMode = true;
+        controls.enabled = false;
+    }
+
+    function presetTopDown() {
+        chaseMode = false;
+        controls.enabled = true;
+        const p = aircraft.position;
+        camera.position.set(p.x, p.y + 80, p.z);
+        controls.target.copy(p);
+        controls.update();
+    }
+
+    let chaseMode = false;
+
     // ---- Procedural F-16 from log.geometry.sections ----
     function bodyToThree(bx, by, bz) {
         // Body frame (x-fwd, y-right, z-down) → three.js (x-fwd, y-up, z-right)
@@ -214,6 +239,119 @@
     const aircraft = buildAircraft(log.geometry);
     scene.add(aircraft);
 
+    // Engine exhaust glow — a small orange cone trailing behind the
+    // fuselage. Phase E damage handling scales it with engine thrust_factor
+    // and hides it on hard_failure.
+    const exhaustMat = new THREE.MeshBasicMaterial({
+        color: 0xff6633, transparent: true, opacity: 0.7,
+    });
+    const exhaustGeom = new THREE.ConeGeometry(0.5, 3.0, 12, 1, true);
+    const exhaust = new THREE.Mesh(exhaustGeom, exhaustMat);
+    exhaust.name = "exhaust";
+    // Cone default axis is +Y; rotate so it points along -X (aft of fuselage)
+    exhaust.rotation.z = Math.PI / 2;
+    // Mount aft of fuselage centre. Body x = -7 means 7 m aft of CG; in
+    // three coords that's -7 along X.
+    exhaust.position.set(-7, 0, 0);
+    aircraft.add(exhaust);
+
+    // ---- Damage state machinery ----
+    // damage_state_history is sorted by time at export; binary-search
+    // the latest entry with .time <= target.
+    const dsh = log.damage_state_history;
+
+    function damageStateAt(t) {
+        if (!dsh || dsh.length === 0) return null;
+        let lo = 0, hi = dsh.length - 1, best = 0;
+        while (lo <= hi) {
+            const mid = (lo + hi) >> 1;
+            if (dsh[mid].time <= t) { best = mid; lo = mid + 1; }
+            else { hi = mid - 1; }
+        }
+        return dsh[best].state;
+    }
+
+    // Cache original materials so we can restore on rewind. Each section
+    // mesh's material is cloned so per-section opacity / colour edits do
+    // not bleed across instances of _materialFor() that share types.
+    const sectionMaterials = new Map();
+    aircraft.traverse((obj) => {
+        if (obj.isMesh && obj.material && obj.name && obj.name !== "exhaust") {
+            obj.material = obj.material.clone();
+            obj.material.transparent = true;
+            sectionMaterials.set(obj.name, {
+                color: obj.material.color.clone(),
+                opacity: 1.0,
+            });
+        }
+    });
+
+    const HEALTHY_COLOR = new THREE.Color(0xffffff);  // not used directly;
+                                                       // we lerp from base
+    const DAMAGE_RED = new THREE.Color(0xc0392b);
+    const JAM_YELLOW = new THREE.Color(0xf1c40f);
+
+    function applyDamageState(state) {
+        if (!state) {
+            // Reset all sections to their original material
+            for (const [name, ref] of sectionMaterials.entries()) {
+                const m = aircraft.getObjectByName(name);
+                if (!m) continue;
+                m.visible = true;
+                m.material.color.copy(ref.color);
+                m.material.opacity = ref.opacity;
+                m.material.emissive = new THREE.Color(0x000000);
+            }
+            exhaust.visible = true;
+            exhaust.material.opacity = 0.7;
+            exhaust.scale.set(1, 1, 1);
+            return;
+        }
+
+        // Section loss → red tint + fade
+        const lossMap = state.section_loss || {};
+        for (const [name, ref] of sectionMaterials.entries()) {
+            const m = aircraft.getObjectByName(name);
+            if (!m) continue;
+            const f = lossMap[name] || 0.0;
+            if (f <= 0) {
+                m.visible = true;
+                m.material.color.copy(ref.color);
+                m.material.opacity = ref.opacity;
+                m.material.emissive = new THREE.Color(0x000000);
+            } else if (f >= 1) {
+                m.visible = false;
+            } else {
+                m.visible = true;
+                // Lerp colour toward red, opacity toward 0
+                m.material.color.copy(ref.color).lerp(DAMAGE_RED, f);
+                m.material.opacity = (1 - f) * ref.opacity;
+                m.material.emissive = new THREE.Color(0x000000);
+            }
+        }
+
+        // Control failures → yellow emissive outline
+        const failures = state.control_failures || {};
+        for (const surface in failures) {
+            const m = aircraft.getObjectByName(surface);
+            if (!m) continue;
+            const failure = failures[surface];
+            if (failure.mode === "healthy") continue;
+            m.material.emissive = JAM_YELLOW.clone().multiplyScalar(0.6);
+        }
+
+        // Engine state → exhaust intensity / visibility
+        const engine = state.engine || { thrust_factor: 1.0, hard_failure: false };
+        if (engine.hard_failure) {
+            exhaust.visible = false;
+        } else {
+            exhaust.visible = true;
+            const tf = Math.max(0.0, Math.min(1.0, engine.thrust_factor));
+            exhaust.material.opacity = 0.2 + 0.5 * tf;
+            exhaust.scale.set(tf, 1, 1);
+        }
+    }
+
     // ---- Trajectory trail ----
     const trailMat = new THREE.LineBasicMaterial({ color: 0x4a90e2, linewidth: 2 });
     const trailGeom = new THREE.BufferGeometry();
@@ -252,9 +390,33 @@
         trailGeom.attributes.position.needsUpdate = true;
         trailGeom.setDrawRange(0, idx + 1);
 
+        // Apply damage state for this time
+        applyDamageState(damageStateAt(traj.time[idx]));
+
+        if (chaseMode) {
+            // Aircraft local back is -X in body, which is -X in three.
+            // Hover 25 m behind and 8 m above.
+            const backOffset = new THREE.Vector3(-25, 8, 0).applyEuler(
+                aircraft.rotation,
+            );
+            camera.position.copy(aircraft.position).add(backOffset);
+            camera.lookAt(aircraft.position);
+        }
+
         // Update HUD
         document.getElementById("hud-time").textContent =
             traj.time[idx].toFixed(2) + " s";
+        // Active damage events (events within 1.5 s of current frame)
+        const eventsEl = document.getElementById("hud-events");
+        if (eventsEl) {
+            const t = traj.time[idx];
+            const recent = (log.damage_events || []).filter(
+                (e) => e.time <= t && t - e.time < 1.5,
+            );
+            eventsEl.textContent = recent.length
+                ? recent.map((e) => e.label).join(", ")
+                : "—";
+        }
         document.getElementById("hud-alpha").textContent =
             (traj.alpha[idx] * 180 / Math.PI).toFixed(2) + "°";
         document.getElementById("hud-beta").textContent =
@@ -288,6 +450,10 @@
     speedSelect.addEventListener("change", () => {
         speed = parseFloat(speedSelect.value);
     });
+
+    document.getElementById("btn-cam-free").addEventListener("click", presetFree);
+    document.getElementById("btn-cam-chase").addEventListener("click", presetChase);
+    document.getElementById("btn-cam-top").addEventListener("click", presetTopDown);
 
     window.addEventListener("resize", () => {
         camera.aspect = sceneEl.clientWidth / sceneEl.clientHeight;
