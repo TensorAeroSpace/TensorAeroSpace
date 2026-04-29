@@ -357,3 +357,81 @@ html, body {
 
 /* The 3D scene needs to leave room for the panel at the bottom. */
 #scene { bottom: 200px; }
+
+/* ============== Time-series charts panel ============== */
+#charts-panel {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    width: 340px;
+    max-height: calc(100vh - 280px);
+    overflow-y: auto;
+    background: var(--hud-bg);
+    border-radius: 6px;
+    padding: 8px 10px;
+    z-index: 7;
+    user-select: none;
+    display: none;
+    scrollbar-width: thin;
+    scrollbar-color: #4a505a transparent;
+}
+#charts-panel::-webkit-scrollbar { width: 6px; }
+#charts-panel::-webkit-scrollbar-thumb {
+    background: #4a505a;
+    border-radius: 3px;
+}
+#charts-panel .charts-title {
+    color: var(--hud-fg);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 1.2px;
+    text-transform: uppercase;
+    margin-bottom: 6px;
+    padding-bottom: 4px;
+    border-bottom: 1px solid #2a2a3a;
+}
+#charts-panel .chart {
+    margin-bottom: 4px;
+}
+#charts-panel .chart svg {
+    display: block;
+    width: 100%;
+    height: 56px;
+    background: #14171c;
+    border: 1px solid #2a2a3a;
+    border-radius: 3px;
+}
+#charts-panel .chart-axis {
+    stroke: #2a2a3a;
+    stroke-width: 0.5;
+}
+#charts-panel .chart-line {
+    stroke: #4a90e2;
+    stroke-width: 1.2;
+    fill: none;
+    vector-effect: non-scaling-stroke;
+}
+#charts-panel .chart-cursor {
+    stroke: #f5d544;
+    stroke-width: 1.0;
+    stroke-dasharray: 2 2;
+}
+#charts-panel .chart-label {
+    fill: #a0a8b0;
+    font-family: "SF Mono", "Consolas", monospace;
+    font-size: 9px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+}
+#charts-panel .chart-value {
+    fill: #e8e8f0;
+    font-family: "SF Mono", "Consolas", monospace;
+    font-size: 10px;
+    font-weight: 700;
+    text-anchor: end;
+}
+#charts-panel .chart-extreme {
+    fill: #707080;
+    font-family: "SF Mono", "Consolas", monospace;
+    font-size: 7px;
+}

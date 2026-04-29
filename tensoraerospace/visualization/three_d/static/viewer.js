@@ -983,6 +983,164 @@
         scene.add(trailMesh);
     }
 
+    // ---- Time-series charts panel ----
+    // Each spec produces one stacked line chart. `extract` reads a value
+    // per frame from the trajectory; `unit` is the suffix on the live
+    // readout. `series` is filled in below.
+    const RAD2DEG = 180 / Math.PI;
+    const chartSpecs = [
+        { key: "V",     label: "AIRSPEED",  unit: "m/s",
+          extract: (i) => traj.airspeed_mps
+              ? traj.airspeed_mps[i]
+              : (log.metadata && log.metadata.airspeed) || 0,
+          fmt: (v) => v.toFixed(1) },
+        { key: "h",     label: "ALTITUDE",  unit: "m",
+          extract: (i) => traj.altitude_m
+              ? traj.altitude_m[i]
+              : ((log.metadata.params || {}).Oy || 0) - traj.position[i][2],
+          fmt: (v) => v.toFixed(0) },
+        { key: "theta", label: "PITCH θ",   unit: "°",
+          extract: (i) => traj.attitude[i][1] * RAD2DEG,
+          fmt: (v) => v.toFixed(2) },
+        { key: "roll",  label: "ROLL γ",    unit: "°",
+          extract: (i) => traj.attitude[i][0] * RAD2DEG,
+          fmt: (v) => v.toFixed(2) },
+        { key: "yaw",   label: "YAW ψ",     unit: "°",
+          extract: (i) => traj.attitude[i][2] * RAD2DEG,
+          fmt: (v) => v.toFixed(2) },
+        { key: "alpha", label: "AOA α",     unit: "°",
+          extract: (i) => traj.alpha[i] * RAD2DEG,
+          fmt: (v) => v.toFixed(2) },
+        { key: "beta",  label: "SIDESLIP β", unit: "°",
+          extract: (i) => traj.beta[i] * RAD2DEG,
+          fmt: (v) => v.toFixed(2) },
+        { key: "wz",    label: "PITCH RATE ωz", unit: "°/s",
+          extract: (i) => traj.wz[i] * RAD2DEG,
+          fmt: (v) => v.toFixed(2) },
+        { key: "stab",  label: "ELEVATOR (stab)", unit: "°",
+          extract: (i) => traj.stab[i] * RAD2DEG,
+          fmt: (v) => v.toFixed(2) },
+        { key: "ail",   label: "AILERON",   unit: "°",
+          extract: (i) => traj.ail[i] * RAD2DEG,
+          fmt: (v) => v.toFixed(2) },
+        { key: "dir",   label: "RUDDER",    unit: "°",
+          extract: (i) => traj.dir[i] * RAD2DEG,
+          fmt: (v) => v.toFixed(2) },
+    ];
+
+    // Chart geometry (in viewBox units, matched to the SVG aspect).
+    const CHART_W = 340, CHART_H = 56;
+    const CHART_PAD_L = 4, CHART_PAD_R = 4;
+    const CHART_PAD_T = 14, CHART_PAD_B = 4;
+
+    function _buildChart(spec) {
+        // Sample the series — full resolution is 6000 pts on a 60 s run,
+        // far more than the chart pixel width. Decimate to ≈340 points.
+        const stride = Math.max(1, Math.floor(T / CHART_W));
+        const ys = [];
+        const xs = [];
+        for (let i = 0; i < T; i += stride) {
+            ys.push(spec.extract(i));
+            xs.push(i);
+        }
+        if (xs[xs.length - 1] !== T - 1) {
+            ys.push(spec.extract(T - 1));
+            xs.push(T - 1);
+        }
+        spec._values = ys;
+        spec._indices = xs;
+
+        let yMin = Infinity, yMax = -Infinity;
+        for (const v of ys) {
+            if (Number.isFinite(v)) {
+                if (v < yMin) yMin = v;
+                if (v > yMax) yMax = v;
+            }
+        }
+        if (!Number.isFinite(yMin) || yMin === yMax) {
+            // Constant signal — pad so the line is visible.
+            const c = Number.isFinite(yMin) ? yMin : 0;
+            yMin = c - 1; yMax = c + 1;
+        }
+        const yPad = (yMax - yMin) * 0.08;
+        yMin -= yPad; yMax += yPad;
+        spec._yMin = yMin;
+        spec._yMax = yMax;
+
+        const plotW = CHART_W - CHART_PAD_L - CHART_PAD_R;
+        const plotH = CHART_H - CHART_PAD_T - CHART_PAD_B;
+        const yScale = (v) =>
+            CHART_PAD_T + plotH * (1 - (v - yMin) / (yMax - yMin));
+        const xScale = (i) =>
+            CHART_PAD_L + plotW * (i / Math.max(1, T - 1));
+
+        let path = "";
+        for (let k = 0; k < ys.length; ++k) {
+            const x = xScale(xs[k]);
+            const y = yScale(ys[k]);
+            path += (k === 0 ? "M" : "L") + x.toFixed(1) + "," + y.toFixed(1);
+        }
+        spec._xScale = xScale;
+        spec._yScale = yScale;
+        spec._plotTop = CHART_PAD_T;
+        spec._plotBottom = CHART_PAD_T + plotH;
+
+        // Build SVG
+        const wrap = document.createElement("div");
+        wrap.className = "chart";
+        wrap.innerHTML =
+            `<svg viewBox="0 0 ${CHART_W} ${CHART_H}" preserveAspectRatio="none">
+                <line class="chart-axis" x1="${CHART_PAD_L}" y1="${spec._plotBottom}"
+                      x2="${CHART_W - CHART_PAD_R}" y2="${spec._plotBottom}"/>
+                <text class="chart-label" x="${CHART_PAD_L + 2}" y="10">${spec.label}</text>
+                <text class="chart-value" id="chart-val-${spec.key}"
+                      x="${CHART_W - CHART_PAD_R - 2}" y="10">--</text>
+                <text class="chart-extreme" x="${CHART_PAD_L + 2}" y="${spec._plotBottom - 1}">${spec.fmt(yMin)}</text>
+                <text class="chart-extreme" x="${CHART_PAD_L + 2}" y="${CHART_PAD_T + 7}">${spec.fmt(yMax)}</text>
+                <path class="chart-line" d="${path}"/>
+                <line class="chart-cursor" id="chart-cur-${spec.key}"
+                      x1="${CHART_PAD_L}" y1="${spec._plotTop}"
+                      x2="${CHART_PAD_L}" y2="${spec._plotBottom}"/>
+            </svg>`;
+        return wrap;
+    }
+
+    function _initChartsPanel() {
+        const panel = document.getElementById("charts-panel");
+        if (!panel) return;
+        // Make the inline "display" reflect the CSS default so the
+        // toggle logic in `_updateCharts` and the keyboard handler can
+        // read it directly.
+        panel.style.display = "none";
+        const title = document.createElement("div");
+        title.className = "charts-title";
+        title.textContent = "Flight parameters";
+        panel.appendChild(title);
+        for (const spec of chartSpecs) {
+            panel.appendChild(_buildChart(spec));
+        }
+    }
+
+    function _updateCharts(idx) {
+        const panel = document.getElementById("charts-panel");
+        if (!panel || panel.style.display === "none") return;
+        for (const spec of chartSpecs) {
+            const cur = document.getElementById("chart-cur-" + spec.key);
+            const val = document.getElementById("chart-val-" + spec.key);
+            if (cur) {
+                const x = spec._xScale(idx);
+                cur.setAttribute("x1", x.toFixed(1));
+                cur.setAttribute("x2", x.toFixed(1));
+            }
+            if (val) {
+                const v = spec.extract(idx);
+                val.textContent = spec.fmt(v) + " " + spec.unit;
+            }
+        }
+    }
+
+    _initChartsPanel();
+
     // ---- Animation state ----
     const dt = log.metadata.dt;
     let frame = 0;
@@ -1004,6 +1162,9 @@
 
         // Update trail (TubeGeometry rebuild, throttled)
         updateTrail(idx);
+
+        // Update parameter charts cursor + readouts
+        _updateCharts(idx);
 
         // Apply control-surface deflections from the trajectory.
         // Stabilator and ailerons rotate about their hinge (lateral axis,
@@ -1292,6 +1453,16 @@
                 if (help) {
                     help.style.display =
                         help.style.display === "none" ? "block" : "none";
+                }
+                return;
+            }
+            case "KeyC": {
+                const panel = document.getElementById("charts-panel");
+                if (panel) {
+                    const visible = panel.style.display !== "none"
+                        && panel.style.display !== "";
+                    panel.style.display = visible ? "none" : "block";
+                    if (!visible) _updateCharts(frame);
                 }
                 return;
             }
