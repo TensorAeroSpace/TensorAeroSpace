@@ -169,7 +169,7 @@
 
     function _stdMat(color, opts) {
         return new THREE.MeshStandardMaterial({
-            color, metalness: 0.35, roughness: 0.5,
+            color, metalness: 0.55, roughness: 0.4,
             side: THREE.DoubleSide, ...opts,
         });
     }
@@ -236,11 +236,40 @@
     ];
 
     function _flatSectionMesh(corners2d_body, color, name) {
-        // corners2d_body: array of [bx, by] in body frame; build a flat
-        // quad in world coords using bodyToThree (z=0 in body → y=0 in
-        // world, i.e. the wing lies on the centreline plane).
-        const c = corners2d_body.map(([bx, by]) => bodyToThree(bx, by, 0));
-        const geom = _quadGeom(c[0], c[1], c[2], c[3]);
+        // Build a thick wing section with top and bottom skins.
+        // Each skin is a quad offset in body z (z < 0 = up in three.js y).
+        // Top skin at bz = -0.06 (body up), bottom at bz = +0.06.
+        const SKIN_HALF = 0.055;
+        const top = corners2d_body.map(([bx, by]) => bodyToThree(bx, by, -SKIN_HALF));
+        const bot = corners2d_body.map(([bx, by]) => bodyToThree(bx, by, +SKIN_HALF));
+
+        // Triangulate as: top quad (T0 T1 T2, T0 T2 T3)
+        //                 bottom quad reversed (B0 B2 B1, B0 B3 B2)
+        //                 LE edge: T0-B0-B1, T0-B1-T1
+        //                 TE edge: T2-T3-B3, T2-B3-B2
+        const positions = new Float32Array([
+            // top face
+            ...top[0], ...top[1], ...top[2],
+            ...top[0], ...top[2], ...top[3],
+            // bottom face (winding reversed)
+            ...bot[0], ...bot[2], ...bot[1],
+            ...bot[0], ...bot[3], ...bot[2],
+            // leading edge cap (vertices 0-1 shared by both sides)
+            ...top[0], ...bot[0], ...bot[1],
+            ...top[0], ...bot[1], ...top[1],
+            // trailing edge cap
+            ...top[2], ...top[3], ...bot[3],
+            ...top[2], ...bot[3], ...bot[2],
+            // inboard edge cap
+            ...top[0], ...top[3], ...bot[3],
+            ...top[0], ...bot[3], ...bot[0],
+            // outboard edge cap
+            ...top[1], ...bot[1], ...bot[2],
+            ...top[1], ...bot[2], ...top[2],
+        ]);
+        const geom = new THREE.BufferGeometry();
+        geom.setAttribute("position", new THREE.BufferAttribute(positions, 3));
+        geom.computeVertexNormals();
         const mesh = new THREE.Mesh(geom, _stdMat(color));
         mesh.name = name;
         return mesh;
@@ -250,121 +279,351 @@
         return poly.map(([x, y]) => [x, -y]);
     }
 
-    function _fuselageGroup() {
-        // F-16 fuselage. LatheGeometry from a hand-tuned profile that
-        // captures the F-16's pointed radome, swelling cockpit area,
-        // narrowing aft body, and engine nacelle.
-        // Profile (radius, axial). Axial spans body x = +8 (nose) to -8 (tail).
-        const profile = [
-            new THREE.Vector2(0.00, +8.0),
-            new THREE.Vector2(0.10, +7.5),    // radome point
-            new THREE.Vector2(0.22, +6.5),
-            new THREE.Vector2(0.40, +5.0),
-            new THREE.Vector2(0.60, +3.5),
-            new THREE.Vector2(0.78, +2.0),
-            new THREE.Vector2(0.85, +0.5),    // widest at cockpit-mid
-            new THREE.Vector2(0.85, -1.5),    // hold widest through midbody
-            new THREE.Vector2(0.78, -3.5),
-            new THREE.Vector2(0.62, -5.5),
-            new THREE.Vector2(0.50, -7.0),
-            new THREE.Vector2(0.42, -8.0),    // nozzle exit
-        ];
-        const fuselageGeom = new THREE.LatheGeometry(profile, 32);
-        fuselageGeom.rotateZ(-Math.PI / 2);
-        const fuselage = new THREE.Mesh(
-            fuselageGeom, _stdMat(F16_COLORS.fuselage),
-        );
-        fuselage.name = "fuselage_main";
+    // ---- Helper: build an oval cross-section ring ----
+    // rx = half-width (body y direction), ry = half-height (body z direction)
+    // Returns an array of N [by, bz] pairs forming the ring perimeter.
+    function _ovalRing(rx, ry, N) {
+        const pts = [];
+        for (let i = 0; i < N; i++) {
+            const a = (i / N) * 2 * Math.PI;
+            pts.push([rx * Math.cos(a), ry * Math.sin(a)]);
+        }
+        return pts;
+    }
 
+    // Build a fuselage segment between two axial stations.
+    // stationA/B: { bx, ring: [[by,bz]...] } (same N vertices)
+    // Returns a BufferGeometry of triangles.
+    function _fuseSegment(stA, stB) {
+        const N = stA.ring.length;
+        const verts = [];
+        for (let i = 0; i < N; i++) {
+            const j = (i + 1) % N;
+            const [ayL, azL] = stA.ring[i];
+            const [ayR, azR] = stA.ring[j];
+            const [byL, bzL] = stB.ring[i];
+            const [byR, bzR] = stB.ring[j];
+            const A0 = bodyToThree(stA.bx, ayL, azL);
+            const A1 = bodyToThree(stA.bx, ayR, azR);
+            const B0 = bodyToThree(stB.bx, byL, bzL);
+            const B1 = bodyToThree(stB.bx, byR, bzR);
+            // Two triangles per quad panel
+            verts.push(...A0, ...A1, ...B0);
+            verts.push(...A1, ...B1, ...B0);
+        }
+        const geom = new THREE.BufferGeometry();
+        geom.setAttribute("position",
+            new THREE.BufferAttribute(new Float32Array(verts), 3));
+        geom.computeVertexNormals();
+        return geom;
+    }
+
+    // Cap a station with a triangle fan to a centre point.
+    function _fuseCap(st, capBx, sign) {
+        // sign = +1 for nose cap (cap is forward), -1 for tail cap
+        const N = st.ring.length;
+        const verts = [];
+        const centre = bodyToThree(capBx, 0, 0);
+        for (let i = 0; i < N; i++) {
+            const j = (i + 1) % N;
+            const [ayL, azL] = st.ring[i];
+            const [ayR, azR] = st.ring[j];
+            const A0 = bodyToThree(st.bx, ayL, azL);
+            const A1 = bodyToThree(st.bx, ayR, azR);
+            if (sign > 0) {
+                verts.push(...centre, ...A1, ...A0);
+            } else {
+                verts.push(...centre, ...A0, ...A1);
+            }
+        }
+        const geom = new THREE.BufferGeometry();
+        geom.setAttribute("position",
+            new THREE.BufferAttribute(new Float32Array(verts), 3));
+        geom.computeVertexNormals();
+        return geom;
+    }
+
+    function _fuselageGroup() {
         const group = new THREE.Group();
+        const N = 20;   // ring vertex count — enough for smooth oval
+
+        // F-16 cross-section stations along body x.
+        // Each station: bx (fwd +), rx (half-width in y), ry_top/ry_bot for
+        // asymmetric upper/lower half-height (chine flattening).
+        // The F-16 forebody is flattened below (flat-bottomed chin for intake)
+        // and slightly humped above. Aft body tapers to circular.
+        //
+        // rx  = half-width (symmetrical left-right)
+        // ryT = upper half-height (body z negative = up)
+        // ryB = lower half-height (body z positive = down)
+        //
+        //  bx      rx    ryT   ryB
+        const STATIONS_DEF = [
+            [ +8.0,  0.00, 0.00, 0.00],  // nose tip (cap)
+            [ +7.0,  0.08, 0.08, 0.08],  // radome tip
+            [ +6.0,  0.18, 0.18, 0.18],  // narrow radome
+            [ +5.0,  0.32, 0.30, 0.28],  // start of chine
+            [ +3.8,  0.52, 0.44, 0.35],  // forebody chine — flatter below
+            [ +2.8,  0.68, 0.52, 0.40],  // below cockpit starts
+            [ +1.5,  0.78, 0.60, 0.48],  // cockpit mid — widest cross section
+            [ +0.0,  0.82, 0.58, 0.52],  // widest — inlet bay
+            [ -1.5,  0.80, 0.55, 0.55],  // aft of inlet
+            [ -3.0,  0.75, 0.54, 0.54],  // mid fuselage
+            [ -4.5,  0.68, 0.52, 0.52],  // toward wing trailing edge
+            [ -5.8,  0.60, 0.50, 0.50],  // aft fuselage
+            [ -7.0,  0.52, 0.46, 0.46],  // engine casing
+            [ -8.0,  0.45, 0.42, 0.42],  // nozzle section
+            [ -8.3,  0.42, 0.40, 0.40],  // nozzle exit
+        ];
+
+        // Build oval rings per station. We use a modified oval: top arc uses
+        // ryT, bottom arc uses ryB, giving the chin flattening.
+        function _buildRing(rx, ryT, ryB, N) {
+            const pts = [];
+            for (let i = 0; i < N; i++) {
+                const a = (i / N) * 2 * Math.PI;
+                const sinA = Math.sin(a);
+                const cosA = Math.cos(a);
+                const by = rx * cosA;
+                // body z: negative = up. sinA < 0 means upper half.
+                const ry = sinA < 0 ? ryT : ryB;
+                const bz = ry * sinA;
+                pts.push([by, bz]);
+            }
+            return pts;
+        }
+
+        const stations = STATIONS_DEF.map(([bx, rx, ryT, ryB]) => ({
+            bx, ring: _buildRing(rx, ryT, ryB, N),
+        }));
+
+        // Stitch fuselage segments (skip the cap station at index 0)
+        const fuse = new THREE.Group();
+        const fuseGeomsVerts = [];
+        for (let i = 1; i < stations.length; i++) {
+            const segGeom = _fuseSegment(stations[i - 1], stations[i]);
+            fuseGeomsVerts.push(...segGeom.attributes.position.array);
+        }
+        // Nose cap: fan from station[0] to tip
+        const noseCapGeom = _fuseCap(stations[1], stations[0].bx, +1);
+        fuseGeomsVerts.push(...noseCapGeom.attributes.position.array);
+
+        const allFuseGeom = new THREE.BufferGeometry();
+        allFuseGeom.setAttribute("position",
+            new THREE.BufferAttribute(new Float32Array(fuseGeomsVerts), 3));
+        allFuseGeom.computeVertexNormals();
+        const fuselage = new THREE.Mesh(allFuseGeom, _stdMat(F16_COLORS.fuselage));
+        fuselage.name = "fuselage_main";
         group.add(fuselage);
 
-        // Bubble canopy — distinctive F-16 teardrop shape. Two-piece:
-        //  - main bubble (rounded teardrop)
-        //  - canopy frame (slightly darker thin band at the base)
-        const canopyGeom = new THREE.SphereGeometry(1.0, 24, 16);
-        canopyGeom.scale(2.0, 0.7, 1.0);  // long fore-aft, low, narrow
-        const canopy = new THREE.Mesh(
-            canopyGeom,
-            _stdMat(F16_COLORS.canopy, { metalness: 0.7, roughness: 0.1 }),
-        );
-        canopy.name = "fuselage_canopy";
-        canopy.position.set(2.6, 0.85, 0);  // forward of CG, on top of fuselage
-        group.add(canopy);
+        // ---- COCKPIT HUMP ----
+        // A streamlined blister above station bx ~+1.5 to +3.5 to suggest
+        // the cockpit turtledeck and sill.
+        const humpGeom = new THREE.SphereGeometry(0.35, 16, 10, 0, Math.PI * 2, 0, Math.PI * 0.55);
+        humpGeom.scale(2.2, 1.0, 0.85);
+        const hump = new THREE.Mesh(humpGeom, _stdMat(F16_COLORS.fuselage));
+        hump.position.set(2.0, 0.62, 0);
+        group.add(hump);
 
-        // Canopy frame band (slightly darker, sits at the canopy base)
-        const frameGeom = new THREE.TorusGeometry(0.95, 0.09, 8, 32);
-        const canopyFrame = new THREE.Mesh(
-            frameGeom,
-            _stdMat(0x1a2530, { metalness: 0.5, roughness: 0.3 }),
+        // ---- CANOPY ----
+        // Two-piece: forward windscreen wedge + rear bubble.
+        // Windscreen: a slightly tilted half-ellipsoid section
+        const windscreenGeom = new THREE.SphereGeometry(0.9, 16, 12, 0, Math.PI * 2, 0, Math.PI * 0.55);
+        windscreenGeom.scale(1.0, 0.5, 0.72);
+        const windscreen = new THREE.Mesh(
+            windscreenGeom,
+            _stdMat(0x1a2a38, { metalness: 0.75, roughness: 0.05,
+                                 transparent: true, opacity: 0.82 }),
         );
-        canopyFrame.rotation.x = Math.PI / 2;
-        canopyFrame.scale.set(2.0, 1.0, 0.7);
-        canopyFrame.position.set(2.6, 0.55, 0);
-        group.add(canopyFrame);
+        windscreen.rotation.z = 0.28;   // lean forward ~16°
+        windscreen.position.set(3.5, 0.88, 0);
+        group.add(windscreen);
 
-        // Chin intake — distinctive F-16 single belly intake under the cockpit.
-        // Wider than before, with a slight inlet ramp suggested by an inset
-        // front face.
-        const intakeBody = new THREE.Mesh(
-            new THREE.BoxGeometry(4.5, 0.85, 1.5),
-            _stdMat(F16_COLORS.intake),
+        // Rear bubble: main F-16 frameless canopy dome
+        const bubbleGeom = new THREE.SphereGeometry(0.92, 20, 14, 0, Math.PI * 2, 0, Math.PI * 0.6);
+        bubbleGeom.scale(1.55, 0.60, 0.80);
+        const bubble = new THREE.Mesh(
+            bubbleGeom,
+            _stdMat(0x1f2f3e, { metalness: 0.72, roughness: 0.06,
+                                 transparent: true, opacity: 0.80 }),
         );
-        intakeBody.name = "fuselage_intake";
-        intakeBody.position.set(1.8, -0.95, 0);
-        group.add(intakeBody);
+        bubble.name = "fuselage_canopy";
+        bubble.position.set(2.0, 0.90, 0);
+        group.add(bubble);
 
-        // Inlet ramp — a darker recessed face at the front of the intake to
-        // suggest a lit inlet duct. Just a small inset plane.
-        const inletGeom = new THREE.PlaneGeometry(1.3, 0.7);
-        const inlet = new THREE.Mesh(
-            inletGeom,
-            _stdMat(0x101418, { metalness: 0.2, roughness: 1.0 }),
+        // Canopy frame / sill — slim dark ring around the canopy base
+        const sillGeom = new THREE.TorusGeometry(0.82, 0.055, 7, 28);
+        const sill = new THREE.Mesh(
+            sillGeom,
+            _stdMat(0x151f28, { metalness: 0.45, roughness: 0.35 }),
         );
-        inlet.rotation.y = Math.PI / 2;
-        inlet.position.set(4.0, -0.95, 0);
-        group.add(inlet);
+        sill.rotation.x = Math.PI / 2;
+        sill.scale.set(1.52, 1.0, 0.70);
+        sill.position.set(2.0, 0.60, 0);
+        group.add(sill);
 
-        // Nose pitot probe (slim cone forward of radome)
-        const pitotGeom = new THREE.ConeGeometry(0.08, 0.7, 12);
+        // ---- INTAKE ----
+        // Build as four trapezoidal panels forming a rectangular duct,
+        // with a visible darker cavity at the intake face.
+        // Intake in body coords: centre at bx ~ +1.8, by = 0, bz = +1.1
+        // (body +z = down → three.js -y). Duct width ≈ 1.4 m, height ≈ 0.7 m.
+        function _intakePanelGeom(corners4_body) {
+            const c = corners4_body.map(([bx, by, bz]) => bodyToThree(bx, by, bz));
+            return _quadGeom(c[0], c[1], c[2], c[3]);
+        }
+
+        const intakeGroup = new THREE.Group();
+        intakeGroup.name = "fuselage_intake";
+
+        // Duct corners in body space (bx_front, bx_back, width, top_z, bot_z)
+        const iFront = +4.2, iBack = -0.2;
+        const iHalfW = 0.72, iTop = +0.78, iBot = +1.48;
+        // Four panels: left wall, right wall, top ceiling, bottom floor
+        const iMat = _stdMat(F16_COLORS.intake, { metalness: 0.45 });
+        const panels = [
+            // left wall (by = -iHalfW face)
+            [[iFront, -iHalfW, iTop], [iBack, -iHalfW, iTop],
+             [iBack, -iHalfW, iBot], [iFront, -iHalfW, iBot]],
+            // right wall
+            [[iFront, +iHalfW, iTop], [iFront, +iHalfW, iBot],
+             [iBack, +iHalfW, iBot], [iBack, +iHalfW, iTop]],
+            // top ceiling
+            [[iFront, -iHalfW, iTop], [iFront, +iHalfW, iTop],
+             [iBack, +iHalfW, iTop], [iBack, -iHalfW, iTop]],
+            // bottom floor
+            [[iFront, -iHalfW, iBot], [iBack, -iHalfW, iBot],
+             [iBack, +iHalfW, iBot], [iFront, +iHalfW, iBot]],
+        ];
+        for (const p of panels) {
+            intakeGroup.add(new THREE.Mesh(_intakePanelGeom(p), iMat));
+        }
+        // Front face (intake lip) — darker recessed plane
+        const lipGVerts = new Float32Array([
+            ...bodyToThree(iFront, -iHalfW, iTop),
+            ...bodyToThree(iFront, -iHalfW, iBot),
+            ...bodyToThree(iFront, +iHalfW, iBot),
+            ...bodyToThree(iFront, -iHalfW, iTop),
+            ...bodyToThree(iFront, +iHalfW, iBot),
+            ...bodyToThree(iFront, +iHalfW, iTop),
+        ]);
+        const lipGeom = new THREE.BufferGeometry();
+        lipGeom.setAttribute("position", new THREE.BufferAttribute(lipGVerts, 3));
+        lipGeom.computeVertexNormals();
+        intakeGroup.add(new THREE.Mesh(
+            lipGeom,
+            _stdMat(0x0c1014, { metalness: 0.2, roughness: 0.9 }),
+        ));
+        // Intake splitter plate — small horizontal plate inside the duct
+        // (boundary layer splitter, F-16 characteristic)
+        const splitterVerts = new Float32Array([
+            ...bodyToThree(iFront - 0.1, -iHalfW + 0.1, iTop + 0.22),
+            ...bodyToThree(iBack + 0.3, -iHalfW + 0.1, iTop + 0.22),
+            ...bodyToThree(iBack + 0.3, +iHalfW - 0.1, iTop + 0.22),
+            ...bodyToThree(iFront - 0.1, -iHalfW + 0.1, iTop + 0.22),
+            ...bodyToThree(iBack + 0.3, +iHalfW - 0.1, iTop + 0.22),
+            ...bodyToThree(iFront - 0.1, +iHalfW - 0.1, iTop + 0.22),
+        ]);
+        const splitterGeom = new THREE.BufferGeometry();
+        splitterGeom.setAttribute("position", new THREE.BufferAttribute(splitterVerts, 3));
+        splitterGeom.computeVertexNormals();
+        intakeGroup.add(new THREE.Mesh(
+            splitterGeom,
+            _stdMat(0x606870, { metalness: 0.5, roughness: 0.4 }),
+        ));
+        group.add(intakeGroup);
+
+        // ---- NOSE PITOT ----
+        const pitotGeom = new THREE.ConeGeometry(0.055, 0.65, 10);
         const pitot = new THREE.Mesh(
-            pitotGeom, _stdMat(F16_COLORS.nozzle, { metalness: 0.7 }),
+            pitotGeom, _stdMat(F16_COLORS.nozzle, { metalness: 0.75 }),
         );
         pitot.rotation.z = -Math.PI / 2;
-        pitot.position.set(8.4, 0, 0);
+        pitot.position.set(8.55, 0, 0);
         group.add(pitot);
 
-        // Engine nozzle — proper afterburner-can shape.
-        const nozzleGeom = new THREE.CylinderGeometry(
-            0.50, 0.40, 1.0, 24, 1, true,
+        // ---- ENGINE NOZZLE (afterburner can) ----
+        // A cylinder with nozzle petals (thin radial strips around the exit)
+        // and a darker inner cone.
+        const nozzleX = -7.9;
+        const nozzleOuterR = 0.48, nozzleLen = 1.1;
+        const nozzleCanGeom = new THREE.CylinderGeometry(
+            nozzleOuterR, nozzleOuterR * 0.88, nozzleLen, 16, 1, true,
         );
-        const nozzle = new THREE.Mesh(
-            nozzleGeom, _stdMat(F16_COLORS.nozzle, { metalness: 0.65 }),
+        const nozzleCan = new THREE.Mesh(
+            nozzleCanGeom,
+            _stdMat(0x3a3a3a, { metalness: 0.72, roughness: 0.3 }),
         );
-        nozzle.rotation.z = Math.PI / 2;
-        nozzle.position.set(-8.3, 0, 0);
-        group.add(nozzle);
+        nozzleCan.rotation.z = Math.PI / 2;
+        nozzleCan.position.set(nozzleX - nozzleLen / 2, 0, 0);
+        group.add(nozzleCan);
 
-        // LERX — leading-edge root extensions. F-16's signature. Flat
-        // wedges blending the forebody chine into the wing root, on each
-        // side of the cockpit.
+        // Nozzle petals: 10 thin dark fins around the exit ring
+        const PETAL_COUNT = 10;
+        for (let p = 0; p < PETAL_COUNT; p++) {
+            const a = (p / PETAL_COUNT) * Math.PI * 2;
+            const py = Math.cos(a) * nozzleOuterR * 0.88;
+            const pz = Math.sin(a) * nozzleOuterR * 0.88;
+            // Each petal is a tiny flat rectangle oriented radially
+            const petalGeom = new THREE.BoxGeometry(0.55, 0.045, 0.13);
+            const petal = new THREE.Mesh(
+                petalGeom,
+                _stdMat(0x252525, { metalness: 0.8, roughness: 0.25 }),
+            );
+            // Position & orient radially at nozzle exit
+            const [px, ptY, ptZ] = bodyToThree(nozzleX - nozzleLen, py, -pz);
+            petal.position.set(px, ptY, ptZ);
+            petal.lookAt(
+                px - 1,
+                ptY,
+                ptZ,
+            );
+            petal.rotateY(Math.atan2(pz, py));
+            group.add(petal);
+        }
+
+        // Inner dark nozzle throat cone
+        const throatGeom = new THREE.ConeGeometry(nozzleOuterR * 0.7, 0.5, 16, 1, false);
+        const throat = new THREE.Mesh(
+            throatGeom,
+            _stdMat(0x111111, { metalness: 0.4, roughness: 0.8 }),
+        );
+        throat.rotation.z = Math.PI / 2;
+        throat.position.set(nozzleX - nozzleLen + 0.05, 0, 0);
+        group.add(throat);
+
+        // ---- LERX (Leading Edge Root Extensions) — 3D thin wedge ----
+        // Top surface (slightly above fuselage top), bottom surface (flush),
+        // meeting at a sharp leading edge.
         const lerxRightShape = [
-            // body coords (x, y) of the right LERX outline
-            [+3.0, +0.55],   // front tip (near cockpit)
-            [+1.5, +0.95],   // outer kink
-            [-0.4, +1.95],   // joins wing root LE_outboard (matches RIGHT_WING_POLYGONS.right_root[1])
-            [+0.4, +1.95],   // back to wing root LE_inboard adjacent
-            [+1.5, +0.85],   // inboard back to fuselage line
+            [+3.0, +0.55],
+            [+1.5, +0.95],
+            [-0.4, +1.95],
+            [+0.4, +1.95],
+            [+1.5, +0.85],
         ];
         const lerxLeftShape = lerxRightShape.map(([x, y]) => [x, -y]);
-        // Flat panels at z = 0 (centreline plane) — slightly above the
-        // fuselage waterline at z = +0.4 looks more F-16-ish.
+
         function _lerxMesh(poly, name) {
-            const c = poly.map(([bx, by]) => bodyToThree(bx, by, -0.15));
-            // Build as a triangle fan from the first vertex
+            // Top surface: bz = -0.12 (slightly above fuselage top)
+            // Bottom surface: bz = +0.02 (flush with fuselage bottom)
+            // LE knife-edge: where top and bottom meet at the outer edge.
+            const top = poly.map(([bx, by]) => bodyToThree(bx, by, -0.14));
+            const bot = poly.map(([bx, by]) => bodyToThree(bx, by, +0.03));
+            // Fan triangulate both surfaces + stitch edges
             const verts = [];
-            for (let i = 1; i < c.length - 1; i++) {
-                verts.push(...c[0], ...c[i], ...c[i + 1]);
+            const N2 = poly.length;
+            // Top face (fan)
+            for (let i = 1; i < N2 - 1; i++) {
+                verts.push(...top[0], ...top[i], ...top[i + 1]);
+            }
+            // Bottom face (fan, reversed winding)
+            for (let i = 1; i < N2 - 1; i++) {
+                verts.push(...bot[0], ...bot[i + 1], ...bot[i]);
+            }
+            // Leading edge strip: pair each consecutive edge
+            for (let i = 0; i < N2 - 1; i++) {
+                verts.push(...top[i], ...bot[i], ...bot[i + 1]);
+                verts.push(...top[i], ...bot[i + 1], ...top[i + 1]);
             }
             const geom = new THREE.BufferGeometry();
             geom.setAttribute("position",
@@ -377,49 +636,154 @@
         group.add(_lerxMesh(lerxRightShape, "lerx_right"));
         group.add(_lerxMesh(lerxLeftShape,  "lerx_left"));
 
-        // Ventral fins — two small fins angled outward and down at the
-        // aft fuselage (under the engine, between wing TE and nozzle).
+        // ---- VENTRAL FINS — 3D thin wedge ----
         function _ventralFinMesh(side, name) {
             const sign = side === "left" ? -1 : +1;
-            // Polygon in body x-z plane (y is sign * thickness offset),
-            // flat triangle: top-fwd, top-aft, bottom-mid.
-            const c = [
-                bodyToThree(-5.5, sign * 0.4, +0.7),  // top-fwd
-                bodyToThree(-7.0, sign * 0.4, +0.7),  // top-aft
-                bodyToThree(-6.2, sign * 0.7, +1.6),  // bottom-mid (down + outward)
+            // Fin outline in body coords (outboard face):
+            const outerPts = [
+                bodyToThree(-5.5, sign * 0.38, +0.68),
+                bodyToThree(-7.0, sign * 0.38, +0.68),
+                bodyToThree(-6.3, sign * 0.72, +1.65),
             ];
-            const positions = new Float32Array([
-                ...c[0], ...c[1], ...c[2],
+            // Inner face (inboard) slightly inset
+            const innerPts = [
+                bodyToThree(-5.5, sign * 0.32, +0.72),
+                bodyToThree(-7.0, sign * 0.32, +0.72),
+                bodyToThree(-6.3, sign * 0.60, +1.60),
+            ];
+            const o = outerPts, inn = innerPts;
+            const verts = new Float32Array([
+                // outer face
+                ...o[0], ...o[1], ...o[2],
+                // inner face (reversed)
+                ...inn[0], ...inn[2], ...inn[1],
+                // edge 0-1
+                ...o[0], ...inn[0], ...inn[1],
+                ...o[0], ...inn[1], ...o[1],
+                // edge 1-2
+                ...o[1], ...inn[1], ...inn[2],
+                ...o[1], ...inn[2], ...o[2],
+                // edge 2-0
+                ...o[2], ...inn[2], ...inn[0],
+                ...o[2], ...inn[0], ...o[0],
             ]);
             const geom = new THREE.BufferGeometry();
-            geom.setAttribute("position", new THREE.BufferAttribute(positions, 3));
+            geom.setAttribute("position", new THREE.BufferAttribute(verts, 3));
             geom.computeVertexNormals();
-            const mesh = new THREE.Mesh(
-                geom, _stdMat(F16_COLORS.vtail),
-            );
+            const mesh = new THREE.Mesh(geom, _stdMat(F16_COLORS.vtail));
             mesh.name = name;
             return mesh;
         }
         group.add(_ventralFinMesh("right", "ventral_fin_right"));
         group.add(_ventralFinMesh("left",  "ventral_fin_left"));
 
+        // ---- PANEL LINES (thin dark cylinders along the fuselage) ----
+        // A few axial seam lines to break up the shiny surface.
+        const panelLineMat = _stdMat(0x7a8088, { metalness: 0.3, roughness: 0.7 });
+        // Top spine seam from cockpit aft
+        const spineGeom = new THREE.CylinderGeometry(0.018, 0.018, 6.5, 6);
+        const spine = new THREE.Mesh(spineGeom, panelLineMat);
+        spine.rotation.z = Math.PI / 2;
+        spine.position.set(-2.5, 0.82, 0);
+        group.add(spine);
+        // Lower chin panel seam
+        const chinGeom = new THREE.CylinderGeometry(0.016, 0.016, 3.5, 6);
+        const chin = new THREE.Mesh(chinGeom, panelLineMat);
+        chin.rotation.z = Math.PI / 2;
+        chin.position.set(0.0, 0, -0.72);  // body y=0, bz=+0.72 → three.js y=-0.72
+        // recalculate: bodyToThree(0, 0, 0.72) = [0, -0.72, 0]
+        chin.position.set(0.0, -0.72, 0);
+        group.add(chin);
+
         return group;
     }
 
     function _vtailMesh() {
-        // F-16 vertical tail — swept fin centred on the tail upper surface.
-        // Body coords (x, z): root at fuselage top (z = -0.6), tip up at z = -3.0
-        // x_le_root = -3.5, x_te_root = -6.5; sweep ~45°.
-        const c = [
-            bodyToThree(-3.5, 0, -0.6),  // LE_root (lower forward)
-            bodyToThree(-5.5, 0, -3.4),  // LE_tip (upper forward)
-            bodyToThree(-6.5, 0, -3.4),  // TE_tip (upper aft)
-            bodyToThree(-6.5, 0, -0.6),  // TE_root (lower aft)
+        // F-16 vertical tail — thick foil with tip antenna and dorsal fillet.
+        const HALF_T = 0.055;  // half-thickness at root (m)
+        const vtailGroup = new THREE.Group();
+        vtailGroup.name = "vtail";
+
+        // 4 corner points in body frame (bx, bz). by varies for thickness.
+        // LE_root=(-3.5, -0.6), LE_tip=(-5.5, -3.4), TE_tip=(-6.5,-3.4), TE_root=(-6.5,-0.6)
+        const corners = [
+            { bx: -3.5, bz: -0.6 },
+            { bx: -5.5, bz: -3.4 },
+            { bx: -6.5, bz: -3.4 },
+            { bx: -6.5, bz: -0.6 },
         ];
-        const geom = _quadGeom(c[0], c[1], c[2], c[3]);
-        const mesh = new THREE.Mesh(geom, _stdMat(F16_COLORS.vtail));
-        mesh.name = "vtail";
-        return mesh;
+        // Thickness tapers toward tip
+        function _ht(idx) { return idx <= 1 ? HALF_T * 0.4 : HALF_T; }
+        const left = corners.map((c, i) => bodyToThree(c.bx, -_ht(i), c.bz));
+        const right = corners.map((c, i) => bodyToThree(c.bx, +_ht(i), c.bz));
+
+        // Build all faces
+        const verts = [];
+        const addQuad = (a, b, c, d) => {
+            verts.push(...a, ...b, ...c, ...a, ...c, ...d);
+        };
+        // Left face, right face
+        addQuad(left[0], left[1], left[2], left[3]);
+        addQuad(right[0], right[3], right[2], right[1]);
+        // LE edge (0-1)
+        addQuad(left[0], right[0], right[1], left[1]);
+        // TE edge (3-2)
+        addQuad(left[3], left[2], right[2], right[3]);
+        // Root (bottom) cap
+        addQuad(left[0], left[3], right[3], right[0]);
+        // Tip cap
+        addQuad(left[1], right[1], right[2], left[2]);
+
+        const geom = new THREE.BufferGeometry();
+        geom.setAttribute("position", new THREE.BufferAttribute(new Float32Array(verts), 3));
+        geom.computeVertexNormals();
+        vtailGroup.add(new THREE.Mesh(geom, _stdMat(F16_COLORS.vtail)));
+
+        // Dorsal fillet at the tail root — a small triangular fairing
+        const filletVerts = new Float32Array([
+            ...bodyToThree(-3.5, -0.25, -0.6),
+            ...bodyToThree(-3.5, +0.25, -0.6),
+            ...bodyToThree(-4.2,  0.0, -1.0),
+            ...bodyToThree(-4.2, -0.22, -1.0),
+            ...bodyToThree(-4.2, +0.22, -1.0),
+            ...bodyToThree(-3.5, -0.25, -0.6),
+            // wrap sides
+            ...bodyToThree(-3.5, -0.25, -0.6),
+            ...bodyToThree(-4.2, -0.22, -1.0),
+            ...bodyToThree(-4.2, +0.22, -1.0),
+            ...bodyToThree(-3.5, -0.25, -0.6),
+            ...bodyToThree(-4.2, +0.22, -1.0),
+            ...bodyToThree(-3.5, +0.25, -0.6),
+        ]);
+        const filletGeom = new THREE.BufferGeometry();
+        filletGeom.setAttribute("position", new THREE.BufferAttribute(filletVerts, 3));
+        filletGeom.computeVertexNormals();
+        vtailGroup.add(new THREE.Mesh(filletGeom, _stdMat(F16_COLORS.fuselage)));
+
+        // Tip antenna stub (small slim box at the very tip)
+        const antennaGeom = new THREE.BoxGeometry(0.08, 0.06, 0.32);
+        const antenna = new THREE.Mesh(
+            antennaGeom,
+            _stdMat(0x909898, { metalness: 0.65, roughness: 0.3 }),
+        );
+        const [ax, ay, az] = bodyToThree(-5.7, 0, -3.55);
+        antenna.position.set(ax, ay, az);
+        vtailGroup.add(antenna);
+
+        // Formation light strip (cyan) on the LE
+        const formLightGeom = new THREE.BoxGeometry(0.04, 0.04, 1.6);
+        const formLight = new THREE.Mesh(
+            formLightGeom,
+            new THREE.MeshBasicMaterial({ color: 0x00ffcc }),
+        );
+        const [flx, fly, flz] = bodyToThree(-4.6, 0.0, -2.1);
+        formLight.position.set(flx, fly, flz);
+        // Tilt to follow the LE sweep: LE goes from (-3.5,-0.6) to (-5.5,-3.4)
+        // => run=-2, rise=-2.8, angle from vertical ≈ atan2(2,2.8)
+        formLight.rotation.x = -Math.atan2(2.0, 2.8);
+        vtailGroup.add(formLight);
+
+        return vtailGroup;
     }
 
     // Rudder hinge: at the LE_top corner (the forward-upper edge of the
@@ -440,11 +804,22 @@
         group.name = "rudder";
         const [hx, hy, hz] = bodyToThree(...RUDDER_HINGE_BODY);
         group.position.set(hx, hy, hz);
-        // Build mesh with vertices relative to hinge in body x-z plane
-        const c = RUDDER_POLY_REL.map(
-            ([bx, bz]) => bodyToThree(bx, 0, bz),
-        );
-        const geom = _quadGeom(c[0], c[1], c[2], c[3]);
+        // Build thick foil mesh relative to hinge in body x-z plane
+        const HALF_T = 0.040;
+        const c = RUDDER_POLY_REL.map(([bx, bz]) => ({ bx, bz }));
+        const left  = c.map(p => bodyToThree(p.bx, -HALF_T, p.bz));
+        const right = c.map(p => bodyToThree(p.bx, +HALF_T, p.bz));
+        const verts = [];
+        const addQ = (a,b,cc,d) => verts.push(...a,...b,...cc,...a,...cc,...d);
+        addQ(left[0], left[1], left[2], left[3]);
+        addQ(right[0], right[3], right[2], right[1]);
+        addQ(left[0], right[0], right[1], left[1]);    // LE
+        addQ(left[2], left[3], right[3], right[2]);    // TE
+        addQ(left[0], left[3], right[3], right[0]);    // top edge
+        addQ(left[1], right[1], right[2], left[2]);    // bot edge
+        const geom = new THREE.BufferGeometry();
+        geom.setAttribute("position", new THREE.BufferAttribute(new Float32Array(verts), 3));
+        geom.computeVertexNormals();
         group.add(new THREE.Mesh(geom, _stdMat(F16_COLORS.rudder)));
         return group;
     }
@@ -456,10 +831,26 @@
         const [hbx, hby, hbz] = STAB_RIGHT_HINGE_BODY;
         const [hx, hy, hz] = bodyToThree(hbx, sign * hby, hbz);
         group.position.set(hx, hy, hz);
-        const c = STAB_RIGHT_POLY_REL.map(
-            ([bx, by]) => bodyToThree(bx, sign * by, 0),
-        );
-        const geom = _quadGeom(c[0], c[1], c[2], c[3]);
+        // Thick foil: top skin at bz=-0.055, bottom at bz=+0.055
+        const SKIN = 0.050;
+        const top = STAB_RIGHT_POLY_REL.map(([bx, by]) => bodyToThree(bx, sign * by, -SKIN));
+        const bot = STAB_RIGHT_POLY_REL.map(([bx, by]) => bodyToThree(bx, sign * by, +SKIN));
+        const verts = [];
+        // top face
+        verts.push(...top[0],...top[1],...top[2], ...top[0],...top[2],...top[3]);
+        // bottom face (reversed winding)
+        verts.push(...bot[0],...bot[2],...bot[1], ...bot[0],...bot[3],...bot[2]);
+        // LE edge (0-1)
+        verts.push(...top[0],...bot[0],...bot[1], ...top[0],...bot[1],...top[1]);
+        // TE edge (3-2)
+        verts.push(...top[3],...top[2],...bot[2], ...top[3],...bot[2],...bot[3]);
+        // inboard cap (0-3)
+        verts.push(...top[0],...top[3],...bot[3], ...top[0],...bot[3],...bot[0]);
+        // outboard cap (1-2)
+        verts.push(...top[1],...bot[1],...bot[2], ...top[1],...bot[2],...top[2]);
+        const geom = new THREE.BufferGeometry();
+        geom.setAttribute("position", new THREE.BufferAttribute(new Float32Array(verts), 3));
+        geom.computeVertexNormals();
         group.add(new THREE.Mesh(geom, _stdMat(F16_COLORS.stab)));
         return group;
     }
@@ -471,35 +862,100 @@
         const [hbx, hby, hbz] = AILERON_RIGHT_HINGE_BODY;
         const [hx, hy, hz] = bodyToThree(hbx, sign * hby, hbz);
         group.position.set(hx, hy, hz);
-        const c = AILERON_RIGHT_POLY_REL.map(
-            ([bx, by]) => bodyToThree(bx, sign * by, 0),
-        );
-        const geom = _quadGeom(c[0], c[1], c[2], c[3]);
+        // Thick foil
+        const SKIN = 0.040;
+        const top = AILERON_RIGHT_POLY_REL.map(([bx, by]) => bodyToThree(bx, sign * by, -SKIN));
+        const bot = AILERON_RIGHT_POLY_REL.map(([bx, by]) => bodyToThree(bx, sign * by, +SKIN));
+        const verts = [];
+        verts.push(...top[0],...top[1],...top[2], ...top[0],...top[2],...top[3]);
+        verts.push(...bot[0],...bot[2],...bot[1], ...bot[0],...bot[3],...bot[2]);
+        verts.push(...top[0],...bot[0],...bot[1], ...top[0],...bot[1],...top[1]);
+        verts.push(...top[3],...top[2],...bot[2], ...top[3],...bot[2],...bot[3]);
+        verts.push(...top[0],...top[3],...bot[3], ...top[0],...bot[3],...bot[0]);
+        verts.push(...top[1],...bot[1],...bot[2], ...top[1],...bot[2],...top[2]);
+        const geom = new THREE.BufferGeometry();
+        geom.setAttribute("position", new THREE.BufferAttribute(new Float32Array(verts), 3));
+        geom.computeVertexNormals();
         group.add(new THREE.Mesh(geom, _stdMat(F16_COLORS.aileron)));
         return group;
     }
 
     function _wingtipLauncher(side, name) {
-        // Short cylindrical rail on the wingtip's leading edge, where
-        // an AIM-9 Sidewinder sits on a real F-16.
+        // AIM-9 Sidewinder on wingtip launcher rail.
+        // The missile body is ~2.85 m long, 0.127 m diameter.
+        // 4 mid-body delta fins + 4 forward canard fins.
         const sign = side === "left" ? -1 : +1;
-        // Tip body coords: leading edge of wing tip section ~(-2.0, ±4.7)
-        const len = 1.6;
-        const radius = 0.10;
-        const railGeom = new THREE.CylinderGeometry(
-            radius, radius, len, 12, 1, false,
-        );
-        // CylinderGeometry default axis is +Y; we want it along body x (forward).
+
+        // Root group named as required (launcher_left / launcher_right)
+        const launcherGroup = new THREE.Group();
+        launcherGroup.name = name;
+
+        // Launcher rail: thin cylinder below the missile
+        const railGeom = new THREE.CylinderGeometry(0.045, 0.045, 2.6, 8);
         railGeom.rotateZ(Math.PI / 2);
         const rail = new THREE.Mesh(
-            railGeom, _stdMat(0x808080, { metalness: 0.6, roughness: 0.4 }),
+            railGeom, _stdMat(0x707878, { metalness: 0.6, roughness: 0.35 }),
         );
-        rail.name = name;
-        // Position at body (~ -1.8, ±4.6, -0.1) — just forward of the
-        // tip's LE corner, slightly above.
-        const [tx, ty, tz] = bodyToThree(-1.8, sign * 4.6, -0.1);
-        rail.position.set(tx, ty, tz);
-        return rail;
+        launcherGroup.add(rail);
+
+        // AIM-9 body (cylinder)
+        const bodyGeom = new THREE.CylinderGeometry(0.065, 0.065, 2.85, 14);
+        bodyGeom.rotateZ(Math.PI / 2);
+        const missileBody = new THREE.Mesh(
+            bodyGeom, _stdMat(0xb8c0c8, { metalness: 0.5, roughness: 0.35 }),
+        );
+        missileBody.position.set(0, 0.115, 0);  // above rail
+        launcherGroup.add(missileBody);
+
+        // Seeker nose (cone) — IR seeker dome (slightly darker)
+        const seekerGeom = new THREE.ConeGeometry(0.065, 0.22, 14);
+        seekerGeom.rotateZ(-Math.PI / 2);
+        const seeker = new THREE.Mesh(
+            seekerGeom,
+            _stdMat(0x505860, { metalness: 0.55, roughness: 0.2 }),
+        );
+        seeker.position.set(1.535, 0.115, 0);
+        launcherGroup.add(seeker);
+
+        // Tail nozzle cone
+        const tailGeom = new THREE.ConeGeometry(0.065, 0.18, 14);
+        tailGeom.rotateZ(Math.PI / 2);
+        const tailCone = new THREE.Mesh(
+            tailGeom, _stdMat(0x404040, { metalness: 0.6, roughness: 0.3 }),
+        );
+        tailCone.position.set(-1.515, 0.115, 0);
+        launcherGroup.add(tailCone);
+
+        // Helper: 4 cruciform fins on the AIM-9
+        function _addCruciformFins(bxCentre, span, chord, thick, offsetY, finSign) {
+            // 4 fins at 0°, 90°, 180°, 270° around missile axis.
+            for (let k = 0; k < 4; k++) {
+                const a = k * Math.PI / 2;
+                // Fin: a thin box. Fins alternate horizontal/vertical pair.
+                const finW = (k % 2 === 0) ? span : thick;
+                const finH = (k % 2 === 0) ? thick : span;
+                const finGeom = new THREE.BoxGeometry(chord, finH, finW);
+                const fin = new THREE.Mesh(
+                    finGeom,
+                    _stdMat(0xa8b0b8, { metalness: 0.5, roughness: 0.35 }),
+                );
+                // k=0: horizontal (Z), k=1: vertical (Y), k=2: horiz, k=3: vert
+                const fy = (k % 2 === 1) ? (k === 1 ? span * 0.5 : -span * 0.5) : 0;
+                const fz = (k % 2 === 0) ? (k === 0 ? span * 0.5 : -span * 0.5) : 0;
+                fin.position.set(bxCentre, offsetY + fy, fz * finSign);
+                launcherGroup.add(fin);
+            }
+        }
+
+        // Mid-body delta fins (larger, at ~ x = -0.5 from missile centre)
+        _addCruciformFins(-0.5, 0.30, 0.45, 0.018, 0.115, sign);
+        // Forward canard fins (smaller, near seeker, ~ x = +1.0)
+        _addCruciformFins(+0.9, 0.14, 0.22, 0.014, 0.115, sign);
+
+        // Position whole launcher group at wingtip LE
+        const [tx, ty, tz] = bodyToThree(-1.85, sign * 4.62, -0.08);
+        launcherGroup.position.set(tx, ty, tz);
+        return launcherGroup;
     }
 
     function buildAircraft(geometry) {
@@ -539,6 +995,29 @@
         // Wingtip launchers
         aircraft.add(_wingtipLauncher("right", "launcher_right"));
         aircraft.add(_wingtipLauncher("left",  "launcher_left"));
+
+        // Underwing pylons (static, no names matching protected list)
+        // Two per side at mid-span, hanging below the wing surface.
+        function _uwPylon(sign, pylonY) {
+            const pylonMat = _stdMat(0x7a8288, { metalness: 0.5, roughness: 0.45 });
+            // Pylon strut: flat box hanging below wing
+            const strutGeom = new THREE.BoxGeometry(0.55, 0.38, 0.10);
+            const strut = new THREE.Mesh(strutGeom, pylonMat);
+            const [px, py, pz] = bodyToThree(-1.6, sign * pylonY, +0.22);
+            strut.position.set(px, py, pz);
+            // Small rail/shelf at bottom of strut
+            const shelfGeom = new THREE.BoxGeometry(0.45, 0.065, 0.22);
+            const shelf = new THREE.Mesh(shelfGeom, pylonMat);
+            shelf.position.set(px, py - 0.22, pz);
+            const pGroup = new THREE.Group();
+            pGroup.add(strut);
+            pGroup.add(shelf);
+            return pGroup;
+        }
+        aircraft.add(_uwPylon(+1, 2.6));  // right inboard
+        aircraft.add(_uwPylon(+1, 3.3));  // right outboard
+        aircraft.add(_uwPylon(-1, 2.6));  // left inboard
+        aircraft.add(_uwPylon(-1, 3.3));  // left outboard
 
         return aircraft;
     }
