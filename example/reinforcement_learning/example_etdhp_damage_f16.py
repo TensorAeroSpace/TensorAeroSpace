@@ -464,6 +464,42 @@ def main() -> None:
     n_plot = min(len(baseline_log["alpha"]), len(damaged_log["alpha"]))
     maybe_plot(baseline_log, damaged_log, reference, tps, n_plot)
 
+    # ---- 3D viewer: re-run damaged episode with render_mode='3d_web' ----
+    print("\n--- 3D viewer: re-running damaged episode with WebGL renderer ---")
+    env_3d = gym.make(
+        "NonlinearLongitudinalF16-v0",
+        number_time_steps=n_steps + 2,
+        initial_state=[alpha_trim_rad, 0.0, stab_trim_rad, 0.0],
+        reference_signal=reference,
+        state_space=["alpha", "wz", "stab", "dstab"],
+        control_space=["stab"],
+        tracking_states=["alpha"],
+        use_reward=False,
+        dt=DT,
+        integrator="euler",
+        feedforward_fn=feedforward_fn,
+        damage_profile=profile,
+        render_mode="3d_web",
+    ).unwrapped
+    env_3d.reset()
+    agent.reset()
+    obs = env_3d.model.current_state
+    for k in range(n_steps - 2):
+        agent.predict(obs, reference, k)
+        u_cmd = agent.last_action()
+        obs, _, done, _, _ = env_3d.step(u_cmd)
+        agent.learn(obs, reference, k, dt=DT)
+        if done:
+            break
+
+    # In a script: opens default browser. Returns Path to the HTML file.
+    out = env_3d.render()
+    print(f"3D viewer HTML: {out}")
+    print(
+        f"  damage events recorded: {len(env_3d.damage_events_log)}\n"
+        f"  damage state snapshots: {len(env_3d.damage_state_log)}"
+    )
+
 
 if __name__ == "__main__":
     main()
