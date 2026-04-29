@@ -369,16 +369,16 @@ def main() -> None:
             n_triggers += 1
 
     # 7. Reference signal for the 3D viewer charts.
-    #    The ET-DHP agent receives ONE reference channel:
+    #    The angular env has no native reference_signal/tracking_states
+    #    interface (unlike the longitudinal env), but the ET-DHP agent
+    #    is fed ONE reference channel via:
     #        reference = np.full((1, n_steps + 10), trim.alpha_rad)
-    #    so the only commanded setpoint is α at the angular trim. h, V,
-    #    β, γ, ψ, ω_z are not regulated — they hold only because the
-    #    open-loop dynamics are at trim — and would be misleading to
-    #    show as "reference" lines.
-    n_traj = len(env.time_history)
-    env.reference_signals = {
-        "alpha": [math.degrees(trim.alpha_rad)] * n_traj,
-    }
+    #    so we publish the same signal here for the chart overlay.
+    #    Longitudinal-env demos that pass reference_signal= directly to
+    #    gym.make() get this auto-derived by the exporter and don't need
+    #    this manual block.
+    env.reference_signal = reference
+    env.tracking_states = ["alpha"]
 
     # 8. Render
     out = env.render()

@@ -128,12 +128,19 @@ def build_flight_log(env) -> dict[str, Any]:
             f"Unsupported model state dimension {n_state}; expected 4, 14, or 16."
         )
 
-    # Optional reference/commanded signals (per chart channel key, already
-    # in display units). Truncate or pad to match the trajectory length so
-    # the viewer can index by frame without bounds checks.
-    references_raw = getattr(env, "reference_signals", None) or {}
-    references_out: dict[str, list[float]] = {}
+    # Reference / commanded signals for the 3D-viewer chart overlays.
+    #
+    # Two complementary sources are merged:
+    #   1. Auto-detected from the env's standard reference_signal + tracking_states
+    #      attributes (the canonical interface — set via gym.make(...)).
+    #      Values are assumed to be in raw model units (radians for angles,
+    #      m for altitude, m/s for airspeed) and are converted to chart
+    #      display units (deg / m / m/s) here.
+    #   2. Manually populated env.reference_signals dict (already in display
+    #      units). Manual entries OVERRIDE auto-detected ones for the same key.
     n_t = len(t)
+    references_out = _auto_extract_references(env, n_t)
+    references_raw = getattr(env, "reference_signals", None) or {}
     for key, seq in references_raw.items():
         arr = np.asarray(seq, dtype=np.float64).reshape(-1)
         if arr.size == 0:
@@ -165,6 +172,66 @@ def build_flight_log(env) -> dict[str, Any]:
         "damage_events": list(getattr(env, "damage_events_log", [])),
         "damage_state_history": list(getattr(env, "damage_state_log", [])),
     }
+
+
+# Map env state-vector names to viewer chart keys + the multiplier
+# applied to convert raw env units (rad / m / m/s) to chart display
+# units (deg / m / m/s). Channels not in this table are ignored.
+_RAD2DEG = 180.0 / np.pi
+_REFERENCE_CHANNEL_MAP: dict[str, tuple[str, float]] = {
+    # angles (rad → deg)
+    "alpha": ("alpha", _RAD2DEG),
+    "beta":  ("beta",  _RAD2DEG),
+    "wx":    ("wx",    _RAD2DEG),
+    "wy":    ("wy",    _RAD2DEG),
+    "wz":    ("wz",    _RAD2DEG),
+    "theta": ("theta", _RAD2DEG),
+    "gamma": ("roll",  _RAD2DEG),    # the codebase uses gamma for roll
+    "psi":   ("yaw",   _RAD2DEG),
+    "stab":  ("stab",  _RAD2DEG),
+    "dstab": ("dstab", _RAD2DEG),
+    "ail":   ("ail",   _RAD2DEG),
+    "dir":   ("dir",   _RAD2DEG),
+    # absolute units (no conversion)
+    "h":     ("h",     1.0),
+    "V":     ("V",     1.0),
+}
+
+
+def _auto_extract_references(env, n_t: int) -> dict[str, list[float]]:
+    """Pull per-channel reference arrays from env.reference_signal and
+    env.tracking_states (the canonical longitudinal-env interface).
+
+    Returns a dict ``{chart_key: [values_in_display_units]}`` truncated /
+    padded to ``n_t``. Empty if the env doesn't expose both attributes.
+    """
+    ref_arr = getattr(env, "reference_signal", None)
+    tracking = getattr(env, "tracking_states", None)
+    if ref_arr is None or not tracking:
+        return {}
+    try:
+        ref_arr = np.asarray(ref_arr, dtype=np.float64)
+    except (TypeError, ValueError):
+        return {}
+    if ref_arr.ndim != 2:
+        return {}
+    n_track, n_steps_ref = ref_arr.shape
+    if n_track != len(tracking):
+        return {}
+    out: dict[str, list[float]] = {}
+    for i, name in enumerate(tracking):
+        mapping = _REFERENCE_CHANNEL_MAP.get(str(name))
+        if mapping is None:
+            continue
+        key, scale = mapping
+        series = ref_arr[i] * scale
+        if series.size < n_t:
+            series = np.concatenate(
+                [series, np.full(n_t - series.size, series[-1])])
+        elif series.size > n_t:
+            series = series[:n_t]
+        out[key] = series.tolist()
+    return out
 
 
 def _serialise_params(env) -> dict[str, float]:
