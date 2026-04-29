@@ -950,14 +950,14 @@
         const BETA_PX_PER_DEG  = 6;
         const PITCH_DEG_PER_PX_INV = 30 / 5;   // 30 px per 5°
 
-        const att = traj.attitude[idx];   // (roll/gamma, pitch/theta, yaw/psi)
+        const attHud   = traj.attitude[idx];   // (roll/gamma, pitch/theta, yaw/psi)
         const alphaRad = traj.alpha[idx];
         const betaRad  = traj.beta[idx];
         const wzRad    = traj.wz[idx];
 
-        const rollDeg  = att[0] * 180 / Math.PI;
-        const pitchDeg = att[1] * 180 / Math.PI;
-        const yawDeg   = att[2] * 180 / Math.PI;
+        const rollDeg  = attHud[0] * 180 / Math.PI;
+        const pitchDeg = attHud[1] * 180 / Math.PI;
+        const yawDeg   = attHud[2] * 180 / Math.PI;
         const alphaDeg = alphaRad * 180 / Math.PI;
         const betaDeg  = betaRad  * 180 / Math.PI;
 
