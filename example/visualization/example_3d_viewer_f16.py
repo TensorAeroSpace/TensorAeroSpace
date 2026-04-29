@@ -368,7 +368,24 @@ def main() -> None:
         if metrics["triggered"]:
             n_triggers += 1
 
-    # 7. Render
+    # 7. Reference signals for the 3D viewer charts. The ET-DHP agent
+    #    holds level flight at the angular trim, so each commanded
+    #    channel is constant. Values are in the SAME display units as the
+    #    chart panel (deg for angles, m/s for airspeed, m for altitude).
+    n_traj = len(env.time_history)
+    alpha_ref_deg = math.degrees(trim.alpha_rad)
+    env.reference_signals = {
+        "alpha":  [alpha_ref_deg] * n_traj,
+        "theta":  [alpha_ref_deg] * n_traj,
+        "beta":   [0.0] * n_traj,
+        "roll":   [0.0] * n_traj,
+        "yaw":    [0.0] * n_traj,
+        "wz":     [0.0] * n_traj,
+        "h":      [ANG_H_TARGET] * n_traj,
+        "V":      [ANG_V_TARGET] * n_traj,
+    }
+
+    # 8. Render
     out = env.render()
     print(f"\nRendered to: {out}")
     print(f"  triggers fired during eval: {n_triggers}")

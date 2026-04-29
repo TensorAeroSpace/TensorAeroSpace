@@ -128,6 +128,22 @@ def build_flight_log(env) -> dict[str, Any]:
             f"Unsupported model state dimension {n_state}; expected 4, 14, or 16."
         )
 
+    # Optional reference/commanded signals (per chart channel key, already
+    # in display units). Truncate or pad to match the trajectory length so
+    # the viewer can index by frame without bounds checks.
+    references_raw = getattr(env, "reference_signals", None) or {}
+    references_out: dict[str, list[float]] = {}
+    n_t = len(t)
+    for key, seq in references_raw.items():
+        arr = np.asarray(seq, dtype=np.float64).reshape(-1)
+        if arr.size == 0:
+            continue
+        if arr.size < n_t:
+            arr = np.concatenate([arr, np.full(n_t - arr.size, arr[-1])])
+        elif arr.size > n_t:
+            arr = arr[:n_t]
+        references_out[str(key)] = arr.tolist()
+
     return {
         "version": FLIGHT_LOG_VERSION,
         "metadata": {
@@ -144,6 +160,7 @@ def build_flight_log(env) -> dict[str, Any]:
             "position": pos.tolist(),
             "attitude": att.tolist(),
             **traj_channels,
+            "references": references_out,
         },
         "damage_events": list(getattr(env, "damage_events_log", [])),
         "damage_state_history": list(getattr(env, "damage_state_log", [])),

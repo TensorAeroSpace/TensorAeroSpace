@@ -152,6 +152,15 @@ class NonlinearAngularF16(gym.Env):
         self.damage_events_log: list[dict] = []
         self.damage_state_log: list[dict] = []
 
+        # Optional reference / commanded signals for visualization. Maps a
+        # chart channel key (e.g. "alpha", "theta", "V", "h") to a sequence
+        # of length T — values must be in the same DISPLAY units the
+        # corresponding 3D-viewer chart uses (deg for angular states, m/s
+        # for airspeed, m for altitude). The 3D exporter passes these
+        # through to ``traj.references`` for the viewer to overlay on each
+        # chart. Set by the user code before calling ``env.render()``.
+        self.reference_signals: dict[str, list[float]] = {}
+
         # Filled in reset()
         self.model: AngularF16 | None = None
         self._step_index: int = 0

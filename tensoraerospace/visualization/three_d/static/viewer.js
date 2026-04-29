@@ -1054,13 +1054,26 @@
         spec._values = ys;
         spec._indices = xs;
 
+        // Optional reference/commanded signal — overlaid as a dashed line
+        // and used to widen the y-range so both signals stay on screen.
+        const refsAll = (traj.references || {});
+        const refSeq = refsAll[spec.key];
+        const hasRef = Array.isArray(refSeq) && refSeq.length > 0;
+        const refYs = [];
+        if (hasRef) {
+            for (const i of xs) refYs.push(refSeq[i]);
+        }
+        spec._hasRef = hasRef;
+
         let yMin = Infinity, yMax = -Infinity;
-        for (const v of ys) {
+        const _track = (v) => {
             if (Number.isFinite(v)) {
                 if (v < yMin) yMin = v;
                 if (v > yMax) yMax = v;
             }
-        }
+        };
+        for (const v of ys) _track(v);
+        for (const v of refYs) _track(v);
         if (!Number.isFinite(yMin) || yMin === yMax) {
             // Constant signal — pad so the line is visible.
             const c = Number.isFinite(yMin) ? yMin : 0;
@@ -1078,20 +1091,32 @@
         const xScale = (i) =>
             CHART_PAD_L + plotW * (i / Math.max(1, T - 1));
 
-        let path = "";
-        for (let k = 0; k < ys.length; ++k) {
-            const x = xScale(xs[k]);
-            const y = yScale(ys[k]);
-            path += (k === 0 ? "M" : "L") + x.toFixed(1) + "," + y.toFixed(1);
-        }
+        const _pathFromYs = (yArr) => {
+            let p = "";
+            for (let k = 0; k < yArr.length; ++k) {
+                const x = xScale(xs[k]);
+                const y = yScale(yArr[k]);
+                p += (k === 0 ? "M" : "L") + x.toFixed(1) + "," + y.toFixed(1);
+            }
+            return p;
+        };
+        const path = _pathFromYs(ys);
+        const refPath = hasRef ? _pathFromYs(refYs) : "";
         spec._xScale = xScale;
         spec._yScale = yScale;
         spec._plotTop = CHART_PAD_T;
         spec._plotBottom = CHART_PAD_T + plotH;
 
-        // Build SVG
+        // Build SVG. The reference path (if any) sits beneath the live
+        // line so the actual signal stays on top. A second small text
+        // shows the current ref value next to the live readout.
         const wrap = document.createElement("div");
         wrap.className = "chart";
+        const refMarkup = hasRef
+            ? `<path class="chart-ref-line" d="${refPath}"/>
+               <text class="chart-ref-value" id="chart-ref-${spec.key}"
+                     x="${CHART_W - CHART_PAD_R - 2}" y="20">--</text>`
+            : "";
         wrap.innerHTML =
             `<svg viewBox="0 0 ${CHART_W} ${CHART_H}" preserveAspectRatio="none">
                 <line class="chart-axis" x1="${CHART_PAD_L}" y1="${spec._plotBottom}"
@@ -1101,6 +1126,7 @@
                       x="${CHART_W - CHART_PAD_R - 2}" y="10">--</text>
                 <text class="chart-extreme" x="${CHART_PAD_L + 2}" y="${spec._plotBottom - 1}">${spec.fmt(yMin)}</text>
                 <text class="chart-extreme" x="${CHART_PAD_L + 2}" y="${CHART_PAD_T + 7}">${spec.fmt(yMax)}</text>
+                ${refMarkup}
                 <path class="chart-line" d="${path}"/>
                 <line class="chart-cursor" id="chart-cur-${spec.key}"
                       x1="${CHART_PAD_L}" y1="${spec._plotTop}"
@@ -1255,6 +1281,7 @@
     function _updateCharts(idx) {
         const panel = document.getElementById("charts-panel");
         if (!panel || panel.style.display === "none") return;
+        const refs = traj.references || {};
         for (const spec of chartSpecs) {
             if (chartsState.hidden.indexOf(spec.key) !== -1) continue;
             const cur = document.getElementById("chart-cur-" + spec.key);
@@ -1267,6 +1294,13 @@
             if (val) {
                 const v = spec.extract(idx);
                 val.textContent = spec.fmt(v) + " " + spec.unit;
+            }
+            if (spec._hasRef) {
+                const refEl = document.getElementById("chart-ref-" + spec.key);
+                if (refEl) {
+                    const r = refs[spec.key][idx];
+                    refEl.textContent = "ref " + spec.fmt(r);
+                }
             }
         }
     }

@@ -514,6 +514,22 @@ html, body {
     fill: none;
     vector-effect: non-scaling-stroke;
 }
+#charts-panel .chart-ref-line {
+    stroke: #f5a623;
+    stroke-width: 1.0;
+    stroke-dasharray: 3 2;
+    fill: none;
+    vector-effect: non-scaling-stroke;
+    opacity: 0.85;
+}
+#charts-panel .chart-ref-value {
+    fill: #f5a623;
+    font-family: "SF Mono", "Consolas", monospace;
+    font-size: 8px;
+    font-weight: 600;
+    text-anchor: end;
+    opacity: 0.9;
+}
 #charts-panel .chart-cursor {
     stroke: #f5d544;
     stroke-width: 1.0;
