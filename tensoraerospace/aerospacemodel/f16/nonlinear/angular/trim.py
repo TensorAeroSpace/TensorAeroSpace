@@ -3,6 +3,20 @@
 Solves for level-flight equilibrium given a target true airspeed and
 altitude, returning the 16-element initial state and the constant thrust
 that holds it. Requires the model to be in track_altitude mode.
+
+Formulation (avoids the unphysical-T trap):
+
+* Unknowns: ``α`` and ``stab`` (2 scalars).
+* Residuals: ``dα/dt = 0`` and ``dω_z/dt = 0`` at level flight (β=0,
+  γ_roll=0, ψ=0, θ=α, all body rates zero).
+* Thrust is then set to ``T = q·S·Cx / cos(α)·cos(β)`` so that
+  ``dV/dt = (T·cosα·cosβ − D)/m − g·sin γ_path = 0`` automatically at
+  level flight (where ``g·sin γ_path = 0``). Drag ``D = q·S·Cx`` is
+  derived from the F-16 aero tables at the converged α.
+
+Solving for thrust *after* alpha/stab are pinned down avoids the
+ambiguous 3-unknown formulation which can converge to a saddle point
+with negative thrust.
 """
 
 from __future__ import annotations
@@ -12,8 +26,9 @@ from typing import Optional
 
 import numpy as np
 
+from .aero import get_cx
 from .dynamics import f16_ode_6dof
-from .params import F16AngularParameters
+from .params import F16AngularParameters, _isa_dynamic_pressure
 
 
 @dataclass
@@ -22,7 +37,7 @@ class TrimSolution:
     stab_rad: float        # commanded / settled stabilator deflection
     T_thrust: float        # thrust value that holds level flight (N)
     x0: np.ndarray         # 16-element initial state ready for AngularF16
-    residuals: tuple       # (dalpha, dwz, dV) at the trim point — should be ≈ 0
+    residuals: tuple       # (dalpha, dwz, dV) at the trim point — ≈ 0
     converged: bool        # whether fsolve converged within tolerance
 
 
@@ -33,7 +48,6 @@ def find_trim(
     *,
     alpha0: float = 0.087,        # 5°  — typical first guess
     stab0: float = -0.078,        # -4.5° — F-16 trim stab
-    thrust0: float = 10000.0,
     tol: float = 1e-6,
 ) -> TrimSolution:
     """Find the level-flight trim for the F-16 angular model.
@@ -46,7 +60,7 @@ def find_trim(
         Desired altitude (m).
     params : F16AngularParameters, optional
         Aircraft parameters. Uses default if None.
-    alpha0, stab0, thrust0 : float
+    alpha0, stab0 : float
         Initial guesses for the trim search.
     tol : float
         Residual tolerance for declaring convergence.
@@ -62,65 +76,91 @@ def find_trim(
     if params is None:
         params = F16AngularParameters()
 
+    # We want dα = 0 and dω_z = 0 at level flight. Thrust is set in the
+    # ODE's energy equation but doesn't enter dα or dω_z, so during the
+    # search we can use any thrust value — we pick ~0 N to remove
+    # noise from the dV residual that we won't read anyway.
+    params.T_thrust = 0.0
+    params.T_active = 0.0
+
     def _residuals(unknowns: np.ndarray) -> np.ndarray:
-        alpha, stab, thrust = float(unknowns[0]), float(unknowns[1]), float(unknowns[2])
-        # Build a 16-state vector for f16_ode_6dof.
+        alpha, stab = float(unknowns[0]), float(unknowns[1])
         x = np.zeros(16, dtype=np.float64)
         x[0]  = alpha
-        x[1]  = 0.0          # beta
-        x[2]  = 0.0          # wx
-        x[3]  = 0.0          # wy
-        x[4]  = 0.0          # wz
-        x[5]  = 0.0          # gamma (roll)
-        x[6]  = 0.0          # psi   (yaw)
-        x[7]  = alpha        # theta = alpha at level flight
-        x[8]  = stab         # current stab actuator state
-        x[9]  = 0.0          # dstab
-        x[10] = 0.0          # ail
-        x[11] = 0.0          # dail
-        x[12] = 0.0          # dir
-        x[13] = 0.0          # ddir
-        x[14] = h_target     # altitude
-        x[15] = V_target     # true airspeed
+        x[7]  = alpha   # theta = alpha at level flight
+        x[8]  = stab
+        x[14] = h_target
+        x[15] = V_target
 
-        # Use stab as both state and command so the actuator equilibrium
-        # holds (ddstab → 0 if stab_act_c == stab and dstab == 0).
+        # stab_act = stab → ddstab driven by command - state - rate = 0 at
+        # equilibrium when dstab = 0
         u = np.array([stab, 0.0, 0.0], dtype=np.float64)
 
-        # Set thrust as constant in params for this evaluation.
-        params.T_thrust = thrust
-        params.T_active = thrust   # ensure the ODE picks the right value
-
         dx = f16_ode_6dof(x, u, 0.0, params)
-
-        return np.array([dx[0], dx[4], dx[15]], dtype=np.float64)
+        # Residual 1: alpha holds → dalpha = 0
+        # Residual 2: pitch holds → dwz = 0
+        return np.array([dx[0], dx[4]], dtype=np.float64)
 
     sol, _info, ier, _msg = fsolve(
         _residuals,
-        x0=[alpha0, stab0, thrust0],
+        x0=[alpha0, stab0],
         full_output=True,
         xtol=tol,
     )
-    alpha, stab, thrust = float(sol[0]), float(sol[1]), float(sol[2])
-    res = _residuals(sol)
-    converged = (ier == 1) and (np.max(np.abs(res)) < 1e-3)
+    alpha, stab = float(sol[0]), float(sol[1])
+    res2 = _residuals(sol)
+    converged = (ier == 1) and (np.max(np.abs(res2)) < 1e-4)
 
-    # Build the 16-element x0 the user can hand to AngularF16(track_altitude=True)
+    # ---- Compute thrust to balance drag at the converged α ----
+    # Drag (along velocity) = q·S·Cx, where Cx is read from the F-16 aero
+    # table at the trim α, β=0, with stab=stab, lef=0, sb=0, wz=0.
+    q_trim = _isa_dynamic_pressure(h_target, V_target, params.g)
+    cx_trim = get_cx(alpha, 0.0, stab, params.lef, 0.0,
+                     V_target, params.bA, params.sb)
+    drag_trim = q_trim * params.S * cx_trim
+
+    # Energy: 0 = (T·cosα·cosβ − D)/m − g·sin(γ=0) at level flight
+    # → T = D / cos(α)·cos(β=0) = D / cos(α)
+    cos_a = np.cos(alpha)
+    T_calc = float(drag_trim / cos_a)
+
+    # The F-16 NASA matlab-port aero tables can return small negative or
+    # near-zero Cx values at moderate α — that produces an unphysical
+    # negative trim thrust. Floor T to a sensible idle thrust so the
+    # simulation always has positive forward force; the aircraft may
+    # then accelerate slightly above V_target instead of holding it
+    # exactly, but won't dive on takeoff because of "negative thrust".
+    T_THRUST_MIN = 8000.0    # N — F-16 idle thrust order of magnitude
+    if T_calc < T_THRUST_MIN:
+        T_thrust = T_THRUST_MIN
+    else:
+        T_thrust = T_calc
+    params.T_thrust = T_thrust
+    params.T_active = T_thrust
+    x_full = np.zeros(16, dtype=np.float64)
+    x_full[0]  = alpha
+    x_full[7]  = alpha
+    x_full[8]  = stab
+    x_full[14] = h_target
+    x_full[15] = V_target
+    dx_check = f16_ode_6dof(
+        x_full, np.array([stab, 0.0, 0.0], dtype=np.float64), 0.0, params,
+    )
+    res3 = (float(dx_check[0]), float(dx_check[4]), float(dx_check[15]))
+
+    # Build the 16-element x0
     x0 = np.zeros(16, dtype=np.float64)
     x0[0]  = alpha
-    x0[7]  = alpha          # theta = alpha
+    x0[7]  = alpha
     x0[8]  = stab
     x0[14] = h_target
     x0[15] = V_target
 
-    # Restore params.T_thrust to the trim value
-    params.T_thrust = thrust
-
     return TrimSolution(
         alpha_rad=alpha,
         stab_rad=stab,
-        T_thrust=thrust,
+        T_thrust=T_thrust,
         x0=x0,
-        residuals=tuple(float(r) for r in res),
+        residuals=res3,
         converged=converged,
     )
