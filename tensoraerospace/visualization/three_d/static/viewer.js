@@ -43,7 +43,7 @@
     const camera = new THREE.PerspectiveCamera(
         55, sceneEl.clientWidth / sceneEl.clientHeight, 0.1, 5000,
     );
-    camera.position.set(45, 30, 45);
+    camera.position.set(20, 14, 20);
     camera.lookAt(0, 0, 0);
 
     const controls = new THREE.OrbitControls(camera, renderer.domElement);
@@ -83,7 +83,7 @@
                  up:     new THREE.Vector3(0,   1,   0) },
         // 3D offset is the initial drop-in for OrbitControls; afterwards
         // the user's mouse drives the orbit angle around the aircraft.
-        "3d":  { offset: new THREE.Vector3(30, 20,  30),
+        "3d":  { offset: new THREE.Vector3(20, 14,  20),
                  up:     new THREE.Vector3(0,   1,   0) },
     };
 
@@ -251,84 +251,157 @@
     }
 
     function _fuselageGroup() {
-        // F-16 fuselage as a body of revolution (LatheGeometry).
-        // Profile points are (radius, axial_position) in body frame; after
-        // lathing, the geometry is rotated so its axial direction aligns
-        // with three.x (body forward).
-        //
-        // Profile shape:
-        //   nose tip at body.x = +7.5, radius 0
-        //   forward fuselage tapers up to ~0.75 m radius at body.x = +1
-        //   centre body holds ~0.75 m radius from x=+1 to x=-3
-        //   tail tapers to ~0.35 m radius at the nozzle (body.x = -7.5)
+        // F-16 fuselage. LatheGeometry from a hand-tuned profile that
+        // captures the F-16's pointed radome, swelling cockpit area,
+        // narrowing aft body, and engine nacelle.
+        // Profile (radius, axial). Axial spans body x = +8 (nose) to -8 (tail).
         const profile = [
-            new THREE.Vector2(0.0,  +7.5),
-            new THREE.Vector2(0.18, +6.5),
-            new THREE.Vector2(0.32, +5.5),
-            new THREE.Vector2(0.50, +4.0),
-            new THREE.Vector2(0.65, +2.5),
-            new THREE.Vector2(0.75, +1.0),
-            new THREE.Vector2(0.78, -1.0),
-            new THREE.Vector2(0.78, -3.0),
-            new THREE.Vector2(0.65, -5.0),
-            new THREE.Vector2(0.50, -6.5),
-            new THREE.Vector2(0.35, -7.5),
+            new THREE.Vector2(0.00, +8.0),
+            new THREE.Vector2(0.10, +7.5),    // radome point
+            new THREE.Vector2(0.22, +6.5),
+            new THREE.Vector2(0.40, +5.0),
+            new THREE.Vector2(0.60, +3.5),
+            new THREE.Vector2(0.78, +2.0),
+            new THREE.Vector2(0.85, +0.5),    // widest at cockpit-mid
+            new THREE.Vector2(0.85, -1.5),    // hold widest through midbody
+            new THREE.Vector2(0.78, -3.5),
+            new THREE.Vector2(0.62, -5.5),
+            new THREE.Vector2(0.50, -7.0),
+            new THREE.Vector2(0.42, -8.0),    // nozzle exit
         ];
-        const geom = new THREE.LatheGeometry(profile, 24);
-        // LatheGeometry's axial axis is local +Y. Rotate so that +Y → +X.
-        // Rotation around Z by -π/2 gives: (x,y,z) → (y,-x,z).
-        // Body's x-forward is rendered as three.js +X, which matches.
-        geom.rotateZ(-Math.PI / 2);
-        const fuselage = new THREE.Mesh(geom, _stdMat(F16_COLORS.fuselage));
+        const fuselageGeom = new THREE.LatheGeometry(profile, 32);
+        fuselageGeom.rotateZ(-Math.PI / 2);
+        const fuselage = new THREE.Mesh(
+            fuselageGeom, _stdMat(F16_COLORS.fuselage),
+        );
         fuselage.name = "fuselage_main";
 
         const group = new THREE.Group();
         group.add(fuselage);
 
-        // Cockpit canopy — a flattened sphere on top of the cockpit.
-        // body coords: x ≈ +3.0 (forward of CG), z ≈ -0.6 (above fuselage axis)
-        const canopyGeom = new THREE.SphereGeometry(0.9, 16, 12);
-        canopyGeom.scale(1.6, 0.55, 0.95);  // long fore-aft, low, narrow
+        // Bubble canopy — distinctive F-16 teardrop shape. Two-piece:
+        //  - main bubble (rounded teardrop)
+        //  - canopy frame (slightly darker thin band at the base)
+        const canopyGeom = new THREE.SphereGeometry(1.0, 24, 16);
+        canopyGeom.scale(2.0, 0.7, 1.0);  // long fore-aft, low, narrow
         const canopy = new THREE.Mesh(
             canopyGeom,
-            _stdMat(F16_COLORS.canopy, { metalness: 0.6, roughness: 0.15 }),
+            _stdMat(F16_COLORS.canopy, { metalness: 0.7, roughness: 0.1 }),
         );
         canopy.name = "fuselage_canopy";
-        // Position in body frame: +3.0 forward, 0 lateral, -0.6 up (in body z),
-        // i.e. world coords (3.0, 0.6, 0).
-        canopy.position.set(3.0, 0.6, 0);
+        canopy.position.set(2.6, 0.85, 0);  // forward of CG, on top of fuselage
         group.add(canopy);
 
-        // Engine intake — flattened box mounted under the belly.
-        // F-16 has the iconic single ventral chin intake.
-        const intakeGeom = new THREE.BoxGeometry(3.5, 0.55, 1.1);
-        const intake = new THREE.Mesh(intakeGeom, _stdMat(F16_COLORS.intake));
-        intake.name = "fuselage_intake";
-        // body x ≈ +1.5 (under cockpit), body z ≈ +0.8 (below axis)
-        // → world (1.5, -0.8, 0)
-        intake.position.set(1.5, -0.8, 0);
-        group.add(intake);
+        // Canopy frame band (slightly darker, sits at the canopy base)
+        const frameGeom = new THREE.TorusGeometry(0.95, 0.09, 8, 32);
+        const canopyFrame = new THREE.Mesh(
+            frameGeom,
+            _stdMat(0x1a2530, { metalness: 0.5, roughness: 0.3 }),
+        );
+        canopyFrame.rotation.x = Math.PI / 2;
+        canopyFrame.scale.set(2.0, 1.0, 0.7);
+        canopyFrame.position.set(2.6, 0.55, 0);
+        group.add(canopyFrame);
 
-        // Nose pitot tube — small cone at the very tip.
-        const pitotGeom = new THREE.ConeGeometry(0.08, 0.6, 8);
+        // Chin intake — distinctive F-16 single belly intake under the cockpit.
+        // Wider than before, with a slight inlet ramp suggested by an inset
+        // front face.
+        const intakeBody = new THREE.Mesh(
+            new THREE.BoxGeometry(4.5, 0.85, 1.5),
+            _stdMat(F16_COLORS.intake),
+        );
+        intakeBody.name = "fuselage_intake";
+        intakeBody.position.set(1.8, -0.95, 0);
+        group.add(intakeBody);
+
+        // Inlet ramp — a darker recessed face at the front of the intake to
+        // suggest a lit inlet duct. Just a small inset plane.
+        const inletGeom = new THREE.PlaneGeometry(1.3, 0.7);
+        const inlet = new THREE.Mesh(
+            inletGeom,
+            _stdMat(0x101418, { metalness: 0.2, roughness: 1.0 }),
+        );
+        inlet.rotation.y = Math.PI / 2;
+        inlet.position.set(4.0, -0.95, 0);
+        group.add(inlet);
+
+        // Nose pitot probe (slim cone forward of radome)
+        const pitotGeom = new THREE.ConeGeometry(0.08, 0.7, 12);
         const pitot = new THREE.Mesh(
             pitotGeom, _stdMat(F16_COLORS.nozzle, { metalness: 0.7 }),
         );
-        // ConeGeometry default axis is +Y; we want it pointing along +X (forward).
         pitot.rotation.z = -Math.PI / 2;
-        pitot.position.set(7.8, 0, 0);
+        pitot.position.set(8.4, 0, 0);
         group.add(pitot);
 
-        // Engine nozzle — dark ring at the tail.
+        // Engine nozzle — proper afterburner-can shape.
         const nozzleGeom = new THREE.CylinderGeometry(
-            0.40, 0.32, 0.6, 16, 1, true,
+            0.50, 0.40, 1.0, 24, 1, true,
         );
         const nozzle = new THREE.Mesh(
-            nozzleGeom, _stdMat(F16_COLORS.nozzle, { metalness: 0.6 }),
+            nozzleGeom, _stdMat(F16_COLORS.nozzle, { metalness: 0.65 }),
         );
         nozzle.rotation.z = Math.PI / 2;
-        nozzle.position.set(-7.7, 0, 0);
+        nozzle.position.set(-8.3, 0, 0);
         group.add(nozzle);
+
+        // LERX — leading-edge root extensions. F-16's signature. Flat
+        // wedges blending the forebody chine into the wing root, on each
+        // side of the cockpit.
+        const lerxRightShape = [
+            // body coords (x, y) of the right LERX outline
+            [+3.0, +0.55],   // front tip (near cockpit)
+            [+1.5, +0.95],   // outer kink
+            [-0.4, +1.95],   // joins wing root LE_outboard (matches RIGHT_WING_POLYGONS.right_root[1])
+            [+0.4, +1.95],   // back to wing root LE_inboard adjacent
+            [+1.5, +0.85],   // inboard back to fuselage line
+        ];
+        const lerxLeftShape = lerxRightShape.map(([x, y]) => [x, -y]);
+        // Flat panels at z = 0 (centreline plane) — slightly above the
+        // fuselage waterline at z = +0.4 looks more F-16-ish.
+        function _lerxMesh(poly, name) {
+            const c = poly.map(([bx, by]) => bodyToThree(bx, by, -0.15));
+            // Build as a triangle fan from the first vertex
+            const verts = [];
+            for (let i = 1; i < c.length - 1; i++) {
+                verts.push(...c[0], ...c[i], ...c[i + 1]);
+            }
+            const geom = new THREE.BufferGeometry();
+            geom.setAttribute("position",
+                new THREE.BufferAttribute(new Float32Array(verts), 3));
+            geom.computeVertexNormals();
+            const mesh = new THREE.Mesh(geom, _stdMat(F16_COLORS.fuselage));
+            mesh.name = name;
+            return mesh;
+        }
+        group.add(_lerxMesh(lerxRightShape, "lerx_right"));
+        group.add(_lerxMesh(lerxLeftShape,  "lerx_left"));
+
+        // Ventral fins — two small fins angled outward and down at the
+        // aft fuselage (under the engine, between wing TE and nozzle).
+        function _ventralFinMesh(side, name) {
+            const sign = side === "left" ? -1 : +1;
+            // Polygon in body x-z plane (y is sign * thickness offset),
+            // flat triangle: top-fwd, top-aft, bottom-mid.
+            const c = [
+                bodyToThree(-5.5, sign * 0.4, +0.7),  // top-fwd
+                bodyToThree(-7.0, sign * 0.4, +0.7),  // top-aft
+                bodyToThree(-6.2, sign * 0.7, +1.6),  // bottom-mid (down + outward)
+            ];
+            const positions = new Float32Array([
+                ...c[0], ...c[1], ...c[2],
+            ]);
+            const geom = new THREE.BufferGeometry();
+            geom.setAttribute("position", new THREE.BufferAttribute(positions, 3));
+            geom.computeVertexNormals();
+            const mesh = new THREE.Mesh(
+                geom, _stdMat(F16_COLORS.vtail),
+            );
+            mesh.name = name;
+            return mesh;
+        }
+        group.add(_ventralFinMesh("right", "ventral_fin_right"));
+        group.add(_ventralFinMesh("left",  "ventral_fin_left"));
 
         return group;
     }
@@ -406,6 +479,29 @@
         return group;
     }
 
+    function _wingtipLauncher(side, name) {
+        // Short cylindrical rail on the wingtip's leading edge, where
+        // an AIM-9 Sidewinder sits on a real F-16.
+        const sign = side === "left" ? -1 : +1;
+        // Tip body coords: leading edge of wing tip section ~(-2.0, ±4.7)
+        const len = 1.6;
+        const radius = 0.10;
+        const railGeom = new THREE.CylinderGeometry(
+            radius, radius, len, 12, 1, false,
+        );
+        // CylinderGeometry default axis is +Y; we want it along body x (forward).
+        railGeom.rotateZ(Math.PI / 2);
+        const rail = new THREE.Mesh(
+            railGeom, _stdMat(0x808080, { metalness: 0.6, roughness: 0.4 }),
+        );
+        rail.name = name;
+        // Position at body (~ -1.8, ±4.6, -0.1) — just forward of the
+        // tip's LE corner, slightly above.
+        const [tx, ty, tz] = bodyToThree(-1.8, sign * 4.6, -0.1);
+        rail.position.set(tx, ty, tz);
+        return rail;
+    }
+
     function buildAircraft(geometry) {
         const aircraft = new THREE.Group();
         aircraft.name = "aircraft";
@@ -440,26 +536,26 @@
         aircraft.add(_aileronHingeGroup("right"));
         aircraft.add(_aileronHingeGroup("left"));
 
+        // Wingtip launchers
+        aircraft.add(_wingtipLauncher("right", "launcher_right"));
+        aircraft.add(_wingtipLauncher("left",  "launcher_left"));
+
         return aircraft;
     }
 
     const aircraft = buildAircraft(log.geometry);
     scene.add(aircraft);
 
-    // Engine exhaust glow — a small orange cone trailing behind the
-    // fuselage. Phase E damage handling scales it with engine thrust_factor
-    // and hides it on hard_failure.
+    // Afterburner exhaust glow — hot orange cone trailing aft of the
+    // engine nozzle.
     const exhaustMat = new THREE.MeshBasicMaterial({
-        color: 0xff6633, transparent: true, opacity: 0.7,
+        color: 0xff8844, transparent: true, opacity: 0.85,
     });
-    const exhaustGeom = new THREE.ConeGeometry(0.5, 3.0, 12, 1, true);
+    const exhaustGeom = new THREE.ConeGeometry(0.55, 4.0, 16, 1, true);
     const exhaust = new THREE.Mesh(exhaustGeom, exhaustMat);
     exhaust.name = "exhaust";
-    // Cone default axis is +Y; rotate so it points along -X (aft of fuselage)
     exhaust.rotation.z = Math.PI / 2;
-    // Mount aft of fuselage centre. Body x = -7 means 7 m aft of CG; in
-    // three coords that's -7 along X.
-    exhaust.position.set(-7, 0, 0);
+    exhaust.position.set(-9.0, 0, 0);
     aircraft.add(exhaust);
 
     // ---- Damage state machinery ----
@@ -745,19 +841,33 @@
         // Stabilator and ailerons rotate about their hinge (lateral axis,
         // = aircraft's local +Z). Rudder rotates about its vertical hinge
         // (= aircraft's local -Y; we apply the sign to .rotation.y).
+        // DEFLECTION_VISUAL_GAIN amplifies the mesh rotation for readability
+        // without affecting the underlying physics values.
+        const DEFLECTION_VISUAL_GAIN = 2.5;
         const stabDef = traj.stab[idx];
         const ailDef  = traj.ail[idx];
         const dirDef  = traj.dir[idx];
         const stabL = aircraft.getObjectByName("stab_left");
         const stabR = aircraft.getObjectByName("stab_right");
-        if (stabL) stabL.rotation.z = stabDef;
-        if (stabR) stabR.rotation.z = stabDef;
+        if (stabL) stabL.rotation.z = stabDef * DEFLECTION_VISUAL_GAIN;
+        if (stabR) stabR.rotation.z = stabDef * DEFLECTION_VISUAL_GAIN;
         const ailL = aircraft.getObjectByName("aileron_left");
         const ailR = aircraft.getObjectByName("aileron_right");
-        if (ailL) ailL.rotation.z = -ailDef;   // differential
-        if (ailR) ailR.rotation.z = +ailDef;
+        if (ailL) ailL.rotation.z = -ailDef * DEFLECTION_VISUAL_GAIN;
+        if (ailR) ailR.rotation.z = +ailDef * DEFLECTION_VISUAL_GAIN;
         const rud = aircraft.getObjectByName("rudder");
-        if (rud) rud.rotation.y = -dirDef;     // body z down → local -y
+        if (rud) rud.rotation.y = -dirDef * DEFLECTION_VISUAL_GAIN;
+
+        // HUD: surface deflections in degrees.
+        const stabHud = document.getElementById("hud-stab");
+        const ailHud  = document.getElementById("hud-ail");
+        const dirHud  = document.getElementById("hud-dir");
+        if (stabHud) stabHud.textContent =
+            (stabDef * 180 / Math.PI).toFixed(1) + "°";
+        if (ailHud)  ailHud.textContent  =
+            (ailDef  * 180 / Math.PI).toFixed(1) + "°";
+        if (dirHud)  dirHud.textContent  =
+            (dirDef  * 180 / Math.PI).toFixed(1) + "°";
 
         // Apply damage state for this time
         applyDamageState(damageStateAt(traj.time[idx]), traj.time[idx]);
@@ -822,6 +932,84 @@
         camera.aspect = sceneEl.clientWidth / sceneEl.clientHeight;
         camera.updateProjectionMatrix();
         renderer.setSize(sceneEl.clientWidth, sceneEl.clientHeight);
+    });
+
+    // ---- Keyboard shortcuts ----
+    // Fires when the viewport (or anything not an input/select) has
+    // focus. Avoid hijacking text-input keys.
+    function _isTextInputTarget(t) {
+        if (!t) return false;
+        const tag = (t.tagName || "").toUpperCase();
+        return tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT";
+    }
+
+    const SPEED_STEPS = [0.25, 0.5, 1, 2, 4];
+    function _changeSpeed(direction) {
+        const i = SPEED_STEPS.indexOf(speed);
+        const ni = Math.max(0, Math.min(SPEED_STEPS.length - 1,
+                                        (i < 0 ? 2 : i) + direction));
+        speed = SPEED_STEPS[ni];
+        speedSelect.value = String(speed);
+    }
+
+    function _scrubBy(seconds) {
+        playing = false;
+        btnPlay.textContent = "Play";
+        const dframes = Math.round(seconds / dt);
+        setFrame(frame + dframes);
+    }
+
+    document.addEventListener("keydown", (e) => {
+        if (_isTextInputTarget(e.target)) return;
+        switch (e.code) {
+            case "Space":
+                e.preventDefault();
+                playing = !playing;
+                btnPlay.textContent = playing ? "Pause" : "Play";
+                if (playing) lastTickMs = performance.now();
+                return;
+            case "ArrowLeft":
+                e.preventDefault();
+                _scrubBy(e.shiftKey ? -5.0 : -0.5);
+                return;
+            case "ArrowRight":
+                e.preventDefault();
+                _scrubBy(e.shiftKey ? +5.0 : +0.5);
+                return;
+            case "Home":
+                e.preventDefault();
+                playing = false;
+                btnPlay.textContent = "Play";
+                setFrame(0);
+                return;
+            case "End":
+                e.preventDefault();
+                playing = false;
+                btnPlay.textContent = "Play";
+                setFrame(T - 1);
+                return;
+            case "Digit1": preset3DCamera(); return;
+            case "Digit2": presetTopDown(); return;
+            case "Digit3": presetLeftSide(); return;
+            case "Digit4": presetRightSide(); return;
+            case "Equal":
+            case "NumpadAdd":
+                _changeSpeed(+1);
+                return;
+            case "Minus":
+            case "NumpadSubtract":
+                _changeSpeed(-1);
+                return;
+            case "Slash":   // ? on most layouts (with shift)
+            case "KeyH": {
+                const help = document.getElementById("keyboard-help");
+                if (help) {
+                    help.style.display =
+                        help.style.display === "none" ? "block" : "none";
+                }
+                return;
+            }
+        }
     });
 
     // ---- Animation loop ----

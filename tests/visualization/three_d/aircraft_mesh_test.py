@@ -82,9 +82,11 @@ def test_html_has_right_wing_polygons():
 
 
 def test_camera_distance_increased_for_aircraft_scale():
+    """3D camera preset uses an offset around aircraft.position. The
+    scene-init position is closer than the original placeholder so the
+    larger / more detailed F-16 fills the viewport."""
     html = _make_html()
-    # Phase C bumps initial camera position so the ~10 m fuselage fits
-    assert "camera.position.set(45, 30, 45)" in html
+    assert "camera.position.set(20, 14, 20)" in html
 
 
 def test_section_meshes_have_names():

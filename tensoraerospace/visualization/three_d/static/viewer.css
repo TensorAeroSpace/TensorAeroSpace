@@ -85,3 +85,42 @@ html, body {
     font-size: 12px;
     color: #999;
 }
+#keyboard-help {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    background: var(--hud-bg);
+    padding: 10px 14px;
+    border-radius: 6px;
+    font-size: 12px;
+    line-height: 1.7;
+    pointer-events: none;
+    user-select: none;
+    color: #b0b0c0;
+}
+#keyboard-help .kbd-title {
+    color: var(--hud-fg);
+    font-weight: 600;
+    margin-bottom: 6px;
+}
+#keyboard-help kbd {
+    display: inline-block;
+    background: #2a2a3a;
+    color: var(--hud-fg);
+    padding: 1px 5px;
+    border-radius: 3px;
+    border: 1px solid #404050;
+    font-family: "SF Mono", "Consolas", monospace;
+    font-size: 11px;
+    margin: 0 1px;
+}
+
+/* Floating "?" badge to hint that the help overlay exists. */
+#hud::after {
+    content: "press H for shortcuts";
+    display: block;
+    margin-top: 8px;
+    font-size: 10px;
+    color: #707080;
+    font-style: italic;
+}

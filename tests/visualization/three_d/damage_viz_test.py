@@ -130,3 +130,41 @@ def test_control_surface_deflections_applied_each_frame():
     assert "traj.dir[idx]" in body
     assert 'getObjectByName("stab_left")' in body
     assert 'getObjectByName("rudder")' in body
+
+
+def test_html_has_keyboard_shortcuts():
+    """Keyboard handler must be installed and cover the documented keys."""
+    html = _make_html()
+    assert "addEventListener(\"keydown\"" in html or \
+        "addEventListener('keydown'" in html
+    for case in ("Space", "ArrowLeft", "ArrowRight", "Home", "End",
+                 "Digit1", "Digit2", "Digit3", "Digit4"):
+        assert case in html, f"missing keybinding for {case}"
+
+
+def test_html_has_keyboard_help_overlay():
+    html = _make_html()
+    assert 'id="keyboard-help"' in html
+    assert "Keyboard shortcuts" in html
+
+
+def test_html_has_lerx_and_realistic_features():
+    """The upgraded F-16 mesh ships LERX, ventral fins, wingtip launchers."""
+    html = _make_html()
+    for feature in ("lerx_right", "lerx_left",
+                    "ventral_fin_right", "ventral_fin_left",
+                    "launcher_right", "launcher_left"):
+        assert feature in html, f"missing F-16 feature: {feature}"
+
+
+def test_deflection_visual_gain_present():
+    """The visual amplification factor that makes stab/ail/dir
+    deflections readable on the small surfaces."""
+    html = _make_html()
+    assert "DEFLECTION_VISUAL_GAIN" in html
+
+
+def test_hud_has_deflection_readouts():
+    html = _make_html()
+    for hud_id in ("hud-stab", "hud-ail", "hud-dir"):
+        assert hud_id in html
