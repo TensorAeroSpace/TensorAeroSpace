@@ -124,3 +124,78 @@ html, body {
     color: #707080;
     font-style: italic;
 }
+
+#hud-svg {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 10;
+}
+#hud-svg .hud-text-lg {
+    font-family: "SF Mono", "Consolas", monospace;
+    font-size: 22px;
+    font-weight: 700;
+    fill: #00ff66;
+}
+#hud-svg .hud-text-md {
+    font-family: "SF Mono", "Consolas", monospace;
+    font-size: 18px;
+    font-weight: 600;
+    fill: #00ff66;
+}
+#hud-svg .hud-text-sm {
+    font-family: "SF Mono", "Consolas", monospace;
+    font-size: 13px;
+    fill: #00ff66;
+}
+#hud-svg .hud-bg {
+    fill: rgba(0, 0, 0, 0.55);
+    stroke: #00ff66;
+    stroke-width: 1;
+}
+#hud-svg .hud-line-thin {
+    stroke: #00ff66;
+    stroke-width: 1;
+    fill: none;
+}
+#hud-svg .hud-line-thick {
+    stroke: #00ff66;
+    stroke-width: 2;
+    fill: none;
+}
+#hud-svg .hud-stroke {
+    stroke: #00ff66;
+    stroke-width: 1.5;
+    fill: none;
+}
+#hud-svg .hud-fill {
+    fill: #00ff66;
+}
+#hud-svg .hud-warn-bg {
+    fill: rgba(160, 0, 0, 0.7);
+    stroke: #ff3030;
+    stroke-width: 2;
+}
+#hud-svg .hud-warn-text {
+    font-family: "SF Mono", "Consolas", monospace;
+    font-size: 18px;
+    font-weight: 700;
+    fill: #ffffff;
+    letter-spacing: 2px;
+}
+/* Pitch ladder rungs: dashed for positive, dotted for negative. */
+#hud-svg .hud-pitch-rung-pos {
+    stroke: #00ff66; stroke-width: 1.5; stroke-dasharray: none;
+    fill: none;
+}
+#hud-svg .hud-pitch-rung-neg {
+    stroke: #00ff66; stroke-width: 1.5; stroke-dasharray: 4 4;
+    fill: none;
+}
+#hud-svg .hud-pitch-label {
+    font-family: "SF Mono", "Consolas", monospace;
+    font-size: 12px;
+    fill: #00ff66;
+}

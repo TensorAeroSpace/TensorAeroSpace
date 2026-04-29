@@ -546,6 +546,46 @@
     const aircraft = buildAircraft(log.geometry);
     scene.add(aircraft);
 
+    // ---- Build pitch ladder ----
+    // Add horizontal pitch reference lines at every 5° from -25° to +25°.
+    // Lines are static within the #hud-pitch-ladder group; the parent
+    // groups translate (pitch) and rotate (bank) each frame.
+    (function () {
+        const ladder = document.getElementById("hud-pitch-ladder");
+        if (!ladder) return;
+        const PITCH_DEG_PER_PX = 5 / 30;   // 30 px per 5° pitch
+        for (let d = -25; d <= 25; d += 5) {
+            if (d === 0) continue;       // horizon drawn separately
+            const y = -d / PITCH_DEG_PER_PX;
+            const cls = d > 0 ? "hud-pitch-rung-pos" : "hud-pitch-rung-neg";
+            // Rung: short segments either side of centre with the angle
+            // label outboard.
+            const segL = document.createElementNS(
+                "http://www.w3.org/2000/svg", "line");
+            segL.setAttribute("x1", "-100");
+            segL.setAttribute("y1", y);
+            segL.setAttribute("x2", "-30");
+            segL.setAttribute("y2", y);
+            segL.setAttribute("class", cls);
+            ladder.appendChild(segL);
+            const segR = document.createElementNS(
+                "http://www.w3.org/2000/svg", "line");
+            segR.setAttribute("x1", "30");
+            segR.setAttribute("y1", y);
+            segR.setAttribute("x2", "100");
+            segR.setAttribute("y2", y);
+            segR.setAttribute("class", cls);
+            ladder.appendChild(segR);
+            const lbl = document.createElementNS(
+                "http://www.w3.org/2000/svg", "text");
+            lbl.setAttribute("x", "115");
+            lbl.setAttribute("y", y + 4);
+            lbl.setAttribute("class", "hud-pitch-label");
+            lbl.textContent = (d > 0 ? "+" : "") + d;
+            ladder.appendChild(lbl);
+        }
+    })();
+
     // Afterburner exhaust glow — hot orange cone trailing aft of the
     // engine nozzle.
     const exhaustMat = new THREE.MeshBasicMaterial({
@@ -897,6 +937,161 @@
             (traj.wx[idx] * 180 / Math.PI).toFixed(2) + "°/s";
         document.getElementById("hud-wz").textContent =
             (traj.wz[idx] * 180 / Math.PI).toFixed(2) + "°/s";
+
+        // ---- F-16-style SVG HUD ----
+        // Convert sim units to fighter conventions:
+        //   alpha, beta (rad)             → degrees
+        //   airspeed (m/s, fixed in env)  → KIAS (knots) and Mach
+        //   altitude (m, from initial Oy minus -position.z)
+        //                                 → feet, plus VSI ft/min
+        //   yaw / pitch / bank            → from traj.attitude
+        //   load factor                   → approximated from cy at α
+        const ALPHA_PX_PER_DEG = 6;     // FPM travels 6 px per °α
+        const BETA_PX_PER_DEG  = 6;
+        const PITCH_DEG_PER_PX_INV = 30 / 5;   // 30 px per 5°
+
+        const att = traj.attitude[idx];   // (roll/gamma, pitch/theta, yaw/psi)
+        const alphaRad = traj.alpha[idx];
+        const betaRad  = traj.beta[idx];
+        const wzRad    = traj.wz[idx];
+
+        const rollDeg  = att[0] * 180 / Math.PI;
+        const pitchDeg = att[1] * 180 / Math.PI;
+        const yawDeg   = att[2] * 180 / Math.PI;
+        const alphaDeg = alphaRad * 180 / Math.PI;
+        const betaDeg  = betaRad  * 180 / Math.PI;
+
+        // Heading: yaw in [0, 360)
+        let hdg = yawDeg % 360;
+        if (hdg < 0) hdg += 360;
+        const hdgEl = document.getElementById("hud-hdg-value");
+        if (hdgEl) hdgEl.textContent = String(Math.round(hdg)).padStart(3, "0");
+
+        // Airspeed → KIAS, Mach
+        const airspeed_mps = (log.metadata && log.metadata.airspeed) || 0;
+        const kias = airspeed_mps * 1.94384;
+        const mach = airspeed_mps / 340.0;
+        const kiasEl = document.getElementById("hud-kias-value");
+        const machEl = document.getElementById("hud-mach-value");
+        if (kiasEl) kiasEl.textContent = String(Math.round(kias)).padStart(3, "0");
+        if (machEl) machEl.textContent = "M " + mach.toFixed(2);
+
+        // Altitude: env's airframe sits at Oy ≈ 3000 m; altitude changes
+        // are tracked via the inertial position's z component (negative
+        // = up in body, but in the 3D viewer we map -bz → world y).
+        // log.metadata doesn't carry the trim altitude explicitly, so
+        // approximate as "trim alt + delta from inertial z" (alt grows
+        // when the aircraft climbs, i.e. position.z becomes more negative).
+        const TRIM_ALT_M = 3000.0;
+        const pos = traj.position[idx];
+        const alt_m = TRIM_ALT_M + (-pos[2]);     // -bz = up
+        const alt_ft = alt_m * 3.28084;
+        const altEl = document.getElementById("hud-alt-value");
+        if (altEl) altEl.textContent = String(Math.round(alt_ft)).padStart(5, "0");
+
+        // VSI: ft/min, from finite difference on altitude.
+        const VSI_LOOKBACK = 50;   // 50 frames ≈ 0.5 s at dt=0.01
+        const j = Math.max(0, idx - VSI_LOOKBACK);
+        const altPrev_m = TRIM_ALT_M + (-traj.position[j][2]);
+        const dT_s = (idx - j) * dt || dt;
+        const vsi_fps = (alt_m - altPrev_m) * 3.28084 / dT_s;
+        const vsi_fpm = vsi_fps * 60.0;
+        const vsiEl = document.getElementById("hud-vsi-value");
+        if (vsiEl) {
+            const sign = vsi_fpm >= 0 ? "+" : "-";
+            vsiEl.textContent = "VS " + sign +
+                String(Math.round(Math.abs(vsi_fpm))).padStart(4, "0");
+        }
+
+        // AOA / β
+        const aoaEl = document.getElementById("hud-aoa-value");
+        if (aoaEl) aoaEl.textContent = alphaDeg.toFixed(1);
+        const betaValEl = document.getElementById("hud-beta-value");
+        if (betaValEl) betaValEl.textContent = betaDeg.toFixed(1);
+
+        // G-load: estimate from pitch rate × airspeed / g  + 1 (cruise = 1G)
+        // This is a coarse approximation but matches a fighter's HUD G
+        // readout reasonably for normal manoeuvres.
+        const G_EARTH = 9.80665;
+        const gLoad = 1.0 + Math.abs(wzRad * airspeed_mps) / G_EARTH;
+        const gEl = document.getElementById("hud-g-value");
+        if (gEl) gEl.textContent = gLoad.toFixed(1);
+
+        // Bank pointer rotation (top scale): bank in degrees, around the
+        // pivot at (600, 110). The HTML transform was set there already.
+        const bankPointer = document.getElementById("hud-bank-pointer");
+        if (bankPointer) {
+            // Pointer rotates -bank (so positive bank tilts left as on
+            // the real F-16 attitude indicator).
+            bankPointer.setAttribute(
+                "transform", "rotate(" + (-rollDeg).toFixed(1) + ")",
+            );
+        }
+
+        // Pitch ladder + horizon: bank rotation around screen centre
+        // then pitch translation along screen y. 30 px = 5° pitch.
+        const bankRot = document.getElementById("hud-bank-rot");
+        const pitchTrans = document.getElementById("hud-pitch-trans");
+        if (bankRot) {
+            bankRot.setAttribute(
+                "transform",
+                "translate(600 350) rotate(" + (-rollDeg).toFixed(1) + ")",
+            );
+        }
+        if (pitchTrans) {
+            const pitchPx = pitchDeg * PITCH_DEG_PER_PX_INV;
+            pitchTrans.setAttribute(
+                "transform", "translate(0 " + pitchPx.toFixed(1) + ")",
+            );
+        }
+
+        // FPM (Flight Path Marker): offset from screen centre by α / β.
+        // On a real HUD the FPM sits where the velocity vector points;
+        // it's offset down by α (positive α = nose above velocity vector
+        // = FPM below reticle) and offset opposite to β (positive β =
+        // wind from right = velocity vector points slightly right of
+        // nose = FPM right of reticle).
+        const fpm = document.getElementById("hud-fpm");
+        if (fpm) {
+            const fx = 600 - betaDeg * BETA_PX_PER_DEG;
+            const fy = 350 + alphaDeg * ALPHA_PX_PER_DEG;
+            fpm.setAttribute(
+                "transform", "translate(" + fx.toFixed(1) + " " + fy.toFixed(1) + ")",
+            );
+        }
+
+        // Time + speed status (bottom-right)
+        const timeValEl = document.getElementById("hud-time-value");
+        if (timeValEl) timeValEl.textContent = traj.time[idx].toFixed(1);
+        const speedValEl = document.getElementById("hud-speed-value");
+        if (speedValEl) speedValEl.textContent = speed + "×";
+
+        // Damage caution: visible if any section is currently lost.
+        const ds = damageStateAt(traj.time[idx]);
+        const cautionEl = document.getElementById("hud-caution");
+        if (cautionEl) {
+            let anyDamage = false;
+            if (ds && ds.section_loss) {
+                for (const k in ds.section_loss) {
+                    if (ds.section_loss[k] > 0) { anyDamage = true; break; }
+                }
+            }
+            if (!anyDamage && ds && ds.engine && ds.engine.hard_failure) {
+                anyDamage = true;
+            }
+            if (!anyDamage && ds && ds.control_failures) {
+                for (const k in ds.control_failures) {
+                    const cf = ds.control_failures[k];
+                    if (cf && cf.mode && cf.mode !== "healthy") {
+                        anyDamage = true; break;
+                    }
+                }
+            }
+            cautionEl.setAttribute(
+                "visibility", anyDamage ? "visible" : "hidden",
+            );
+        }
+
         document.getElementById("timeline").value = idx;
     }
 

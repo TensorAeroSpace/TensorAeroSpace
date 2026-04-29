@@ -168,3 +168,40 @@ def test_hud_has_deflection_readouts():
     html = _make_html()
     for hud_id in ("hud-stab", "hud-ail", "hud-dir"):
         assert hud_id in html
+
+
+def test_html_has_f16_hud_overlay():
+    """The fighter-style SVG HUD overlay must be present with all
+    documented anchors (heading tape, KIAS, altitude, pitch ladder,
+    bank scale, FPM, AOA/G, caution)."""
+    html = _make_html()
+    assert 'id="hud-svg"' in html
+    for anchor in (
+        "hud-hdg-value", "hud-kias-value", "hud-mach-value",
+        "hud-alt-value", "hud-vsi-value", "hud-aoa-value",
+        "hud-g-value", "hud-beta-value",
+        "hud-bank-pointer", "hud-bank-rot", "hud-pitch-trans",
+        "hud-pitch-ladder", "hud-reticle", "hud-fpm",
+        "hud-caution", "hud-time-value", "hud-speed-value",
+    ):
+        assert anchor in html, f"missing HUD anchor: {anchor}"
+
+
+def test_hud_pitch_ladder_built_at_init():
+    """The pitch ladder rungs are appended to #hud-pitch-ladder by an
+    IIFE during scene init (rather than hardcoded in the HTML)."""
+    html = _make_html()
+    assert "hud-pitch-ladder" in html
+    assert "PITCH_DEG_PER_PX" in html
+
+
+def test_hud_caution_responds_to_damage_state():
+    """The CAUTION badge visibility must be set from damageStateAt()
+    each frame."""
+    import re
+    html = _make_html()
+    m = re.search(r"function setFrame\([^)]*\)\s*\{(.*?)\n    \}", html, re.DOTALL)
+    assert m is not None
+    body = m.group(1)
+    assert 'id="hud-caution"' in html or '"hud-caution"' in html
+    assert "anyDamage" in body

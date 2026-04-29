@@ -9,6 +9,107 @@
 </head>
 <body>
 <div id="scene"></div>
+<svg id="hud-svg" viewBox="0 0 1200 700" preserveAspectRatio="none">
+    <!-- Heading tape (top-centre) -->
+    <g id="hud-heading">
+        <rect x="525" y="40" width="150" height="36" class="hud-bg"/>
+        <text id="hud-hdg-value" x="600" y="64" text-anchor="middle" class="hud-text-lg">000</text>
+        <polygon points="600,76 593,86 607,86" class="hud-fill"/>
+    </g>
+
+    <!-- Bank scale (just below heading) -->
+    <g id="hud-bank" transform="translate(600 110)">
+        <line x1="-90" y1="0" x2="90" y2="0" class="hud-line-thin"/>
+        <line x1="-60" y1="-1" x2="-60" y2="-9" class="hud-line-thin"/>
+        <line x1="-30" y1="-1" x2="-30" y2="-6" class="hud-line-thin"/>
+        <line x1="30"  y1="-1" x2="30"  y2="-6" class="hud-line-thin"/>
+        <line x1="60"  y1="-1" x2="60"  y2="-9" class="hud-line-thin"/>
+        <polygon id="hud-bank-pointer" points="0,-12 -6,-1 6,-1" class="hud-fill"/>
+    </g>
+
+    <!-- Airspeed tape (KIAS, left) -->
+    <g id="hud-kias">
+        <rect x="80" y="320" width="110" height="60" class="hud-bg"/>
+        <text id="hud-kias-value" x="135" y="350" text-anchor="middle" class="hud-text-lg">000</text>
+        <text id="hud-mach-value" x="135" y="370" text-anchor="middle" class="hud-text-sm">M 0.00</text>
+        <text x="135" y="310" text-anchor="middle" class="hud-text-sm">KIAS</text>
+    </g>
+
+    <!-- Altitude tape (right) -->
+    <g id="hud-alt">
+        <rect x="1010" y="320" width="110" height="60" class="hud-bg"/>
+        <text id="hud-alt-value" x="1065" y="350" text-anchor="middle" class="hud-text-lg">00000</text>
+        <text id="hud-vsi-value" x="1065" y="370" text-anchor="middle" class="hud-text-sm">VS  0</text>
+        <text x="1065" y="310" text-anchor="middle" class="hud-text-sm">FT</text>
+    </g>
+
+    <!-- Pitch ladder + horizon. Outer group rotates with bank, inner
+         translates with pitch. Clipped to a centred rectangle so lines
+         don't draw all over the canvas. -->
+    <defs>
+        <clipPath id="hud-clip">
+            <rect x="350" y="170" width="500" height="350"/>
+        </clipPath>
+    </defs>
+    <g clip-path="url(#hud-clip)">
+        <g id="hud-bank-rot" transform="translate(600 350)">
+            <g id="hud-pitch-trans">
+                <!-- Horizon line -->
+                <line x1="-260" y1="0" x2="-30" y2="0" class="hud-line-thick"/>
+                <line x1="30" y1="0" x2="260" y2="0" class="hud-line-thick"/>
+                <!-- Pitch reference lines, drawn programmatically by JS:
+                     +5, +10, +15, +20 (above horizon, dashed)
+                     -5, -10, -15, -20 (below horizon, dotted)
+                     One ladder rung = 30 px = 5° -->
+                <g id="hud-pitch-ladder"></g>
+            </g>
+        </g>
+    </g>
+
+    <!-- Aircraft reticle (fixed, screen centre) -->
+    <g id="hud-reticle" transform="translate(600 350)">
+        <circle r="3" fill="none" class="hud-stroke"/>
+        <line x1="-15" y1="0" x2="-4" y2="0" class="hud-line-thin"/>
+        <line x1="4"  y1="0" x2="15" y2="0" class="hud-line-thin"/>
+        <line x1="0"  y1="3" x2="0"  y2="10" class="hud-line-thin"/>
+    </g>
+
+    <!-- Flight Path Marker (FPM) — moves with α and β -->
+    <g id="hud-fpm" transform="translate(600 350)">
+        <circle r="6" fill="none" class="hud-stroke"/>
+        <line x1="6"  y1="0" x2="14" y2="0" class="hud-line-thin"/>
+        <line x1="-6" y1="0" x2="-14" y2="0" class="hud-line-thin"/>
+        <line x1="0"  y1="-6" x2="0"  y2="-12" class="hud-line-thin"/>
+    </g>
+
+    <!-- AOA / G readout (bottom-left) -->
+    <g id="hud-aoa-g">
+        <text x="100" y="540" class="hud-text-sm">AOA</text>
+        <text id="hud-aoa-value" x="180" y="540" text-anchor="end" class="hud-text-md">0.0</text>
+        <text x="100" y="568" class="hud-text-sm">G</text>
+        <text id="hud-g-value"   x="180" y="568" text-anchor="end" class="hud-text-md">1.0</text>
+    </g>
+
+    <!-- Sideslip ball / β readout (bottom-centre) -->
+    <g id="hud-beta">
+        <text x="600" y="600" text-anchor="middle" class="hud-text-sm">β</text>
+        <text id="hud-beta-value" x="600" y="624" text-anchor="middle" class="hud-text-md">0.0</text>
+    </g>
+
+    <!-- Time / status (bottom-right) -->
+    <g id="hud-status">
+        <text x="1100" y="540" text-anchor="end" class="hud-text-sm">T+</text>
+        <text id="hud-time-value" x="1100" y="560" text-anchor="end" class="hud-text-md">000.0</text>
+        <text x="1100" y="588" text-anchor="end" class="hud-text-sm">SPD</text>
+        <text id="hud-speed-value" x="1100" y="608" text-anchor="end" class="hud-text-md">1.0×</text>
+    </g>
+
+    <!-- Master caution: visible only on damage. -->
+    <g id="hud-caution" visibility="hidden">
+        <rect x="530" y="200" width="140" height="32" class="hud-warn-bg"/>
+        <text x="600" y="222" text-anchor="middle" class="hud-warn-text">CAUTION</text>
+    </g>
+</svg>
 <div id="hud">
     <div><span class="label">t</span><span id="hud-time" class="value">0.00 s</span></div>
     <div><span class="label">α</span><span id="hud-alpha" class="value">0.00°</span></div>
