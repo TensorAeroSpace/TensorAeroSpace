@@ -62,39 +62,63 @@
     //  - "right": body's right flank (+z in world).
     let cameraMode = "3d";
 
-    // Offsets used by the follow-cam modes (world coords).
+    // Camera offsets in the aircraft's LOCAL three.js frame. After we
+    // build the aircraft via bodyToThree(bx, by, bz) → [bx, -bz, by], the
+    // aircraft Object3D's local axes align as:
+    //   local +x = body +x = forward
+    //   local +y = body -z = up
+    //   local +z = body +y = right
+    // So the offsets below are intuitive: +x = ahead, +y = above, +z = right.
+    // applyEuler(aircraft.rotation) maps them to world coords each frame
+    // so the camera rolls/pitches/yaws with the aircraft.
     const FOLLOW_OFFSETS = {
-        top:   new THREE.Vector3(0,  60,   0),
-        left:  new THREE.Vector3(0,   5, -35),
-        right: new THREE.Vector3(0,   5,  35),
-        // 3d offset is initial only — OrbitControls owns it after that.
-        "3d":  new THREE.Vector3(30, 20,  30),
+        // Above the cockpit, looking down. "Up" on screen is aircraft fwd.
+        top:   { offset: new THREE.Vector3(0,  60,   0),
+                 up:     new THREE.Vector3(1,   0,   0) },
+        // To the pilot's left. "Up" on screen is aircraft up.
+        left:  { offset: new THREE.Vector3(0,   5, -35),
+                 up:     new THREE.Vector3(0,   1,   0) },
+        // To the pilot's right.
+        right: { offset: new THREE.Vector3(0,   5,  35),
+                 up:     new THREE.Vector3(0,   1,   0) },
+        // 3D offset is the initial drop-in for OrbitControls; afterwards
+        // the user's mouse drives the orbit angle around the aircraft.
+        "3d":  { offset: new THREE.Vector3(30, 20,  30),
+                 up:     new THREE.Vector3(0,   1,   0) },
     };
 
     function updateCamera() {
         const p = aircraft.position;
         if (cameraMode === "3d") {
-            // OrbitControls: keep target on the aircraft so the user's
-            // orbit angle / distance stays the same while the centre of
-            // orbit follows the plane. Camera position is updated by
-            // OrbitControls.update() (called in animate()).
+            // OrbitControls: just keep its target on the aircraft so the
+            // user's orbit angle / distance stays preserved while the
+            // centre of orbit follows the plane.
             controls.target.copy(p);
-        } else {
-            const offset = FOLLOW_OFFSETS[cameraMode];
-            camera.position.set(
-                p.x + offset.x, p.y + offset.y, p.z + offset.z,
-            );
-            camera.lookAt(p);
+            // Also keep camera.up sane (world +y).
+            camera.up.set(0, 1, 0);
+            return;
         }
+
+        // Strap the camera to the aircraft body. The offset is given in
+        // the aircraft's local three.js frame; rotate by aircraft.rotation
+        // to get world-frame placement that follows roll / pitch / yaw.
+        const cfg = FOLLOW_OFFSETS[cameraMode];
+        const worldOffset = cfg.offset.clone().applyEuler(aircraft.rotation);
+        camera.position.copy(p).add(worldOffset);
+        // Camera "up" also rotates with the aircraft so e.g. on barrel
+        // roll the side view tracks the roll naturally.
+        camera.up.copy(cfg.up).applyEuler(aircraft.rotation);
+        camera.lookAt(p);
     }
 
     function preset3DCamera() {
         cameraMode = "3d";
         controls.enabled = true;
         const p = aircraft.position;
-        const off = FOLLOW_OFFSETS["3d"];
+        const off = FOLLOW_OFFSETS["3d"].offset;
         camera.position.set(p.x + off.x, p.y + off.y, p.z + off.z);
         controls.target.copy(p);
+        camera.up.set(0, 1, 0);
         controls.update();
     }
 
@@ -422,7 +446,85 @@
     const DAMAGE_RED = new THREE.Color(0xc0392b);
     const JAM_YELLOW = new THREE.Color(0xf1c40f);
 
-    function applyDamageState(state) {
+    // Per-section damage animation state.
+    //   when:  sim time at which the section first became damaged
+    //   side:  "left"/"right"/"center" — drives the breakaway direction
+    //   pos0:  original local position (always 0,0,0 for our static meshes)
+    //   rot0:  original local rotation
+    // When loss_fraction goes from 0 → >0 between frames, an entry is
+    // created. setFrame() then calls advanceDamageAnimations() which
+    // tweens position / rotation over BREAKAWAY_DURATION seconds.
+    const damageAnim = new Map();
+    const BREAKAWAY_DURATION = 0.8;  // seconds (sim time)
+
+    function _sectionSign(name) {
+        // -1 for left, +1 for right, 0 for centre. Used as breakaway
+        // direction along the aircraft's local +z axis (right wing).
+        if (name.startsWith("left_") || name.endsWith("_left")) return -1;
+        if (name.startsWith("right_") || name.endsWith("_right")) return +1;
+        return 0;
+    }
+
+    function _resetSection(mesh) {
+        mesh.position.set(0, 0, 0);
+        mesh.rotation.set(0, 0, 0);
+    }
+
+    function advanceDamageAnimations(currentTime, lossMap) {
+        // Sections currently animating
+        for (const [name, anim] of damageAnim.entries()) {
+            const mesh = aircraft.getObjectByName(name);
+            if (!mesh) continue;
+
+            const dt = currentTime - anim.when;
+            if (dt < 0) {
+                // Rewound past event: snap back, drop animation.
+                _resetSection(mesh);
+                damageAnim.delete(name);
+                continue;
+            }
+            const phase = Math.min(dt / BREAKAWAY_DURATION, 1.0);
+            // Translate outward (sideways) and downward in aircraft local
+            // frame (its local +z = right; -y = down).
+            mesh.position.set(
+                -2.0 * phase,                 // drift backward
+                -3.0 * phase,                 // fall (local -y = down)
+                anim.sign * 6.0 * phase,      // outward
+            );
+            // Tumble: roll about local x and yaw about local y.
+            mesh.rotation.set(
+                anim.sign * phase * 1.4,
+                phase * 0.8,
+                phase * 1.2,
+            );
+        }
+
+        // Detect new damage transitions and start animations.
+        for (const name of sectionMaterials.keys()) {
+            const f = lossMap[name] || 0;
+            if (f > 0 && !damageAnim.has(name)) {
+                damageAnim.set(name, {
+                    when: currentTime,
+                    sign: _sectionSign(name),
+                });
+            }
+        }
+
+        // Detect heal-back (rewind): if a section is now at f=0 but had
+        // an animation, reset it.
+        for (const name of [...damageAnim.keys()]) {
+            const f = lossMap[name] || 0;
+            if (f === 0) {
+                const mesh = aircraft.getObjectByName(name);
+                if (mesh) _resetSection(mesh);
+                damageAnim.delete(name);
+            }
+        }
+    }
+
+    function applyDamageState(state, currentTime) {
+        const lossMap = (state && state.section_loss) || {};
+        advanceDamageAnimations(currentTime, lossMap);
         if (!state) {
             // Reset all sections to their original material
             for (const [name, ref] of sectionMaterials.entries()) {
@@ -440,7 +542,7 @@
         }
 
         // Section loss → red tint + fade
-        const lossMap = state.section_loss || {};
+        // lossMap is already set above via (state && state.section_loss) || {}
         for (const [name, ref] of sectionMaterials.entries()) {
             const m = aircraft.getObjectByName(name);
             if (!m) continue;
@@ -484,13 +586,64 @@
     }
 
     // ---- Trajectory trail ----
-    const trailMat = new THREE.LineBasicMaterial({ color: 0x4a90e2, linewidth: 2 });
-    const trailGeom = new THREE.BufferGeometry();
-    const trailPositions = new Float32Array(T * 3);
-    trailGeom.setAttribute("position", new THREE.BufferAttribute(trailPositions, 3));
-    trailGeom.setDrawRange(0, 0);
-    const trailLine = new THREE.Line(trailGeom, trailMat);
-    scene.add(trailLine);
+    // Volumetric tube along the path. CatmullRomCurve3 + TubeGeometry
+    // gives a smooth, visible 3D ribbon (THREE.Line's `linewidth` is
+    // ignored by most browsers, hence the rebuild-as-tube approach).
+    //
+    // Decimate the path so the tube doesn't blow up to ~6000 spline
+    // points on long episodes; one point every TRAIL_SAMPLE_STRIDE
+    // frames (plus the latest frame, always) keeps the curve smooth.
+    const TRAIL_SAMPLE_STRIDE = 5;
+    const TRAIL_RADIUS = 0.6;
+    const TRAIL_RADIAL_SEGMENTS = 6;
+    const trailMat = new THREE.MeshBasicMaterial({
+        color: 0x4a90e2, transparent: true, opacity: 0.65,
+    });
+    let trailMesh = null;
+
+    // Cache the path-point three.Vector3s so we don't reallocate each
+    // frame; they're populated lazily on first reference.
+    const trailPathCache = traj.position.map(p => new THREE.Vector3(p[0], -p[2], p[1]));
+
+    // Track which frame the trail was last rebuilt at so we don't pay
+    // the geometry cost every single tick at high FPS.
+    let trailLastBuiltAt = -1;
+    const TRAIL_REBUILD_EVERY = 5;  // frames
+
+    function updateTrail(idx) {
+        // Only rebuild when the trail has grown enough OR we rewound.
+        if (idx === trailLastBuiltAt) return;
+        if (idx > trailLastBuiltAt
+            && idx - trailLastBuiltAt < TRAIL_REBUILD_EVERY
+            && idx < traj.time.length - 1) {
+            return;
+        }
+        trailLastBuiltAt = idx;
+
+        // Build sampled point list: every TRAIL_SAMPLE_STRIDE-th from
+        // the start up to idx, plus idx itself.
+        const points = [];
+        for (let k = 0; k <= idx; k += TRAIL_SAMPLE_STRIDE) {
+            points.push(trailPathCache[k]);
+        }
+        if (points.length < 2 || points[points.length - 1] !== trailPathCache[idx]) {
+            points.push(trailPathCache[idx]);
+        }
+        if (points.length < 2) return;  // nothing to render yet
+
+        const curve = new THREE.CatmullRomCurve3(points);
+        const tubeSegments = Math.max(8, points.length - 1);
+        const tubeGeom = new THREE.TubeGeometry(
+            curve, tubeSegments, TRAIL_RADIUS, TRAIL_RADIAL_SEGMENTS, false,
+        );
+
+        if (trailMesh) {
+            scene.remove(trailMesh);
+            trailMesh.geometry.dispose();
+        }
+        trailMesh = new THREE.Mesh(tubeGeom, trailMat);
+        scene.add(trailMesh);
+    }
 
     // ---- Animation state ----
     const dt = log.metadata.dt;
@@ -511,18 +664,11 @@
         // We'll apply roll-pitch-yaw via Euler with the same axis swap.
         aircraft.rotation.set(att[0], -att[2], att[1], "ZYX");
 
-        // Update trail
-        for (let k = 0; k <= idx; k++) {
-            const p = traj.position[k];
-            trailPositions[k * 3 + 0] = p[0];
-            trailPositions[k * 3 + 1] = -p[2];
-            trailPositions[k * 3 + 2] = p[1];
-        }
-        trailGeom.attributes.position.needsUpdate = true;
-        trailGeom.setDrawRange(0, idx + 1);
+        // Update trail (TubeGeometry rebuild, throttled)
+        updateTrail(idx);
 
         // Apply damage state for this time
-        applyDamageState(damageStateAt(traj.time[idx]));
+        applyDamageState(damageStateAt(traj.time[idx]), traj.time[idx]);
 
         // Camera tracks the aircraft each frame regardless of preset mode.
         updateCamera();

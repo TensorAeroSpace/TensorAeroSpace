@@ -67,3 +67,29 @@ def test_camera_follows_aircraft_each_frame():
     m = re.search(r"function setFrame\([^)]*\)\s*\{(.*?)\n    \}", html, re.DOTALL)
     assert m is not None
     assert "updateCamera()" in m.group(1)
+
+
+def test_camera_follow_uses_aircraft_rotation():
+    """updateCamera() must rotate the offset by aircraft.rotation so the
+    camera follows in body frame, not world frame."""
+    html = _make_html()
+    assert "applyEuler(aircraft.rotation)" in html
+    # camera.up is also rotated for proper roll-tracking
+    assert "camera.up" in html
+
+
+def test_html_uses_tube_geometry_for_trail():
+    html = _make_html()
+    assert "TubeGeometry" in html
+    assert "CatmullRomCurve3" in html
+    # Make sure the old per-frame Float32Array hairline is gone
+    assert "trailGeom.attributes.position.needsUpdate" not in html
+
+
+def test_damage_breakaway_animation_present():
+    """Sections that get damaged should animate (translate + rotate
+    over BREAKAWAY_DURATION) before fading out."""
+    html = _make_html()
+    assert "function advanceDamageAnimations" in html
+    assert "BREAKAWAY_DURATION" in html
+    assert "damageAnim" in html
