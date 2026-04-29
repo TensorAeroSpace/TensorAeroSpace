@@ -90,11 +90,16 @@
     function updateCamera() {
         const p = aircraft.position;
         if (cameraMode === "3d") {
-            // OrbitControls: just keep its target on the aircraft so the
-            // user's orbit angle / distance stays preserved while the
-            // centre of orbit follows the plane.
+            // Move both controls.target AND camera.position by the same
+            // delta. OrbitControls preserves camera's offset from target
+            // through its internal spherical state, so without moving
+            // camera explicitly the orbit point would drift away from
+            // the aircraft as the plane flies. With this delta-shift the
+            // orbit ring travels with the aircraft and the user's
+            // current orbit angle / radius is preserved.
+            const delta = p.clone().sub(controls.target);
             controls.target.copy(p);
-            // Also keep camera.up sane (world +y).
+            camera.position.add(delta);
             camera.up.set(0, 1, 0);
             return;
         }
@@ -207,21 +212,27 @@
         ],
     };
 
-    // Stabilator (horizontal tail): one trapezoid per side, smaller and
-    // further aft. Same coord system.
-    const RIGHT_STAB_POLY = [
-        [-3.5,  0.4],   // LE_in
-        [-4.7,  1.8],   // LE_out
-        [-6.2,  1.8],   // TE_out
-        [-5.5,  0.4],   // TE_in
+    // Stabilator hinge: at the inboard leading-edge corner. Polygon
+    // vertices are relative to this hinge so we can wrap the mesh in a
+    // group positioned at the hinge and rotate the group to apply the
+    // commanded stabilator deflection.
+    const STAB_RIGHT_HINGE_BODY = [-3.5, 0.4, 0];   // body (x, y, z)
+    const STAB_RIGHT_POLY_REL = [
+        // [bx_rel, by_rel] relative to hinge
+        [ 0.0,  0.0],            // LE_in (hinge)
+        [-1.2,  1.4],            // LE_out
+        [-2.7,  1.4],            // TE_out
+        [-2.0,  0.0],            // TE_in
     ];
 
-    // Aileron (right): trailing-edge flap at outer wing. Body coords.
-    const RIGHT_AILERON_POLY = [
-        [-3.4,  3.2],
-        [-3.7,  4.2],
-        [-3.9,  4.2],
-        [-3.5,  3.2],
+    // Aileron hinge: at the inboard leading-edge corner of the right
+    // aileron flap.
+    const AILERON_RIGHT_HINGE_BODY = [-3.4, 3.2, 0];
+    const AILERON_RIGHT_POLY_REL = [
+        [ 0.0,  0.0],
+        [-0.3,  1.0],
+        [-0.5,  1.0],
+        [-0.1,  0.0],
     ];
 
     function _flatSectionMesh(corners2d_body, color, name) {
@@ -338,18 +349,61 @@
         return mesh;
     }
 
-    function _rudderMesh() {
-        // Rudder — small flap at the trailing edge of the vtail.
-        const c = [
-            bodyToThree(-6.4, 0, -0.6),
-            bodyToThree(-6.4, 0, -3.4),
-            bodyToThree(-6.7, 0, -3.4),
-            bodyToThree(-6.7, 0, -0.6),
-        ];
+    // Rudder hinge: at the LE_top corner (the forward-upper edge of the
+    // rudder flap, where it pivots vertically against the vtail).
+    const RUDDER_HINGE_BODY = [-6.4, 0, -0.6];
+    // Rudder polygon vertices relative to hinge in body (x, z) plane
+    // (rudder lies in the body x-z plane, y = 0 throughout).
+    const RUDDER_POLY_REL = [
+        // [bx_rel, bz_rel] relative to hinge
+        [ 0.0,   0.0],          // LE_top (hinge)
+        [ 0.0,  -2.8],          // LE_bottom
+        [-0.3,  -2.8],          // TE_bottom
+        [-0.3,   0.0],          // TE_top
+    ];
+
+    function _rudderHingeGroup() {
+        const group = new THREE.Group();
+        group.name = "rudder";
+        const [hx, hy, hz] = bodyToThree(...RUDDER_HINGE_BODY);
+        group.position.set(hx, hy, hz);
+        // Build mesh with vertices relative to hinge in body x-z plane
+        const c = RUDDER_POLY_REL.map(
+            ([bx, bz]) => bodyToThree(bx, 0, bz),
+        );
         const geom = _quadGeom(c[0], c[1], c[2], c[3]);
-        const mesh = new THREE.Mesh(geom, _stdMat(F16_COLORS.rudder));
-        mesh.name = "rudder";
-        return mesh;
+        group.add(new THREE.Mesh(geom, _stdMat(F16_COLORS.rudder)));
+        return group;
+    }
+
+    function _stabHingeGroup(side) {
+        const group = new THREE.Group();
+        group.name = side === "left" ? "stab_left" : "stab_right";
+        const sign = side === "left" ? -1 : +1;
+        const [hbx, hby, hbz] = STAB_RIGHT_HINGE_BODY;
+        const [hx, hy, hz] = bodyToThree(hbx, sign * hby, hbz);
+        group.position.set(hx, hy, hz);
+        const c = STAB_RIGHT_POLY_REL.map(
+            ([bx, by]) => bodyToThree(bx, sign * by, 0),
+        );
+        const geom = _quadGeom(c[0], c[1], c[2], c[3]);
+        group.add(new THREE.Mesh(geom, _stdMat(F16_COLORS.stab)));
+        return group;
+    }
+
+    function _aileronHingeGroup(side) {
+        const group = new THREE.Group();
+        group.name = side === "left" ? "aileron_left" : "aileron_right";
+        const sign = side === "left" ? -1 : +1;
+        const [hbx, hby, hbz] = AILERON_RIGHT_HINGE_BODY;
+        const [hx, hy, hz] = bodyToThree(hbx, sign * hby, hbz);
+        group.position.set(hx, hy, hz);
+        const c = AILERON_RIGHT_POLY_REL.map(
+            ([bx, by]) => bodyToThree(bx, sign * by, 0),
+        );
+        const geom = _quadGeom(c[0], c[1], c[2], c[3]);
+        group.add(new THREE.Mesh(geom, _stdMat(F16_COLORS.aileron)));
+        return group;
     }
 
     function buildAircraft(geometry) {
@@ -372,21 +426,19 @@
                                            F16_COLORS.wing, leftName));
         }
 
-        // Stabilator: one trapezoid per side.
-        aircraft.add(_flatSectionMesh(RIGHT_STAB_POLY,
-                                       F16_COLORS.stab, "stab_right"));
-        aircraft.add(_flatSectionMesh(_mirrorY(RIGHT_STAB_POLY),
-                                       F16_COLORS.stab, "stab_left"));
+        // Stabilators: hinge-pivoted groups so their pitch deflection
+        // can be animated from traj.stab[idx] each frame.
+        aircraft.add(_stabHingeGroup("right"));
+        aircraft.add(_stabHingeGroup("left"));
 
-        // Vertical tail + rudder
+        // Vertical tail + rudder (rudder is a hinge-pivoted group so its
+        // yaw deflection animates from traj.dir[idx]).
         aircraft.add(_vtailMesh());
-        aircraft.add(_rudderMesh());
+        aircraft.add(_rudderHingeGroup());
 
-        // Ailerons (small flaps at the trailing edge of the outer wing).
-        aircraft.add(_flatSectionMesh(RIGHT_AILERON_POLY,
-                                       F16_COLORS.aileron, "aileron_right"));
-        aircraft.add(_flatSectionMesh(_mirrorY(RIGHT_AILERON_POLY),
-                                       F16_COLORS.aileron, "aileron_left"));
+        // Ailerons (hinge-pivoted; differential deflection from traj.ail).
+        aircraft.add(_aileronHingeGroup("right"));
+        aircraft.add(_aileronHingeGroup("left"));
 
         return aircraft;
     }
@@ -430,15 +482,27 @@
     // mesh's material is cloned so per-section opacity / colour edits do
     // not bleed across instances of _materialFor() that share types.
     const sectionMaterials = new Map();
-    aircraft.traverse((obj) => {
-        if (obj.isMesh && obj.material && obj.name && obj.name !== "exhaust") {
-            obj.material = obj.material.clone();
-            obj.material.transparent = true;
-            sectionMaterials.set(obj.name, {
-                color: obj.material.color.clone(),
-                opacity: 1.0,
+    aircraft.children.forEach((obj) => {
+        if (!obj.name || obj.name === "exhaust") return;
+        // Find the mesh whose material we'll edit. If `obj` IS a mesh,
+        // use its material directly. If it's a Group (hinge-pivoted
+        // control surface), use the first descendant mesh.
+        let meshNode = null;
+        if (obj.isMesh && obj.material) {
+            meshNode = obj;
+        } else if (obj.isGroup || obj.children) {
+            obj.traverse((c) => {
+                if (!meshNode && c.isMesh && c.material) meshNode = c;
             });
         }
+        if (!meshNode) return;
+        meshNode.material = meshNode.material.clone();
+        meshNode.material.transparent = true;
+        sectionMaterials.set(obj.name, {
+            color: meshNode.material.color.clone(),
+            opacity: 1.0,
+            mesh: meshNode,   // the actual mesh (may be a child of obj)
+        });
     });
 
     const HEALTHY_COLOR = new THREE.Color(0xffffff);  // not used directly;
@@ -491,11 +555,14 @@
                 -3.0 * phase,                 // fall (local -y = down)
                 anim.sign * 6.0 * phase,      // outward
             );
-            // Tumble: roll about local x and yaw about local y.
+            // Tumble: roll about local x and yaw about local y. Add to
+            // anim.rotBase (the deflection at the moment damage fired)
+            // so we don't clobber control-surface deflections from the
+            // trajectory.
             mesh.rotation.set(
-                anim.sign * phase * 1.4,
-                phase * 0.8,
-                phase * 1.2,
+                anim.rotBase.x + anim.sign * phase * 1.4,
+                anim.rotBase.y + phase * 0.8,
+                anim.rotBase.z + phase * 1.2,
             );
         }
 
@@ -503,9 +570,16 @@
         for (const name of sectionMaterials.keys()) {
             const f = lossMap[name] || 0;
             if (f > 0 && !damageAnim.has(name)) {
+                const mesh = aircraft.getObjectByName(name);
                 damageAnim.set(name, {
                     when: currentTime,
                     sign: _sectionSign(name),
+                    // Capture rotation at event time so the breakaway
+                    // animation adds to it (preserves any active control-
+                    // surface deflection).
+                    rotBase: mesh
+                        ? mesh.rotation.clone()
+                        : new THREE.Euler(0, 0, 0),
                 });
             }
         }
@@ -531,9 +605,9 @@
                 const m = aircraft.getObjectByName(name);
                 if (!m) continue;
                 m.visible = true;
-                m.material.color.copy(ref.color);
-                m.material.opacity = ref.opacity;
-                m.material.emissive = new THREE.Color(0x000000);
+                ref.mesh.material.color.copy(ref.color);
+                ref.mesh.material.opacity = ref.opacity;
+                ref.mesh.material.emissive = new THREE.Color(0x000000);
             }
             exhaust.visible = true;
             exhaust.material.opacity = 0.7;
@@ -549,28 +623,28 @@
             const f = lossMap[name] || 0.0;
             if (f <= 0) {
                 m.visible = true;
-                m.material.color.copy(ref.color);
-                m.material.opacity = ref.opacity;
-                m.material.emissive = new THREE.Color(0x000000);
+                ref.mesh.material.color.copy(ref.color);
+                ref.mesh.material.opacity = ref.opacity;
+                ref.mesh.material.emissive = new THREE.Color(0x000000);
             } else if (f >= 1) {
                 m.visible = false;
             } else {
                 m.visible = true;
                 // Lerp colour toward red, opacity toward 0
-                m.material.color.copy(ref.color).lerp(DAMAGE_RED, f);
-                m.material.opacity = (1 - f) * ref.opacity;
-                m.material.emissive = new THREE.Color(0x000000);
+                ref.mesh.material.color.copy(ref.color).lerp(DAMAGE_RED, f);
+                ref.mesh.material.opacity = (1 - f) * ref.opacity;
+                ref.mesh.material.emissive = new THREE.Color(0x000000);
             }
         }
 
         // Control failures → yellow emissive outline
         const failures = state.control_failures || {};
         for (const surface in failures) {
-            const m = aircraft.getObjectByName(surface);
-            if (!m) continue;
+            const ref = sectionMaterials.get(surface);
+            if (!ref) continue;
             const failure = failures[surface];
             if (failure.mode === "healthy") continue;
-            m.material.emissive = JAM_YELLOW.clone().multiplyScalar(0.6);
+            ref.mesh.material.emissive = JAM_YELLOW.clone().multiplyScalar(0.6);
         }
 
         // Engine state → exhaust intensity / visibility
@@ -666,6 +740,24 @@
 
         // Update trail (TubeGeometry rebuild, throttled)
         updateTrail(idx);
+
+        // Apply control-surface deflections from the trajectory.
+        // Stabilator and ailerons rotate about their hinge (lateral axis,
+        // = aircraft's local +Z). Rudder rotates about its vertical hinge
+        // (= aircraft's local -Y; we apply the sign to .rotation.y).
+        const stabDef = traj.stab[idx];
+        const ailDef  = traj.ail[idx];
+        const dirDef  = traj.dir[idx];
+        const stabL = aircraft.getObjectByName("stab_left");
+        const stabR = aircraft.getObjectByName("stab_right");
+        if (stabL) stabL.rotation.z = stabDef;
+        if (stabR) stabR.rotation.z = stabDef;
+        const ailL = aircraft.getObjectByName("aileron_left");
+        const ailR = aircraft.getObjectByName("aileron_right");
+        if (ailL) ailL.rotation.z = -ailDef;   // differential
+        if (ailR) ailR.rotation.z = +ailDef;
+        const rud = aircraft.getObjectByName("rudder");
+        if (rud) rud.rotation.y = -dirDef;     // body z down → local -y
 
         // Apply damage state for this time
         applyDamageState(damageStateAt(traj.time[idx]), traj.time[idx]);

@@ -93,3 +93,40 @@ def test_damage_breakaway_animation_present():
     assert "function advanceDamageAnimations" in html
     assert "BREAKAWAY_DURATION" in html
     assert "damageAnim" in html
+
+
+def test_camera_3d_mode_moves_with_aircraft():
+    """In 3D mode, both controls.target AND camera.position move by
+    the same delta so the orbit ring travels with the aircraft."""
+    html = _make_html()
+    # Look for the delta-shift pattern
+    assert "p.clone().sub(controls.target)" in html
+    assert "camera.position.add(delta)" in html
+
+
+def test_control_surfaces_use_hinge_groups():
+    """Stabilators / rudder / ailerons must be hinge-pivoted Groups so
+    their deflection can be animated about the correct axis."""
+    html = _make_html()
+    assert "_stabHingeGroup" in html
+    assert "_rudderHingeGroup" in html
+    assert "_aileronHingeGroup" in html
+    # Hinge body coordinates declared
+    assert "STAB_RIGHT_HINGE_BODY" in html
+    assert "AILERON_RIGHT_HINGE_BODY" in html
+    assert "RUDDER_HINGE_BODY" in html
+
+
+def test_control_surface_deflections_applied_each_frame():
+    """setFrame() must rotate stab / aileron / rudder groups by the
+    trajectory deflection values."""
+    import re
+    html = _make_html()
+    m = re.search(r"function setFrame\([^)]*\)\s*\{(.*?)\n    \}", html, re.DOTALL)
+    assert m is not None
+    body = m.group(1)
+    assert "traj.stab[idx]" in body
+    assert "traj.ail[idx]" in body
+    assert "traj.dir[idx]" in body
+    assert 'getObjectByName("stab_left")' in body
+    assert 'getObjectByName("rudder")' in body
