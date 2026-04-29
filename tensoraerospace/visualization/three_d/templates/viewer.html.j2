@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>{{ title|default('F-16 flight viewer') }}</title>
+<style>
+{{ css }}
+</style>
+</head>
+<body>
+<div id="scene"></div>
+<div id="hud">
+    <div><span class="label">t</span><span id="hud-time" class="value">0.00 s</span></div>
+    <div><span class="label">α</span><span id="hud-alpha" class="value">0.00°</span></div>
+    <div><span class="label">β</span><span id="hud-beta" class="value">0.00°</span></div>
+    <div><span class="label">ωx</span><span id="hud-wx" class="value">0.00°/s</span></div>
+    <div><span class="label">ωz</span><span id="hud-wz" class="value">0.00°/s</span></div>
+</div>
+<div id="controls">
+    <button id="btn-play">Pause</button>
+    <input id="timeline" type="range" min="0" max="100" value="0">
+    <span class="speed-label">speed</span>
+    <select id="speed">
+        <option value="0.25">0.25×</option>
+        <option value="0.5">0.5×</option>
+        <option value="1" selected>1×</option>
+        <option value="2">2×</option>
+        <option value="4">4×</option>
+    </select>
+</div>
+
+<script>
+window.FLIGHT_LOG = {{ flight_log_json|safe }};
+</script>
+<script>
+{{ three_js }}
+</script>
+<script>
+{{ orbit_controls_js }}
+</script>
+<script>
+{{ viewer_js }}
+</script>
+</body>
+</html>
