@@ -30,6 +30,7 @@ from __future__ import annotations
 
 import math
 import warnings
+from collections import deque
 
 import gymnasium as gym
 import numpy as np
@@ -235,19 +236,49 @@ def build_damage_profile() -> DamageProfile:
 
 
 def run_episode(agent: ETDHPAgent, env_factory, reference: np.ndarray, *,
-                learn: bool, n_steps: int) -> dict:
-    """Run a single episode. Returns logs and trigger statistics."""
+                learn: bool, n_steps: int,
+                online_plant_refit: bool = False,
+                refit_every: int = 100,
+                refit_buffer_size: int = 500,
+                refit_epochs: int = 25) -> dict:
+    """Run a single episode. Returns logs and trigger statistics.
+
+    When online_plant_refit=True, the plant NN is re-fit every
+    refit_every steps (and immediately after a damage event) on a
+    sliding buffer of the last refit_buffer_size transitions. This
+    lets the agent recover after damage by catching up on the new
+    plant dynamics.
+    """
     env = env_factory()
     obs, _ = env.reset()
     agent.reset()
     alpha_log, wz_log, u_log = [], [], []
-    triggers_pre = 0
-    triggers_post = 0
+    triggers_pre = triggers_post = 0
     triggered_events: list[tuple[float, str]] = []
+    refit_log: list[tuple[float, str]] = []   # (time, reason)
+
+    plant_buffer: deque = deque(maxlen=refit_buffer_size)
+    last_refit_step = 0
+
     for k in range(n_steps):
         agent.predict(obs, reference, k)
         u_cmd = agent.last_action()
         obs_next, _, done, _, info = env.step(u_cmd)
+
+        # Append the transition to the buffer (in agent state-transform space)
+        if online_plant_refit:
+            try:
+                x_curr_arr = agent._state_transform(obs, reference, k)
+                x_next_arr = agent._state_transform(obs_next, reference, k)
+            except (AttributeError, TypeError):
+                # Fall back: use the global state_transform closure if
+                # accessible
+                x_curr_arr = state_transform(obs, reference, k)
+                x_next_arr = state_transform(obs_next, reference, k)
+            plant_buffer.append((x_curr_arr,
+                                 np.asarray(u_cmd, dtype=np.float32),
+                                 x_next_arr))
+
         if learn:
             metrics = agent.learn(obs_next, reference, k, dt=DT)
             if metrics["triggered"]:
@@ -258,6 +289,29 @@ def run_episode(agent: ETDHPAgent, env_factory, reference: np.ndarray, *,
 
         for label in info.get("damage_events_triggered", []) or []:
             triggered_events.append((k * DT, label))
+
+        # Online plant-NN refit
+        if online_plant_refit and len(plant_buffer) >= 100:
+            should_refit = False
+            reason = ""
+            # Trigger on damage event
+            if info.get("damage_events_triggered"):
+                should_refit = True
+                reason = "damage"
+            # Periodic refit
+            elif k - last_refit_step >= refit_every:
+                should_refit = True
+                reason = "periodic"
+            if should_refit:
+                states_arr = np.array([b[0] for b in plant_buffer], dtype=np.float32)
+                actions_arr = np.array([b[1] for b in plant_buffer], dtype=np.float32)
+                next_states_arr = np.array([b[2] for b in plant_buffer], dtype=np.float32)
+                agent.fit_plant_model(
+                    states_arr, actions_arr, next_states_arr,
+                    batch_size=64, verbose=False, epochs=refit_epochs,
+                )
+                last_refit_step = k
+                refit_log.append((k * DT, reason))
 
         obs_arr = np.asarray(obs_next).reshape(-1)
         alpha_log.append(np.degrees(obs_arr[0]))
@@ -273,6 +327,7 @@ def run_episode(agent: ETDHPAgent, env_factory, reference: np.ndarray, *,
         "triggers_pre": triggers_pre,
         "triggers_post": triggers_post,
         "triggered_events": triggered_events,
+        "refit_log": refit_log,
     }
 
 
@@ -295,6 +350,10 @@ def report_episode(label: str, log: dict, reference: np.ndarray,
         print("Damage events:")
         for t, lab in log["triggered_events"]:
             print(f"  t={t:.2f}s : {lab}")
+    refit_log = log.get("refit_log", [])
+    if refit_log:
+        print(f"Plant-NN refits: {len(refit_log)}  "
+              f"(first: t={refit_log[0][0]:.2f}s, last: t={refit_log[-1][0]:.2f}s)")
 
 
 def maybe_plot(baseline: dict, damaged: dict, reference: np.ndarray,
@@ -456,8 +515,14 @@ def main() -> None:
             feedforward_fn=feedforward_fn, damage_profile=profile,
         )
 
-    damaged_log = run_episode(agent, damaged_env, reference,
-                              learn=True, n_steps=n_steps - 2)
+    damaged_log = run_episode(
+        agent, damaged_env, reference,
+        learn=True, n_steps=n_steps - 2,
+        online_plant_refit=True,
+        refit_every=150,
+        refit_buffer_size=400,
+        refit_epochs=15,
+    )
     report_episode("With damage (30% bilateral wing-tip loss at t=20s)",
                    damaged_log, reference, len(damaged_log["alpha"]))
 

@@ -27,13 +27,19 @@ DT = 0.01
 TOTAL_TIME = 60.0
 DAMAGE_TIME = 20.0
 
-# F-16 angular trim point at V=120 m/s, h=3000 m
-ALPHA_TRIM_DEG = 5.0
-STAB_TRIM_DEG = -4.45
-
 
 def main() -> None:
     n_steps = int(TOTAL_TIME / DT)
+
+    from tensoraerospace.aerospacemodel.f16.nonlinear.angular.trim import find_trim
+    trim = find_trim(V_target=120.0, h_target=3000.0)
+    print(f"Trim:  α = {math.degrees(trim.alpha_rad):+.3f}°,  "
+          f"stab = {math.degrees(trim.stab_rad):+.3f}°,  "
+          f"T = {trim.T_thrust:.0f} N  (residuals: "
+          f"{', '.join(f'{r:.2e}' for r in trim.residuals)})")
+
+    ALPHA_TRIM_DEG = math.degrees(trim.alpha_rad)
+    STAB_TRIM_DEG = math.degrees(trim.stab_rad)
 
     profile = DamageProfile(events=[
         DamageEvent(
@@ -43,12 +49,12 @@ def main() -> None:
         ),
     ])
 
-    # Start at the trim point so level cruise holds without input.
-    # γ_path = θ − α; for level flight γ_path = 0, so θ = α at trim.
-    x0 = np.zeros(14)
-    x0[0] = math.radians(ALPHA_TRIM_DEG)   # alpha = 5°
-    x0[7] = math.radians(ALPHA_TRIM_DEG)   # theta = 5° (pitch up to keep γ=0)
-    x0[8] = math.radians(STAB_TRIM_DEG)    # stab  = -4.45°
+    # Start at the computed trim point so level cruise actually holds
+    # (lift = weight, thrust = drag, pitch moment = 0).
+    # NonlinearAngularF16 expects a 14-element initial state; track_altitude=True
+    # will auto-pad with the default altitude (Oy=3000 m) and airspeed (V=120 m/s),
+    # which match the trim targets.
+    x0 = trim.x0[:14]   # first 14 elements; h and V set via model params after reset
 
     env = NonlinearAngularF16(
         initial_state=x0,
@@ -66,15 +72,7 @@ def main() -> None:
         thrust_mode="constant",
     )
     env.reset()
-    # Without an active trim controller, the angular model isn't in true
-    # equilibrium even from this state — lift/thrust/drag don't perfectly
-    # balance. The aircraft descends gradually as the integrator runs
-    # the real altitude / airspeed dynamics. The point of this demo is
-    # exactly to show that the HUD altimeter / KIAS now read live physics
-    # values rather than constants — so the descent is feature, not bug.
-    #
-    # Bump T_thrust modestly so drag wins less aggressively in the dive.
-    env.model.param.T_thrust = 12000.0
+    env.model.param.T_thrust = trim.T_thrust
 
     # Hold trim stab; for split_stab=True both halves get the same
     # commanded deflection (no roll). At t=20 s left_tip is lost — the
