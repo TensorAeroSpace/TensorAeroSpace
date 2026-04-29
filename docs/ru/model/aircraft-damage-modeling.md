@@ -187,6 +187,24 @@ mx = get_mx(...) + delta_mx(α, β, geo, damage_state)
 не нужен явный вход состояния повреждений: динамика, которую он наблюдает,
 **и есть** повреждённая плант-модель.
 
+### Визуальный спутник — 3D-просмотрщик в браузере
+
+Та же структура flight log, которая кормит аналитические графики, также
+подаётся в интерактивный WebGL-просмотрщик. С `render_mode="3d_web"` у
+среды вызов `env.render()` после эпизода открывает self-contained HTML в
+браузере (или возвращает inline HTML в Jupyter):
+
+```python
+env = NonlinearAngularF16(..., render_mode="3d_web", damage_profile=profile)
+env.reset()
+for _ in range(N):
+    env.step(action)
+env.render()  # → вкладка браузера или ячейка Jupyter
+```
+
+См. [Рецепт 16 — Интерактивный 3D-просмотрщик](../cookbook/16_3d_viewer.md)
+для пошагового примера.
+
 ### Проработанный пример — потеря законцовки в полёте
 
 `example/f16_damage_dogfight_demo.py` запускает угловую модель F-16 с

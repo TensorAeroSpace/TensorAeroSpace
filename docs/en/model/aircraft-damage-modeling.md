@@ -183,6 +183,24 @@ non-trivial output independent of the agent's command. The agent therefore
 does not need any explicit damage-state input: the dynamics it observes
 **are** the damaged plant.
 
+### Visual companion — the 3D web viewer
+
+The same flight log structure that drives the analytics plots also
+feeds an interactive WebGL viewer. With `render_mode="3d_web"` on the
+env, calling `env.render()` after the episode opens a self-contained
+HTML in the browser (or returns inline HTML in Jupyter):
+
+```python
+env = NonlinearAngularF16(..., render_mode="3d_web", damage_profile=profile)
+env.reset()
+for _ in range(N):
+    env.step(action)
+env.render()  # → browser tab or Jupyter cell
+```
+
+See [Recipe 16 — Interactive 3D viewer](../cookbook/16_3d_viewer.md)
+for a walkthrough.
+
 ### Worked example — wing tip loss in flight
 
 `example/f16_damage_dogfight_demo.py` runs the angular F-16 with

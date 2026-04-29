@@ -1,17 +1,18 @@
-"""3D WebGL visualization for F-16 envs (in development).
+"""3D WebGL visualization for F-16 envs.
 
 Public API:
-    build_flight_log(env) -> dict       # JSON-serializable trajectory + damage log
-    build_html(flight_log) -> str       # Self-contained HTML string
-    save_html(flight_log, path) -> Path # Render to a file
+    build_flight_log(env)              # → JSON-serializable dict
+    build_html(flight_log)             # → self-contained HTML string
+    save_html(flight_log, path)        # → write HTML to file
+    render(env, *, open_in_browser=True, save_to=None, inline=None)
+        # high-level: build log + html and either open in browser
+        # (script) or return an IPython.display.HTML (Jupyter)
 
-Subsequent phases will add:
-  - Procedural F-16 mesh (Phase C)
-  - Damage event visualization (Phase E)
-  - render_mode="3d_web" integration (Phase F)
+Used by gym envs through ``render_mode="3d_web"``.
 """
 
 from .builder import build_html, save_html
 from .exporter import build_flight_log
+from .render import render
 
-__all__ = ["build_flight_log", "build_html", "save_html"]
+__all__ = ["build_flight_log", "build_html", "save_html", "render"]

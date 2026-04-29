@@ -75,7 +75,7 @@ class NonlinearAngularF16(gym.Env):
     longitudinal convention so existing controllers transfer.
     """
 
-    metadata = {"render_modes": ["human", "rgb_array", "live"]}
+    metadata = {"render_modes": ["human", "rgb_array", "live", "3d_web"]}
 
     def __init__(
         self,
@@ -310,6 +310,8 @@ class NonlinearAngularF16(gym.Env):
             return self._render_rgb_array()
         if self.render_mode == "live":
             return self._render_live()
+        if self.render_mode == "3d_web":
+            return self._render_3d_web()
         raise ValueError(f"Unknown render_mode: {self.render_mode!r}")
 
     def _build_figure(self):
@@ -364,6 +366,10 @@ class NonlinearAngularF16(gym.Env):
             },
         )
         return self._live_renderer._fig
+
+    def _render_3d_web(self):
+        from tensoraerospace.visualization.three_d import render as _render_3d
+        return _render_3d(self)
 
     def close(self):
         return None
