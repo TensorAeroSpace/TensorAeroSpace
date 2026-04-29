@@ -13,6 +13,8 @@ Run with::
 
 from __future__ import annotations
 
+import math
+
 import numpy as np
 
 from tensoraerospace.aerospacemodel.f16.nonlinear.damage import (
@@ -24,6 +26,10 @@ from tensoraerospace.envs.f16.nonlinear_angular import NonlinearAngularF16
 DT = 0.01
 TOTAL_TIME = 60.0
 DAMAGE_TIME = 20.0
+
+# F-16 angular trim point at V=120 m/s, h=3000 m
+ALPHA_TRIM_DEG = 5.0
+STAB_TRIM_DEG = -4.45
 
 
 def main() -> None:
@@ -37,19 +43,34 @@ def main() -> None:
         ),
     ])
 
+    # Start at the trim point so level cruise holds without input.
+    x0 = np.zeros(14)
+    x0[0] = math.radians(ALPHA_TRIM_DEG)   # alpha = 5°
+    x0[8] = math.radians(STAB_TRIM_DEG)    # stab  = -4.45°
+
     env = NonlinearAngularF16(
-        initial_state=np.zeros(14),
+        initial_state=x0,
         number_time_steps=n_steps + 10,
         dt=DT,
-        airspeed=200.0,
+        airspeed=120.0,                    # match params.V trim
         split_stab=True,
         damage_profile=profile,
         render_mode="3d_web",
+        # Energy-consistent altitude + airspeed dynamics. Aircraft now
+        # actually climbs / descends as the physics integrates dh/dt and
+        # dV/dt; HUD altimeter reads the simulation's altitude (not the
+        # kinematic position). Thrust is constant from params.T_thrust.
+        track_altitude=True,
+        thrust_mode="constant",
     )
     env.reset()
+    # Hold trim stab; for split_stab=True both halves get the same
+    # commanded deflection (no roll). At t=20 s left_tip is lost — the
+    # asymmetric loss then induces a roll the agent isn't there to
+    # cancel, so the post-event trajectory dives + rolls.
+    trim_cmd = np.array([STAB_TRIM_DEG, STAB_TRIM_DEG, 0.0, 0.0])
     for _ in range(n_steps):
-        # Zero stick command — let the dynamics tell the story.
-        env.step(np.zeros(4))
+        env.step(trim_cmd)
 
     # In a script: opens the rendered HTML in the default browser.
     # In Jupyter: returns IPython.display.HTML for inline display.
@@ -58,6 +79,16 @@ def main() -> None:
     print(
         f"  damage events: {len(env.damage_events_log)}\n"
         f"  damage snapshots: {len(env.damage_state_log)}"
+    )
+    # Show the altitude / airspeed evolution since it's the new feature
+    # this script demonstrates.
+    s0 = env.model.x_history[0].reshape(-1)
+    sN = env.model.current_state
+    print(
+        f"  altitude: {s0[14]:.0f} m → {sN[14]:.0f} m "
+        f"(Δ {sN[14] - s0[14]:+.0f} m)\n"
+        f"  airspeed: {s0[15]:.1f} m/s → {sN[15]:.1f} m/s "
+        f"(Δ {sN[15] - s0[15]:+.1f} m/s)"
     )
 
 
