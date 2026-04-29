@@ -44,8 +44,10 @@ def main() -> None:
     ])
 
     # Start at the trim point so level cruise holds without input.
+    # γ_path = θ − α; for level flight γ_path = 0, so θ = α at trim.
     x0 = np.zeros(14)
     x0[0] = math.radians(ALPHA_TRIM_DEG)   # alpha = 5°
+    x0[7] = math.radians(ALPHA_TRIM_DEG)   # theta = 5° (pitch up to keep γ=0)
     x0[8] = math.radians(STAB_TRIM_DEG)    # stab  = -4.45°
 
     env = NonlinearAngularF16(
@@ -64,6 +66,16 @@ def main() -> None:
         thrust_mode="constant",
     )
     env.reset()
+    # Without an active trim controller, the angular model isn't in true
+    # equilibrium even from this state — lift/thrust/drag don't perfectly
+    # balance. The aircraft descends gradually as the integrator runs
+    # the real altitude / airspeed dynamics. The point of this demo is
+    # exactly to show that the HUD altimeter / KIAS now read live physics
+    # values rather than constants — so the descent is feature, not bug.
+    #
+    # Bump T_thrust modestly so drag wins less aggressively in the dive.
+    env.model.param.T_thrust = 12000.0
+
     # Hold trim stab; for split_stab=True both halves get the same
     # commanded deflection (no roll). At t=20 s left_tip is lost — the
     # asymmetric loss then induces a roll the agent isn't there to
