@@ -136,6 +136,53 @@ def test_flight_log_json_serializable():
     assert loaded["version"] == 1
 
 
+def test_metadata_includes_model_params():
+    """The flight log's metadata.params block must include the F-16
+    model parameters (V, Oy, m, g, S, ...) so the 3D viewer HUD can
+    render them without hardcoded constants."""
+    from tensoraerospace.envs.f16.nonlinear_angular import NonlinearAngularF16
+    from tensoraerospace.visualization.three_d import build_flight_log
+    env = NonlinearAngularF16(
+        initial_state=np.zeros(14), number_time_steps=20,
+        dt=0.01, airspeed=200.0,
+    )
+    env.reset()
+    for _ in range(3):
+        env.step(np.zeros(3))
+    log = build_flight_log(env)
+    params = log["metadata"]["params"]
+    # F-16 angular has all the geometry/inertia fields
+    for key in ("V", "Oy", "m", "g", "S", "bA"):
+        assert key in params, f"missing param: {key}"
+        assert isinstance(params[key], float)
+
+
+def test_metadata_params_for_longitudinal_env():
+    """Same params block must work for the longitudinal env."""
+    import gymnasium as gym
+    from tensoraerospace.visualization.three_d import build_flight_log
+    env = gym.make(
+        "NonlinearLongitudinalF16-v0",
+        number_time_steps=20,
+        initial_state=np.array([0.0, 0.0]),
+        reference_signal=np.zeros((1, 30)),
+        state_space=["alpha", "wz"],
+        control_space=["stab"],
+        tracking_states=["alpha"],
+        use_reward=False,
+        dt=0.01,
+        integrator="euler",
+    ).unwrapped
+    env.reset()
+    for _ in range(3):
+        env.step(np.zeros(1))
+    log = build_flight_log(env)
+    params = log["metadata"]["params"]
+    # Longitudinal lacks Jx/Jy/Jxy but has the basic V/Oy/m/g/S/bA
+    for key in ("V", "Oy", "m", "g", "S", "bA"):
+        assert key in params, f"missing param: {key}"
+
+
 def test_reset_clears_damage_logs():
     from tensoraerospace.aerospacemodel.f16.nonlinear.damage.events import (
         DamageEvent, DamageProfile,

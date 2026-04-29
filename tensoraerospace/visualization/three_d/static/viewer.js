@@ -967,8 +967,12 @@
         const hdgEl = document.getElementById("hud-hdg-value");
         if (hdgEl) hdgEl.textContent = String(Math.round(hdg)).padStart(3, "0");
 
-        // Airspeed → KIAS, Mach
-        const airspeed_mps = (log.metadata && log.metadata.airspeed) || 0;
+        // Airspeed → KIAS, Mach. Prefer the value from the env's F-16
+        // model (params.V is the simulation's true airspeed); fall back
+        // to log.metadata.airspeed if the env didn't expose params.
+        const params = (log.metadata && log.metadata.params) || {};
+        const airspeed_mps = params.V
+            || (log.metadata && log.metadata.airspeed) || 0;
         const kias = airspeed_mps * 1.94384;
         const mach = airspeed_mps / 340.0;
         const kiasEl = document.getElementById("hud-kias-value");
@@ -976,23 +980,21 @@
         if (kiasEl) kiasEl.textContent = String(Math.round(kias)).padStart(3, "0");
         if (machEl) machEl.textContent = "M " + mach.toFixed(2);
 
-        // Altitude: env's airframe sits at Oy ≈ 3000 m; altitude changes
-        // are tracked via the inertial position's z component (negative
-        // = up in body, but in the 3D viewer we map -bz → world y).
-        // log.metadata doesn't carry the trim altitude explicitly, so
-        // approximate as "trim alt + delta from inertial z" (alt grows
-        // when the aircraft climbs, i.e. position.z becomes more negative).
-        const TRIM_ALT_M = 3000.0;
+        // Altitude: trim altitude from the F-16 model parameters (Oy in
+        // metres) plus the inertial-z displacement from the trajectory.
+        // -bz is up in the simulation's body frame.
+        const trimAlt_m = params.Oy || 0;
         const pos = traj.position[idx];
-        const alt_m = TRIM_ALT_M + (-pos[2]);     // -bz = up
+        const alt_m = trimAlt_m + (-pos[2]);
         const alt_ft = alt_m * 3.28084;
         const altEl = document.getElementById("hud-alt-value");
         if (altEl) altEl.textContent = String(Math.round(alt_ft)).padStart(5, "0");
 
-        // VSI: ft/min, from finite difference on altitude.
+        // VSI: ft/min, from finite difference on altitude over a
+        // lookback window.
         const VSI_LOOKBACK = 50;   // 50 frames ≈ 0.5 s at dt=0.01
         const j = Math.max(0, idx - VSI_LOOKBACK);
-        const altPrev_m = TRIM_ALT_M + (-traj.position[j][2]);
+        const altPrev_m = trimAlt_m + (-traj.position[j][2]);
         const dT_s = (idx - j) * dt || dt;
         const vsi_fps = (alt_m - altPrev_m) * 3.28084 / dT_s;
         const vsi_fpm = vsi_fps * 60.0;
@@ -1009,10 +1011,11 @@
         const betaValEl = document.getElementById("hud-beta-value");
         if (betaValEl) betaValEl.textContent = betaDeg.toFixed(1);
 
-        // G-load: estimate from pitch rate × airspeed / g  + 1 (cruise = 1G)
-        // This is a coarse approximation but matches a fighter's HUD G
-        // readout reasonably for normal manoeuvres.
-        const G_EARTH = 9.80665;
+        // G-load: estimate from pitch rate × airspeed / g (centripetal
+        // approximation in the pitch plane). Adds 1 G for steady level
+        // flight. Uses the F-16 model's g constant if available so the
+        // calc agrees with the physics module's gravity.
+        const G_EARTH = params.g || 9.80665;
         const gLoad = 1.0 + Math.abs(wzRad * airspeed_mps) / G_EARTH;
         const gEl = document.getElementById("hud-g-value");
         if (gEl) gEl.textContent = gLoad.toFixed(1);

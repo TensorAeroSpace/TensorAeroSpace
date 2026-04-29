@@ -122,6 +122,7 @@ def build_flight_log(env) -> dict[str, Any]:
             "n_steps": int(len(t)),
             "airspeed": float(getattr(env, "airspeed", 0.0)),
             "split_stab": bool(getattr(env, "split_stab", False)),
+            "params": _serialise_params(env),
         },
         "geometry": geometry,
         "trajectory": {
@@ -133,6 +134,30 @@ def build_flight_log(env) -> dict[str, Any]:
         "damage_events": list(getattr(env, "damage_events_log", [])),
         "damage_state_history": list(getattr(env, "damage_state_log", [])),
     }
+
+
+def _serialise_params(env) -> dict[str, float]:
+    """Pull a small subset of the F-16 model parameters into the flight
+    log so the 3D viewer's HUD can render real airspeed / altitude /
+    mass / dynamic-pressure values rather than hardcoded constants.
+
+    Reads from ``env.model.param``, which is an ``F16AngularParameters``
+    or ``F16LongParameters`` dataclass. Fields known to vary between the
+    two are probed via ``getattr`` so the same exporter works for both.
+    """
+    if env.model is None or not hasattr(env.model, "param"):
+        return {}
+    p = env.model.param
+    fields = ("V", "Oy", "m", "g", "q", "S", "bA", "Jx", "Jy", "Jz",
+              "Jxy", "Jxz", "Jyz")
+    out: dict[str, float] = {}
+    for f in fields:
+        if hasattr(p, f):
+            try:
+                out[f] = float(getattr(p, f))
+            except (TypeError, ValueError):
+                continue
+    return out
 
 
 def _serialise_geometry(geo: BaseGeometry) -> dict[str, Any]:

@@ -195,6 +195,18 @@ def test_hud_pitch_ladder_built_at_init():
     assert "PITCH_DEG_PER_PX" in html
 
 
+def test_hud_reads_params_from_flight_log():
+    """The HUD must source airspeed and altitude from log.metadata.params,
+    not from hardcoded constants."""
+    html = _make_html()
+    assert "log.metadata.params" in html
+    # The old hardcoded constants must be gone
+    assert "TRIM_ALT_M = 3000.0" not in html
+    # params.V is read for airspeed, params.Oy for trim altitude
+    assert "params.V" in html
+    assert "params.Oy" in html
+
+
 def test_hud_caution_responds_to_damage_state():
     """The CAUTION badge visibility must be set from damageStateAt()
     each frame."""
