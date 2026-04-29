@@ -71,7 +71,48 @@ def build_flight_log(env) -> dict[str, Any]:
         att = att[:n]
         t = t[:n]
 
-    geometry = _serialise_geometry(env._geo_for_obs or load_f16_geometry())
+    geo_obj = (
+        getattr(env, "_geo_for_obs", None)
+        or getattr(env, "_geo_for_damage", None)
+        or load_f16_geometry()
+    )
+    geometry = _serialise_geometry(geo_obj)
+
+    # Per-step state channels — pull by model dimension. Angular = 14
+    # (alpha, beta, wx, wy, wz, gamma, psi, theta, stab, dstab, ail, dail,
+    # dir, ddir). Longitudinal = 4 (alpha, wz, stab, dstab); the channels
+    # not present in the longitudinal ODE are filled with zeros so the
+    # viewer JSON schema stays uniform.
+    n_state = x_hist.shape[1]
+    n_steps = x_hist.shape[0]
+    zero_channel = [0.0] * n_steps
+    if n_state == 14:
+        traj_channels = {
+            "alpha": x_hist[:, 0].tolist(),
+            "beta":  x_hist[:, 1].tolist(),
+            "wx":    x_hist[:, 2].tolist(),
+            "wy":    x_hist[:, 3].tolist(),
+            "wz":    x_hist[:, 4].tolist(),
+            "stab":  x_hist[:, 8].tolist(),
+            "ail":   x_hist[:, 10].tolist(),
+            "dir":   x_hist[:, 12].tolist(),
+        }
+    elif n_state == 4:
+        # Longitudinal: [alpha, wz, stab, dstab]
+        traj_channels = {
+            "alpha": x_hist[:, 0].tolist(),
+            "beta":  zero_channel,
+            "wx":    zero_channel,
+            "wy":    zero_channel,
+            "wz":    x_hist[:, 1].tolist(),
+            "stab":  x_hist[:, 2].tolist(),
+            "ail":   zero_channel,
+            "dir":   zero_channel,
+        }
+    else:
+        raise ValueError(
+            f"Unsupported model state dimension {n_state}; expected 4 or 14."
+        )
 
     return {
         "version": FLIGHT_LOG_VERSION,
@@ -87,14 +128,7 @@ def build_flight_log(env) -> dict[str, Any]:
             "time": t.tolist(),
             "position": pos.tolist(),
             "attitude": att.tolist(),
-            "alpha": x_hist[:, 0].tolist(),
-            "beta": x_hist[:, 1].tolist(),
-            "wx": x_hist[:, 2].tolist(),
-            "wy": x_hist[:, 3].tolist(),
-            "wz": x_hist[:, 4].tolist(),
-            "stab": x_hist[:, 8].tolist(),
-            "ail": x_hist[:, 10].tolist(),
-            "dir": x_hist[:, 12].tolist(),
+            **traj_channels,
         },
         "damage_events": list(getattr(env, "damage_events_log", [])),
         "damage_state_history": list(getattr(env, "damage_state_log", [])),

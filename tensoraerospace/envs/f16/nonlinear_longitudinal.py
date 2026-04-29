@@ -79,7 +79,7 @@ class NonlinearLongitudinalF16(gym.Env):
     before being handed to the underlying numpy model.
     """
 
-    metadata = {"render_modes": ["human", "rgb_array", "live"]}
+    metadata = {"render_modes": ["human", "rgb_array", "live", "3d_web"]}
 
     def __init__(
         self,
@@ -180,6 +180,13 @@ class NonlinearLongitudinalF16(gym.Env):
             else None
         )
         self.damage_manager: Optional[DamageManager] = None
+
+        # Damage history accumulators — populated across an episode for the
+        # 3D web exporter (tensoraerospace.visualization.three_d). Empty
+        # lists when no damage_profile is configured.
+        self.damage_events_log: list[dict] = []
+        self.damage_state_log: list[dict] = []
+
         # Initialised in reset()
         self.position_history = np.zeros((0, 3))
         self.attitude_history = np.zeros((0, 3))
@@ -255,6 +262,18 @@ class NonlinearLongitudinalF16(gym.Env):
                 if self.damage_event_callback:
                     self.damage_event_callback(ev, self.damage_manager.state)
                 triggered_labels.append(ev.label or ev.event_type)
+                self.damage_events_log.append({
+                    "time": float(t_now),
+                    "label": ev.label or ev.event_type,
+                    "event_type": ev.event_type,
+                    "payload": dict(ev.payload),
+                })
+            if triggered:
+                # Snapshot the post-event damage state
+                self.damage_state_log.append({
+                    "time": float(t_now),
+                    "state": self.damage_manager.state.snapshot(),
+                })
 
         next_state = self.model.run_step(action_rad)
         # Track histories using the FULL 4-element model state (next_state may
@@ -317,6 +336,15 @@ class NonlinearLongitudinalF16(gym.Env):
             self.model.selected_state_index
         ].reshape(-1)
         observation = self._build_observation(base_obs)
+
+        # Reset accumulator buffers and snapshot initial damage state
+        self.damage_events_log = []
+        self.damage_state_log = []
+        if self.damage_manager is not None:
+            self.damage_state_log.append({
+                "time": 0.0,
+                "state": self.damage_manager.state.snapshot(),
+            })
 
         self.position_history = np.zeros((1, 3), dtype=np.float64)
         self.attitude_history = np.array([[0.0, self.initial_pitch, 0.0]])
@@ -424,6 +452,8 @@ class NonlinearLongitudinalF16(gym.Env):
                 },
             )
             return self._live_renderer._fig
+        if self.render_mode == "3d_web":
+            return self._render_3d_web()
         raise ValueError(f"Unknown render_mode: {self.render_mode!r}")
 
     def _build_figure(self):
@@ -436,3 +466,7 @@ class NonlinearLongitudinalF16(gym.Env):
             chart_data=self.chart_history,
             trail_length=self.trail_length,
         )
+
+    def _render_3d_web(self):
+        from tensoraerospace.visualization.three_d import render as _render_3d
+        return _render_3d(self)
