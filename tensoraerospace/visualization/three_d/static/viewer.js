@@ -546,43 +546,171 @@
     const aircraft = buildAircraft(log.geometry);
     scene.add(aircraft);
 
-    // ---- Build pitch ladder ----
-    // Add horizontal pitch reference lines at every 5° from -25° to +25°.
-    // Lines are static within the #hud-pitch-ladder group; the parent
-    // groups translate (pitch) and rotate (bank) each frame.
-    (function () {
-        const ladder = document.getElementById("hud-pitch-ladder");
-        if (!ladder) return;
-        const PITCH_DEG_PER_PX = 5 / 30;   // 30 px per 5° pitch
-        for (let d = -25; d <= 25; d += 5) {
-            if (d === 0) continue;       // horizon drawn separately
-            const y = -d / PITCH_DEG_PER_PX;
-            const cls = d > 0 ? "hud-pitch-rung-pos" : "hud-pitch-rung-neg";
-            // Rung: short segments either side of centre with the angle
-            // label outboard.
-            const segL = document.createElementNS(
-                "http://www.w3.org/2000/svg", "line");
-            segL.setAttribute("x1", "-100");
-            segL.setAttribute("y1", y);
-            segL.setAttribute("x2", "-30");
-            segL.setAttribute("y2", y);
-            segL.setAttribute("class", cls);
-            ladder.appendChild(segL);
-            const segR = document.createElementNS(
-                "http://www.w3.org/2000/svg", "line");
-            segR.setAttribute("x1", "30");
-            segR.setAttribute("y1", y);
-            segR.setAttribute("x2", "100");
-            segR.setAttribute("y2", y);
-            segR.setAttribute("class", cls);
-            ladder.appendChild(segR);
-            const lbl = document.createElementNS(
-                "http://www.w3.org/2000/svg", "text");
-            lbl.setAttribute("x", "115");
-            lbl.setAttribute("y", y + 4);
-            lbl.setAttribute("class", "hud-pitch-label");
-            lbl.textContent = (d > 0 ? "+" : "") + d;
-            ladder.appendChild(lbl);
+    // ---- Instrument-panel helpers ----
+    function _setNeedle(id, value, vmin, vmax, degMin, degMax) {
+        const el = document.getElementById(id);
+        if (!el) return;
+        const t = (value - vmin) / (vmax - vmin);
+        const tc = Math.max(0, Math.min(1, t));
+        const deg = degMin + tc * (degMax - degMin);
+        el.setAttribute("transform", "rotate(" + deg.toFixed(1) + ")");
+    }
+
+    function _setText(id, txt) {
+        const el = document.getElementById(id);
+        if (el) el.textContent = txt;
+    }
+
+    // Build static dial decorations (ticks + labels + ADI pitch rungs)
+    // once at scene init.
+    (function _buildPanelStatics() {
+        // ADI pitch ladder rungs at ±5°, ±10°, ±15°, ±20° (1.6 px per °).
+        const ladder = document.getElementById("adi-pitch-ladder");
+        if (ladder) {
+            const ADI_PIXELS_PER_DEG = 1.6;
+            for (let d = -20; d <= 20; d += 5) {
+                if (d === 0) continue;
+                const y = -d * ADI_PIXELS_PER_DEG;
+                const w = (Math.abs(d) % 10 === 0) ? 14 : 7;
+                const segL = document.createElementNS(
+                    "http://www.w3.org/2000/svg", "line");
+                segL.setAttribute("x1", -w);
+                segL.setAttribute("y1", y);
+                segL.setAttribute("x2", -3);
+                segL.setAttribute("y2", y);
+                segL.setAttribute("class", "adi-pitch-rung");
+                ladder.appendChild(segL);
+                const segR = document.createElementNS(
+                    "http://www.w3.org/2000/svg", "line");
+                segR.setAttribute("x1", 3);
+                segR.setAttribute("y1", y);
+                segR.setAttribute("x2", w);
+                segR.setAttribute("y2", y);
+                segR.setAttribute("class", "adi-pitch-rung");
+                ladder.appendChild(segR);
+                if (Math.abs(d) % 10 === 0) {
+                    const lbl = document.createElementNS(
+                        "http://www.w3.org/2000/svg", "text");
+                    lbl.setAttribute("x", w + 3);
+                    lbl.setAttribute("y", y + 1.8);
+                    lbl.setAttribute("class", "adi-pitch-label");
+                    lbl.textContent = String(Math.abs(d));
+                    ladder.appendChild(lbl);
+                }
+            }
+        }
+
+        // Helper: tick mark for round dials.
+        function _makeRoundDialTicks(ticksId, labelsId, vmin, vmax,
+                                    degMin, degMax, majorEvery, minorStep,
+                                    formatLabel) {
+            const ticks = document.getElementById(ticksId);
+            const labels = document.getElementById(labelsId);
+            if (!ticks) return;
+            for (let v = vmin; v <= vmax + 1e-6; v += minorStep) {
+                const t = (v - vmin) / (vmax - vmin);
+                const deg = degMin + t * (degMax - degMin);
+                const isMajor = ((v - vmin) % majorEvery === 0)
+                              || Math.abs((v - vmin) % majorEvery) < 1e-6;
+                const len = isMajor ? 5 : 2.5;
+                const r1 = 42, r2 = 42 - len;
+                const a = (deg - 90) * Math.PI / 180;  // SVG: 0° = 3 o'clock
+                const x1 = Math.cos(a) * r1;
+                const y1 = Math.sin(a) * r1;
+                const x2 = Math.cos(a) * r2;
+                const y2 = Math.sin(a) * r2;
+                const tick = document.createElementNS(
+                    "http://www.w3.org/2000/svg", "line");
+                tick.setAttribute("x1", x1.toFixed(2));
+                tick.setAttribute("y1", y1.toFixed(2));
+                tick.setAttribute("x2", x2.toFixed(2));
+                tick.setAttribute("y2", y2.toFixed(2));
+                if (isMajor) tick.setAttribute("class", "major");
+                ticks.appendChild(tick);
+                if (isMajor && labels && formatLabel) {
+                    const txt = formatLabel(v);
+                    if (txt !== null && txt !== undefined && txt !== "") {
+                        const lr = 30;
+                        const lx = Math.cos(a) * lr;
+                        const ly = Math.sin(a) * lr + 2.0;
+                        const lbl = document.createElementNS(
+                            "http://www.w3.org/2000/svg", "text");
+                        lbl.setAttribute("x", lx.toFixed(2));
+                        lbl.setAttribute("y", ly.toFixed(2));
+                        lbl.textContent = txt;
+                        labels.appendChild(lbl);
+                    }
+                }
+            }
+        }
+
+        // Airspeed: 0–600 KIAS, major 100, minor 20
+        _makeRoundDialTicks("airspeed-ticks", "airspeed-labels",
+                            0, 600, -150, 150,
+                            100, 20,
+                            (v) => v % 100 === 0 ? String(v / 100) : null);
+        // Altimeter: 0–30000 ft, major 5000, minor 1000 (label as ÷1000)
+        _makeRoundDialTicks("altimeter-ticks", "altimeter-labels",
+                            0, 30000, 0, 360,
+                            5000, 1000,
+                            (v) => v < 30000 && v % 5000 === 0
+                                   ? String(v / 1000) : null);
+        // VVI: -6000 to +6000, major 2000, minor 500
+        _makeRoundDialTicks("vvi-ticks", "vvi-labels",
+                            -6000, 6000, -150, 150,
+                            2000, 500,
+                            (v) => Math.abs(v) === 6000 || Math.abs(v) === 4000
+                                   || Math.abs(v) === 2000 || v === 0
+                                   ? String(v / 1000) : null);
+        // G-meter: 0..10 G, major 1, minor 0.5
+        _makeRoundDialTicks("g-ticks", "g-labels",
+                            0, 10, -150, 150,
+                            1, 0.5,
+                            (v) => v % 1 === 0 ? String(v) : null);
+
+        // HSI compass card: ticks every 10°, labels for cardinal/30° intervals
+        const card = document.getElementById("hsi-card");
+        if (card) {
+            for (let d = 0; d < 360; d += 10) {
+                const a = (d - 90) * Math.PI / 180;
+                const isMajor = d % 30 === 0;
+                const len = isMajor ? 6 : 3;
+                const r1 = 42, r2 = 42 - len;
+                const x1 = Math.cos(a) * r1, y1 = Math.sin(a) * r1;
+                const x2 = Math.cos(a) * r2, y2 = Math.sin(a) * r2;
+                const tk = document.createElementNS(
+                    "http://www.w3.org/2000/svg", "line");
+                tk.setAttribute("x1", x1.toFixed(2));
+                tk.setAttribute("y1", y1.toFixed(2));
+                tk.setAttribute("x2", x2.toFixed(2));
+                tk.setAttribute("y2", y2.toFixed(2));
+                tk.setAttribute("class", "hsi-card-tick" + (isMajor ? " major" : ""));
+                card.appendChild(tk);
+                if (d % 90 === 0 || d === 30 || d === 60 || d === 120
+                    || d === 150 || d === 210 || d === 240 || d === 300
+                    || d === 330) {
+                    const lr = 32;
+                    const lx = Math.cos(a) * lr;
+                    const ly = Math.sin(a) * lr + 2.5;
+                    const lbl = document.createElementNS(
+                        "http://www.w3.org/2000/svg", "text");
+                    lbl.setAttribute("x", lx.toFixed(2));
+                    lbl.setAttribute("y", ly.toFixed(2));
+                    let lbltxt;
+                    if (d === 0) lbltxt = "N";
+                    else if (d === 90) lbltxt = "E";
+                    else if (d === 180) lbltxt = "S";
+                    else if (d === 270) lbltxt = "W";
+                    else lbltxt = String(d / 10);  // numeric (3=30°, 6=60°, ...)
+                    lbl.textContent = lbltxt;
+                    let cls = "hsi-card-label";
+                    if (d === 0 || d === 90 || d === 180 || d === 270) {
+                        cls += " hsi-card-cardinal";
+                    }
+                    lbl.setAttribute("class", cls);
+                    card.appendChild(lbl);
+                }
+            }
         }
     })();
 
@@ -938,161 +1066,114 @@
         document.getElementById("hud-wz").textContent =
             (traj.wz[idx] * 180 / Math.PI).toFixed(2) + "°/s";
 
-        // ---- F-16-style SVG HUD ----
-        // Convert sim units to fighter conventions:
-        //   alpha, beta (rad)             → degrees
-        //   airspeed (m/s, fixed in env)  → KIAS (knots) and Mach
-        //   altitude (m, from initial Oy minus -position.z)
-        //                                 → feet, plus VSI ft/min
-        //   yaw / pitch / bank            → from traj.attitude
-        //   load factor                   → approximated from cy at α
-        const ALPHA_PX_PER_DEG = 6;     // FPM travels 6 px per °α
-        const BETA_PX_PER_DEG  = 6;
-        const PITCH_DEG_PER_PX_INV = 30 / 5;   // 30 px per 5°
+        // ---- Instrument-panel update ----
+        const params = (log.metadata && log.metadata.params) || {};
+        const airspeed_mps = params.V
+            || (log.metadata && log.metadata.airspeed) || 0;
+        const trimAlt_m = params.Oy || 0;
+        const G_EARTH = params.g || 9.80665;
 
-        const attHud   = traj.attitude[idx];   // (roll/gamma, pitch/theta, yaw/psi)
+        const attHud   = traj.attitude[idx];
         const alphaRad = traj.alpha[idx];
         const betaRad  = traj.beta[idx];
         const wzRad    = traj.wz[idx];
-
         const rollDeg  = attHud[0] * 180 / Math.PI;
         const pitchDeg = attHud[1] * 180 / Math.PI;
         const yawDeg   = attHud[2] * 180 / Math.PI;
         const alphaDeg = alphaRad * 180 / Math.PI;
-        const betaDeg  = betaRad  * 180 / Math.PI;
 
-        // Heading: yaw in [0, 360)
-        let hdg = yawDeg % 360;
-        if (hdg < 0) hdg += 360;
-        const hdgEl = document.getElementById("hud-hdg-value");
-        if (hdgEl) hdgEl.textContent = String(Math.round(hdg)).padStart(3, "0");
-
-        // Airspeed → KIAS, Mach. Prefer the value from the env's F-16
-        // model (params.V is the simulation's true airspeed); fall back
-        // to log.metadata.airspeed if the env didn't expose params.
-        const params = (log.metadata && log.metadata.params) || {};
-        const airspeed_mps = params.V
-            || (log.metadata && log.metadata.airspeed) || 0;
-        const kias = airspeed_mps * 1.94384;
-        const mach = airspeed_mps / 340.0;
-        const kiasEl = document.getElementById("hud-kias-value");
-        const machEl = document.getElementById("hud-mach-value");
-        if (kiasEl) kiasEl.textContent = String(Math.round(kias)).padStart(3, "0");
-        if (machEl) machEl.textContent = "M " + mach.toFixed(2);
-
-        // Altitude: trim altitude from the F-16 model parameters (Oy in
-        // metres) plus the inertial-z displacement from the trajectory.
-        // -bz is up in the simulation's body frame.
-        const trimAlt_m = params.Oy || 0;
-        const pos = traj.position[idx];
-        const alt_m = trimAlt_m + (-pos[2]);
-        const alt_ft = alt_m * 3.28084;
-        const altEl = document.getElementById("hud-alt-value");
-        if (altEl) altEl.textContent = String(Math.round(alt_ft)).padStart(5, "0");
-
-        // VSI: ft/min, from finite difference on altitude over a
-        // lookback window.
-        const VSI_LOOKBACK = 50;   // 50 frames ≈ 0.5 s at dt=0.01
-        const j = Math.max(0, idx - VSI_LOOKBACK);
-        const altPrev_m = trimAlt_m + (-traj.position[j][2]);
-        const dT_s = (idx - j) * dt || dt;
-        const vsi_fps = (alt_m - altPrev_m) * 3.28084 / dT_s;
-        const vsi_fpm = vsi_fps * 60.0;
-        const vsiEl = document.getElementById("hud-vsi-value");
-        if (vsiEl) {
-            const sign = vsi_fpm >= 0 ? "+" : "-";
-            vsiEl.textContent = "VS " + sign +
-                String(Math.round(Math.abs(vsi_fpm))).padStart(4, "0");
-        }
-
-        // AOA / β
-        const aoaEl = document.getElementById("hud-aoa-value");
-        if (aoaEl) aoaEl.textContent = alphaDeg.toFixed(1);
-        const betaValEl = document.getElementById("hud-beta-value");
-        if (betaValEl) betaValEl.textContent = betaDeg.toFixed(1);
-
-        // G-load: estimate from pitch rate × airspeed / g (centripetal
-        // approximation in the pitch plane). Adds 1 G for steady level
-        // flight. Uses the F-16 model's g constant if available so the
-        // calc agrees with the physics module's gravity.
-        const G_EARTH = params.g || 9.80665;
-        const gLoad = 1.0 + Math.abs(wzRad * airspeed_mps) / G_EARTH;
-        const gEl = document.getElementById("hud-g-value");
-        if (gEl) gEl.textContent = gLoad.toFixed(1);
-
-        // Bank pointer rotation (top scale): bank in degrees, around the
-        // pivot at (600, 110). The HTML transform was set there already.
-        const bankPointer = document.getElementById("hud-bank-pointer");
-        if (bankPointer) {
-            // Pointer rotates -bank (so positive bank tilts left as on
-            // the real F-16 attitude indicator).
-            bankPointer.setAttribute(
+        // 1. ADI: bank rotation + pitch translation. ADI viewBox is
+        // -50..+50; 1 unit ≈ 1° pitch (we scale 1.5x for readability).
+        const ADI_PIXELS_PER_DEG = 1.6;
+        const adiRotor = document.getElementById("adi-rotor");
+        const adiPitch = document.getElementById("adi-pitch");
+        if (adiRotor) {
+            adiRotor.setAttribute(
                 "transform", "rotate(" + (-rollDeg).toFixed(1) + ")",
             );
         }
-
-        // Pitch ladder + horizon: bank rotation around screen centre
-        // then pitch translation along screen y. 30 px = 5° pitch.
-        const bankRot = document.getElementById("hud-bank-rot");
-        const pitchTrans = document.getElementById("hud-pitch-trans");
-        if (bankRot) {
-            bankRot.setAttribute(
-                "transform",
-                "translate(600 350) rotate(" + (-rollDeg).toFixed(1) + ")",
-            );
-        }
-        if (pitchTrans) {
-            const pitchPx = pitchDeg * PITCH_DEG_PER_PX_INV;
-            pitchTrans.setAttribute(
-                "transform", "translate(0 " + pitchPx.toFixed(1) + ")",
+        if (adiPitch) {
+            const py = pitchDeg * ADI_PIXELS_PER_DEG;
+            adiPitch.setAttribute(
+                "transform", "translate(0 " + py.toFixed(2) + ")",
             );
         }
 
-        // FPM (Flight Path Marker): offset from screen centre by α / β.
-        // On a real HUD the FPM sits where the velocity vector points;
-        // it's offset down by α (positive α = nose above velocity vector
-        // = FPM below reticle) and offset opposite to β (positive β =
-        // wind from right = velocity vector points slightly right of
-        // nose = FPM right of reticle).
-        const fpm = document.getElementById("hud-fpm");
-        if (fpm) {
-            const fx = 600 - betaDeg * BETA_PX_PER_DEG;
-            const fy = 350 + alphaDeg * ALPHA_PX_PER_DEG;
-            fpm.setAttribute(
-                "transform", "translate(" + fx.toFixed(1) + " " + fy.toFixed(1) + ")",
+        // 2. Airspeed: needle 0..600 KIAS over 0..330° (0 at bottom-left,
+        // i.e. 7 o'clock, sweeping clockwise to 5 o'clock).
+        const kias = airspeed_mps * 1.94384;
+        _setNeedle("airspeed-needle", kias, 0, 600, -150, 150);
+        _setText("airspeed-digital", String(Math.round(kias)));
+
+        // 3. Altimeter: 0..30000 ft, full circle (0..360° = 1 needle rev
+        // per 30k ft → simple). Use one-pointer dial for clarity.
+        const pos = traj.position[idx];
+        const alt_m = trimAlt_m + (-pos[2]);
+        const alt_ft = alt_m * 3.28084;
+        _setNeedle("altimeter-needle", alt_ft, 0, 30000, 0, 360);
+        _setText("altimeter-digital", String(Math.round(alt_ft)));
+
+        // 4. HSI: rotate compass card so the current heading sits at top.
+        let hdg = yawDeg % 360;
+        if (hdg < 0) hdg += 360;
+        const hsiRotor = document.getElementById("hsi-rotor");
+        if (hsiRotor) {
+            hsiRotor.setAttribute(
+                "transform", "rotate(" + (-hdg).toFixed(1) + ")",
             );
         }
+        _setText("hsi-digital", String(Math.round(hdg)).padStart(3, "0"));
 
-        // Time + speed status (bottom-right)
-        const timeValEl = document.getElementById("hud-time-value");
-        if (timeValEl) timeValEl.textContent = traj.time[idx].toFixed(1);
-        const speedValEl = document.getElementById("hud-speed-value");
-        if (speedValEl) speedValEl.textContent = speed + "×";
+        // 5. VVI: vertical-speed needle ±6000 ft/min. Compute from a
+        // 0.5 s lookback over altitude.
+        const VSI_LOOKBACK = 50;
+        const j = Math.max(0, idx - VSI_LOOKBACK);
+        const altPrev_m = trimAlt_m + (-traj.position[j][2]);
+        const dT_s = (idx - j) * dt || dt;
+        const vvi_fpm = (alt_m - altPrev_m) * 3.28084 / dT_s * 60.0;
+        // Map -6000..+6000 → -150..+150 (0 at top of dial).
+        _setNeedle("vvi-needle", vvi_fpm, -6000, 6000, -150, 150);
+        const vviSign = vvi_fpm >= 0 ? "+" : "";
+        _setText("vvi-digital", vviSign + Math.round(vvi_fpm));
 
-        // Damage caution: visible if any section is currently lost.
+        // 6. AOA strip: 25° → +30, -25° → -30 (within the 80px tall strip).
+        const aoaPointer = document.getElementById("aoa-pointer");
+        if (aoaPointer) {
+            const yPx = -alphaDeg / 25 * 30;   // clamp implicit via clip
+            const ypc = Math.max(-30, Math.min(30, yPx));
+            aoaPointer.setAttribute(
+                "transform", "translate(0 " + ypc.toFixed(1) + ")",
+            );
+        }
+        _setText("aoa-digital", alphaDeg.toFixed(1));
+
+        // 7. G-meter: 0..10 G, 0 at bottom-left (-150°), 10 at bottom-right (+150°).
+        const gLoad = 1.0 + Math.abs(wzRad * airspeed_mps) / G_EARTH;
+        _setNeedle("g-needle", gLoad, 0, 10, -150, 150);
+        _setText("g-digital", gLoad.toFixed(1));
+
+        // 8. Master caution lamp on damage
         const ds = damageStateAt(traj.time[idx]);
-        const cautionEl = document.getElementById("hud-caution");
-        if (cautionEl) {
-            let anyDamage = false;
+        const lamp = document.getElementById("caution-lamp");
+        if (lamp) {
+            let any = false;
             if (ds && ds.section_loss) {
                 for (const k in ds.section_loss) {
-                    if (ds.section_loss[k] > 0) { anyDamage = true; break; }
+                    if (ds.section_loss[k] > 0) { any = true; break; }
                 }
             }
-            if (!anyDamage && ds && ds.engine && ds.engine.hard_failure) {
-                anyDamage = true;
+            if (!any && ds && ds.engine && ds.engine.hard_failure) {
+                any = true;
             }
-            if (!anyDamage && ds && ds.control_failures) {
+            if (!any && ds && ds.control_failures) {
                 for (const k in ds.control_failures) {
                     const cf = ds.control_failures[k];
                     if (cf && cf.mode && cf.mode !== "healthy") {
-                        anyDamage = true; break;
+                        any = true; break;
                     }
                 }
             }
-            cautionEl.setAttribute(
-                "visibility", anyDamage ? "visible" : "hidden",
-            );
+            lamp.classList.toggle("active", any);
         }
 
         document.getElementById("timeline").value = idx;

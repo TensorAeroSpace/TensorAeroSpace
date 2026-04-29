@@ -170,50 +170,69 @@ def test_hud_has_deflection_readouts():
         assert hud_id in html
 
 
-def test_html_has_f16_hud_overlay():
-    """The fighter-style SVG HUD overlay must be present with all
-    documented anchors (heading tape, KIAS, altitude, pitch ladder,
-    bank scale, FPM, AOA/G, caution)."""
+def test_html_has_instrument_panel():
+    """The fighter HUD overlay was replaced by an analog-style
+    instrument panel along the bottom."""
     html = _make_html()
-    assert 'id="hud-svg"' in html
-    for anchor in (
-        "hud-hdg-value", "hud-kias-value", "hud-mach-value",
-        "hud-alt-value", "hud-vsi-value", "hud-aoa-value",
-        "hud-g-value", "hud-beta-value",
-        "hud-bank-pointer", "hud-bank-rot", "hud-pitch-trans",
-        "hud-pitch-ladder", "hud-reticle", "hud-fpm",
-        "hud-caution", "hud-time-value", "hud-speed-value",
-    ):
-        assert anchor in html, f"missing HUD anchor: {anchor}"
+    assert 'id="instrument-panel"' in html
+    # Six round gauges + AOA strip + caution lamp
+    for gauge in ("gauge-adi", "gauge-airspeed", "gauge-altimeter",
+                  "gauge-hsi", "gauge-vvi", "gauge-aoa", "gauge-g",
+                  "caution-lamp"):
+        assert gauge in html, f"missing gauge: {gauge}"
 
 
-def test_hud_pitch_ladder_built_at_init():
-    """The pitch ladder rungs are appended to #hud-pitch-ladder by an
-    IIFE during scene init (rather than hardcoded in the HTML)."""
+def test_instrument_panel_dial_anchors():
+    """Each round dial has a needle, ticks group, labels group, and
+    digital readout."""
     html = _make_html()
-    assert "hud-pitch-ladder" in html
-    assert "PITCH_DEG_PER_PX" in html
+    for prefix in ("airspeed", "altimeter", "vvi", "g"):
+        for suffix in ("-needle", "-ticks", "-labels", "-digital"):
+            assert prefix + suffix in html, \
+                f"missing {prefix + suffix}"
+    # ADI has rotor + pitch translate
+    assert "adi-rotor" in html
+    assert "adi-pitch" in html
+    # HSI has rotor + card
+    assert "hsi-rotor" in html
+    assert "hsi-card" in html
+    # AOA pointer
+    assert "aoa-pointer" in html
 
 
-def test_hud_reads_params_from_flight_log():
-    """The HUD must source airspeed and altitude from log.metadata.params,
-    not from hardcoded constants."""
+def test_instrument_panel_helpers_present():
+    """_setNeedle / _setText helpers and tick-builder IIFE present."""
     html = _make_html()
-    assert "log.metadata.params" in html
-    # The old hardcoded constants must be gone
-    assert "TRIM_ALT_M = 3000.0" not in html
-    # params.V is read for airspeed, params.Oy for trim altitude
-    assert "params.V" in html
-    assert "params.Oy" in html
+    assert "function _setNeedle" in html
+    assert "function _setText" in html
+    assert "_buildPanelStatics" in html
 
 
-def test_hud_caution_responds_to_damage_state():
-    """The CAUTION badge visibility must be set from damageStateAt()
-    each frame."""
+def test_caution_lamp_responds_to_damage_state():
+    """The MASTER CAUTION lamp must toggle .active class based on
+    damageStateAt() each frame."""
     import re
     html = _make_html()
     m = re.search(r"function setFrame\([^)]*\)\s*\{(.*?)\n    \}", html, re.DOTALL)
     assert m is not None
     body = m.group(1)
-    assert 'id="hud-caution"' in html or '"hud-caution"' in html
-    assert "anyDamage" in body
+    assert 'classList.toggle("active"' in body
+
+
+def test_instrument_panel_reads_params_from_flight_log():
+    """Airspeed/altimeter still pull from log.metadata.params (the
+    move from HUD overlay to instrument panel doesn't regress this)."""
+    html = _make_html()
+    assert "log.metadata.params" in html
+    assert "params.V" in html
+    assert "params.Oy" in html
+
+
+def test_old_hud_svg_overlay_removed():
+    """The previous full-screen HUD overlay (#hud-svg) is gone; the
+    big-screen pitch ladder, FPM, KIAS tape, etc. should not be in
+    the rendered HTML."""
+    html = _make_html()
+    assert 'id="hud-svg"' not in html
+    assert 'id="hud-fpm"' not in html
+    assert 'id="hud-pitch-ladder"' not in html
