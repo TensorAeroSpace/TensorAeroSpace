@@ -1107,8 +1107,8 @@
 
         // 3. Altimeter: 0..30000 ft, full circle (0..360° = 1 needle rev
         // per 30k ft → simple). Use one-pointer dial for clarity.
-        const pos = traj.position[idx];
-        const alt_m = trimAlt_m + (-pos[2]);
+        const posHud = traj.position[idx];
+        const alt_m = trimAlt_m + (-posHud[2]);
         const alt_ft = alt_m * 3.28084;
         _setNeedle("altimeter-needle", alt_ft, 0, 30000, 0, 360);
         _setText("altimeter-digital", String(Math.round(alt_ft)));
