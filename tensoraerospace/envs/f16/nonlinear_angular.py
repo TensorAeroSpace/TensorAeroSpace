@@ -139,6 +139,12 @@ class NonlinearAngularF16(gym.Env):
         )
         self.damage_manager: Optional[DamageManager] = None
 
+        # Damage history accumulators — populated across an episode for the
+        # 3D web exporter (tensoraerospace.visualization.three_d). Empty
+        # lists when no damage_profile is configured.
+        self.damage_events_log: list[dict] = []
+        self.damage_state_log: list[dict] = []
+
         # Filled in reset()
         self.model: AngularF16 | None = None
         self._step_index: int = 0
@@ -172,6 +178,15 @@ class NonlinearAngularF16(gym.Env):
             self.model.damage_state = self.damage_manager.state
             self.model.damage_geometry = geo
 
+        # Reset accumulator buffers and snapshot initial damage state
+        self.damage_events_log = []
+        self.damage_state_log = []
+        if self.damage_manager is not None:
+            self.damage_state_log.append({
+                "time": 0.0,
+                "state": self.damage_manager.state.snapshot(),
+            })
+
         self.position_history = np.zeros((1, 3), dtype=np.float64)
         self.attitude_history = self._extract_attitude(self.initial_state).reshape(1, 3)
         self.time_history = np.zeros((1,), dtype=np.float64)
@@ -204,6 +219,18 @@ class NonlinearAngularF16(gym.Env):
                 if self.damage_event_callback:
                     self.damage_event_callback(ev, self.damage_manager.state)
                 triggered_labels.append(ev.label or ev.event_type)
+                self.damage_events_log.append({
+                    "time": float(t_now),
+                    "label": ev.label or ev.event_type,
+                    "event_type": ev.event_type,
+                    "payload": dict(ev.payload),
+                })
+            if triggered:
+                # Snapshot the post-event damage state
+                self.damage_state_log.append({
+                    "time": float(t_now),
+                    "state": self.damage_manager.state.snapshot(),
+                })
 
         assert self.model is not None
         self.model.run_step(u_rad)
