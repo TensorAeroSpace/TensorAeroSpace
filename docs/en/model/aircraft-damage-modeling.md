@@ -45,6 +45,11 @@ It does this with three linked layers: a **section-based geometry**, a
 recompute** that feeds updated parameters and aero-coefficient deltas
 back into the existing F-16 ODEs.
 
+The diagram below shows how a scheduled event flows through the entire
+pipeline — from `DamageProfile` to the agent's observation:
+
+![End-to-end damage event lifecycle](img/damage_event_lifecycle.png)
+
 ### Layer 1 — Section-based geometry
 
 The aircraft is decomposed into 13 named sections (6 wing + 2 stabilator
@@ -152,6 +157,13 @@ i.e. ~12 % of the healthy lift. **Right**: asymmetric (left-only) loss
 generates a roll-moment delta `ΔMx` that scales with both `α` and `f` —
 this is the physics behind the dogfight scenario in
 `example/f16_damage_dogfight_demo.py`.
+
+The conceptual companion below collects the same physics into a single
+side-by-side comparison: symmetric loss preserves balance and only
+reduces lift, while asymmetric loss additionally introduces a CG shift
+and a rolling moment that grows with the loss fraction.
+
+![Symmetric vs asymmetric wing-tip loss — physical effects](img/damage_symmetric_vs_asymmetric.png)
 
 ### Putting it together — what the agent sees
 
