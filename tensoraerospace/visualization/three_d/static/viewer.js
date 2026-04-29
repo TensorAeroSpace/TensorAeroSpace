@@ -43,7 +43,7 @@
     const camera = new THREE.PerspectiveCamera(
         55, sceneEl.clientWidth / sceneEl.clientHeight, 0.1, 5000,
     );
-    camera.position.set(30, 25, 30);
+    camera.position.set(45, 30, 45);
     camera.lookAt(0, 0, 0);
 
     const controls = new THREE.OrbitControls(camera, renderer.domElement);
@@ -52,14 +52,166 @@
     controls.minDistance = 5;
     controls.maxDistance = 1500;
 
-    // ---- Aircraft placeholder (green cube) ----
-    // Phase C swaps this for a procedural F-16 mesh.
-    const aircraft = new THREE.Group();
-    const cubeMat = new THREE.MeshStandardMaterial({
-        color: 0x4a9e4a, metalness: 0.2, roughness: 0.6,
-    });
-    const cube = new THREE.Mesh(new THREE.BoxGeometry(8, 2, 8), cubeMat);
-    aircraft.add(cube);
+    // ---- Procedural F-16 from log.geometry.sections ----
+    function bodyToThree(bx, by, bz) {
+        // Body frame (x-fwd, y-right, z-down) → three.js (x-fwd, y-up, z-right)
+        return [bx, -bz, by];
+    }
+
+    function _materialFor(type, side) {
+        // Slight per-type tinting for readability without being garish
+        const base = {
+            wing:     0x2a7fb8,
+            stab:     0x3d8e57,
+            vtail:    0x9b59b6,
+            control:  0x27ae60,
+            fuselage: 0x95a5a6,
+        }[type] || 0xaaaaaa;
+        return new THREE.MeshStandardMaterial({
+            color: base, metalness: 0.3, roughness: 0.55,
+            side: THREE.DoubleSide,
+        });
+    }
+
+    function _trapezoidPanel(spanCenter, spanExtent, chord, xCenter, sweepRad) {
+        // Build a flat trapezoidal panel for a wing/stab section in body
+        // frame (x-fwd, y-right, z-down). The panel lies in the body x-y
+        // plane (z = 0). Sweep tilts the leading edge backward as we move
+        // outboard (|y| grows).
+        // Returns a BufferGeometry with two triangles (4 vertices).
+        //
+        // spanCenter   : y-coord of section centroid
+        // spanExtent   : total span (m) covered by the section
+        // chord        : streamwise extent at section centre
+        // xCenter      : x-coord of section centroid (= aero_x_arm)
+        // sweepRad     : leading-edge sweep angle (rad)
+        const yIn  = spanCenter - 0.5 * Math.sign(spanCenter || 1) * spanExtent;
+        const yOut = spanCenter + 0.5 * Math.sign(spanCenter || 1) * spanExtent;
+        // Outboard sweep offset: tip moves backward (-x) by tan(sweep) * |Δy|
+        const outboardDX = -Math.abs(yOut - spanCenter) * Math.tan(sweepRad);
+        // Four corners (in body frame, z=0):
+        //   LE-inboard, LE-outboard, TE-outboard, TE-inboard
+        const xLE_in  = xCenter + 0.5 * chord;
+        const xTE_in  = xCenter - 0.5 * chord;
+        const xLE_out = xLE_in + outboardDX;
+        const xTE_out = xTE_in + outboardDX;
+        const corners = [
+            bodyToThree(xLE_in,  yIn,  0),
+            bodyToThree(xLE_out, yOut, 0),
+            bodyToThree(xTE_out, yOut, 0),
+            bodyToThree(xTE_in,  yIn,  0),
+        ];
+        const positions = new Float32Array([
+            ...corners[0], ...corners[1], ...corners[2],
+            ...corners[0], ...corners[2], ...corners[3],
+        ]);
+        const geom = new THREE.BufferGeometry();
+        geom.setAttribute("position", new THREE.BufferAttribute(positions, 3));
+        geom.computeVertexNormals();
+        return geom;
+    }
+
+    function _vtailPanel(s) {
+        // Vertical fin: flat trapezoid in body x-z plane, mounted at
+        // span_position=0. The "span" of a vtail is in -z direction (up
+        // in three.js).
+        const xC = s.aero_x_arm;
+        const c = s.chord;
+        const heightBody = s.area / Math.max(c, 0.1);  // vertical extent
+        // Body z grows downward, so the vtail extends in -z (up)
+        const zRoot = 0;                  // attached at fuselage top
+        const zTip  = -heightBody;        // upward
+        const sweepRad = s.sweep || 0;
+        const tipDX = -heightBody * Math.tan(sweepRad);
+        const xLE_root = xC + 0.5 * c;
+        const xTE_root = xC - 0.5 * c;
+        const xLE_tip = xLE_root + tipDX;
+        const xTE_tip = xTE_root + tipDX;
+        const corners = [
+            bodyToThree(xLE_root, 0, zRoot),
+            bodyToThree(xLE_tip,  0, zTip),
+            bodyToThree(xTE_tip,  0, zTip),
+            bodyToThree(xTE_root, 0, zRoot),
+        ];
+        const positions = new Float32Array([
+            ...corners[0], ...corners[1], ...corners[2],
+            ...corners[0], ...corners[2], ...corners[3],
+        ]);
+        const geom = new THREE.BufferGeometry();
+        geom.setAttribute("position", new THREE.BufferAttribute(positions, 3));
+        geom.computeVertexNormals();
+        return geom;
+    }
+
+    function _fuselageMesh(s) {
+        // F-16 fuselage: stretched ellipsoid approximating ~14 m length,
+        // ~1.2 m diameter. SphereGeometry scaled along the body x-axis.
+        // Centred at (0, 0, 0) in body frame, then mapped into three.
+        const sphereGeom = new THREE.SphereGeometry(0.7, 16, 12);
+        const mat = _materialFor("fuselage", "center");
+        const mesh = new THREE.Mesh(sphereGeom, mat);
+        // Stretch X (forward axis); body-x in three.js is also +X.
+        mesh.scale.set(10.0, 1.0, 1.0);
+        return mesh;
+    }
+
+    function _controlSurfaceMesh(s) {
+        // Small flap/rudder/aileron — thin trapezoid attached at the
+        // trailing edge of its parent surface. We just render it as a
+        // smaller flat panel for visual reference.
+        const c = Math.max(s.chord, 0.3);
+        const yC = s.span_position;
+        const xC = s.aero_x_arm;
+        const span = s.area / Math.max(c, 0.1);
+        const corners = [
+            bodyToThree(xC + 0.5 * c, yC - 0.5 * span, 0),
+            bodyToThree(xC + 0.5 * c, yC + 0.5 * span, 0),
+            bodyToThree(xC - 0.5 * c, yC + 0.5 * span, 0),
+            bodyToThree(xC - 0.5 * c, yC - 0.5 * span, 0),
+        ];
+        const positions = new Float32Array([
+            ...corners[0], ...corners[1], ...corners[2],
+            ...corners[0], ...corners[2], ...corners[3],
+        ]);
+        const geom = new THREE.BufferGeometry();
+        geom.setAttribute("position", new THREE.BufferAttribute(positions, 3));
+        geom.computeVertexNormals();
+        return new THREE.Mesh(geom, _materialFor("control", s.side));
+    }
+
+    function _wingOrStabMesh(s) {
+        const span = s.area / Math.max(s.chord, 0.1);
+        const geom = _trapezoidPanel(
+            s.span_position, span, s.chord, s.aero_x_arm, s.sweep || 0,
+        );
+        return new THREE.Mesh(geom, _materialFor(s.type, s.side));
+    }
+
+    function buildAircraft(geometry) {
+        const group = new THREE.Group();
+        group.name = "aircraft";
+        for (const s of geometry.sections) {
+            let mesh;
+            if (s.type === "wing" || s.type === "stab") {
+                mesh = _wingOrStabMesh(s);
+            } else if (s.type === "vtail") {
+                const geom = _vtailPanel(s);
+                mesh = new THREE.Mesh(geom, _materialFor("vtail", "center"));
+            } else if (s.type === "control") {
+                mesh = _controlSurfaceMesh(s);
+            } else if (s.type === "fuselage") {
+                mesh = _fuselageMesh(s);
+            } else {
+                continue;
+            }
+            mesh.name = s.name;
+            mesh.userData = { type: s.type, side: s.side };
+            group.add(mesh);
+        }
+        return group;
+    }
+
+    const aircraft = buildAircraft(log.geometry);
     scene.add(aircraft);
 
     // ---- Trajectory trail ----
