@@ -19,7 +19,7 @@ from __future__ import annotations
 import numpy as np
 
 from .aero import get_cx, get_cy, get_cz, get_mx, get_my, get_mz
-from .params import F16AngularParameters
+from .params import F16AngularParameters, _isa_dynamic_pressure
 
 # State indices
 I_ALPHA, I_BETA, I_WX, I_WY, I_WZ = 0, 1, 2, 3, 4
@@ -73,16 +73,27 @@ def f16_ode_6dof(
     ail_act = float(u[1])
     dir_act = float(u[2])
 
+    # ---- Altitude-aware mode (track_altitude) ----
+    track_altitude = x.size >= 16
+    if track_altitude:
+        h_state = float(x[14])
+        V_state = float(x[15])
+        q_now = _isa_dynamic_pressure(h_state, V_state, p.g)
+    else:
+        h_state = p.Oy
+        V_state = p.V
+        q_now = p.q
+
     # ----------------------------------------------------------------
     # Aerodynamic coefficients
     # (argument order mirrors matlab: GetCx/Cy/Mz use stab as fi)
     # ----------------------------------------------------------------
-    cx = get_cx(alpha, beta, stab, p.lef, wz, p.V, p.bA, p.sb)
-    cy = get_cy(alpha, beta, stab, p.lef, wz, p.V, p.bA, p.sb)
-    cz = get_cz(alpha, beta, direc, ail, p.lef, wx, wy, p.V, p.l)
-    mx_ = get_mx(alpha, beta, stab, direc, ail, p.lef, wx, wy, p.V, p.l)
-    my_ = get_my(alpha, beta, stab, direc, ail, p.lef, wx, wy, p.V, p.l)
-    mz_ = get_mz(alpha, beta, stab, p.lef, wz, p.V, p.bA, p.sb)
+    cx = get_cx(alpha, beta, stab, p.lef, wz, V_state, p.bA, p.sb)
+    cy = get_cy(alpha, beta, stab, p.lef, wz, V_state, p.bA, p.sb)
+    cz = get_cz(alpha, beta, direc, ail, p.lef, wx, wy, V_state, p.l)
+    mx_ = get_mx(alpha, beta, stab, direc, ail, p.lef, wx, wy, V_state, p.l)
+    my_ = get_my(alpha, beta, stab, direc, ail, p.lef, wx, wy, V_state, p.l)
+    mz_ = get_mz(alpha, beta, stab, p.lef, wz, V_state, p.bA, p.sb)
 
     # ----------------------------------------------------------------
     # Apply damage corrections (no-op if damage_state is None)
@@ -101,9 +112,9 @@ def f16_ode_6dof(
     # ----------------------------------------------------------------
     # Aerodynamic forces (body frame)
     # ----------------------------------------------------------------
-    X = -p.q * p.S * cx
-    Y = p.q * p.S * cy
-    Z = p.q * p.S * cz
+    X = -q_now * p.S * cx
+    Y = q_now * p.S * cy
+    Z = q_now * p.S * cz
 
     # ----------------------------------------------------------------
     # Aerodynamic moments (body frame)
@@ -114,11 +125,11 @@ def f16_ode_6dof(
     # for symmetric/legacy operation (delta_stab == 0.0 → exact same Mx).
     delta_stab = float(p.delta_stab_cmd)
     if delta_stab != 0.0:
-        Mx = p.q * p.S * p.l * (mx_ - p.delta_stab_roll_gain * delta_stab)
+        Mx = q_now * p.S * p.l * (mx_ - p.delta_stab_roll_gain * delta_stab)
     else:
-        Mx = p.q * p.S * p.l * mx_
-    My = p.q * p.S * p.l * my_
-    Mz = p.q * p.S * p.bA * mz_
+        Mx = q_now * p.S * p.l * mx_
+    My = q_now * p.S * p.l * my_
+    Mz = q_now * p.S * p.bA * mz_
 
     # ----------------------------------------------------------------
     # Resultant forces and moments (shifted to actual CG)
@@ -177,10 +188,10 @@ def f16_ode_6dof(
     dalpha = (
         wz
         + (wy * sin_a - wx * cos_a) * np.tan(beta)
-        - (Ya + p.m * gay) / (p.m * p.V * cos_b)
+        - (Ya + p.m * gay) / (p.m * V_state * cos_b)
     )
 
-    dbeta = wx * sin_a + wy * cos_a + (Za + p.m * gaz) / (p.m * p.V)
+    dbeta = wx * sin_a + wy * cos_a + (Za + p.m * gaz) / (p.m * V_state)
 
     # ----------------------------------------------------------------
     # Euler-angle kinematics (Dx.gamma, Dx.theta, Dx.psi)
@@ -209,22 +220,44 @@ def f16_ode_6dof(
     dir_act_c = float(np.clip(dir_act, -p.maxabsdir, p.maxabsdir))
     dddir = (-2.0 * p.Tdir * p.Xidir * ddir - direc + dir_act_c) / (p.Tdir**2)
 
-    return np.array(
-        [
-            dalpha,
-            dbeta,
-            dwx,
-            dwy,
-            dwz,
-            dgamma,
-            dpsi,
-            dtheta,
-            dstab_out,
-            ddstab,
-            dail_out,
-            ddail,
-            ddir_out,
-            dddir,
-        ],
-        dtype=np.float64,
-    )
+    # ---- Altitude / airspeed dynamics (only when track_altitude) ----
+    if track_altitude:
+        # Body-frame velocity vector (V along body x, projected by alpha/beta)
+        v_body_x = V_state * cos_a * cos_b
+        v_body_y = V_state * sin_b
+        v_body_z = V_state * sin_a * cos_b
+        # Inertial z-component (NED, +z is down). Body→inertial via the
+        # standard 3-2-1 Euler matrix (yaw, pitch, roll).
+        v_inertial_z = (
+            -sin_th * v_body_x
+            + cos_th * sin_g * v_body_y
+            + cos_th * cos_g * v_body_z
+        )
+        dh = -v_inertial_z
+
+        # Flight path angle: angle between velocity vector and local horizontal.
+        # sin(γ) = -v_inertial_z / V (positive = climbing).
+        sin_gamma_path = -v_inertial_z / max(V_state, 1e-3)
+        sin_gamma_path = max(-1.0, min(1.0, sin_gamma_path))
+
+        # Drag magnitude (D = q·S·Cx; X = -D in body x convention).
+        drag = q_now * p.S * cx
+
+        # Thrust: from runtime override if set, otherwise from constant.
+        thrust = p.T_active
+        if not (thrust == thrust):  # NaN check
+            thrust = p.T_thrust
+
+        # Energy: dV/dt = (T·cos(α)·cos(β) − D) / m − g·sin(γ)
+        dV = (thrust * cos_a * cos_b - drag) / p.m - p.g * sin_gamma_path
+
+    base_dx = [
+        dalpha, dbeta, dwx, dwy, dwz,
+        dgamma, dpsi, dtheta,
+        dstab_out, ddstab,
+        dail_out, ddail,
+        ddir_out, dddir,
+    ]
+    if track_altitude:
+        base_dx.extend([dh, dV])
+    return np.array(base_dx, dtype=np.float64)

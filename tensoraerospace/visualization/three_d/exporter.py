@@ -97,6 +97,20 @@ def build_flight_log(env) -> dict[str, Any]:
             "ail":   x_hist[:, 10].tolist(),
             "dir":   x_hist[:, 12].tolist(),
         }
+    elif n_state == 16:
+        # Altitude-tracking angular: same as 14-state plus h and V.
+        traj_channels = {
+            "alpha": x_hist[:, 0].tolist(),
+            "beta":  x_hist[:, 1].tolist(),
+            "wx":    x_hist[:, 2].tolist(),
+            "wy":    x_hist[:, 3].tolist(),
+            "wz":    x_hist[:, 4].tolist(),
+            "stab":  x_hist[:, 8].tolist(),
+            "ail":   x_hist[:, 10].tolist(),
+            "dir":   x_hist[:, 12].tolist(),
+            "altitude_m":  x_hist[:, 14].tolist(),
+            "airspeed_mps": x_hist[:, 15].tolist(),
+        }
     elif n_state == 4:
         # Longitudinal: [alpha, wz, stab, dstab]
         traj_channels = {
@@ -111,7 +125,7 @@ def build_flight_log(env) -> dict[str, Any]:
         }
     else:
         raise ValueError(
-            f"Unsupported model state dimension {n_state}; expected 4 or 14."
+            f"Unsupported model state dimension {n_state}; expected 4, 14, or 16."
         )
 
     return {

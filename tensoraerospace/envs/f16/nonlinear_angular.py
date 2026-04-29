@@ -92,6 +92,8 @@ class NonlinearAngularF16(gym.Env):
         damage_observable: bool = False,
         damage_event_callback=None,
         split_stab: bool = False,
+        track_altitude: bool = False,
+        thrust_mode: str = "constant",
     ) -> None:
         super().__init__()
         if initial_state.shape != (14,):
@@ -113,24 +115,29 @@ class NonlinearAngularF16(gym.Env):
         self.chart_states = tuple(chart_states)
         self.trail_length = trail_length
         self.split_stab = split_stab
+        self.track_altitude = track_altitude
+        self.thrust_mode = thrust_mode
         self.damage_profile = damage_profile
         self.damage_observable = damage_observable
         self.damage_event_callback = damage_event_callback
 
         self.max_action_value = 25.0  # deg
 
-        action_shape = (4,) if split_stab else (3,)
+        n_action = 4 if split_stab else 3
+        if thrust_mode == "control":
+            n_action += 1
+        action_shape = (n_action,)
         self.action_space = spaces.Box(
             low=-self.max_action_value, high=self.max_action_value,
             shape=action_shape, dtype=np.float64,
         )
 
-        # Observation: 14 model states + optional damage state vector
-        obs_size = 14
+        # Observation: model state size + optional damage state vector
+        obs_size = 16 if track_altitude else 14
         if damage_observable:
             geo = load_f16_geometry()
-            obs_size += len(geo.section_names())  # section_loss vector
-            obs_size += 1  # engine.thrust_factor
+            obs_size += len(geo.section_names())
+            obs_size += 1
         self.observation_space = spaces.Box(
             low=-np.inf, high=np.inf, shape=(obs_size,), dtype=np.float64,
         )
@@ -162,6 +169,8 @@ class NonlinearAngularF16(gym.Env):
             dt=self.dt,
             integrator=self.integrator,
             split_stab=self.split_stab,
+            track_altitude=self.track_altitude,
+            thrust_mode=self.thrust_mode,
         )
         self._step_index = 0
 
@@ -201,11 +210,23 @@ class NonlinearAngularF16(gym.Env):
 
     def step(self, action):
         action = np.asarray(action, dtype=np.float64).reshape(-1)
-        expected = (4,) if self.split_stab else (3,)
+        n_action = 4 if self.split_stab else 3
+        if self.thrust_mode == "control":
+            n_action += 1
+        expected = (n_action,)
         if action.shape != expected:
             raise ValueError(f"action must be {expected}; got {action.shape}")
-        action_clipped = np.clip(action, -self.max_action_value, self.max_action_value)
-        u_rad = np.deg2rad(action_clipped)
+        if self.thrust_mode == "control":
+            # Last element is thrust in Newtons; don't deg→rad it.
+            surfaces = action[:-1]
+            thrust = action[-1:]
+            surfaces_clipped = np.clip(
+                surfaces, -self.max_action_value, self.max_action_value)
+            u_rad = np.concatenate([np.deg2rad(surfaces_clipped), thrust])
+        else:
+            action_clipped = np.clip(
+                action, -self.max_action_value, self.max_action_value)
+            u_rad = np.deg2rad(action_clipped)
 
         # Time bookkeeping (BEFORE stepping the model)
         t_prev = self._step_index * self.dt

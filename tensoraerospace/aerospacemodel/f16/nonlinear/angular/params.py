@@ -42,6 +42,19 @@ class F16AngularParameters:
     # F-16 stabilator to give realistic roll rates ~30 deg/s for δ=10 deg.
     delta_stab_roll_gain: float = 0.6
 
+    # Thrust (N). When the model is configured with thrust_mode="constant"
+    # (default), T_thrust is the fixed propulsive force applied along the
+    # body x-axis. When thrust_mode="control", the runtime thrust input is
+    # clipped to [0, T_max_thrust]. Default ≈ 10 kN balances drag at the
+    # default trim point (V=120 m/s, Oy=3000 m, alpha≈5°). Real F-16
+    # F100 engine: ~129 kN max with afterburner.
+    T_thrust: float = 10000.0
+    T_max_thrust: float = 130000.0
+    # Runtime override set by AngularF16.run_step when thrust_mode is
+    # "control"; the ODE reads this in place of T_thrust. Defaults to NaN
+    # so we can detect "not set yet" → fall back to T_thrust.
+    T_active: float = field(init=False, default=float("nan"))
+
     # Damage subsystem hooks (set by AngularF16.run_step before each
     # integrator step). None = healthy aircraft. The damage_state and
     # damage_geometry are passed through params (rather than as ODE args)

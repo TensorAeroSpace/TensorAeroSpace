@@ -1099,16 +1099,21 @@
             );
         }
 
-        // 2. Airspeed: needle 0..600 KIAS over 0..330° (0 at bottom-left,
-        // i.e. 7 o'clock, sweeping clockwise to 5 o'clock).
-        const kias = airspeed_mps * 1.94384;
+        // 2. Airspeed: needle 0..600 KIAS. Prefer the live airspeed from
+        // the simulation if available (track_altitude=True envs export
+        // traj.airspeed_mps); otherwise fall back to params.V (constant).
+        const live_V = traj.airspeed_mps ? traj.airspeed_mps[idx] : airspeed_mps;
+        const kias = live_V * 1.94384;
         _setNeedle("airspeed-needle", kias, 0, 600, -150, 150);
         _setText("airspeed-digital", String(Math.round(kias)));
 
-        // 3. Altimeter: 0..30000 ft, full circle (0..360° = 1 needle rev
-        // per 30k ft → simple). Use one-pointer dial for clarity.
+        // 3. Altimeter: 0..30000 ft. Prefer simulation altitude when
+        // available (track_altitude=True envs export traj.altitude_m);
+        // otherwise compute kinematically from inertial position.
         const posHud = traj.position[idx];
-        const alt_m = trimAlt_m + (-posHud[2]);
+        const alt_m = traj.altitude_m
+            ? traj.altitude_m[idx]
+            : trimAlt_m + (-posHud[2]);
         const alt_ft = alt_m * 3.28084;
         _setNeedle("altimeter-needle", alt_ft, 0, 30000, 0, 360);
         _setText("altimeter-digital", String(Math.round(alt_ft)));
@@ -1128,7 +1133,9 @@
         // 0.5 s lookback over altitude.
         const VSI_LOOKBACK = 50;
         const j = Math.max(0, idx - VSI_LOOKBACK);
-        const altPrev_m = trimAlt_m + (-traj.position[j][2]);
+        const altPrev_m = traj.altitude_m
+            ? traj.altitude_m[j]
+            : trimAlt_m + (-traj.position[j][2]);
         const dT_s = (idx - j) * dt || dt;
         const vvi_fpm = (alt_m - altPrev_m) * 3.28084 / dT_s * 60.0;
         // Map -6000..+6000 → -150..+150 (0 at top of dial).
@@ -1148,7 +1155,7 @@
         _setText("aoa-digital", alphaDeg.toFixed(1));
 
         // 7. G-meter: 0..10 G, 0 at bottom-left (-150°), 10 at bottom-right (+150°).
-        const gLoad = 1.0 + Math.abs(wzRad * airspeed_mps) / G_EARTH;
+        const gLoad = 1.0 + Math.abs(wzRad * live_V) / G_EARTH;
         _setNeedle("g-needle", gLoad, 0, 10, -150, 150);
         _setText("g-digital", gLoad.toFixed(1));
 
