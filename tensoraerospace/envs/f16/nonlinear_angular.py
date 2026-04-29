@@ -301,9 +301,25 @@ class NonlinearAngularF16(gym.Env):
             prev_state = self.initial_state
         alpha, beta = prev_state[0], prev_state[1]
         roll, yaw, pitch = prev_state[5], prev_state[6], prev_state[7]
-        v_body = _body_velocity(self.airspeed, alpha, beta)
+        # Use the integrated airspeed when available, otherwise the constant.
+        v_for_step = (
+            float(prev_state[15])
+            if self.track_altitude and prev_state.size >= 16
+            else self.airspeed
+        )
+        v_body = _body_velocity(v_for_step, alpha, beta)
         v_inertial = _body_to_inertial_matrix(roll, pitch, yaw) @ v_body
         new_pos = self.position_history[-1] + v_inertial * self.dt
+        # When the model integrates altitude itself (state[14]), use that as
+        # the source of truth for the vertical position. The kinematic
+        # reconstruction above relies on a body-z-up DCM that disagrees
+        # with the body-z-down convention assumed by the 3D viewer
+        # (`y_three = -pos[2]`), so for non-trivial alpha the visual
+        # vertical motion would not match the true altitude trajectory.
+        if self.track_altitude and next_state.size >= 16:
+            h_init = float(self.model.x_history[0].reshape(-1)[14])
+            h_now = float(next_state[14])
+            new_pos[2] = h_init - h_now
 
         self.position_history = np.vstack([self.position_history, new_pos[None, :]])
         self.attitude_history = np.vstack(
