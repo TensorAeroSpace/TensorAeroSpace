@@ -86,11 +86,13 @@ class F16NonlinearOnboardCE:
     _RATE_IDX = (2, 4, 3)
     _DEFLECTION_IDX = (8, 10, 12)  # stab, ail, dir actuator positions.
 
-    def __init__(self, params=None, perturb: float = 1e-3) -> None:
+    def __init__(self, params: "F16AngularParameters | None" = None,
+                 perturb: float = 1e-3) -> None:
         from tensoraerospace.aerospacemodel.f16.nonlinear.angular.dynamics import (
             f16_ode_6dof,
         )
         from tensoraerospace.aerospacemodel.f16.nonlinear.angular.params import (
+            F16AngularParameters,  # noqa: F401  — referenced by the annotation.
             default_parameters,
         )
         if perturb <= 0.0:
