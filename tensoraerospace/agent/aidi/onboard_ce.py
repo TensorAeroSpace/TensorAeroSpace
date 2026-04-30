@@ -14,9 +14,14 @@ implementations are provided:
 
 from __future__ import annotations
 
-from typing import Protocol, runtime_checkable
+from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
 import numpy as np
+
+if TYPE_CHECKING:
+    from tensoraerospace.aerospacemodel.f16.nonlinear.angular.params import (
+        F16AngularParameters,
+    )
 
 
 @runtime_checkable
@@ -92,8 +97,7 @@ class F16NonlinearOnboardCE:
         from tensoraerospace.aerospacemodel.f16.nonlinear.angular.dynamics import (
             f16_ode_6dof,
         )
-        from tensoraerospace.aerospacemodel.f16.nonlinear.angular.params import (  # noqa: F401  — F16AngularParameters referenced by the annotation.
-            F16AngularParameters,
+        from tensoraerospace.aerospacemodel.f16.nonlinear.angular.params import (
             default_parameters,
         )
 
