@@ -83,6 +83,7 @@ plugins:
               - IMGDHP: agent/imgdhp.md
               - ET-DHP: agent/et_dhp.md
               - AA-INDI: agent/aa_indi.md
+              - AIDI: agent/aidi.md
               - iADP: agent/iadp.md
               - HDP: agent/hdp.md
               - ADHDP: agent/adhdp.md
@@ -223,6 +224,7 @@ plugins:
               - IMGDHP: agent/imgdhp.md
               - ET-DHP: agent/et_dhp.md
               - AA-INDI: agent/aa_indi.md
+              - AIDI: agent/aidi.md
               - iADP: agent/iadp.md
               - HDP: agent/hdp.md
               - ADHDP: agent/adhdp.md
