@@ -22,6 +22,20 @@ def f16_ode_long(
     cy = get_cy(alpha, 0.0, stab, p.lef, wz, p.V, p.bA, p.sb)
     mz = get_mz(alpha, 0.0, stab, p.lef, wz, p.V, p.bA, p.sb)
 
+    # ----------------------------------------------------------------
+    # Apply damage corrections (no-op if damage_state is None).
+    # In this model, mz is the PITCHING moment coefficient (not yaw),
+    # so we add delta_my from aero_corrections (which uses standard
+    # convention M_y = pitch).
+    # ----------------------------------------------------------------
+    damage_state = p.damage_state
+    damage_geo = p.damage_geometry
+    if damage_state is not None and damage_geo is not None:
+        from ..damage import aero_corrections as _ac
+
+        cy = cy + _ac.delta_cy(alpha, 0.0, damage_geo, damage_state)
+        mz = mz + _ac.delta_my(alpha, 0.0, damage_geo, damage_state)
+
     Y = p.q * p.S * cy
     Mz = p.q * p.S * p.bA * mz
 

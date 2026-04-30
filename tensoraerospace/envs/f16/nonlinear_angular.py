@@ -27,6 +27,11 @@ import numpy as np
 from gymnasium import spaces
 
 from tensoraerospace.aerospacemodel.f16.nonlinear.angular import AngularF16
+from tensoraerospace.aerospacemodel.f16.nonlinear.damage import (
+    DamageManager,
+    DamageProfile,
+    load_f16_geometry,
+)
 from tensoraerospace.visualization.kinematics import (
     _body_to_inertial_matrix,
     _body_velocity,
@@ -72,7 +77,7 @@ class NonlinearAngularF16(gym.Env):
     longitudinal convention so existing controllers transfer.
     """
 
-    metadata = {"render_modes": ["human", "rgb_array", "live"]}
+    metadata = {"render_modes": ["human", "rgb_array", "live", "3d_web"]}
 
     def __init__(
         self,
@@ -85,6 +90,12 @@ class NonlinearAngularF16(gym.Env):
         render_mode: Optional[str] = None,
         chart_states: Sequence[str] = DEFAULT_CHART_STATES,
         trail_length: Optional[int] = None,
+        damage_profile: Optional[DamageProfile] = None,
+        damage_observable: bool = False,
+        damage_event_callback=None,
+        split_stab: bool = False,
+        track_altitude: bool = False,
+        thrust_mode: str = "constant",
     ) -> None:
         super().__init__()
         if initial_state.shape != (14,):
@@ -105,20 +116,57 @@ class NonlinearAngularF16(gym.Env):
         self.render_mode = render_mode
         self.chart_states = tuple(chart_states)
         self.trail_length = trail_length
+        self.split_stab = split_stab
+        self.track_altitude = track_altitude
+        self.thrust_mode = thrust_mode
+        self.damage_profile = damage_profile
+        self.damage_observable = damage_observable
+        self.damage_event_callback = damage_event_callback
 
         self.max_action_value = 25.0  # deg
-        self.observation_space = spaces.Box(
-            low=-np.inf,
-            high=np.inf,
-            shape=(14,),
-            dtype=np.float64,
-        )
+
+        n_action = 4 if split_stab else 3
+        if thrust_mode == "control":
+            n_action += 1
+        action_shape = (n_action,)
         self.action_space = spaces.Box(
             low=-self.max_action_value,
             high=self.max_action_value,
-            shape=(3,),
+            shape=action_shape,
             dtype=np.float64,
         )
+
+        # Observation: model state size + optional damage state vector
+        obs_size = 16 if track_altitude else 14
+        if damage_observable:
+            geo = load_f16_geometry()
+            obs_size += len(geo.section_names())
+            obs_size += 1
+        self.observation_space = spaces.Box(
+            low=-np.inf,
+            high=np.inf,
+            shape=(obs_size,),
+            dtype=np.float64,
+        )
+        self._geo_for_obs = (
+            load_f16_geometry() if (damage_observable or damage_profile) else None
+        )
+        self.damage_manager: Optional[DamageManager] = None
+
+        # Damage history accumulators — populated across an episode for the
+        # 3D web exporter (tensoraerospace.visualization.three_d). Empty
+        # lists when no damage_profile is configured.
+        self.damage_events_log: list[dict] = []
+        self.damage_state_log: list[dict] = []
+
+        # Optional reference / commanded signals for visualization. Maps a
+        # chart channel key (e.g. "alpha", "theta", "V", "h") to a sequence
+        # of length T — values must be in the same DISPLAY units the
+        # corresponding 3D-viewer chart uses (deg for angular states, m/s
+        # for airspeed, m for altitude). The 3D exporter passes these
+        # through to ``traj.references`` for the viewer to overlay on each
+        # chart. Set by the user code before calling ``env.render()``.
+        self.reference_signals: dict[str, list[float]] = {}
 
         # Filled in reset()
         self.model: AngularF16 | None = None
@@ -136,8 +184,37 @@ class NonlinearAngularF16(gym.Env):
             t0=0,
             dt=self.dt,
             integrator=self.integrator,
+            split_stab=self.split_stab,
+            track_altitude=self.track_altitude,
+            thrust_mode=self.thrust_mode,
         )
         self._step_index = 0
+
+        # Damage manager
+        if self.damage_profile is not None or self.damage_observable:
+            geo = self._geo_for_obs
+            self.damage_manager = DamageManager(
+                geometry=geo,
+                params=self.model.param,
+                profile=(self.damage_profile or DamageProfile(events=[])),
+            )
+            if options and "damage_profile" in options:
+                self.damage_manager.set_profile(options["damage_profile"])
+            self.damage_manager.reset(seed=seed)
+            self.model.damage_state = self.damage_manager.state
+            self.model.damage_geometry = geo
+
+        # Reset accumulator buffers and snapshot initial damage state
+        self.damage_events_log = []
+        self.damage_state_log = []
+        if self.damage_manager is not None:
+            self.damage_state_log.append(
+                {
+                    "time": 0.0,
+                    "state": self.damage_manager.state.snapshot(),
+                }
+            )
+
         self.position_history = np.zeros((1, 3), dtype=np.float64)
         self.attitude_history = self._extract_attitude(self.initial_state).reshape(1, 3)
         self.time_history = np.zeros((1,), dtype=np.float64)
@@ -146,34 +223,94 @@ class NonlinearAngularF16(gym.Env):
             for name in self.chart_states
         }
         self._live_renderer = None
-        return self.initial_state.copy(), {}
+
+        obs = self._build_observation(self.initial_state)
+        return obs, {}
 
     def step(self, action):
         action = np.asarray(action, dtype=np.float64).reshape(-1)
-        if action.shape != (3,):
-            raise ValueError(f"action must be (3,); got {action.shape}")
+        n_action = 4 if self.split_stab else 3
+        if self.thrust_mode == "control":
+            n_action += 1
+        expected = (n_action,)
+        if action.shape != expected:
+            raise ValueError(f"action must be {expected}; got {action.shape}")
+        if self.thrust_mode == "control":
+            # Last element is thrust in Newtons; don't deg→rad it.
+            surfaces = action[:-1]
+            thrust = action[-1:]
+            surfaces_clipped = np.clip(
+                surfaces, -self.max_action_value, self.max_action_value
+            )
+            u_rad = np.concatenate([np.deg2rad(surfaces_clipped), thrust])
+        else:
+            action_clipped = np.clip(
+                action, -self.max_action_value, self.max_action_value
+            )
+            u_rad = np.deg2rad(action_clipped)
 
-        # Clip to bounds, convert to radians
-        action_clipped = np.clip(
-            action,
-            -self.max_action_value,
-            self.max_action_value,
-        )
-        u_rad = np.deg2rad(action_clipped)
+        # Time bookkeeping (BEFORE stepping the model)
+        t_prev = self._step_index * self.dt
+        t_now = (self._step_index + 1) * self.dt
 
-        # Step the model
+        # Damage events
+        triggered_labels: list[str] = []
+        if self.damage_manager is not None:
+            triggered = self.damage_manager.update(t_now, t_prev)
+            for ev in triggered:
+                if self.damage_event_callback:
+                    self.damage_event_callback(ev, self.damage_manager.state)
+                triggered_labels.append(ev.label or ev.event_type)
+                self.damage_events_log.append(
+                    {
+                        "time": float(t_now),
+                        "label": ev.label or ev.event_type,
+                        "event_type": ev.event_type,
+                        "payload": dict(ev.payload),
+                    }
+                )
+            if triggered:
+                # Snapshot the post-event damage state
+                self.damage_state_log.append(
+                    {
+                        "time": float(t_now),
+                        "state": self.damage_manager.state.snapshot(),
+                    }
+                )
+
         assert self.model is not None
         self.model.run_step(u_rad)
         next_state = self.model.current_state.copy()
 
         # Update tracking
         self._update_history(next_state)
-
         self._step_index += 1
         terminated = False
         truncated = self._step_index >= self.number_time_steps
         reward = 0.0
-        return next_state, reward, terminated, truncated, {}
+
+        info: dict = {}
+        if self.damage_manager is not None:
+            info["damage_state"] = self.damage_manager.state.snapshot()
+            if triggered_labels:
+                info["damage_events_triggered"] = triggered_labels
+
+        obs = self._build_observation(next_state)
+        return obs, reward, terminated, truncated, info
+
+    def _build_observation(self, model_state: np.ndarray) -> np.ndarray:
+        if not self.damage_observable or self.damage_manager is None:
+            return model_state.copy()
+        geo = self._geo_for_obs
+        names = geo.section_names()
+        loss_vec = np.array(
+            [self.damage_manager.state.section_loss.get(n, 0.0) for n in names],
+            dtype=np.float64,
+        )
+        thrust_vec = np.array(
+            [self.damage_manager.state.engine.thrust_factor], dtype=np.float64
+        )
+        return np.concatenate([model_state, loss_vec, thrust_vec])
 
     def _extract_attitude(self, state: np.ndarray) -> np.ndarray:
         """(roll, pitch, yaw) = (gamma, theta, psi) from the state vector."""
@@ -189,9 +326,25 @@ class NonlinearAngularF16(gym.Env):
             prev_state = self.initial_state
         alpha, beta = prev_state[0], prev_state[1]
         roll, yaw, pitch = prev_state[5], prev_state[6], prev_state[7]
-        v_body = _body_velocity(self.airspeed, alpha, beta)
+        # Use the integrated airspeed when available, otherwise the constant.
+        v_for_step = (
+            float(prev_state[15])
+            if self.track_altitude and prev_state.size >= 16
+            else self.airspeed
+        )
+        v_body = _body_velocity(v_for_step, alpha, beta)
         v_inertial = _body_to_inertial_matrix(roll, pitch, yaw) @ v_body
         new_pos = self.position_history[-1] + v_inertial * self.dt
+        # When the model integrates altitude itself (state[14]), use that as
+        # the source of truth for the vertical position. The kinematic
+        # reconstruction above relies on a body-z-up DCM that disagrees
+        # with the body-z-down convention assumed by the 3D viewer
+        # (`y_three = -pos[2]`), so for non-trivial alpha the visual
+        # vertical motion would not match the true altitude trajectory.
+        if self.track_altitude and next_state.size >= 16:
+            h_init = float(self.model.x_history[0].reshape(-1)[14])
+            h_now = float(next_state[14])
+            new_pos[2] = h_init - h_now
 
         self.position_history = np.vstack([self.position_history, new_pos[None, :]])
         self.attitude_history = np.vstack(
@@ -219,6 +372,8 @@ class NonlinearAngularF16(gym.Env):
             return self._render_rgb_array()
         if self.render_mode == "live":
             return self._render_live()
+        if self.render_mode == "3d_web":
+            return self._render_3d_web()
         raise ValueError(f"Unknown render_mode: {self.render_mode!r}")
 
     def _build_figure(self):
@@ -273,6 +428,11 @@ class NonlinearAngularF16(gym.Env):
             },
         )
         return self._live_renderer._fig
+
+    def _render_3d_web(self):
+        from tensoraerospace.visualization.three_d import render as _render_3d
+
+        return _render_3d(self)
 
     def close(self):
         return None

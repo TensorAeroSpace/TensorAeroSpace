@@ -114,7 +114,7 @@ agent2 = PPO.load('./checkpoints/ppo_f16', env=make_eval_env())
 |---|---|
 | **DSAC на B747 со ступенчатым воздействием (источник графика выше)** | [`example/agent/dsac/example-dsac-b747.md`](../example/agent/dsac/example-dsac-b747.md) |
 | DSAC на B747, синусоидальное слежение | [`example/agent/dsac/train-dsac-b747-tracking.md`](../example/agent/dsac/train-dsac-b747-tracking.md) |
-| PPO на B747 (нормированная среда) | [`example/agent/ppo`](../example/agent/ppo/) |
+| PPO на B747 (нормированная среда) | `example/reinforcement_learning/example_a2c_b747_improved.ipynb` и соседние PPO-ноутбуки |
 | SAC на линейной F-16 | [`example/agent/sac/example-sac-f16.md`](../example/agent/sac/example-sac-f16.md) — медленнее сходится, полезно как референс архитектуры |
 | SAC на B747 | [`example/agent/sac/example-sac-b747.md`](../example/agent/sac/example-sac-b747.md) |
 

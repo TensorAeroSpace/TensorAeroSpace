@@ -114,7 +114,7 @@ For the five online-adaptive agents (IHDP, IM-GDHP, ET-DHP, AA-INDI, iADP) the p
 |---|---|
 | **DSAC on B747 step response (source of plot above)** | [`example/agent/dsac/example-dsac-b747.md`](../example/agent/dsac/example-dsac-b747.md) |
 | DSAC on B747 sinusoid tracking | [`example/agent/dsac/train-dsac-b747-tracking.md`](../example/agent/dsac/train-dsac-b747-tracking.md) |
-| PPO on B747 (normalised env) | [`example/agent/ppo`](../example/agent/ppo/) |
+| PPO on B747 (normalised env) | `example/reinforcement_learning/example_a2c_b747_improved.ipynb` and adjacent PPO notebooks |
 | SAC on linear F-16 | [`example/agent/sac/example-sac-f16.md`](../example/agent/sac/example-sac-f16.md) — slower to converge, useful for architecture reference |
 | SAC on B747 | [`example/agent/sac/example-sac-b747.md`](../example/agent/sac/example-sac-b747.md) |
 

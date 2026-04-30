@@ -1,0 +1,556 @@
+:root {
+    --hud-bg: rgba(20, 20, 30, 0.85);
+    --hud-fg: #e8e8f0;
+    --accent: #4a90e2;
+}
+
+* { box-sizing: border-box; }
+html, body {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+    background: #0a0a14;
+    color: var(--hud-fg);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+    overflow: hidden;
+}
+#scene {
+    position: absolute;
+    inset: 0;
+}
+#hud {
+    position: absolute;
+    top: 12px;
+    left: 12px;
+    background: var(--hud-bg);
+    padding: 10px 14px;
+    border-radius: 6px;
+    font-size: 13px;
+    line-height: 1.5;
+    pointer-events: none;
+    user-select: none;
+    min-width: 180px;
+}
+#hud .label { color: #999; margin-right: 6px; }
+#hud .value { font-family: "SF Mono", "Consolas", monospace; }
+#controls {
+    position: absolute;
+    bottom: 212px;            /* sit just above the 200 px instrument panel */
+    left: 12px;
+    right: 12px;
+    background: var(--hud-bg);
+    padding: 10px 14px;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    z-index: 6;               /* above panel (z=5) and scene */
+    pointer-events: auto;
+}
+#controls button {
+    background: var(--accent);
+    color: white;
+    border: none;
+    padding: 6px 14px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 13px;
+}
+#controls button:hover { filter: brightness(1.2); }
+#timeline {
+    flex: 1;
+    height: 6px;
+    -webkit-appearance: none;
+    appearance: none;
+    background: #2a2a3a;
+    border-radius: 3px;
+    outline: none;
+}
+#timeline::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: var(--accent);
+    cursor: pointer;
+}
+#timeline::-moz-range-thumb {
+    width: 14px;
+    height: 14px;
+    border: 0;
+    border-radius: 50%;
+    background: var(--accent);
+    cursor: pointer;
+}
+.speed-label {
+    font-size: 12px;
+    color: #999;
+}
+#keyboard-help {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    background: var(--hud-bg);
+    padding: 10px 14px;
+    border-radius: 6px;
+    font-size: 12px;
+    line-height: 1.7;
+    pointer-events: none;
+    user-select: none;
+    color: #b0b0c0;
+}
+#keyboard-help .kbd-title {
+    color: var(--hud-fg);
+    font-weight: 600;
+    margin-bottom: 6px;
+}
+#keyboard-help kbd {
+    display: inline-block;
+    background: #2a2a3a;
+    color: var(--hud-fg);
+    padding: 1px 5px;
+    border-radius: 3px;
+    border: 1px solid #404050;
+    font-family: "SF Mono", "Consolas", monospace;
+    font-size: 11px;
+    margin: 0 1px;
+}
+
+/* Floating "?" badge to hint that the help overlay exists. */
+#hud::after {
+    content: "press H for shortcuts";
+    display: block;
+    margin-top: 8px;
+    font-size: 10px;
+    color: #707080;
+    font-style: italic;
+}
+
+/* ============== Instrument Panel ============== */
+#instrument-panel {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 200px;
+    background: linear-gradient(to bottom, #1c1f24 0%, #14171c 100%);
+    border-top: 2px solid #3a3f47;
+    box-shadow: 0 -4px 16px rgba(0,0,0,0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 5;
+    pointer-events: none;
+    user-select: none;
+}
+#instrument-panel .bezel-row {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 8px 16px;
+}
+#instrument-panel .gauge {
+    background: #232730;
+    border: 1px solid #3a3f47;
+    border-radius: 6px;
+    padding: 6px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    box-shadow: inset 0 1px 2px rgba(0,0,0,0.6),
+                0 1px 0 rgba(255,255,255,0.04);
+}
+#instrument-panel .gauge-large  { width: 170px; }
+#instrument-panel .gauge-large svg  { width: 156px; height: 156px; }
+#instrument-panel .gauge-medium { width: 130px; }
+#instrument-panel .gauge-medium svg { width: 116px; height: 116px; }
+#instrument-panel .gauge-narrow { width: 80px; }
+#instrument-panel .gauge-narrow svg { width: 70px; height: 116px; }
+#instrument-panel .gauge-label {
+    color: #a0a8b0;
+    font-size: 10px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    margin-bottom: 4px;
+    font-family: "SF Mono", "Consolas", monospace;
+}
+
+/* Round-dial common bits */
+#instrument-panel .dial-bezel {
+    fill: #2a2e36;
+    stroke: #4a505a;
+    stroke-width: 1;
+}
+#instrument-panel .dial-face {
+    fill: #f5f1e8;
+    stroke: #c4bea7;
+    stroke-width: 0.5;
+}
+#instrument-panel .dial-ticks line {
+    stroke: #1a1a1a;
+    stroke-width: 1.2;
+}
+#instrument-panel .dial-ticks .major {
+    stroke-width: 2.0;
+}
+#instrument-panel .dial-labels text {
+    fill: #1a1a1a;
+    font-family: "SF Mono", "Consolas", monospace;
+    font-size: 7px;
+    font-weight: 700;
+    text-anchor: middle;
+}
+#instrument-panel .dial-redzone {
+    fill: none;
+    stroke: #c0392b;
+    stroke-width: 4;
+}
+#instrument-panel .needle {
+    stroke: #1a1a1a;
+    stroke-width: 2.5;
+    stroke-linecap: round;
+    transform-origin: 0px 0px;
+    transition: transform 0.08s linear;
+}
+#instrument-panel .needle-hub {
+    fill: #c0c0c0;
+    stroke: #1a1a1a;
+    stroke-width: 0.5;
+}
+#instrument-panel .digital-readout {
+    fill: #1a1a1a;
+    font-family: "SF Mono", "Consolas", monospace;
+    font-size: 9px;
+    font-weight: 700;
+}
+#instrument-panel .digital-readout-small {
+    fill: #d8d4c5;
+    font-family: "SF Mono", "Consolas", monospace;
+    font-size: 8px;
+}
+
+/* ADI / artificial horizon */
+#instrument-panel .adi-bezel {
+    fill: #1a1d22;
+    stroke: #4a505a;
+    stroke-width: 1.5;
+}
+#instrument-panel .adi-sky    { fill: #2a6fb0; }
+#instrument-panel .adi-ground { fill: #6b4a2a; }
+#instrument-panel .adi-horizon {
+    stroke: #ffffff;
+    stroke-width: 1.2;
+}
+#instrument-panel .adi-pitch-rung {
+    stroke: #ffffff;
+    stroke-width: 0.6;
+    fill: none;
+}
+#instrument-panel .adi-pitch-label {
+    fill: #ffffff;
+    font-family: "SF Mono", "Consolas", monospace;
+    font-size: 5px;
+    text-anchor: middle;
+}
+#instrument-panel .adi-reticle line,
+#instrument-panel .adi-reticle circle {
+    stroke: #f5d544;
+    stroke-width: 1.6;
+    fill: none;
+}
+#instrument-panel .adi-pointer {
+    fill: #f5d544;
+    stroke: #1a1a1a;
+    stroke-width: 0.4;
+}
+
+/* HSI compass */
+#instrument-panel .hsi-card-tick {
+    stroke: #1a1a1a;
+    stroke-width: 0.8;
+}
+#instrument-panel .hsi-card-tick.major {
+    stroke-width: 1.4;
+}
+#instrument-panel .hsi-card-label {
+    fill: #1a1a1a;
+    font-family: "SF Mono", "Consolas", monospace;
+    font-size: 8px;
+    font-weight: 700;
+    text-anchor: middle;
+}
+#instrument-panel .hsi-card-cardinal {
+    fill: #c0392b;
+}
+#instrument-panel .hsi-aircraft {
+    fill: #f5d544;
+    stroke: #1a1a1a;
+    stroke-width: 0.5;
+}
+#instrument-panel .hsi-index {
+    fill: #f5d544;
+    stroke: #1a1a1a;
+    stroke-width: 0.4;
+}
+
+/* AOA strip */
+#instrument-panel .strip-bg {
+    fill: #f5f1e8;
+    stroke: #c4bea7;
+    stroke-width: 0.5;
+}
+#instrument-panel .strip-tick {
+    stroke: #1a1a1a;
+    stroke-width: 0.8;
+}
+#instrument-panel .strip-tick-major {
+    stroke: #1a1a1a;
+    stroke-width: 1.5;
+}
+#instrument-panel .strip-label {
+    fill: #1a1a1a;
+    font-family: "SF Mono", "Consolas", monospace;
+    font-size: 6px;
+}
+#instrument-panel .strip-pointer {
+    fill: #c0392b;
+    stroke: #1a1a1a;
+    stroke-width: 0.4;
+    transition: transform 0.08s linear;
+}
+
+/* Master caution lamp */
+.caution-lamp {
+    width: 90px;
+    height: 50px;
+    margin-left: 8px;
+    background: #2a1818;
+    border: 2px solid #4a2828;
+    border-radius: 4px;
+    color: #5a2a2a;
+    font-family: "SF Mono", "Consolas", monospace;
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 1px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-shadow: 0 1px 0 #000;
+    transition: background 0.15s, color 0.15s, border-color 0.15s,
+                box-shadow 0.15s;
+}
+.caution-lamp.active {
+    background: #f04030;
+    border-color: #ff8050;
+    color: #ffffff;
+    text-shadow: 0 1px 1px rgba(0,0,0,0.6);
+    box-shadow: 0 0 18px rgba(240, 64, 48, 0.7),
+                inset 0 1px 0 rgba(255,255,255,0.3);
+    animation: caution-pulse 1.2s ease-in-out infinite;
+}
+@keyframes caution-pulse {
+    0%, 100% { opacity: 1.0; }
+    50%      { opacity: 0.78; }
+}
+
+/* The 3D scene needs to leave room for the panel at the bottom. */
+#scene { bottom: 200px; }
+
+/* ============== Time-series charts panel ============== */
+#charts-panel {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    width: 340px;
+    min-width: 220px;
+    max-width: 80vw;
+    max-height: calc(100vh - 280px);
+    overflow-y: auto;
+    background: var(--hud-bg);
+    border-radius: 6px;
+    padding: 8px 10px 8px 14px;       /* extra left padding for resize gutter */
+    z-index: 7;
+    user-select: none;
+    display: none;
+    scrollbar-width: thin;
+    scrollbar-color: #4a505a transparent;
+}
+#charts-panel::-webkit-scrollbar { width: 6px; }
+#charts-panel::-webkit-scrollbar-thumb {
+    background: #4a505a;
+    border-radius: 3px;
+}
+#charts-panel .charts-resize-handle {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 6px;
+    height: 100%;
+    cursor: ew-resize;
+    background: transparent;
+    transition: background 0.15s;
+}
+#charts-panel .charts-resize-handle:hover,
+#charts-panel.resizing .charts-resize-handle {
+    background: rgba(74, 144, 226, 0.5);
+}
+#charts-panel .charts-title {
+    color: var(--hud-fg);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 1.2px;
+    text-transform: uppercase;
+    margin-bottom: 6px;
+    padding-bottom: 4px;
+    border-bottom: 1px solid #2a2a3a;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+#charts-panel .charts-title .charts-title-text {
+    flex: 1;
+}
+#charts-panel .charts-size-group {
+    display: flex;
+    gap: 2px;
+    margin-right: 4px;
+}
+#charts-panel .charts-size-btn,
+#charts-panel .charts-menu-btn {
+    background: #2a2a3a;
+    color: #b0b0c0;
+    border: 1px solid #3a3f47;
+    border-radius: 3px;
+    font-family: inherit;
+    font-size: 10px;
+    font-weight: 700;
+    padding: 2px 6px;
+    cursor: pointer;
+    line-height: 1;
+}
+#charts-panel .charts-size-btn:hover,
+#charts-panel .charts-menu-btn:hover {
+    background: #3a3a4a;
+    color: var(--hud-fg);
+}
+#charts-panel .charts-size-btn.active {
+    background: var(--accent);
+    color: white;
+    border-color: var(--accent);
+}
+#charts-panel .charts-menu-btn { padding: 2px 7px; }
+
+#charts-panel .charts-menu {
+    background: #1a1d22;
+    border: 1px solid #3a3f47;
+    border-radius: 4px;
+    padding: 6px 8px;
+    margin-bottom: 6px;
+    font-size: 10px;
+    line-height: 1.6;
+    display: none;
+    grid-template-columns: 1fr 1fr;
+    gap: 2px 12px;
+}
+#charts-panel .charts-menu.open { display: grid; }
+#charts-panel .charts-menu label {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    color: #b0b0c0;
+    cursor: pointer;
+    letter-spacing: 0.4px;
+}
+#charts-panel .charts-menu label:hover { color: var(--hud-fg); }
+#charts-panel .charts-menu input[type="checkbox"] {
+    accent-color: var(--accent);
+    margin: 0;
+    cursor: pointer;
+}
+
+#charts-panel .chart {
+    margin-bottom: 4px;
+    position: relative;
+}
+#charts-panel .chart.hidden { display: none; }
+#charts-panel .chart svg {
+    display: block;
+    width: 100%;
+    height: var(--chart-height, 56px);
+    background: #14171c;
+    border: 1px solid #2a2a3a;
+    border-radius: 3px;
+    transition: height 0.15s;
+}
+#charts-panel .chart-hide-btn {
+    position: absolute;
+    top: 1px;
+    right: 1px;
+    background: transparent;
+    color: #4a505a;
+    border: none;
+    cursor: pointer;
+    font-size: 14px;
+    line-height: 1;
+    padding: 1px 5px;
+    border-radius: 3px;
+    opacity: 0;
+    transition: opacity 0.15s, color 0.15s, background 0.15s;
+}
+#charts-panel .chart:hover .chart-hide-btn { opacity: 1; }
+#charts-panel .chart-hide-btn:hover {
+    background: rgba(240, 64, 48, 0.6);
+    color: white;
+}
+#charts-panel .chart-axis {
+    stroke: #2a2a3a;
+    stroke-width: 0.5;
+}
+#charts-panel .chart-line {
+    stroke: #4a90e2;
+    stroke-width: 1.2;
+    fill: none;
+    vector-effect: non-scaling-stroke;
+}
+#charts-panel .chart-ref-line {
+    stroke: #f5a623;
+    stroke-width: 1.0;
+    stroke-dasharray: 3 2;
+    fill: none;
+    vector-effect: non-scaling-stroke;
+    opacity: 0.85;
+}
+#charts-panel .chart-ref-value {
+    fill: #f5a623;
+    font-family: "SF Mono", "Consolas", monospace;
+    font-size: 8px;
+    font-weight: 600;
+    text-anchor: end;
+    opacity: 0.9;
+}
+#charts-panel .chart-cursor {
+    stroke: #f5d544;
+    stroke-width: 1.0;
+    stroke-dasharray: 2 2;
+}
+#charts-panel .chart-label {
+    fill: #a0a8b0;
+    font-family: "SF Mono", "Consolas", monospace;
+    font-size: 9px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+}
+#charts-panel .chart-value {
+    fill: #e8e8f0;
+    font-family: "SF Mono", "Consolas", monospace;
+    font-size: 10px;
+    font-weight: 700;
+    text-anchor: end;
+}
+#charts-panel .chart-extreme {
+    fill: #707080;
+    font-family: "SF Mono", "Consolas", monospace;
+    font-size: 7px;
+}
