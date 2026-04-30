@@ -38,3 +38,7 @@ from .mpc.mpc import MPCAgent as MPCAgent  # noqa: F401
 from .mpc.mpc import MPCAgent as TorchMPCAgent
 from .ppo.model import PPO as PPO  # noqa: F401
 from .sac.sac import SAC as SAC  # noqa: F401
+
+# AIDI — Adaptive Incremental Dynamic Inversion (Ul Haq et al. 2026)
+from .aidi.model import AIDIAgent as AIDIAgent  # noqa: F401
+from .aidi.model import AIDIConfig as AIDIConfig  # noqa: F401
