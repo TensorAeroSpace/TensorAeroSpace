@@ -44,7 +44,9 @@ class ScalingRLS:
         sigma0: float = 1e-3,
         memory_length: int = 100,
         cov_init: float = 1.0,
-        consistency_threshold: float = 1e-6,
+        consistency_threshold: float = 10.0,
+        observability_floor: float = 1e-8,
+        cov_trace_bound: float | None = None,
         seed: int | None = None,
     ) -> None:
         if not 0.0 < lambda_min <= lambda_max <= 1.0:
@@ -53,6 +55,8 @@ class ScalingRLS:
             raise ValueError("sigma0 and memory_length must be positive")
         if cov_init <= 0.0:
             raise ValueError("cov_init must be positive")
+        if observability_floor < 0.0:
+            raise ValueError("observability_floor must be ≥ 0")
         del seed  # reserved.
 
         self.n_y = int(n_y)
@@ -63,6 +67,19 @@ class ScalingRLS:
         self.memory_length = int(memory_length)
         self.cov_init = float(cov_init)
         self.consistency_threshold = float(consistency_threshold)
+        # Below this magnitude, the regressor entry G[i,j]·Δu[j] is treated
+        # as carrying no information about θ[i,j]; we freeze the column in
+        # both the parameter vector and its covariance to stop the
+        # estimator from drifting along an unobservable direction.
+        self.observability_floor = float(observability_floor)
+        # Upper bound on trace(P_i): prevents covariance windup under VFF
+        # forgetting when the regressor is poorly excited. ``None`` ⇒ no
+        # bound. Default below picks ``cov_trace_bound = 100·n_u·cov_init``,
+        # i.e. allow ~100× growth before saturating.
+        self.cov_trace_bound = (
+            float(cov_trace_bound) if cov_trace_bound is not None
+            else 100.0 * self.n_u * self.cov_init
+        )
 
         self.theta = np.ones((self.n_y, self.n_u), dtype=np.float64)
         self.P = np.stack(
@@ -130,22 +147,51 @@ class ScalingRLS:
         lambdas = np.empty(self.n_y, dtype=np.float64)
 
         for i in range(self.n_y):
-            phi = (G[i, :] * du_v).reshape(-1, 1)            # (n_u, 1)
-            theta_row = self.theta[i, :].reshape(-1, 1)      # (n_u, 1)
+            phi_full = (G[i, :] * du_v)                       # (n_u,)
+            # Mask out unobservable directions (zero regressor) to keep
+            # the parameters and covariance bounded along those axes.
+            mask = np.abs(phi_full) > self.observability_floor
+            if not np.any(mask):
+                lambdas[i] = self.last_lambda[i]
+                residuals[i] = float(dy_v[i])
+                continue
+            phi = phi_full.reshape(-1, 1)
+            theta_row = self.theta[i, :].reshape(-1, 1)
             P_i = self.P[i]
             eps_i = float(dy_v[i] - (theta_row.T @ phi).item())
-            P_phi = P_i @ phi                                # (n_u, 1)
+            P_phi = P_i @ phi                                 # (n_u, 1)
             denom = self.last_lambda[i] + float((phi.T @ P_phi).item())
             denom = denom if abs(denom) > 1e-12 else 1e-12
-            K_i = P_phi / denom                              # (n_u, 1)
+            K_i = P_phi / denom                               # (n_u, 1)
+
+            # Zero the gain on unobservable directions so neither θ nor P
+            # drift there.
+            mask_col = mask.reshape(-1, 1).astype(np.float64)
+            K_i = K_i * mask_col
 
             delta_theta[i, :] = (K_i * eps_i).reshape(-1)
             phi_K_scalar = float((phi.T @ K_i).item())
             lam_new = self._info_content_lambda(eps_i, phi_K_scalar)
             lambdas[i] = lam_new
 
-            self.P[i] = (P_i - K_i @ P_phi.T) / lam_new
-            self.P[i] = 0.5 * (self.P[i] + self.P[i].T)  # symmetrise
+            P_new = (P_i - K_i @ P_phi.T) / lam_new
+            # Restore covariance for unobservable directions to its prior;
+            # this stops 1/λ inflation along inert axes.
+            inert = ~mask
+            if inert.any():
+                P_new[np.ix_(inert, inert)] = (
+                    np.eye(int(inert.sum())) * self.cov_init
+                )
+                # Also clear the cross-blocks between observable and inert
+                # to avoid contamination via coupling.
+                P_new[np.ix_(mask, inert)] = 0.0
+                P_new[np.ix_(inert, mask)] = 0.0
+            P_new = 0.5 * (P_new + P_new.T)                   # symmetrise
+            # Trace bound — caps covariance windup under VFF forgetting.
+            tr = float(np.trace(P_new))
+            if self.cov_trace_bound > 0.0 and tr > self.cov_trace_bound:
+                P_new *= self.cov_trace_bound / tr
+            self.P[i] = P_new
 
             residuals[i] = eps_i
 

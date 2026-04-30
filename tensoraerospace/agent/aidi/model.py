@@ -66,8 +66,12 @@ class AIDIConfig:
     # match the F-16 nonlinear ODE convention; a 25° envelope ≈ 0.4363 rad.
     u_magnitude_limit: float = math.radians(25.0)
     u_rate_limit: float = math.radians(60.0)
-    pinv_rcond: float = 1e-8
-    cond_threshold: float = 1e8
+    pinv_rcond: float = 1e-6
+    # Only fall back to Δu = 0 when ``G`` is essentially singular —
+    # numpy.linalg.pinv with ``rcond`` already handles graceful degradation
+    # on weak singular directions. The default threshold is generous so we
+    # only trip on truly broken matrices (zero row / column).
+    cond_threshold: float = 1e12
     sensor_cutoff_hz: float = 15.0
 
     # Scaling-RLS.
@@ -76,7 +80,14 @@ class AIDIConfig:
     rls_sigma0: float = 1e-3
     rls_memory_length: int = 100
     rls_cov_init: float = 1.0
-    rls_consistency_threshold: float = 1e-6
+    # Cross-axis consistency check (paper §III.C, page 10) only helps when
+    # control surfaces are *redundantly* mapped to the same moment axes
+    # (Flying V's 5-surface layout). On a 3×3 plant like the F-16 nonlinear
+    # angular env, surfaces are mostly axis-aligned so per-row updates
+    # legitimately differ — averaging them erases the signal. Default to a
+    # very loose threshold (≈ off); set ≤ 1e-6 only on truly redundant
+    # plants.
+    rls_consistency_threshold: float = 10.0
 
     # PCH.
     pch_freeze_after: int = 30

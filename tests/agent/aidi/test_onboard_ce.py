@@ -23,7 +23,8 @@ def test_linear_onboard_ce_independent_of_inputs():
     np.testing.assert_array_equal(ce(np.zeros(5), np.zeros(7)), B)
 
 
-def test_f16_onboard_ce_reproduces_finite_difference():
+def test_f16_onboard_ce_reproduces_finite_difference_over_deflection():
+    """G is ∂ω̇/∂(deflection) — perturb state[8/10/12], not the control vector."""
     f16 = pytest.importorskip(
         "tensoraerospace.aerospacemodel.f16.nonlinear.angular.dynamics",
     )
@@ -39,17 +40,19 @@ def test_f16_onboard_ce_reproduces_finite_difference():
     adapter = F16NonlinearOnboardCE(params=params, perturb=1e-3)
     G = adapter(x, u)
 
-    # Reference Richardson finite difference at finer step.
     eps_fine = 5e-4
     G_ref = np.zeros((3, 3))
-    rate_idx = [2, 3, 4]
-    for j in range(3):
-        u_plus = u.copy(); u_plus[j] += eps_fine
-        u_minus = u.copy(); u_minus[j] -= eps_fine
-        f_plus = f16.f16_ode_6dof(x, u_plus, 0.0, params)[rate_idx]
-        f_minus = f16.f16_ode_6dof(x, u_minus, 0.0, params)[rate_idx]
-        G_ref[:, j] = (f_plus - f_minus) / (2 * eps_fine)
+    rate_idx = [2, 4, 3]  # (p, q, r) in this codebase's wx/wy/wz layout.
+    deflection_idx = [8, 10, 12]
+    for j_local, j_state in enumerate(deflection_idx):
+        x_plus = x.copy(); x_plus[j_state] += eps_fine
+        x_minus = x.copy(); x_minus[j_state] -= eps_fine
+        f_plus = f16.f16_ode_6dof(x_plus, u, 0.0, params)[rate_idx]
+        f_minus = f16.f16_ode_6dof(x_minus, u, 0.0, params)[rate_idx]
+        G_ref[:, j_local] = (f_plus - f_minus) / (2 * eps_fine)
 
+    # G must NOT be all-zero — the deflection-to-rate gain is real.
+    assert np.linalg.norm(G) > 1e-3
     np.testing.assert_allclose(G, G_ref, atol=5e-3, rtol=5e-3)
 
 

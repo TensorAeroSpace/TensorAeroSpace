@@ -53,23 +53,38 @@ class LinearOnboardCE:
 class F16NonlinearOnboardCE:
     """Finite-difference adapter over the F-16 6-DoF angular ODE.
 
-    Computes ``G_ij = ∂ω̇_i/∂u_j`` by central differencing
-    ``f16_ode_6dof`` around the supplied operating point. The 14-element
-    state vector is expected (``[α, β, p, q, r, γ, ψ, θ, ...]``), and
-    ``G`` is returned in the angular-rate basis ``(p, q, r)`` (rows 2,3,4
-    of the ODE).
+    The F-16 angular ODE applies aero moments through the *actuator
+    positions* held in the state vector (indices 8 = stab, 10 = ail,
+    12 = dir); the control input ``u`` only feeds the second-order
+    actuator dynamics. INDI's control-effectiveness is therefore the
+    gain from **actuator deflection** to angular acceleration, with
+    time-scale separation handing the actuator dynamics over to the
+    inner loop's increment law (``Δu ≡ Δ(deflection)`` on the airframe
+    time-scale).
+
+    Axis-ordering note: this F-16 codebase stores the body rates in the
+    order ``(wx, wy, wz) = (p, r, q)`` — i.e. ``wy`` is **yaw rate** and
+    ``wz`` is **pitch rate**. The adapter remaps so the returned matrix
+    rows correspond to the conventional ``(p, q, r)`` order expected by
+    the AIDI outer loop (CStar/roll/sideslip).
+
+    We compute ``G_ij = ∂ω̇_i/∂(deflection_j)`` by central differencing
+    ``f16_ode_6dof`` around the operating point: perturb state[8/10/12]
+    in turn, read rows 2/4/3 of the ODE output (= p, q, r). The
+    returned matrix is in the basis ``(p, q, r) × (stab, ail, dir)``.
 
     Args:
         params: F-16 parameter set (defaults to
             :func:`default_parameters`).
-        perturb: Half-width of the central-difference perturbation,
-            in the same units the ODE expects on its control vector
+        perturb: Half-width of the central-difference perturbation
             (radians).
     """
 
     n_state = 3
     n_control = 3
-    _RATE_IDX = (2, 3, 4)
+    # State indices for (p, q, r) — note this codebase stores wy=r and wz=q.
+    _RATE_IDX = (2, 4, 3)
+    _DEFLECTION_IDX = (8, 10, 12)  # stab, ail, dir actuator positions.
 
     def __init__(self, params=None, perturb: float = 1e-3) -> None:
         from tensoraerospace.aerospacemodel.f16.nonlinear.angular.dynamics import (
@@ -93,12 +108,14 @@ class F16NonlinearOnboardCE:
             raise ValueError(
                 f"u must have length {self.n_control}; got {u_v.size}"
             )
+        del u  # control input is unused here (CE is wrt deflection state).
         rate_idx = list(self._RATE_IDX)
+        defl_idx = list(self._DEFLECTION_IDX)
         G = np.zeros((self.n_state, self.n_control), dtype=np.float64)
-        for j in range(self.n_control):
-            u_plus = u_v.copy(); u_plus[j] += self._eps
-            u_minus = u_v.copy(); u_minus[j] -= self._eps
-            f_plus = self._ode(x_v, u_plus, 0.0, self._params)[rate_idx]
-            f_minus = self._ode(x_v, u_minus, 0.0, self._params)[rate_idx]
-            G[:, j] = (f_plus - f_minus) / (2.0 * self._eps)
+        for j_local, j_state in enumerate(defl_idx):
+            x_plus = x_v.copy(); x_plus[j_state] += self._eps
+            x_minus = x_v.copy(); x_minus[j_state] -= self._eps
+            f_plus = self._ode(x_plus, u_v, 0.0, self._params)[rate_idx]
+            f_minus = self._ode(x_minus, u_v, 0.0, self._params)[rate_idx]
+            G[:, j_local] = (f_plus - f_minus) / (2.0 * self._eps)
         return G
