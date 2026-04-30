@@ -26,16 +26,60 @@
     // best practice: render-pixel-ratio).
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     renderer.setSize(sceneEl.clientWidth, sceneEl.clientHeight);
+    // PBR-correct tone mapping for HDR-friendly output
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.0;
+    renderer.outputColorSpace = THREE.SRGBColorSpace;
     sceneEl.appendChild(renderer.domElement);
 
     const scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x0a0a14);
+    scene.background = new THREE.Color(0x4a6a9a);
 
-    // Soft ambient + directional lights (sun-like)
-    scene.add(new THREE.AmbientLight(0x404060, 0.6));
-    const sun = new THREE.DirectionalLight(0xfff0d0, 1.0);
-    sun.position.set(40, 60, 40);
+    // ---- Environment map (PMREMGenerator sky) ----
+    // Procedurally-generated equirect sky → PMREM cube → scene.environment.
+    // Gives PBR metalness/roughness something to reflect: the canopy looks
+    // glassy, fuselage gains proper sky highlights, missiles read as metal.
+    // No external assets required. (Three.js rule: lighting-environment)
+    function _buildSkyEnvMap(rend) {
+        const pmrem = new THREE.PMREMGenerator(rend);
+        pmrem.compileEquirectangularShader();
+
+        const c = document.createElement("canvas");
+        c.width = 512; c.height = 256;
+        const ctx = c.getContext("2d");
+        const grad = ctx.createLinearGradient(0, 0, 0, 256);
+        grad.addColorStop(0.00, "#5a7fb5");   // upper sky
+        grad.addColorStop(0.45, "#7a9bc8");   // horizon haze
+        grad.addColorStop(0.50, "#8a8270");   // horizon line
+        grad.addColorStop(1.00, "#3a3530");   // ground / desert
+        ctx.fillStyle = grad;
+        ctx.fillRect(0, 0, 512, 256);
+        // Faint "sun" highlight to bias reflections
+        const sunGrad = ctx.createRadialGradient(380, 70, 4, 380, 70, 60);
+        sunGrad.addColorStop(0, "rgba(255,240,200,0.95)");
+        sunGrad.addColorStop(1, "rgba(255,240,200,0)");
+        ctx.fillStyle = sunGrad;
+        ctx.fillRect(0, 0, 512, 256);
+
+        const tex = new THREE.CanvasTexture(c);
+        tex.mapping = THREE.EquirectangularReflectionMapping;
+        tex.colorSpace = THREE.SRGBColorSpace;
+        const envRT = pmrem.fromEquirectangular(tex);
+        tex.dispose();
+        pmrem.dispose();
+        return envRT.texture;
+    }
+    scene.environment = _buildSkyEnvMap(renderer);
+
+    // Three lights total (lighting-limit-lights rule: ≤3 active lights).
+    // Lower ambient now that env map provides ambient reflections.
+    scene.add(new THREE.AmbientLight(0xffffff, 0.25));
+    const sun = new THREE.DirectionalLight(0xfff0d0, 0.9);
+    sun.position.set(40, 60, 30);
     scene.add(sun);
+    // Hemisphere fill: sky colour from above, ground from below
+    const fillLight = new THREE.HemisphereLight(0x6a7fb5, 0x3a3530, 0.4);
+    scene.add(fillLight);
 
     // Ground grid (10 x 10 units, 100 m subdivisions)
     const grid = new THREE.GridHelper(2000, 40, 0x303048, 0x202030);
@@ -43,8 +87,10 @@
     scene.add(grid);
 
     // ---- Camera + controls ----
+    // Near=1m: we never look from < 1 m away. Far=8000m for long trails.
+    // Tighter near plane improves depth-buffer precision (camera-near-far rule).
     const camera = new THREE.PerspectiveCamera(
-        55, sceneEl.clientWidth / sceneEl.clientHeight, 0.1, 5000,
+        55, sceneEl.clientWidth / sceneEl.clientHeight, 1, 8000,
     );
     camera.position.set(20, 14, 20);
     camera.lookAt(0, 0, 0);
@@ -187,8 +233,10 @@
         const opacity = opts.opacity ?? 1.0;
         const transparent = !!opts.transparent;
         const emissive = opts.emissive ?? 0;
+        const emissiveIntensity = opts.emissiveIntensity ?? 1.0;
         const cacheKey = [
             color, metalness, roughness, opacity, transparent, emissive,
+            emissiveIntensity,
         ].join("|");
         if (!unique) {
             const hit = _stdMatCache.get(cacheKey);
@@ -199,11 +247,54 @@
         const mat = new THREE.MeshStandardMaterial({
             color, metalness, roughness, opacity, transparent,
             side: THREE.DoubleSide,
-            ...(emissive ? { emissive } : {}),
+            ...(emissive ? { emissive, emissiveIntensity } : {}),
             ...cleanOpts,
         });
         if (!unique) _stdMatCache.set(cacheKey, mat);
         return mat;
+    }
+
+    // ---- Manual geometry merge helper ----
+    // BufferGeometryUtils.mergeGeometries is not shipped in the UMD build,
+    // so we do it manually. Takes an array of {geom, matrix?} pairs and
+    // concatenates position + normal attributes into one BufferGeometry.
+    // (Three.js rule: geometry-merge-static)
+    function _mergeGeoms(pairs) {
+        let totalVerts = 0;
+        for (const { geom } of pairs) {
+            totalVerts += geom.attributes.position.count;
+        }
+        const posArr = new Float32Array(totalVerts * 3);
+        const nrmArr = new Float32Array(totalVerts * 3);
+        let off = 0;
+        const _tmp = new THREE.Vector3();
+        const _nrm = new THREE.Vector3();
+        for (const { geom, matrix } of pairs) {
+            const pos = geom.attributes.position;
+            const nrm = geom.attributes.normal;
+            const normalMatrix = matrix
+                ? new THREE.Matrix3().getNormalMatrix(matrix)
+                : null;
+            for (let i = 0; i < pos.count; i++) {
+                _tmp.fromBufferAttribute(pos, i);
+                if (matrix) _tmp.applyMatrix4(matrix);
+                posArr[(off + i) * 3]     = _tmp.x;
+                posArr[(off + i) * 3 + 1] = _tmp.y;
+                posArr[(off + i) * 3 + 2] = _tmp.z;
+                if (nrm) {
+                    _nrm.fromBufferAttribute(nrm, i);
+                    if (normalMatrix) _nrm.applyNormalMatrix(normalMatrix).normalize();
+                    nrmArr[(off + i) * 3]     = _nrm.x;
+                    nrmArr[(off + i) * 3 + 1] = _nrm.y;
+                    nrmArr[(off + i) * 3 + 2] = _nrm.z;
+                }
+            }
+            off += pos.count;
+        }
+        const merged = new THREE.BufferGeometry();
+        merged.setAttribute("position", new THREE.BufferAttribute(posArr, 3));
+        merged.setAttribute("normal",   new THREE.BufferAttribute(nrmArr, 3));
+        return merged;
     }
 
     function _quadGeom(c0, c1, c2, c3) {
@@ -430,7 +521,6 @@
         }));
 
         // Stitch fuselage segments (skip the cap station at index 0)
-        const fuse = new THREE.Group();
         const fuseGeomsVerts = [];
         for (let i = 1; i < stations.length; i++) {
             const segGeom = _fuseSegment(stations[i - 1], stations[i]);
@@ -457,48 +547,76 @@
         hump.position.set(2.0, 0.62, 0);
         group.add(hump);
 
-        // ---- CANOPY ----
-        // Two-piece: forward windscreen wedge + rear bubble.
-        // Windscreen: a slightly tilted half-ellipsoid section
-        const windscreenGeom = new THREE.SphereGeometry(0.9, 16, 12, 0, Math.PI * 2, 0, Math.PI * 0.55);
-        windscreenGeom.scale(1.0, 0.5, 0.72);
-        const windscreen = new THREE.Mesh(
-            windscreenGeom,
-            _stdMat(0x1a2a38, { metalness: 0.75, roughness: 0.05,
-                                 transparent: true, opacity: 0.82 }),
+        // ---- CANOPY — single bubble teardrop (F-16 frameless canopy) ----
+        // One smooth tapered dome: starts low/angled at x≈+3.5 (windscreen),
+        // peaks at x≈+2.0, tapers to x≈-1.5 along the fuselage spine.
+        // Built as a SphereGeometry upper hemisphere with per-vertex x-stretch
+        // so the shape is a proper teardrop rather than a symmetric dome.
+        const canopyGeom = new THREE.SphereGeometry(
+            0.95, 28, 18,           // radius, widthSeg, heightSeg
+            0, Math.PI * 2,         // phiStart, phiLength (full revolution)
+            0, Math.PI * 0.52,      // thetaStart, thetaLength (upper ~half)
         );
-        windscreen.rotation.z = 0.28;   // lean forward ~16°
-        windscreen.position.set(3.5, 0.88, 0);
-        group.add(windscreen);
+        {
+            const cpos = canopyGeom.attributes.position;
+            for (let i = 0; i < cpos.count; ++i) {
+                const sx = cpos.getX(i);   // sphere-local x in [-0.95, +0.95]
+                const sy = cpos.getY(i);   // sphere y (up)
+                const sz = cpos.getZ(i);   // sphere z (right)
+                // Map sphere x-range [-0.95, +0.95] → body x [+3.5, -1.5]
+                const t = (sx + 0.95) / 1.9;          // 0=front, 1=back
+                const newBx = 3.5 - 5.0 * t;
+                // Taper width and height toward both ends (sin gives 0 at ends)
+                const taper = Math.sin(Math.PI * t);
+                const widthScale  = 0.35 + 0.65 * taper;
+                const heightScale = 0.42 + 0.58 * taper;
+                // In three.js space: X=body-fwd, Y=body-up, Z=body-right.
+                // Sphere's Y is "height" (up), Z is "sideways".
+                cpos.setXYZ(
+                    i,
+                    newBx,
+                    sy * heightScale + 0.55,    // offset up so base sits at y≈+0.55
+                    sz * widthScale,
+                );
+            }
+            cpos.needsUpdate = true;
+        }
+        canopyGeom.computeVertexNormals();
 
-        // Rear bubble: main F-16 frameless canopy dome
-        const bubbleGeom = new THREE.SphereGeometry(0.92, 20, 14, 0, Math.PI * 2, 0, Math.PI * 0.6);
-        bubbleGeom.scale(1.55, 0.60, 0.80);
         const bubble = new THREE.Mesh(
-            bubbleGeom,
-            _stdMat(0x1f2f3e, { metalness: 0.72, roughness: 0.06,
-                                 transparent: true, opacity: 0.80 }),
+            canopyGeom,
+            _stdMat(0x182838, { metalness: 0.88, roughness: 0.04,
+                                 transparent: true, opacity: 0.70 }),
         );
         bubble.name = "fuselage_canopy";
-        bubble.position.set(2.0, 0.90, 0);
         group.add(bubble);
 
-        // Canopy frame / sill — slim dark ring around the canopy base
-        const sillGeom = new THREE.TorusGeometry(0.82, 0.055, 7, 28);
+        // Canopy sill band — thin dark torus at the canopy's base where it
+        // meets the fuselage. Slightly elongated to follow canopy footprint.
+        const sillGeom = new THREE.TorusGeometry(0.80, 0.04, 8, 32);
         const sill = new THREE.Mesh(
             sillGeom,
-            _stdMat(0x151f28, { metalness: 0.45, roughness: 0.35 }),
+            _stdMat(0x111820, { metalness: 0.5, roughness: 0.4 }),
         );
         sill.rotation.x = Math.PI / 2;
-        sill.scale.set(1.52, 1.0, 0.70);
-        sill.position.set(2.0, 0.60, 0);
+        sill.scale.set(2.2, 1.0, 0.75);    // elongate to follow canopy footprint
+        sill.position.set(1.0, 0.56, 0);   // centred under the canopy
         group.add(sill);
 
+        // Pilot helmet — small dark sphere visible through the canopy.
+        // Positioned at body (x=+2.0, y=0, z=-0.85) → three.js (2.0, +0.85, 0).
+        const helmetGeom = new THREE.SphereGeometry(0.18, 10, 8);
+        const helmet = new THREE.Mesh(
+            helmetGeom,
+            _stdMat(0x1a1a1f, { metalness: 0.3, roughness: 0.7 }),
+        );
+        helmet.position.set(2.0, 0.88, 0);
+        group.add(helmet);
+
         // ---- INTAKE ----
-        // Build as four trapezoidal panels forming a rectangular duct,
-        // with a visible darker cavity at the intake face.
-        // Intake in body coords: centre at bx ~ +1.8, by = 0, bz = +1.1
-        // (body +z = down → three.js -y). Duct width ≈ 1.4 m, height ≈ 0.7 m.
+        // Recessed oval-mouth chin intake with boundary-layer splitter plate.
+        // The mouth is an oval at body x = +3.8, hanging ~0.95 m below
+        // the centreline (body bz ≈ +0.95), ±0.80 wide × ±0.45 tall.
         function _intakePanelGeom(corners4_body) {
             const c = corners4_body.map(([bx, by, bz]) => bodyToThree(bx, by, bz));
             return _quadGeom(c[0], c[1], c[2], c[3]);
@@ -507,61 +625,98 @@
         const intakeGroup = new THREE.Group();
         intakeGroup.name = "fuselage_intake";
 
-        // Duct corners in body space (bx_front, bx_back, width, top_z, bot_z)
-        const iFront = +4.2, iBack = -0.2;
-        const iHalfW = 0.72, iTop = +0.78, iBot = +1.48;
-        // Four panels: left wall, right wall, top ceiling, bottom floor
-        const iMat = _stdMat(F16_COLORS.intake, { metalness: 0.45 });
+        // Duct corners in body space
+        const iFront = +3.8, iBack = +1.5;
+        const iHalfW = 0.80, iTop = +0.60, iBot = +1.50;
+        const iMat = _stdMat(F16_COLORS.intake, { metalness: 0.48, roughness: 0.45 });
+
+        // Collect all static intake geometry for merging into one mesh
+        const intakeDecorGeoms = [];
+
+        // Oval mouth: parametric ellipse ring as front face
+        // Build a closed oval ring at bx = iFront as a triangle fan
+        const OVAL_SEGS = 24;
+        const ovalCentBz = (iTop + iBot) * 0.5;   // ≈ +1.05
+        const ovalHalfH  = (iBot - iTop) * 0.5;   // ≈ 0.45
+        const ovalFaceVerts = [];
+        const ovalCx = iFront, ovalCy = 0, ovalCz = ovalCentBz;
+        const ovalRy = iHalfW, ovalRz = ovalHalfH;
+        for (let i = 0; i < OVAL_SEGS; i++) {
+            const a0 = (i / OVAL_SEGS) * Math.PI * 2;
+            const a1 = ((i + 1) / OVAL_SEGS) * Math.PI * 2;
+            const by0 = ovalRy * Math.cos(a0), bz0 = ovalCz + ovalRz * Math.sin(a0);
+            const by1 = ovalRy * Math.cos(a1), bz1 = ovalCz + ovalRz * Math.sin(a1);
+            // Two triangles per segment (inner quad from centre ring)
+            ovalFaceVerts.push(
+                ...bodyToThree(ovalCx, ovalCy, ovalCentBz),
+                ...bodyToThree(ovalCx, by1, bz1),
+                ...bodyToThree(ovalCx, by0, bz0),
+            );
+        }
+        const ovalFaceGeom = new THREE.BufferGeometry();
+        ovalFaceGeom.setAttribute("position",
+            new THREE.BufferAttribute(new Float32Array(ovalFaceVerts), 3));
+        ovalFaceGeom.computeVertexNormals();
+        // Dark inner face — very dark (suggests deep duct)
+        intakeGroup.add(new THREE.Mesh(
+            ovalFaceGeom,
+            _stdMat(0x080c10, { metalness: 0.15, roughness: 0.95 }),
+        ));
+
+        // Four duct walls running aft from mouth
         const panels = [
-            // left wall (by = -iHalfW face)
-            [[iFront, -iHalfW, iTop], [iBack, -iHalfW, iTop],
-             [iBack, -iHalfW, iBot], [iFront, -iHalfW, iBot]],
+            // left wall
+            [[iFront, -iHalfW, iTop], [iBack, -iHalfW * 0.8, iTop + 0.1],
+             [iBack, -iHalfW * 0.8, iBot - 0.1], [iFront, -iHalfW, iBot]],
             // right wall
             [[iFront, +iHalfW, iTop], [iFront, +iHalfW, iBot],
-             [iBack, +iHalfW, iBot], [iBack, +iHalfW, iTop]],
+             [iBack, +iHalfW * 0.8, iBot - 0.1], [iBack, +iHalfW * 0.8, iTop + 0.1]],
             // top ceiling
             [[iFront, -iHalfW, iTop], [iFront, +iHalfW, iTop],
-             [iBack, +iHalfW, iTop], [iBack, -iHalfW, iTop]],
+             [iBack, +iHalfW * 0.8, iTop + 0.1], [iBack, -iHalfW * 0.8, iTop + 0.1]],
             // bottom floor
-            [[iFront, -iHalfW, iBot], [iBack, -iHalfW, iBot],
-             [iBack, +iHalfW, iBot], [iFront, +iHalfW, iBot]],
+            [[iFront, -iHalfW, iBot], [iBack, -iHalfW * 0.8, iBot - 0.1],
+             [iBack, +iHalfW * 0.8, iBot - 0.1], [iFront, +iHalfW, iBot]],
         ];
         for (const p of panels) {
             intakeGroup.add(new THREE.Mesh(_intakePanelGeom(p), iMat));
         }
-        // Front face (intake lip) — darker recessed plane
-        const lipGVerts = new Float32Array([
-            ...bodyToThree(iFront, -iHalfW, iTop),
-            ...bodyToThree(iFront, -iHalfW, iBot),
-            ...bodyToThree(iFront, +iHalfW, iBot),
-            ...bodyToThree(iFront, -iHalfW, iTop),
-            ...bodyToThree(iFront, +iHalfW, iBot),
-            ...bodyToThree(iFront, +iHalfW, iTop),
-        ]);
-        const lipGeom = new THREE.BufferGeometry();
-        lipGeom.setAttribute("position", new THREE.BufferAttribute(lipGVerts, 3));
-        lipGeom.computeVertexNormals();
-        intakeGroup.add(new THREE.Mesh(
-            lipGeom,
-            _stdMat(0x0c1014, { metalness: 0.2, roughness: 0.9 }),
-        ));
-        // Intake splitter plate — small horizontal plate inside the duct
-        // (boundary layer splitter, F-16 characteristic)
+
+        // Sharp intake lip — thin torus ring around the mouth opening
+        // The lip is circular in the cross-section plane (body y-z plane)
+        // and follows the oval outline.
+        const lipTorusGeom = new THREE.TorusGeometry(0.70, 0.032, 8, OVAL_SEGS);
+        const lip = new THREE.Mesh(
+            lipTorusGeom,
+            _stdMat(0x606870, { metalness: 0.65, roughness: 0.3 }),
+        );
+        lip.rotation.y = Math.PI / 2;   // orient ring in body y-z plane
+        lip.scale.set(1.0, 1.12, 0.58); // squash to oval
+        // Place at body (iFront, 0, ovalCentBz) → three.js
+        const [lipX, lipY, lipZ] = bodyToThree(iFront, 0, ovalCentBz);
+        lip.position.set(lipX, lipY, lipZ);
+        intakeGroup.add(lip);
+
+        // Boundary-layer splitter plate: thin horizontal panel between
+        // intake top and fuselage belly — fills the gap visually.
+        // Body: bx=[iFront..iBack], by=±iHalfW*0.9, bz = iTop (top of intake)
         const splitterVerts = new Float32Array([
-            ...bodyToThree(iFront - 0.1, -iHalfW + 0.1, iTop + 0.22),
-            ...bodyToThree(iBack + 0.3, -iHalfW + 0.1, iTop + 0.22),
-            ...bodyToThree(iBack + 0.3, +iHalfW - 0.1, iTop + 0.22),
-            ...bodyToThree(iFront - 0.1, -iHalfW + 0.1, iTop + 0.22),
-            ...bodyToThree(iBack + 0.3, +iHalfW - 0.1, iTop + 0.22),
-            ...bodyToThree(iFront - 0.1, +iHalfW - 0.1, iTop + 0.22),
+            ...bodyToThree(iFront, -iHalfW * 0.9, iTop),
+            ...bodyToThree(iBack,  -iHalfW * 0.75, iTop),
+            ...bodyToThree(iBack,  +iHalfW * 0.75, iTop),
+            ...bodyToThree(iFront, -iHalfW * 0.9, iTop),
+            ...bodyToThree(iBack,  +iHalfW * 0.75, iTop),
+            ...bodyToThree(iFront, +iHalfW * 0.9, iTop),
         ]);
         const splitterGeom = new THREE.BufferGeometry();
-        splitterGeom.setAttribute("position", new THREE.BufferAttribute(splitterVerts, 3));
+        splitterGeom.setAttribute("position",
+            new THREE.BufferAttribute(splitterVerts, 3));
         splitterGeom.computeVertexNormals();
         intakeGroup.add(new THREE.Mesh(
             splitterGeom,
-            _stdMat(0x606870, { metalness: 0.5, roughness: 0.4 }),
+            _stdMat(0x505860, { metalness: 0.55, roughness: 0.45 }),
         ));
+
         group.add(intakeGroup);
 
         // ---- NOSE PITOT ----
@@ -574,8 +729,9 @@
         group.add(pitot);
 
         // ---- ENGINE NOZZLE (afterburner can) ----
-        // A cylinder with nozzle petals (thin radial strips around the exit)
-        // and a darker inner cone.
+        // 12-petal nozzle (matches real F100/F110 nozzle count).
+        // Petals are metallic with env-map reflections.
+        // Inner throat has faint orange-red emissive for "lit engine" look.
         const nozzleX = -7.9;
         const nozzleOuterR = 0.48, nozzleLen = 1.1;
         const nozzleCanGeom = new THREE.CylinderGeometry(
@@ -583,49 +739,51 @@
         );
         const nozzleCan = new THREE.Mesh(
             nozzleCanGeom,
-            _stdMat(0x3a3a3a, { metalness: 0.72, roughness: 0.3 }),
+            _stdMat(0x3a3a3a, { metalness: 0.78, roughness: 0.25 }),
         );
         nozzleCan.rotation.z = Math.PI / 2;
         nozzleCan.position.set(nozzleX - nozzleLen / 2, 0, 0);
         group.add(nozzleCan);
 
-        // Nozzle petals: 10 thin dark fins around the exit ring
-        const PETAL_COUNT = 10;
+        // 12 nozzle petals (up from 10) — shared material, merged geometry
+        const PETAL_COUNT = 12;
+        const petalGeomBase = new THREE.BoxGeometry(0.55, 0.045, 0.13);
+        const petalMat = _stdMat(0x252525, { metalness: 0.85, roughness: 0.20 });
+        const petalGeomPairs = [];
         for (let p = 0; p < PETAL_COUNT; p++) {
             const a = (p / PETAL_COUNT) * Math.PI * 2;
             const py = Math.cos(a) * nozzleOuterR * 0.88;
             const pz = Math.sin(a) * nozzleOuterR * 0.88;
-            // Each petal is a tiny flat rectangle oriented radially
-            const petalGeom = new THREE.BoxGeometry(0.55, 0.045, 0.13);
-            const petal = new THREE.Mesh(
-                petalGeom,
-                _stdMat(0x252525, { metalness: 0.8, roughness: 0.25 }),
-            );
-            // Position & orient radially at nozzle exit
             const [px, ptY, ptZ] = bodyToThree(nozzleX - nozzleLen, py, -pz);
-            petal.position.set(px, ptY, ptZ);
-            petal.lookAt(
-                px - 1,
-                ptY,
-                ptZ,
-            );
-            petal.rotateY(Math.atan2(pz, py));
-            group.add(petal);
+            // Build a per-petal transform matrix
+            const m = new THREE.Matrix4();
+            m.makeTranslation(px, ptY, ptZ);
+            // Rotate to face radially outward (petal's Z axis points outward)
+            const rotMat = new THREE.Matrix4();
+            rotMat.makeRotationY(Math.atan2(pz, py) + Math.PI / 2);
+            m.multiply(rotMat);
+            petalGeomPairs.push({ geom: petalGeomBase, matrix: m });
         }
+        // Merge all petals into one draw call (geometry-merge-static rule)
+        const mergedPetalsGeom = _mergeGeoms(petalGeomPairs);
+        group.add(new THREE.Mesh(mergedPetalsGeom, petalMat));
 
-        // Inner dark nozzle throat cone
+        // Inner nozzle throat cone — faint orange emissive for "lit" look
         const throatGeom = new THREE.ConeGeometry(nozzleOuterR * 0.7, 0.5, 16, 1, false);
         const throat = new THREE.Mesh(
             throatGeom,
-            _stdMat(0x111111, { metalness: 0.4, roughness: 0.8 }),
+            _stdMat(0x111111, {
+                metalness: 0.4, roughness: 0.8,
+                emissive: 0x40180a, emissiveIntensity: 0.3,
+            }),
         );
         throat.rotation.z = Math.PI / 2;
         throat.position.set(nozzleX - nozzleLen + 0.05, 0, 0);
         group.add(throat);
 
         // ---- LERX (Leading Edge Root Extensions) — 3D thin wedge ----
-        // Top surface (slightly above fuselage top), bottom surface (flush),
-        // meeting at a sharp leading edge.
+        // Sharp knife-edge strakes running from cockpit fairing to wing root.
+        // Visually distinctive F-16 feature.
         const lerxRightShape = [
             [+3.0, +0.55],
             [+1.5, +0.95],
@@ -636,12 +794,11 @@
         const lerxLeftShape = lerxRightShape.map(([x, y]) => [x, -y]);
 
         function _lerxMesh(poly, name) {
-            // Top surface: bz = -0.12 (slightly above fuselage top)
-            // Bottom surface: bz = +0.02 (flush with fuselage bottom)
+            // Top surface: bz = -0.14 (slightly above fuselage top)
+            // Bottom surface: bz = +0.03 (flush with fuselage bottom)
             // LE knife-edge: where top and bottom meet at the outer edge.
             const top = poly.map(([bx, by]) => bodyToThree(bx, by, -0.14));
             const bot = poly.map(([bx, by]) => bodyToThree(bx, by, +0.03));
-            // Fan triangulate both surfaces + stitch edges
             const verts = [];
             const N2 = poly.length;
             // Top face (fan)
@@ -652,7 +809,7 @@
             for (let i = 1; i < N2 - 1; i++) {
                 verts.push(...bot[0], ...bot[i + 1], ...bot[i]);
             }
-            // Leading edge strip: pair each consecutive edge
+            // Leading edge strip
             for (let i = 0; i < N2 - 1; i++) {
                 verts.push(...top[i], ...bot[i], ...bot[i + 1]);
                 verts.push(...top[i], ...bot[i + 1], ...top[i + 1]);
@@ -671,13 +828,11 @@
         // ---- VENTRAL FINS — 3D thin wedge ----
         function _ventralFinMesh(side, name) {
             const sign = side === "left" ? -1 : +1;
-            // Fin outline in body coords (outboard face):
             const outerPts = [
                 bodyToThree(-5.5, sign * 0.38, +0.68),
                 bodyToThree(-7.0, sign * 0.38, +0.68),
                 bodyToThree(-6.3, sign * 0.72, +1.65),
             ];
-            // Inner face (inboard) slightly inset
             const innerPts = [
                 bodyToThree(-5.5, sign * 0.32, +0.72),
                 bodyToThree(-7.0, sign * 0.32, +0.72),
@@ -685,17 +840,12 @@
             ];
             const o = outerPts, inn = innerPts;
             const verts = new Float32Array([
-                // outer face
                 ...o[0], ...o[1], ...o[2],
-                // inner face (reversed)
                 ...inn[0], ...inn[2], ...inn[1],
-                // edge 0-1
                 ...o[0], ...inn[0], ...inn[1],
                 ...o[0], ...inn[1], ...o[1],
-                // edge 1-2
                 ...o[1], ...inn[1], ...inn[2],
                 ...o[1], ...inn[2], ...o[2],
-                // edge 2-0
                 ...o[2], ...inn[2], ...inn[0],
                 ...o[2], ...inn[0], ...o[0],
             ]);
@@ -709,23 +859,65 @@
         group.add(_ventralFinMesh("right", "ventral_fin_right"));
         group.add(_ventralFinMesh("left",  "ventral_fin_left"));
 
-        // ---- PANEL LINES (thin dark cylinders along the fuselage) ----
-        // A few axial seam lines to break up the shiny surface.
-        const panelLineMat = _stdMat(0x7a8088, { metalness: 0.3, roughness: 0.7 });
-        // Top spine seam from cockpit aft
-        const spineGeom = new THREE.CylinderGeometry(0.018, 0.018, 6.5, 6);
-        const spine = new THREE.Mesh(spineGeom, panelLineMat);
-        spine.rotation.z = Math.PI / 2;
-        spine.position.set(-2.5, 0.82, 0);
-        group.add(spine);
-        // Lower chin panel seam
-        const chinGeom = new THREE.CylinderGeometry(0.016, 0.016, 3.5, 6);
-        const chin = new THREE.Mesh(chinGeom, panelLineMat);
-        chin.rotation.z = Math.PI / 2;
-        chin.position.set(0.0, 0, -0.72);  // body y=0, bz=+0.72 → three.js y=-0.72
-        // recalculate: bodyToThree(0, 0, 0.72) = [0, -0.72, 0]
-        chin.position.set(0.0, -0.72, 0);
-        group.add(chin);
+        // ---- SURFACE DECORATION (panel lines, tail flash) ----
+        // All static decoration geometry is merged into a single draw call
+        // per colour. (Three.js rule: geometry-merge-static)
+
+        // Helper: build a cylindrical panel-line segment in body space.
+        // Returns a BufferGeometry in three.js world coords.
+        function _panelLineGeom(bx0, bx1, by, bz, r, segs) {
+            const len = Math.abs(bx1 - bx0);
+            const cg = new THREE.CylinderGeometry(r, r, len, segs);
+            const cgeomTmp = new THREE.BufferGeometry();
+            const cpArr = cg.attributes.position.array.slice();
+            const outPos = new Float32Array(cpArr.length);
+            const cnt = cg.attributes.position.count;
+            const bxMid = (bx0 + bx1) / 2;
+            for (let i = 0; i < cnt; i++) {
+                // Cylinder Y-axis = length axis; rotate so length is along X
+                const lx = cpArr[i * 3 + 1];  // cylinder's Y → body X offset
+                const ly = cpArr[i * 3 + 0];  // cylinder's X → body Y offset
+                const lz = cpArr[i * 3 + 2];  // Z unchanged
+                const [tx, ty, tz] = bodyToThree(bxMid + lx, by + ly, bz + lz);
+                outPos[i * 3]     = tx;
+                outPos[i * 3 + 1] = ty;
+                outPos[i * 3 + 2] = tz;
+            }
+            cgeomTmp.setAttribute("position",
+                new THREE.BufferAttribute(outPos, 3));
+            cgeomTmp.computeVertexNormals();
+            cg.dispose();
+            return cgeomTmp;
+        }
+
+        // Collect all dark-grey panel lines for merging
+        const darkPanelGeoms = [];
+
+        // Top spine seam from canopy back to vtail base (~x=-0.5 to -7.0)
+        darkPanelGeoms.push({ geom: _panelLineGeom(-0.5, -7.0, 0, -0.50, 0.018, 6) });
+
+        // Short cockpit-side door seam (each side)
+        darkPanelGeoms.push({ geom: _panelLineGeom(+3.5, +1.5, +0.55, -0.30, 0.016, 6) });
+        darkPanelGeoms.push({ geom: _panelLineGeom(+3.5, +1.5, -0.55, -0.30, 0.016, 6) });
+
+        // Engine bay hoop (vertical cylinder around the nozzle forward of can)
+        // Approximate as a short ring at bx ≈ -7.3
+        const hoopGeom = new THREE.TorusGeometry(0.46, 0.015, 8, 20);
+        hoopGeom.rotateZ(Math.PI / 2);
+        // Translate to three.js position
+        const hoopMat4 = new THREE.Matrix4().makeTranslation(-7.3, 0, 0);
+        darkPanelGeoms.push({ geom: hoopGeom, matrix: hoopMat4 });
+
+        // Merge all dark panel line strips into one mesh
+        if (darkPanelGeoms.length > 0) {
+            const mergedPanels = _mergeGeoms(darkPanelGeoms);
+            const panelsMesh = new THREE.Mesh(
+                mergedPanels,
+                _stdMat(0x6a7278, { metalness: 0.3, roughness: 0.7 }),
+            );
+            panelsMesh.name = "_static_decor_6a7278";
+            group.add(panelsMesh);
+        }
 
         return group;
     }
@@ -814,6 +1006,29 @@
         // => run=-2, rise=-2.8, angle from vertical ≈ atan2(2,2.8)
         formLight.rotation.x = -Math.atan2(2.0, 2.8);
         vtailGroup.add(formLight);
+
+        // Tail flash — darker grey horizontal band near the top of the vtail
+        // (both left and right faces), imitating squadron / USAF markings.
+        // Body coords: bx=-4.5 to -6.5, bz=-2.6 to -3.0, each lateral surface.
+        const flashMat = _stdMat(0x4a5260, { metalness: 0.4, roughness: 0.5 });
+        const flashBands = [
+            // Right face (by = +HALF_T): bx=-4.5→-6.5, bz=-2.6→-3.0
+            [bodyToThree(-4.5, +HALF_T + 0.001, -2.6),
+             bodyToThree(-6.5, +HALF_T + 0.001, -2.6),
+             bodyToThree(-6.5, +HALF_T + 0.001, -3.0),
+             bodyToThree(-4.5, +HALF_T + 0.001, -3.0)],
+            // Left face (by = -HALF_T)
+            [bodyToThree(-4.5, -HALF_T - 0.001, -2.6),
+             bodyToThree(-4.5, -HALF_T - 0.001, -3.0),
+             bodyToThree(-6.5, -HALF_T - 0.001, -3.0),
+             bodyToThree(-6.5, -HALF_T - 0.001, -2.6)],
+        ];
+        for (const corners of flashBands) {
+            vtailGroup.add(new THREE.Mesh(
+                _quadGeom(corners[0], corners[1], corners[2], corners[3]),
+                flashMat,
+            ));
+        }
 
         return vtailGroup;
     }
@@ -914,11 +1129,11 @@
 
     function _wingtipLauncher(side, name) {
         // AIM-9 Sidewinder on wingtip launcher rail.
-        // The missile body is ~2.85 m long, 0.127 m diameter.
-        // 4 mid-body delta fins + 4 forward canard fins.
+        // All AIM-9 sub-meshes are merged into ONE mesh per launcher to cut
+        // ~8 draw calls per side down to 2 (one for rail, one for missile+fins).
+        // (Three.js rule: geometry-merge-static)
         const sign = side === "left" ? -1 : +1;
 
-        // Root group named as required (launcher_left / launcher_right)
         const launcherGroup = new THREE.Group();
         launcherGroup.name = name;
 
@@ -930,59 +1145,60 @@
         );
         launcherGroup.add(rail);
 
-        // AIM-9 body (cylinder)
-        const bodyGeom = new THREE.CylinderGeometry(0.065, 0.065, 2.85, 14);
-        bodyGeom.rotateZ(Math.PI / 2);
-        const missileBody = new THREE.Mesh(
-            bodyGeom, _stdMat(0xb8c0c8, { metalness: 0.5, roughness: 0.35 }),
-        );
-        missileBody.position.set(0, 0.115, 0);  // above rail
-        launcherGroup.add(missileBody);
+        // Collect all AIM-9 body geometry for merging.
+        // Each sub-shape has a local transform applied, then we merge all
+        // into a single BufferGeometry under one mesh.
+        const missileGeomPairs = [];
 
-        // Seeker nose (cone) — IR seeker dome (slightly darker)
-        const seekerGeom = new THREE.ConeGeometry(0.065, 0.22, 14);
-        seekerGeom.rotateZ(-Math.PI / 2);
-        const seeker = new THREE.Mesh(
-            seekerGeom,
-            _stdMat(0x505860, { metalness: 0.55, roughness: 0.2 }),
-        );
-        seeker.position.set(1.535, 0.115, 0);
-        launcherGroup.add(seeker);
+        // AIM-9 body cylinder
+        const bodyG = new THREE.CylinderGeometry(0.065, 0.065, 2.85, 14);
+        bodyG.rotateZ(Math.PI / 2);
+        const bm4 = new THREE.Matrix4().makeTranslation(0, 0.115, 0);
+        missileGeomPairs.push({ geom: bodyG, matrix: bm4 });
+
+        // Seeker nose cone
+        const seekerG = new THREE.ConeGeometry(0.065, 0.22, 14);
+        seekerG.rotateZ(-Math.PI / 2);
+        const sm4 = new THREE.Matrix4().makeTranslation(1.535, 0.115, 0);
+        missileGeomPairs.push({ geom: seekerG, matrix: sm4 });
 
         // Tail nozzle cone
-        const tailGeom = new THREE.ConeGeometry(0.065, 0.18, 14);
-        tailGeom.rotateZ(Math.PI / 2);
-        const tailCone = new THREE.Mesh(
-            tailGeom, _stdMat(0x404040, { metalness: 0.6, roughness: 0.3 }),
-        );
-        tailCone.position.set(-1.515, 0.115, 0);
-        launcherGroup.add(tailCone);
+        const tailG = new THREE.ConeGeometry(0.065, 0.18, 14);
+        tailG.rotateZ(Math.PI / 2);
+        const tm4 = new THREE.Matrix4().makeTranslation(-1.515, 0.115, 0);
+        missileGeomPairs.push({ geom: tailG, matrix: tm4 });
 
-        // Helper: 4 cruciform fins on the AIM-9
-        function _addCruciformFins(bxCentre, span, chord, thick, offsetY, finSign) {
-            // 4 fins at 0°, 90°, 180°, 270° around missile axis.
+        // Cruciform fins helper — pushes 4 fin geometries into the pair list
+        function _cruciformFinGeoms(bxCentre, span, chord, thick, offsetY) {
             for (let k = 0; k < 4; k++) {
-                const a = k * Math.PI / 2;
-                // Fin: a thin box. Fins alternate horizontal/vertical pair.
                 const finW = (k % 2 === 0) ? span : thick;
                 const finH = (k % 2 === 0) ? thick : span;
-                const finGeom = new THREE.BoxGeometry(chord, finH, finW);
-                const fin = new THREE.Mesh(
-                    finGeom,
-                    _stdMat(0xa8b0b8, { metalness: 0.5, roughness: 0.35 }),
-                );
-                // k=0: horizontal (Z), k=1: vertical (Y), k=2: horiz, k=3: vert
+                const finG = new THREE.BoxGeometry(chord, finH, finW);
                 const fy = (k % 2 === 1) ? (k === 1 ? span * 0.5 : -span * 0.5) : 0;
                 const fz = (k % 2 === 0) ? (k === 0 ? span * 0.5 : -span * 0.5) : 0;
-                fin.position.set(bxCentre, offsetY + fy, fz * finSign);
-                launcherGroup.add(fin);
+                const fm4 = new THREE.Matrix4().makeTranslation(
+                    bxCentre, offsetY + fy, fz * sign,
+                );
+                missileGeomPairs.push({ geom: finG, matrix: fm4 });
             }
         }
 
-        // Mid-body delta fins (larger, at ~ x = -0.5 from missile centre)
-        _addCruciformFins(-0.5, 0.30, 0.45, 0.018, 0.115, sign);
-        // Forward canard fins (smaller, near seeker, ~ x = +1.0)
-        _addCruciformFins(+0.9, 0.14, 0.22, 0.014, 0.115, sign);
+        // Mid-body delta fins
+        _cruciformFinGeoms(-0.5, 0.30, 0.45, 0.018, 0.115);
+        // Forward canard fins
+        _cruciformFinGeoms(+0.9, 0.14, 0.22, 0.014, 0.115);
+
+        // Merge everything into a single AIM-9 mesh
+        const mergedMissile = _mergeGeoms(missileGeomPairs);
+        const missileMesh = new THREE.Mesh(
+            mergedMissile,
+            _stdMat(0xb8c0c8, { metalness: 0.55, roughness: 0.30 }),
+        );
+        missileMesh.name = name;    // damage system looks this up via getObjectByName
+        launcherGroup.add(missileMesh);
+
+        // Dispose intermediate geometries
+        for (const { geom } of missileGeomPairs) geom.dispose();
 
         // Position whole launcher group at wingtip LE
         const [tx, ty, tz] = bodyToThree(-1.85, sign * 4.62, -0.08);
@@ -1028,28 +1244,62 @@
         aircraft.add(_wingtipLauncher("right", "launcher_right"));
         aircraft.add(_wingtipLauncher("left",  "launcher_left"));
 
-        // Underwing pylons (static, no names matching protected list)
-        // Two per side at mid-span, hanging below the wing surface.
-        function _uwPylon(sign, pylonY) {
-            const pylonMat = _stdMat(0x7a8288, { metalness: 0.5, roughness: 0.45 });
-            // Pylon strut: flat box hanging below wing
-            const strutGeom = new THREE.BoxGeometry(0.55, 0.38, 0.10);
-            const strut = new THREE.Mesh(strutGeom, pylonMat);
-            const [px, py, pz] = bodyToThree(-1.6, sign * pylonY, +0.22);
-            strut.position.set(px, py, pz);
-            // Small rail/shelf at bottom of strut
-            const shelfGeom = new THREE.BoxGeometry(0.45, 0.065, 0.22);
-            const shelf = new THREE.Mesh(shelfGeom, pylonMat);
-            shelf.position.set(px, py - 0.22, pz);
-            const pGroup = new THREE.Group();
-            pGroup.add(strut);
-            pGroup.add(shelf);
-            return pGroup;
+        // Underwing pylons (static, no names matching protected list).
+        // Merge all pylon geometry into a single mesh (geometry-merge-static).
+        const pylonGeomPairs = [];
+        const pylonConfigs = [
+            [+1, 2.6], [+1, 3.3], [-1, 2.6], [-1, 3.3],
+        ];
+        for (const [psign, pylonY] of pylonConfigs) {
+            const [px, py, pz] = bodyToThree(-1.6, psign * pylonY, +0.22);
+            const strutG = new THREE.BoxGeometry(0.55, 0.38, 0.10);
+            pylonGeomPairs.push({
+                geom: strutG,
+                matrix: new THREE.Matrix4().makeTranslation(px, py, pz),
+            });
+            const shelfG = new THREE.BoxGeometry(0.45, 0.065, 0.22);
+            pylonGeomPairs.push({
+                geom: shelfG,
+                matrix: new THREE.Matrix4().makeTranslation(px, py - 0.22, pz),
+            });
         }
-        aircraft.add(_uwPylon(+1, 2.6));  // right inboard
-        aircraft.add(_uwPylon(+1, 3.3));  // right outboard
-        aircraft.add(_uwPylon(-1, 2.6));  // left inboard
-        aircraft.add(_uwPylon(-1, 3.3));  // left outboard
+        const mergedPylons = _mergeGeoms(pylonGeomPairs);
+        const pylonsMesh = new THREE.Mesh(
+            mergedPylons,
+            _stdMat(0x7a8288, { metalness: 0.5, roughness: 0.45 }),
+        );
+        pylonsMesh.name = "_static_decor_pylons";
+        aircraft.add(pylonsMesh);
+        for (const { geom } of pylonGeomPairs) geom.dispose();
+
+        // Wing leading-edge accent strips — thin dark strip along the LE of
+        // each wing section, suggesting the LE-droop / honeycomb edge.
+        // (One merged dark-edge mesh per wing side for efficiency.)
+        function _wingLEStrips(polys, sign) {
+            const stripGeoms = [];
+            for (const poly of polys) {
+                // LE = edge from corner[0] to corner[1]
+                const bx0 = poly[0][0], by0 = poly[0][1];
+                const bx1 = poly[1][0], by1 = poly[1][1];
+                // Thin flat quad just above the wing surface along the LE
+                const bxMid = (bx0 + bx1) / 2, byMid = (by0 + by1) / 2;
+                const c0 = bodyToThree(bx0, by0, -0.07);
+                const c1 = bodyToThree(bx1, by1, -0.07);
+                const c2 = bodyToThree(bx1, by1, +0.07);
+                const c3 = bodyToThree(bx0, by0, +0.07);
+                stripGeoms.push({ geom: _quadGeom(c0, c1, c2, c3) });
+            }
+            return _mergeGeoms(stripGeoms);
+        }
+        const rightPolys = Object.values(RIGHT_WING_POLYGONS);
+        const leftPolys  = rightPolys.map(p => _mirrorY(p));
+        const wingEdgeMat = _stdMat(0x404850, { metalness: 0.4, roughness: 0.6 });
+        const rStripMesh = new THREE.Mesh(_wingLEStrips(rightPolys, +1), wingEdgeMat);
+        rStripMesh.name = "_static_decor_wing_le_r";
+        aircraft.add(rStripMesh);
+        const lStripMesh = new THREE.Mesh(_wingLEStrips(leftPolys, -1), wingEdgeMat);
+        lStripMesh.name = "_static_decor_wing_le_l";
+        aircraft.add(lStripMesh);
 
         return aircraft;
     }
