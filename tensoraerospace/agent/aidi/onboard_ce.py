@@ -92,10 +92,8 @@ class F16NonlinearOnboardCE:
         from tensoraerospace.aerospacemodel.f16.nonlinear.angular.dynamics import (
             f16_ode_6dof,
         )
-        from tensoraerospace.aerospacemodel.f16.nonlinear.angular.params import (  # noqa: F401  — referenced by the annotation.
+        from tensoraerospace.aerospacemodel.f16.nonlinear.angular.params import (  # noqa: F401  — F16AngularParameters referenced by the annotation.
             F16AngularParameters,
-        )
-        from tensoraerospace.aerospacemodel.f16.nonlinear.angular.params import (
             default_parameters,
         )
 
