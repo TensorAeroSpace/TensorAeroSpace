@@ -1,0 +1,8 @@
+{
+  "expected_wheels": 1,
+  "expected_sdists": 1,
+  "max_artifact_bytes": 5242880,
+  "max_dist_total_bytes": 8388608,
+  "max_wheel_uncompressed_bytes": 8388608,
+  "max_member_bytes": 3145728
+}

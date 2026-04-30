@@ -21,8 +21,14 @@ branches:
       required_status_checks:
         strict: true
         contexts:
-          - "🧪 Test and Coverage"
-          - "🚀 Quick Check"
+          - "🏷️ Version Tag Gate"
+          - "✅ All Python versions passed"
+          - "🧱 Quality Gates"
+          - "📚 Documentation Coverage"
+          - "🔒 Security Scan"
+          - "🏗️ Build Package"
+          - "📦 Wheel installs on all Python versions"
+          - "🏗️ mkdocs build --strict"
       enforce_admins: false
       required_pull_request_reviews:
         required_approving_review_count: 1
@@ -35,7 +41,14 @@ branches:
       required_status_checks:
         strict: true
         contexts:
-          - "🚀 Quick Check"
+          - "🏷️ Version Tag Gate"
+          - "✅ All Python versions passed"
+          - "🧱 Quality Gates"
+          - "📚 Documentation Coverage"
+          - "🔒 Security Scan"
+          - "🏗️ Build Package"
+          - "📦 Wheel installs on all Python versions"
+          - "🏗️ mkdocs build --strict"
       enforce_admins: false
       required_pull_request_reviews:
         required_approving_review_count: 1

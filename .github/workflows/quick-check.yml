@@ -60,20 +60,17 @@ jobs:
         poetry config virtualenvs.create true
         poetry config virtualenvs.in-project true
 
-    - name: 🔄 Check and update lock file if needed
+    - name: 🔒 Verify lock file
       run: |
-        if ! poetry check --lock; then
-          echo "Lock file is outdated, updating..."
-          poetry lock
-        fi
+        poetry check --lock
 
     - name: 📚 Install dependencies
       run: |
-        poetry install --only main,test
+        poetry install --only main,test --no-interaction
 
     - name: 🔍 Quick lint check
       run: |
-        poetry run python -m py_compile tensoraerospace/**/*.py
+        poetry run python -m compileall -q tensoraerospace
 
     - name: 🧪 Run core tests only
       run: |
@@ -120,17 +117,14 @@ jobs:
         python -m pip install --upgrade pip
         python -m pip install poetry
 
-    - name: 🔄 Check and update lock file if needed
+    - name: 🔒 Verify lock file
       run: |
-        if ! poetry check --lock; then
-          echo "Lock file is outdated, updating..."
-          poetry lock
-        fi
+        poetry check --lock
 
     - name: 📚 Install dependencies
       run: |
         # Only tooling is needed here (no heavy runtime deps)
-        poetry install --only dev
+        poetry install --only dev --no-interaction
 
     - name: 🔍 Check code formatting with black
       run: |
@@ -144,11 +138,15 @@ jobs:
       run: |
         poetry run flake8 tensoraerospace --count --select=E9,F63,F7,F82 --show-source --statistics
 
+    - name: 🧱 Baseline quality gate
+      run: |
+        poetry run python scripts/ci_quality_gate.py flake8 ruff
+
   dependency-check:
     name: 🔒 Dependency Security Check
     runs-on: ubuntu-latest
     # 5 min was not enough — `poetry install --with dev` alone takes 3-4 min on a
-    # cold cache, and `safety check` adds another 1-2 min for the PyUp DB pull.
+    # cold cache, and a dependency audit adds another 1-2 min for the advisory DB.
     # Bumped to 15 min and added the official poetry cache so warm runs finish
     # in under 4 min.
     timeout-minutes: 15
@@ -196,30 +194,18 @@ jobs:
         restore-keys: |
           poetry-venv-${{ runner.os }}-py3.10-
 
-    - name: 🔄 Check and update lock file if needed
+    - name: 🔒 Verify lock file
       run: |
-        if ! poetry check --lock; then
-          echo "Lock file is outdated, updating..."
-          poetry lock
-        fi
+        poetry check --lock
 
     - name: 📚 Install dependencies
       run: |
-        poetry install --with dev
+        poetry install --with dev --no-interaction
 
     - name: 🔍 Check for known security vulnerabilities (pip-audit)
-      # `safety check` was deprecated June 2024 and replaced by `safety scan`,
-      # which now requires a free-tier login on CI. We use PyPA's `pip-audit`
-      # instead — open source, no account needed, much faster cold-start.
-      # `--ignore-vuln` covers the well-known pip/setuptools advisories that
-      # are unfixable in our supported Python range; non-blocking on remaining
-      # findings with `|| true` so the job is informational, not gating.
       run: |
-        python -m pip install --quiet pip-audit
-        poetry run pip-audit \
-          --ignore-vuln GHSA-4xh5-x5gv-qwph \
-          --ignore-vuln GHSA-mr82-8j83-vxmv \
-          || echo "⚠️ Security vulnerabilities found, but not failing the build"
+        poetry run python -m pip install --quiet pip-audit
+        poetry run python scripts/dependency_audit_gate.py
 
     - name: 📋 Show dependency tree
       run: |

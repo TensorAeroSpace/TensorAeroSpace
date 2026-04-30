@@ -56,5 +56,5 @@ Add any additional notes for reviewers here.
 
 ## 🔒 Security
 - [ ] These changes do not introduce security vulnerabilities
-- [ ] I ran bandit and safety checks
+- [ ] I ran the security gate (`poetry run python scripts/ci_quality_gate.py bandit`)
 - [ ] No secrets or keys are included in the code

@@ -100,18 +100,15 @@ jobs:
           poetry config virtualenvs.create true
           poetry config virtualenvs.in-project true
 
-      - name: 🔄 Sync lock file
+      - name: 🔒 Verify lock file
         run: |
-          if ! poetry check --lock; then
-            echo "Lock file is outdated, updating..."
-            poetry lock
-          fi
+          poetry check --lock
 
       - name: 📚 Install dependencies (+ jupyter group)
         run: |
           # The ``jupyter`` group is defined in pyproject.toml; install it
           # along with dev so ``nbconvert`` and its deps are available.
-          poetry install --with dev,jupyter || poetry install --with dev
+          poetry install --with dev,jupyter --no-interaction
 
       - name: 📓 Execute notebook
         env:

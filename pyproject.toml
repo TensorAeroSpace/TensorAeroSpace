@@ -1,12 +1,39 @@
 [tool.poetry]
 name = "tensoraerospace"
-version = "0.3.0"
+version = "0.3.13"
 description = "Open source deep learning framework that focuses on aerospace objects (rockets, planes, UAVs)"
 readme = "readme.md"
 authors = ["Artemiy Mazaew (mr8bit)", "Vasily Davydov (dexfrost89)", "Yakov Li (yakovglee)"]
 license = "MIT"
 packages = [
     { include = "tensoraerospace" },
+]
+exclude = [
+    "**/__pycache__",
+    "**/*.pyc",
+    "**/*.pyo",
+    "tensoraerospace/aerospacemodel/**/*.xfl",
+    "tensoraerospace/aerospacemodel/**/*.slx",
+    "tensoraerospace/aerospacemodel/**/*.slxc",
+    "tensoraerospace/aerospacemodel/**/*.m",
+    "tensoraerospace/aerospacemodel/**/*.prt",
+    "tensoraerospace/aerospacemodel/**/*.xprt",
+    "tensoraerospace/aerospacemodel/**/*.exp",
+    "tensoraerospace/aerospacemodel/**/*.lib",
+    "tensoraerospace/aerospacemodel/**/slprj/**",
+    "tensoraerospace/aerospacemodel/**/*_ert_shrlib_rtw/**/*.bat",
+    "tensoraerospace/aerospacemodel/**/*_ert_shrlib_rtw/**/*.c",
+    "tensoraerospace/aerospacemodel/**/*_ert_shrlib_rtw/**/*.def",
+    "tensoraerospace/aerospacemodel/**/*_ert_shrlib_rtw/**/*.dmr",
+    "tensoraerospace/aerospacemodel/**/*_ert_shrlib_rtw/**/*.exp",
+    "tensoraerospace/aerospacemodel/**/*_ert_shrlib_rtw/**/*.h",
+    "tensoraerospace/aerospacemodel/**/*_ert_shrlib_rtw/**/*.lib",
+    "tensoraerospace/aerospacemodel/**/*_ert_shrlib_rtw/**/*.mat",
+    "tensoraerospace/aerospacemodel/**/*_ert_shrlib_rtw/**/*.mk",
+    "tensoraerospace/aerospacemodel/**/*_ert_shrlib_rtw/**/*.obj",
+    "tensoraerospace/aerospacemodel/**/*_ert_shrlib_rtw/**/*.rsp",
+    "tensoraerospace/aerospacemodel/**/*_ert_shrlib_rtw/**/*.tmw",
+    "tensoraerospace/aerospacemodel/**/*_ert_shrlib_rtw/**/modelsources.txt",
 ]
 
 [tool.poetry.dependencies]

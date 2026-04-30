@@ -1,7 +1,7 @@
 # Makefile для TensorAeroSpace
 # Использование: make <команда>
 
-.PHONY: help install test lint format security docs clean build publish mkdocs-serve mkdocs-build mkdocs-clean
+.PHONY: help install test lint quality-gate format security dependency-audit docs clean build package-gate publish mkdocs-serve mkdocs-build mkdocs-clean version-check version-sync
 
 # Цвета для вывода
 BLUE := \033[36m
@@ -86,9 +86,10 @@ jupyter_example_test: ## Тестировать Jupyter примеры
 # === КАЧЕСТВО КОДА ===
 lint: ## Проверить код линтерами
 	@echo "$(BLUE)Проверка кода...$(RESET)"
-	poetry run flake8 tensoraerospace --max-line-length=88 --extend-ignore=E203,W503
-	poetry run mypy tensoraerospace --ignore-missing-imports
-	poetry run bandit -r tensoraerospace -f json
+	poetry run flake8 tensoraerospace --count --select=E9,F63,F7,F82 --show-source --statistics
+	poetry run python scripts/ci_quality_gate.py flake8 ruff mypy
+
+quality-gate: version-check lint security dependency-audit ## Запустить локальные CI quality/security gates
 
 format: ## Форматировать код
 	@echo "$(BLUE)Форматирование кода...$(RESET)"
@@ -103,14 +104,17 @@ clean_code: ## Очистить код (legacy)
 
 format-check: ## Проверить форматирование без изменений
 	@echo "$(BLUE)Проверка форматирования...$(RESET)"
-	poetry run black --check tensoraerospace tests examples
-	poetry run isort --check-only tensoraerospace tests examples --profile=black
+	poetry run black --check tensoraerospace tests example
+	poetry run isort --check-only tensoraerospace tests example --profile=black
 
 # === БЕЗОПАСНОСТЬ ===
 security: ## Проверить безопасность
 	@echo "$(BLUE)Проверка безопасности...$(RESET)"
-	poetry run safety check
-	poetry run bandit -r tensoraerospace
+	poetry run python scripts/ci_quality_gate.py bandit
+
+dependency-audit: ## Проверить зависимости через pip-audit baseline
+	poetry run python -m pip install --quiet pip-audit
+	poetry run python scripts/dependency_audit_gate.py
 
 # === ДОКУМЕНТАЦИЯ ===
 docs: ## Сгенерировать документацию
@@ -157,6 +161,10 @@ build: ## Собрать пакет
 	@echo "$(BLUE)Сборка пакета...$(RESET)"
 	poetry build
 
+package-gate: build ## Проверить собранный пакет перед публикацией
+	poetry run twine check dist/*
+	poetry run python scripts/package_gate.py
+
 publish-test: ## Опубликовать в TestPyPI
 	@echo "$(BLUE)Публикация в TestPyPI...$(RESET)"
 	poetry config repositories.testpypi https://test.pypi.org/legacy/
@@ -176,9 +184,9 @@ docker_debug: ## Запустить Docker в debug режиме
 	docker run -v ${PWD}/example:/app/example -p 8888:8888 -it tensor_aero_space
 
 # === КОМПЛЕКСНЫЕ КОМАНДЫ ===
-check-all: format-check lint security test docs ## Полная проверка кода
+check-all: version-check format-check lint security test docs ## Полная проверка кода
 
-ci-test: install-ci test lint security docs ## CI pipeline тестирование
+ci-test: install-ci version-check test lint security docs ## CI pipeline тестирование
 
 dev-setup: install ## Настройка среды разработки
 	@echo "$(GREEN)Среда разработки настроена!$(RESET)"
@@ -188,6 +196,12 @@ dev-setup: install ## Настройка среды разработки
 # === ВЕРСИОНИРОВАНИЕ ===
 version: ## Показать версию
 	@poetry version
+
+version-check: ## Проверить версию pyproject.toml против последнего stable git tag
+	poetry run python scripts/version_gate.py --check-latest-tag
+
+version-sync: ## Синхронизировать версию pyproject.toml с последним stable git tag
+	poetry run python scripts/version_gate.py --sync-latest-tag
 
 bump-patch: ## Увеличить patch версию
 	@poetry version patch
