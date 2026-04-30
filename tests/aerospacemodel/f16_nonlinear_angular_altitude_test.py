@@ -14,15 +14,28 @@ def test_default_track_altitude_is_off():
     assert m.thrust_mode == "constant"
     assert m.action_space_length == 3
     assert m.list_state == [
-        "alpha", "beta", "wx", "wy", "wz",
-        "gamma", "psi", "theta",
-        "stab", "dstab", "ail", "dail", "dir", "ddir",
+        "alpha",
+        "beta",
+        "wx",
+        "wy",
+        "wz",
+        "gamma",
+        "psi",
+        "theta",
+        "stab",
+        "dstab",
+        "ail",
+        "dail",
+        "dir",
+        "ddir",
     ]
 
 
 def test_track_altitude_extends_state_to_16():
     m = AngularF16(
-        x0=np.zeros(14), dt=0.01, integrator="rk4",
+        x0=np.zeros(14),
+        dt=0.01,
+        integrator="rk4",
         track_altitude=True,
     )
     assert m.list_state[-2:] == ["h", "V"]
@@ -35,7 +48,9 @@ def test_track_altitude_extends_state_to_16():
 
 def test_track_altitude_step_evolves_h_and_V():
     m = AngularF16(
-        x0=np.zeros(14), dt=0.01, integrator="rk4",
+        x0=np.zeros(14),
+        dt=0.01,
+        integrator="rk4",
         track_altitude=True,
     )
     h0 = m.current_state[14]
@@ -50,10 +65,13 @@ def test_track_altitude_step_evolves_h_and_V():
 
 def test_thrust_mode_control_extends_action_space():
     m = AngularF16(
-        x0=np.zeros(14), dt=0.01, integrator="rk4",
-        track_altitude=True, thrust_mode="control",
+        x0=np.zeros(14),
+        dt=0.01,
+        integrator="rk4",
+        track_altitude=True,
+        thrust_mode="control",
     )
-    assert m.action_space_length == 4   # 3 surfaces + 1 thrust
+    assert m.action_space_length == 4  # 3 surfaces + 1 thrust
     assert m.control_list[-1] == "thrust"
     # Step with explicit thrust input
     m.run_step(np.array([0.0, 0.0, 0.0, 50000.0]))
@@ -63,10 +81,13 @@ def test_thrust_mode_control_extends_action_space():
 
 def test_thrust_input_clipped_to_max():
     m = AngularF16(
-        x0=np.zeros(14), dt=0.01, integrator="rk4",
-        track_altitude=True, thrust_mode="control",
+        x0=np.zeros(14),
+        dt=0.01,
+        integrator="rk4",
+        track_altitude=True,
+        thrust_mode="control",
     )
-    m.run_step(np.array([0.0, 0.0, 0.0, 1e7]))   # crazy high
+    m.run_step(np.array([0.0, 0.0, 0.0, 1e7]))  # crazy high
     assert m.param.T_active == pytest.approx(m.param.T_max_thrust)
     m.run_step(np.array([0.0, 0.0, 0.0, -100]))  # negative
     assert m.param.T_active == pytest.approx(0.0)
@@ -74,8 +95,11 @@ def test_thrust_input_clipped_to_max():
 
 def test_thrust_constant_uses_param_T_thrust():
     m = AngularF16(
-        x0=np.zeros(14), dt=0.01, integrator="rk4",
-        track_altitude=True, thrust_mode="constant",
+        x0=np.zeros(14),
+        dt=0.01,
+        integrator="rk4",
+        track_altitude=True,
+        thrust_mode="constant",
     )
     # Set a custom thrust
     m.param.T_thrust = 25000.0
@@ -88,8 +112,11 @@ def test_q_updates_with_altitude():
     from tensoraerospace.aerospacemodel.f16.nonlinear.angular.params import (
         _isa_dynamic_pressure,
     )
+
     m = AngularF16(
-        x0=np.zeros(14), dt=0.01, integrator="rk4",
+        x0=np.zeros(14),
+        dt=0.01,
+        integrator="rk4",
         track_altitude=True,
     )
     # Force an artificially high altitude by mutating the state
@@ -109,5 +136,7 @@ def test_track_altitude_off_is_bit_identical_to_legacy():
         m1.run_step(np.array([0.05, 0.0, 0.0]))
         m2.run_step(np.array([0.05, 0.0, 0.0]))
     np.testing.assert_allclose(
-        m1.current_state, m2.current_state, atol=1e-12,
+        m1.current_state,
+        m2.current_state,
+        atol=1e-12,
     )

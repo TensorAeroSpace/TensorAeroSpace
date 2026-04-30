@@ -11,6 +11,7 @@ import pytest
 def _make_simple_env(damage_profile=None, n_steps_run: int = 5):
     """Build and step a NonlinearAngularF16 env briefly."""
     from tensoraerospace.envs.f16.nonlinear_angular import NonlinearAngularF16
+
     env = NonlinearAngularF16(
         initial_state=np.zeros(14),
         number_time_steps=20,
@@ -28,6 +29,7 @@ def _make_simple_env(damage_profile=None, n_steps_run: int = 5):
 
 def test_flight_log_version_present():
     from tensoraerospace.visualization.three_d import build_flight_log
+
     env = _make_simple_env()
     log = build_flight_log(env)
     assert log["version"] == 1
@@ -35,6 +37,7 @@ def test_flight_log_version_present():
 
 def test_flight_log_metadata_fields():
     from tensoraerospace.visualization.three_d import build_flight_log
+
     env = _make_simple_env()
     log = build_flight_log(env)
     md = log["metadata"]
@@ -47,19 +50,31 @@ def test_flight_log_metadata_fields():
 
 def test_trajectory_arrays_aligned():
     from tensoraerospace.visualization.three_d import build_flight_log
+
     env = _make_simple_env(n_steps_run=10)
     log = build_flight_log(env)
     traj = log["trajectory"]
     n = len(traj["time"])
-    for key in ("position", "attitude", "alpha", "beta", "wx", "wy", "wz",
-                "stab", "ail", "dir"):
-        assert len(traj[key]) == n, (
-            f"trajectory['{key}'] has length {len(traj[key])}, expected {n}"
-        )
+    for key in (
+        "position",
+        "attitude",
+        "alpha",
+        "beta",
+        "wx",
+        "wy",
+        "wz",
+        "stab",
+        "ail",
+        "dir",
+    ):
+        assert (
+            len(traj[key]) == n
+        ), f"trajectory['{key}'] has length {len(traj[key])}, expected {n}"
 
 
 def test_geometry_section_schema():
     from tensoraerospace.visualization.three_d import build_flight_log
+
     env = _make_simple_env()
     log = build_flight_log(env)
     geo = log["geometry"]
@@ -67,8 +82,17 @@ def test_geometry_section_schema():
     assert len(geo["sections"]) >= 13
     s0 = geo["sections"][0]
     required_fields = {
-        "name", "type", "side", "area", "span_position", "chord", "sweep",
-        "mass", "cg_local", "aero_x_arm", "controls_input",
+        "name",
+        "type",
+        "side",
+        "area",
+        "span_position",
+        "chord",
+        "sweep",
+        "mass",
+        "cg_local",
+        "aero_x_arm",
+        "controls_input",
     }
     assert set(s0.keys()) == required_fields
     assert isinstance(s0["cg_local"], list)
@@ -77,14 +101,18 @@ def test_geometry_section_schema():
 
 def test_damage_events_logged_when_profile_active():
     from tensoraerospace.aerospacemodel.f16.nonlinear.damage.events import (
-        DamageEvent, DamageProfile,
+        DamageEvent,
+        DamageProfile,
     )
     from tensoraerospace.visualization.three_d import build_flight_log
 
-    profile = DamageProfile(events=[
-        DamageEvent(0.02, "section_loss",
-                    {"section": "left_tip", "loss_fraction": 1.0}),
-    ])
+    profile = DamageProfile(
+        events=[
+            DamageEvent(
+                0.02, "section_loss", {"section": "left_tip", "loss_fraction": 1.0}
+            ),
+        ]
+    )
     env = _make_simple_env(damage_profile=profile, n_steps_run=10)
     log = build_flight_log(env)
     events = log["damage_events"]
@@ -99,14 +127,18 @@ def test_damage_events_logged_when_profile_active():
 
 def test_damage_state_history_snapshots_at_transitions():
     from tensoraerospace.aerospacemodel.f16.nonlinear.damage.events import (
-        DamageEvent, DamageProfile,
+        DamageEvent,
+        DamageProfile,
     )
     from tensoraerospace.visualization.three_d import build_flight_log
 
-    profile = DamageProfile(events=[
-        DamageEvent(0.02, "section_loss",
-                    {"section": "right_tip", "loss_fraction": 0.5}),
-    ])
+    profile = DamageProfile(
+        events=[
+            DamageEvent(
+                0.02, "section_loss", {"section": "right_tip", "loss_fraction": 0.5}
+            ),
+        ]
+    )
     env = _make_simple_env(damage_profile=profile, n_steps_run=10)
     log = build_flight_log(env)
     history = log["damage_state_history"]
@@ -119,6 +151,7 @@ def test_damage_state_history_snapshots_at_transitions():
 
 def test_no_damage_profile_means_empty_logs():
     from tensoraerospace.visualization.three_d import build_flight_log
+
     env = _make_simple_env()
     log = build_flight_log(env)
     assert log["damage_events"] == []
@@ -127,6 +160,7 @@ def test_no_damage_profile_means_empty_logs():
 
 def test_flight_log_json_serializable():
     from tensoraerospace.visualization.three_d import build_flight_log
+
     env = _make_simple_env()
     log = build_flight_log(env)
     s = json.dumps(log)
@@ -142,9 +176,12 @@ def test_metadata_includes_model_params():
     render them without hardcoded constants."""
     from tensoraerospace.envs.f16.nonlinear_angular import NonlinearAngularF16
     from tensoraerospace.visualization.three_d import build_flight_log
+
     env = NonlinearAngularF16(
-        initial_state=np.zeros(14), number_time_steps=20,
-        dt=0.01, airspeed=200.0,
+        initial_state=np.zeros(14),
+        number_time_steps=20,
+        dt=0.01,
+        airspeed=200.0,
     )
     env.reset()
     for _ in range(3):
@@ -160,7 +197,9 @@ def test_metadata_includes_model_params():
 def test_metadata_params_for_longitudinal_env():
     """Same params block must work for the longitudinal env."""
     import gymnasium as gym
+
     from tensoraerospace.visualization.three_d import build_flight_log
+
     env = gym.make(
         "NonlinearLongitudinalF16-v0",
         number_time_steps=20,
@@ -185,16 +224,25 @@ def test_metadata_params_for_longitudinal_env():
 
 def test_reset_clears_damage_logs():
     from tensoraerospace.aerospacemodel.f16.nonlinear.damage.events import (
-        DamageEvent, DamageProfile,
+        DamageEvent,
+        DamageProfile,
     )
     from tensoraerospace.envs.f16.nonlinear_angular import NonlinearAngularF16
-    profile = DamageProfile(events=[
-        DamageEvent(0.02, "section_loss",
-                    {"section": "left_tip", "loss_fraction": 1.0}),
-    ])
+
+    profile = DamageProfile(
+        events=[
+            DamageEvent(
+                0.02, "section_loss", {"section": "left_tip", "loss_fraction": 1.0}
+            ),
+        ]
+    )
     env = NonlinearAngularF16(
-        initial_state=np.zeros(14), number_time_steps=20, dt=0.01,
-        airspeed=200.0, damage_profile=profile, split_stab=True,
+        initial_state=np.zeros(14),
+        number_time_steps=20,
+        dt=0.01,
+        airspeed=200.0,
+        damage_profile=profile,
+        split_stab=True,
     )
     env.reset()
     for _ in range(5):

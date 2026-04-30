@@ -77,14 +77,17 @@ class ScalingRLS:
         # bound. Default below picks ``cov_trace_bound = 100·n_u·cov_init``,
         # i.e. allow ~100× growth before saturating.
         self.cov_trace_bound = (
-            float(cov_trace_bound) if cov_trace_bound is not None
+            float(cov_trace_bound)
+            if cov_trace_bound is not None
             else 100.0 * self.n_u * self.cov_init
         )
 
         self.theta = np.ones((self.n_y, self.n_u), dtype=np.float64)
         self.P = np.stack(
-            [np.eye(self.n_u, dtype=np.float64) * self.cov_init
-             for _ in range(self.n_y)],
+            [
+                np.eye(self.n_u, dtype=np.float64) * self.cov_init
+                for _ in range(self.n_y)
+            ],
             axis=0,
         )  # shape (n_y, n_u, n_u)
         self.last_lambda = np.full(self.n_y, self.lambda_max, dtype=np.float64)
@@ -95,11 +98,11 @@ class ScalingRLS:
     @property
     def sigma_total(self) -> float:
         """Information-content denominator Σ₀ = σ₀²·N₀."""
-        return self.sigma0 ** 2 * self.memory_length
+        return self.sigma0**2 * self.memory_length
 
     def _info_content_lambda(self, eps_i: float, phi_K_i: float) -> float:
         """Eq. 26 of the paper: λ = 1 − (1 − φᵀK)·ε² / Σ₀, clamped."""
-        lam = 1.0 - (1.0 - phi_K_i) * (eps_i ** 2) / self.sigma_total
+        lam = 1.0 - (1.0 - phi_K_i) * (eps_i**2) / self.sigma_total
         return float(np.clip(lam, self.lambda_min, self.lambda_max))
 
     def _apply_consistency_check(self, delta_theta: np.ndarray) -> np.ndarray:
@@ -147,7 +150,7 @@ class ScalingRLS:
         lambdas = np.empty(self.n_y, dtype=np.float64)
 
         for i in range(self.n_y):
-            phi_full = (G[i, :] * du_v)                       # (n_u,)
+            phi_full = G[i, :] * du_v  # (n_u,)
             # Mask out unobservable directions (zero regressor) to keep
             # the parameters and covariance bounded along those axes.
             mask = np.abs(phi_full) > self.observability_floor
@@ -159,10 +162,10 @@ class ScalingRLS:
             theta_row = self.theta[i, :].reshape(-1, 1)
             P_i = self.P[i]
             eps_i = float(dy_v[i] - (theta_row.T @ phi).item())
-            P_phi = P_i @ phi                                 # (n_u, 1)
+            P_phi = P_i @ phi  # (n_u, 1)
             denom = self.last_lambda[i] + float((phi.T @ P_phi).item())
             denom = denom if abs(denom) > 1e-12 else 1e-12
-            K_i = P_phi / denom                               # (n_u, 1)
+            K_i = P_phi / denom  # (n_u, 1)
 
             # Zero the gain on unobservable directions so neither θ nor P
             # drift there.
@@ -179,14 +182,12 @@ class ScalingRLS:
             # this stops 1/λ inflation along inert axes.
             inert = ~mask
             if inert.any():
-                P_new[np.ix_(inert, inert)] = (
-                    np.eye(int(inert.sum())) * self.cov_init
-                )
+                P_new[np.ix_(inert, inert)] = np.eye(int(inert.sum())) * self.cov_init
                 # Also clear the cross-blocks between observable and inert
                 # to avoid contamination via coupling.
                 P_new[np.ix_(mask, inert)] = 0.0
                 P_new[np.ix_(inert, mask)] = 0.0
-            P_new = 0.5 * (P_new + P_new.T)                   # symmetrise
+            P_new = 0.5 * (P_new + P_new.T)  # symmetrise
             # Trace bound — caps covariance windup under VFF forgetting.
             tr = float(np.trace(P_new))
             if self.cov_trace_bound > 0.0 and tr > self.cov_trace_bound:

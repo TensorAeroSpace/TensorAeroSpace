@@ -56,9 +56,20 @@ class AngularF16(ModelBase):
         self.track_altitude = track_altitude
         self.thrust_mode = thrust_mode
         _list_state = [
-            "alpha", "beta", "wx", "wy", "wz",
-            "gamma", "psi", "theta",
-            "stab", "dstab", "ail", "dail", "dir", "ddir",
+            "alpha",
+            "beta",
+            "wx",
+            "wy",
+            "wz",
+            "gamma",
+            "psi",
+            "theta",
+            "stab",
+            "dstab",
+            "ail",
+            "dail",
+            "dir",
+            "ddir",
         ]
         if track_altitude:
             _list_state.extend(["h", "V"])
@@ -116,7 +127,7 @@ class AngularF16(ModelBase):
             thrust_cmd = float(u_arr[-1])
             thrust_cmd = float(np.clip(thrust_cmd, 0.0, self.param.T_max_thrust))
             self.param.T_active = thrust_cmd
-            u_arr = u_arr[:-1]    # drop thrust from u; rest is stab/ail/dir
+            u_arr = u_arr[:-1]  # drop thrust from u; rest is stab/ail/dir
         else:
             self.param.T_active = self.param.T_thrust
 
@@ -126,9 +137,11 @@ class AngularF16(ModelBase):
         # merging proceeds with the failure-modified values.
         if self.damage_state is not None:
             from ..damage.controls import (
-                ANGULAR_LEGACY_INDEX, ANGULAR_SPLIT_STAB_INDEX,
+                ANGULAR_LEGACY_INDEX,
+                ANGULAR_SPLIT_STAB_INDEX,
                 apply_control_failures,
             )
+
             mapping = (
                 ANGULAR_SPLIT_STAB_INDEX if self.split_stab else ANGULAR_LEGACY_INDEX
             )
@@ -155,7 +168,9 @@ class AngularF16(ModelBase):
 
         x_prev = np.asarray(self.x_history[-1], dtype=np.float64).reshape(-1)
         t_now = self.t0 + self.dt * self.time_step
-        x_next = self._step_fn(f16_ode_6dof, x_prev, u_legacy, t_now, self.dt, self.param)
+        x_next = self._step_fn(
+            f16_ode_6dof, x_prev, u_legacy, t_now, self.dt, self.param
+        )
 
         x_next_col = x_next.reshape(self.n_state, 1)
         self.x_history.append(x_next_col)

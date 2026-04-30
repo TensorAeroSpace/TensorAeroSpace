@@ -60,7 +60,8 @@ def build_flight_log(env) -> dict[str, Any]:
     # Pull per-step state channels from the underlying angular model (14-state)
     # x_history is a list of (14, 1) ndarrays, one per step (incl. initial)
     x_hist = np.asarray(
-        [x.reshape(-1) for x in env.model.x_history], dtype=np.float64,
+        [x.reshape(-1) for x in env.model.x_history],
+        dtype=np.float64,
     )
     if x_hist.shape[0] != len(t):
         # Different lengths can happen if step count != history count; align
@@ -89,39 +90,39 @@ def build_flight_log(env) -> dict[str, Any]:
     if n_state == 14:
         traj_channels = {
             "alpha": x_hist[:, 0].tolist(),
-            "beta":  x_hist[:, 1].tolist(),
-            "wx":    x_hist[:, 2].tolist(),
-            "wy":    x_hist[:, 3].tolist(),
-            "wz":    x_hist[:, 4].tolist(),
-            "stab":  x_hist[:, 8].tolist(),
-            "ail":   x_hist[:, 10].tolist(),
-            "dir":   x_hist[:, 12].tolist(),
+            "beta": x_hist[:, 1].tolist(),
+            "wx": x_hist[:, 2].tolist(),
+            "wy": x_hist[:, 3].tolist(),
+            "wz": x_hist[:, 4].tolist(),
+            "stab": x_hist[:, 8].tolist(),
+            "ail": x_hist[:, 10].tolist(),
+            "dir": x_hist[:, 12].tolist(),
         }
     elif n_state == 16:
         # Altitude-tracking angular: same as 14-state plus h and V.
         traj_channels = {
             "alpha": x_hist[:, 0].tolist(),
-            "beta":  x_hist[:, 1].tolist(),
-            "wx":    x_hist[:, 2].tolist(),
-            "wy":    x_hist[:, 3].tolist(),
-            "wz":    x_hist[:, 4].tolist(),
-            "stab":  x_hist[:, 8].tolist(),
-            "ail":   x_hist[:, 10].tolist(),
-            "dir":   x_hist[:, 12].tolist(),
-            "altitude_m":  x_hist[:, 14].tolist(),
+            "beta": x_hist[:, 1].tolist(),
+            "wx": x_hist[:, 2].tolist(),
+            "wy": x_hist[:, 3].tolist(),
+            "wz": x_hist[:, 4].tolist(),
+            "stab": x_hist[:, 8].tolist(),
+            "ail": x_hist[:, 10].tolist(),
+            "dir": x_hist[:, 12].tolist(),
+            "altitude_m": x_hist[:, 14].tolist(),
             "airspeed_mps": x_hist[:, 15].tolist(),
         }
     elif n_state == 4:
         # Longitudinal: [alpha, wz, stab, dstab]
         traj_channels = {
             "alpha": x_hist[:, 0].tolist(),
-            "beta":  zero_channel,
-            "wx":    zero_channel,
-            "wy":    zero_channel,
-            "wz":    x_hist[:, 1].tolist(),
-            "stab":  x_hist[:, 2].tolist(),
-            "ail":   zero_channel,
-            "dir":   zero_channel,
+            "beta": zero_channel,
+            "wx": zero_channel,
+            "wy": zero_channel,
+            "wz": x_hist[:, 1].tolist(),
+            "stab": x_hist[:, 2].tolist(),
+            "ail": zero_channel,
+            "dir": zero_channel,
         }
     else:
         raise ValueError(
@@ -181,20 +182,20 @@ _RAD2DEG = 180.0 / np.pi
 _REFERENCE_CHANNEL_MAP: dict[str, tuple[str, float]] = {
     # angles (rad → deg)
     "alpha": ("alpha", _RAD2DEG),
-    "beta":  ("beta",  _RAD2DEG),
-    "wx":    ("wx",    _RAD2DEG),
-    "wy":    ("wy",    _RAD2DEG),
-    "wz":    ("wz",    _RAD2DEG),
+    "beta": ("beta", _RAD2DEG),
+    "wx": ("wx", _RAD2DEG),
+    "wy": ("wy", _RAD2DEG),
+    "wz": ("wz", _RAD2DEG),
     "theta": ("theta", _RAD2DEG),
-    "gamma": ("roll",  _RAD2DEG),    # the codebase uses gamma for roll
-    "psi":   ("yaw",   _RAD2DEG),
-    "stab":  ("stab",  _RAD2DEG),
+    "gamma": ("roll", _RAD2DEG),  # the codebase uses gamma for roll
+    "psi": ("yaw", _RAD2DEG),
+    "stab": ("stab", _RAD2DEG),
     "dstab": ("dstab", _RAD2DEG),
-    "ail":   ("ail",   _RAD2DEG),
-    "dir":   ("dir",   _RAD2DEG),
+    "ail": ("ail", _RAD2DEG),
+    "dir": ("dir", _RAD2DEG),
     # absolute units (no conversion)
-    "h":     ("h",     1.0),
-    "V":     ("V",     1.0),
+    "h": ("h", 1.0),
+    "V": ("V", 1.0),
 }
 
 
@@ -226,8 +227,7 @@ def _auto_extract_references(env, n_t: int) -> dict[str, list[float]]:
         key, scale = mapping
         series = ref_arr[i] * scale
         if series.size < n_t:
-            series = np.concatenate(
-                [series, np.full(n_t - series.size, series[-1])])
+            series = np.concatenate([series, np.full(n_t - series.size, series[-1])])
         elif series.size > n_t:
             series = series[:n_t]
         out[key] = series.tolist()
@@ -246,8 +246,21 @@ def _serialise_params(env) -> dict[str, float]:
     if env.model is None or not hasattr(env.model, "param"):
         return {}
     p = env.model.param
-    fields = ("V", "Oy", "m", "g", "q", "S", "bA", "Jx", "Jy", "Jz",
-              "Jxy", "Jxz", "Jyz")
+    fields = (
+        "V",
+        "Oy",
+        "m",
+        "g",
+        "q",
+        "S",
+        "bA",
+        "Jx",
+        "Jy",
+        "Jz",
+        "Jxy",
+        "Jxz",
+        "Jyz",
+    )
     out: dict[str, float] = {}
     for f in fields:
         if hasattr(p, f):

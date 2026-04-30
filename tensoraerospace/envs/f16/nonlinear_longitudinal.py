@@ -18,14 +18,15 @@ from __future__ import annotations
 import math
 from typing import Callable, Optional, Sequence
 
-from tensoraerospace.aerospacemodel.f16.nonlinear.damage import (
-    DamageManager, DamageProfile, load_f16_geometry,
-)
-
 import gymnasium as gym
 import numpy as np
 from gymnasium import spaces
 
+from tensoraerospace.aerospacemodel.f16.nonlinear.damage import (
+    DamageManager,
+    DamageProfile,
+    load_f16_geometry,
+)
 from tensoraerospace.aerospacemodel.f16.nonlinear.longitudinal import (
     LongitudinalF16,
 )
@@ -262,18 +263,22 @@ class NonlinearLongitudinalF16(gym.Env):
                 if self.damage_event_callback:
                     self.damage_event_callback(ev, self.damage_manager.state)
                 triggered_labels.append(ev.label or ev.event_type)
-                self.damage_events_log.append({
-                    "time": float(t_now),
-                    "label": ev.label or ev.event_type,
-                    "event_type": ev.event_type,
-                    "payload": dict(ev.payload),
-                })
+                self.damage_events_log.append(
+                    {
+                        "time": float(t_now),
+                        "label": ev.label or ev.event_type,
+                        "event_type": ev.event_type,
+                        "payload": dict(ev.payload),
+                    }
+                )
             if triggered:
                 # Snapshot the post-event damage state
-                self.damage_state_log.append({
-                    "time": float(t_now),
-                    "state": self.damage_manager.state.snapshot(),
-                })
+                self.damage_state_log.append(
+                    {
+                        "time": float(t_now),
+                        "state": self.damage_manager.state.snapshot(),
+                    }
+                )
 
         next_state = self.model.run_step(action_rad)
         # Track histories using the FULL 4-element model state (next_state may
@@ -321,7 +326,8 @@ class NonlinearLongitudinalF16(gym.Env):
         if self.damage_profile is not None or self.damage_observable:
             geo = self._geo_for_damage
             self.damage_manager = DamageManager(
-                geometry=geo, params=self.model.param,
+                geometry=geo,
+                params=self.model.param,
                 profile=(self.damage_profile or DamageProfile(events=[])),
             )
             if options and "damage_profile" in options:
@@ -341,10 +347,12 @@ class NonlinearLongitudinalF16(gym.Env):
         self.damage_events_log = []
         self.damage_state_log = []
         if self.damage_manager is not None:
-            self.damage_state_log.append({
-                "time": 0.0,
-                "state": self.damage_manager.state.snapshot(),
-            })
+            self.damage_state_log.append(
+                {
+                    "time": 0.0,
+                    "state": self.damage_manager.state.snapshot(),
+                }
+            )
 
         self.position_history = np.zeros((1, 3), dtype=np.float64)
         self.attitude_history = np.array([[0.0, self.initial_pitch, 0.0]])
@@ -469,4 +477,5 @@ class NonlinearLongitudinalF16(gym.Env):
 
     def _render_3d_web(self):
         from tensoraerospace.visualization.three_d import render as _render_3d
+
         return _render_3d(self)

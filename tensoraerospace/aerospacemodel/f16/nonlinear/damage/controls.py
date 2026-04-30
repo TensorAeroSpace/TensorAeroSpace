@@ -38,8 +38,10 @@ ANGULAR_SPLIT_STAB_INDEX = {
 # In legacy mode, separate-side failures are not addressable; the closest
 # is to apply to the merged 'stab' channel.
 ANGULAR_LEGACY_INDEX = {
-    "stab_left": 0, "stab_right": 0,
-    "aileron_left": 1, "aileron_right": 1,
+    "stab_left": 0,
+    "stab_right": 0,
+    "aileron_left": 1,
+    "aileron_right": 1,
     "rudder": 2,
 }
 

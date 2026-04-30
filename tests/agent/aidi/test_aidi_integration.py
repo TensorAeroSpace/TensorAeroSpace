@@ -28,7 +28,6 @@ from tensoraerospace.aerospacemodel.f16.nonlinear.longitudinal.dynamics import (
 )
 from tensoraerospace.agent.aidi import AIDIAgent, AIDIConfig, F16NonlinearOnboardCE
 
-
 pytestmark = pytest.mark.integration
 
 
@@ -41,7 +40,8 @@ def _solve_trim():
         return list(f16_ode_long(x, np.array([stab]), 0.0, params)[:2])
 
     sol, _info, ier, _msg = fsolve(
-        trim_residual, x0=[math.radians(2.0), math.radians(-2.0)],
+        trim_residual,
+        x0=[math.radians(2.0), math.radians(-2.0)],
         full_output=True,
     )
     assert ier == 1
@@ -50,6 +50,7 @@ def _solve_trim():
 
 def _make_env(damage_profile, n_steps, alpha_trim, stab_trim):
     from tensoraerospace.envs.f16.nonlinear_angular import NonlinearAngularF16
+
     initial_state = np.zeros(14)
     initial_state[0] = alpha_trim
     initial_state[8] = stab_trim
@@ -70,17 +71,22 @@ def _build_agent(adapt_enabled: bool = True) -> AIDIAgent:
         u_rate_limit=math.radians(60.0),
         rls_lambda_min=0.7 if adapt_enabled else 0.999,
         rls_lambda_max=0.999 if adapt_enabled else 0.9999,
-        rls_sigma0=1e-3, rls_memory_length=100,
+        rls_sigma0=1e-3,
+        rls_memory_length=100,
         rls_cov_init=10.0,
         # Gentle outer-loop gains — INDI is robust but can autovibrate
         # against the F-16 actuator if pushed too hard.
-        cstar_kp=0.5, cstar_ki=0.2,
-        roll_omega_n=1.5, roll_zeta=0.8,
-        sideslip_kp=0.5, sideslip_ki=0.05,
+        cstar_kp=0.5,
+        cstar_ki=0.2,
+        roll_omega_n=1.5,
+        roll_zeta=0.8,
+        sideslip_kp=0.5,
+        sideslip_ki=0.05,
         seed=0,
     )
     return AIDIAgent(
-        n_state=3, n_control=3,
+        n_state=3,
+        n_control=3,
         onboard_ce=F16NonlinearOnboardCE(default_parameters(), perturb=1e-3),
         config=cfg,
     )
@@ -92,8 +98,10 @@ def _run(agent, env, n_steps):
     for k in range(n_steps):
         observation = {
             "omega": np.array([obs_arr[2], obs_arr[4], obs_arr[3]]),  # (p,q,r)
-            "alpha": float(obs_arr[0]), "beta": float(obs_arr[1]),
-            "theta": float(obs_arr[7]), "phi": float(obs_arr[5]),
+            "alpha": float(obs_arr[0]),
+            "beta": float(obs_arr[1]),
+            "theta": float(obs_arr[7]),
+            "phi": float(obs_arr[5]),
             "V": float(env.airspeed),
             "state": obs_arr.copy(),
         }
@@ -102,8 +110,10 @@ def _run(agent, env, n_steps):
         obs_arr, _r, _term, _trunc, _info = env.step(np.rad2deg(u_rad))
         next_obs = {
             "omega": np.array([obs_arr[2], obs_arr[4], obs_arr[3]]),
-            "alpha": float(obs_arr[0]), "beta": float(obs_arr[1]),
-            "theta": float(obs_arr[7]), "phi": float(obs_arr[5]),
+            "alpha": float(obs_arr[0]),
+            "beta": float(obs_arr[1]),
+            "theta": float(obs_arr[7]),
+            "phi": float(obs_arr[5]),
             "V": float(env.airspeed),
             "state": obs_arr.copy(),
         }
@@ -121,22 +131,22 @@ def test_aidi_runs_through_stab_efficiency_loss():
     agent_adapt = _build_agent(adapt_enabled=True)
     agent_frozen = _build_agent(adapt_enabled=False)
 
-    qs_adapt = _run(agent_adapt,
-                    _make_env(profile_a, n_steps, alpha_trim, stab_trim),
-                    n_steps)
-    qs_frozen = _run(agent_frozen,
-                     _make_env(profile_b, n_steps, alpha_trim, stab_trim),
-                     n_steps)
+    qs_adapt = _run(
+        agent_adapt, _make_env(profile_a, n_steps, alpha_trim, stab_trim), n_steps
+    )
+    qs_frozen = _run(
+        agent_frozen, _make_env(profile_b, n_steps, alpha_trim, stab_trim), n_steps
+    )
 
     # Sanity: both runs stay finite and bounded.
     assert np.all(np.isfinite(qs_adapt))
     assert np.all(np.isfinite(qs_frozen))
-    assert float(np.max(np.abs(qs_adapt))) < 2.0   # rad/s — generous bound.
+    assert float(np.max(np.abs(qs_adapt))) < 2.0  # rad/s — generous bound.
     assert float(np.max(np.abs(qs_frozen))) < 2.0
 
     # Adaptive Θ on the pitch row should move away from unity once the
     # fault is identified (column 0 = stab, row 1 = pitch in (p,q,r) order).
     theta_qstab = float(agent_adapt.rls.theta[1, 0])
-    assert theta_qstab < 0.95, (
-        f"adaptive Θ_q,stab did not adapt (got {theta_qstab:.4f})"
-    )
+    assert (
+        theta_qstab < 0.95
+    ), f"adaptive Θ_q,stab did not adapt (got {theta_qstab:.4f})"

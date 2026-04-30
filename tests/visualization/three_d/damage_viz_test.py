@@ -10,8 +10,11 @@ import numpy as np
 def _make_html():
     from tensoraerospace.envs.f16.nonlinear_angular import NonlinearAngularF16
     from tensoraerospace.visualization.three_d import build_flight_log, build_html
+
     env = NonlinearAngularF16(
-        initial_state=np.zeros(14), number_time_steps=20, dt=0.01,
+        initial_state=np.zeros(14),
+        number_time_steps=20,
+        dt=0.01,
         airspeed=200.0,
     )
     env.reset()
@@ -121,6 +124,7 @@ def test_control_surface_deflections_applied_each_frame():
     """setFrame() must rotate stab / aileron / rudder groups by the
     trajectory deflection values."""
     import re
+
     html = _make_html()
     m = re.search(r"function setFrame\([^)]*\)\s*\{(.*?)\n    \}", html, re.DOTALL)
     assert m is not None
@@ -135,10 +139,18 @@ def test_control_surface_deflections_applied_each_frame():
 def test_html_has_keyboard_shortcuts():
     """Keyboard handler must be installed and cover the documented keys."""
     html = _make_html()
-    assert "addEventListener(\"keydown\"" in html or \
-        "addEventListener('keydown'" in html
-    for case in ("Space", "ArrowLeft", "ArrowRight", "Home", "End",
-                 "Digit1", "Digit2", "Digit3", "Digit4"):
+    assert 'addEventListener("keydown"' in html or "addEventListener('keydown'" in html
+    for case in (
+        "Space",
+        "ArrowLeft",
+        "ArrowRight",
+        "Home",
+        "End",
+        "Digit1",
+        "Digit2",
+        "Digit3",
+        "Digit4",
+    ):
         assert case in html, f"missing keybinding for {case}"
 
 
@@ -151,9 +163,14 @@ def test_html_has_keyboard_help_overlay():
 def test_html_has_lerx_and_realistic_features():
     """The upgraded F-16 mesh ships LERX, ventral fins, wingtip launchers."""
     html = _make_html()
-    for feature in ("lerx_right", "lerx_left",
-                    "ventral_fin_right", "ventral_fin_left",
-                    "launcher_right", "launcher_left"):
+    for feature in (
+        "lerx_right",
+        "lerx_left",
+        "ventral_fin_right",
+        "ventral_fin_left",
+        "launcher_right",
+        "launcher_left",
+    ):
         assert feature in html, f"missing F-16 feature: {feature}"
 
 
@@ -176,9 +193,16 @@ def test_html_has_instrument_panel():
     html = _make_html()
     assert 'id="instrument-panel"' in html
     # Six round gauges + AOA strip + caution lamp
-    for gauge in ("gauge-adi", "gauge-airspeed", "gauge-altimeter",
-                  "gauge-hsi", "gauge-vvi", "gauge-aoa", "gauge-g",
-                  "caution-lamp"):
+    for gauge in (
+        "gauge-adi",
+        "gauge-airspeed",
+        "gauge-altimeter",
+        "gauge-hsi",
+        "gauge-vvi",
+        "gauge-aoa",
+        "gauge-g",
+        "caution-lamp",
+    ):
         assert gauge in html, f"missing gauge: {gauge}"
 
 
@@ -188,8 +212,7 @@ def test_instrument_panel_dial_anchors():
     html = _make_html()
     for prefix in ("airspeed", "altimeter", "vvi", "g"):
         for suffix in ("-needle", "-ticks", "-labels", "-digital"):
-            assert prefix + suffix in html, \
-                f"missing {prefix + suffix}"
+            assert prefix + suffix in html, f"missing {prefix + suffix}"
     # ADI has rotor + pitch translate
     assert "adi-rotor" in html
     assert "adi-pitch" in html
@@ -212,6 +235,7 @@ def test_caution_lamp_responds_to_damage_state():
     """The MASTER CAUTION lamp must toggle .active class based on
     damageStateAt() each frame."""
     import re
+
     html = _make_html()
     m = re.search(r"function setFrame\([^)]*\)\s*\{(.*?)\n    \}", html, re.DOTALL)
     assert m is not None

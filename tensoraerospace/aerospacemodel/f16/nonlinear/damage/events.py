@@ -39,9 +39,7 @@ class DamageEvent:
                 f"{_VALID_EVENT_TYPES}"
             )
         if self.trigger_time < 0:
-            raise ValueError(
-                f"trigger_time must be >= 0; got {self.trigger_time}"
-            )
+            raise ValueError(f"trigger_time must be >= 0; got {self.trigger_time}")
 
 
 @dataclass
@@ -53,7 +51,4 @@ class DamageProfile:
         self, t_current: float, t_previous: float
     ) -> list[DamageEvent]:
         """Events triggering in the half-open interval (t_previous, t_current]."""
-        return [
-            e for e in self.events
-            if t_previous < e.trigger_time <= t_current
-        ]
+        return [e for e in self.events if t_previous < e.trigger_time <= t_current]

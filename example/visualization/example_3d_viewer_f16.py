@@ -79,6 +79,7 @@ ANG_H_TARGET = 3000.0
 #  ET-DHP setup on the longitudinal F-16 (training rig)
 # =====================================================================
 
+
 def _longitudinal_trim() -> tuple[float, float]:
     p = long_default_params()
 
@@ -88,7 +89,9 @@ def _longitudinal_trim() -> tuple[float, float]:
         return list(f16_ode_long(x, np.array([stab]), 0.0, p)[:2])
 
     sol, _info, ier, _msg = fsolve(
-        res, x0=[math.radians(2.0), math.radians(-2.0)], full_output=True,
+        res,
+        x0=[math.radians(2.0), math.radians(-2.0)],
+        full_output=True,
     )
     assert ier == 1
     return float(sol[0]), float(sol[1])
@@ -101,15 +104,22 @@ def _build_state_transform(alpha_trim_deg: float, alphas_grid_deg, stabs_grid_de
             alpha_ref_deg_now = math.degrees(float(ref[0, int(ts)]))
         else:
             alpha_ref_deg_now = alpha_trim_deg
-        stab_ref_deg_now = float(np.interp(
-            alpha_ref_deg_now, alphas_grid_deg, stabs_grid_deg,
-        ))
-        return np.array([
-            obs_deg[0] - alpha_ref_deg_now,
-            obs_deg[1],
-            obs_deg[2] - stab_ref_deg_now,
-            obs_deg[3],
-        ])
+        stab_ref_deg_now = float(
+            np.interp(
+                alpha_ref_deg_now,
+                alphas_grid_deg,
+                stabs_grid_deg,
+            )
+        )
+        return np.array(
+            [
+                obs_deg[0] - alpha_ref_deg_now,
+                obs_deg[1],
+                obs_deg[2] - stab_ref_deg_now,
+                obs_deg[3],
+            ]
+        )
+
     return state_transform
 
 
@@ -122,16 +132,17 @@ def _build_feedforward_table():
 
     def stab_for_alpha(a):
         def res(s):
-            return f16_ode_long(np.array([a, 0, s[0], 0]),
-                                np.array([s[0]]), 0, p)[1]
+            return f16_ode_long(np.array([a, 0, s[0], 0]), np.array([s[0]]), 0, p)[1]
+
         return float(fsolve(res, x0=[math.radians(-2.0)])[0])
 
     stabs_deg = np.array([math.degrees(stab_for_alpha(a)) for a in grid_rad])
     return grid_deg, stabs_deg
 
 
-def _make_long_env(n_steps, alpha_trim_rad, stab_trim_rad,
-                   feedforward_fn, *, damage_profile=None):
+def _make_long_env(
+    n_steps, alpha_trim_rad, stab_trim_rad, feedforward_fn, *, damage_profile=None
+):
     return gym.make(
         "NonlinearLongitudinalF16-v0",
         number_time_steps=n_steps + 2,
@@ -152,18 +163,22 @@ def _make_training_damage_profile():
     """Same symmetric 30% bilateral wing-tip loss the eval scenario uses,
     triggered at t = DAMAGE_TIME so the actor sees the post-damage
     transient during training."""
-    return DamageProfile(events=[
-        DamageEvent(
-            trigger_time=DAMAGE_TIME, event_type="section_loss",
-            payload={"section": "left_tip", "loss_fraction": 0.30},
-            label="left_tip_30pct_loss",
-        ),
-        DamageEvent(
-            trigger_time=DAMAGE_TIME, event_type="section_loss",
-            payload={"section": "right_tip", "loss_fraction": 0.30},
-            label="right_tip_30pct_loss",
-        ),
-    ])
+    return DamageProfile(
+        events=[
+            DamageEvent(
+                trigger_time=DAMAGE_TIME,
+                event_type="section_loss",
+                payload={"section": "left_tip", "loss_fraction": 0.30},
+                label="left_tip_30pct_loss",
+            ),
+            DamageEvent(
+                trigger_time=DAMAGE_TIME,
+                event_type="section_loss",
+                payload={"section": "right_tip", "loss_fraction": 0.30},
+                label="right_tip_30pct_loss",
+            ),
+        ]
+    )
 
 
 def _train_etdhp(
@@ -178,8 +193,10 @@ def _train_etdhp(
     alpha_trim_rad, stab_trim_rad = _longitudinal_trim()
     alpha_trim_deg = math.degrees(alpha_trim_rad)
     stab_trim_deg = math.degrees(stab_trim_rad)
-    print(f"  longitudinal trim:  α = {alpha_trim_deg:+.3f}°,  "
-          f"stab = {stab_trim_deg:+.3f}°")
+    print(
+        f"  longitudinal trim:  α = {alpha_trim_deg:+.3f}°,  "
+        f"stab = {stab_trim_deg:+.3f}°"
+    )
 
     grid_deg, stabs_deg = _build_feedforward_table()
     state_transform = _build_state_transform(alpha_trim_deg, grid_deg, stabs_deg)
@@ -207,7 +224,9 @@ def _train_etdhp(
         state_space=["alpha", "wz", "stab", "dstab"],
         control_space=["stab"],
         tracking_states=["alpha"],
-        use_reward=False, dt=DT, integrator="euler",
+        use_reward=False,
+        dt=DT,
+        integrator="euler",
         control_bias=stab_trim_deg,
     ).unwrapped
     states_buf, actions_buf, next_states_buf = [], [], []
@@ -233,8 +252,12 @@ def _train_etdhp(
     next_states_arr = np.asarray(next_states_buf, dtype=np.float32)
 
     cfg = ETDHPConfig(
-        actor_hidden=(24, 24), critic_hidden=(24, 24), model_hidden=(24, 24),
-        actor_lr=1e-3, critic_lr=1e-3, model_lr=5e-3,
+        actor_hidden=(24, 24),
+        critic_hidden=(24, 24),
+        model_hidden=(24, 24),
+        actor_lr=1e-3,
+        critic_lr=1e-3,
+        model_lr=5e-3,
         model_epochs=300,
         # Q[0] = 12 was empirically the sweet spot: 10 leaves a ~0.6°
         # steady-state α error post-damage; 18 makes the actor over-
@@ -242,7 +265,8 @@ def _train_etdhp(
         # Q[1] doubled (0.1 → 0.2) to keep ω_z damped during the damage
         # transient. R held at 1.0 — lowering it below ~0.7 destabilises
         # the closed loop on the angular env.
-        Q=[12.0, 0.2, 0.0, 0.0], R=[1.0],
+        Q=[12.0, 0.2, 0.0, 0.0],
+        R=[1.0],
         gamma=0.95,
         # More epochs per trigger speeds online adaptation through the
         # damage transient.
@@ -252,27 +276,37 @@ def _train_etdhp(
         u_bound=2.0,
         rho=0.1,
         trigger_floor=0.05,
-        weight_init_scale=0.2, seed=0,
+        weight_init_scale=0.2,
+        seed=0,
     )
-    agent = ETDHPAgent(n_state=4, n_control=1,
-                       state_transform=state_transform, config=cfg)
+    agent = ETDHPAgent(
+        n_state=4, n_control=1, state_transform=state_transform, config=cfg
+    )
     print("  fitting plant NN offline ...")
     agent.fit_plant_model(
-        states_arr, actions_arr, next_states_arr,
-        batch_size=128, verbose=False,
+        states_arr,
+        actions_arr,
+        next_states_arr,
+        batch_size=128,
+        verbose=False,
     )
 
     # Curriculum: healthy episodes first, then damaged episodes with the
     # same event the eval will see. Training on damaged transients lets
     # the actor learn the post-damage residual stab offset before eval.
     total_eps = NUM_HEALTHY_EPISODES + NUM_DAMAGED_EPISODES
-    print(f"  training actor/critic for {NUM_HEALTHY_EPISODES} healthy + "
-          f"{NUM_DAMAGED_EPISODES} damaged episodes")
+    print(
+        f"  training actor/critic for {NUM_HEALTHY_EPISODES} healthy + "
+        f"{NUM_DAMAGED_EPISODES} damaged episodes"
+    )
     damage_profile = _make_training_damage_profile()
     for ep in range(total_eps):
         is_damaged = ep >= NUM_HEALTHY_EPISODES
         env = _make_long_env(
-            n_steps_per_ep, alpha_trim_rad, stab_trim_rad, feedforward_fn,
+            n_steps_per_ep,
+            alpha_trim_rad,
+            stab_trim_rad,
+            feedforward_fn,
             damage_profile=(damage_profile if is_damaged else None),
         )
         obs, _ = env.reset()
@@ -294,6 +328,7 @@ def _train_etdhp(
 # =====================================================================
 #  Apply trained agent to the angular env for 3D rendering
 # =====================================================================
+
 
 def _angular_to_long_obs(angular_state: np.ndarray) -> np.ndarray:
     """Map the angular env state (16 elements when track_altitude=True)
@@ -321,23 +356,29 @@ def main() -> None:
     #    floor so the trim solution is physically self-consistent.
     print("\n=== Finding angular F-16 trim (V=180 m/s, h=3000 m) ===")
     trim = find_trim(V_target=ANG_V_TARGET, h_target=ANG_H_TARGET)
-    print(f"  α = {math.degrees(trim.alpha_rad):+.3f}°,  "
-          f"stab = {math.degrees(trim.stab_rad):+.3f}°,  "
-          f"T = {trim.T_thrust:.0f} N")
+    print(
+        f"  α = {math.degrees(trim.alpha_rad):+.3f}°,  "
+        f"stab = {math.degrees(trim.stab_rad):+.3f}°,  "
+        f"T = {trim.T_thrust:.0f} N"
+    )
 
     # 3. Damage profile — symmetric 30 % bilateral wing-tip loss at t=20s
-    profile = DamageProfile(events=[
-        DamageEvent(
-            trigger_time=DAMAGE_TIME, event_type="section_loss",
-            payload={"section": "left_tip", "loss_fraction": 0.30},
-            label="left_tip_30pct_loss",
-        ),
-        DamageEvent(
-            trigger_time=DAMAGE_TIME, event_type="section_loss",
-            payload={"section": "right_tip", "loss_fraction": 0.30},
-            label="right_tip_30pct_loss",
-        ),
-    ])
+    profile = DamageProfile(
+        events=[
+            DamageEvent(
+                trigger_time=DAMAGE_TIME,
+                event_type="section_loss",
+                payload={"section": "left_tip", "loss_fraction": 0.30},
+                label="left_tip_30pct_loss",
+            ),
+            DamageEvent(
+                trigger_time=DAMAGE_TIME,
+                event_type="section_loss",
+                payload={"section": "right_tip", "loss_fraction": 0.30},
+                label="right_tip_30pct_loss",
+            ),
+        ]
+    )
 
     # 4. Build the angular env at the angular trim.
     print("\n=== Closed-loop simulation in angular env (3D viewer target) ===")
@@ -358,8 +399,8 @@ def main() -> None:
     # state elements are supplied. Override the padded V in x_history so
     # the dynamics start at the correct trim airspeed (180 m/s).
     x = env.model.x_history[-1].reshape(-1).copy()
-    x[14] = ANG_H_TARGET    # h
-    x[15] = ANG_V_TARGET    # V
+    x[14] = ANG_H_TARGET  # h
+    x[15] = ANG_V_TARGET  # V
     env.model.x_history[-1] = x
 
     env.model.param.T_thrust = trim.T_thrust
@@ -369,7 +410,9 @@ def main() -> None:
     #    angular trim α (which differs slightly from the longitudinal trim).
     angular_alpha_trim_deg = math.degrees(trim.alpha_rad)
     angular_state_transform = _build_state_transform(
-        angular_alpha_trim_deg, grid_deg, stabs_deg,
+        angular_alpha_trim_deg,
+        grid_deg,
+        stabs_deg,
     )
     agent._state_transform = angular_state_transform
 

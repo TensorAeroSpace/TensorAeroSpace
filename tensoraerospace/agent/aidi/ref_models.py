@@ -58,10 +58,13 @@ class CStarController:
         err = float(c_star_cmd) - c_star
         # PCH: subtract the hedge BEFORE integration to keep the integrator
         # inside the achievable envelope.
-        self._int_err = float(np.clip(
-            self._int_err + (err - float(hedge)) * self.dt,
-            -self.i_clip, self.i_clip,
-        ))
+        self._int_err = float(
+            np.clip(
+                self._int_err + (err - float(hedge)) * self.dt,
+                -self.i_clip,
+                self.i_clip,
+            )
+        )
         return self.kp * err + self.ki * self._int_err
 
 
@@ -73,7 +76,10 @@ class RollReferenceModel:
     """
 
     def __init__(
-        self, omega_n: float = 2.0, zeta: float = 0.7, dt: float = 0.01,
+        self,
+        omega_n: float = 2.0,
+        zeta: float = 0.7,
+        dt: float = 0.01,
     ) -> None:
         if omega_n <= 0.0 or zeta <= 0.0:
             raise ValueError("omega_n > 0 and zeta > 0 required")
@@ -90,7 +96,7 @@ class RollReferenceModel:
     def step(self, phi_cmd: float, phi: float, hedge: float = 0.0) -> float:
         phi_ddot = (
             -2.0 * self.zeta * self.omega_n * self._phi_dot
-            + self.omega_n ** 2 * (float(phi_cmd) - float(phi))
+            + self.omega_n**2 * (float(phi_cmd) - float(phi))
             - float(hedge)
         )
         self._phi_dot = self._phi_dot + self.dt * phi_ddot
@@ -109,7 +115,10 @@ class SideslipCompensator:
     """
 
     def __init__(
-        self, kp: float = 1.0, ki: float = 0.0, dt: float = 0.01,
+        self,
+        kp: float = 1.0,
+        ki: float = 0.0,
+        dt: float = 0.01,
         i_clip: float = 5.0,
     ) -> None:
         self.kp = float(kp)
@@ -124,10 +133,13 @@ class SideslipCompensator:
     def step(self, beta_cmd: float, beta: float, hedge: float = 0.0) -> float:
         # neg_err = β − β_cmd : positive when sideslip exceeds command.
         neg_err = float(beta) - float(beta_cmd)
-        self._int_err = float(np.clip(
-            self._int_err + (neg_err - float(hedge)) * self.dt,
-            -self.i_clip, self.i_clip,
-        ))
+        self._int_err = float(
+            np.clip(
+                self._int_err + (neg_err - float(hedge)) * self.dt,
+                -self.i_clip,
+                self.i_clip,
+            )
+        )
         return self.kp * neg_err + self.ki * self._int_err
 
 
@@ -135,11 +147,18 @@ class SpeedController:
     """Auto-throttle PID. No-op when ``enabled=False`` (constant-airspeed envs)."""
 
     def __init__(
-        self, kp: float = 0.0, ki: float = 0.0, kd: float = 0.0,
-        dt: float = 0.01, enabled: bool = False,
+        self,
+        kp: float = 0.0,
+        ki: float = 0.0,
+        kd: float = 0.0,
+        dt: float = 0.01,
+        enabled: bool = False,
     ) -> None:
-        self.kp = float(kp); self.ki = float(ki); self.kd = float(kd)
-        self.dt = float(dt); self.enabled = bool(enabled)
+        self.kp = float(kp)
+        self.ki = float(ki)
+        self.kd = float(kd)
+        self.dt = float(dt)
+        self.enabled = bool(enabled)
         self._int_err = 0.0
         self._prev_err = 0.0
 
@@ -164,7 +183,9 @@ class LinearController:
     """
 
     def __init__(
-        self, rate_kp: np.ndarray | None = None, n_y: int = 3,
+        self,
+        rate_kp: np.ndarray | None = None,
+        n_y: int = 3,
     ) -> None:
         if rate_kp is None:
             rate_kp = np.zeros(n_y, dtype=np.float64)
@@ -172,7 +193,9 @@ class LinearController:
         self.rate_kp = rate_kp
 
     def combine(
-        self, omega_des: np.ndarray, omega: np.ndarray,
+        self,
+        omega_des: np.ndarray,
+        omega: np.ndarray,
     ) -> np.ndarray:
         omega_des = np.asarray(omega_des, dtype=np.float64).reshape(-1)
         omega = np.asarray(omega, dtype=np.float64).reshape(-1)

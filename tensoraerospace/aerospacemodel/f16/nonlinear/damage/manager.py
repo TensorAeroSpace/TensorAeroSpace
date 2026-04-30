@@ -53,9 +53,7 @@ class DamageManager:
         """Add a one-shot event to be triggered on the next matching window."""
         self._injected.append(event)
 
-    def update(
-        self, t_current: float, t_previous: float
-    ) -> list[DamageEvent]:
+    def update(self, t_current: float, t_previous: float) -> list[DamageEvent]:
         """Trigger any events in (t_previous, t_current]; return them."""
         triggered: list[DamageEvent] = []
 
@@ -91,13 +89,9 @@ class DamageManager:
             self.state.set_control_failure(surface, cf)
         elif ev.event_type == "engine_failure":
             if "thrust_factor" in ev.payload:
-                self.state.engine.thrust_factor = float(
-                    ev.payload["thrust_factor"]
-                )
+                self.state.engine.thrust_factor = float(ev.payload["thrust_factor"])
             if "hard_failure" in ev.payload:
-                self.state.engine.hard_failure = bool(
-                    ev.payload["hard_failure"]
-                )
+                self.state.engine.hard_failure = bool(ev.payload["hard_failure"])
         elif ev.event_type == "structural_change":
             if "mass_delta_kg" in ev.payload:
                 self.state.structural.extra_mass_delta_kg += float(
@@ -107,13 +101,18 @@ class DamageManager:
                 shift = ev.payload["cg_shift_m"]
                 old = self.state.structural.extra_cg_shift_m
                 self.state.structural.extra_cg_shift_m = (
-                    old[0] + shift[0], old[1] + shift[1], old[2] + shift[2]
+                    old[0] + shift[0],
+                    old[1] + shift[1],
+                    old[2] + shift[2],
                 )
             if "inertia_delta" in ev.payload:
                 d = ev.payload["inertia_delta"]
                 old = self.state.structural.extra_inertia_delta
                 self.state.structural.extra_inertia_delta = (
-                    old[0] + d[0], old[1] + d[1], old[2] + d[2], old[3] + d[3]
+                    old[0] + d[0],
+                    old[1] + d[1],
+                    old[2] + d[2],
+                    old[3] + d[3],
                 )
         else:
             raise ValueError(f"Unknown event_type: {ev.event_type}")

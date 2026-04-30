@@ -102,6 +102,7 @@ def f16_ode_6dof(
     damage_geo = p.damage_geometry
     if damage_state is not None and damage_geo is not None:
         from ..damage import aero_corrections as _ac
+
         cy = cy + _ac.delta_cy(alpha, beta, damage_geo, damage_state)
         cx = cx + _ac.delta_cx(alpha, beta, damage_geo, damage_state)
         cz = cz + _ac.delta_cz(alpha, beta, damage_geo, damage_state)
@@ -229,9 +230,7 @@ def f16_ode_6dof(
         # Inertial z-component (NED, +z is down). Body→inertial via the
         # standard 3-2-1 Euler matrix (yaw, pitch, roll).
         v_inertial_z = (
-            -sin_th * v_body_x
-            + cos_th * sin_g * v_body_y
-            + cos_th * cos_g * v_body_z
+            -sin_th * v_body_x + cos_th * sin_g * v_body_y + cos_th * cos_g * v_body_z
         )
         dh = -v_inertial_z
 
@@ -252,11 +251,20 @@ def f16_ode_6dof(
         dV = (thrust * cos_a * cos_b - drag) / p.m - p.g * sin_gamma_path
 
     base_dx = [
-        dalpha, dbeta, dwx, dwy, dwz,
-        dgamma, dpsi, dtheta,
-        dstab_out, ddstab,
-        dail_out, ddail,
-        ddir_out, dddir,
+        dalpha,
+        dbeta,
+        dwx,
+        dwy,
+        dwz,
+        dgamma,
+        dpsi,
+        dtheta,
+        dstab_out,
+        ddstab,
+        dail_out,
+        ddail,
+        ddir_out,
+        dddir,
     ]
     if track_altitude:
         base_dx.extend([dh, dV])

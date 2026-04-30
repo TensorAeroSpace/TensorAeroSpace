@@ -13,8 +13,11 @@ import pytest
 def _make_flight_log():
     from tensoraerospace.envs.f16.nonlinear_angular import NonlinearAngularF16
     from tensoraerospace.visualization.three_d import build_flight_log
+
     env = NonlinearAngularF16(
-        initial_state=np.zeros(14), number_time_steps=20, dt=0.01,
+        initial_state=np.zeros(14),
+        number_time_steps=20,
+        dt=0.01,
         airspeed=200.0,
     )
     env.reset()
@@ -25,6 +28,7 @@ def _make_flight_log():
 
 def test_build_html_returns_nonempty_string():
     from tensoraerospace.visualization.three_d import build_html
+
     html = build_html(_make_flight_log())
     assert isinstance(html, str)
     assert len(html) > 100_000  # three.js alone is ~600 KB
@@ -32,16 +36,27 @@ def test_build_html_returns_nonempty_string():
 
 def test_html_has_required_dom_anchors():
     from tensoraerospace.visualization.three_d import build_html
+
     html = build_html(_make_flight_log())
-    for sel in ('id="scene"', 'id="hud"', 'id="controls"',
-                'id="btn-play"', 'id="timeline"', 'id="speed"',
-                'id="hud-time"', 'id="hud-alpha"', 'id="hud-beta"',
-                'id="hud-wx"', 'id="hud-wz"'):
+    for sel in (
+        'id="scene"',
+        'id="hud"',
+        'id="controls"',
+        'id="btn-play"',
+        'id="timeline"',
+        'id="speed"',
+        'id="hud-time"',
+        'id="hud-alpha"',
+        'id="hud-beta"',
+        'id="hud-wx"',
+        'id="hud-wz"',
+    ):
         assert sel in html, f"missing dom anchor: {sel}"
 
 
 def test_html_inlines_three_js_and_orbit_controls():
     from tensoraerospace.visualization.three_d import build_html
+
     html = build_html(_make_flight_log())
     # three.js global
     assert "THREE.WebGLRenderer" in html or "WebGLRenderer" in html
@@ -51,6 +66,7 @@ def test_html_inlines_three_js_and_orbit_controls():
 
 def test_html_embeds_flight_log_json():
     from tensoraerospace.visualization.three_d import build_html
+
     html = build_html(_make_flight_log())
     assert "window.FLIGHT_LOG" in html
     # Extract the JSON literal
@@ -64,6 +80,7 @@ def test_html_embeds_flight_log_json():
 
 def test_save_html_writes_file(tmp_path):
     from tensoraerospace.visualization.three_d import save_html
+
     out = save_html(_make_flight_log(), tmp_path / "flight.html")
     assert out.exists()
     contents = out.read_text(encoding="utf-8")
@@ -73,6 +90,7 @@ def test_save_html_writes_file(tmp_path):
 
 def test_html_with_custom_title():
     from tensoraerospace.visualization.three_d import build_html
+
     html = build_html(_make_flight_log(), title="Custom Test Title")
     assert "<title>Custom Test Title</title>" in html
 
@@ -80,10 +98,14 @@ def test_html_with_custom_title():
 def test_html_self_contained_no_external_urls():
     """No CDN refs, no localhost — fully offline-capable."""
     from tensoraerospace.visualization.three_d import build_html
+
     html = build_html(_make_flight_log())
     forbidden_patterns = (
-        "https://cdn", "https://unpkg", "http://localhost",
-        "<script src=", "<link rel=\"stylesheet\" href=",
+        "https://cdn",
+        "https://unpkg",
+        "http://localhost",
+        "<script src=",
+        '<link rel="stylesheet" href=',
     )
     for p in forbidden_patterns:
         assert p not in html, f"Found forbidden external reference: {p!r}"

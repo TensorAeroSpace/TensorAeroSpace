@@ -13,7 +13,6 @@ from __future__ import annotations
 
 import math
 
-
 GRAVITY = 9.80665  # m/s²
 
 
@@ -35,8 +34,6 @@ def reconstruct_n_z(
         theta: Pitch attitude (rad).
         phi: Roll attitude (rad).
     """
-    aero = (float(V) / GRAVITY) * (
-        float(q) * math.cos(float(alpha)) - float(alpha_dot)
-    )
+    aero = (float(V) / GRAVITY) * (float(q) * math.cos(float(alpha)) - float(alpha_dot))
     grav = math.cos(float(theta)) * math.cos(float(phi))
     return aero + grav

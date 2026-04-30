@@ -37,7 +37,6 @@ from tensoraerospace.aerospacemodel.f16.nonlinear.longitudinal.dynamics import (
 )
 from tensoraerospace.agent.aidi import AIDIAgent, AIDIConfig, F16NonlinearOnboardCE
 
-
 SCENARIOS = {
     "nominal": (lambda: None),
     "stab_50": (lambda: stab_efficiency_step(t_inject=5.0, mu=0.5)),
@@ -56,7 +55,8 @@ def _solve_trim() -> tuple[float, float]:
         return list(f16_ode_long(x, np.array([stab]), 0.0, params)[:2])
 
     sol, _info, ier, _msg = fsolve(
-        trim_residual, x0=[math.radians(2.0), math.radians(-2.0)],
+        trim_residual,
+        x0=[math.radians(2.0), math.radians(-2.0)],
         full_output=True,
     )
     if ier != 1:
@@ -67,44 +67,66 @@ def _solve_trim() -> tuple[float, float]:
 def _build_agent(method: str) -> AIDIAgent:
     if method == "adaptive":
         cfg = AIDIConfig(
-            dt=0.01, u_magnitude_limit=math.radians(20.0),
+            dt=0.01,
+            u_magnitude_limit=math.radians(20.0),
             u_rate_limit=math.radians(60.0),
-            rls_lambda_min=0.7, rls_lambda_max=0.999, rls_cov_init=10.0,
-            cstar_kp=0.5, cstar_ki=0.2,
-            roll_omega_n=1.5, roll_zeta=0.8,
-            sideslip_kp=0.5, sideslip_ki=0.05, seed=0,
+            rls_lambda_min=0.7,
+            rls_lambda_max=0.999,
+            rls_cov_init=10.0,
+            cstar_kp=0.5,
+            cstar_ki=0.2,
+            roll_omega_n=1.5,
+            roll_zeta=0.8,
+            sideslip_kp=0.5,
+            sideslip_ki=0.05,
+            seed=0,
         )
     elif method == "frozen":
         cfg = AIDIConfig(
-            dt=0.01, u_magnitude_limit=math.radians(20.0),
+            dt=0.01,
+            u_magnitude_limit=math.radians(20.0),
             u_rate_limit=math.radians(60.0),
-            rls_lambda_min=0.999, rls_lambda_max=0.9999, rls_cov_init=10.0,
-            cstar_kp=0.5, cstar_ki=0.2,
-            roll_omega_n=1.5, roll_zeta=0.8,
-            sideslip_kp=0.5, sideslip_ki=0.05, seed=0,
+            rls_lambda_min=0.999,
+            rls_lambda_max=0.9999,
+            rls_cov_init=10.0,
+            cstar_kp=0.5,
+            cstar_ki=0.2,
+            roll_omega_n=1.5,
+            roll_zeta=0.8,
+            sideslip_kp=0.5,
+            sideslip_ki=0.05,
+            seed=0,
         )
     else:
         raise ValueError(f"unknown method: {method}")
     return AIDIAgent(
-        n_state=3, n_control=3,
+        n_state=3,
+        n_control=3,
         onboard_ce=F16NonlinearOnboardCE(default_parameters(), perturb=1e-3),
         config=cfg,
     )
 
 
 def _run_episode(
-    method: str, scenario_name: str, n_steps: int,
-    alpha_trim: float, stab_trim: float,
+    method: str,
+    scenario_name: str,
+    n_steps: int,
+    alpha_trim: float,
+    stab_trim: float,
 ) -> dict[str, float]:
     from tensoraerospace.envs.f16.nonlinear_angular import NonlinearAngularF16
 
     agent = _build_agent(method)
     profile = SCENARIOS[scenario_name]()
     initial_state = np.zeros(14)
-    initial_state[0] = alpha_trim; initial_state[8] = stab_trim
+    initial_state[0] = alpha_trim
+    initial_state[8] = stab_trim
     env = NonlinearAngularF16(
-        initial_state=initial_state, number_time_steps=n_steps + 2,
-        dt=0.01, integrator="rk4", airspeed=200.0,
+        initial_state=initial_state,
+        number_time_steps=n_steps + 2,
+        dt=0.01,
+        integrator="rk4",
+        airspeed=200.0,
         damage_profile=profile,
     )
     obs_arr, _ = env.reset()
@@ -113,19 +135,24 @@ def _run_episode(
     for k in range(n_steps):
         observation = {
             "omega": np.array([obs_arr[2], obs_arr[4], obs_arr[3]]),
-            "alpha": float(obs_arr[0]), "beta": float(obs_arr[1]),
-            "theta": float(obs_arr[7]), "phi": float(obs_arr[5]),
-            "V": float(env.airspeed), "state": obs_arr.copy(),
+            "alpha": float(obs_arr[0]),
+            "beta": float(obs_arr[1]),
+            "theta": float(obs_arr[7]),
+            "phi": float(obs_arr[5]),
+            "V": float(env.airspeed),
+            "state": obs_arr.copy(),
         }
-        refs = {"C_star": 1.0, "phi_cmd": 0.0,
-                "beta_cmd": 0.0, "V_cmd": 200.0}
+        refs = {"C_star": 1.0, "phi_cmd": 0.0, "beta_cmd": 0.0, "V_cmd": 200.0}
         u_rad = agent.predict(observation, references=refs, time_step=k)
         obs_arr, _r, _term, _trunc, _info = env.step(np.rad2deg(u_rad))
         next_obs = {
             "omega": np.array([obs_arr[2], obs_arr[4], obs_arr[3]]),
-            "alpha": float(obs_arr[0]), "beta": float(obs_arr[1]),
-            "theta": float(obs_arr[7]), "phi": float(obs_arr[5]),
-            "V": float(env.airspeed), "state": obs_arr.copy(),
+            "alpha": float(obs_arr[0]),
+            "beta": float(obs_arr[1]),
+            "theta": float(obs_arr[7]),
+            "phi": float(obs_arr[5]),
+            "V": float(env.airspeed),
+            "state": obs_arr.copy(),
         }
         agent.learn(next_obs, references=refs, time_step=k)
         # Skip the first 2s of transient before sampling RMSE.
@@ -150,10 +177,12 @@ def _emit(rows: list[dict], out_md: Path, out_csv: Path | None) -> None:
         f.write("|" + "|".join(["---"] * len(cols)) + "|\n")
         for r in rows:
             f.write(
-                "| " + " | ".join(
+                "| "
+                + " | ".join(
                     str(r[c]) if not isinstance(r[c], float) else f"{r[c]:.4f}"
                     for c in cols
-                ) + " |\n"
+                )
+                + " |\n"
             )
     if out_csv is not None:
         with open(out_csv, "w", newline="", encoding="utf-8") as f:
@@ -167,7 +196,8 @@ def main(argv: Iterable[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="AIDI benchmark CLI")
     parser.add_argument("--env", default="f16_nonlinear_angular")
     parser.add_argument(
-        "--baselines", default="frozen",
+        "--baselines",
+        default="frozen",
         help="Comma-separated baseline method ids (currently only 'frozen').",
     )
     parser.add_argument("--scenarios", default="nominal,stab_25")
@@ -180,9 +210,7 @@ def main(argv: Iterable[str] | None = None) -> int:
     if args.env != "f16_nonlinear_angular":
         raise SystemExit(f"unsupported env: {args.env}")
 
-    methods = ["adaptive"] + [
-        b.strip() for b in args.baselines.split(",") if b.strip()
-    ]
+    methods = ["adaptive"] + [b.strip() for b in args.baselines.split(",") if b.strip()]
     scenarios = [s.strip() for s in args.scenarios.split(",") if s.strip()]
     for s in scenarios:
         if s not in SCENARIOS:
@@ -195,18 +223,24 @@ def main(argv: Iterable[str] | None = None) -> int:
             agg = {"p": 0.0, "q": 0.0, "r": 0.0}
             for _ in range(args.episodes):
                 ep = _run_episode(
-                    method, scenario, args.steps, alpha_trim, stab_trim,
+                    method,
+                    scenario,
+                    args.steps,
+                    alpha_trim,
+                    stab_trim,
                 )
                 for k in agg:
                     agg[k] += ep[k]
             n = max(args.episodes, 1)
-            rows.append({
-                "method": method,
-                "scenario": scenario,
-                "p_rmse": agg["p"] / n,
-                "q_rmse": agg["q"] / n,
-                "r_rmse": agg["r"] / n,
-            })
+            rows.append(
+                {
+                    "method": method,
+                    "scenario": scenario,
+                    "p_rmse": agg["p"] / n,
+                    "q_rmse": agg["q"] / n,
+                    "r_rmse": agg["r"] / n,
+                }
+            )
 
     _emit(rows, Path(args.out), Path(args.csv) if args.csv else None)
     return 0

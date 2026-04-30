@@ -60,10 +60,12 @@ def test_jammed_stab_left_in_split_mode_overrides_command():
     from tensoraerospace.aerospacemodel.f16.nonlinear.damage.state import (
         ControlFailure,
     )
+
     geo = load_f16_geometry()
     state = DamageState.healthy(geo)
     state.set_control_failure(
-        "stab_left", ControlFailure(mode="jam", jam_position_rad=0.10),
+        "stab_left",
+        ControlFailure(mode="jam", jam_position_rad=0.10),
     )
     m = AngularF16(x0=np.zeros(14), dt=0.01, integrator="rk4", split_stab=True)
     m.damage_state = state
@@ -74,6 +76,6 @@ def test_jammed_stab_left_in_split_mode_overrides_command():
     # If jam=0.10 on stab_left, mean=(0.10+0)/2=0.05, delta=(0.10-0)/2=0.05;
     # legacy stab cmd = 0.05. Actuator dynamics with Tstab=0.03 → stab moves
     # towards 0.05 over a few steps.
-    assert after[8] > 1e-3, (
-        f"Stabilator should have moved due to jam, got stab={after[8]}"
-    )
+    assert (
+        after[8] > 1e-3
+    ), f"Stabilator should have moved due to jam, got stab={after[8]}"

@@ -54,8 +54,9 @@ def build_html(flight_log: dict[str, Any], *, title: str | None = None) -> str:
     )
 
 
-def save_html(flight_log: dict[str, Any], path: str | Path,
-              *, title: str | None = None) -> Path:
+def save_html(
+    flight_log: dict[str, Any], path: str | Path, *, title: str | None = None
+) -> Path:
     """Render the flight log to ``path`` and return the absolute path."""
     html = build_html(flight_log, title=title)
     out = Path(path).expanduser().resolve()

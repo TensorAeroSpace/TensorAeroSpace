@@ -9,8 +9,10 @@ def test_event_is_frozen():
     from tensoraerospace.aerospacemodel.f16.nonlinear.damage.events import (
         DamageEvent,
     )
+
     e = DamageEvent(
-        trigger_time=5.0, event_type="section_loss",
+        trigger_time=5.0,
+        event_type="section_loss",
         payload={"section": "left_tip", "loss_fraction": 1.0},
     )
     with pytest.raises((AttributeError, Exception)):
@@ -19,8 +21,10 @@ def test_event_is_frozen():
 
 def test_profile_returns_pending_in_window():
     from tensoraerospace.aerospacemodel.f16.nonlinear.damage.events import (
-        DamageEvent, DamageProfile,
+        DamageEvent,
+        DamageProfile,
     )
+
     e1 = DamageEvent(1.0, "section_loss", {"section": "x", "loss_fraction": 1.0})
     e2 = DamageEvent(5.5, "engine_failure", {"thrust_factor": 0.0})
     e3 = DamageEvent(10.0, "section_loss", {"section": "y", "loss_fraction": 0.5})
@@ -34,8 +38,10 @@ def test_profile_returns_pending_in_window():
 
 def test_profile_inclusive_at_current_exclusive_at_previous():
     from tensoraerospace.aerospacemodel.f16.nonlinear.damage.events import (
-        DamageEvent, DamageProfile,
+        DamageEvent,
+        DamageProfile,
     )
+
     e_at_5 = DamageEvent(5.0, "engine_failure", {"thrust_factor": 0.5})
     p = DamageProfile(events=[e_at_5])
     # (4.99, 5.0] should contain it
@@ -48,6 +54,7 @@ def test_invalid_event_type_raises():
     from tensoraerospace.aerospacemodel.f16.nonlinear.damage.events import (
         DamageEvent,
     )
+
     with pytest.raises(ValueError):
         DamageEvent(5.0, "not_a_type", {})  # type: ignore[arg-type]
 
@@ -56,5 +63,6 @@ def test_negative_trigger_time_raises():
     from tensoraerospace.aerospacemodel.f16.nonlinear.damage.events import (
         DamageEvent,
     )
+
     with pytest.raises(ValueError):
         DamageEvent(-1.0, "section_loss", {"section": "x", "loss_fraction": 0.5})

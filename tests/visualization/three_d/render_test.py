@@ -10,8 +10,11 @@ import pytest
 
 def _make_env_after_run(render_mode=None, damage_profile=None, n_steps=10):
     from tensoraerospace.envs.f16.nonlinear_angular import NonlinearAngularF16
+
     env = NonlinearAngularF16(
-        initial_state=np.zeros(14), number_time_steps=20, dt=0.01,
+        initial_state=np.zeros(14),
+        number_time_steps=20,
+        dt=0.01,
         airspeed=200.0,
         split_stab=damage_profile is not None,
         damage_profile=damage_profile,
@@ -26,14 +29,17 @@ def _make_env_after_run(render_mode=None, damage_profile=None, n_steps=10):
 
 def test_render_3d_web_mode_registered():
     from tensoraerospace.envs.f16.nonlinear_angular import NonlinearAngularF16
+
     assert "3d_web" in NonlinearAngularF16.metadata["render_modes"]
 
 
 def test_render_save_to_writes_html(tmp_path):
     from tensoraerospace.visualization.three_d import render
+
     env = _make_env_after_run()
-    out = render(env, open_in_browser=False, inline=False,
-                 save_to=tmp_path / "flight.html")
+    out = render(
+        env, open_in_browser=False, inline=False, save_to=tmp_path / "flight.html"
+    )
     assert isinstance(out, Path)
     assert out.exists()
     contents = out.read_text(encoding="utf-8")
@@ -49,8 +55,8 @@ def test_env_render_dispatches_to_3d_web(tmp_path, monkeypatch):
     instead of leaving a flight_3d_viewer.html in the test runner's cwd.
     """
     import webbrowser
-    monkeypatch.setenv("TENSORAEROSPACE_3D_OUT",
-                       str(tmp_path / "flight.html"))
+
+    monkeypatch.setenv("TENSORAEROSPACE_3D_OUT", str(tmp_path / "flight.html"))
     env = _make_env_after_run(render_mode="3d_web")
 
     opened: list[str] = []
@@ -66,11 +72,12 @@ def test_env_render_dispatches_to_3d_web(tmp_path, monkeypatch):
 def test_render_default_output_path_respects_env_var(tmp_path, monkeypatch):
     """Setting TENSORAEROSPACE_3D_OUT redirects the default output."""
     import webbrowser
-    monkeypatch.setenv("TENSORAEROSPACE_3D_OUT",
-                       str(tmp_path / "custom.html"))
+
+    monkeypatch.setenv("TENSORAEROSPACE_3D_OUT", str(tmp_path / "custom.html"))
     monkeypatch.setattr(webbrowser, "open", lambda url: True)
 
     from tensoraerospace.visualization.three_d import render
+
     env = _make_env_after_run()
     out = render(env, open_in_browser=False, inline=False)
     assert out == tmp_path / "custom.html"
@@ -81,6 +88,7 @@ def test_render_inline_returns_iframe_html():
     """inline=True returns an IPython.display.HTML wrapping an iframe."""
     pytest.importorskip("IPython")
     from IPython.display import HTML
+
     from tensoraerospace.visualization.three_d import render
 
     env = _make_env_after_run()
@@ -95,13 +103,15 @@ def test_render_inline_returns_iframe_html():
 def test_render_no_browser_when_disabled(tmp_path, monkeypatch):
     """open_in_browser=False must not call webbrowser.open."""
     import webbrowser
+
     from tensoraerospace.visualization.three_d import render
 
     env = _make_env_after_run()
     opened: list[str] = []
     monkeypatch.setattr(webbrowser, "open", lambda url: opened.append(url) or True)
 
-    out = render(env, inline=False, open_in_browser=False,
-                 save_to=tmp_path / "flight.html")
+    out = render(
+        env, inline=False, open_in_browser=False, save_to=tmp_path / "flight.html"
+    )
     assert opened == []
     assert out.exists()

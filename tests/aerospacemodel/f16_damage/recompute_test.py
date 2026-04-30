@@ -29,6 +29,7 @@ def test_healthy_recompute_matches_baseline(geo, healthy):
     from tensoraerospace.aerospacemodel.f16.nonlinear.damage.recompute import (
         recompute_mass_geometry,
     )
+
     out = recompute_mass_geometry(geo, healthy)
     p = F16AngularParameters()
     assert out["m"] == pytest.approx(p.m, rel=0.01)
@@ -42,6 +43,7 @@ def test_left_tip_full_loss_reduces_mass_and_area(geo, healthy):
     from tensoraerospace.aerospacemodel.f16.nonlinear.damage.recompute import (
         recompute_mass_geometry,
     )
+
     healthy.set_section_loss("left_tip", 1.0)
     out = recompute_mass_geometry(geo, healthy)
     base = recompute_mass_geometry(geo, DamageState.healthy(geo))
@@ -56,6 +58,7 @@ def test_symmetric_loss_keeps_cg_centered(geo, healthy):
     from tensoraerospace.aerospacemodel.f16.nonlinear.damage.recompute import (
         recompute_mass_geometry,
     )
+
     healthy.set_section_loss("left_tip", 0.5)
     healthy.set_section_loss("right_tip", 0.5)
     out = recompute_mass_geometry(geo, healthy)
@@ -66,6 +69,7 @@ def test_b_eff_uses_outermost_surviving_section(geo, healthy):
     from tensoraerospace.aerospacemodel.f16.nonlinear.damage.recompute import (
         recompute_mass_geometry,
     )
+
     # Lose left tip entirely → effective half-span on left is left_mid (≈ 2.80 m)
     healthy.set_section_loss("left_tip", 1.0)
     out = recompute_mass_geometry(geo, healthy)
@@ -77,6 +81,7 @@ def test_healthy_inertia_matches_baseline(geo, healthy):
     from tensoraerospace.aerospacemodel.f16.nonlinear.damage.recompute import (
         recompute_inertia,
     )
+
     out = recompute_inertia(geo, healthy, cg=geo.center_of_mass())
     p = F16AngularParameters()
     # Baseline inertias: tolerance 5% (geometry quantisation)
@@ -91,28 +96,47 @@ def test_healthy_inertia_matches_baseline(geo, healthy):
 def test_steiner_known_two_point_masses():
     """Validate Huygens-Steiner: two equal point masses at ±d on x-axis,
     each m, give Iyy = Izz = 2 m d² about the centre."""
+    import numpy as np
+
     from tensoraerospace.aerospacemodel.f16.nonlinear.damage.geometry import (
-        AeroSection, BaseGeometry,
-    )
-    from tensoraerospace.aerospacemodel.f16.nonlinear.damage.state import (
-        DamageState,
+        AeroSection,
+        BaseGeometry,
     )
     from tensoraerospace.aerospacemodel.f16.nonlinear.damage.recompute import (
         recompute_inertia,
     )
-    import numpy as np
+    from tensoraerospace.aerospacemodel.f16.nonlinear.damage.state import (
+        DamageState,
+    )
+
     sections = [
         AeroSection(
-            name="a", side="center", type="fuselage",
-            area=0.0, span_position=0.0, chord=0.0, sweep=0.0,
-            mass=2.0, cg_local=(3.0, 0.0, 0.0), inertia_local=(0, 0, 0, 0),
-            cl_alpha_contribution=0.0, cd0_contribution=0.0,
+            name="a",
+            side="center",
+            type="fuselage",
+            area=0.0,
+            span_position=0.0,
+            chord=0.0,
+            sweep=0.0,
+            mass=2.0,
+            cg_local=(3.0, 0.0, 0.0),
+            inertia_local=(0, 0, 0, 0),
+            cl_alpha_contribution=0.0,
+            cd0_contribution=0.0,
         ),
         AeroSection(
-            name="b", side="center", type="fuselage",
-            area=0.0, span_position=0.0, chord=0.0, sweep=0.0,
-            mass=2.0, cg_local=(-3.0, 0.0, 0.0), inertia_local=(0, 0, 0, 0),
-            cl_alpha_contribution=0.0, cd0_contribution=0.0,
+            name="b",
+            side="center",
+            type="fuselage",
+            area=0.0,
+            span_position=0.0,
+            chord=0.0,
+            sweep=0.0,
+            mass=2.0,
+            cg_local=(-3.0, 0.0, 0.0),
+            inertia_local=(0, 0, 0, 0),
+            cl_alpha_contribution=0.0,
+            cd0_contribution=0.0,
         ),
     ]
     geo = BaseGeometry(sections=sections)
@@ -126,8 +150,10 @@ def test_steiner_known_two_point_masses():
 
 def test_left_tip_loss_reduces_jx(geo, healthy):
     from tensoraerospace.aerospacemodel.f16.nonlinear.damage.recompute import (
-        recompute_inertia, recompute_mass_geometry,
+        recompute_inertia,
+        recompute_mass_geometry,
     )
+
     base = recompute_inertia(geo, healthy, cg=geo.center_of_mass())
     healthy.set_section_loss("left_tip", 1.0)
     new_cg = recompute_mass_geometry(geo, healthy)["cg"]
@@ -140,6 +166,7 @@ def test_apply_to_params_updates_in_place(geo, healthy):
     from tensoraerospace.aerospacemodel.f16.nonlinear.damage.recompute import (
         apply_to_params,
     )
+
     p = F16AngularParameters()
     base_m = p.m
     healthy.set_section_loss("left_tip", 1.0)
@@ -153,6 +180,7 @@ def test_apply_to_params_healthy_is_idempotent(geo, healthy):
     from tensoraerospace.aerospacemodel.f16.nonlinear.damage.recompute import (
         apply_to_params,
     )
+
     p_baseline = F16AngularParameters()
     p_recomputed = F16AngularParameters()
     apply_to_params(p_recomputed, geo, healthy)
@@ -165,6 +193,7 @@ def test_structural_mass_delta_applies(geo, healthy):
     from tensoraerospace.aerospacemodel.f16.nonlinear.damage.recompute import (
         recompute_mass_geometry,
     )
+
     healthy.structural.extra_mass_delta_kg = -200.0
     out = recompute_mass_geometry(geo, healthy)
     base = recompute_mass_geometry(geo, DamageState.healthy(geo))

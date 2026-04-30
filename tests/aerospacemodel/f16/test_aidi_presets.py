@@ -21,7 +21,8 @@ def test_stab_efficiency_step_returns_profile():
 
 def test_aileron_schedule_emits_five_decreasing_events():
     profile = aileron_efficiency_loss_schedule(
-        t_start=2.0, dt_between=1.0,
+        t_start=2.0,
+        dt_between=1.0,
         levels=(1.0, 0.75, 0.5, 0.25, 0.0),
     )
     assert isinstance(profile, DamageProfile)

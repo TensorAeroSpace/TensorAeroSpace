@@ -48,78 +48,107 @@ def load_f16_geometry() -> BaseGeometry:
 
 from .events import DamageEvent, DamageProfile  # noqa: E402
 
-WING_STRIKE_LEFT_TIP = DamageProfile(events=[
-    DamageEvent(
-        trigger_time=10.0, event_type="section_loss",
-        payload={"section": "left_tip", "loss_fraction": 1.0},
-        label="left_tip_total_loss",
-    ),
-])
+WING_STRIKE_LEFT_TIP = DamageProfile(
+    events=[
+        DamageEvent(
+            trigger_time=10.0,
+            event_type="section_loss",
+            payload={"section": "left_tip", "loss_fraction": 1.0},
+            label="left_tip_total_loss",
+        ),
+    ]
+)
 
-WING_STRIKE_LEFT_HALF = DamageProfile(events=[
-    DamageEvent(
-        trigger_time=10.0, event_type="section_loss",
-        payload={"section": "left_tip", "loss_fraction": 1.0},
-        label="left_tip_total_loss",
-    ),
-    DamageEvent(
-        trigger_time=10.0, event_type="section_loss",
-        payload={"section": "left_mid", "loss_fraction": 0.5},
-        label="left_mid_partial",
-    ),
-])
+WING_STRIKE_LEFT_HALF = DamageProfile(
+    events=[
+        DamageEvent(
+            trigger_time=10.0,
+            event_type="section_loss",
+            payload={"section": "left_tip", "loss_fraction": 1.0},
+            label="left_tip_total_loss",
+        ),
+        DamageEvent(
+            trigger_time=10.0,
+            event_type="section_loss",
+            payload={"section": "left_mid", "loss_fraction": 0.5},
+            label="left_mid_partial",
+        ),
+    ]
+)
 
-ELEVATOR_JAM_NEUTRAL = DamageProfile(events=[
-    DamageEvent(
-        trigger_time=5.0, event_type="control_failure",
-        payload={"surface": "stab_left", "mode": "jam", "jam_position_rad": 0.0},
-        label="stab_left_jam_neutral",
-    ),
-    DamageEvent(
-        trigger_time=5.0, event_type="control_failure",
-        payload={"surface": "stab_right", "mode": "jam", "jam_position_rad": 0.0},
-        label="stab_right_jam_neutral",
-    ),
-])
+ELEVATOR_JAM_NEUTRAL = DamageProfile(
+    events=[
+        DamageEvent(
+            trigger_time=5.0,
+            event_type="control_failure",
+            payload={"surface": "stab_left", "mode": "jam", "jam_position_rad": 0.0},
+            label="stab_left_jam_neutral",
+        ),
+        DamageEvent(
+            trigger_time=5.0,
+            event_type="control_failure",
+            payload={"surface": "stab_right", "mode": "jam", "jam_position_rad": 0.0},
+            label="stab_right_jam_neutral",
+        ),
+    ]
+)
 
-ELEVATOR_JAM_PITCH_UP = DamageProfile(events=[
-    DamageEvent(
-        trigger_time=5.0, event_type="control_failure",
-        payload={"surface": "stab_left", "mode": "jam", "jam_position_rad": 0.1745},
-        label="stab_left_jam_up",
-    ),
-    DamageEvent(
-        trigger_time=5.0, event_type="control_failure",
-        payload={"surface": "stab_right", "mode": "jam", "jam_position_rad": 0.1745},
-        label="stab_right_jam_up",
-    ),
-])
+ELEVATOR_JAM_PITCH_UP = DamageProfile(
+    events=[
+        DamageEvent(
+            trigger_time=5.0,
+            event_type="control_failure",
+            payload={"surface": "stab_left", "mode": "jam", "jam_position_rad": 0.1745},
+            label="stab_left_jam_up",
+        ),
+        DamageEvent(
+            trigger_time=5.0,
+            event_type="control_failure",
+            payload={
+                "surface": "stab_right",
+                "mode": "jam",
+                "jam_position_rad": 0.1745,
+            },
+            label="stab_right_jam_up",
+        ),
+    ]
+)
 
-RUDDER_LOST = DamageProfile(events=[
-    DamageEvent(
-        trigger_time=5.0, event_type="control_failure",
-        payload={"surface": "rudder", "mode": "lost"},
-        label="rudder_lost",
-    ),
-])
+RUDDER_LOST = DamageProfile(
+    events=[
+        DamageEvent(
+            trigger_time=5.0,
+            event_type="control_failure",
+            payload={"surface": "rudder", "mode": "lost"},
+            label="rudder_lost",
+        ),
+    ]
+)
 
-ENGINE_FLAMEOUT = DamageProfile(events=[
-    DamageEvent(
-        trigger_time=5.0, event_type="engine_failure",
-        payload={"thrust_factor": 0.0, "hard_failure": True},
-        label="engine_flameout",
-    ),
-])
+ENGINE_FLAMEOUT = DamageProfile(
+    events=[
+        DamageEvent(
+            trigger_time=5.0,
+            event_type="engine_failure",
+            payload={"thrust_factor": 0.0, "hard_failure": True},
+            label="engine_flameout",
+        ),
+    ]
+)
 
-BIRDSTRIKE_COMPOUND = DamageProfile(events=[
-    DamageEvent(
-        trigger_time=5.0, event_type="section_loss",
-        payload={"section": "right_mid", "loss_fraction": 0.2},
-        label="right_wing_birdstrike",
-    ),
-    DamageEvent(
-        trigger_time=5.0, event_type="engine_failure",
-        payload={"thrust_factor": 0.3},
-        label="engine_partial_loss",
-    ),
-])
+BIRDSTRIKE_COMPOUND = DamageProfile(
+    events=[
+        DamageEvent(
+            trigger_time=5.0,
+            event_type="section_loss",
+            payload={"section": "right_mid", "loss_fraction": 0.2},
+            label="right_wing_birdstrike",
+        ),
+        DamageEvent(
+            trigger_time=5.0,
+            event_type="engine_failure",
+            payload={"thrust_factor": 0.3},
+            label="engine_partial_loss",
+        ),
+    ]
+)

@@ -8,8 +8,12 @@ import numpy as np
 def test_no_damage_profile_unchanged_behaviour():
     """Without damage_profile, info dict has no damage_state key."""
     from tensoraerospace.envs.f16.nonlinear_angular import NonlinearAngularF16
+
     e = NonlinearAngularF16(
-        initial_state=np.zeros(14), number_time_steps=10, dt=0.01, airspeed=200.0,
+        initial_state=np.zeros(14),
+        number_time_steps=10,
+        dt=0.01,
+        airspeed=200.0,
     )
     e.reset()
     _, _, _, _, info = e.step(np.zeros(3))
@@ -25,8 +29,12 @@ def test_damage_profile_triggers_event():
 
     profile = WING_STRIKE_LEFT_TIP  # event at t=10s
     e = NonlinearAngularF16(
-        initial_state=np.zeros(14), number_time_steps=2000,
-        dt=0.01, airspeed=200.0, damage_profile=profile, split_stab=True,
+        initial_state=np.zeros(14),
+        number_time_steps=2000,
+        dt=0.01,
+        airspeed=200.0,
+        damage_profile=profile,
+        split_stab=True,
     )
     e.reset()
     triggered_seen = False
@@ -41,16 +49,21 @@ def test_damage_profile_triggers_event():
 def test_damage_observable_extends_obs_space():
     """damage_observable=True extends the observation vector."""
     from tensoraerospace.aerospacemodel.f16.nonlinear.damage import (
-        DamageProfile, load_f16_geometry,
+        DamageProfile,
+        load_f16_geometry,
     )
     from tensoraerospace.envs.f16.nonlinear_angular import NonlinearAngularF16
 
     geo = load_f16_geometry()
     profile = DamageProfile(events=[])
     e = NonlinearAngularF16(
-        initial_state=np.zeros(14), number_time_steps=10,
-        dt=0.01, airspeed=200.0,
-        damage_profile=profile, damage_observable=True, split_stab=True,
+        initial_state=np.zeros(14),
+        number_time_steps=10,
+        dt=0.01,
+        airspeed=200.0,
+        damage_profile=profile,
+        damage_observable=True,
+        split_stab=True,
     )
     obs, _ = e.reset()
     assert obs.shape[0] > 14, "damage_observable should extend obs"
@@ -59,17 +72,25 @@ def test_damage_observable_extends_obs_space():
 def test_reset_clears_damage():
     """reset() must restore healthy DamageState even after a damage event fired."""
     from tensoraerospace.aerospacemodel.f16.nonlinear.damage import (
-        DamageEvent, DamageProfile,
+        DamageEvent,
+        DamageProfile,
     )
     from tensoraerospace.envs.f16.nonlinear_angular import NonlinearAngularF16
 
-    profile = DamageProfile(events=[
-        DamageEvent(0.005, "section_loss",
-                    {"section": "left_tip", "loss_fraction": 1.0}),
-    ])
+    profile = DamageProfile(
+        events=[
+            DamageEvent(
+                0.005, "section_loss", {"section": "left_tip", "loss_fraction": 1.0}
+            ),
+        ]
+    )
     e = NonlinearAngularF16(
-        initial_state=np.zeros(14), number_time_steps=100,
-        dt=0.01, airspeed=200.0, damage_profile=profile, split_stab=True,
+        initial_state=np.zeros(14),
+        number_time_steps=100,
+        dt=0.01,
+        airspeed=200.0,
+        damage_profile=profile,
+        split_stab=True,
     )
     e.reset()
     e.step(np.zeros(4))  # t_prev=0, t_now=0.01 → 0.005 fires

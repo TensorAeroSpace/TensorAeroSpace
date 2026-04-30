@@ -7,6 +7,7 @@ def test_generator_seeded_is_deterministic():
     from tensoraerospace.aerospacemodel.f16.nonlinear.damage.random import (
         RandomDamageProfileGenerator,
     )
+
     g1 = RandomDamageProfileGenerator(
         event_types=["section_loss"],
         time_range=(5.0, 25.0),
@@ -31,6 +32,7 @@ def test_generator_respects_time_range():
     from tensoraerospace.aerospacemodel.f16.nonlinear.damage.random import (
         RandomDamageProfileGenerator,
     )
+
     g = RandomDamageProfileGenerator(
         event_types=["section_loss"],
         time_range=(5.0, 25.0),
@@ -48,6 +50,7 @@ def test_generator_respects_num_events_range():
     from tensoraerospace.aerospacemodel.f16.nonlinear.damage.random import (
         RandomDamageProfileGenerator,
     )
+
     g = RandomDamageProfileGenerator(
         event_types=["section_loss"],
         time_range=(5.0, 25.0),

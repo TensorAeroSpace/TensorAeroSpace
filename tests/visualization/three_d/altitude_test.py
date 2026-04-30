@@ -7,10 +7,12 @@ import numpy as np
 
 def _make_altitude_env(steps=10):
     from tensoraerospace.envs.f16.nonlinear_angular import NonlinearAngularF16
+
     env = NonlinearAngularF16(
         initial_state=np.zeros(14),
         number_time_steps=20,
-        dt=0.01, airspeed=200.0,
+        dt=0.01,
+        airspeed=200.0,
         track_altitude=True,
     )
     env.reset()
@@ -21,6 +23,7 @@ def _make_altitude_env(steps=10):
 
 def test_exporter_handles_16_state():
     from tensoraerospace.visualization.three_d import build_flight_log
+
     env = _make_altitude_env()
     log = build_flight_log(env)
     traj = log["trajectory"]
@@ -31,6 +34,7 @@ def test_exporter_handles_16_state():
 
 def test_viewer_uses_real_altitude_when_available():
     from tensoraerospace.visualization.three_d import build_flight_log, build_html
+
     env = _make_altitude_env()
     log = build_flight_log(env)
     html = build_html(log)

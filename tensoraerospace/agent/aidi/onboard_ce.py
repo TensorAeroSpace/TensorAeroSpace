@@ -86,15 +86,19 @@ class F16NonlinearOnboardCE:
     _RATE_IDX = (2, 4, 3)
     _DEFLECTION_IDX = (8, 10, 12)  # stab, ail, dir actuator positions.
 
-    def __init__(self, params: "F16AngularParameters | None" = None,
-                 perturb: float = 1e-3) -> None:
+    def __init__(
+        self, params: "F16AngularParameters | None" = None, perturb: float = 1e-3
+    ) -> None:
         from tensoraerospace.aerospacemodel.f16.nonlinear.angular.dynamics import (
             f16_ode_6dof,
         )
+        from tensoraerospace.aerospacemodel.f16.nonlinear.angular.params import (  # noqa: F401  — referenced by the annotation.
+            F16AngularParameters,
+        )
         from tensoraerospace.aerospacemodel.f16.nonlinear.angular.params import (
-            F16AngularParameters,  # noqa: F401  — referenced by the annotation.
             default_parameters,
         )
+
         if perturb <= 0.0:
             raise ValueError("perturb must be positive")
         self._ode = f16_ode_6dof
@@ -107,16 +111,16 @@ class F16NonlinearOnboardCE:
         if x_v.size != 14:
             raise ValueError(f"x must be 14-element; got {x_v.size}")
         if u_v.size != self.n_control:
-            raise ValueError(
-                f"u must have length {self.n_control}; got {u_v.size}"
-            )
+            raise ValueError(f"u must have length {self.n_control}; got {u_v.size}")
         del u  # control input is unused here (CE is wrt deflection state).
         rate_idx = list(self._RATE_IDX)
         defl_idx = list(self._DEFLECTION_IDX)
         G = np.zeros((self.n_state, self.n_control), dtype=np.float64)
         for j_local, j_state in enumerate(defl_idx):
-            x_plus = x_v.copy(); x_plus[j_state] += self._eps
-            x_minus = x_v.copy(); x_minus[j_state] -= self._eps
+            x_plus = x_v.copy()
+            x_plus[j_state] += self._eps
+            x_minus = x_v.copy()
+            x_minus[j_state] -= self._eps
             f_plus = self._ode(x_plus, u_v, 0.0, self._params)[rate_idx]
             f_minus = self._ode(x_minus, u_v, 0.0, self._params)[rate_idx]
             G[:, j_local] = (f_plus - f_minus) / (2.0 * self._eps)

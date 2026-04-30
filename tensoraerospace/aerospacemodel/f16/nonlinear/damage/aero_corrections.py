@@ -16,7 +16,6 @@ from __future__ import annotations
 from .geometry import BaseGeometry
 from .state import DamageState
 
-
 _JAGGED_DRAG_COEF = 0.05  # peaks at f=0.5; calibrated heuristically
 
 
@@ -29,11 +28,16 @@ def delta_cy(alpha: float, beta: float, geo: BaseGeometry, state: DamageState) -
     S_base = _base_wing_area(geo)
     if S_base <= 0.0:
         return 0.0
-    return float(-sum(
-        s.cl_alpha_contribution * alpha * state.section_loss.get(s.name, 0.0)
-        * (s.area / S_base)
-        for s in geo.sections if s.type == "wing"
-    ))
+    return float(
+        -sum(
+            s.cl_alpha_contribution
+            * alpha
+            * state.section_loss.get(s.name, 0.0)
+            * (s.area / S_base)
+            for s in geo.sections
+            if s.type == "wing"
+        )
+    )
 
 
 def delta_cx(alpha: float, beta: float, geo: BaseGeometry, state: DamageState) -> float:
@@ -92,11 +96,17 @@ def delta_mx(alpha: float, beta: float, geo: BaseGeometry, state: DamageState) -
     if S_base <= 0.0:
         return 0.0
     b_base = 2.0 * _max_half_span(geo)
-    return float(-sum(
-        s.cl_alpha_contribution * alpha * state.section_loss.get(s.name, 0.0)
-        * (s.area / S_base) * (s.span_position / b_base)
-        for s in geo.sections if s.type == "wing"
-    ))
+    return float(
+        -sum(
+            s.cl_alpha_contribution
+            * alpha
+            * state.section_loss.get(s.name, 0.0)
+            * (s.area / S_base)
+            * (s.span_position / b_base)
+            for s in geo.sections
+            if s.type == "wing"
+        )
+    )
 
 
 def delta_mz(alpha: float, beta: float, geo: BaseGeometry, state: DamageState) -> float:
@@ -136,8 +146,14 @@ def delta_my(alpha: float, beta: float, geo: BaseGeometry, state: DamageState) -
     bA_base = wing_area_chord_sum / S_base if S_base > 0 else 1.0
     if bA_base == 0.0:
         return 0.0
-    return float(-sum(
-        s.cl_alpha_contribution * alpha * state.section_loss.get(s.name, 0.0)
-        * (s.area / S_base) * (s.aero_x_arm / bA_base)
-        for s in geo.sections if s.type in ("wing", "stab")
-    ))
+    return float(
+        -sum(
+            s.cl_alpha_contribution
+            * alpha
+            * state.section_loss.get(s.name, 0.0)
+            * (s.area / S_base)
+            * (s.aero_x_arm / bA_base)
+            for s in geo.sections
+            if s.type in ("wing", "stab")
+        )
+    )

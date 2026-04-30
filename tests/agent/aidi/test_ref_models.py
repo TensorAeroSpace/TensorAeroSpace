@@ -60,13 +60,15 @@ def test_speed_controller_no_op_when_disabled():
 
 def test_linear_controller_passthrough_with_zero_gain():
     lin = LinearController(rate_kp=np.zeros(3))
-    nu = lin.combine(omega_des=np.array([1.0, 2.0, 3.0]),
-                     omega=np.array([0.0, 0.0, 0.0]))
+    nu = lin.combine(
+        omega_des=np.array([1.0, 2.0, 3.0]), omega=np.array([0.0, 0.0, 0.0])
+    )
     np.testing.assert_array_equal(nu, np.array([1.0, 2.0, 3.0]))
 
 
 def test_linear_controller_adds_rate_error_feedback():
     lin = LinearController(rate_kp=np.array([1.0, 0.0, 0.0]))
-    nu = lin.combine(omega_des=np.array([1.0, 0.0, 0.0]),
-                     omega=np.array([0.5, 0.0, 0.0]))
+    nu = lin.combine(
+        omega_des=np.array([1.0, 0.0, 0.0]), omega=np.array([0.5, 0.0, 0.0])
+    )
     np.testing.assert_array_equal(nu, np.array([1.5, 0.0, 0.0]))

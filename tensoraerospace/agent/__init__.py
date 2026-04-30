@@ -14,6 +14,10 @@ from .adhdp.model import ADHDP as ADHDP  # noqa: F401
 
 # Adaptive Critic / ADP (Prokhorov & Wunsch 1995 inspired)
 from .adp.adp import ADP as ADP  # noqa: F401
+
+# AIDI — Adaptive Incremental Dynamic Inversion (Ul Haq et al. 2026)
+from .aidi.model import AIDIAgent as AIDIAgent  # noqa: F401
+from .aidi.model import AIDIConfig as AIDIConfig  # noqa: F401
 from .ddpg.model import DDPG as DDPG  # noqa: F401
 from .dqn.model import DQNAgent as DQNAgent  # noqa: F401
 from .dqn.model import Model as Model  # noqa: F401
@@ -38,7 +42,3 @@ from .mpc.mpc import MPCAgent as MPCAgent  # noqa: F401
 from .mpc.mpc import MPCAgent as TorchMPCAgent
 from .ppo.model import PPO as PPO  # noqa: F401
 from .sac.sac import SAC as SAC  # noqa: F401
-
-# AIDI — Adaptive Incremental Dynamic Inversion (Ul Haq et al. 2026)
-from .aidi.model import AIDIAgent as AIDIAgent  # noqa: F401
-from .aidi.model import AIDIConfig as AIDIConfig  # noqa: F401

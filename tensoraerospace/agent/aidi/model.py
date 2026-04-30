@@ -148,7 +148,8 @@ class AIDIAgent:
 
         # --- Inner loop -----------------------------------------------
         self.rls = ScalingRLS(
-            n_y=self.n_state, n_u=self.n_control,
+            n_y=self.n_state,
+            n_u=self.n_control,
             lambda_min=self.cfg.rls_lambda_min,
             lambda_max=self.cfg.rls_lambda_max,
             sigma0=self.cfg.rls_sigma0,
@@ -162,31 +163,41 @@ class AIDIAgent:
             cond_threshold=self.cfg.cond_threshold,
         )
         self.deriv = LowPassDerivative(
-            n=self.n_state, dt=self.cfg.dt,
+            n=self.n_state,
+            dt=self.cfg.dt,
             cutoff_hz=self.cfg.sensor_cutoff_hz,
         )
 
         # --- PCH and outer loop ---------------------------------------
         self.pch = PseudoControlHedge(
-            n_y=self.n_state, freeze_after=self.cfg.pch_freeze_after,
+            n_y=self.n_state,
+            freeze_after=self.cfg.pch_freeze_after,
             gap_tol=self.cfg.pch_gap_tol,
         )
         self.cstar = CStarController(
-            kp=self.cfg.cstar_kp, ki=self.cfg.cstar_ki,
-            V_co=self.cfg.cstar_V_co, dt=self.cfg.dt,
+            kp=self.cfg.cstar_kp,
+            ki=self.cfg.cstar_ki,
+            V_co=self.cfg.cstar_V_co,
+            dt=self.cfg.dt,
             i_clip=self.cfg.cstar_i_clip,
         )
         self.roll_ref = RollReferenceModel(
-            omega_n=self.cfg.roll_omega_n, zeta=self.cfg.roll_zeta,
+            omega_n=self.cfg.roll_omega_n,
+            zeta=self.cfg.roll_zeta,
             dt=self.cfg.dt,
         )
         self.sideslip = SideslipCompensator(
-            kp=self.cfg.sideslip_kp, ki=self.cfg.sideslip_ki,
-            dt=self.cfg.dt, i_clip=self.cfg.sideslip_i_clip,
+            kp=self.cfg.sideslip_kp,
+            ki=self.cfg.sideslip_ki,
+            dt=self.cfg.dt,
+            i_clip=self.cfg.sideslip_i_clip,
         )
         self.speed = SpeedController(
-            kp=self.cfg.speed_kp, ki=self.cfg.speed_ki, kd=self.cfg.speed_kd,
-            dt=self.cfg.dt, enabled=self.cfg.speed_enabled,
+            kp=self.cfg.speed_kp,
+            ki=self.cfg.speed_ki,
+            kd=self.cfg.speed_kd,
+            dt=self.cfg.dt,
+            enabled=self.cfg.speed_enabled,
         )
         self.linear = LinearController(
             rate_kp=np.asarray(self.cfg.rate_kp, dtype=np.float64),
@@ -229,12 +240,16 @@ class AIDIAgent:
         alpha = float(obs["alpha"])
         alpha_dot = (
             (alpha - self._alpha_prev) / self.cfg.dt
-            if self._alpha_prev is not None else 0.0
+            if self._alpha_prev is not None
+            else 0.0
         )
         return reconstruct_n_z(
-            alpha=alpha, alpha_dot=alpha_dot, q=q,
+            alpha=alpha,
+            alpha_dot=alpha_dot,
+            q=q,
             V=float(obs["V"]),
-            theta=float(obs["theta"]), phi=float(obs["phi"]),
+            theta=float(obs["theta"]),
+            phi=float(obs["phi"]),
         )
 
     def _build_state_vector(self, obs: dict) -> np.ndarray:
@@ -286,24 +301,27 @@ class AIDIAgent:
 
         omega = np.asarray(observation["omega"], dtype=np.float64).reshape(-1)
         if omega.size != self.n_state:
-            raise ValueError(
-                f"omega must have length {self.n_state}, got {omega.size}"
-            )
+            raise ValueError(f"omega must have length {self.n_state}, got {omega.size}")
 
         # Use the cached ω̇_meas — `learn` advances the differentiator.
         omega_dot_meas = self._omega_dot_cached.copy()
 
         # PCH from previous-tick demand vs current measurement.
         hedge = self.pch.update(
-            nu_des_prev=self._last_nu_des, omega_dot_meas=omega_dot_meas,
+            nu_des_prev=self._last_nu_des,
+            omega_dot_meas=omega_dot_meas,
         )
 
         # Outer loop — desired rates (p_des, q_des, r_des).
-        p = float(omega[0]); q = float(omega[1]); r = float(omega[2])
+        p = float(omega[0])
+        q = float(omega[1])
+        r = float(omega[2])
         n_z = self._resolve_n_z(observation, q)
         q_des = self.cstar.step(
             c_star_cmd=float(references["C_star"]),
-            n_z=n_z, q=q, V=float(observation["V"]),
+            n_z=n_z,
+            q=q,
+            V=float(observation["V"]),
             hedge=float(hedge[1]),
         )
         p_des = self.roll_ref.step(
@@ -318,7 +336,8 @@ class AIDIAgent:
         )
         # Speed PID is exposed but discarded here — auto-throttle slot.
         _ = self.speed.step(
-            V_cmd=float(references["V_cmd"]), V=float(observation["V"]),
+            V_cmd=float(references["V_cmd"]),
+            V=float(observation["V"]),
         )
         omega_des = np.array([p_des, q_des, r_des], dtype=np.float64)
         nu_des = self.linear.combine(omega_des=omega_des, omega=omega)
@@ -334,7 +353,8 @@ class AIDIAgent:
         du = _clamp(du, -du_max, du_max)
         u_cmd = _clamp(
             self._u_prev + du,
-            -self.cfg.u_magnitude_limit, self.cfg.u_magnitude_limit,
+            -self.cfg.u_magnitude_limit,
+            self.cfg.u_magnitude_limit,
         )
 
         # Bookkeeping for `learn` and next tick.
@@ -353,12 +373,11 @@ class AIDIAgent:
         del references, time_step
         self._check_obs(next_observation)
         omega = np.asarray(
-            next_observation["omega"], dtype=np.float64,
+            next_observation["omega"],
+            dtype=np.float64,
         ).reshape(-1)
         if omega.size != self.n_state:
-            raise ValueError(
-                f"omega must have length {self.n_state}, got {omega.size}"
-            )
+            raise ValueError(f"omega must have length {self.n_state}, got {omega.size}")
 
         omega_dot_next = self.deriv.step(omega)
         self._omega_dot_cached = omega_dot_next.copy()
@@ -376,7 +395,8 @@ class AIDIAgent:
 
         G_norm = (
             float(np.linalg.norm(self.rls.theta * self._last_G_nominal))
-            if self._last_G_nominal is not None else 0.0
+            if self._last_G_nominal is not None
+            else 0.0
         )
         return {
             "residual_norm": float(np.linalg.norm(residuals)),
@@ -412,7 +432,8 @@ class AIDIAgent:
 
         np.savez(
             run_dir / "scaling_rls.npz",
-            theta=self.rls.theta, P=self.rls.P,
+            theta=self.rls.theta,
+            P=self.rls.P,
             last_lambda=self.rls.last_lambda,
             last_residual=self.rls.last_residual,
             num_updates=np.asarray(self.rls.num_updates),
@@ -443,21 +464,27 @@ class AIDIAgent:
             run_dir / "loop_state.npz",
             u_prev=self._u_prev,
             omega_dot_cached=self._omega_dot_cached,
-            omega_prev=(self._omega_prev if self._omega_prev is not None
-                        else np.array([])),
+            omega_prev=(
+                self._omega_prev if self._omega_prev is not None else np.array([])
+            ),
             has_omega_prev=np.asarray(self._omega_prev is not None),
-            omega_dot_prev=(self._omega_dot_prev
-                            if self._omega_dot_prev is not None
-                            else np.array([])),
+            omega_dot_prev=(
+                self._omega_dot_prev
+                if self._omega_dot_prev is not None
+                else np.array([])
+            ),
             has_omega_dot_prev=np.asarray(self._omega_dot_prev is not None),
             last_u_cmd=self._last_u_cmd,
             last_nu_des=self._last_nu_des,
             alpha_prev=np.asarray(
-                self._alpha_prev if self._alpha_prev is not None else 0.0),
+                self._alpha_prev if self._alpha_prev is not None else 0.0
+            ),
             has_alpha_prev=np.asarray(self._alpha_prev is not None),
-            last_G_nominal=(self._last_G_nominal
-                            if self._last_G_nominal is not None
-                            else np.array([])),
+            last_G_nominal=(
+                self._last_G_nominal
+                if self._last_G_nominal is not None
+                else np.array([])
+            ),
             has_last_G_nominal=np.asarray(self._last_G_nominal is not None),
             step=np.asarray(self._step),
         )
@@ -465,7 +492,9 @@ class AIDIAgent:
 
     @classmethod
     def _load_from_dir(
-        cls, folder: Union[str, Path], onboard_ce: OnboardCEModel,
+        cls,
+        folder: Union[str, Path],
+        onboard_ce: OnboardCEModel,
     ) -> "AIDIAgent":
         folder_p = Path(folder)
         with open(folder_p / "config.json", "r", encoding="utf-8") as f:
@@ -476,8 +505,10 @@ class AIDIAgent:
         cfg_dict["rate_kp"] = tuple(cfg_dict.get("rate_kp", (0.0, 0.0, 0.0)))
         agent_cfg = AIDIConfig(**cfg_dict)
         agent = cls(
-            n_state=params["n_state"], n_control=params["n_control"],
-            onboard_ce=onboard_ce, config=agent_cfg,
+            n_state=params["n_state"],
+            n_control=params["n_control"],
+            onboard_ce=onboard_ce,
+            config=agent_cfg,
         )
 
         with np.load(folder_p / "scaling_rls.npz") as npz:
@@ -519,8 +550,7 @@ class AIDIAgent:
                 float(npz["alpha_prev"]) if bool(npz["has_alpha_prev"]) else None
             )
             agent._last_G_nominal = (
-                npz["last_G_nominal"]
-                if bool(npz["has_last_G_nominal"]) else None
+                npz["last_G_nominal"] if bool(npz["has_last_G_nominal"]) else None
             )
             agent._step = int(npz["step"])
 
@@ -528,25 +558,37 @@ class AIDIAgent:
 
     @classmethod
     def from_pretrained(
-        cls, repo_name: str, *, onboard_ce: OnboardCEModel,
-        access_token: Optional[str] = None, version: Optional[str] = None,
+        cls,
+        repo_name: str,
+        *,
+        onboard_ce: OnboardCEModel,
+        access_token: Optional[str] = None,
+        version: Optional[str] = None,
     ) -> "AIDIAgent":
         p = Path(str(repo_name)).expanduser()
         if p.is_dir():
             return cls._load_from_dir(p, onboard_ce=onboard_ce)
         from huggingface_hub import snapshot_download
+
         folder_path = snapshot_download(
-            repo_id=repo_name, token=access_token, revision=version,
+            repo_id=repo_name,
+            token=access_token,
+            revision=version,
         )
         return cls._load_from_dir(folder_path, onboard_ce=onboard_ce)
 
     def publish_to_hub(
-        self, repo_name: str, folder_path: Union[str, Path],
+        self,
+        repo_name: str,
+        folder_path: Union[str, Path],
         access_token: Optional[str] = None,
     ) -> None:
         from huggingface_hub import HfApi
+
         api = HfApi()
         api.upload_folder(
-            folder_path=str(folder_path), repo_id=repo_name,
-            repo_type="model", token=access_token,
+            folder_path=str(folder_path),
+            repo_id=repo_name,
+            repo_type="model",
+            token=access_token,
         )

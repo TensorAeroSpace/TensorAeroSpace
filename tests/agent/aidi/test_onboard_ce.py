@@ -31,6 +31,7 @@ def test_f16_onboard_ce_reproduces_finite_difference_over_deflection():
     from tensoraerospace.aerospacemodel.f16.nonlinear.angular.params import (
         default_parameters,
     )
+
     params = default_parameters()
 
     x = np.zeros(14)
@@ -45,8 +46,10 @@ def test_f16_onboard_ce_reproduces_finite_difference_over_deflection():
     rate_idx = [2, 4, 3]  # (p, q, r) in this codebase's wx/wy/wz layout.
     deflection_idx = [8, 10, 12]
     for j_local, j_state in enumerate(deflection_idx):
-        x_plus = x.copy(); x_plus[j_state] += eps_fine
-        x_minus = x.copy(); x_minus[j_state] -= eps_fine
+        x_plus = x.copy()
+        x_plus[j_state] += eps_fine
+        x_minus = x.copy()
+        x_minus[j_state] -= eps_fine
         f_plus = f16.f16_ode_6dof(x_plus, u, 0.0, params)[rate_idx]
         f_minus = f16.f16_ode_6dof(x_minus, u, 0.0, params)[rate_idx]
         G_ref[:, j_local] = (f_plus - f_minus) / (2 * eps_fine)
@@ -63,8 +66,10 @@ def test_f16_onboard_ce_is_deterministic():
     from tensoraerospace.aerospacemodel.f16.nonlinear.angular.params import (
         default_parameters,
     )
+
     adapter = F16NonlinearOnboardCE(params=default_parameters(), perturb=1e-3)
-    x = np.zeros(14); x[0] = 0.05
+    x = np.zeros(14)
+    x[0] = 0.05
     u = np.zeros(3)
     G1 = adapter(x, u)
     G2 = adapter(x, u)

@@ -7,11 +7,13 @@ from typing import Literal
 
 from .geometry import BaseGeometry
 
-ControlMode = Literal[
-    "healthy", "efficiency_loss", "jam", "free_floating", "lost"
-]
+ControlMode = Literal["healthy", "efficiency_loss", "jam", "free_floating", "lost"]
 _VALID_CONTROL_MODES = (
-    "healthy", "efficiency_loss", "jam", "free_floating", "lost",
+    "healthy",
+    "efficiency_loss",
+    "jam",
+    "free_floating",
+    "lost",
 )
 
 
@@ -28,9 +30,7 @@ class ControlFailure:
                 f"{_VALID_CONTROL_MODES}; got {self.mode!r}"
             )
         if not (0.0 <= self.efficiency <= 1.0):
-            raise ValueError(
-                f"efficiency must be in [0,1]; got {self.efficiency}"
-            )
+            raise ValueError(f"efficiency must be in [0,1]; got {self.efficiency}")
 
 
 @dataclass

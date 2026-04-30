@@ -50,8 +50,8 @@ warnings.filterwarnings("ignore")
 DT = 0.01
 TOTAL_TIME = 60.0
 DAMAGE_TIME = 20.0
-N_STEPS = int(TOTAL_TIME / DT)               # 6000 steps
-DAMAGE_STEP = int(DAMAGE_TIME / DT)          # 2000
+N_STEPS = int(TOTAL_TIME / DT)  # 6000 steps
+DAMAGE_STEP = int(DAMAGE_TIME / DT)  # 2000
 
 # === iADP hyper-parameters ===
 Q_VAL = 30_000.0
@@ -69,15 +69,20 @@ def compute_trim() -> tuple[float, float]:
         return list(f16_ode_long(x, np.array([stab]), 0.0, params)[:2])
 
     sol, _info, ier, msg = fsolve(
-        trim_residual, x0=[math.radians(2.0), math.radians(-2.0)],
+        trim_residual,
+        x0=[math.radians(2.0), math.radians(-2.0)],
         full_output=True,
     )
     assert ier == 1, f"trim search failed: {msg}"
     return float(sol[0]), float(sol[1])
 
 
-def make_env(n_steps: int, alpha_trim: float, stab_trim: float,
-             damage_profile: DamageProfile | None = None):
+def make_env(
+    n_steps: int,
+    alpha_trim: float,
+    stab_trim: float,
+    damage_profile: DamageProfile | None = None,
+):
     """Construct the longitudinal F-16 env at trim, optionally with damage."""
     env = gym.make(
         "NonlinearLongitudinalF16-v0",
@@ -108,8 +113,9 @@ def warm_start_FG(alpha_trim: float, stab_trim: float) -> tuple[np.ndarray, np.n
     wz_hist = [float(obs[1])]
     u_hist = [0.0]
     for t in range(n_pe):
-        u = (2.0 * math.sin(2 * math.pi * 0.7 * t * DT)
-             + 1.0 * math.sin(2 * math.pi * 1.5 * t * DT))
+        u = 2.0 * math.sin(2 * math.pi * 0.7 * t * DT) + 1.0 * math.sin(
+            2 * math.pi * 1.5 * t * DT
+        )
         obs, *_ = env_pe.step(np.array([u]))
         wz_hist.append(float(obs[1]))
         u_hist.append(float(u))
@@ -137,7 +143,8 @@ def dare_warm_start(F_init: np.ndarray, G_init: np.ndarray) -> np.ndarray:
     P = solve_discrete_are(
         np.sqrt(GAMMA) * F_init,
         np.sqrt(GAMMA) * G_init,
-        Q_aug, R_aug,
+        Q_aug,
+        R_aug,
     )
     return P
 
@@ -149,23 +156,32 @@ def build_damage_profile() -> DamageProfile:
     Cy_α (lift-curve slope), which iADP's RLS observes as a change in
     the local plant gain G̃.
     """
-    return DamageProfile(events=[
-        DamageEvent(
-            trigger_time=DAMAGE_TIME, event_type="section_loss",
-            payload={"section": "left_tip", "loss_fraction": 0.30},
-            label="left_tip_30pct_loss",
-        ),
-        DamageEvent(
-            trigger_time=DAMAGE_TIME, event_type="section_loss",
-            payload={"section": "right_tip", "loss_fraction": 0.30},
-            label="right_tip_30pct_loss",
-        ),
-    ])
+    return DamageProfile(
+        events=[
+            DamageEvent(
+                trigger_time=DAMAGE_TIME,
+                event_type="section_loss",
+                payload={"section": "left_tip", "loss_fraction": 0.30},
+                label="left_tip_30pct_loss",
+            ),
+            DamageEvent(
+                trigger_time=DAMAGE_TIME,
+                event_type="section_loss",
+                payload={"section": "right_tip", "loss_fraction": 0.30},
+                label="right_tip_30pct_loss",
+            ),
+        ]
+    )
 
 
-def run_iadp(F_init: np.ndarray, G_init: np.ndarray, P_init: np.ndarray,
-             alpha_trim: float, stab_trim: float,
-             damage_profile: DamageProfile | None) -> dict[str, np.ndarray]:
+def run_iadp(
+    F_init: np.ndarray,
+    G_init: np.ndarray,
+    P_init: np.ndarray,
+    alpha_trim: float,
+    stab_trim: float,
+    damage_profile: DamageProfile | None,
+) -> dict[str, np.ndarray]:
     cfg = IADPConfig(
         dt=DT,
         Q=np.array([[Q_VAL]]),
@@ -195,8 +211,8 @@ def run_iadp(F_init: np.ndarray, G_init: np.ndarray, P_init: np.ndarray,
     wz_cmd = math.radians(0.8) * np.sin(2 * math.pi * 0.12 * t_arr)
 
     logs: dict[str, list[float]] = {
-        k: [] for k in ("wz", "alpha", "u", "G_est", "P_norm", "residual",
-                        "damage_active")
+        k: []
+        for k in ("wz", "alpha", "u", "G_est", "P_norm", "residual", "damage_active")
     }
     triggered_events: list[tuple[float, str]] = []
     for k in range(N_STEPS):
@@ -232,14 +248,14 @@ def run_iadp(F_init: np.ndarray, G_init: np.ndarray, P_init: np.ndarray,
 
 def report(label: str, log: dict[str, np.ndarray]) -> None:
     """Print pre/post-damage tracking RMSE, and the damage events seen."""
-    pre_window = np.arange(500, DAMAGE_STEP)         # 5 s ≤ t < 20 s
+    pre_window = np.arange(500, DAMAGE_STEP)  # 5 s ≤ t < 20 s
     post_window = np.arange(DAMAGE_STEP + 200, N_STEPS)  # 22 s ≤ t ≤ 60 s
-    pre_rmse = math.degrees(np.sqrt(np.mean(
-        (log["wz"][pre_window] - log["wz_cmd"][pre_window]) ** 2
-    )))
-    post_rmse = math.degrees(np.sqrt(np.mean(
-        (log["wz"][post_window] - log["wz_cmd"][post_window]) ** 2
-    )))
+    pre_rmse = math.degrees(
+        np.sqrt(np.mean((log["wz"][pre_window] - log["wz_cmd"][pre_window]) ** 2))
+    )
+    post_rmse = math.degrees(
+        np.sqrt(np.mean((log["wz"][post_window] - log["wz_cmd"][post_window]) ** 2))
+    )
     print(f"\n=== {label} ===")
     print(f"Pre-damage RMSE  (5 s ≤ t < 20 s):  {pre_rmse:.4f} °/s")
     print(f"Post-damage RMSE (22 s ≤ t ≤ 60 s): {post_rmse:.4f} °/s")
@@ -252,8 +268,7 @@ def report(label: str, log: dict[str, np.ndarray]) -> None:
             print(f"  t={t:.2f}s : {label}")
 
 
-def maybe_plot(baseline: dict[str, np.ndarray],
-               damaged: dict[str, np.ndarray]) -> None:
+def maybe_plot(baseline: dict[str, np.ndarray], damaged: dict[str, np.ndarray]) -> None:
     """Plot tracking, control, G̃ adaptation, and RLS residual if matplotlib
     is available. No-op otherwise."""
     try:
@@ -265,13 +280,16 @@ def maybe_plot(baseline: dict[str, np.ndarray],
     t = damaged["t"]
     fig, axes = plt.subplots(4, 1, figsize=(11, 10), sharex=True)
 
-    axes[0].plot(t, np.degrees(damaged["wz_cmd"]), "k--", label="command",
-                 alpha=0.6)
-    axes[0].plot(t, np.degrees(baseline["wz"]), label="baseline (no damage)",
-                 alpha=0.6)
+    axes[0].plot(t, np.degrees(damaged["wz_cmd"]), "k--", label="command", alpha=0.6)
+    axes[0].plot(t, np.degrees(baseline["wz"]), label="baseline (no damage)", alpha=0.6)
     axes[0].plot(t, np.degrees(damaged["wz"]), label="with damage", alpha=0.9)
-    axes[0].axvline(DAMAGE_TIME, color="red", linestyle="--", alpha=0.4,
-                    label=f"damage @ t={DAMAGE_TIME:.0f}s")
+    axes[0].axvline(
+        DAMAGE_TIME,
+        color="red",
+        linestyle="--",
+        alpha=0.4,
+        label=f"damage @ t={DAMAGE_TIME:.0f}s",
+    )
     axes[0].set_ylabel("ω_z [°/s]")
     axes[0].legend(loc="upper right")
     axes[0].grid(alpha=0.3)
@@ -313,12 +331,13 @@ def maybe_plot(baseline: dict[str, np.ndarray],
 
 def main() -> None:
     print(f"Total simulation time: {TOTAL_TIME:.0f} s ({N_STEPS} steps @ dt={DT})")
-    print(f"Damage trigger:        t = {DAMAGE_TIME:.0f} s "
-          f"(step {DAMAGE_STEP})")
+    print(f"Damage trigger:        t = {DAMAGE_TIME:.0f} s " f"(step {DAMAGE_STEP})")
 
     alpha_trim, stab_trim = compute_trim()
-    print(f"\nGlobal trim:  α* = {math.degrees(alpha_trim):+.4f}°,  "
-          f"δₑ* = {math.degrees(stab_trim):+.4f}°")
+    print(
+        f"\nGlobal trim:  α* = {math.degrees(alpha_trim):+.4f}°,  "
+        f"δₑ* = {math.degrees(stab_trim):+.4f}°"
+    )
 
     print("\n--- Warm-start: PE excitation ---")
     F_init, G_init = warm_start_FG(alpha_trim, stab_trim)
@@ -327,14 +346,16 @@ def main() -> None:
     print(f"DARE-based P_init Frobenius norm: {np.linalg.norm(P_init):.1f}")
 
     print("\n--- Closed-loop simulation: BASELINE (no damage) ---")
-    baseline = run_iadp(F_init, G_init, P_init, alpha_trim, stab_trim,
-                        damage_profile=None)
+    baseline = run_iadp(
+        F_init, G_init, P_init, alpha_trim, stab_trim, damage_profile=None
+    )
     report("Baseline (no damage)", baseline)
 
     print("\n--- Closed-loop simulation: 30% BILATERAL WING-TIP LOSS at t=20s ---")
     profile = build_damage_profile()
-    damaged = run_iadp(F_init, G_init, P_init, alpha_trim, stab_trim,
-                       damage_profile=profile)
+    damaged = run_iadp(
+        F_init, G_init, P_init, alpha_trim, stab_trim, damage_profile=profile
+    )
     report("With damage (30% bilateral wing-tip loss at t=20s)", damaged)
 
     maybe_plot(baseline, damaged)

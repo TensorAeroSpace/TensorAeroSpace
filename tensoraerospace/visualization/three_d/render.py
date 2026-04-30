@@ -99,13 +99,14 @@ def render(
 
     if use_inline:
         from IPython.display import HTML  # type: ignore
+
         # Wrap in a fixed-height iframe so the page layout doesn't get
         # taken over by the absolute-positioned UI inside.
         # Use srcdoc so the entire viewer is self-contained inside the iframe.
         iframe = (
             '<iframe srcdoc="' + html.replace('"', "&quot;") + '" '
             'width="100%" height="600" style="border:0; border-radius:6px;">'
-            '</iframe>'
+            "</iframe>"
         )
         if save_to is not None:
             save_html(log, save_to, title=title)

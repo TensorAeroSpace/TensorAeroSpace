@@ -59,7 +59,7 @@ DAMAGE_TIME = 20.0
 DAMAGE_STEP = int(DAMAGE_TIME / DT)
 
 # === ET-DHP training settings ===
-NUM_TRAIN_EPISODES = 6        # episodes on healthy aircraft
+NUM_TRAIN_EPISODES = 6  # episodes on healthy aircraft
 LOOKAHEAD_SEC = 0.85
 FF_GAIN = 1.55
 WARMUP_SEC = 2.0
@@ -84,7 +84,8 @@ def compute_trim() -> tuple[float, float]:
         return list(f16_ode_long(x, np.array([stab]), 0.0, params)[:2])
 
     sol, _info, ier, msg = fsolve(
-        trim_residual, x0=[math.radians(2.0), math.radians(-2.0)],
+        trim_residual,
+        x0=[math.radians(2.0), math.radians(-2.0)],
         full_output=True,
     )
     assert ier == 1, f"trim search failed: {msg}"
@@ -98,6 +99,7 @@ def stab_for_alpha(alpha_rad: float) -> float:
     def res(s):
         x = np.array([alpha_rad, 0.0, s[0], 0.0])
         return f16_ode_long(x, np.array([s[0]]), 0.0, params)[1]
+
     return float(fsolve(res, x0=[math.radians(-2.0)])[0])
 
 
@@ -115,54 +117,67 @@ def make_reference(n_steps: int, alpha_trim_rad: float) -> np.ndarray:
     warmup_steps = int(WARMUP_SEC / DT)
     ref = np.full(n_steps, alpha_trim_rad)
     active_t = np.arange(n_steps - warmup_steps) * DT
-    ref[warmup_steps:] = (
-        alpha_trim_rad
-        + math.radians(AMPLITUDE_DEG) * np.sin(2 * np.pi * FREQ_HZ * active_t)
+    ref[warmup_steps:] = alpha_trim_rad + math.radians(AMPLITUDE_DEG) * np.sin(
+        2 * np.pi * FREQ_HZ * active_t
     )
     return ref.reshape(1, -1)
 
 
-def make_feedforward_fn(reference: np.ndarray, alpha_trim_deg: float,
-                        alphas_grid_deg: np.ndarray, stabs_grid_deg: np.ndarray):
+def make_feedforward_fn(
+    reference: np.ndarray,
+    alpha_trim_deg: float,
+    alphas_grid_deg: np.ndarray,
+    stabs_grid_deg: np.ndarray,
+):
     lookahead_steps = int(LOOKAHEAD_SEC / DT)
 
     def feedforward_fn(time_step: int, ref_signal: np.ndarray) -> float:
         k = min(time_step + lookahead_steps, ref_signal.shape[1] - 1)
         alpha_ref_deg = math.degrees(ref_signal[0, k])
-        alpha_eff_deg = (
-            alpha_trim_deg + FF_GAIN * (alpha_ref_deg - alpha_trim_deg)
-        )
+        alpha_eff_deg = alpha_trim_deg + FF_GAIN * (alpha_ref_deg - alpha_trim_deg)
         return float(np.interp(alpha_eff_deg, alphas_grid_deg, stabs_grid_deg))
 
     return feedforward_fn
 
 
-def make_state_transform(alpha_trim_deg: float, alphas_grid_deg: np.ndarray,
-                         stabs_grid_deg: np.ndarray):
-    def state_transform(obs: np.ndarray, ref: np.ndarray | None,
-                        ts: int) -> np.ndarray:
+def make_state_transform(
+    alpha_trim_deg: float, alphas_grid_deg: np.ndarray, stabs_grid_deg: np.ndarray
+):
+    def state_transform(obs: np.ndarray, ref: np.ndarray | None, ts: int) -> np.ndarray:
         obs_deg = np.degrees(np.asarray(obs, dtype=np.float64).reshape(-1))
         if ref is not None and int(ts) < ref.shape[1]:
             alpha_ref_deg_now = math.degrees(float(ref[0, int(ts)]))
         else:
             alpha_ref_deg_now = alpha_trim_deg
-        stab_ref_deg_now = float(np.interp(
-            alpha_ref_deg_now, alphas_grid_deg, stabs_grid_deg,
-        ))
-        return np.array([
-            obs_deg[0] - alpha_ref_deg_now,
-            obs_deg[1],
-            obs_deg[2] - stab_ref_deg_now,
-            obs_deg[3],
-        ])
+        stab_ref_deg_now = float(
+            np.interp(
+                alpha_ref_deg_now,
+                alphas_grid_deg,
+                stabs_grid_deg,
+            )
+        )
+        return np.array(
+            [
+                obs_deg[0] - alpha_ref_deg_now,
+                obs_deg[1],
+                obs_deg[2] - stab_ref_deg_now,
+                obs_deg[3],
+            ]
+        )
 
     return state_transform
 
 
-def make_env(n_steps: int, reference: np.ndarray, alpha_trim_rad: float,
-             stab_trim_rad: float, *, feedforward_fn=None,
-             damage_profile: DamageProfile | None = None,
-             control_bias: float | None = None):
+def make_env(
+    n_steps: int,
+    reference: np.ndarray,
+    alpha_trim_rad: float,
+    stab_trim_rad: float,
+    *,
+    feedforward_fn=None,
+    damage_profile: DamageProfile | None = None,
+    control_bias: float | None = None,
+):
     """Build the longitudinal F-16 env at trim."""
     kwargs = dict(
         number_time_steps=n_steps + 2,
@@ -183,8 +198,9 @@ def make_env(n_steps: int, reference: np.ndarray, alpha_trim_rad: float,
     return gym.make("NonlinearLongitudinalF16-v0", **kwargs).unwrapped
 
 
-def collect_pe_data(alpha_trim_rad: float, stab_trim_rad: float,
-                    state_transform) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+def collect_pe_data(
+    alpha_trim_rad: float, stab_trim_rad: float, state_transform
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     """Pre-train data: 30 s of multi-sine PE around trim with FF off."""
     n_id = 3000
     u_amp = 2.0
@@ -221,33 +237,45 @@ def collect_pe_data(alpha_trim_rad: float, stab_trim_rad: float,
         obs = obs_next
         if done:
             break
-    return (np.asarray(states_buf, dtype=np.float32),
-            np.asarray(actions_buf, dtype=np.float32),
-            np.asarray(next_states_buf, dtype=np.float32))
+    return (
+        np.asarray(states_buf, dtype=np.float32),
+        np.asarray(actions_buf, dtype=np.float32),
+        np.asarray(next_states_buf, dtype=np.float32),
+    )
 
 
 def build_damage_profile() -> DamageProfile:
     """Symmetric 30% wing-tip loss at t=20s — matches the iADP example."""
-    return DamageProfile(events=[
-        DamageEvent(
-            trigger_time=DAMAGE_TIME, event_type="section_loss",
-            payload={"section": "left_tip", "loss_fraction": 0.30},
-            label="left_tip_30pct_loss",
-        ),
-        DamageEvent(
-            trigger_time=DAMAGE_TIME, event_type="section_loss",
-            payload={"section": "right_tip", "loss_fraction": 0.30},
-            label="right_tip_30pct_loss",
-        ),
-    ])
+    return DamageProfile(
+        events=[
+            DamageEvent(
+                trigger_time=DAMAGE_TIME,
+                event_type="section_loss",
+                payload={"section": "left_tip", "loss_fraction": 0.30},
+                label="left_tip_30pct_loss",
+            ),
+            DamageEvent(
+                trigger_time=DAMAGE_TIME,
+                event_type="section_loss",
+                payload={"section": "right_tip", "loss_fraction": 0.30},
+                label="right_tip_30pct_loss",
+            ),
+        ]
+    )
 
 
-def run_episode(agent: ETDHPAgent, env_factory, reference: np.ndarray, *,
-                learn: bool, n_steps: int,
-                online_plant_refit: bool = False,
-                refit_every: int = 100,
-                refit_buffer_size: int = 500,
-                refit_epochs: int = 25) -> dict:
+def run_episode(
+    agent: ETDHPAgent,
+    env_factory,
+    reference: np.ndarray,
+    *,
+    learn: bool,
+    n_steps: int,
+    online_plant_refit: bool = False,
+    refit_every: int = 100,
+    refit_buffer_size: int = 500,
+    refit_epochs: int = 25,
+) -> dict:
     """Run a single episode. Returns logs and trigger statistics.
 
     When online_plant_refit=True, the plant NN is re-fit every
@@ -262,7 +290,7 @@ def run_episode(agent: ETDHPAgent, env_factory, reference: np.ndarray, *,
     alpha_log, wz_log, u_log = [], [], []
     triggers_pre = triggers_post = 0
     triggered_events: list[tuple[float, str]] = []
-    refit_log: list[tuple[float, str]] = []   # (time, reason)
+    refit_log: list[tuple[float, str]] = []  # (time, reason)
 
     plant_buffer: deque = deque(maxlen=refit_buffer_size)
     last_refit_step = 0
@@ -282,9 +310,9 @@ def run_episode(agent: ETDHPAgent, env_factory, reference: np.ndarray, *,
                 # accessible
                 x_curr_arr = state_transform(obs, reference, k)
                 x_next_arr = state_transform(obs_next, reference, k)
-            plant_buffer.append((x_curr_arr,
-                                 np.asarray(u_cmd, dtype=np.float32),
-                                 x_next_arr))
+            plant_buffer.append(
+                (x_curr_arr, np.asarray(u_cmd, dtype=np.float32), x_next_arr)
+            )
 
         if learn:
             metrics = agent.learn(obs_next, reference, k, dt=DT)
@@ -312,17 +340,22 @@ def run_episode(agent: ETDHPAgent, env_factory, reference: np.ndarray, *,
                 should_refit = True
                 reason = "post-damage"
             # Periodic refit, only after damage
-            elif (last_refit_step >= DAMAGE_STEP
-                  and k - last_refit_step >= refit_every):
+            elif last_refit_step >= DAMAGE_STEP and k - last_refit_step >= refit_every:
                 should_refit = True
                 reason = "periodic-post-damage"
             if should_refit:
                 states_arr = np.array([b[0] for b in plant_buffer], dtype=np.float32)
                 actions_arr = np.array([b[1] for b in plant_buffer], dtype=np.float32)
-                next_states_arr = np.array([b[2] for b in plant_buffer], dtype=np.float32)
+                next_states_arr = np.array(
+                    [b[2] for b in plant_buffer], dtype=np.float32
+                )
                 agent.fit_plant_model(
-                    states_arr, actions_arr, next_states_arr,
-                    batch_size=64, verbose=False, epochs=refit_epochs,
+                    states_arr,
+                    actions_arr,
+                    next_states_arr,
+                    batch_size=64,
+                    verbose=False,
+                    epochs=refit_epochs,
                 )
                 last_refit_step = k
                 refit_log.append((k * DT, reason))
@@ -345,8 +378,7 @@ def run_episode(agent: ETDHPAgent, env_factory, reference: np.ndarray, *,
     }
 
 
-def report_episode(label: str, log: dict, reference: np.ndarray,
-                   n_plot: int) -> None:
+def report_episode(label: str, log: dict, reference: np.ndarray, n_plot: int) -> None:
     """Pre/post-damage RMSE and trigger counts."""
     ref_deg = np.rad2deg(reference[0, :n_plot])
     pre = np.arange(int(5.0 / DT), DAMAGE_STEP)
@@ -366,12 +398,15 @@ def report_episode(label: str, log: dict, reference: np.ndarray,
             print(f"  t={t:.2f}s : {lab}")
     refit_log = log.get("refit_log", [])
     if refit_log:
-        print(f"Plant-NN refits: {len(refit_log)}  "
-              f"(first: t={refit_log[0][0]:.2f}s, last: t={refit_log[-1][0]:.2f}s)")
+        print(
+            f"Plant-NN refits: {len(refit_log)}  "
+            f"(first: t={refit_log[0][0]:.2f}s, last: t={refit_log[-1][0]:.2f}s)"
+        )
 
 
-def maybe_plot(baseline: dict, damaged: dict, reference: np.ndarray,
-               tps: np.ndarray, n_plot: int) -> None:
+def maybe_plot(
+    baseline: dict, damaged: dict, reference: np.ndarray, tps: np.ndarray, n_plot: int
+) -> None:
     """Plot α tracking, residual u, ω_z if matplotlib is installed."""
     try:
         import matplotlib.pyplot as plt
@@ -382,12 +417,17 @@ def maybe_plot(baseline: dict, damaged: dict, reference: np.ndarray,
     fig, axes = plt.subplots(3, 1, figsize=(11, 9), sharex=True)
 
     axes[0].plot(tps[:n_plot], ref_deg, "k--", alpha=0.6, label="α_ref")
-    axes[0].plot(tps[:n_plot], baseline["alpha"], alpha=0.6,
-                 label="ET-DHP (no damage)")
-    axes[0].plot(tps[:n_plot], damaged["alpha"], alpha=0.9,
-                 label="ET-DHP (with damage @ t=20s)")
-    axes[0].axvline(DAMAGE_TIME, color="red", linestyle="--", alpha=0.4,
-                    label=f"damage @ t={DAMAGE_TIME:.0f}s")
+    axes[0].plot(tps[:n_plot], baseline["alpha"], alpha=0.6, label="ET-DHP (no damage)")
+    axes[0].plot(
+        tps[:n_plot], damaged["alpha"], alpha=0.9, label="ET-DHP (with damage @ t=20s)"
+    )
+    axes[0].axvline(
+        DAMAGE_TIME,
+        color="red",
+        linestyle="--",
+        alpha=0.4,
+        label=f"damage @ t={DAMAGE_TIME:.0f}s",
+    )
     axes[0].set_ylabel("α [°]")
     axes[0].legend(loc="upper right")
     axes[0].grid(alpha=0.3)
@@ -422,30 +462,39 @@ def maybe_plot(baseline: dict, damaged: dict, reference: np.ndarray,
 
 def main() -> None:
     print(f"Total simulation time: {TOTAL_TIME:.0f} s")
-    print(f"Damage trigger:        t = {DAMAGE_TIME:.0f} s "
-          f"(step {DAMAGE_STEP})")
+    print(f"Damage trigger:        t = {DAMAGE_TIME:.0f} s " f"(step {DAMAGE_STEP})")
 
     alpha_trim_rad, stab_trim_rad = compute_trim()
     alpha_trim_deg = math.degrees(alpha_trim_rad)
     stab_trim_deg = math.degrees(stab_trim_rad)
-    print(f"\nGlobal trim:  α* = {alpha_trim_deg:+.4f}°,  "
-          f"δₑ* = {stab_trim_deg:+.4f}°")
+    print(
+        f"\nGlobal trim:  α* = {alpha_trim_deg:+.4f}°,  " f"δₑ* = {stab_trim_deg:+.4f}°"
+    )
 
     print("\n--- Building feedforward elevator curve ---")
     alphas_grid_deg, stabs_grid_deg = build_feedforward_table(alpha_trim_deg)
-    print(f"FF table: {len(alphas_grid_deg)} pts over "
-          f"α ∈ [{alphas_grid_deg.min():+.1f}°, {alphas_grid_deg.max():+.1f}°]")
+    print(
+        f"FF table: {len(alphas_grid_deg)} pts over "
+        f"α ∈ [{alphas_grid_deg.min():+.1f}°, {alphas_grid_deg.max():+.1f}°]"
+    )
 
     feedforward_fn = make_feedforward_fn(
-        None, alpha_trim_deg, alphas_grid_deg, stabs_grid_deg,
+        None,
+        alpha_trim_deg,
+        alphas_grid_deg,
+        stabs_grid_deg,
     )
     state_transform = make_state_transform(
-        alpha_trim_deg, alphas_grid_deg, stabs_grid_deg,
+        alpha_trim_deg,
+        alphas_grid_deg,
+        stabs_grid_deg,
     )
 
     print("\n--- Pre-training plant model on PE excitation ---")
     states_arr, actions_arr, next_states_arr = collect_pe_data(
-        alpha_trim_rad, stab_trim_rad, state_transform,
+        alpha_trim_rad,
+        stab_trim_rad,
+        state_transform,
     )
     print(f"PE buffer: {states_arr.shape[0]} transitions")
 
@@ -468,13 +517,17 @@ def main() -> None:
         seed=0,
     )
     agent = ETDHPAgent(
-        n_state=4, n_control=1,
+        n_state=4,
+        n_control=1,
         state_transform=state_transform,
         config=cfg,
     )
     model_losses = agent.fit_plant_model(
-        states_arr, actions_arr, next_states_arr,
-        batch_size=128, verbose=False,
+        states_arr,
+        actions_arr,
+        next_states_arr,
+        batch_size=128,
+        verbose=False,
     )
     print(f"Plant-model final MSE: {model_losses[-1]:.3e}")
 
@@ -489,35 +542,44 @@ def main() -> None:
 
     def healthy_env():
         return make_env(
-            n_steps, reference, alpha_trim_rad, stab_trim_rad,
+            n_steps,
+            reference,
+            alpha_trim_rad,
+            stab_trim_rad,
             feedforward_fn=feedforward_fn,
         )
 
     for ep in range(NUM_TRAIN_EPISODES):
-        log = run_episode(agent, healthy_env, reference,
-                          learn=True, n_steps=n_steps - 2)
-        ref_deg = np.rad2deg(reference[0, :len(log["alpha"])])
+        log = run_episode(
+            agent, healthy_env, reference, learn=True, n_steps=n_steps - 2
+        )
+        ref_deg = np.rad2deg(reference[0, : len(log["alpha"])])
         late = np.arange(len(log["alpha"]) // 2, len(log["alpha"]))
-        rmse = float(np.sqrt(np.mean(
-            (log["alpha"][late] - ref_deg[late]) ** 2
-        )))
+        rmse = float(np.sqrt(np.mean((log["alpha"][late] - ref_deg[late]) ** 2)))
         n_trig = log["triggers_pre"] + log["triggers_post"]
-        print(f"  ep {ep+1}/{NUM_TRAIN_EPISODES}: "
-              f"RMSE_late={rmse:.4f}°  triggers={n_trig}")
+        print(
+            f"  ep {ep+1}/{NUM_TRAIN_EPISODES}: "
+            f"RMSE_late={rmse:.4f}°  triggers={n_trig}"
+        )
 
     # ---- Final eval: BASELINE (no damage), online learning enabled ----
     print("\n--- Final eval: BASELINE (no damage) ---")
 
     def baseline_env():
         return make_env(
-            n_steps, reference, alpha_trim_rad, stab_trim_rad,
+            n_steps,
+            reference,
+            alpha_trim_rad,
+            stab_trim_rad,
             feedforward_fn=feedforward_fn,
         )
 
-    baseline_log = run_episode(agent, baseline_env, reference,
-                               learn=True, n_steps=n_steps - 2)
-    report_episode("Baseline (no damage)", baseline_log, reference,
-                   len(baseline_log["alpha"]))
+    baseline_log = run_episode(
+        agent, baseline_env, reference, learn=True, n_steps=n_steps - 2
+    )
+    report_episode(
+        "Baseline (no damage)", baseline_log, reference, len(baseline_log["alpha"])
+    )
 
     # ---- Final eval: WITH DAMAGE at t=20s, online learning enabled ----
     print("\n--- Final eval: 30% BILATERAL WING-TIP LOSS at t=20s ---")
@@ -525,8 +587,12 @@ def main() -> None:
 
     def damaged_env():
         return make_env(
-            n_steps, reference, alpha_trim_rad, stab_trim_rad,
-            feedforward_fn=feedforward_fn, damage_profile=profile,
+            n_steps,
+            reference,
+            alpha_trim_rad,
+            stab_trim_rad,
+            feedforward_fn=feedforward_fn,
+            damage_profile=profile,
         )
 
     # Note: online_plant_refit is implemented in run_episode() but
@@ -539,12 +605,19 @@ def main() -> None:
     # event-triggered actor/critic learning that's already on is
     # sufficient — post-damage RMSE around 0.9° on this scenario.
     damaged_log = run_episode(
-        agent, damaged_env, reference,
-        learn=True, n_steps=n_steps - 2,
+        agent,
+        damaged_env,
+        reference,
+        learn=True,
+        n_steps=n_steps - 2,
         online_plant_refit=False,
     )
-    report_episode("With damage (30% bilateral wing-tip loss at t=20s)",
-                   damaged_log, reference, len(damaged_log["alpha"]))
+    report_episode(
+        "With damage (30% bilateral wing-tip loss at t=20s)",
+        damaged_log,
+        reference,
+        len(damaged_log["alpha"]),
+    )
 
     n_plot = min(len(baseline_log["alpha"]), len(damaged_log["alpha"]))
     maybe_plot(baseline_log, damaged_log, reference, tps, n_plot)

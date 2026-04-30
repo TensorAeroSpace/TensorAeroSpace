@@ -28,6 +28,7 @@ def test_healthy_forces_are_zero(geo, healthy):
     from tensoraerospace.aerospacemodel.f16.nonlinear.damage import (
         aero_corrections,
     )
+
     alpha = math.radians(5.0)
     beta = 0.0
     assert aero_corrections.delta_cy(alpha, beta, geo, healthy) == 0.0
@@ -39,6 +40,7 @@ def test_left_tip_full_loss_reduces_cy(geo, healthy):
     from tensoraerospace.aerospacemodel.f16.nonlinear.damage import (
         aero_corrections,
     )
+
     alpha = math.radians(5.0)
     healthy.set_section_loss("left_tip", 1.0)
     dcy = aero_corrections.delta_cy(alpha, 0.0, geo, healthy)
@@ -53,6 +55,7 @@ def test_partial_loss_scales_linearly(geo, healthy):
     from tensoraerospace.aerospacemodel.f16.nonlinear.damage import (
         aero_corrections,
     )
+
     alpha = math.radians(5.0)
     healthy.set_section_loss("left_tip", 1.0)
     full = aero_corrections.delta_cy(alpha, 0.0, geo, healthy)
@@ -65,6 +68,7 @@ def test_partial_loss_adds_drag(geo, healthy):
     from tensoraerospace.aerospacemodel.f16.nonlinear.damage import (
         aero_corrections,
     )
+
     healthy.set_section_loss("left_tip", 1.0)  # totally lost: no jagged-edge drag
     dcx_full = aero_corrections.delta_cx(0.0, 0.0, geo, healthy)
     healthy.set_section_loss("left_tip", 0.5)  # half lost: max jagged-edge drag
@@ -81,6 +85,7 @@ def test_left_tip_loss_creates_positive_roll_moment(geo, healthy):
     from tensoraerospace.aerospacemodel.f16.nonlinear.damage import (
         aero_corrections,
     )
+
     alpha = math.radians(5.0)
     healthy.set_section_loss("left_tip", 1.0)
     dmx = aero_corrections.delta_mx(alpha, 0.0, geo, healthy)
@@ -92,6 +97,7 @@ def test_symmetric_loss_no_roll(geo, healthy):
     from tensoraerospace.aerospacemodel.f16.nonlinear.damage import (
         aero_corrections,
     )
+
     alpha = math.radians(5.0)
     healthy.set_section_loss("left_tip", 0.5)
     healthy.set_section_loss("right_tip", 0.5)
@@ -104,6 +110,7 @@ def test_yaw_moment_from_asymmetric_drag(geo, healthy):
     from tensoraerospace.aerospacemodel.f16.nonlinear.damage import (
         aero_corrections,
     )
+
     healthy.set_section_loss("left_tip", 0.5)
     dmz = aero_corrections.delta_mz(0.0, 0.0, geo, healthy)
     assert abs(dmz) > 1e-6
@@ -114,6 +121,7 @@ def test_pitch_moment_from_lost_stab(geo, healthy):
     from tensoraerospace.aerospacemodel.f16.nonlinear.damage import (
         aero_corrections,
     )
+
     alpha = math.radians(5.0)
     healthy.set_section_loss("stab_left", 1.0)
     dmy = aero_corrections.delta_my(alpha, 0.0, geo, healthy)

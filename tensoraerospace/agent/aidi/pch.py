@@ -27,7 +27,10 @@ class PseudoControlHedge:
     """
 
     def __init__(
-        self, n_y: int, freeze_after: int = 20, gap_tol: float = 1e-6,
+        self,
+        n_y: int,
+        freeze_after: int = 20,
+        gap_tol: float = 1e-6,
     ) -> None:
         if n_y <= 0:
             raise ValueError("n_y must be positive")
@@ -49,7 +52,9 @@ class PseudoControlHedge:
         self.is_frozen = np.zeros(self.n_y, dtype=bool)
 
     def update(
-        self, nu_des_prev: np.ndarray, omega_dot_meas: np.ndarray,
+        self,
+        nu_des_prev: np.ndarray,
+        omega_dot_meas: np.ndarray,
     ) -> np.ndarray:
         """Compute hedge and update the freeze counters.
 
@@ -67,7 +72,9 @@ class PseudoControlHedge:
         hedge = nu - omd
         gap_active = np.abs(hedge) > self.gap_tol
         self.saturation_counter = np.where(
-            gap_active, self.saturation_counter + 1, 0,
+            gap_active,
+            self.saturation_counter + 1,
+            0,
         ).astype(np.int32)
         self.is_frozen = self.saturation_counter >= self.freeze_after
         self.last_hedge = hedge

@@ -10,18 +10,20 @@ import pytest
 
 def test_find_trim_returns_converged_solution():
     from tensoraerospace.aerospacemodel.f16.nonlinear.angular.trim import find_trim
+
     sol = find_trim(V_target=120.0, h_target=3000.0)
     assert sol.converged, f"trim search did not converge; residuals={sol.residuals}"
     # Solver pins dα ≈ 0 and dωz ≈ 0 to machine precision; the dV
     # residual may be a few m/s² when thrust is floored at T_THRUST_MIN
     # to keep it physically positive.
-    assert abs(sol.residuals[0]) < 1e-3   # dalpha
-    assert abs(sol.residuals[1]) < 1e-3   # dwz
-    assert abs(sol.residuals[2]) < 5.0    # dV (allowed slack from thrust floor)
+    assert abs(sol.residuals[0]) < 1e-3  # dalpha
+    assert abs(sol.residuals[1]) < 1e-3  # dwz
+    assert abs(sol.residuals[2]) < 5.0  # dV (allowed slack from thrust floor)
 
 
 def test_find_trim_x0_is_16_elements():
     from tensoraerospace.aerospacemodel.f16.nonlinear.angular.trim import find_trim
+
     sol = find_trim()
     assert sol.x0.shape == (16,)
     # alpha and theta should match
@@ -38,6 +40,7 @@ def test_trim_alpha_is_positive_for_subsonic_cruise():
     """At subsonic V (120 m/s), the F-16 needs positive alpha to lift its
     own weight."""
     from tensoraerospace.aerospacemodel.f16.nonlinear.angular.trim import find_trim
+
     sol = find_trim(V_target=120.0, h_target=3000.0)
     assert sol.alpha_rad > 0, f"expected positive trim alpha, got {sol.alpha_rad}"
     # F-16 trim alpha at this V/h should be a few degrees
@@ -59,10 +62,11 @@ def test_trim_thrust_is_in_realistic_range():
     the solver doesn't blow up.
     """
     from tensoraerospace.aerospacemodel.f16.nonlinear.angular.trim import find_trim
+
     sol = find_trim(V_target=120.0, h_target=3000.0)
-    assert abs(sol.T_thrust) < 60000.0, (
-        f"trim thrust magnitude {sol.T_thrust} N outside plausible range"
-    )
+    assert (
+        abs(sol.T_thrust) < 60000.0
+    ), f"trim thrust magnitude {sol.T_thrust} N outside plausible range"
 
 
 def test_trim_state_is_stable_in_simulation():
@@ -75,7 +79,10 @@ def test_trim_state_is_stable_in_simulation():
 
     sol = find_trim(V_target=120.0, h_target=3000.0)
     m = AngularF16(
-        x0=sol.x0, dt=0.01, integrator="rk4", track_altitude=True,
+        x0=sol.x0,
+        dt=0.01,
+        integrator="rk4",
+        track_altitude=True,
     )
     m.param.T_thrust = sol.T_thrust
 

@@ -54,9 +54,7 @@ class MoorePenroseAllocator:
         if G.ndim != 2:
             raise ValueError(f"G_eff must be 2-D; got shape {G.shape}")
         if nu.size != G.shape[0]:
-            raise ValueError(
-                f"nu_des must have length {G.shape[0]}, got {nu.size}"
-            )
+            raise ValueError(f"nu_des must have length {G.shape[0]}, got {nu.size}")
         if omd.size != G.shape[0]:
             raise ValueError(
                 f"omega_dot_meas must have length {G.shape[0]}, got {omd.size}"

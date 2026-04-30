@@ -16,8 +16,11 @@ import pytest
 def _make_html():
     from tensoraerospace.envs.f16.nonlinear_angular import NonlinearAngularF16
     from tensoraerospace.visualization.three_d import build_flight_log, build_html
+
     env = NonlinearAngularF16(
-        initial_state=np.zeros(14), number_time_steps=20, dt=0.01,
+        initial_state=np.zeros(14),
+        number_time_steps=20,
+        dt=0.01,
         airspeed=200.0,
     )
     env.reset()
@@ -44,8 +47,10 @@ def test_html_has_body_to_three_helper():
     html = _make_html()
     assert "function bodyToThree" in html
     # The mapping must be exactly [bx, -bz, by]
-    assert re.search(r"bodyToThree\([^)]*\)\s*\{[^}]*\[bx,\s*-bz,\s*by\]",
-                     html) is not None
+    assert (
+        re.search(r"bodyToThree\([^)]*\)\s*\{[^}]*\[bx,\s*-bz,\s*by\]", html)
+        is not None
+    )
 
 
 def test_html_uses_lathe_geometry_for_fuselage():
@@ -63,12 +68,21 @@ def test_html_has_named_wing_sections():
     """Each YAML wing section name must appear as a mesh.name in the
     rendered viewer.js for damage visualization to find them."""
     html = _make_html()
-    for s in ("left_root", "left_mid", "left_tip",
-              "right_root", "right_mid", "right_tip",
-              "stab_left", "stab_right",
-              "vtail", "rudder",
-              "aileron_left", "aileron_right",
-              "fuselage_main"):
+    for s in (
+        "left_root",
+        "left_mid",
+        "left_tip",
+        "right_root",
+        "right_mid",
+        "right_tip",
+        "stab_left",
+        "stab_right",
+        "vtail",
+        "rudder",
+        "aileron_left",
+        "aileron_right",
+        "fuselage_main",
+    ):
         assert s in html, f"section name missing: {s}"
 
 
@@ -93,4 +107,4 @@ def test_section_meshes_have_names():
     """Mesh names are set so damage viz can find sections by name."""
     html = _make_html()
     # The new builder uses mesh.name = name for flat panels
-    assert 'mesh.name = name' in html
+    assert "mesh.name = name" in html

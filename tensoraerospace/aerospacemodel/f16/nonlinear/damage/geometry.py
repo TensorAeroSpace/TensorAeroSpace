@@ -34,21 +34,21 @@ class AeroSection:
     side: Literal["left", "right", "center"]
     type: Literal["wing", "stab", "vtail", "control", "fuselage"]
 
-    area: float                     # m², projected area
-    span_position: float            # m (signed, see above)
-    chord: float                    # m, mean chord
-    sweep: float                    # rad
+    area: float  # m², projected area
+    span_position: float  # m (signed, see above)
+    chord: float  # m, mean chord
+    sweep: float  # rad
 
-    mass: float                     # kg
-    cg_local: Vec3                  # body-frame cg of the section, m
-    inertia_local: Inertia4         # Ixx, Iyy, Izz, Ixy about section cg
+    mass: float  # kg
+    cg_local: Vec3  # body-frame cg of the section, m
+    inertia_local: Inertia4  # Ixx, Iyy, Izz, Ixy about section cg
 
-    cl_alpha_contribution: float    # 1/rad, this section's share of ∂Cy/∂α
-    cd0_contribution: float         # this section's share of Cx0
+    cl_alpha_contribution: float  # 1/rad, this section's share of ∂Cy/∂α
+    cd0_contribution: float  # this section's share of Cx0
 
-    controls_input: Optional[str] = None      # "stab_left", "rudder", ...
+    controls_input: Optional[str] = None  # "stab_left", "rudder", ...
     control_effectiveness: float = 1.0
-    aero_x_arm: float = 0.0          # x-arm from aircraft CG to section's aero centre
+    aero_x_arm: float = 0.0  # x-arm from aircraft CG to section's aero centre
 
 
 @dataclass

@@ -19,41 +19,45 @@ def recompute_mass_geometry(geo: BaseGeometry, state: DamageState) -> Dict:
     losses = state.section_loss
 
     # Effective masses
-    m_eff_per_section = np.array([
-        s.mass * (1.0 - losses.get(s.name, 0.0)) for s in sections
-    ], dtype=np.float64)
+    m_eff_per_section = np.array(
+        [s.mass * (1.0 - losses.get(s.name, 0.0)) for s in sections], dtype=np.float64
+    )
     m_eff = float(m_eff_per_section.sum() + state.structural.extra_mass_delta_kg)
     if m_eff <= 0.0:
-        raise ValueError(
-            f"Effective mass {m_eff} non-positive; check damage state"
-        )
+        raise ValueError(f"Effective mass {m_eff} non-positive; check damage state")
 
     # CG: mass-weighted average of remaining masses, plus structural shift
     section_mass_total = float(m_eff_per_section.sum())
     if section_mass_total <= 0.0:
-        raise ValueError(
-            f"Section mass total {section_mass_total} non-positive"
-        )
-    cg_x = float(sum(
-        m * s.cg_local[0] for m, s in zip(m_eff_per_section, sections)
-    ) / section_mass_total)
-    cg_y = float(sum(
-        m * s.cg_local[1] for m, s in zip(m_eff_per_section, sections)
-    ) / section_mass_total)
-    cg_z = float(sum(
-        m * s.cg_local[2] for m, s in zip(m_eff_per_section, sections)
-    ) / section_mass_total)
-    cg = np.array([
-        cg_x + state.structural.extra_cg_shift_m[0],
-        cg_y + state.structural.extra_cg_shift_m[1],
-        cg_z + state.structural.extra_cg_shift_m[2],
-    ])
+        raise ValueError(f"Section mass total {section_mass_total} non-positive")
+    cg_x = float(
+        sum(m * s.cg_local[0] for m, s in zip(m_eff_per_section, sections))
+        / section_mass_total
+    )
+    cg_y = float(
+        sum(m * s.cg_local[1] for m, s in zip(m_eff_per_section, sections))
+        / section_mass_total
+    )
+    cg_z = float(
+        sum(m * s.cg_local[2] for m, s in zip(m_eff_per_section, sections))
+        / section_mass_total
+    )
+    cg = np.array(
+        [
+            cg_x + state.structural.extra_cg_shift_m[0],
+            cg_y + state.structural.extra_cg_shift_m[1],
+            cg_z + state.structural.extra_cg_shift_m[2],
+        ]
+    )
 
     # Effective wing area (only type=="wing" contributes)
-    s_eff = float(sum(
-        s.area * (1.0 - losses.get(s.name, 0.0))
-        for s in sections if s.type == "wing"
-    ))
+    s_eff = float(
+        sum(
+            s.area * (1.0 - losses.get(s.name, 0.0))
+            for s in sections
+            if s.type == "wing"
+        )
+    )
 
     # Effective span: outermost surviving point on each side (handles asymmetric loss)
     def half_span(side: str) -> float:
@@ -69,7 +73,8 @@ def recompute_mass_geometry(geo: BaseGeometry, state: DamageState) -> Dict:
     # MAC: area-weighted chord over surviving wing area
     chord_num = sum(
         s.chord * s.area * (1.0 - losses.get(s.name, 0.0))
-        for s in sections if s.type == "wing"
+        for s in sections
+        if s.type == "wing"
     )
     bA_eff = float(chord_num / s_eff) if s_eff > 0.0 else 0.0
 
@@ -98,7 +103,7 @@ def recompute_inertia(
             continue
         Ixx_l, Iyy_l, Izz_l, Ixy_l = s.inertia_local
         # Scale local inertia by remaining mass fraction (uniform-density assumption)
-        scale = (1.0 - f)
+        scale = 1.0 - f
         Ixx_l *= scale
         Iyy_l *= scale
         Izz_l *= scale

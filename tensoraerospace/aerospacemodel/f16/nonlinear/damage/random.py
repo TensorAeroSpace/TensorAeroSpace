@@ -8,8 +8,12 @@ from typing import Optional
 from .events import DamageEvent, DamageProfile
 
 _DEFAULT_LOSABLE_SECTIONS = (
-    "left_tip", "left_mid", "right_tip", "right_mid",
-    "stab_left", "stab_right",
+    "left_tip",
+    "left_mid",
+    "right_tip",
+    "right_mid",
+    "stab_left",
+    "stab_right",
 )
 
 
@@ -47,14 +51,23 @@ class RandomDamageProfileGenerator:
             if kind == "section_loss":
                 section = self.rng.choice(self.sections)
                 fraction = self.rng.uniform(*self.severity_range)
-                events.append(DamageEvent(
-                    trigger_time=t, event_type="section_loss",
-                    payload={"section": section, "loss_fraction": fraction},
-                    label=f"random_loss_{section}_{fraction:.2f}",
-                ))
+                events.append(
+                    DamageEvent(
+                        trigger_time=t,
+                        event_type="section_loss",
+                        payload={"section": section, "loss_fraction": fraction},
+                        label=f"random_loss_{section}_{fraction:.2f}",
+                    )
+                )
             elif kind == "control_failure":
                 surface = self.rng.choice(
-                    ["stab_left", "stab_right", "rudder", "aileron_left", "aileron_right"]
+                    [
+                        "stab_left",
+                        "stab_right",
+                        "rudder",
+                        "aileron_left",
+                        "aileron_right",
+                    ]
                 )
                 mode = self.rng.choice(["jam", "efficiency_loss", "lost"])
                 payload = {"surface": surface, "mode": mode}
@@ -62,15 +75,22 @@ class RandomDamageProfileGenerator:
                     payload["jam_position_rad"] = self.rng.uniform(-0.15, 0.15)
                 elif mode == "efficiency_loss":
                     payload["efficiency"] = self.rng.uniform(0.2, 0.9)
-                events.append(DamageEvent(
-                    trigger_time=t, event_type="control_failure",
-                    payload=payload, label=f"random_{surface}_{mode}",
-                ))
+                events.append(
+                    DamageEvent(
+                        trigger_time=t,
+                        event_type="control_failure",
+                        payload=payload,
+                        label=f"random_{surface}_{mode}",
+                    )
+                )
             elif kind == "engine_failure":
                 tf = self.rng.uniform(0.0, 0.6)
-                events.append(DamageEvent(
-                    trigger_time=t, event_type="engine_failure",
-                    payload={"thrust_factor": tf},
-                    label=f"random_engine_{tf:.2f}",
-                ))
+                events.append(
+                    DamageEvent(
+                        trigger_time=t,
+                        event_type="engine_failure",
+                        payload={"thrust_factor": tf},
+                        label=f"random_engine_{tf:.2f}",
+                    )
+                )
         return DamageProfile(events=events)

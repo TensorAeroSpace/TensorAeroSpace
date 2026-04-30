@@ -12,6 +12,7 @@ def test_default_state_is_healthy():
     from tensoraerospace.aerospacemodel.f16.nonlinear.damage.state import (
         DamageState,
     )
+
     geo = load_f16_geometry()
     s = DamageState.healthy(geo)
     assert all(v == 0.0 for v in s.section_loss.values())
@@ -25,6 +26,7 @@ def test_section_loss_clamped_to_unit_interval():
     from tensoraerospace.aerospacemodel.f16.nonlinear.damage.state import (
         DamageState,
     )
+
     s = DamageState(section_loss={"x": 0.0}, control_failures={})
     s.set_section_loss("x", 1.5)
     assert s.section_loss["x"] == 1.0
@@ -36,6 +38,7 @@ def test_control_failure_validates_mode():
     from tensoraerospace.aerospacemodel.f16.nonlinear.damage.state import (
         ControlFailure,
     )
+
     cf = ControlFailure(mode="jam", jam_position_rad=0.1)
     assert cf.mode == "jam"
     with pytest.raises(ValueError):
@@ -49,6 +52,7 @@ def test_snapshot_is_independent_copy():
     from tensoraerospace.aerospacemodel.f16.nonlinear.damage.state import (
         DamageState,
     )
+
     geo = load_f16_geometry()
     s = DamageState.healthy(geo)
     snap = s.snapshot()

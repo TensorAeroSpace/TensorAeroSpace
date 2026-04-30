@@ -40,7 +40,9 @@ def test_split_stab_symmetric_command_matches_legacy():
         legacy.run_step(u_legacy)
         split.run_step(u_split)
     np.testing.assert_allclose(
-        legacy.current_state, split.current_state, atol=1e-12,
+        legacy.current_state,
+        split.current_state,
+        atol=1e-12,
         err_msg="symmetric split-stab must reproduce legacy single-stab behaviour",
     )
 

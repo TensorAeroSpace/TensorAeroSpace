@@ -28,7 +28,9 @@ from gymnasium import spaces
 
 from tensoraerospace.aerospacemodel.f16.nonlinear.angular import AngularF16
 from tensoraerospace.aerospacemodel.f16.nonlinear.damage import (
-    DamageManager, DamageProfile, load_f16_geometry,
+    DamageManager,
+    DamageProfile,
+    load_f16_geometry,
 )
 from tensoraerospace.visualization.kinematics import (
     _body_to_inertial_matrix,
@@ -128,8 +130,10 @@ class NonlinearAngularF16(gym.Env):
             n_action += 1
         action_shape = (n_action,)
         self.action_space = spaces.Box(
-            low=-self.max_action_value, high=self.max_action_value,
-            shape=action_shape, dtype=np.float64,
+            low=-self.max_action_value,
+            high=self.max_action_value,
+            shape=action_shape,
+            dtype=np.float64,
         )
 
         # Observation: model state size + optional damage state vector
@@ -139,7 +143,10 @@ class NonlinearAngularF16(gym.Env):
             obs_size += len(geo.section_names())
             obs_size += 1
         self.observation_space = spaces.Box(
-            low=-np.inf, high=np.inf, shape=(obs_size,), dtype=np.float64,
+            low=-np.inf,
+            high=np.inf,
+            shape=(obs_size,),
+            dtype=np.float64,
         )
         self._geo_for_obs = (
             load_f16_geometry() if (damage_observable or damage_profile) else None
@@ -187,7 +194,8 @@ class NonlinearAngularF16(gym.Env):
         if self.damage_profile is not None or self.damage_observable:
             geo = self._geo_for_obs
             self.damage_manager = DamageManager(
-                geometry=geo, params=self.model.param,
+                geometry=geo,
+                params=self.model.param,
                 profile=(self.damage_profile or DamageProfile(events=[])),
             )
             if options and "damage_profile" in options:
@@ -200,10 +208,12 @@ class NonlinearAngularF16(gym.Env):
         self.damage_events_log = []
         self.damage_state_log = []
         if self.damage_manager is not None:
-            self.damage_state_log.append({
-                "time": 0.0,
-                "state": self.damage_manager.state.snapshot(),
-            })
+            self.damage_state_log.append(
+                {
+                    "time": 0.0,
+                    "state": self.damage_manager.state.snapshot(),
+                }
+            )
 
         self.position_history = np.zeros((1, 3), dtype=np.float64)
         self.attitude_history = self._extract_attitude(self.initial_state).reshape(1, 3)
@@ -230,11 +240,13 @@ class NonlinearAngularF16(gym.Env):
             surfaces = action[:-1]
             thrust = action[-1:]
             surfaces_clipped = np.clip(
-                surfaces, -self.max_action_value, self.max_action_value)
+                surfaces, -self.max_action_value, self.max_action_value
+            )
             u_rad = np.concatenate([np.deg2rad(surfaces_clipped), thrust])
         else:
             action_clipped = np.clip(
-                action, -self.max_action_value, self.max_action_value)
+                action, -self.max_action_value, self.max_action_value
+            )
             u_rad = np.deg2rad(action_clipped)
 
         # Time bookkeeping (BEFORE stepping the model)
@@ -249,18 +261,22 @@ class NonlinearAngularF16(gym.Env):
                 if self.damage_event_callback:
                     self.damage_event_callback(ev, self.damage_manager.state)
                 triggered_labels.append(ev.label or ev.event_type)
-                self.damage_events_log.append({
-                    "time": float(t_now),
-                    "label": ev.label or ev.event_type,
-                    "event_type": ev.event_type,
-                    "payload": dict(ev.payload),
-                })
+                self.damage_events_log.append(
+                    {
+                        "time": float(t_now),
+                        "label": ev.label or ev.event_type,
+                        "event_type": ev.event_type,
+                        "payload": dict(ev.payload),
+                    }
+                )
             if triggered:
                 # Snapshot the post-event damage state
-                self.damage_state_log.append({
-                    "time": float(t_now),
-                    "state": self.damage_manager.state.snapshot(),
-                })
+                self.damage_state_log.append(
+                    {
+                        "time": float(t_now),
+                        "state": self.damage_manager.state.snapshot(),
+                    }
+                )
 
         assert self.model is not None
         self.model.run_step(u_rad)
@@ -415,6 +431,7 @@ class NonlinearAngularF16(gym.Env):
 
     def _render_3d_web(self):
         from tensoraerospace.visualization.three_d import render as _render_3d
+
         return _render_3d(self)
 
     def close(self):
