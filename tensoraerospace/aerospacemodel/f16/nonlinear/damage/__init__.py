@@ -21,6 +21,13 @@ from .state import (
 )
 from .random import RandomDamageProfileGenerator  # noqa: E402
 
+# AIDI-paper damage presets (Ul Haq et al. 2026).
+from .aidi_presets import (  # noqa: E402
+    aileron_efficiency_loss_schedule,
+    rudder_total_loss,
+    stab_efficiency_step,
+)
+
 __all__ = [
     "AeroSection", "BaseGeometry",
     "DamageState", "ControlFailure", "EngineState", "StructuralState",
@@ -31,4 +38,7 @@ __all__ = [
     "ELEVATOR_JAM_NEUTRAL", "ELEVATOR_JAM_PITCH_UP",
     "RUDDER_LOST", "ENGINE_FLAMEOUT", "BIRDSTRIKE_COMPOUND",
     "RandomDamageProfileGenerator",
+    "aileron_efficiency_loss_schedule",
+    "rudder_total_loss",
+    "stab_efficiency_step",
 ]
