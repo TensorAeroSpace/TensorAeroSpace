@@ -1,10 +1,12 @@
 name: 📓 Notebook smoke
 run-name: Execute key notebooks end-to-end on develop
 
-# Runs after a merge to develop and re-executes a curated set of Jupyter
-# notebooks with ``jupyter nbconvert --execute``. Any cell error fails the
-# job — so API regressions in agents or envs (e.g. a rename that silently
-# breaks an example) are caught before they hit main.
+# Runs on PRs targeting develop and on pushes to develop, re-executing a
+# curated set of Jupyter notebooks with ``jupyter nbconvert --execute``.
+# Any cell error fails the job — so API regressions in agents or envs
+# (e.g. a rename that silently breaks an example) are caught before merge.
+# A ``paths`` filter scopes runs to changes that can actually affect the
+# notebooks (library code, the notebooks themselves, deps, the workflow).
 #
 # Notebooks are chosen to maximise API coverage per second of CI time:
 #   * linear F-16 env (Gymnasium contract)
@@ -19,13 +21,32 @@ on:
   push:
     branches:
       - develop
+    paths:
+      - "tensoraerospace/**"
+      - "example/**/*.ipynb"
+      - "pyproject.toml"
+      - "poetry.lock"
+      - ".github/workflows/notebooks-smoke.yml"
+  pull_request:
+    branches:
+      - develop
+    paths:
+      - "tensoraerospace/**"
+      - "example/**/*.ipynb"
+      - "pyproject.toml"
+      - "poetry.lock"
+      - ".github/workflows/notebooks-smoke.yml"
   workflow_dispatch:
-  # Optional: surface regressions on release branches before they reach main.
-  # pull_request:
-  #   branches: [main]
 
 permissions:
   contents: read
+
+# Cancel in-flight runs on the same ref when a new commit lands. PR-triggered
+# runs share a ref-scoped group with develop pushes, so the merge commit's
+# run cleanly supersedes the last PR run.
+concurrency:
+  group: notebooks-smoke-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   execute:
