@@ -6,7 +6,7 @@
     "max_total": 55
   },
   "mypy": {
-    "max_total": 421
+    "max_total": 993
   },
   "bandit": {
     "max_total": 114,

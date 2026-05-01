@@ -30,11 +30,24 @@ def run_command(command: list[str]) -> subprocess.CompletedProcess[str]:
     )
 
 
-def print_output(result: subprocess.CompletedProcess[str]) -> None:
-    if result.stdout:
-        print(result.stdout.rstrip())
-    if result.stderr:
-        print(result.stderr.rstrip(), file=sys.stderr)
+def print_output(
+    result: subprocess.CompletedProcess[str],
+    max_lines: int | None = None,
+) -> None:
+    if max_lines is None:
+        if result.stdout:
+            print(result.stdout.rstrip())
+        if result.stderr:
+            print(result.stderr.rstrip(), file=sys.stderr)
+        return
+
+    stdout_lines = result.stdout.rstrip().splitlines() if result.stdout else []
+    stderr_lines = result.stderr.rstrip().splitlines() if result.stderr else []
+    lines = stdout_lines + stderr_lines
+    for line in lines[:max_lines]:
+        print(line)
+    if len(lines) > max_lines:
+        print(f"... {len(lines) - max_lines} more output lines omitted")
 
 
 def finish_group() -> None:
@@ -81,7 +94,7 @@ def flake8_gate(baseline: dict[str, Any]) -> bool:
             "--statistics",
         ]
     )
-    print_output(result)
+    print_output(result, max_lines=200)
     finish_group()
 
     output = f"{result.stdout}\n{result.stderr}"
@@ -142,7 +155,7 @@ def mypy_gate(baseline: dict[str, Any]) -> bool:
             "--show-error-codes",
         ]
     )
-    print_output(result)
+    print_output(result, max_lines=200)
     finish_group()
 
     output = f"{result.stdout}\n{result.stderr}"

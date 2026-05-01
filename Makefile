@@ -113,7 +113,7 @@ security: ## Проверить безопасность
 	poetry run python scripts/ci_quality_gate.py bandit
 
 dependency-audit: ## Проверить зависимости через pip-audit baseline
-	poetry run python -m pip install --quiet pip-audit
+	poetry run python -m pip install --quiet "pip-audit>=2.10,<3"
 	poetry run python scripts/dependency_audit_gate.py
 
 # === ДОКУМЕНТАЦИЯ ===

@@ -9,10 +9,16 @@
 | `action.yml` | PR to `main`/`develop`, manual | Main PR gate: tests, quality, docs coverage, security, package build |
 | `quick-check.yml` | Push to any branch | Fast feedback on pushes |
 | `docs-build.yml` | PR/push to `main`/`develop`, manual | Strict MkDocs build |
-| `coverage-main.yml` | Push to `main`, manual | Coveralls baseline for `main` |
+| `coverage-main.yml` | Push to `main`, manual | Post-merge tests + Coveralls baseline for the `main` badge |
 | `coverage-develop.yml` | Push to `develop`, manual | Coveralls baseline for `develop` |
-| `notebooks-smoke.yml` | Push to `develop`, manual | Execute key notebooks |
+| `notebooks-smoke.yml` | Push to `develop`, manual | Post-merge execution of key notebooks on `develop` |
 | `publish.yml` | Published release, manual | TestPyPI/PyPI publication from verified artifacts |
+
+## Post-Merge Gates
+
+After a merge to `develop`, `notebooks-smoke.yml` executes the curated Jupyter notebook matrix with `jupyter nbconvert --execute`; any cell error fails the workflow.
+
+After a merge to `main`, `coverage-main.yml` runs tests with coverage and uploads `coverage.xml` to Coveralls. This keeps the README/Coveralls `branch=main` coverage badge aligned with the current main branch.
 
 ## Main PR Gates
 
@@ -26,7 +32,7 @@ Required checks configured in `.github/settings.yml`:
 - `📦 Wheel installs on all Python versions`
 - `🏗️ mkdocs build --strict`
 
-`🏷️ Version Tag Gate` requires `[tool.poetry].version` in `pyproject.toml` to match the latest stable `vX.Y.Z` git tag. `🧱 Quality Gates` uses `.github/ci-baselines.json` to prevent new `flake8`, `ruff`, and `mypy` regressions while existing debt is paid down incrementally. `🔒 Security Scan` applies the same baseline approach to Bandit and `pip-audit`. `📦 Wheel installs on all Python versions` installs the built wheel and imports `tensoraerospace` on Python 3.10, 3.11, 3.12, and 3.13.
+`🏷️ Version Tag Gate` requires `[tool.poetry].version` in `pyproject.toml` to match the latest stable `vX.Y.Z` git tag. `🧱 Quality Gates` uses `.github/ci-baselines.json` to prevent new `flake8`, `ruff`, and `mypy` regressions while existing debt is paid down incrementally. `🔒 Security Scan` applies the same baseline approach to Bandit and runs `pip-audit` against pinned packages from `poetry.lock` for the `main,dev,test` groups. `📦 Wheel installs on all Python versions` installs the built wheel and imports `tensoraerospace` on Python 3.10, 3.11, 3.12, and 3.13.
 
 ## Publication Gates
 
@@ -57,7 +63,7 @@ poetry install --with dev,test
 poetry check --lock
 poetry run python scripts/version_gate.py --check-latest-tag
 poetry run python scripts/ci_quality_gate.py flake8 ruff mypy bandit
-poetry run python -m pip install --quiet pip-audit
+poetry run python -m pip install --quiet "pip-audit>=2.10,<3"
 poetry run python scripts/dependency_audit_gate.py
 poetry build
 poetry run twine check dist/*

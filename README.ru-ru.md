@@ -2,7 +2,7 @@
 
 <div align="center">
 
-[![en](https://img.shields.io/badge/lang-en-red.svg)](./README.md)
+[![en](https://img.shields.io/badge/lang-en-red.svg)](./readme.md)
 [![ru](https://img.shields.io/badge/lang-ru-green.svg)](./README.ru-ru.md)
 [![Documentation Status](https://readthedocs.org/projects/tensoraerospace/badge/?version=latest)](https://tensoraerospace.readthedocs.io/en/latest/?badge=latest)
 [![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/TensorAeroSpace/TensorAeroSpace)
@@ -225,7 +225,7 @@ for t in range(N - 1):
 
 <div align="center">
 
-![Демо Unity](./docs/example/env/img/img_demo_unity.gif)
+![Демо Unity](./docs/ru/example/enviroment/img/img_demo_unity.gif)
 
 </div>
 
@@ -240,7 +240,7 @@ TensorAeroSpace легко интегрируется с Unity ML-Agents для 
 
 ### 🔧 Поддержка MATLAB Simulink
 
-![Модель Simulink](docs/example/simulink/img/model.png)
+![Модель Simulink](./docs/ru/example/simulink/img/model.png)
 
 - 📐 **Импорт моделей**: Конвертация моделей Simulink в Python
 - ⚡ **Высокая производительность**: Интеграция скомпилированного C++

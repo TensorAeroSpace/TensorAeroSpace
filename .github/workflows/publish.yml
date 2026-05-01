@@ -107,7 +107,7 @@ jobs:
 
       - name: 🔍 Run dependency audit baseline gate
         run: |
-          poetry run python -m pip install --quiet pip-audit
+          poetry run python -m pip install --quiet "pip-audit>=2.10,<3"
           poetry run python scripts/dependency_audit_gate.py
 
       - name: 🧪 Run tests

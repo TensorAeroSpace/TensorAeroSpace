@@ -10,7 +10,7 @@
 **Jobs:**
 - **⚡ Quick Test (Python 3.10, Ubuntu)**: `poetry check --lock`, установка runtime/test зависимостей, `compileall`, быстрые env-тесты и import smoke.
 - **📝 Code Quality Check**: `black --check`, `isort --check-only`, fatal `flake8`, baseline gate для `flake8` и `ruff`.
-- **🔒 Dependency Security Check**: `pip-audit` внутри Poetry environment через baseline gate.
+- **🔒 Dependency Security Check**: `pip-audit` по `poetry.lock` для групп `main,dev,test` через baseline gate.
 
 ### Main CI (`action.yml`)
 **Триггеры:** pull request в `main`/`develop`, ручной запуск.
@@ -33,11 +33,12 @@
 **Триггеры:** push в соответствующую ветку, ручной запуск.
 
 Запускает тесты с coverage и отправляет baseline-отчёт в Coveralls для `main` или `develop`.
+После merge в `main` workflow `coverage-main.yml` заново прогоняет тесты, загружает `coverage.xml` в Coveralls и обновляет baseline для `branch=main`, чтобы coverage badge в README показывал актуальное покрытие основной ветки.
 
 ### Notebook Smoke (`notebooks-smoke.yml`)
 **Триггеры:** push в `develop`, ручной запуск.
 
-Выполняет curated-набор notebook examples через `jupyter nbconvert --execute`. Ошибка любой ячейки валит job.
+После merge в `develop` выполняет curated-набор Jupyter notebook examples через `jupyter nbconvert --execute`. Ошибка любой ячейки валит job.
 
 ### Publishing (`publish.yml`)
 **Триггеры:** published GitHub Release, ручной запуск для `testpypi` или `pypi`.
@@ -60,7 +61,7 @@
 
 Новые PR не должны увеличивать baseline. Уменьшать значения можно отдельными PR после исправления долга.
 
-Текущие dependency vulnerabilities зафиксированы в `.github/pip-audit-baseline.json` как точные `package + version + advisory id`. Gate проходит, если `pip-audit -f json` не находит новых записей поверх baseline. Если запись исчезла после обновления зависимости, gate показывает её как resolved и продолжает проходить.
+Текущие dependency vulnerabilities зафиксированы в `.github/pip-audit-baseline.json` как точные `package + version + advisory id`. Gate по умолчанию строит временный pinned requirements из `poetry.lock` для групп `main,dev,test` и запускает `pip-audit --no-deps --disable-pip`, поэтому результат не зависит от случайного состояния локальной `.venv`. Если запись исчезла после обновления зависимости, gate показывает её как resolved и продолжает проходить.
 
 Package thresholds находятся в `.github/package-gate.json`:
 - количество wheel/sdist artifacts;
@@ -98,7 +99,7 @@ make package-gate
 poetry run python scripts/ci_quality_gate.py flake8 ruff mypy bandit
 poetry run python scripts/version_gate.py --check-latest-tag
 poetry run python scripts/version_gate.py --sync-latest-tag
-poetry run python -m pip install --quiet pip-audit
+poetry run python -m pip install --quiet "pip-audit>=2.10,<3"
 poetry run python scripts/dependency_audit_gate.py
 poetry build
 poetry run twine check dist/*
