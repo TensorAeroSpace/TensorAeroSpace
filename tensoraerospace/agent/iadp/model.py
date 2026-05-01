@@ -322,7 +322,7 @@ class IADPAgent:
         H = R + gamma * (GTP @ G)  # (n_control, n_control)
         rhs = R @ self._delta_prev + gamma * (GTP @ X_t) + gamma * (GTP @ (F @ dX_t))
         H_inv = np.linalg.pinv(H, rcond=float(self.cfg.pinv_rcond))
-        return -(H_inv @ rhs)
+        return np.asarray(-(H_inv @ rhs))
 
     def _excitation(self, step: int) -> np.ndarray:
         """Return the open-loop control at ``step`` (SLA phase)."""
@@ -342,7 +342,7 @@ class IADPAgent:
                     f" got {exc_arr.shape[1]}"
                 )
             idx = int(np.clip(step, 0, exc_arr.shape[0] - 1))
-            return exc_arr[idx].astype(np.float64, copy=True)
+            return np.asarray(exc_arr[idx].astype(np.float64, copy=True))
         raise ValueError("excitation_signal must be 1-D or 2-D")
 
     # ------------------------------------------------------------------

@@ -11,8 +11,8 @@ def state2dict(state: list, list_state: list) -> dict:
     Returns:
         dict: State dictionary.
     """
-    state = np.array(state).reshape([len(state), -1])
-    return {st: state[:, list_state.index(st)] for i, st in enumerate(list_state)}
+    state_array = np.array(state).reshape([len(state), -1])
+    return {st: state_array[:, list_state.index(st)] for i, st in enumerate(list_state)}
 
 
 def control2dict(control: list, control_list: list) -> dict:
@@ -25,8 +25,11 @@ def control2dict(control: list, control_list: list) -> dict:
     Returns:
         dict: Control dictionary.
     """
-    control = np.array(control).reshape([len(control), -1])
-    return {st: control[:, control_list.index(st)] for i, st in enumerate(control_list)}
+    control_array = np.array(control).reshape([len(control), -1])
+    return {
+        st: control_array[:, control_list.index(st)]
+        for i, st in enumerate(control_list)
+    }
 
 
 def output2dict(output: np.ndarray, output_list: list) -> dict:

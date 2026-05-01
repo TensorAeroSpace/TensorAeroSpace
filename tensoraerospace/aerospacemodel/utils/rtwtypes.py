@@ -36,7 +36,6 @@ int_T = ctypes.c_int
 uint_T = ctypes.c_uint
 ulong_T = ctypes.c_ulong
 ulonglong_T = ctypes.c_ulonglong
-char_T = ctypes.c_char
 uchar_T = ctypes.c_ubyte
 char_T = ctypes.c_byte
 

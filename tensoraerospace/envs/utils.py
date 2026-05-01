@@ -7,6 +7,7 @@ to improve training performance.
 
 import gymnasium as gym
 import numpy as np
+from gymnasium.spaces import Box
 
 
 class ActionNormalizer(gym.ActionWrapper):
@@ -25,6 +26,8 @@ class ActionNormalizer(gym.ActionWrapper):
         Returns:
             np.ndarray: Action in environment's action space range.
         """
+        if not isinstance(self.action_space, Box):
+            raise TypeError("ActionNormalizer requires a Box action space")
         low = self.action_space.low
         high = self.action_space.high
 
@@ -45,6 +48,8 @@ class ActionNormalizer(gym.ActionWrapper):
         Returns:
             np.ndarray: Action in range (-1, 1).
         """
+        if not isinstance(self.action_space, Box):
+            raise TypeError("ActionNormalizer requires a Box action space")
         low = self.action_space.low
         high = self.action_space.high
 

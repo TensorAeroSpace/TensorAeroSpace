@@ -159,7 +159,7 @@ class IncrementalModelRLS:
 
         self.last_prediction_error = eps
         self.num_updates += 1
-        return eps
+        return np.asarray(eps)
 
     def predict_next(
         self,

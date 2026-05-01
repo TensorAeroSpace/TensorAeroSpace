@@ -214,11 +214,6 @@ warn_unused_ignores = true
 warn_no_return = true
 warn_unreachable = true
 strict_equality = true
-exclude = [
-    "^tensoraerospace/aerospacemodel/simintechModel/",
-    "^tensoraerospace/aerospacemodel/simulinkModel/",
-    "^tensoraerospace/aerospacemodel/xflrModel/",
-]
 
 [[tool.mypy.overrides]]
 module = [
@@ -240,54 +235,10 @@ module = [
     "tqdm.*",
     "wandb",
     "wandb.*",
+    "yaml",
+    "yaml.*",
 ]
 ignore_missing_imports = true
-
-# Legacy algorithm and generated-model modules still mix ndarray/Tensor/list/None
-# pervasively. Keep them out of the contributor gate until each family is typed
-# deliberately; the rest of the package is expected to pass mypy with zero errors.
-[[tool.mypy.overrides]]
-module = [
-    "tensoraerospace.agent.a2c.*",
-    "tensoraerospace.agent.a3c.*",
-    "tensoraerospace.agent.aa_indi.*",
-    "tensoraerospace.agent.adp.*",
-    "tensoraerospace.agent.adhdp.*",
-    "tensoraerospace.agent.aidi.*",
-    "tensoraerospace.agent.ddpg.*",
-    "tensoraerospace.agent.dqn.*",
-    "tensoraerospace.agent.dsac.*",
-    "tensoraerospace.agent.et_dhp.*",
-    "tensoraerospace.agent.gail.*",
-    "tensoraerospace.agent.hdp.*",
-    "tensoraerospace.agent.iadp.*",
-    "tensoraerospace.agent.ihdp.*",
-    "tensoraerospace.agent.im_gdhp.*",
-    "tensoraerospace.agent.mpc.*",
-    "tensoraerospace.agent.narx.*",
-    "tensoraerospace.agent.pid",
-    "tensoraerospace.agent.ppo.*",
-    "tensoraerospace.agent.sac.*",
-    "tensoraerospace.aerospacemodel.b747",
-    "tensoraerospace.aerospacemodel.base",
-    "tensoraerospace.aerospacemodel.comsat",
-    "tensoraerospace.aerospacemodel.elv",
-    "tensoraerospace.aerospacemodel.f16.linear.*",
-    "tensoraerospace.aerospacemodel.f16.nonlinear.*",
-    "tensoraerospace.aerospacemodel.f4c",
-    "tensoraerospace.aerospacemodel.geosat",
-    "tensoraerospace.aerospacemodel.lapan",
-    "tensoraerospace.aerospacemodel.rocket",
-    "tensoraerospace.aerospacemodel.supersonic.linear.*",
-    "tensoraerospace.aerospacemodel.uav",
-    "tensoraerospace.aerospacemodel.ultrastick",
-    "tensoraerospace.aerospacemodel.utils.rtwtypes",
-    "tensoraerospace.aerospacemodel.x15",
-    "tensoraerospace.benchmark.function",
-    "tensoraerospace.envs.*",
-    "tensoraerospace.scripts.*",
-]
-ignore_errors = true
 
 # Конфигурация для bandit
 [tool.bandit]

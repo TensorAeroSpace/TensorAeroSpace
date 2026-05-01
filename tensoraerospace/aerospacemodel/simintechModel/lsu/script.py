@@ -40,7 +40,7 @@ if __name__ == "__main__":
     )  # Заданный сигнал
 
     f = open("sit_in_1.dat", "w")
-    f.write(reference_signals)
+    f.write(np.array2string(reference_signals))
     f.close()
 
     process()

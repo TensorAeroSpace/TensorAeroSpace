@@ -316,16 +316,16 @@ class ImprovedUltrastickEnv(gym.Env):
             return out
         if isinstance(a, np.ndarray):
             try:
-                return a.astype(float).ravel().tolist()
+                return [float(x) for x in a.astype(float).ravel().tolist()]
             except Exception:
                 return []
         try:
-            if np.isscalar(a):
+            if isinstance(a, (int, float, np.integer, np.floating)):
                 return [float(a)]
         except Exception:
             pass
         try:
-            return np.asarray(a, dtype=float).ravel().tolist()
+            return [float(x) for x in np.asarray(a, dtype=float).ravel().tolist()]
         except Exception:
             return []
 

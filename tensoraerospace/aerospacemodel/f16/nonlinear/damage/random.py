@@ -70,7 +70,7 @@ class RandomDamageProfileGenerator:
                     ]
                 )
                 mode = self.rng.choice(["jam", "efficiency_loss", "lost"])
-                payload = {"surface": surface, "mode": mode}
+                payload: dict[str, str | float] = {"surface": surface, "mode": mode}
                 if mode == "jam":
                     payload["jam_position_rad"] = self.rng.uniform(-0.15, 0.15)
                 elif mode == "efficiency_loss":

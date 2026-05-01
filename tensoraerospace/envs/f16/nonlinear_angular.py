@@ -20,7 +20,7 @@ separate commit.
 
 from __future__ import annotations
 
-from typing import Optional, Sequence
+from typing import Any, Literal, Optional, Sequence
 
 import gymnasium as gym
 import numpy as np
@@ -85,7 +85,7 @@ class NonlinearAngularF16(gym.Env):
         number_time_steps: int,
         *,
         dt: float = 0.01,
-        integrator: str = "rk4",
+        integrator: Literal["euler", "rk4"] = "rk4",
         airspeed: float = 200.0,
         render_mode: Optional[str] = None,
         chart_states: Sequence[str] = DEFAULT_CHART_STATES,
@@ -95,7 +95,7 @@ class NonlinearAngularF16(gym.Env):
         damage_event_callback=None,
         split_stab: bool = False,
         track_altitude: bool = False,
-        thrust_mode: str = "constant",
+        thrust_mode: Literal["constant", "control"] = "constant",
     ) -> None:
         super().__init__()
         if initial_state.shape != (14,):
@@ -175,7 +175,7 @@ class NonlinearAngularF16(gym.Env):
         self.attitude_history = np.zeros((0, 3))
         self.time_history = np.zeros((0,))
         self.chart_history: dict[str, np.ndarray] = {}
-        self._live_renderer = None
+        self._live_renderer: Any = None
 
     def reset(self, *, seed=None, options=None):
         super().reset(seed=seed)
@@ -193,6 +193,8 @@ class NonlinearAngularF16(gym.Env):
         # Damage manager
         if self.damage_profile is not None or self.damage_observable:
             geo = self._geo_for_obs
+            if geo is None:
+                raise RuntimeError("Damage mode requires F-16 geometry.")
             self.damage_manager = DamageManager(
                 geometry=geo,
                 params=self.model.param,
@@ -201,8 +203,10 @@ class NonlinearAngularF16(gym.Env):
             if options and "damage_profile" in options:
                 self.damage_manager.set_profile(options["damage_profile"])
             self.damage_manager.reset(seed=seed)
-            self.model.damage_state = self.damage_manager.state
-            self.model.damage_geometry = geo
+            setattr(self.model, "damage_state", self.damage_manager.state)
+            setattr(self.model, "damage_geometry", geo)
+        else:
+            self.damage_manager = None
 
         # Reset accumulator buffers and snapshot initial damage state
         self.damage_events_log = []
@@ -302,6 +306,8 @@ class NonlinearAngularF16(gym.Env):
         if not self.damage_observable or self.damage_manager is None:
             return model_state.copy()
         geo = self._geo_for_obs
+        if geo is None:
+            raise RuntimeError("Damage observation requires F-16 geometry.")
         names = geo.section_names()
         loss_vec = np.array(
             [self.damage_manager.state.section_loss.get(n, 0.0) for n in names],
@@ -318,6 +324,7 @@ class NonlinearAngularF16(gym.Env):
 
     def _update_history(self, next_state: np.ndarray) -> None:
         """Append one row to position/attitude/time/chart histories."""
+        assert self.model is not None
         # Reconstruct the inertial-step from the PREVIOUS state's velocity vector
         # (Euler integration, consistent with reconstruct_position_6dof).
         if len(self.model.x_history) >= 2:

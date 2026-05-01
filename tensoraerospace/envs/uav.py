@@ -153,7 +153,6 @@ class LinearLongitudinalUAV(gym.Env):
         """
         super().reset(seed=seed)
 
-        self.model = None
         self.model = LongitudinalUAV(
             self.initial_state,
             number_time_steps=self.number_time_steps,

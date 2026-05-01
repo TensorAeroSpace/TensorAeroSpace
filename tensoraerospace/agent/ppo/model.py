@@ -22,6 +22,7 @@ from typing import (
     Sequence,
     Tuple,
     Union,
+    cast,
     overload,
 )
 
@@ -348,7 +349,7 @@ class Critic(nn.Module):
         x = F.relu(self.d1(input_data))
         x = F.relu(self.d2(x))
         v = self.v(x)
-        return v
+        return cast(torch.Tensor, v)
 
 
 class Actor(nn.Module):
@@ -679,10 +680,12 @@ class PPO(BaseRLModel):
             Normalized observation.
         """
         if self.normalize_obs:
-            return np.clip(
-                (obs - self.obs_rms.mean) / np.sqrt(self.obs_rms.var + 1e-8),
-                -10.0,
-                10.0,
+            return np.asarray(
+                np.clip(
+                    (obs - self.obs_rms.mean) / np.sqrt(self.obs_rms.var + 1e-8),
+                    -10.0,
+                    10.0,
+                )
             )
         return obs
 
@@ -1236,9 +1239,10 @@ class PPO(BaseRLModel):
             "saved_at": meta["saved_at"],
         }
 
+        config = self.get_param_env()
         job = {
             "model_dir": str(model_dir),
-            "config": self.get_param_env(),
+            "config": config,
             "actor_state": actor_state,
             "critic_state": critic_state,
             "actor_opt_state": actor_opt_state,
@@ -1258,7 +1262,7 @@ class PPO(BaseRLModel):
             return
 
         # Synchronous fallback (still atomic, but will block).
-        _atomic_write_json(model_dir / "config.json", job["config"])
+        _atomic_write_json(model_dir / "config.json", config)
         _atomic_torch_save(model_dir / "actor.pth", actor_state)
         _atomic_torch_save(model_dir / "critic.pth", critic_state)
         if obs_rms is not None:
@@ -1453,8 +1457,8 @@ class PPO(BaseRLModel):
         values2 = torch.cat([v.view(1) for v in values])
         probs2 = torch.cat(probs).detach()
 
-        returns2 = []
-        g2 = 0
+        returns2: list[torch.Tensor] = []
+        g2 = torch.zeros_like(values2[0])
         for i in reversed(range(len(rewards))):
             delta2 = rewards2[i] + gamma * values2[i + 1] * (1 - dones2[i]) - values2[i]
             g2 = delta2 + gamma * self.gae_lambda * (1 - dones2[i]) * g2
@@ -1667,35 +1671,35 @@ class PPO(BaseRLModel):
                     )
                 values.append(next_value)
 
-                _, _, returns, _, _, _ = self.preprocess1(
+                _, _, returns_list, _, _, _ = self.preprocess1(
                     states, actions, rewards, dones, values, probs, self.gamma
                 )
-                states = torch.stack(states)
-                actions = torch.stack(actions)
-                rewards = torch.cat(rewards)
-                returns = torch.cat(returns).detach()
-                values = torch.cat(values).detach()
-                probs = torch.cat(probs).detach()
+                states_tensor = torch.stack(states)
+                actions_tensor = torch.stack(actions)
+                rewards_tensor = torch.cat(rewards)
+                returns_tensor = torch.cat(returns_list).detach()
+                values_tensor = torch.cat(values).detach()
+                probs_tensor = torch.cat(probs).detach()
 
                 # Reward normalization (normalize returns)
                 if self.normalize_reward and hasattr(self, "ret_rms"):
-                    returns_np = returns.cpu().numpy().flatten()
+                    returns_np = returns_tensor.cpu().numpy().flatten()
                     self.ret_rms.update(returns_np)
-                    returns = torch.clamp(
-                        (returns - self.ret_rms.mean)
+                    returns_tensor = torch.clamp(
+                        (returns_tensor - self.ret_rms.mean)
                         / np.sqrt(self.ret_rms.var + 1e-8),
                         -10.0,
                         10.0,
                     )
 
-                advantages = returns - values[:-1]
+                advantages = returns_tensor - values_tensor[:-1]
                 # Store old values for clipped value loss
-                old_values = values[:-1].clone()
+                old_values = values_tensor[:-1].clone()
 
                 # Calculate explained variance (quality of value function)
                 with torch.no_grad():
-                    y_pred = values[:-1]
-                    y_true = returns
+                    y_pred = values_tensor[:-1]
+                    y_true = returns_tensor
                     var_y = torch.var(y_true)
                     explained_var = (
                         1 - torch.var(y_true - y_pred) / (var_y + 1e-8)
@@ -1722,12 +1726,12 @@ class PPO(BaseRLModel):
                     ) in ppo_iter(
                         epoch=1,  # Inner loop already handles epochs
                         mini_batch_size=self.batch_size,
-                        states=states,
-                        actions=actions,
-                        log_probs=probs,
-                        returns=returns,
+                        states=states_tensor,
+                        actions=actions_tensor,
+                        log_probs=probs_tensor,
+                        returns=returns_tensor,
                         advantages=advantages,
-                        rewards=rewards,
+                        rewards=rewards_tensor,
                         values=old_values,
                     ):
                         metrics = self.learn(

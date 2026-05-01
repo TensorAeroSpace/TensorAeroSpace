@@ -50,7 +50,7 @@ class Model(nn.Module):
         """Compute Q-values for a batch of observations."""
         x = F.relu(self.fc1(x))
         x = F.relu(self.fc2(x))
-        return self.out(x)
+        return cast(torch.Tensor, self.out(x))
 
     def predict(self, inputs: np.ndarray) -> np.ndarray:
         """Forward function. Returns Q-values for actions.
@@ -176,7 +176,7 @@ def test_model():
     action_space = cast(Discrete, env.action_space)
     num_actions = action_space.n
     print("num_actions: ", num_actions)
-    model = Model(num_actions)
+    model = Model(int(num_actions))
 
     obs, _info = env.reset()
     print("obs_shape: ", obs.shape)

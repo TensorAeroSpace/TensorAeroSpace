@@ -5,7 +5,7 @@ State: [alpha, wz, stab, dstab]. Control: [stab_act].
 
 from __future__ import annotations
 
-from typing import Literal, Sequence, Union
+from typing import Any, Literal, Sequence, Union
 
 import numpy as np
 
@@ -47,8 +47,8 @@ class LongitudinalF16(ModelBase):
         self.action_space_length = len(_control_list)
         self.param: F16LongParameters = default_parameters()
         # Damage subsystem (None = healthy aircraft, legacy behaviour)
-        self.damage_state = None
-        self.damage_geometry = None
+        self.damage_state: Any = None
+        self.damage_geometry: Any = None
         self.x_history = [x0_arr.reshape(4, 1)]
         self._initialize_selected_state_index(self.selected_state_output, _list_state)
         self.list_state = _list_state

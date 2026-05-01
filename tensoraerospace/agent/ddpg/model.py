@@ -11,7 +11,19 @@ import json
 import os
 import random
 from pathlib import Path
-from typing import Any, Dict, List, Mapping, Optional, Sequence, Tuple, Union
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Dict,
+    List,
+    Mapping,
+    Optional,
+    Protocol,
+    Sequence,
+    Tuple,
+    Union,
+    cast,
+)
 
 import numpy as np
 import torch
@@ -19,10 +31,13 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 
-try:  # Prefer gymnasium typing when available
+if TYPE_CHECKING:
     import gymnasium as gym
-except ImportError:  # pragma: no cover
-    import gym
+else:
+    try:  # Prefer gymnasium typing when available
+        import gymnasium as gym
+    except ImportError:  # pragma: no cover
+        import gym
 
 # Device setup
 use_cuda = torch.cuda.is_available()
@@ -30,7 +45,7 @@ device = torch.device("cuda" if use_cuda else "cpu")
 
 # Optional tqdm progress bar
 try:
-    from tqdm import tqdm  # type: ignore
+    from tqdm import tqdm
 except Exception:
     # Fallback no-op tqdm if not available
     def tqdm(iterable=None, total=None, desc=None):
@@ -73,9 +88,18 @@ from ..base import (  # noqa: E402
     serialize_env,
 )
 
-# Optional TensorBoard SummaryWriter (lazy import to avoid pulling in TF)
-from ..metrics import TorchSummaryWriter as SummaryWriter  # noqa: E402
-from ..metrics import create_metric_writer, schema
+from ..metrics import MetricWriter, create_metric_writer, schema
+
+
+class BoxActionSpace(Protocol):
+    """Structural type for continuous action spaces used by DDPG."""
+
+    shape: tuple[int, ...] | None
+    low: np.ndarray
+    high: np.ndarray
+
+
+Transition = Tuple[np.ndarray, np.ndarray, float, np.ndarray, bool]
 
 
 class RunningMeanStd:
@@ -152,7 +176,7 @@ class RunningMeanStd:
         Returns:
             Normalized data: (x - mean) / sqrt(var + epsilon).
         """
-        return (x - self.mean) / np.sqrt(self.var + epsilon)
+        return np.asarray((x - self.mean) / np.sqrt(self.var + epsilon))
 
     def state_dict(self) -> Dict[str, Union[List[float], float, np.ndarray]]:
         """Serialize the current state for checkpointing.
@@ -196,7 +220,7 @@ class ReplayBuffer:
             capacity: Maximum number of transitions to store.
         """
         self.capacity = capacity
-        self.buffer = []
+        self.buffer: List[Transition] = []
         self.position = 0
 
     def push(
@@ -216,9 +240,11 @@ class ReplayBuffer:
             next_state: Next state observation.
             done: Whether the episode terminated.
         """
+        transition: Transition = (state, action, reward, next_state, done)
         if len(self.buffer) < self.capacity:
-            self.buffer.append(None)
-        self.buffer[self.position] = (state, action, reward, next_state, done)
+            self.buffer.append(transition)
+        else:
+            self.buffer[self.position] = transition
         self.position = (self.position + 1) % self.capacity
 
     def sample(
@@ -268,7 +294,7 @@ class ReplayBuffer:
             state: Dictionary containing 'capacity', 'buffer', and 'position' keys.
         """
         self.capacity = int(state.get("capacity", self.capacity))
-        self.buffer = list(state.get("buffer", []))
+        self.buffer = cast(List[Transition], list(state.get("buffer", [])))
         self.position = int(state.get("position", 0))
 
 
@@ -294,7 +320,7 @@ class OUNoise(object):
 
     def __init__(
         self,
-        action_space: gym.Space,
+        action_space: BoxActionSpace,
         mu: float = 0.0,
         theta: float = 0.15,
         max_sigma: float = 0.3,
@@ -318,9 +344,11 @@ class OUNoise(object):
         self.max_sigma = max_sigma
         self.min_sigma = min_sigma
         self.decay_period = decay_period
-        self.action_dim = action_space.shape[0]
-        self.low = action_space.low
-        self.high = action_space.high
+        if action_space.shape is None:
+            raise TypeError("DDPG requires a continuous action space with a shape.")
+        self.action_dim = int(action_space.shape[0])
+        self.low = np.asarray(action_space.low)
+        self.high = np.asarray(action_space.high)
         self.reset()
 
     def reset(self) -> None:
@@ -354,7 +382,7 @@ class OUNoise(object):
         self.sigma = self.max_sigma - (
             (self.max_sigma - self.min_sigma) * min(1.0, t / self.decay_period)
         )
-        return np.clip(action + ou_state, self.low, self.high)
+        return np.asarray(np.clip(action + ou_state, self.low, self.high))
 
     def state_dict(self) -> Dict[str, Any]:
         """Serialize OU noise state for checkpointing.
@@ -440,7 +468,7 @@ class ValueNetwork(nn.Module):
         x = torch.cat([state, action], 1)
         x = F.relu(self.linear1(x))
         x = F.relu(self.linear2(x))
-        return self.linear3(x)
+        return cast(torch.Tensor, self.linear3(x))
 
 
 class PolicyNetwork(nn.Module):
@@ -525,7 +553,9 @@ class PolicyNetwork(nn.Module):
         x = F.relu(self.linear2(x))
         x = torch.tanh(self.linear3(x))
         # Scale tanh output [-1, 1] to [action_low, action_high]
-        x = x * self.action_scale + self.action_bias
+        action_scale = cast(torch.Tensor, self.action_scale)
+        action_bias = cast(torch.Tensor, self.action_bias)
+        x = x * action_scale + action_bias
         return x
 
     def get_action(self, state: np.ndarray) -> np.ndarray:
@@ -538,12 +568,12 @@ class PolicyNetwork(nn.Module):
             Action as numpy array, scaled to action space bounds.
         """
         model_device = next(self.parameters()).device
-        state = torch.tensor(state, dtype=torch.float32, device=model_device).unsqueeze(
-            0
-        )
+        state_tensor = torch.tensor(
+            state, dtype=torch.float32, device=model_device
+        ).unsqueeze(0)
         with torch.no_grad():
-            action = self.forward(state)
-        return action.squeeze(0).cpu().numpy()
+            action = self.forward(state_tensor)
+        return np.asarray(action.squeeze(0).cpu().numpy())
 
 
 class DDPG:
@@ -606,10 +636,16 @@ class DDPG:
         else:
             self.device = torch.device(device)
 
-        self.ou_noise = OUNoise(self.env.action_space)
+        action_space = cast(BoxActionSpace, self.env.action_space)
+        observation_shape = env.observation_space.shape
+        action_shape = action_space.shape
+        if observation_shape is None or action_shape is None:
+            raise TypeError("DDPG requires observation and action spaces with shapes.")
 
-        self.state_dim = env.observation_space.shape[0]
-        self.action_dim = env.action_space.shape[0]
+        self.ou_noise = OUNoise(action_space)
+
+        self.state_dim = int(observation_shape[0])
+        self.action_dim = int(action_shape[0])
         self.hidden_dim = 256
 
         # Initialize observation normalizer
@@ -620,8 +656,8 @@ class DDPG:
             self.obs_rms = None
 
         # Get action space bounds for proper scaling
-        action_low = env.action_space.low
-        action_high = env.action_space.high
+        action_low = np.asarray(action_space.low)
+        action_high = np.asarray(action_space.high)
 
         self.value_net = ValueNetwork(
             self.state_dim, self.action_dim, self.hidden_dim
@@ -672,7 +708,7 @@ class DDPG:
         self.wandb_config = wandb_config
 
         # TensorBoard writer (lazy init in learn to include run-time params)
-        self.writer = None
+        self.writer: Optional[MetricWriter] = None
         self.update_count = 0
 
     def _normalize_observation(self, obs: np.ndarray) -> np.ndarray:
@@ -717,21 +753,21 @@ class DDPG:
         batch = self.replay_buffer.sample(batch_size)
         state, action, reward, next_state, done = batch
 
-        state = torch.FloatTensor(state).to(self.device)
-        next_state = torch.FloatTensor(next_state).to(self.device)
-        action = torch.FloatTensor(action).to(self.device)
-        reward = torch.FloatTensor(reward).unsqueeze(1).to(self.device)
-        done = torch.FloatTensor(np.float32(done)).unsqueeze(1).to(self.device)
+        state_tensor = torch.FloatTensor(state).to(self.device)
+        next_state_tensor = torch.FloatTensor(next_state).to(self.device)
+        action_tensor = torch.FloatTensor(action).to(self.device)
+        reward_tensor = torch.FloatTensor(reward).unsqueeze(1).to(self.device)
+        done_tensor = torch.FloatTensor(np.float32(done)).unsqueeze(1).to(self.device)
 
-        policy_loss = self.value_net(state, self.policy_net(state))
+        policy_loss = self.value_net(state_tensor, self.policy_net(state_tensor))
         policy_loss = -policy_loss.mean()
 
-        next_action = self.target_policy_net(next_state)
-        target_value = self.target_value_net(next_state, next_action.detach())
-        expected_value = reward + (1.0 - done) * gamma * target_value
+        next_action = self.target_policy_net(next_state_tensor)
+        target_value = self.target_value_net(next_state_tensor, next_action.detach())
+        expected_value = reward_tensor + (1.0 - done_tensor) * gamma * target_value
         expected_value = torch.clamp(expected_value, min_value, max_value)
 
-        value = self.value_net(state, action)
+        value = self.value_net(state_tensor, action_tensor)
         value_loss = self.value_criterion(value, expected_value.detach())
 
         self.policy_optimizer.zero_grad()
@@ -772,7 +808,7 @@ class DDPG:
                 env_step=self.frame_idx,
             )
             with torch.no_grad():
-                action_abs_mean = self.policy_net(state).abs().mean().item()
+                action_abs_mean = self.policy_net(state_tensor).abs().mean().item()
             self.writer.add_scalar(
                 schema.POLICY_ACTION_ABS_MEAN,
                 float(action_abs_mean),
@@ -900,7 +936,7 @@ class DDPG:
         self.max_frames = max_frames
         self.max_steps = max_steps
         self.frame_idx = 0
-        self.rewards = []
+        self.rewards: List[float] = []
         self.batch_size = batch_size
 
         # Lazy init TensorBoard writer with a sensible logdir
@@ -924,12 +960,12 @@ class DDPG:
             while self.frame_idx < max_frames:
                 state = self.env.reset()[0]
                 self.ou_noise.reset()
-                episode_reward = 0
+                episode_reward = 0.0
                 episode_length = 0
                 terminated = False
                 truncated = False
                 # Collect states for batch normalization update
-                episode_states = []
+                episode_states: List[np.ndarray] = []
 
                 for step in range(max_steps):
                     # Store raw state for normalization update
@@ -947,13 +983,14 @@ class DDPG:
                         _,
                     ) = self.env.step(action)
                     done = terminated or truncated
+                    reward_float = float(reward)
 
                     # Store normalized states in replay buffer
                     norm_next = self._normalize_observation(next_state)
                     self.replay_buffer.push(
                         normalized_state,
                         action,
-                        reward,
+                        reward_float,
                         norm_next,
                         done,
                     )
@@ -978,7 +1015,7 @@ class DDPG:
                             )
 
                     state = next_state
-                    episode_reward += reward
+                    episode_reward += reward_float
                     episode_length += 1
                     self.frame_idx += 1
                     pbar.update(1)

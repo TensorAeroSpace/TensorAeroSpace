@@ -43,7 +43,7 @@ import numpy as np
 import torch
 from torch import nn, optim
 
-from ..metrics import create_metric_writer, schema
+from ..metrics import MetricWriter, create_metric_writer, schema
 from .event_trigger import EventTrigger
 from .networks import ETDHPActor, ETDHPCritic, PlantModelNN
 
@@ -185,7 +185,7 @@ class ETDHPAgent:
         n_state: int,
         n_control: int,
         state_transform: (
-            Callable[[np.ndarray, np.ndarray, int], np.ndarray] | None
+            Callable[[np.ndarray, np.ndarray | None, int], np.ndarray] | None
         ) = None,
         config: ETDHPConfig | None = None,
         log_dir: Union[str, Path, None] = None,
@@ -285,6 +285,7 @@ class ETDHPAgent:
             or wandb_project is not None
             or os.environ.get("WANDB_API_KEY") is not None
         )
+        self.writer: MetricWriter | None = None
         if needs_writer:
             self.writer = create_metric_writer(
                 tb_log_dir=self.log_dir,
@@ -295,8 +296,6 @@ class ETDHPAgent:
                 wandb_config=wandb_config,
                 algo="etdhp",
             )
-        else:
-            self.writer = None
         self.global_env_step = 0
         self.update_count = 0
 
@@ -423,7 +422,7 @@ class ETDHPAgent:
             )
         u = u_t.detach().cpu().numpy().astype(np.float64)
         self._last_action = u.copy()
-        return u
+        return np.asarray(u)
 
     def learn(
         self,
@@ -856,7 +855,7 @@ class ETDHPAgent:
         folder: Union[str, Path],
         *,
         state_transform: (
-            Callable[[np.ndarray, np.ndarray, int], np.ndarray] | None
+            Callable[[np.ndarray, np.ndarray | None, int], np.ndarray] | None
         ) = None,
         load_gradients: bool = False,
     ) -> "ETDHPAgent":
@@ -963,7 +962,7 @@ class ETDHPAgent:
         access_token: Optional[str] = None,
         version: Optional[str] = None,
         state_transform: (
-            Callable[[np.ndarray, np.ndarray, int], np.ndarray] | None
+            Callable[[np.ndarray, np.ndarray | None, int], np.ndarray] | None
         ) = None,
         load_gradients: bool = False,
     ) -> "ETDHPAgent":

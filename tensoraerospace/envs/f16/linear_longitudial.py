@@ -6,6 +6,8 @@ a linearized dynamics model to control angle of attack and pitch angular velocit
 through elevator control.
 """
 
+from typing import Callable
+
 import gymnasium as gym
 import numpy as np
 from gymnasium import spaces
@@ -39,7 +41,9 @@ class LinearLongitudinalF16(gym.Env):
         state_space: list[str] | None = None,
         control_space: list[str] | None = None,
         output_space: list[str] | None = None,
-        reward_func: callable = None,
+        reward_func: (
+            Callable[[np.ndarray, np.ndarray, int], np.ndarray | float] | None
+        ) = None,
         use_reward: bool = True,
     ) -> None:
         """Initialize LinearLongitudinalF16 environment.
@@ -167,7 +171,7 @@ class LinearLongitudinalF16(gym.Env):
         action = np.clip(action, -self.max_action_value, self.max_action_value)
         self.current_step += 1
         next_state = self.model.run_step(action)
-        reward = 1.0
+        reward: np.ndarray | float = 1.0
         if self.use_reward:
             reward = self.reward_func(
                 next_state, self.reference_signal, self.current_step

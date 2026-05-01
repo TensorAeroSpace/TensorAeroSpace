@@ -159,7 +159,6 @@ class GeoSatEnv(gym.Env):
         super().reset(seed=seed)
 
         # Constructor already invokes initialise_system internally.
-        self.model = None
         self.model = GeoSat(
             self.initial_state,
             number_time_steps=self.number_time_steps,

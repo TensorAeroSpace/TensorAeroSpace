@@ -4,8 +4,6 @@ This module contains the incremental model used for online system
 identification within the IHDP algorithm.
 """
 
-from typing import Tuple
-
 import numpy as np
 
 
@@ -44,18 +42,19 @@ class IncrementalModel:
             input_rate_limits: Max control rate change.
         """
         # Define the inputs to the incremental model
-        self.xt_1 = None
-        self.xt = None
-        self.ut_1 = None
-        self.ut = None
-        self.delta_xt = None
-        self.delta_ut = None
-        self.xt1_est = None
-
-        # Define the data window size
         self.number_time_steps = number_time_steps
         self.number_states = len(selected_states)
         self.number_inputs = len(selected_input)
+
+        self.xt_1 = np.zeros((self.number_states, 1))
+        self.xt = np.zeros((self.number_states, 1))
+        self.ut_1 = np.zeros((self.number_inputs, 1))
+        self.ut = np.zeros((self.number_inputs, 1))
+        self.delta_xt = np.zeros((self.number_states, 1))
+        self.delta_ut = np.zeros((self.number_inputs, 1))
+        self.xt1_est = np.zeros((self.number_states, 1))
+
+        # Define the data window size
         self.L = 2 * (self.number_inputs + self.number_states)
         self.store_delta_xt = np.zeros((self.number_states, self.number_time_steps))
         self.store_delta_xt_0 = np.random.rand(self.number_states, self.L)
@@ -217,7 +216,7 @@ class IncrementalModel:
 
         return self.G
 
-    def evaluate_incremental_model(self, *args) -> np.ndarray:
+    def evaluate_incremental_model(self, *args: np.ndarray) -> np.ndarray:
         """Estimate states for the next time step.
 
         Returns:
@@ -231,7 +230,7 @@ class IncrementalModel:
                 + np.matmul(self.F, self.delta_xt)
                 + np.matmul(self.G, self.delta_ut)
             )
-            return self.xt1_est
+            return np.asarray(self.xt1_est)
         elif len(args) == 1:
             # Estimate the next time step states
             ut_0 = args[0]
@@ -270,7 +269,7 @@ class IncrementalModel:
             xt1_est = (
                 self.xt + np.matmul(self.F, self.delta_xt) + np.matmul(self.G, delta_ut)
             )
-            return xt1_est
+            return np.asarray(xt1_est)
         elif len(args) == 2:
             self.xt = args[0]
             ut_0 = args[1]
@@ -317,7 +316,9 @@ class IncrementalModel:
                 + np.matmul(self.F, self.delta_xt)
                 + np.matmul(self.G, self.delta_ut)
             )
-            return xt1_est
+            return np.asarray(xt1_est)
+
+        raise ValueError("Unexpected number of arguments.")
 
     def update_incremental_model_attributes(self) -> None:
         """Update attributes that change with each time step."""
@@ -334,6 +335,13 @@ class IncrementalModel:
     def restart_incremental_model(self) -> None:
         """Restart the incremental model."""
         self.time_step = 0
+        self.xt_1 = np.zeros((self.number_states, 1))
+        self.xt = np.zeros((self.number_states, 1))
+        self.ut_1 = np.zeros((self.number_inputs, 1))
+        self.ut = np.zeros((self.number_inputs, 1))
+        self.delta_xt = np.zeros((self.number_states, 1))
+        self.delta_ut = np.zeros((self.number_inputs, 1))
+        self.xt1_est = np.zeros((self.number_states, 1))
         self.store_delta_xt = np.zeros((self.number_states, self.number_time_steps))
         self.store_delta_ut = np.zeros((self.number_inputs, self.number_time_steps))
         self.store_input = np.zeros((self.number_inputs, self.number_time_steps))

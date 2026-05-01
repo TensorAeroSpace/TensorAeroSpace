@@ -68,6 +68,21 @@ def _safe_torch_load_dict(
     return state
 
 
+def _serialize_generic_env_params(env: Any) -> Dict[str, Any]:
+    """Capture constructor params for simple Box-like envs used in tests/examples."""
+    params: Dict[str, Any] = {}
+    obs_shape = getattr(getattr(env, "observation_space", None), "shape", None)
+    act_shape = getattr(getattr(env, "action_space", None), "shape", None)
+    if obs_shape:
+        params["obs_dim"] = int(obs_shape[0])
+    if act_shape:
+        params["act_dim"] = int(act_shape[0])
+    max_steps = getattr(env, "max_steps", None)
+    if max_steps is not None:
+        params["max_steps"] = int(max_steps)
+    return params
+
+
 class ADHDP(BaseRLModel):
     """Action-Dependent Heuristic Dynamic Programming (ADHDP) agent.
 
@@ -1124,7 +1139,7 @@ class ADHDP(BaseRLModel):
         pbar = None
         if show_progress:
             try:
-                from tqdm import tqdm  # type: ignore[import-untyped]
+                from tqdm import tqdm
 
                 pbar = tqdm(ep_iter, desc=progress_desc, unit="ep")
                 ep_iter = pbar
@@ -1380,6 +1395,8 @@ class ADHDP(BaseRLModel):
         try:
             if "tensoraerospace" in env_name:
                 env_params = serialize_env(self.env)
+            else:
+                env_params = _serialize_generic_env_params(self.env.unwrapped)
         except (TypeError, ValueError, AttributeError):
             env_params = {}
 

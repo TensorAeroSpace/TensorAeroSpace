@@ -245,6 +245,31 @@ def test_get_init_args(env_setup):
     assert "__class__" not in init_args, "Should not include '__class__'"
 
 
+def test_render_modes(capsys):
+    """Test lightweight telemetry render modes."""
+    dt = 0.01
+    tp = generate_time_period(tn=20, dt=dt)
+    reference_signals = unit_step(
+        degree=0.001, tp=tp, time_step=0.1, output_rad=True
+    ).reshape(1, -1)
+    env = ImprovedComSatEnv(
+        initial_state=np.array([6371.0, 0.0, 0.001]),
+        reference_signal=reference_signals,
+        number_time_steps=len(tp),
+        dt=dt,
+        render_mode="human",
+    )
+
+    assert env.render() is None
+    assert "ImprovedComSatEnv" in capsys.readouterr().out
+
+    env.reset()
+    env.step(np.array([0.5], dtype=np.float32))
+    snapshot = env.render(mode="ansi")
+    assert isinstance(snapshot, str)
+    assert "step=1" in snapshot
+
+
 def test_normalization_parameters(env_setup):
     """Test that normalization parameters are set correctly."""
     env = env_setup

@@ -161,16 +161,24 @@ def test_linear_b747_custom_parameters():
     _, _, _, _, _ = env.step(action)
 
 
-def test_linear_b747_render_raises_not_implemented():
-    """Test that render raises NotImplementedError."""
+def test_linear_b747_render_modes(capsys):
+    """Test lightweight telemetry render modes."""
     env = LinearLongitudinalB747(
         initial_state=np.array(INITIAL_STATE),
         reference_signal=REFERENCE_SIGNAL,
         number_time_steps=NUMBER_TIME_STEPS,
+        render_mode="human",
     )
 
-    with pytest.raises(NotImplementedError):
-        env.render()
+    assert env.render() is None
+    assert "LinearLongitudinalB747" in capsys.readouterr().out
+
+    env.reset()
+    env.step(np.array([3.0], dtype=np.float32))
+    snapshot = env.render(mode="ansi")
+    assert isinstance(snapshot, str)
+    assert "step=1" in snapshot
+    assert "action=[3]" in snapshot
 
 
 def test_linear_b747_action_rad_in_info():

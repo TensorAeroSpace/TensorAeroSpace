@@ -230,7 +230,7 @@ class SAC(BaseRLModel):
 
         if return_tensor:
             return action_t
-        return cast(np.ndarray, action_t.detach().cpu().numpy())
+        return action_t.detach().cpu().numpy()
 
     def update_parameters(
         self, memory: ReplayMemory, batch_size: int, updates: int
@@ -572,20 +572,12 @@ class SAC(BaseRLModel):
                 )
 
             # Convert tensors to numpy once per step for replay + metrics
-            obs_np = cast(np.ndarray, obs.detach().cpu().numpy())
-            next_obs_np = cast(np.ndarray, next_obs.detach().cpu().numpy())
-            actions_np = cast(np.ndarray, actions_t.detach().cpu().numpy())
-            reward_np = cast(np.ndarray, reward.detach().cpu().numpy()).reshape(-1)
-            terminated_np = (
-                cast(np.ndarray, terminated.detach().cpu().numpy())
-                .reshape(-1)
-                .astype(bool)
-            )
-            truncated_np = (
-                cast(np.ndarray, truncated.detach().cpu().numpy())
-                .reshape(-1)
-                .astype(bool)
-            )
+            obs_np = obs.detach().cpu().numpy()
+            next_obs_np = next_obs.detach().cpu().numpy()
+            actions_np = actions_t.detach().cpu().numpy()
+            reward_np = reward.detach().cpu().numpy().reshape(-1)
+            terminated_np = terminated.detach().cpu().numpy().reshape(-1).astype(bool)
+            truncated_np = truncated.detach().cpu().numpy().reshape(-1).astype(bool)
             done_np = np.logical_or(terminated_np, truncated_np)
             # IMPORTANT:
             # - For plain (non-auto-reset) envs, time-limit bootstrapping is valid:
@@ -815,7 +807,7 @@ class SAC(BaseRLModel):
         (e.g., action_space/observation_space metadata).
         """
         try:
-            sig = inspect.signature(env_cls.__init__)
+            sig = inspect.signature(env_cls)
         except (TypeError, ValueError):
             return kwargs
 

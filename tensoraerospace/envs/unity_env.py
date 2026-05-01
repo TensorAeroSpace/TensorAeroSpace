@@ -33,8 +33,8 @@ def get_plane_env(
     Returns:
         A Gym-compatible environment wrapping the Unity environment.
     """
-    from mlagents_envs.environment import UnityEnvironment
-    from mlagents_envs.envs.unity_gym_env import UnityToGymWrapper
+    from mlagents_envs.environment import UnityEnvironment  # type: ignore[import-untyped]
+    from mlagents_envs.envs.unity_gym_env import UnityToGymWrapper  # type: ignore[import-untyped]
 
     resolved_path = "" if env_path in (None, "") else str(env_path)
     log_dir_path = Path(log_dir)
@@ -80,7 +80,7 @@ class unity_discrete_env(gym.Wrapper):
             wrapped Unity environment still follows the legacy Gym API and
             returns a single observation, an empty info dict is appended.
         """
-        result = self.env.reset()
+        result: object = self.env.reset()
         # Handle both legacy gym (just obs) and modern gymnasium (obs, info)
         if isinstance(result, tuple) and len(result) == 2:
             return result

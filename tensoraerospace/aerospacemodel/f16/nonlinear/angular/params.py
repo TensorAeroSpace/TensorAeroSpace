@@ -7,6 +7,11 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass, field
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from ..damage.geometry import BaseGeometry
+    from ..damage.state import DamageState
 
 _L = 0.0065
 _R = 287.0531
@@ -17,7 +22,7 @@ _RHO0 = 1.225
 def _isa_dynamic_pressure(altitude_m: float, velocity_mps: float, g: float) -> float:
     T = _T0 - _L * altitude_m
     rho = _RHO0 * (T / _T0) ** (g / (_L * _R) - 1.0)
-    return 0.5 * rho * velocity_mps**2
+    return float(0.5 * rho * velocity_mps**2)
 
 
 @dataclass
@@ -59,8 +64,8 @@ class F16AngularParameters:
     # integrator step). None = healthy aircraft. The damage_state and
     # damage_geometry are passed through params (rather than as ODE args)
     # to keep the ODE arity stable for legacy callers.
-    damage_state: object = None
-    damage_geometry: object = None
+    damage_state: DamageState | None = None
+    damage_geometry: BaseGeometry | None = None
 
     Tstab: float = 0.03
     Xistab: float = 0.707

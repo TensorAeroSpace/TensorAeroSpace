@@ -115,7 +115,7 @@ def overshoot(control_signal: np.ndarray, system_signal: np.ndarray) -> float:
         return 0.0
     output = (M - y_final) / y_final * 100
 
-    return output
+    return float(output)
 
 
 def settling_time(
@@ -211,7 +211,7 @@ def static_error(control_signal: np.ndarray, system_signal: np.ndarray) -> float
     r_final = np.mean(control_signal[int(0.9 * len(control_signal)) :])
 
     # Static error is the difference between target value and steady-state value
-    return r_final - y_final
+    return float(r_final - y_final)
 
 
 def get_lower_upper_bound(
@@ -271,7 +271,7 @@ def rise_time(
     if len(low_idx) == 0 or len(high_idx) == 0:
         return None
 
-    return high_idx[0] - low_idx[0]
+    return float(high_idx[0] - low_idx[0])
 
 
 def peak_time(system_signal: np.ndarray) -> Optional[int]:
@@ -288,9 +288,9 @@ def peak_time(system_signal: np.ndarray) -> Optional[int]:
 
     if len(peaks) == 0:
         # Если нет пиков, возвращаем индекс максимального значения
-        return np.argmax(system_signal)
+        return int(np.argmax(system_signal))
 
-    return peaks[0]
+    return int(peaks[0])
 
 
 def maximum_deviation(control_signal: np.ndarray, system_signal: np.ndarray) -> float:
@@ -304,7 +304,7 @@ def maximum_deviation(control_signal: np.ndarray, system_signal: np.ndarray) -> 
         float: Maximum absolute deviation from the steady-state value.
     """
     y_final = np.mean(control_signal[int(0.9 * len(control_signal)) :])
-    return np.max(np.abs(system_signal - y_final))
+    return float(np.max(np.abs(system_signal - y_final)))
 
 
 def integral_absolute_error(
@@ -320,7 +320,7 @@ def integral_absolute_error(
         float: IAE value, computed as sum(abs(r - y)).
     """
     error = control_signal - system_signal
-    return np.sum(np.abs(error))
+    return float(np.sum(np.abs(error)))
 
 
 def integral_squared_error(
@@ -336,7 +336,7 @@ def integral_squared_error(
         float: ISE value, computed as sum((r - y)**2).
     """
     error = control_signal - system_signal
-    return np.sum(error**2)
+    return float(np.sum(error**2))
 
 
 def integral_time_absolute_error(
@@ -354,7 +354,7 @@ def integral_time_absolute_error(
     """
     error = np.abs(control_signal - system_signal)
     time_weights = np.arange(len(error)) * dt
-    return np.sum(time_weights * error)
+    return float(np.sum(time_weights * error))
 
 
 def oscillation_count(system_signal: np.ndarray, threshold: float = 0.01) -> int:
@@ -393,7 +393,7 @@ def steady_state_value(control_signal: np.ndarray, percentage: float = 0.1) -> f
         float: Estimated steady-state value.
     """
     start_idx = int((1 - percentage) * len(control_signal))
-    return np.mean(control_signal[start_idx:])
+    return float(np.mean(control_signal[start_idx:]))
 
 
 def performance_index(
@@ -418,4 +418,4 @@ def performance_index(
     overshoot_val = overshoot(control_signal, system_signal)
 
     # Нормализованный индекс (веса можно настраивать)
-    return 0.4 * ise + 0.4 * itae + 0.2 * abs(overshoot_val)
+    return float(0.4 * ise + 0.4 * itae + 0.2 * abs(overshoot_val))

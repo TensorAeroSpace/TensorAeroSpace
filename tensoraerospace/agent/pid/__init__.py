@@ -107,10 +107,10 @@ class PID(BaseRLModel):
         self.ki = ki
         self.kd = kd
         self.dt = dt
-        self.integral = 0
-        self.prev_error = 0
+        self.integral = 0.0
+        self.prev_error = 0.0
         # Simulink-style: derivative on measurement (avoids derivative kick on setpoint steps)
-        self.prev_measurement = 0
+        self.prev_measurement = 0.0
         self.env = env
 
     def select_action(self, setpoint: float, measurement: float) -> float:
@@ -156,8 +156,9 @@ class PID(BaseRLModel):
         # Optional saturation + anti-windup (if action limits are available)
         if self.env is not None and hasattr(self.env, "action_space"):
             try:
-                low = float(np.asarray(self.env.action_space.low).reshape(-1)[0])
-                high = float(np.asarray(self.env.action_space.high).reshape(-1)[0])
+                action_space = getattr(self.env, "action_space")
+                low = float(np.asarray(action_space.low).reshape(-1)[0])
+                high = float(np.asarray(action_space.high).reshape(-1)[0])
                 output = float(np.clip(output, low, high))
                 if output != output_unsat:
                     # Saturated: do not integrate further (anti-windup)
@@ -183,9 +184,9 @@ class PID(BaseRLModel):
         Resets integral accumulator and previous error to zero.
         Should be called before starting a new control episode.
         """
-        self.integral = 0
-        self.prev_error = 0
-        self.prev_measurement = 0
+        self.integral = 0.0
+        self.prev_error = 0.0
+        self.prev_measurement = 0.0
 
     @staticmethod
     def _align_reference_to_observation_units(
@@ -215,7 +216,7 @@ class PID(BaseRLModel):
             )
             if isinstance(names, list) and len(names) > track_state_idx:
                 if names[track_state_idx] in ("theta", "q"):
-                    return np.rad2deg(ref)
+                    return np.asarray(np.rad2deg(ref))
         return ref
 
     @staticmethod
@@ -278,7 +279,7 @@ class PID(BaseRLModel):
         total_t = max(float(dt) * float(n_steps), float(dt))
         freq_hz = float(cycles) / total_t
         sine = offset + amp * np.sin(2.0 * np.pi * freq_hz * t)
-        return sine.reshape(1, -1)
+        return np.asarray(sine.reshape(1, -1))
 
     @staticmethod
     def _check_state_space_available(
@@ -699,6 +700,9 @@ class PID(BaseRLModel):
         Returns:
             Dictionary with performance metrics.
         """
+        if self.env is None:
+            raise ValueError("PID._simulate_closed_loop requires an environment.")
+
         # Create a fresh environment reference for simulation
         unwrapped = self.env.unwrapped if hasattr(self.env, "unwrapped") else self.env
 
@@ -726,8 +730,9 @@ class PID(BaseRLModel):
         low = high = None
         if hasattr(self.env, "action_space"):
             try:
-                low = float(np.asarray(self.env.action_space.low).reshape(-1)[0])
-                high = float(np.asarray(self.env.action_space.high).reshape(-1)[0])
+                action_space = getattr(self.env, "action_space")
+                low = float(np.asarray(action_space.low).reshape(-1)[0])
+                high = float(np.asarray(action_space.high).reshape(-1)[0])
             except Exception:
                 low = high = None
 
@@ -736,8 +741,8 @@ class PID(BaseRLModel):
         prev_measurement = 0.0
 
         # Storage for response
-        response = []
-        reference = []
+        response: list[float] = []
+        reference: list[float] = []
 
         # Initial observation
         obs, _ = self.env.reset()
@@ -802,14 +807,14 @@ class PID(BaseRLModel):
             if terminated or truncated:
                 break
 
-        response = np.array(response)
-        reference = np.array(reference)
+        response_arr = np.array(response)
+        reference_arr = np.array(reference)
 
         # Compute metrics
-        metrics = self._compute_metrics(reference, response, dt)
+        metrics = self._compute_metrics(reference_arr, response_arr, dt)
 
         # Control effort / smoothness metrics
-        n_pts = int(len(response))
+        n_pts = int(len(response_arr))
         ctrl = np.asarray(control_history, dtype=float).reshape(-1)
         if ctrl.size > 0:
             control_rms = float(np.sqrt(np.mean(ctrl**2)))
@@ -921,8 +926,12 @@ class PID(BaseRLModel):
         Returns:
             dict: Dictionary with environment and agent policy parameters.
         """
-        class_name = self.env.unwrapped.__class__.__name__
-        module_name = self.env.unwrapped.__class__.__module__
+        if self.env is None:
+            raise ValueError("PID.get_param_env requires an environment.")
+
+        env = self.env
+        class_name = env.unwrapped.__class__.__name__
+        module_name = env.unwrapped.__class__.__module__
         env_name = f"{module_name}.{class_name}"
         print(env_name)
         class_name = self.__class__.__name__
@@ -932,19 +941,19 @@ class PID(BaseRLModel):
 
         # Добавление информации о пространстве действий и пространстве состояний
         try:
-            action_space = str(self.env.action_space)
+            action_space = str(env.action_space)
             env_params["action_space"] = action_space
         except AttributeError:
             pass
 
         try:
-            observation_space = str(self.env.observation_space)
+            observation_space = str(env.observation_space)
             env_params["observation_space"] = observation_space
         except AttributeError:
             pass
 
         if "tensoraerospace" in env_name:
-            env_params = serialize_env(self.env)
+            env_params = serialize_env(env)
 
         policy_params = {
             "ki": self.ki,

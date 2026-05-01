@@ -137,7 +137,7 @@ class VFFRLSEstimator:
         self.P = 0.5 * (self.P + self.P.T)
 
         self.num_updates += 1
-        return eps
+        return np.asarray(eps)
 
     def predict(self, du: np.ndarray) -> np.ndarray:
         """Predict Δω̇ from a candidate control increment Δu."""

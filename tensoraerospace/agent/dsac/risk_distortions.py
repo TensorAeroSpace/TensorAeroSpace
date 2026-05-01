@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
+import math
 from typing import Callable, Dict
 
-import numpy as np
 import torch
 
 DistortionFn = Callable[[torch.Tensor, float], torch.Tensor]
@@ -12,14 +12,14 @@ DistortionFn = Callable[[torch.Tensor, float], torch.Tensor]
 
 def normal_cdf(tau: torch.Tensor, mean: float = 0.0, std: float = 1.0) -> torch.Tensor:
     """CDF of the normal distribution."""
-    return 0.5 * (1 + torch.erf((tau - mean) / std / np.sqrt(2)))
+    return 0.5 * (1 + torch.erf((tau - mean) / std / math.sqrt(2.0)))
 
 
 def normal_inverse_cdf(
     tau: torch.Tensor, mean: float = 0.0, std: float = 1.0
 ) -> torch.Tensor:
     """Inverse CDF of the normal distribution."""
-    return mean + std * torch.erfinv(2 * tau - 1) * np.sqrt(2)
+    return mean + std * torch.erfinv(2 * tau - 1) * math.sqrt(2.0)
 
 
 def neutral(tau: torch.Tensor, _xi: float) -> torch.Tensor:
