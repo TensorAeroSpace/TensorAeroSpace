@@ -7,7 +7,7 @@ buffer helpers) used in TensorAeroSpace.
 import json
 import time
 from pathlib import Path
-from typing import Any, Mapping, Optional, Sequence, Tuple, Union, cast
+from typing import Any, Callable, Mapping, Optional, Sequence, Tuple, Union, cast
 
 import gymnasium as gym
 import numpy as np
@@ -89,6 +89,84 @@ class Model(nn.Module):
             best_action if best_action.shape[0] > 1 else best_action[0],
             q_values[0],
         )
+
+
+_DQN_MODEL_CLASS = f"{Model.__module__}.{Model.__name__}"
+
+
+def _safe_torch_load_dict(
+    path: Path,
+    *,
+    map_location: Union[str, torch.device],
+    component: str,
+) -> dict[str, Any]:
+    try:
+        state = torch.load(path, map_location=map_location, weights_only=True)
+    except Exception as exc:
+        raise ValueError(
+            f"{component} checkpoint at {str(path)!r} is not a safe state_dict "
+            "checkpoint. Re-save it with DQNAgent.save() from a trusted source."
+        ) from exc
+    if not isinstance(state, dict):
+        raise ValueError(
+            f"{component} checkpoint at {str(path)!r} must contain a state_dict, "
+            f"got {type(state).__name__}."
+        )
+    return state
+
+
+def _num_actions_from_env(env: Any) -> int:
+    action_count = getattr(getattr(env, "action_space", None), "n", None)
+    if action_count is None:
+        raise ValueError(
+            "DQN checkpoint loading requires a discrete env.action_space.n "
+            "or an explicit model_factory."
+        )
+    return int(action_count)
+
+
+def _obs_shape_from_env(env: Any) -> tuple[int, ...]:
+    obs_shape = getattr(getattr(env, "observation_space", None), "shape", None)
+    if obs_shape is None:
+        raise ValueError(
+            "DQN checkpoint loading requires env.observation_space.shape "
+            "to materialize lazy layers."
+        )
+    return tuple(int(dim) for dim in obs_shape)
+
+
+def _make_checkpoint_model(
+    env: Any,
+    config: Mapping[str, Any],
+    model_factory: Optional[Callable[[], Any]],
+) -> Any:
+    model_class = config.get("model_class")
+    if model_factory is None:
+        if model_class not in (None, _DQN_MODEL_CLASS):
+            raise ValueError(
+                "This DQN checkpoint was saved for "
+                f"{model_class!r}; pass model_factory=... to reconstruct it "
+                "without unsafe pickle loading."
+            )
+        return Model(int(config.get("num_actions") or _num_actions_from_env(env)))
+    model = model_factory()
+    if model is None:
+        raise ValueError("model_factory must return a torch.nn.Module instance.")
+    return model
+
+
+def _materialize_builtin_model(
+    model: Any,
+    env: Any,
+    config: Mapping[str, Any],
+) -> None:
+    if not isinstance(model, Model):
+        return
+    obs_shape = tuple(int(dim) for dim in config.get("obs_shape", ()))
+    if not obs_shape:
+        obs_shape = _obs_shape_from_env(env)
+    with torch.no_grad():
+        model(torch.zeros((1, *obs_shape), dtype=torch.float32, device=_DEVICE))
 
 
 def test_model():
@@ -737,9 +815,10 @@ class DQNAgent:
         optim_path = path / "optimizer.pth"
         config_path = path / "config.json"
 
-        # Save models (full objects to preserve lazy layers)
-        torch.save(self.model, model_path)
-        torch.save(self.target_model, target_model_path)
+        # Save state_dicts only. Full-object torch.save requires pickle during
+        # load and is unsafe for third-party checkpoints.
+        torch.save(self.model.state_dict(), model_path)
+        torch.save(self.target_model.state_dict(), target_model_path)
 
         # Optionally save optimizer state
         if save_gradients:
@@ -747,6 +826,12 @@ class DQNAgent:
 
         # Minimal config for reload convenience
         config = {
+            "checkpoint_format": "state_dict",
+            "model_class": f"{self.model.__class__.__module__}.{self.model.__class__.__name__}",
+            "target_model_class": f"{self.target_model.__class__.__module__}.{self.target_model.__class__.__name__}",
+            "num_actions": int(getattr(self.env.action_space, "n", 0)),
+            "obs_shape": list(getattr(self.env.observation_space, "shape", ())),
+            "learning_rate": self.lr,
             "gamma": self.gamma,
             "epsilon": self.epsilon,
             "epsilon_decay": self.epsilon_decay,
@@ -755,8 +840,10 @@ class DQNAgent:
             "target_update_iter": self.target_update_iter,
             "train_nums": self.train_nums,
             "buffer_size": self.buffer_size,
+            "replay_period": self.replay_period,
             "alpha": self.alpha,
             "beta": self.beta,
+            "beta_increment_per_sample": self.beta_increment_per_sample,
         }
         with open(config_path, "w", encoding="utf-8") as f:
             json.dump(config, f)
@@ -768,6 +855,7 @@ class DQNAgent:
         env: Any,
         *,
         load_gradients: bool = False,
+        model_factory: Optional[Callable[[], Any]] = None,
     ) -> "DQNAgent":
         """Load a DQNAgent from a directory created by :meth:`save`.
 
@@ -778,6 +866,8 @@ class DQNAgent:
                 required because it is not serialised alongside the weights.
             load_gradients: If ``True`` and ``optimizer.pth`` exists, also
                 restore the optimiser state so training can be continued.
+            model_factory: Optional zero-argument factory for custom DQN
+                network classes. Built-in ``Model`` checkpoints do not need it.
 
         Returns:
             DQNAgent: Fully initialised agent with loaded weights.
@@ -796,13 +886,25 @@ class DQNAgent:
         with open(config_path, "r", encoding="utf-8") as f:
             config = json.load(f)
 
-        # Reconstruct online & target networks from saved full objects
-        loaded_model = torch.load(model_path, map_location=_DEVICE, weights_only=False)
-        loaded_target = (
-            torch.load(target_model_path, map_location=_DEVICE, weights_only=False)
-            if target_model_path.exists()
-            else torch.load(model_path, map_location=_DEVICE, weights_only=False)
+        model_state = _safe_torch_load_dict(
+            model_path, map_location=_DEVICE, component="DQN model"
         )
+        target_state = (
+            _safe_torch_load_dict(
+                target_model_path,
+                map_location=_DEVICE,
+                component="DQN target model",
+            )
+            if target_model_path.exists()
+            else model_state
+        )
+
+        loaded_model = _make_checkpoint_model(env, config, model_factory).to(_DEVICE)
+        loaded_target = _make_checkpoint_model(env, config, model_factory).to(_DEVICE)
+        _materialize_builtin_model(loaded_model, env, config)
+        _materialize_builtin_model(loaded_target, env, config)
+        loaded_model.load_state_dict(model_state)
+        loaded_target.load_state_dict(target_state)
 
         agent = cls(
             model=loaded_model,
@@ -817,17 +919,16 @@ class DQNAgent:
             target_update_iter=config.get("target_update_iter", 400),
             train_nums=config.get("train_nums", 5000),
             buffer_size=config.get("buffer_size", 200),
+            replay_period=config.get("replay_period", 20),
             alpha=config.get("alpha", 0.4),
             beta=config.get("beta", 0.4),
+            beta_increment_per_sample=config.get("beta_increment_per_sample", 0.001),
         )
 
-        # The constructor moves models to device and creates a *new* optimizer;
-        # replace them with the loaded objects that are already on _DEVICE.
-        agent.model = loaded_model
-        agent.target_model = loaded_target
-
         if load_gradients and optim_path.exists():
-            state = torch.load(optim_path, map_location=_DEVICE, weights_only=False)
+            state = _safe_torch_load_dict(
+                optim_path, map_location=_DEVICE, component="DQN optimizer"
+            )
             agent.optimizer.load_state_dict(state)
 
         return agent
@@ -840,6 +941,7 @@ class DQNAgent:
         access_token: Optional[str] = None,
         version: Optional[str] = None,
         load_gradients: bool = False,
+        model_factory: Optional[Callable[[], Any]] = None,
     ) -> "DQNAgent":
         """Load pretrained model from local directory or Hugging Face Hub.
 
@@ -852,6 +954,8 @@ class DQNAgent:
             version: Revision / branch / tag of HF repository.
             load_gradients: If ``True``, also load optimiser states for
                 continuing training.
+            model_factory: Optional zero-argument factory for custom DQN
+                network classes.
 
         Returns:
             DQNAgent: Initialised agent with loaded weights.
@@ -859,7 +963,12 @@ class DQNAgent:
         # 1) Try local loading (absolute / relative path)
         p = Path(str(repo_name)).expanduser()
         if p.is_dir():
-            return cls.load(p, env=env, load_gradients=load_gradients)
+            return cls.load(
+                p,
+                env=env,
+                load_gradients=load_gradients,
+                model_factory=model_factory,
+            )
 
         # 2) If it looks like a file-system path but doesn't exist -> error
         pathlike_prefixes = ("./", "../", "/", "~")
@@ -869,13 +978,23 @@ class DQNAgent:
                     f"Local directory not found: '{repo_name}'."
                     " Please check the path."
                 )
-            return cls.load(p, env=env, load_gradients=load_gradients)
+            return cls.load(
+                p,
+                env=env,
+                load_gradients=load_gradients,
+                model_factory=model_factory,
+            )
 
         # 3) Otherwise treat as a Hugging Face Hub repo id
         folder_path = snapshot_download(
             repo_id=repo_name, token=access_token, revision=version
         )
-        return cls.load(folder_path, env=env, load_gradients=load_gradients)
+        return cls.load(
+            folder_path,
+            env=env,
+            load_gradients=load_gradients,
+            model_factory=model_factory,
+        )
 
     def publish_to_hub(
         self,
@@ -1429,9 +1548,10 @@ class PERNARXAgent:
         optim_path = path / "optimizer.pth"
         config_path = path / "config.json"
 
-        # Save models (full objects to preserve lazy layers)
-        torch.save(self.model, model_path)
-        torch.save(self.target_model, target_model_path)
+        # Save state_dicts only. Full-object torch.save requires pickle during
+        # load and is unsafe for third-party checkpoints.
+        torch.save(self.model.state_dict(), model_path)
+        torch.save(self.target_model.state_dict(), target_model_path)
 
         # Optionally save optimizer state
         if save_gradients:
@@ -1439,6 +1559,12 @@ class PERNARXAgent:
 
         # Minimal config for reload convenience
         config = {
+            "checkpoint_format": "state_dict",
+            "model_class": f"{self.model.__class__.__module__}.{self.model.__class__.__name__}",
+            "target_model_class": f"{self.target_model.__class__.__module__}.{self.target_model.__class__.__name__}",
+            "num_actions": int(getattr(self.env.action_space, "n", 0)),
+            "obs_shape": list(getattr(self.env.observation_space, "shape", ())),
+            "learning_rate": self.lr,
             "gamma": self.gamma,
             "epsilon": self.epsilon,
             "epsilon_decay": self.epsilon_decay,
@@ -1447,8 +1573,10 @@ class PERNARXAgent:
             "target_update_iter": self.target_update_iter,
             "train_nums": self.train_nums,
             "buffer_size": self.buffer_size,
+            "replay_period": self.replay_period,
             "alpha": self.alpha,
             "beta": self.beta,
+            "beta_increment_per_sample": self.beta_increment_per_sample,
         }
         with open(config_path, "w", encoding="utf-8") as f:
             json.dump(config, f)

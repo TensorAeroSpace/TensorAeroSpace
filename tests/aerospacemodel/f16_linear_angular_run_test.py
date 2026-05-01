@@ -4,28 +4,11 @@ and checks getters, aliases, and error paths."""
 
 from __future__ import annotations
 
-import sys
-import types
-
 import numpy as np
 import pytest
 
 
-def _install_fake_matlab() -> None:
-    """The package's ``linear.angular.__init__`` transitively imports ``matlab``.
-
-    The real package is not installed in CI, so stub it out before import so
-    the top-level ``import`` statement succeeds.
-    """
-    if "matlab" not in sys.modules:
-        fake = types.ModuleType("matlab")
-        fake.double = lambda x: x  # only attribute used upstream
-        sys.modules["matlab"] = fake
-
-
-_install_fake_matlab()
-
-from tensoraerospace.aerospacemodel.f16.linear.angular.model import (  # noqa: E402
+from tensoraerospace.aerospacemodel.f16.linear.angular.model import (
     AngularF16,
 )
 

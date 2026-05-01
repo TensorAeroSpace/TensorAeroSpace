@@ -169,15 +169,21 @@ class Critic:
 
     def save_Jt_ct(self):
         """Save critic state evaluation."""
-        np.save("./critic_jt", [self.Jt_1, self.Jt, self.ct_1, self.ct])
+        np.savez(
+            "./critic_jt.npz",
+            Jt_1=np.asarray(self.Jt_1),
+            Jt=np.asarray(self.Jt),
+            ct_1=np.asarray(self.ct_1),
+            ct=np.asarray(self.ct),
+        )
 
     def load_Jt_ct(self):
         """Load critic state evaluation."""
-        data = np.load("./critic_jt.npy", allow_pickle=True)
-        self.Jt_1 = data[0]
-        self.Jt = data[1]
-        self.ct_1 = data[2]
-        self.ct = data[3]
+        with np.load("./critic_jt.npz", allow_pickle=False) as data:
+            self.Jt_1 = data["Jt_1"]
+            self.Jt = data["Jt"]
+            self.ct_1 = data["ct_1"]
+            self.ct = data["ct"]
 
     def build_critic_model(self):
         """Function creating neural network. Currently this is a densely connected neural network. User can

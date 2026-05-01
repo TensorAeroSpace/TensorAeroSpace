@@ -346,14 +346,14 @@ class Actor:
     def load_dut_dWb(self):
         """Load gradient."""
         line = []
-        for file in glob.glob("./actor_dut_dWb/*"):
-            line.append(np.load(file, allow_pickle=True))
+        for file in sorted(glob.glob("./actor_dut_dWb/*")):
+            line.append(np.load(file, allow_pickle=False))
         self.dut_dWb = line
         self.dut_dWb_1 = line
 
     def load_model(self):
         """Load model weights."""
-        self.model.load_state_dict(torch.load(self.model_path))
+        self.model.load_state_dict(torch.load(self.model_path, weights_only=True))
 
     def create_NN(self, store_weights: dict, seed: int) -> Tuple[nn.Sequential, dict]:
         """Create NN with user input.

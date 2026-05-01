@@ -1,18 +1,9 @@
 import importlib
-import sys
-import types
 
 import numpy as np
 
 
-def _install_fake_matlab():
-    fake = types.ModuleType("matlab")
-    fake.double = lambda x: x
-    sys.modules["matlab"] = fake
-
-
 def _make_light_instance():
-    _install_fake_matlab()
     AngularF16 = importlib.import_module(
         "tensoraerospace.aerospacemodel.f16.linear.angular.model"
     ).AngularF16

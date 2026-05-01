@@ -47,6 +47,27 @@ def _as_flat_np(x: Any) -> np.ndarray:
     return arr.reshape(-1)
 
 
+def _safe_torch_load_dict(
+    path: Path,
+    *,
+    map_location: Union[str, torch.device],
+    component: str,
+) -> Dict[str, Any]:
+    try:
+        state = torch.load(path, map_location=map_location, weights_only=True)
+    except Exception as exc:
+        raise ValueError(
+            f"{component} checkpoint at {str(path)!r} is not a safe state_dict "
+            "checkpoint. Re-save it with ADHDP.save() from a trusted source."
+        ) from exc
+    if not isinstance(state, dict):
+        raise ValueError(
+            f"{component} checkpoint at {str(path)!r} must contain a state_dict, "
+            f"got {type(state).__name__}."
+        )
+    return state
+
+
 class ADHDP(BaseRLModel):
     """Action-Dependent Heuristic Dynamic Programming (ADHDP) agent.
 
@@ -1434,8 +1455,8 @@ class ADHDP(BaseRLModel):
         with open(config_path, "w", encoding="utf-8") as f:
             json.dump(self.get_param_env(), f, indent=2)
 
-        torch.save(self.actor, actor_path)
-        torch.save(self.critic, critic_path)
+        torch.save(self.actor.state_dict(), actor_path)
+        torch.save(self.critic.state_dict(), critic_path)
         if save_gradients:
             torch.save(self.actor_optim.state_dict(), actor_optim_path)
             torch.save(self.critic_optim.state_dict(), critic_optim_path)
@@ -1468,11 +1489,15 @@ class ADHDP(BaseRLModel):
                 f"Missing actor/critic files in {str(folder_p)!r} (expected actor.pth, critic.pth)"
             )
 
-        self.actor = torch.load(
-            actor_path, map_location=self.device, weights_only=False
+        self.actor.load_state_dict(
+            _safe_torch_load_dict(
+                actor_path, map_location=self.device, component="ADHDP actor"
+            )
         )
-        self.critic = torch.load(
-            critic_path, map_location=self.device, weights_only=False
+        self.critic.load_state_dict(
+            _safe_torch_load_dict(
+                critic_path, map_location=self.device, component="ADHDP critic"
+            )
         )
 
     @classmethod
@@ -1498,11 +1523,15 @@ class ADHDP(BaseRLModel):
         env = env_cls(**env_kwargs)
 
         agent = cls(env=env, **policy_params)
-        agent.actor = torch.load(
-            actor_path, map_location=agent.device, weights_only=False
+        agent.actor.load_state_dict(
+            _safe_torch_load_dict(
+                actor_path, map_location=agent.device, component="ADHDP actor"
+            )
         )
-        agent.critic = torch.load(
-            critic_path, map_location=agent.device, weights_only=False
+        agent.critic.load_state_dict(
+            _safe_torch_load_dict(
+                critic_path, map_location=agent.device, component="ADHDP critic"
+            )
         )
         return agent
 
@@ -1568,13 +1597,17 @@ class ADHDP(BaseRLModel):
             actor_optim_path = folder_p / "actor_optim.pth"
             critic_optim_path = folder_p / "critic_optim.pth"
             if actor_optim_path.exists():
-                state = torch.load(
-                    actor_optim_path, map_location=agent.device, weights_only=False
+                state = _safe_torch_load_dict(
+                    actor_optim_path,
+                    map_location=agent.device,
+                    component="ADHDP actor optimizer",
                 )
                 agent.actor_optim.load_state_dict(state)
             if critic_optim_path.exists():
-                state = torch.load(
-                    critic_optim_path, map_location=agent.device, weights_only=False
+                state = _safe_torch_load_dict(
+                    critic_optim_path,
+                    map_location=agent.device,
+                    component="ADHDP critic optimizer",
                 )
                 agent.critic_optim.load_state_dict(state)
 

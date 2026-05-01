@@ -80,6 +80,26 @@ def test_restart_critic_clears_state():
     assert c.store_J.shape == (1, c.number_time_steps)
 
 
+def test_save_load_Jt_ct_uses_safe_npz(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    c = Critic.__new__(Critic)
+    c.Jt_1 = np.array([[1.0]], dtype=np.float32)
+    c.Jt = np.array([[2.0]], dtype=np.float32)
+    c.ct_1 = np.array([[3.0]], dtype=np.float32)
+    c.ct = np.array([[4.0]], dtype=np.float32)
+
+    c.save_Jt_ct()
+    assert (tmp_path / "critic_jt.npz").exists()
+
+    c.Jt_1 = c.Jt = c.ct_1 = c.ct = 0
+    c.load_Jt_ct()
+
+    np.testing.assert_allclose(c.Jt_1, np.array([[1.0]], dtype=np.float32))
+    np.testing.assert_allclose(c.Jt, np.array([[2.0]], dtype=np.float32))
+    np.testing.assert_allclose(c.ct_1, np.array([[3.0]], dtype=np.float32))
+    np.testing.assert_allclose(c.ct, np.array([[4.0]], dtype=np.float32))
+
+
 def test_update_critic_attributes_increments_time_step():
     c = _mk()
     c.ct = np.array([[2.0]])
