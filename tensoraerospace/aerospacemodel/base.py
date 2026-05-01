@@ -14,7 +14,6 @@ Main capabilities:
 """
 
 import warnings
-
 from typing import Any, cast
 
 import matplotlib.pyplot as plt
