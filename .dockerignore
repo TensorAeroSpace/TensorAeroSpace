@@ -38,6 +38,8 @@ htmlcov/
 
 example/.ipynb_checkpoints/
 **/.ipynb_checkpoints/
+example/**/events.out.tfevents.*
+example/**/wandb/
 
 # Generated/model-authoring sources are not needed in the runtime image.
 tensoraerospace/aerospacemodel/**/*.xfl

@@ -1,54 +1,84 @@
-FROM nvidia/cuda:12.2.2-cudnn8-runtime-ubuntu22.04 AS builder
+FROM python:3.11-slim-bookworm AS wheel-builder
+
+ENV DEBIAN_FRONTEND=noninteractive \
+    PYTHONUNBUFFERED=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    PIP_NO_CACHE_DIR=1
+
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+        build-essential \
+        ca-certificates && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
+
+WORKDIR /src
+
+COPY pyproject.toml readme.md README.ru-ru.md LICENSE ./
+COPY tensoraerospace ./tensoraerospace
+
+RUN python -m pip install --upgrade pip build && \
+    python -m build --wheel --outdir /tmp/dist
+
+FROM python:3.11-slim-bookworm
 
 ENV DEBIAN_FRONTEND=noninteractive \
     PYTHONUNBUFFERED=1 \
     PIP_DISABLE_PIP_VERSION_CHECK=1 \
     PIP_NO_CACHE_DIR=1 \
-    POETRY_NO_INTERACTION=1 \
-    POETRY_VIRTUALENVS_CREATE=true \
-    POETRY_VIRTUALENVS_IN_PROJECT=true
+    MPLBACKEND=Agg \
+    PYGAME_HIDE_SUPPORT_PROMPT=1 \
+    SDL_VIDEODRIVER=dummy \
+    BROWSER_PATH=/usr/bin/chromium \
+    TENSORAEROSPACE_EXAMPLES=/workspace/examples
 
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
+        build-essential \
         ca-certificates \
-        python3 \
-        python3-dev \
-        python3-pip \
-        python3-venv && \
-    python3 -m pip install --no-cache-dir "poetry>=1.8,<3.0" && \
-    apt-get clean && \
-    rm -rf /var/lib/apt/lists/* /root/.cache/pip
-
-WORKDIR /app
-
-COPY pyproject.toml poetry.lock readme.md README.ru-ru.md ./
-
-RUN poetry env use python3 && \
-    poetry install --with jupyter --no-root --no-ansi && \
-    rm -rf /root/.cache/pypoetry
-
-COPY tensoraerospace ./tensoraerospace
-COPY example ./example
-
-RUN poetry install --only-root --no-ansi
-
-FROM nvidia/cuda:12.2.2-cudnn8-runtime-ubuntu22.04
-
-ENV DEBIAN_FRONTEND=noninteractive \
-    PYTHONUNBUFFERED=1 \
-    PATH="/app/.venv/bin:$PATH"
-
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends \
-        ca-certificates \
-        python3 && \
+        chromium \
+        curl \
+        ffmpeg \
+        fontconfig \
+        fonts-dejavu \
+        git \
+        libegl1 \
+        libgl1 \
+        libglib2.0-0 \
+        libgles2 \
+        libsm6 \
+        libx11-6 \
+        libxext6 \
+        libxrender1 && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
-WORKDIR /app
+COPY --from=wheel-builder /tmp/dist/*.whl /tmp/
 
-COPY --from=builder /app /app
+RUN python -m pip install --upgrade pip setuptools wheel && \
+    python -m pip install /tmp/tensoraerospace-*.whl && \
+    python -m pip install \
+        ipykernel \
+        ipywidgets \
+        jupyterlab \
+        nbconvert \
+        notebook \
+        tqdm && \
+    python -m ipykernel install --sys-prefix \
+        --name tensoraerospace \
+        --display-name "Python (TensorAeroSpace)" && \
+    rm -f /tmp/tensoraerospace-*.whl
+
+RUN useradd --create-home --shell /bin/bash --uid 1000 tensor && \
+    mkdir -p /workspace/examples /workspace/projects && \
+    chown -R tensor:tensor /workspace
+
+WORKDIR /workspace
+
+COPY --chown=tensor:tensor example ./examples
+
+USER tensor
 
 EXPOSE 8888
 
-CMD ["jupyter", "lab", "--notebook-dir=/app", "--ip=0.0.0.0", "--no-browser", "--allow-root", "--port=8888"]
+CMD ["jupyter", "lab", "--notebook-dir=/workspace", "--ip=0.0.0.0", "--no-browser", "--port=8888"]

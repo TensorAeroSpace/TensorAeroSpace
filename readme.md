@@ -71,36 +71,48 @@ pip install tensoraerospace
 ```
 
 #### 🐳 Docker
-The image starts **JupyterLab by default** (see `Dockerfile` CMD).
+The image starts **JupyterLab by default** (see `Dockerfile` CMD). The runtime image is built from the repository sources, installs TensorAeroSpace as a wheel, and includes examples in `/workspace/examples`.
 
 **Ubuntu / Linux (bash):**
 
 ```bash
-docker build -t tensoraerospace . --platform=linux/amd64
+docker pull ghcr.io/tensoraerospace/tensoraerospace:latest
 docker run --rm -it -p 8888:8888 \
-  -v "$(pwd)/example:/app/example" \
-  tensoraerospace
+  -v "$(pwd)/projects:/workspace/projects" \
+  ghcr.io/tensoraerospace/tensoraerospace:latest
+
+# Or build the same image locally from source
+docker build -t tensoraerospace:local . --platform=linux/amd64
+docker run --rm -it -p 8888:8888 \
+  -v "$(pwd)/projects:/workspace/projects" \
+  tensoraerospace:local
 
 # Optional: enable NVIDIA GPU inside the container
 docker run --rm -it --gpus all -p 8888:8888 \
-  -v "$(pwd)/example:/app/example" \
-  tensoraerospace
+  -v "$(pwd)/projects:/workspace/projects" \
+  ghcr.io/tensoraerospace/tensoraerospace:latest
 ```
 
 **Windows (PowerShell):**
 
 ```powershell
-docker build -t tensoraerospace . --platform=linux/amd64
+docker pull ghcr.io/tensoraerospace/tensoraerospace:latest
 docker run --rm -it -p 8888:8888 `
-  -v "${PWD}\example:/app/example" `
-  tensoraerospace
+  -v "${PWD}\projects:/workspace/projects" `
+  ghcr.io/tensoraerospace/tensoraerospace:latest
+
+# Or build the same image locally from source
+docker build -t tensoraerospace:local . --platform=linux/amd64
+docker run --rm -it -p 8888:8888 `
+  -v "${PWD}\projects:/workspace/projects" `
+  tensoraerospace:local
 
 # Optional: enable NVIDIA GPU inside the container
 docker run --rm -it --gpus all -p 8888:8888 `
-  -v "${PWD}\example:/app/example" `
-  tensoraerospace
+  -v "${PWD}\projects:/workspace/projects" `
+  ghcr.io/tensoraerospace/tensoraerospace:latest
 ```
-> Open the printed URL (default `http://127.0.0.1:8888`) and navigate to `example/quickstart.ipynb` to run the SAC walkthrough inside Docker.
+> Open the printed URL (default `http://127.0.0.1:8888`) and navigate to `examples/quickstart.ipynb` to run the SAC walkthrough inside Docker.
 
 ### 🏃‍♂️ Quick Examples
 

@@ -178,10 +178,10 @@ publish: ## Опубликовать в PyPI
 
 # === DOCKER ===
 docker_build: ## Собрать Docker образ
-	docker build -t tensor_aero_space .  --platform=linux/amd64
+	docker build -t tensoraerospace:local . --platform=linux/amd64
 
 docker_debug: ## Запустить Docker в debug режиме
-	docker run -v ${PWD}/example:/app/example -p 8888:8888 -it tensor_aero_space
+	docker run --rm -it -p 8888:8888 -v ${PWD}/projects:/workspace/projects tensoraerospace:local
 
 # === КОМПЛЕКСНЫЕ КОМАНДЫ ===
 check-all: version-check format-check lint security test docs ## Полная проверка кода

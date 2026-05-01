@@ -28,6 +28,7 @@ branches:
           - "🔒 Security Scan"
           - "🏗️ Build Package"
           - "📦 Wheel installs on all Python versions"
+          - "🐳 Docker image builds"
           - "🏗️ mkdocs build --strict"
       enforce_admins: false
       required_pull_request_reviews:
@@ -48,6 +49,7 @@ branches:
           - "🔒 Security Scan"
           - "🏗️ Build Package"
           - "📦 Wheel installs on all Python versions"
+          - "🐳 Docker image builds"
           - "🏗️ mkdocs build --strict"
       enforce_admins: false
       required_pull_request_reviews:

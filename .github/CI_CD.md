@@ -23,6 +23,7 @@
 - **🔒 Security Scan**: baseline gate для `bandit` с конфигом из `pyproject.toml` и baseline gate для `pip-audit`.
 - **🏗️ Build Package**: `poetry build`, `twine check`, package gate по `.github/package-gate.json`.
 - **📦 Wheel installs on all Python versions**: собранный wheel устанавливается через `pip install dist/*.whl` и импортируется на Python 3.10, 3.11, 3.12, 3.13.
+- **🐳 Docker image builds**: сборка `Dockerfile` из исходников, smoke-проверка установленного wheel и примеров внутри runtime-образа.
 
 ### Docs Build (`docs-build.yml`)
 **Триггеры:** pull request в `main`/`develop`, push в `main`/`develop`, ручной запуск.
@@ -39,6 +40,26 @@
 **Триггеры:** push в `develop`, ручной запуск.
 
 После merge в `develop` выполняет curated-набор Jupyter notebook examples через `jupyter nbconvert --execute`. Ошибка любой ячейки валит job.
+
+### Docker Image (`docker-image.yml`)
+**Триггеры:** pull request в `main`/`develop`, push в `main`/`develop`, ручной запуск.
+
+На PR workflow собирает `Dockerfile` и проверяет, что runtime-образ:
+- импортирует `tensoraerospace` из `site-packages`;
+- содержит `/workspace/examples` и `/workspace/projects`;
+- не содержит исходную папку `/workspace/tensoraerospace`;
+- запускает lightweight example smoke из `/workspace/examples`.
+
+После merge/push в `develop` тот же job публикует образ в GHCR:
+- `ghcr.io/tensoraerospace/tensoraerospace:develop`;
+- `ghcr.io/tensoraerospace/tensoraerospace:sha-<short-sha>`.
+
+После merge/push в `main` публикуются:
+- `ghcr.io/tensoraerospace/tensoraerospace:main`;
+- `ghcr.io/tensoraerospace/tensoraerospace:latest`;
+- `ghcr.io/tensoraerospace/tensoraerospace:sha-<short-sha>`.
+
+Публикация использует стандартный `GITHUB_TOKEN` с permission `packages: write`; отдельный GHCR secret не нужен.
 
 ### Publishing (`publish.yml`)
 **Триггеры:** published GitHub Release, ручной запуск для `testpypi` или `pypi`.
@@ -91,6 +112,8 @@ make lint
 make security
 make dependency-audit
 make package-gate
+docker build --platform=linux/amd64 -t tensoraerospace:local .
+docker run --rm tensoraerospace:local python -c "import tensoraerospace"
 ```
 
 Полезные прямые команды:
@@ -116,6 +139,7 @@ poetry run python scripts/package_gate.py
 - `🔒 Security Scan`
 - `🏗️ Build Package`
 - `📦 Wheel installs on all Python versions`
+- `🐳 Docker image builds`
 - `🏗️ mkdocs build --strict`
 
 Не добавляйте push-only workflows в required PR checks, иначе PR может зависнуть в ожидании статуса, который не создаётся.
@@ -125,3 +149,4 @@ poetry run python scripts/package_gate.py
 - `PYPI_TEST`: token для TestPyPI.
 - `PYPI_PUBLISH`: token для PyPI.
 - `READTHEDOCS_WEBHOOK_URL` и `READTHEDOCS_WEBHOOK_SECRET`: опционально, для Read the Docs webhook.
+- GHCR публикация использует стандартный `GITHUB_TOKEN`; отдельный registry secret не требуется.
