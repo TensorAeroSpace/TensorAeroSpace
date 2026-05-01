@@ -1,20 +1,10 @@
 import importlib
-import sys
-import types
 
 import numpy as np
 import pytest
 
 
-def _install_fake_matlab():
-    fake = types.ModuleType("matlab")
-    fake.double = lambda x: x
-    sys.modules["matlab"] = fake
-
-
 def test_set_initial_state_valid_and_invalid():
-    _install_fake_matlab()
-    # import after installing fake matlab
     init_mod = importlib.import_module(
         "tensoraerospace.aerospacemodel.f16.linear.angular.initial"
     )

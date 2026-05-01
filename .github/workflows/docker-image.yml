@@ -1,0 +1,130 @@
+name: 🐳 Docker Image
+run-name: Docker image for ${{ github.ref_name }} — ${{ github.sha }}
+
+on:
+  pull_request:
+    branches:
+      - main
+      - develop
+    types: [opened, synchronize, reopened, ready_for_review]
+  push:
+    branches:
+      - main
+      - develop
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+concurrency:
+  group: docker-image-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+env:
+  DOCKER_BUILDKIT: "1"
+
+jobs:
+  docker-image:
+    name: 🐳 Docker image builds
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+
+    steps:
+      - name: 🧹 Free up disk space
+        run: |
+          set -euxo pipefail
+          df -h
+          sudo rm -rf /usr/share/dotnet || true
+          sudo rm -rf /usr/local/lib/android || true
+          sudo rm -rf /opt/ghc || true
+          sudo rm -rf /opt/hostedtoolcache/CodeQL || true
+          docker system prune -af --volumes || true
+          sudo apt-get clean || true
+          df -h
+
+      - name: 📥 Checkout code
+        uses: actions/checkout@v5
+
+      - name: 🏷️ Compute image tags
+        id: meta
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          image_name="ghcr.io/${GITHUB_REPOSITORY,,}"
+          short_sha="${GITHUB_SHA::12}"
+          local_tag="tensoraerospace:ci-${short_sha}"
+
+          echo "image-name=${image_name}" >> "$GITHUB_OUTPUT"
+          echo "local-tag=${local_tag}" >> "$GITHUB_OUTPUT"
+          echo "short-sha=${short_sha}" >> "$GITHUB_OUTPUT"
+
+          {
+            echo "publish-tags<<EOF"
+            echo "${image_name}:sha-${short_sha}"
+            if [ "$GITHUB_REF" = "refs/heads/main" ]; then
+              echo "${image_name}:main"
+              echo "${image_name}:latest"
+            elif [ "$GITHUB_REF" = "refs/heads/develop" ]; then
+              echo "${image_name}:develop"
+            fi
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: 🏗️ Build Docker image
+        env:
+          LOCAL_TAG: ${{ steps.meta.outputs.local-tag }}
+        run: |
+          set -euxo pipefail
+          docker build --pull --progress=plain --platform=linux/amd64 -t "$LOCAL_TAG" .
+          docker image inspect "$LOCAL_TAG" --format 'image={{.Id}} size={{.Size}}'
+
+      - name: 🧪 Smoke test Docker image
+        env:
+          LOCAL_TAG: ${{ steps.meta.outputs.local-tag }}
+        run: |
+          set -euxo pipefail
+
+          docker run --rm -i "$LOCAL_TAG" python - <<'PY'
+          import importlib.metadata as metadata
+          import os
+          import tensoraerospace
+
+          module_path = tensoraerospace.__file__ or ""
+          print(f"tensoraerospace {metadata.version('tensoraerospace')}")
+          print(f"module path: {module_path}")
+          print(f"workspace: {sorted(os.listdir('/workspace'))}")
+
+          assert "/site-packages/" in module_path
+          assert not os.path.isdir("/workspace/tensoraerospace")
+          assert os.path.isdir("/workspace/examples")
+          assert os.path.isdir("/workspace/projects")
+          PY
+
+          docker run --rm "$LOCAL_TAG" \
+            python /workspace/examples/reinforcement_learning/test_comsat_simple.py
+
+      - name: 🔐 Log in to GHCR
+        if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop')
+        env:
+          GHCR_USER: ${{ github.actor }}
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          echo "$GHCR_TOKEN" | docker login ghcr.io -u "$GHCR_USER" --password-stdin
+
+      - name: 📤 Push image to GHCR
+        if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop')
+        env:
+          LOCAL_TAG: ${{ steps.meta.outputs.local-tag }}
+          PUBLISH_TAGS: ${{ steps.meta.outputs.publish-tags }}
+        shell: bash
+        run: |
+          set -euxo pipefail
+
+          while IFS= read -r tag; do
+            [ -n "$tag" ] || continue
+            docker tag "$LOCAL_TAG" "$tag"
+            docker push "$tag"
+          done <<< "$PUBLISH_TAGS"

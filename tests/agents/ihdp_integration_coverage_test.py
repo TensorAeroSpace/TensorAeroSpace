@@ -16,7 +16,7 @@ import numpy as np
 import pytest
 
 from tensoraerospace.agent.ihdp.model import IHDPAgent
-from tensoraerospace.signals.standart import unit_step
+from tensoraerospace.signals.standard import unit_step
 from tensoraerospace.utils import generate_time_period
 
 

@@ -122,7 +122,7 @@ for _ in range(2000):
 import gymnasium as gym
 import numpy as np
 from tensoraerospace.agent.pid import PID
-from tensoraerospace.signals.standart import unit_step
+from tensoraerospace.signals.standard import unit_step
 from tensoraerospace.utils import generate_time_period
 
 # Настройка

@@ -1,6 +1,6 @@
 """Tests for tensoraerospace.agent.base module."""
 
-from unittest.mock import MagicMock, patch
+import pytest
 
 from tensoraerospace.agent.base import (
     BaseRLModel,
@@ -17,16 +17,20 @@ class _ConcreteRL(BaseRLModel):
     pass
 
 
-def test_baserlmodel_methods_return_none():
-    """Cover the placeholder methods that just 'pass'."""
+def test_baserlmodel_methods_fail_loudly():
+    """Base interface methods should not silently no-op."""
     model = _ConcreteRL()
-    assert model.get_env() is None
-    model.train()  # no return, just ensure it runs
-    assert model.action_probability() is None
-    model.save()
-    model.load()
-    assert model.predict() is None
-    assert model.get_param_env() is None
+    assert model.train() == {}
+    for method_name in (
+        "get_env",
+        "action_probability",
+        "save",
+        "load",
+        "predict",
+        "get_param_env",
+    ):
+        with pytest.raises(NotImplementedError, match=method_name):
+            getattr(model, method_name)()
 
 
 def test_get_class_from_string():

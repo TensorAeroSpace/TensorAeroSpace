@@ -24,7 +24,7 @@ import numpy as np
 
 import tensoraerospace  # регистрирует все среды Gymnasium
 from tensoraerospace.agent.pid import PID
-from tensoraerospace.signals.standart import unit_step
+from tensoraerospace.signals.standard import unit_step
 from tensoraerospace.utils import generate_time_period
 
 dt = 0.01

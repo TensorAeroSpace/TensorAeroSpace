@@ -5,11 +5,13 @@ This module defines the Critic component used by the IHDP agent.
 
 import math
 import random
-from typing import Any, Tuple
+from typing import Any, Literal, Tuple, cast, overload
 
 import numpy as np
 import torch
 import torch.nn as nn
+
+ReplayItem = tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]
 
 
 def _activation_from_string(name: str) -> nn.Module:
@@ -102,14 +104,14 @@ class Critic:
         self.number_states = len(selected_states)
         self.number_tracking_states = len(tracking_states)
         self.indices_tracking_states = indices_tracking_states
-        self.xt = None
+        self.xt: Any = None
         self.xt_1 = np.zeros((self.number_states, 1))
-        self.xt_ref = None
+        self.xt_ref: Any = None
         self.xt_ref_1 = np.zeros((self.number_tracking_states, 1))
-        self.ct = 0
-        self.ct_1 = 0
-        self.Jt = 0
-        self.Jt_1 = 0
+        self.ct = np.zeros((1, 1))
+        self.ct_1 = np.zeros((1, 1))
+        self.Jt = np.zeros((1, 1))
+        self.Jt_1 = np.zeros((1, 1))
         self.model_path = model_path
         if len(Q_weights) < self.number_tracking_states:
             raise Exception("The size of Q_weights needs to equal the number of states")
@@ -131,8 +133,8 @@ class Critic:
             )
         self.layers = layers
         self.activations = activations
-        self.model = None
-        self.dJt_dxt = None
+        self.model: nn.Sequential = nn.Sequential()
+        self.dJt_dxt: Any = None
         self.NN_initial = NN_initial
 
         # Declaration of attributes related to the cost function
@@ -148,16 +150,16 @@ class Critic:
         self.store_c = np.zeros((1, self.number_time_steps))
 
         # Declaration of the storage arrays for the weights
-        self.store_weights = {}
+        self.store_weights: dict[str, np.ndarray] = {}
 
         # Attributes related to the momentum
-        self.momentum_dict = {}
+        self.momentum_dict: dict[int, Any] = {}
 
         # Attributes related to RMSprop
-        self.rmsprop_dict = {}
+        self.rmsprop_dict: dict[int, Any] = {}
 
         # Attributes related to experience replay
-        self.replay = []
+        self.replay: list[ReplayItem] = []
 
     def save_model(self):
         """Save model."""
@@ -165,19 +167,27 @@ class Critic:
 
     def load_model(self):
         """Load weights."""
+        if self.model_path is None:
+            raise ValueError("model_path must be provided before loading weights.")
         self.model.load_state_dict(torch.load(self.model_path, weights_only=True))
 
     def save_Jt_ct(self):
         """Save critic state evaluation."""
-        np.save("./critic_jt", [self.Jt_1, self.Jt, self.ct_1, self.ct])
+        np.savez(
+            "./critic_jt.npz",
+            Jt_1=np.asarray(self.Jt_1),
+            Jt=np.asarray(self.Jt),
+            ct_1=np.asarray(self.ct_1),
+            ct=np.asarray(self.ct),
+        )
 
     def load_Jt_ct(self):
         """Load critic state evaluation."""
-        data = np.load("./critic_jt.npy", allow_pickle=True)
-        self.Jt_1 = data[0]
-        self.Jt = data[1]
-        self.ct_1 = data[2]
-        self.ct = data[3]
+        with np.load("./critic_jt.npz", allow_pickle=False) as data:
+            self.Jt_1 = data["Jt_1"]
+            self.Jt = data["Jt"]
+            self.ct_1 = data["ct_1"]
+            self.ct = data["ct"]
 
     def build_critic_model(self):
         """Function creating neural network. Currently this is a densely connected neural network. User can
@@ -186,7 +196,7 @@ class Critic:
         if self.NN_initial is not None:
             torch.manual_seed(self.NN_initial)
 
-        modules = []
+        modules: list[nn.Module] = []
         modules.append(nn.Flatten(start_dim=1))
 
         # First layer: input is number_tracking_states
@@ -271,7 +281,7 @@ class Critic:
                 # Implement WB_limits
                 self.check_WB_limits(count)
 
-            updated_Jt = self.model(nn_input).detach().numpy()
+            updated_Jt = cast(torch.Tensor, self.model(nn_input)).detach().numpy()
             ec_critic_after = (
                 np.reshape(-self.ct_1 - self.gamma * updated_Jt, [-1, 1]) + self.Jt_1
             )
@@ -295,7 +305,7 @@ class Critic:
                 for WB_count in range(len(params)):
                     params[WB_count].data.copy_(weight_cache[WB_count])
 
-        return self.Jt
+        return np.asarray(self.Jt)
 
     def run_train_critic_online_adam(
         self, xt: np.ndarray, xt_ref: np.ndarray
@@ -312,7 +322,7 @@ class Critic:
         """
 
         # Safe the information in the replay attribute
-        self.replay.append((self.xt_1, xt, self.ct_1))
+        self.replay.append((self.xt_1, self.xt_ref_1, xt, xt_ref, self.ct_1))
 
         # Obtain the forward pass of the critic and the derivatives of the output with respect to the weights and biases
         nn_input, dJt_dW = self.compute_forward_pass(xt, xt_ref)
@@ -323,9 +333,14 @@ class Critic:
         # Run the Adam optimizer given the gradients
         self.adam_iteration(dJt_dW, dE_dJ)
 
-        return self.Jt
+        return np.asarray(self.Jt)
 
-    def adam_iteration(self, dJt_dW: list[np.ndarray], dE_dJ: np.ndarray) -> None:
+    def adam_iteration(
+        self,
+        dJt_dW: list[np.ndarray],
+        dE_dJ: np.ndarray,
+        iteration: int | None = None,
+    ) -> None:
         """Adam updates all weights and biases considering loss function derivative with respect to NN
         output and derivative of neural network output with respect to weights and biases.
 
@@ -335,6 +350,7 @@ class Critic:
         """
 
         if self.time_step > self.start_training:
+            step = self.time_step if iteration is None else iteration
             params = list(self.model.parameters())
             for count in range(len(dJt_dW)):
                 gradient = dE_dJ * dJt_dW[count]
@@ -343,17 +359,13 @@ class Critic:
                     + (1 - self.beta_momentum) * gradient
                 )
                 self.momentum_dict[count] = momentum
-                momentum_corrected = momentum / (
-                    1 - self.beta_momentum ** (self.time_step + 1)
-                )
+                momentum_corrected = momentum / (1 - self.beta_momentum ** (step + 1))
 
                 rmsprop = self.beta_rmsprop * self.rmsprop_dict[count] + (
                     1 - self.beta_rmsprop
                 ) * np.multiply(gradient, gradient)
                 self.rmsprop_dict[count] = rmsprop
-                rmsprop_corrected = rmsprop / (
-                    1 - self.beta_rmsprop ** (self.time_step + 1)
-                )
+                rmsprop_corrected = rmsprop / (1 - self.beta_rmsprop ** (step + 1))
 
                 update = momentum_corrected / (
                     np.sqrt(rmsprop_corrected) + self.epsilon
@@ -390,7 +402,7 @@ class Critic:
         """
 
         # Safe the information in the replay attribute
-        self.replay.append((self.xt_1, xt, self.ct_1))
+        self.replay.append((self.xt_1, self.xt_ref_1, xt, xt_ref, self.ct_1))
 
         # Obtain the forward pass of the critic and the derivatives of the output with respect to the weights and biases
         nn_input, dJt_dW = self.compute_forward_pass(xt, xt_ref)
@@ -422,7 +434,7 @@ class Critic:
             # Update the learning rate
             self.learning_rate = max(self.learning_rate * 0.995, 0.000001)
 
-        return self.Jt
+        return np.asarray(self.Jt)
 
     def train_critic_replay_adam(self, replay_size: int, iteration: int) -> None:
         """Train the critic using samples from the replay buffer (Adam)."""
@@ -450,7 +462,7 @@ class Critic:
 
             # Obtain the forward pass of xt_1
             with torch.no_grad():
-                Jt_1 = self.model(nn_input_1).numpy()
+                Jt_1 = cast(torch.Tensor, self.model(nn_input_1)).numpy()
 
             # Obtain the derivative of the critic cost function with respect to the critic output
             dE_dJ, _, _ = self.compute_loss_derivative(Jt_1, Jt, ct_1)
@@ -458,9 +470,22 @@ class Critic:
             # Carry out the Adam optimisation
             self.adam_iteration(dJt_dW, dE_dJ, iteration)
 
+    @overload
+    def compute_forward_pass(
+        self, xt: np.ndarray, xt_ref: np.ndarray, replay: Literal[False] = False
+    ) -> tuple[torch.Tensor, list[np.ndarray]]: ...
+
+    @overload
+    def compute_forward_pass(
+        self, xt: np.ndarray, xt_ref: np.ndarray, replay: Literal[True]
+    ) -> tuple[torch.Tensor, list[np.ndarray], np.ndarray]: ...
+
     def compute_forward_pass(
         self, xt: np.ndarray, xt_ref: np.ndarray, replay: bool = False
-    ) -> Tuple[Any, list[np.ndarray]]:
+    ) -> (
+        tuple[torch.Tensor, list[np.ndarray]]
+        | tuple[torch.Tensor, list[np.ndarray], np.ndarray]
+    ):
         """Compute critic output and gradients with respect to weights/biases."""
         # If it is online, safe the input in the object
         if not replay:
@@ -488,7 +513,7 @@ class Critic:
         for p in params:
             p.requires_grad_(True)
 
-        prediction = self.model(nn_input)
+        prediction = cast(torch.Tensor, self.model(nn_input))
 
         # Obtain the derivative of the output with respect to the weights and biases
         dJt_dW_tensors = torch.autograd.grad(
@@ -529,7 +554,7 @@ class Critic:
             )
 
             with torch.no_grad():
-                self.Jt_1 = self.model(nn_input_1).numpy()
+                self.Jt_1 = cast(torch.Tensor, self.model(nn_input_1)).numpy()
             Jt = self.Jt
             target = self.targets_computation_online()
         elif len(args) == 3:
@@ -538,10 +563,7 @@ class Critic:
             ct_1 = args[2]
             target = self.targets_computation_online(Jt, ct_1)
         else:
-            self.Jt_1 = 0
-            Jt = 0
-            target = 0
-            Exception("Unexpected number of arguments.")
+            raise ValueError("Unexpected number of arguments.")
 
         # Compute the network error
         ec_critic_before = target + self.Jt_1
@@ -580,10 +602,12 @@ class Critic:
             requires_grad=True,
         )
 
-        prediction = self.model(nn_input)
+        prediction = cast(torch.Tensor, self.model(nn_input))
 
-        Jt = prediction.detach().numpy()
-        dJt_dxt = torch.autograd.grad(prediction, nn_input)[0].detach().numpy()
+        Jt = np.asarray(prediction.detach().numpy())
+        dJt_dxt = np.asarray(
+            torch.autograd.grad(prediction, nn_input)[0].detach().numpy()
+        )
 
         return Jt, dJt_dxt
 
@@ -601,7 +625,7 @@ class Critic:
             (np.reshape(tracked_states, [-1, 1]) - self.xt_ref),
         )
         self.store_c[0, self.time_step] = ct.flat[0]
-        return ct
+        return np.asarray(ct)
 
     def targets_computation_online(self, *args: Any) -> np.ndarray:
         """Compute the TD target used for critic training."""
@@ -613,9 +637,8 @@ class Critic:
             ct_1 = args[1]
             target = np.reshape(-ct_1 - self.gamma * Jt, [-1, 1])
         else:
-            Exception("Unexpected number of arguments")
-            target = 0
-        return target
+            return cast(np.ndarray, 0)
+        return np.asarray(target)
 
     def update_critic_attributes(self) -> None:
         """Update time-dependent critic attributes after each step."""
@@ -646,10 +669,10 @@ class Critic:
         self.xt_1 = np.zeros((self.number_states, 1))
         self.xt_ref = None
         self.xt_ref_1 = np.zeros((self.number_tracking_states, 1))
-        self.ct = 0
-        self.ct_1 = 0
-        self.Jt = 0
-        self.Jt_1 = 0
+        self.ct = np.zeros((1, 1))
+        self.ct_1 = np.zeros((1, 1))
+        self.Jt = np.zeros((1, 1))
+        self.Jt_1 = np.zeros((1, 1))
         self.learning_rate = self.learning_rate_0
 
         # Store the states

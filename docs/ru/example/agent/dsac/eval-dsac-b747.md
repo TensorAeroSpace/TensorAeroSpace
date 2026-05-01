@@ -38,7 +38,7 @@ jupyter nbconvert --execute --to notebook example/reinforcement_learning/eval_ds
 ```python
 from tensoraerospace.agent import DSAC
 from tensoraerospace.envs.b747 import ImprovedB747Env
-from tensoraerospace.signals.standart import unit_step
+from tensoraerospace.signals.standard import unit_step
 from tensoraerospace.benchmark.bench import ControlBenchmark
 import numpy as np
 

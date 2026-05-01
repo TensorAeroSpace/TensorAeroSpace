@@ -541,7 +541,7 @@ class ImprovedB747VecEnvTorch:
         self.prev_u_rad[idx] = 0.0
         self._sample_reference_for_indices(idx)
 
-    def step(self, action: torch.Tensor):
+    def step(self, action: Any):
         """Step all environments in parallel.
 
         Args:

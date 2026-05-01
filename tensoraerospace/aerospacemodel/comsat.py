@@ -11,6 +11,8 @@ Main components:
     - Methods for orbital motion simulation and attitude control
 """
 
+from typing import Any
+
 import matplotlib.pyplot as plt
 import numpy as np
 from scipy.signal import cont2discrete
@@ -51,7 +53,7 @@ class ComSat(ModelBase):
         self,
         x0: np.ndarray | list[float],
         number_time_steps: int,
-        selected_state_output: list[int] | None = None,
+        selected_state_output: list[str] | None = None,
         t0: float = 0,
         dt: float = 0.01,
     ) -> None:
@@ -94,12 +96,12 @@ class ComSat(ModelBase):
         self.number_inputs = len(self.selected_input)
         self.number_outputs = len(self.selected_output)
         self.number_states = len(self.selected_states)
-        self.output_history = []
+        self.output_history: dict[str, np.ndarray] = {}
         # Original matrices of the system
-        self.A = None
-        self.B = None
-        self.C = None
-        self.D = None
+        self.A: np.ndarray = np.empty((0, 0))
+        self.B: np.ndarray = np.empty((0, 0))
+        self.C: np.ndarray = np.empty((0, 0))
+        self.D: np.ndarray = np.empty((0, 0))
 
         self.initialise_system(x0, number_time_steps)
 
@@ -194,7 +196,7 @@ class ComSat(ModelBase):
             ut_1 = self.store_input[:, self.time_step - 1]
         else:
             ut_1 = ut_0
-        ut = [
+        ut: Any = [
             0,
         ]
         for i in range(self.number_inputs):
@@ -272,10 +274,14 @@ class ComSat(ModelBase):
             )
         index = self.selected_states.index(state_name)
         if to_deg:
-            return np.rad2deg(self.store_states[index][: self.number_time_steps])
+            return np.asarray(
+                np.rad2deg(self.store_states[index][: self.number_time_steps])
+            )
         if to_rad:
-            return np.deg2rad(self.store_states[index][: self.number_time_steps])
-        return self.store_states[index][: self.number_time_steps]
+            return np.asarray(
+                np.deg2rad(self.store_states[index][: self.number_time_steps])
+            )
+        return np.asarray(self.store_states[index][: self.number_time_steps])
 
     def get_control(
         self, control_name: str, to_deg: bool = False, to_rad: bool = False
@@ -296,10 +302,14 @@ class ComSat(ModelBase):
             )
         index = self.selected_input.index(control_name)
         if to_deg:
-            return np.rad2deg(self.store_input[index])[: self.number_time_steps]
+            return np.asarray(np.rad2deg(self.store_input[index]))[
+                : self.number_time_steps
+            ]
         if to_rad:
-            return np.deg2rad(self.store_input[index][: self.number_time_steps])
-        return self.store_input[index][: self.number_time_steps]
+            return np.asarray(
+                np.deg2rad(self.store_input[index][: self.number_time_steps])
+            )
+        return np.asarray(self.store_input[index][: self.number_time_steps])
 
     def get_output(
         self, state_name: str, to_deg: bool = False, to_rad: bool = False
@@ -316,10 +326,14 @@ class ComSat(ModelBase):
         """
         self.output_history = output2dict(self.store_outputs, self.selected_output)
         if to_deg:
-            return np.rad2deg(self.output_history[state_name][: self.time_step - 1])
+            return np.asarray(
+                np.rad2deg(self.output_history[state_name][: self.time_step - 1])
+            )
         if to_rad:
-            return np.deg2rad(self.output_history[state_name][: self.time_step - 1])
-        return self.output_history[state_name][: self.time_step - 1]
+            return np.asarray(
+                np.deg2rad(self.output_history[state_name][: self.time_step - 1])
+            )
+        return np.asarray(self.output_history[state_name][: self.time_step - 1])
 
     def plot_output(
         self,

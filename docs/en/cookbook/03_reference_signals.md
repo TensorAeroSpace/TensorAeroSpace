@@ -6,7 +6,7 @@ Source notebook: [`example/cookbook/recipe_03_reference_signals.ipynb`](https://
 
 ## Shape contract (read once)
 
-The env expects `reference_signal.shape == (len(tracking_states), number_time_steps)`. For one tracked channel always `np.reshape(sig, (1, -1))`. All library builders in `tensoraerospace.signals.standart` take the time vector `tp = generate_time_period(tn=T, dt=dt)` as the first argument.
+The env expects `reference_signal.shape == (len(tracking_states), number_time_steps)`. For one tracked channel always `np.reshape(sig, (1, -1))`. All library builders in `tensoraerospace.signals.standard` take the time vector `tp = generate_time_period(tn=T, dt=dt)` as the first argument.
 
 ## Step 1 — Primitives
 
@@ -17,7 +17,7 @@ warnings.filterwarnings('ignore')
 import matplotlib.pyplot as plt
 import numpy as np
 
-from tensoraerospace.signals.standart import (
+from tensoraerospace.signals.standard import (
     unit_step, ramp, pulse, sinusoid, sinusoid_vertical_shift,
     square_wave, constant_line,
 )

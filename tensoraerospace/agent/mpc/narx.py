@@ -4,10 +4,10 @@ This module provides utilities for using NARX (autoregressive) representations
 within MPC components.
 """
 
-import numpy as np
+from typing import cast
+
 import torch
 import torch.nn as nn
-from tqdm import tqdm
 
 
 class NARX(nn.Module):
@@ -87,7 +87,7 @@ class NARX(nn.Module):
         # Pass through the output layer
         x = self.fc_out(x)
 
-        return x
+        return cast(torch.Tensor, x)
 
 
 class NARXDynamicsModel(nn.Module):
@@ -154,4 +154,4 @@ class NARXDynamicsModel(nn.Module):
         s_end = int(self.state_dim * self.state_lags)
         state = xu[:, :s_end]
         control = xu[:, s_end:]
-        return self.net(state, control)
+        return cast(torch.Tensor, self.net(state, control))

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import cast
+
 import torch
 from torch import nn
 from torch.distributions import Independent, Normal
@@ -42,10 +44,10 @@ class NormalPolicyNet(nn.Module):
         return Independent(Normal(loc=means, scale=stds), reinterpreted_batch_ndims=1)
 
     def get_mean(self, states: torch.Tensor) -> torch.Tensor:
-        out = self.shared_net(states)
-        return self.mu_layer(out)
+        out = cast(torch.Tensor, self.shared_net(states))
+        return cast(torch.Tensor, self.mu_layer(out))
 
     def get_std(self, states: torch.Tensor) -> torch.Tensor:
-        out = self.shared_net(states)
+        out = cast(torch.Tensor, self.shared_net(states))
         log_std = self.log_std_layer(out)
         return torch.exp(torch.clamp(log_std, LOG_STD_MIN, LOG_STD_MAX))

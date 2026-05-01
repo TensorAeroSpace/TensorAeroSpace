@@ -3,7 +3,7 @@ import pytest
 from gymnasium import spaces
 
 from tensoraerospace.envs.b747 import ImprovedB747Env
-from tensoraerospace.signals.standart import unit_step
+from tensoraerospace.signals.standard import unit_step
 from tensoraerospace.utils import convert_tp_to_sec_tp, generate_time_period
 
 INITIAL_STATE = [[0], [0], [0], [0]]

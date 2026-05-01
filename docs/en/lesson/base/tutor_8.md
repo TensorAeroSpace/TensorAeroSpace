@@ -359,7 +359,7 @@ The following example creates an `ImprovedB747Env`, runs one episode with zero c
 ```python
 import numpy as np
 from tensoraerospace.envs import ImprovedB747Env
-from tensoraerospace.signals.standart import unit_step
+from tensoraerospace.signals.standard import unit_step
 from tensoraerospace.utils import generate_time_period, convert_tp_to_sec_tp
 
 # ----- Simulation parameters -----
@@ -485,7 +485,7 @@ To illustrate the bridge, here is a conceptual comparison using the B747 environ
 ```python
 import numpy as np
 from tensoraerospace.envs import ImprovedB747Env
-from tensoraerospace.signals.standart import unit_step
+from tensoraerospace.signals.standard import unit_step
 from tensoraerospace.utils import generate_time_period, convert_tp_to_sec_tp
 
 # ----- Setup (same as before) -----

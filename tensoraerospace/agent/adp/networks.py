@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Iterable, Sequence, Tuple
+from typing import Iterable, Sequence, Tuple, cast
 
 import numpy as np
 import torch
@@ -92,8 +92,10 @@ class DeterministicActor(nn.Module):
         self.register_buffer("action_bias", torch.as_tensor(bias, dtype=torch.float32))
 
     def forward(self, obs: torch.Tensor) -> torch.Tensor:
-        a = self._body(obs)
-        return a * self.action_scale + self.action_bias
+        a = cast(torch.Tensor, self._body(obs))
+        action_scale = cast(torch.Tensor, self.action_scale)
+        action_bias = cast(torch.Tensor, self.action_bias)
+        return a * action_scale + action_bias
 
 
 class QCritic(nn.Module):
@@ -118,7 +120,7 @@ class QCritic(nn.Module):
 
     def forward(self, obs: torch.Tensor, act: torch.Tensor) -> torch.Tensor:
         x = torch.cat([obs, act], dim=-1)
-        return self._q(x)
+        return cast(torch.Tensor, self._q(x))
 
 
 class JCritic(nn.Module):
@@ -137,8 +139,8 @@ class JCritic(nn.Module):
         self._j = nn.Linear(int(last), 1)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        h = self._trunk(x)
-        return self._j(h)
+        h = cast(torch.Tensor, self._trunk(x))
+        return cast(torch.Tensor, self._j(h))
 
 
 class LambdaCritic(nn.Module):
@@ -167,7 +169,7 @@ class LambdaCritic(nn.Module):
         )
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        return self._net(x)
+        return cast(torch.Tensor, self._net(x))
 
 
 class JLambdaCritic(nn.Module):

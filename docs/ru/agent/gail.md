@@ -55,7 +55,7 @@ import gymnasium as gym
 import numpy as np
 from tensoraerospace.agent.gail.model import GAIL
 from tensoraerospace.utils import generate_time_period
-from tensoraerospace.signals.standart import unit_step
+from tensoraerospace.signals.standard import unit_step
 
 dt = 0.01
 tp = generate_time_period(tn=20, dt=dt)

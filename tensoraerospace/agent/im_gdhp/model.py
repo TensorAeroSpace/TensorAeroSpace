@@ -380,7 +380,7 @@ class IMGDHPAgent:
 
         self._last_action = u.copy()
         self._last_augmented = aug.copy()
-        return u
+        return np.asarray(u)
 
     def _rng_normal(self, n: int) -> np.ndarray:
         return np.random.normal(size=(n,))
@@ -469,7 +469,7 @@ class IMGDHPAgent:
             allow_actor = self._total_steps >= (
                 self.cfg.warmup_steps + self.cfg.critic_only_steps
             )
-            if allow_actor and self._y_tm1 is not None:
+            if allow_actor and self._y_tm1 is not None and self._u_tm1 is not None:
                 actor_loss_val = self._actor_update(
                     y_t_np=y_t_np,
                     ref_now_np=ref_now,

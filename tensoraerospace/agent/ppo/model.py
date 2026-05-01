@@ -12,6 +12,7 @@ import json
 import os
 import queue
 import threading
+import warnings
 from pathlib import Path
 from typing import (
     Any,
@@ -22,7 +23,7 @@ from typing import (
     Sequence,
     Tuple,
     Union,
-    overload,
+    cast,
 )
 
 import numpy as np
@@ -221,9 +222,14 @@ class _AsyncBestCheckpointSaver:
                 # Extra metadata (optional)
                 if job.get("meta") is not None:
                     _atomic_write_json(model_dir / "best_meta.json", job["meta"])
-            except Exception:
-                # Never crash training due to background saving.
-                pass
+            except Exception as exc:
+                # Never crash training due to background saving, but do not
+                # hide a broken checkpoint path or serialization issue.
+                warnings.warn(
+                    f"PPO async checkpoint save failed: {exc}",
+                    RuntimeWarning,
+                    stacklevel=2,
+                )
             finally:
                 self._q.task_done()
 
@@ -348,7 +354,7 @@ class Critic(nn.Module):
         x = F.relu(self.d1(input_data))
         x = F.relu(self.d2(x))
         v = self.v(x)
-        return v
+        return cast(torch.Tensor, v)
 
 
 class Actor(nn.Module):
@@ -679,10 +685,12 @@ class PPO(BaseRLModel):
             Normalized observation.
         """
         if self.normalize_obs:
-            return np.clip(
-                (obs - self.obs_rms.mean) / np.sqrt(self.obs_rms.var + 1e-8),
-                -10.0,
-                10.0,
+            return np.asarray(
+                np.clip(
+                    (obs - self.obs_rms.mean) / np.sqrt(self.obs_rms.var + 1e-8),
+                    -10.0,
+                    10.0,
+                )
             )
         return obs
 
@@ -800,13 +808,17 @@ class PPO(BaseRLModel):
         try:
             if hasattr(self.env, "num_envs") and int(getattr(self.env, "num_envs")) > 1:
                 return True
-        except Exception:
-            pass
+        except (TypeError, ValueError):
+            warnings.warn(
+                "Ignoring non-integer env.num_envs while detecting vector env.",
+                RuntimeWarning,
+                stacklevel=2,
+            )
         if torch.is_tensor(obs):
             return obs.ndim == 2
         try:
             return np.asarray(obs).ndim == 2
-        except Exception:
+        except (TypeError, ValueError):
             return False
 
     def _to_tensor(self, x: Any, *, dtype: torch.dtype = torch.float32) -> torch.Tensor:
@@ -828,7 +840,7 @@ class PPO(BaseRLModel):
             high = torch.as_tensor(
                 self.env.action_space.high, device=self.device, dtype=torch.float32
             )
-        except Exception:
+        except (AttributeError, TypeError, ValueError):
             low = torch.full(
                 (self.env.action_space.shape[0],),
                 -1.0,
@@ -1236,9 +1248,10 @@ class PPO(BaseRLModel):
             "saved_at": meta["saved_at"],
         }
 
+        config = self.get_param_env()
         job = {
             "model_dir": str(model_dir),
-            "config": self.get_param_env(),
+            "config": config,
             "actor_state": actor_state,
             "critic_state": critic_state,
             "actor_opt_state": actor_opt_state,
@@ -1258,7 +1271,7 @@ class PPO(BaseRLModel):
             return
 
         # Synchronous fallback (still atomic, but will block).
-        _atomic_write_json(model_dir / "config.json", job["config"])
+        _atomic_write_json(model_dir / "config.json", config)
         _atomic_torch_save(model_dir / "actor.pth", actor_state)
         _atomic_torch_save(model_dir / "critic.pth", critic_state)
         if obs_rms is not None:
@@ -1453,8 +1466,8 @@ class PPO(BaseRLModel):
         values2 = torch.cat([v.view(1) for v in values])
         probs2 = torch.cat(probs).detach()
 
-        returns2 = []
-        g2 = 0
+        returns2: list[torch.Tensor] = []
+        g2 = torch.zeros_like(values2[0])
         for i in reversed(range(len(rewards))):
             delta2 = rewards2[i] + gamma * values2[i + 1] * (1 - dones2[i]) - values2[i]
             g2 = delta2 + gamma * self.gae_lambda * (1 - dones2[i]) * g2
@@ -1584,13 +1597,11 @@ class PPO(BaseRLModel):
                     )
                     with torch.no_grad():
                         action_raw_t, dist_t = self.actor(state_t)
-                        mu_t = dist_t.mean
                         # `action_raw_t` is the unclamped sampled action; this is
                         # the point at which we compute log_prob for PPO.
                         prob = dist_t.log_prob(action_raw_t).sum(dim=-1, keepdim=True)
                         value = self.critic(state_t)
                     action = action_raw_t  # unclamped, stored in buffer
-                    mu = mu_t
                     # Clip action to environment bounds to avoid invalid controls
                     env_action = action.detach().cpu().numpy()[0]
                     try:
@@ -1599,8 +1610,12 @@ class PPO(BaseRLModel):
                             self.env.action_space.high,
                         )
                         env_action = np.clip(env_action, low, high)
-                    except Exception:
-                        pass
+                    except (AttributeError, TypeError, ValueError) as exc:
+                        warnings.warn(
+                            f"PPO could not clip action to env.action_space bounds: {exc}",
+                            RuntimeWarning,
+                            stacklevel=2,
+                        )
                     step_return = self.env.step(env_action)
                     # Single-env training step: advance counter by 1.
                     self.global_env_step += 1
@@ -1667,35 +1682,35 @@ class PPO(BaseRLModel):
                     )
                 values.append(next_value)
 
-                _, _, returns, _, _, _ = self.preprocess1(
+                _, _, returns_list, _, _, _ = self.preprocess1(
                     states, actions, rewards, dones, values, probs, self.gamma
                 )
-                states = torch.stack(states)
-                actions = torch.stack(actions)
-                rewards = torch.cat(rewards)
-                returns = torch.cat(returns).detach()
-                values = torch.cat(values).detach()
-                probs = torch.cat(probs).detach()
+                states_tensor = torch.stack(states)
+                actions_tensor = torch.stack(actions)
+                rewards_tensor = torch.cat(rewards)
+                returns_tensor = torch.cat(returns_list).detach()
+                values_tensor = torch.cat(values).detach()
+                probs_tensor = torch.cat(probs).detach()
 
                 # Reward normalization (normalize returns)
                 if self.normalize_reward and hasattr(self, "ret_rms"):
-                    returns_np = returns.cpu().numpy().flatten()
+                    returns_np = returns_tensor.cpu().numpy().flatten()
                     self.ret_rms.update(returns_np)
-                    returns = torch.clamp(
-                        (returns - self.ret_rms.mean)
+                    returns_tensor = torch.clamp(
+                        (returns_tensor - self.ret_rms.mean)
                         / np.sqrt(self.ret_rms.var + 1e-8),
                         -10.0,
                         10.0,
                     )
 
-                advantages = returns - values[:-1]
+                advantages = returns_tensor - values_tensor[:-1]
                 # Store old values for clipped value loss
-                old_values = values[:-1].clone()
+                old_values = values_tensor[:-1].clone()
 
                 # Calculate explained variance (quality of value function)
                 with torch.no_grad():
-                    y_pred = values[:-1]
-                    y_true = returns
+                    y_pred = values_tensor[:-1]
+                    y_true = returns_tensor
                     var_y = torch.var(y_true)
                     explained_var = (
                         1 - torch.var(y_true - y_pred) / (var_y + 1e-8)
@@ -1722,12 +1737,12 @@ class PPO(BaseRLModel):
                     ) in ppo_iter(
                         epoch=1,  # Inner loop already handles epochs
                         mini_batch_size=self.batch_size,
-                        states=states,
-                        actions=actions,
-                        log_probs=probs,
-                        returns=returns,
+                        states=states_tensor,
+                        actions=actions_tensor,
+                        log_probs=probs_tensor,
+                        returns=returns_tensor,
                         advantages=advantages,
-                        rewards=rewards,
+                        rewards=rewards_tensor,
                         values=old_values,
                     ):
                         metrics = self.learn(
@@ -2122,9 +2137,13 @@ class PPO(BaseRLModel):
                 c_opt_state = torch.load(critic_opt_path, map_location="cpu")
                 new_agent.c_opt.load_state_dict(c_opt_state)
                 _optimizer_state_to_device(new_agent.c_opt, new_agent.device)
-        except Exception:
+        except Exception as exc:
             # Keep default fresh optimizers if checkpoint is incompatible.
-            pass
+            warnings.warn(
+                f"PPO optimizer state could not be restored; using fresh optimizers: {exc}",
+                RuntimeWarning,
+                stacklevel=2,
+            )
 
         # Load training state (best_reward, etc.) if present
         if train_state_path.exists():
@@ -2133,8 +2152,12 @@ class PPO(BaseRLModel):
                     train_state = json.load(f)
                 if "best_reward" in train_state:
                     new_agent.best_reward = float(train_state["best_reward"])
-            except Exception:
-                pass
+            except (OSError, json.JSONDecodeError, TypeError, ValueError) as exc:
+                warnings.warn(
+                    f"PPO training state could not be restored from {train_state_path}: {exc}",
+                    RuntimeWarning,
+                    stacklevel=2,
+                )
 
         # Load normalization statistics if they exist
         if new_agent.normalize_obs and obs_rms_path.exists():

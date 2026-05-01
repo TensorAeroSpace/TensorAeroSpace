@@ -1,0 +1,79 @@
+{
+  "vulnerabilities": [
+    {
+      "name": "authlib",
+      "version": "1.6.10",
+      "id": "GHSA-jj8c-mmj3-mmgv"
+    },
+    {
+      "name": "black",
+      "version": "24.10.0",
+      "id": "CVE-2026-32274"
+    },
+    {
+      "name": "filelock",
+      "version": "3.19.1",
+      "id": "CVE-2025-68146"
+    },
+    {
+      "name": "filelock",
+      "version": "3.19.1",
+      "id": "CVE-2026-22701"
+    },
+    {
+      "name": "jaraco-context",
+      "version": "6.0.1",
+      "id": "CVE-2026-23949"
+    },
+    {
+      "name": "marshmallow",
+      "version": "4.0.1",
+      "id": "CVE-2025-68480"
+    },
+    {
+      "name": "nltk",
+      "version": "3.9.2",
+      "id": "CVE-2025-14009"
+    },
+    {
+      "name": "nltk",
+      "version": "3.9.2",
+      "id": "GHSA-rf74-v2fm-23pw"
+    },
+    {
+      "name": "nltk",
+      "version": "3.9.2",
+      "id": "CVE-2026-33230"
+    },
+    {
+      "name": "nltk",
+      "version": "3.9.2",
+      "id": "CVE-2026-33231"
+    },
+    {
+      "name": "nltk",
+      "version": "3.9.2",
+      "id": "CVE-2026-0846"
+    },
+    {
+      "name": "pygments",
+      "version": "2.19.2",
+      "id": "CVE-2026-4539"
+    },
+    {
+      "name": "urllib3",
+      "version": "2.5.0",
+      "id": "CVE-2025-66418"
+    },
+    {
+      "name": "urllib3",
+      "version": "2.5.0",
+      "id": "CVE-2025-66471"
+    },
+    {
+      "name": "urllib3",
+      "version": "2.5.0",
+      "id": "CVE-2026-21441"
+    }
+  ]
+}

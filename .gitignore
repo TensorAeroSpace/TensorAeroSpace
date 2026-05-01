@@ -17,6 +17,7 @@ __pycache__/
 .coverage-report.txt
 .cursor
 .claude
+.codex
 htmlcov/
 # C extensions
 *.so
@@ -223,6 +224,9 @@ datasets/
 !tensoraerospace/aerospacemodel/f16/nonlinear/damage/data/
 *.csv
 *.json
+!.github/ci-baselines.json
+!.github/package-gate.json
+!.github/pip-audit-baseline.json
 *.parquet
 *.feather
 *.arrow

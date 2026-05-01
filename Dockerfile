@@ -1,59 +1,84 @@
-# CUDA + cuDNN base on Ubuntu 22.04 (system Python is 3.10).
-# We install Python 3.11 via deadsnakes so that `poetry env use python3.11`
-# matches the recommended interpreter from README and the project's
-# `pyproject.toml` (python = ">=3.10,<3.13").
-FROM nvidia/cuda:12.2.2-cudnn8-devel-ubuntu22.04
+FROM python:3.11-slim-bookworm AS wheel-builder
 
 ENV DEBIAN_FRONTEND=noninteractive \
     PYTHONUNBUFFERED=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1 \
     PIP_NO_CACHE_DIR=1
 
-# Install Python 3.11 from deadsnakes PPA, plus pip/poetry build prerequisites.
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
-        software-properties-common ca-certificates wget curl && \
-    add-apt-repository -y ppa:deadsnakes/ppa && \
-    apt-get update && \
-    apt-get install -y --no-install-recommends \
-        python3.11 python3.11-dev python3.11-venv python3.11-distutils && \
-    wget -qO /tmp/get-pip.py https://bootstrap.pypa.io/get-pip.py && \
-    python3.11 /tmp/get-pip.py && \
-    rm /tmp/get-pip.py && \
+        build-essential \
+        ca-certificates && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
-WORKDIR /app
+WORKDIR /src
 
-# Copy project metadata first so the dependency-install layer is cached
-# independently of source changes.
-COPY pyproject.toml poetry.lock readme.md README.ru-ru.md ./
-
-# Install poetry under python3.11, then create the project venv on python3.11
-# explicitly. Without `poetry env use python3.11`, poetry would default to the
-# system `python3` (3.10 on ubuntu22.04), which technically works but does not
-# match the recommended interpreter advertised in README.
-RUN python3.11 -m pip install "poetry>=1.8,<3.0" && \
-    poetry env use python3.11 && \
-    poetry install --with jupyter --no-root && \
-    rm -rf /root/.cache/pip /root/.cache/pypoetry
-
-# Copy source last so app changes don't bust the dep-install cache layer.
+COPY pyproject.toml readme.md README.ru-ru.md LICENSE ./
 COPY tensoraerospace ./tensoraerospace
-COPY example ./example
 
-# Install the package itself now that the source is present.
-RUN poetry install --with jupyter --only-root
+RUN python -m pip install --upgrade pip build && \
+    python -m build --wheel --outdir /tmp/dist
+
+FROM python:3.11-slim-bookworm
+
+ENV DEBIAN_FRONTEND=noninteractive \
+    PYTHONUNBUFFERED=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    PIP_NO_CACHE_DIR=1 \
+    MPLBACKEND=Agg \
+    PYGAME_HIDE_SUPPORT_PROMPT=1 \
+    SDL_VIDEODRIVER=dummy \
+    BROWSER_PATH=/usr/bin/chromium \
+    TENSORAEROSPACE_EXAMPLES=/workspace/examples
+
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+        build-essential \
+        ca-certificates \
+        chromium \
+        curl \
+        ffmpeg \
+        fontconfig \
+        fonts-dejavu \
+        git \
+        libegl1 \
+        libgl1 \
+        libglib2.0-0 \
+        libgles2 \
+        libsm6 \
+        libx11-6 \
+        libxext6 \
+        libxrender1 && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
+
+COPY --from=wheel-builder /tmp/dist/*.whl /tmp/
+
+RUN python -m pip install --upgrade pip setuptools wheel && \
+    python -m pip install /tmp/tensoraerospace-*.whl && \
+    python -m pip install \
+        ipykernel \
+        ipywidgets \
+        jupyterlab \
+        nbconvert \
+        notebook \
+        tqdm && \
+    python -m ipykernel install --sys-prefix \
+        --name tensoraerospace \
+        --display-name "Python (TensorAeroSpace)" && \
+    rm -f /tmp/tensoraerospace-*.whl
+
+RUN useradd --create-home --shell /bin/bash --uid 1000 tensor && \
+    mkdir -p /workspace/examples /workspace/projects && \
+    chown -R tensor:tensor /workspace
+
+WORKDIR /workspace
+
+COPY --chown=tensor:tensor example ./examples
+
+USER tensor
 
 EXPOSE 8888
 
-# `ENTRYPOINT ["poetry", "run"]` keeps `docker run ... <cmd>` ergonomic:
-# the CMD below is appended as the actual command. Previously a hard-coded
-# ENTRYPOINT with full jupyter args caused duplicate `--notebook-dir` when
-# users passed an extra command.
-#
-# NOTE: JupyterLab generates a random access token at startup and prints it
-# to the container logs. Retrieve it via `docker logs <container>` (or run
-# `jupyter server list` inside the container). Do not disable the token on
-# network-reachable deployments.
-ENTRYPOINT ["poetry", "run"]
-CMD ["jupyter", "lab", "--notebook-dir=/app", "--ip=0.0.0.0", "--no-browser", "--allow-root", "--port=8888"]
+CMD ["jupyter", "lab", "--notebook-dir=/workspace", "--ip=0.0.0.0", "--no-browser", "--port=8888"]

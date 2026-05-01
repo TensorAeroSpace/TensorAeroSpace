@@ -1,7 +1,7 @@
 import gymnasium as gym
 import numpy as np
 
-from tensoraerospace.envs.f16.linear_longitudial import (  # noqa: F401
+from tensoraerospace.envs.f16.linear_longitudinal import (  # noqa: F401
     LinearLongitudinalF16,
 )
 

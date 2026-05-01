@@ -6,9 +6,7 @@ components used for imitation learning within TensorAeroSpace.
 
 import datetime
 import json
-import math
 import os
-import random
 from pathlib import Path
 from typing import Any, Mapping, Optional, Sequence, Union
 
@@ -16,11 +14,10 @@ import gymnasium as gym
 import numpy as np
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 import torch.optim as optim
 from torch.distributions import Normal
 
-from ..metrics import create_metric_writer, schema
+from ..metrics import MetricWriter, create_metric_writer, schema
 
 use_cuda = torch.cuda.is_available()
 device = torch.device("cuda" if use_cuda else "cpu")
@@ -80,7 +77,14 @@ class ActorCritic(nn.Module):
         return dist, value
 
 
-def compute_gae(next_value, rewards, masks, values, gamma=0.99, tau=0.95):
+def compute_gae(
+    next_value: torch.Tensor,
+    rewards: list[torch.Tensor],
+    masks: list[torch.Tensor],
+    values: list[torch.Tensor],
+    gamma: float = 0.99,
+    tau: float = 0.95,
+) -> list[torch.Tensor]:
     """Compute Generalized Advantage Estimation (GAE).
 
     Args:
@@ -95,8 +99,8 @@ def compute_gae(next_value, rewards, masks, values, gamma=0.99, tau=0.95):
         list: Advantage-weighted returns (as a list of tensors).
     """
     values = values + [next_value]
-    gae = 0
-    returns = []
+    gae = torch.zeros_like(next_value)
+    returns: list[torch.Tensor] = []
     for step in reversed(range(len(rewards))):
         delta = rewards[step] + gamma * values[step + 1] * masks[step] - values[step]
         gae = delta + gamma * tau * masks[step] * gae
@@ -179,8 +183,13 @@ class GAIL:
         self.epochs = epochs
         self.data = data
 
-        self.num_inputs = env.observation_space.shape[0]
-        self.num_outputs = env.action_space.shape[0]
+        observation_shape = env.observation_space.shape
+        action_shape = env.action_space.shape
+        if observation_shape is None or action_shape is None:
+            raise TypeError("GAIL requires observation and action spaces with shapes.")
+
+        self.num_inputs = int(observation_shape[0])
+        self.num_outputs = int(action_shape[0])
 
         self.model = ActorCritic(self.num_inputs, self.num_outputs, 256).to(device)
         self.discriminator = Discriminator(self.num_inputs + self.num_outputs, 128).to(
@@ -203,7 +212,7 @@ class GAIL:
             or os.environ.get("WANDB_API_KEY") is not None
         )
         if needs_writer:
-            self.writer = create_metric_writer(
+            self.writer: Optional[MetricWriter] = create_metric_writer(
                 tb_log_dir=self.log_dir,
                 wandb_project=wandb_project,
                 wandb_entity=wandb_entity,
@@ -220,25 +229,29 @@ class GAIL:
 
     def expert_reward(self, state: torch.Tensor, action: np.ndarray) -> np.ndarray:
         """Compute imitation reward using the discriminator."""
-        state = state.cpu().numpy()
-        state_action = torch.FloatTensor(np.concatenate([state, action], 1)).to(device)
-        return -np.log(self.discriminator(state_action).cpu().data.numpy())
+        state_np = state.cpu().numpy()
+        state_action = torch.FloatTensor(np.concatenate([state_np, action], 1)).to(
+            device
+        )
+        return np.asarray(-np.log(self.discriminator(state_action).cpu().data.numpy()))
 
     def test_env(self) -> float:
         """Run one evaluation rollout and return total reward."""
         state = self.env.reset()[0].reshape(1, -1)
         done = False
-        total_reward = 0
+        total_reward = 0.0
         for _ in range(self.max_steps):
-            state = torch.FloatTensor(state).unsqueeze(0).to(device)
-            dist, _ = self.model(state)
+            state_tensor = torch.FloatTensor(state).unsqueeze(0).to(device)
+            dist, _ = self.model(state_tensor)
             next_state, reward, terminated, truncated, info = self.env.step(
                 dist.sample().cpu().numpy()[0]
             )
             done = terminated or truncated
             next_state = next_state.reshape(1, -1)
             state = next_state
-            total_reward += reward
+            total_reward += float(reward)
+            if done:
+                break
         return total_reward
 
     def ppo_update(
@@ -385,13 +398,13 @@ class GAIL:
         while frame_idx < max_frames and not early_stop:
             i_update += 1
 
-            log_probs = []
-            values = []
-            states = []
-            actions = []
-            rewards = []
-            masks = []
-            entropy = 0
+            log_probs: list[torch.Tensor] = []
+            values: list[torch.Tensor] = []
+            states: list[torch.Tensor] = []
+            actions: list[torch.Tensor] = []
+            rewards: list[torch.Tensor] = []
+            masks: list[torch.Tensor] = []
+            entropy = torch.tensor(0.0, device=device)
 
             for _ in range(self.max_steps):
                 state = torch.FloatTensor(state).to(device)
@@ -452,32 +465,34 @@ class GAIL:
                 _, next_value = self.model(next_state)
             returns = compute_gae(next_value, rewards, masks, values)
 
-            returns = torch.cat(returns).detach()
-            log_probs = torch.cat(log_probs).detach()
-            values = torch.cat(values).detach()
-            states = torch.cat(states)
-            actions = torch.cat(actions)
-            advantage = returns - values
+            returns_tensor = torch.cat(returns).detach()
+            log_probs_tensor = torch.cat(log_probs).detach()
+            values_tensor = torch.cat(values).detach()
+            states_tensor = torch.cat(states)
+            actions_tensor = torch.cat(actions)
+            advantage = returns_tensor - values_tensor
 
             if i_update % 3 == 0:
                 self.ppo_update(
                     4,
                     self.mini_batch_size,
-                    states,
-                    actions,
-                    log_probs,
-                    returns,
+                    states_tensor,
+                    actions_tensor,
+                    log_probs_tensor,
+                    returns_tensor,
                     advantage,
                     env_step=self.global_env_step,
                 )
 
-            expert_state_action = self.data[
+            expert_state_action_sample = self.data[
                 np.random.randint(0, self.data.shape[0], 2 * self.max_steps * 16), :
             ]
-            expert_state_action = torch.FloatTensor(expert_state_action).to(device)
-            state_action = torch.cat([states, actions], 1)
+            expert_state_action_tensor = torch.FloatTensor(
+                expert_state_action_sample
+            ).to(device)
+            state_action = torch.cat([states_tensor, actions_tensor], 1)
             fake = self.discriminator(state_action)
-            real = self.discriminator(expert_state_action)
+            real = self.discriminator(expert_state_action_tensor)
             self.optimizer_discrim.zero_grad()
             # NOTE: Label convention here is inverted relative to the canonical
             # GAIL paper: policy (fake) -> 1, expert (real) -> 0. This is
@@ -487,9 +502,10 @@ class GAIL:
             # policy behaves like the expert. Flipping the labels without also
             # updating `expert_reward` would break training.
             discrim_loss = self.discrim_criterion(
-                fake, torch.ones((states.shape[0], 1)).to(device)
+                fake, torch.ones((states_tensor.shape[0], 1)).to(device)
             ) + self.discrim_criterion(
-                real, torch.zeros((expert_state_action.size(0), 1)).to(device)
+                real,
+                torch.zeros((expert_state_action_tensor.size(0), 1)).to(device),
             )
             discrim_loss.backward()
             self.optimizer_discrim.step()

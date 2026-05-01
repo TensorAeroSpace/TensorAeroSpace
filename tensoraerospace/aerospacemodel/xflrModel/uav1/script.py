@@ -2,7 +2,8 @@ import ctypes
 import os
 
 import matplotlib.pyplot as plt
-from rtwtypes import *
+
+from tensoraerospace.aerospacemodel.xflrModel.uav1.rtwtypes import real_T
 
 
 class ExtY(ctypes.Structure):

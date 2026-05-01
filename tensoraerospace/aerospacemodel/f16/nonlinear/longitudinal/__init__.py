@@ -4,7 +4,7 @@ Side-by-side replacement for the matlab.engine-backed version in
 `tensoraerospace.aerospacemodel.f16.nonlinear.longitudinal`.
 """
 
-from .inital import initial_state, initial_state_dict, set_initial_state
+from .initial import initial_state, initial_state_dict, set_initial_state
 from .model import LongitudinalF16
 
 __all__ = [

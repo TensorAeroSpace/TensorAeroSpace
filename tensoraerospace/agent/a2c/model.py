@@ -23,7 +23,7 @@ from ..base import (
     get_class_from_string,
     serialize_env,
 )
-from ..metrics import create_metric_writer, schema
+from ..metrics import MetricWriter, create_metric_writer, schema
 from .narx_critic import build_narx_features
 
 
@@ -129,8 +129,7 @@ class Actor(nn.Module):
             nn.Linear(64, n_actions),
         )
 
-        logstds_param = nn.Parameter(torch.full((n_actions,), -1.0))
-        self.register_parameter("logstds", logstds_param)
+        self.logstds = nn.Parameter(torch.full((n_actions,), -1.0))
 
     def forward(self, X):
         """Forward pass through actor network.
@@ -333,7 +332,7 @@ class A2C(BaseRLModel):
         self.steps = 0
         self.episode_reward = 0
         self.episode_length = 0
-        self.episode_rewards = []
+        self.episode_rewards: list[float] = []
         self.update_count = 0
 
         # Set device
@@ -367,7 +366,7 @@ class A2C(BaseRLModel):
         self.wandb_run_name = wandb_run_name
         self.wandb_tags = wandb_tags
         self.wandb_config = wandb_config
-        self.writer = create_metric_writer(
+        self.writer: MetricWriter = create_metric_writer(
             tb_log_dir=log_dir,
             wandb_project=wandb_project,
             wandb_entity=wandb_entity,
@@ -722,7 +721,7 @@ class A2C(BaseRLModel):
                 # Console logging
                 if i % log_freq == 0 and len(self.episode_rewards) > 0:
                     recent_rewards = self.episode_rewards[-10:]
-                    avg_reward = np.mean(recent_rewards)
+                    avg_reward = float(np.mean(recent_rewards))
                     print(
                         f"Step {self.steps} | "
                         f"Episodes: {len(self.episode_rewards)} | "
@@ -761,7 +760,6 @@ class A2C(BaseRLModel):
         """Close TensorBoard writer and cleanup resources."""
         if hasattr(self, "writer") and self.writer is not None:
             self.writer.close()
-            self.writer = None
 
     def __del__(self):
         """Cleanup when object is destroyed."""

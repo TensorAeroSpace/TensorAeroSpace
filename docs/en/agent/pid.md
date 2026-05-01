@@ -122,7 +122,7 @@ The `tune_matlab_style()` method automatically finds optimal PID coefficients us
 import gymnasium as gym
 import numpy as np
 from tensoraerospace.agent.pid import PID
-from tensoraerospace.signals.standart import unit_step
+from tensoraerospace.signals.standard import unit_step
 from tensoraerospace.utils import generate_time_period
 
 # Setup

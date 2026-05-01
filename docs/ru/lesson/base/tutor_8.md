@@ -360,7 +360,7 @@ from tensoraerospace.agent import MPC
 ```python
 import numpy as np
 from tensoraerospace.envs import ImprovedB747Env
-from tensoraerospace.signals.standart import unit_step
+from tensoraerospace.signals.standard import unit_step
 from tensoraerospace.utils import generate_time_period, convert_tp_to_sec_tp
 
 # ----- Параметры моделирования -----
@@ -486,7 +486,7 @@ $$r_t = -\left( x_t^T Q x_t + u_t^T R u_t \right)$$
 ```python
 import numpy as np
 from tensoraerospace.envs import ImprovedB747Env
-from tensoraerospace.signals.standart import unit_step
+from tensoraerospace.signals.standard import unit_step
 from tensoraerospace.utils import generate_time_period, convert_tp_to_sec_tp
 
 # ----- Настройка (аналогично предыдущему примеру) -----

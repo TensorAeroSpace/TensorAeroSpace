@@ -20,13 +20,13 @@ import csv
 import math
 import sys
 from pathlib import Path
-from typing import Iterable
+from typing import Sequence
 
 import numpy as np
 from scipy.optimize import fsolve
 
 from tensoraerospace.aerospacemodel.f16.nonlinear.angular.params import (
-    default_parameters,
+    default_parameters as default_angular_parameters,
 )
 from tensoraerospace.aerospacemodel.f16.nonlinear.damage.aidi_presets import (
     rudder_total_loss,
@@ -34,6 +34,9 @@ from tensoraerospace.aerospacemodel.f16.nonlinear.damage.aidi_presets import (
 )
 from tensoraerospace.aerospacemodel.f16.nonlinear.longitudinal.dynamics import (
     f16_ode_long,
+)
+from tensoraerospace.aerospacemodel.f16.nonlinear.longitudinal.params import (
+    default_parameters as default_longitudinal_parameters,
 )
 from tensoraerospace.agent.aidi import AIDIAgent, AIDIConfig, F16NonlinearOnboardCE
 
@@ -47,7 +50,7 @@ SCENARIOS = {
 
 
 def _solve_trim() -> tuple[float, float]:
-    params = default_parameters()
+    params = default_longitudinal_parameters()
 
     def trim_residual(z):
         alpha, stab = z
@@ -102,7 +105,7 @@ def _build_agent(method: str) -> AIDIAgent:
     return AIDIAgent(
         n_state=3,
         n_control=3,
-        onboard_ce=F16NonlinearOnboardCE(default_parameters(), perturb=1e-3),
+        onboard_ce=F16NonlinearOnboardCE(default_angular_parameters(), perturb=1e-3),
         config=cfg,
     )
 
@@ -192,7 +195,7 @@ def _emit(rows: list[dict], out_md: Path, out_csv: Path | None) -> None:
                 writer.writerow([r[c] for c in cols])
 
 
-def main(argv: Iterable[str] | None = None) -> int:
+def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="AIDI benchmark CLI")
     parser.add_argument("--env", default="f16_nonlinear_angular")
     parser.add_argument(

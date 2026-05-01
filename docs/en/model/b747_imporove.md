@@ -96,7 +96,7 @@ At each step:
 ```python
 import numpy as np
 from tensoraerospace.envs.b747 import ImprovedB747Env
-from tensoraerospace.signals.standart import sinusoid_vertical_shift
+from tensoraerospace.signals.standard import sinusoid_vertical_shift
 from tensoraerospace.utils import generate_time_period, convert_tp_to_sec_tp
 
 dt = 0.1
@@ -144,7 +144,7 @@ Use a pretrained SAC agent from HuggingFace:
 import numpy as np
 from tensoraerospace.agent.sac import SAC
 from tensoraerospace.envs.b747 import ImprovedB747Env
-from tensoraerospace.signals.standart import sinusoid_vertical_shift
+from tensoraerospace.signals.standard import sinusoid_vertical_shift
 from tensoraerospace.utils import generate_time_period, convert_tp_to_sec_tp
 
 # Build env (short, consistent with example)

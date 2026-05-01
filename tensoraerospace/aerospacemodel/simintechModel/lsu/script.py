@@ -2,11 +2,11 @@ import subprocess
 
 import numpy as np
 
-from tensoraerospace.signals.standart import unit_step
+from tensoraerospace.signals.standard import unit_step
 from tensoraerospace.utils import convert_tp_to_sec_tp, generate_time_period
 
 
-## Запускает SimInTech с указанными параметрами
+# Запускает SimInTech с указанными параметрами
 def process():
     """Launch SimInTech with specified project parameters.
 
@@ -40,7 +40,7 @@ if __name__ == "__main__":
     )  # Заданный сигнал
 
     f = open("sit_in_1.dat", "w")
-    f.write(reference_signals)
+    f.write(np.array2string(reference_signals))
     f.close()
 
     process()

@@ -1,9 +1,17 @@
 import numpy as np
 import pytest
 
+from tensoraerospace.aerospacemodel.supersonic.linear import directional
 from tensoraerospace.aerospacemodel.supersonic.linear.directional.model import (
     DirectionalSuperSonic,
 )
+
+
+def test_supersonic_directional_initial_import_and_update():
+    assert directional.initial_state is not None
+    out = directional.set_initial_state({"theta": np.deg2rad(1.0)})
+    assert isinstance(out, list)
+    assert out[0][0] == pytest.approx(np.deg2rad(1.0))
 
 
 def test_supersonic_directional_model_smoke_and_getters():

@@ -1,6 +1,6 @@
 """Gymnasium environment wrapping the pure-numpy nonlinear F-16 longitudinal model.
 
-This is the side-by-side numpy counterpart to :mod:`linear_longitudial`. It
+This is the side-by-side numpy counterpart to :mod:`linear_longitudinal`. It
 wraps :class:`tensoraerospace.aerospacemodel.f16.nonlinear.longitudinal.LongitudinalF16`
 which uses the cubic-spline aerodynamic tables ported from the matlab source.
 
@@ -15,8 +15,7 @@ Control vector::
 
 from __future__ import annotations
 
-import math
-from typing import Callable, Optional, Sequence
+from typing import Any, Callable, Literal, Optional, Sequence
 
 import gymnasium as gym
 import numpy as np
@@ -91,10 +90,12 @@ class NonlinearLongitudinalF16(gym.Env):
         state_space: list[str] | None = None,
         control_space: list[str] | None = None,
         output_space: list[str] | None = None,
-        reward_func: callable = None,
+        reward_func: (
+            Callable[[np.ndarray, np.ndarray, int], np.ndarray | float] | None
+        ) = None,
         use_reward: bool = True,
         dt: float = 0.01,
-        integrator: str = "euler",
+        integrator: Literal["euler", "rk4"] = "euler",
         control_bias: float = 0.0,
         feedforward_fn: Callable[[int, np.ndarray], float] | None = None,
         airspeed: float = 200.0,
@@ -131,6 +132,14 @@ class NonlinearLongitudinalF16(gym.Env):
         self.reward_func = (
             reward_func if reward_func is not None else self.default_reward
         )
+        self.damage_profile = damage_profile
+        self.damage_observable = damage_observable
+        self.damage_event_callback = damage_event_callback
+        self._geo_for_damage = (
+            load_f16_geometry()
+            if (damage_observable or damage_profile is not None)
+            else None
+        )
 
         model_x0 = self._build_model_initial_state(self.initial_state, self.state_space)
 
@@ -155,7 +164,10 @@ class NonlinearLongitudinalF16(gym.Env):
         )
         obs_size = len(self.state_space)
         if damage_observable:
-            obs_size += len(self._geo_for_damage.section_names())
+            geo = self._geo_for_damage
+            if geo is None:
+                raise RuntimeError("Damage observation requires F-16 geometry.")
+            obs_size += len(geo.section_names())
             obs_size += 1  # engine.thrust_factor
         self.observation_space = spaces.Box(
             low=-np.inf,
@@ -172,14 +184,6 @@ class NonlinearLongitudinalF16(gym.Env):
         self.chart_states = tuple(chart_states)
         self.trail_length = trail_length
         self.initial_pitch = float(initial_pitch)
-        self.damage_profile = damage_profile
-        self.damage_observable = damage_observable
-        self.damage_event_callback = damage_event_callback
-        self._geo_for_damage = (
-            load_f16_geometry()
-            if (damage_observable or damage_profile is not None)
-            else None
-        )
         self.damage_manager: Optional[DamageManager] = None
 
         # Damage history accumulators — populated across an episode for the
@@ -193,7 +197,7 @@ class NonlinearLongitudinalF16(gym.Env):
         self.attitude_history = np.zeros((0, 3))
         self.time_history = np.zeros((0,))
         self.chart_history: dict[str, np.ndarray] = {}
-        self._live_renderer = None
+        self._live_renderer: Any = None
 
     @staticmethod
     def _build_model_initial_state(
@@ -220,13 +224,15 @@ class NonlinearLongitudinalF16(gym.Env):
         init_args.pop("model_x0", None)
         return init_args
 
-    def _get_info(self) -> dict[str, float]:
+    def _get_info(self) -> dict[str, object]:
         return {}
 
     def _build_observation(self, base_obs: np.ndarray) -> np.ndarray:
         if not self.damage_observable or self.damage_manager is None:
             return base_obs.astype(np.float32)
         geo = self._geo_for_damage
+        if geo is None:
+            raise RuntimeError("Damage observation requires F-16 geometry.")
         names = geo.section_names()
         loss_vec = np.array(
             [self.damage_manager.state.section_loss.get(n, 0.0) for n in names],
@@ -239,7 +245,7 @@ class NonlinearLongitudinalF16(gym.Env):
 
     def step(
         self, action: np.ndarray
-    ) -> tuple[np.ndarray, float, bool, bool, dict[str, float]]:
+    ) -> tuple[np.ndarray, float, bool, bool, dict[str, object]]:
         action_deg = (
             np.asarray(action, dtype=np.float64).reshape(-1) + self.control_bias
         )
@@ -285,7 +291,7 @@ class NonlinearLongitudinalF16(gym.Env):
         # be a sliced observation, depending on selected_state_output).
         self._update_history(self.model.current_state)
 
-        reward = 1.0
+        reward: np.ndarray | float = 1.0
         if self.use_reward:
             reward = self.reward_func(
                 next_state, self.reference_signal, self.current_step
@@ -311,7 +317,7 @@ class NonlinearLongitudinalF16(gym.Env):
 
     def reset(
         self, seed: int | None = None, options: dict | None = None
-    ) -> tuple[np.ndarray, dict[str, float]]:
+    ) -> tuple[np.ndarray, dict[str, object]]:
         super().reset(seed=seed)
         self.current_step = 0
         self.done = False
@@ -325,6 +331,8 @@ class NonlinearLongitudinalF16(gym.Env):
         )
         if self.damage_profile is not None or self.damage_observable:
             geo = self._geo_for_damage
+            if geo is None:
+                raise RuntimeError("Damage mode requires F-16 geometry.")
             self.damage_manager = DamageManager(
                 geometry=geo,
                 params=self.model.param,
@@ -333,8 +341,8 @@ class NonlinearLongitudinalF16(gym.Env):
             if options and "damage_profile" in options:
                 self.damage_manager.set_profile(options["damage_profile"])
             self.damage_manager.reset(seed=seed)
-            self.model.damage_state = self.damage_manager.state
-            self.model.damage_geometry = geo
+            setattr(self.model, "damage_state", self.damage_manager.state)
+            setattr(self.model, "damage_geometry", geo)
         else:
             self.damage_manager = None
         info = self._get_info()

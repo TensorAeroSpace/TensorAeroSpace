@@ -7,7 +7,7 @@ Control (3): [stab_act, ail_act, dir_act]
 
 from __future__ import annotations
 
-from typing import Literal, Sequence, Union
+from typing import Any, Literal, Sequence, Union
 
 import numpy as np
 
@@ -83,8 +83,8 @@ class AngularF16(ModelBase):
         self.param: F16AngularParameters = default_parameters()
 
         # Damage subsystem (None = healthy aircraft, legacy behaviour)
-        self.damage_state = None
-        self.damage_geometry = None
+        self.damage_state: Any = None
+        self.damage_geometry: Any = None
 
         self.n_state = n_state
         self.x_history = [x0_arr.reshape(n_state, 1)]

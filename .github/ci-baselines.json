@@ -1,0 +1,16 @@
+{
+  "flake8": {
+    "max_total": 30
+  },
+  "ruff": {
+    "max_total": 0
+  },
+  "mypy": {
+    "max_total": 0
+  },
+  "bandit": {
+    "max_total": 114,
+    "max_medium": 83,
+    "max_high": 0
+  }
+}

@@ -21,7 +21,7 @@ from typing import Any, Callable, Literal, Optional, Sequence, Union, cast
 import numpy as np
 import torch
 import torch.nn as nn
-from tqdm import tqdm  # type: ignore[import-untyped]
+from tqdm import tqdm
 
 from ..base import (
     BaseRLModel,
@@ -181,7 +181,7 @@ def _to_serializable(obj: Any) -> Any:
         return obj.detach().cpu().tolist()
     if isinstance(obj, np.ndarray):
         return obj.tolist()
-    if is_dataclass(obj):
+    if is_dataclass(obj) and not isinstance(obj, type):
         return _to_serializable(asdict(obj))
     if isinstance(obj, dict):
         return {k: _to_serializable(v) for k, v in obj.items()}
@@ -320,9 +320,7 @@ class MPC:
                     "compile_dynamics=True requires torch.compile (PyTorch 2.x)."
                 )
             try:
-                compiled_dyn = torch.compile(
-                    self.dynamics, mode=self.compile_mode
-                )  # type: ignore[attr-defined]
+                compiled_dyn = torch.compile(self.dynamics, mode=self.compile_mode)
 
                 # IMPORTANT: compiled CUDA graphs can reuse output buffers across
                 # invocations. MPC rollouts keep intermediate states, so we must
@@ -1962,7 +1960,7 @@ class MPCAgent(BaseRLModel):
     ) -> dict[str, Any]:
         """Drop unexpected kwargs so env construction is robust to config drift."""
         try:
-            sig = inspect.signature(env_cls.__init__)
+            sig = inspect.signature(env_cls)
         except (TypeError, ValueError):
             return kwargs
 
@@ -2078,9 +2076,13 @@ class MPCAgent(BaseRLModel):
             policy_params["dynamics_lr"] = float(policy_params["dynamics_lr"])
 
         if weights_cfg is not None:
+            q_diag = _maybe_arr(weights_cfg.get("Q_diag"))
+            r_diag = _maybe_arr(weights_cfg.get("R_diag"))
+            if q_diag is None or r_diag is None:
+                raise ValueError("MPC weights config requires Q_diag and R_diag.")
             policy_params["weights"] = MPCWeights(
-                Q_diag=_maybe_arr(weights_cfg.get("Q_diag")),
-                R_diag=_maybe_arr(weights_cfg.get("R_diag")),
+                Q_diag=q_diag,
+                R_diag=r_diag,
                 S_diag=_maybe_arr(weights_cfg.get("S_diag")),
                 terminal_weight=float(weights_cfg.get("terminal_weight", 1.0)),
             )

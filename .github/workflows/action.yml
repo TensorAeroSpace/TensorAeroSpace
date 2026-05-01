@@ -7,7 +7,7 @@ on:
       - main
       - develop
     types: [opened, synchronize, reopened, ready_for_review]
-  workflow_dispatch:  # Позволяет запускать вручную
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -15,6 +15,36 @@ permissions:
   issues: write
 
 jobs:
+  version-gate:
+    name: 🏷️ Version Tag Gate
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 📥 Checkout code with tags
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: 🐍 Set up Python 3.10
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.10'
+
+      - name: 🎭 Install Poetry
+        run: |
+          python -m ensurepip --upgrade || true
+          python -m pip install --upgrade pip
+          python -m pip install poetry
+
+      - name: ⚙️ Configure Poetry
+        run: |
+          poetry config virtualenvs.create true
+          poetry config virtualenvs.in-project true
+
+      - name: 🏷️ Verify pyproject version matches latest stable tag
+        run: |
+          poetry run python scripts/version_gate.py --check-latest-tag
+
   test:
     name: 🐍 Test Python ${{ matrix.python-version }}
     runs-on: ubuntu-latest
@@ -24,154 +54,110 @@ jobs:
         python-version: ['3.10', '3.11', '3.12', '3.13']
 
     steps:
-    - name: 🧹 Free up disk space
-      run: |
-        echo "Disk usage before cleanup:"
+      - name: 🧹 Free up disk space
+        run: |
+          df -h
+          sudo rm -rf /usr/share/dotnet
+          sudo rm -rf /usr/local/lib/android
+          sudo rm -rf /opt/ghc
+          sudo rm -rf /opt/hostedtoolcache/CodeQL
+          docker system prune -af --volumes || true
+          sudo apt-get clean
+          df -h
 
+      - name: 📥 Checkout code
+        uses: actions/checkout@v5
 
-        # Remove large unnecessary packages
-        sudo rm -rf /usr/share/dotnet
-        sudo rm -rf /usr/local/lib/android
-        sudo rm -rf /opt/ghc
-        sudo rm -rf /opt/hostedtoolcache/CodeQL
+      - name: 🐍 Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v6
+        with:
+          python-version: ${{ matrix.python-version }}
 
-        # Clean Docker
-        docker system prune -af --volumes || true
+      - name: 📦 Cache Poetry dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/pypoetry
+            ~/.cache/pip
+          key: ubuntu-latest-poetry-${{ matrix.python-version }}-${{ hashFiles('**/poetry.lock') }}
+          restore-keys: |
+            ubuntu-latest-poetry-${{ matrix.python-version }}-
 
-        # Clean apt cache
-        sudo apt-get clean
+      - name: 🎭 Install Poetry
+        run: |
+          python -m ensurepip --upgrade || true
+          python -m pip install --upgrade pip
+          python -m pip install poetry
 
-        echo "Disk usage after cleanup:"
+      - name: ⚙️ Configure Poetry
+        run: |
+          poetry config virtualenvs.create true
+          poetry config virtualenvs.in-project true
 
+      - name: 🔒 Verify lock file
+        run: |
+          poetry check --lock
 
-    - name: 📥 Checkout code
-      uses: actions/checkout@v5
+      - name: 📚 Install dependencies
+        run: |
+          poetry install --with dev,test --no-interaction
 
-    - name: 🐍 Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v6
-      with:
-        python-version: ${{ matrix.python-version }}
+      - name: 🔍 Fatal lint check
+        run: |
+          poetry run flake8 tensoraerospace --count --select=E9,F63,F7,F82 --show-source --statistics
 
-    - name: 📦 Cache Poetry dependencies
-      uses: actions/cache@v4
-      with:
-        path: |
-          ~/.cache/pypoetry
-          ~/.cache/pip
-        key: ubuntu-latest-poetry-${{ matrix.python-version }}-${{ hashFiles('**/poetry.lock') }}
-        restore-keys: |
-          ubuntu-latest-poetry-${{ matrix.python-version }}-
+      - name: 🧪 Run tests with pytest
+        run: |
+          poetry run pytest tests/ -v --tb=short --junitxml=pytest.xml \
+            --ignore=tests/agents/a2c_narx_learner_test.py \
+            --ignore=tests/optimization/ray_test.py
 
-    - name: 🎭 Install Poetry
-      run: |
-        python -m ensurepip --upgrade || true
-        python -m pip install --upgrade pip
-        python -m pip install poetry
+      - name: 📊 Run tests with coverage
+        if: matrix.python-version == '3.11'
+        run: |
+          set -o pipefail
+          poetry run pytest --maxfail=1 --disable-warnings \
+            --cov=tensoraerospace \
+            --cov-report=xml:coverage.xml \
+            --cov-report=term-missing:skip-covered \
+            --ignore=tests/agents/a2c_narx_learner_test.py \
+            --ignore=tests/optimization/ray_test.py | tee pytest-coverage.txt
 
-    - name: ⚙️ Configure Poetry
-      run: |
-        poetry config virtualenvs.create true
-        poetry config virtualenvs.in-project true
+      - name: ☁️ Upload coverage to Coveralls
+        if: ${{ matrix.python-version == '3.11' && success() && hashFiles('coverage.xml') != '' }}
+        uses: coverallsapp/github-action@v2
+        continue-on-error: true
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          file: ./coverage.xml
+          format: cobertura
 
-    - name: 🔄 Check and update lock file if needed
-      run: |
-        if ! poetry check --lock; then
-          echo "Lock file is outdated, updating..."
-          poetry lock
-        fi
+      - name: 💬 Pytest coverage comment
+        if: github.event_name == 'pull_request' && matrix.python-version == '3.11'
+        uses: MishaKav/pytest-coverage-comment@v1.1.52
+        with:
+          pytest-coverage-path: ./pytest-coverage.txt
+          pytest-xml-coverage-path: ./coverage.xml
+          title: 📊 TensorAeroSpace Coverage Report
+          badge-title: Coverage
+          hide-badge: false
+          hide-report: true
+          create-new-comment: false
+          hide-comment: false
+          report-only-changed-files: true
+          xml-skip-covered: true
+          remove-links-to-files: true
+          remove-links-to-lines: true
+          remove-link-from-badge: true
+          unique-id-for-comment: python3.11
+          junitxml-path: ./pytest.xml
+          junitxml-title: 🧪 TensorAeroSpace Test Results
 
-    - name: 📚 Install dependencies
-      run: |
-        poetry install --with dev,test
-
-    - name: 🔍 Lint with flake8 (Ubuntu only)
-      run: |
-        poetry run flake8 tensoraerospace --count --select=E9,F63,F7,F82 --show-source --statistics
-        poetry run flake8 tensoraerospace --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
-
-    - name: 🧪 Run tests with pytest
-      run: |
-        poetry run pytest tests/ -v --tb=short --junitxml=pytest.xml \
-          --ignore=tests/agents/a2c_narx_learner_test.py \
-          --ignore=tests/optimization/ray_test.py
-
-    - name: Run tests with coverage
-      if: matrix.python-version == '3.11'
-      run: |
-        poetry run pytest --maxfail=1 --disable-warnings \
-              --cov=tensoraerospace \
-              --cov-report=xml:coverage.xml \
-              --cov-report=term-missing:skip-covered \
-              --ignore=tests/agents/a2c_narx_learner_test.py \
-              --ignore=tests/optimization/ray_test.py | tee pytest-coverage.txt
-
-    - name: Upload coverage to Coveralls
-      if: ${{ matrix.python-version == '3.11' && success() && hashFiles('coverage.xml') != '' }}
-      uses: coverallsapp/github-action@v2
-      continue-on-error: true
-      with:
-        github-token: ${{ secrets.GITHUB_TOKEN }}
-        file: ./coverage.xml
-        format: cobertura
-
-    - name: 💬 Pytest coverage comment
-      if: github.event_name == 'pull_request' && matrix.python-version == '3.11'
-      uses: MishaKav/pytest-coverage-comment@v1.1.52
-      with:
-        pytest-coverage-path: ./pytest-coverage.txt
-        pytest-xml-coverage-path: ./coverage.xml
-        title: 📊 TensorAeroSpace Coverage Report — [Coveralls](https://coveralls.io/github/${{ github.repository }}?branch=${{ github.head_ref }})
-        badge-title: Coverage
-        hide-badge: false
-        hide-report: true
-        create-new-comment: false
-        hide-comment: false
-        report-only-changed-files: true
-        xml-skip-covered: true
-        remove-links-to-files: true
-        remove-links-to-lines: true
-        remove-link-from-badge: true
-        unique-id-for-comment: python3.11
-        junitxml-path: ./pytest.xml
-        junitxml-title: 🧪 TensorAeroSpace Test Results
-
-    - name: 🔗 Add Coveralls link comment
-      if: github.event_name == 'pull_request' && matrix.python-version == '3.11'
-      run: |
-        PCT=$(python - <<'PY'
-        import xml.etree.ElementTree as ET
-        try:
-            root=ET.parse('coverage.xml').getroot()
-            pct=float(root.attrib.get('line-rate','0'))*100
-            print(f"{pct:.1f}")
-        except Exception:
-            print("0")
-        PY
-        )
-        cat > coverage-link.md <<MD
-        ### 🔗 Coverage Links
-        - Coverage: ${PCT}% — [Coveralls report](https://coveralls.io/github/${{ github.repository }}?branch=${{ github.head_ref }})
-        MD
-    - name: 💬 Post sticky PR comment (Coveralls link)
-      if: github.event_name == 'pull_request' && matrix.python-version == '3.11'
-      uses: marocchino/sticky-pull-request-comment@v3
-      with:
-        recreate: true
-        header: coverage-links
-        path: coverage-link.md
-    
-    - name: 🧹 Clean up temporary files
-      if: always()
-      run: |
-        # Remove test artifacts and cache
-        rm -rf .pytest_cache
-        rm -rf .coverage
-        rm -rf htmlcov
-        rm -rf .tox
-        # Clean pip cache
-        pip cache purge || true
-        echo "Disk usage after test cleanup:"
-
+      - name: 🧹 Clean up temporary files
+        if: always()
+        run: |
+          rm -rf .pytest_cache .coverage htmlcov .tox
+          pip cache purge || true
 
   test-matrix-result:
     name: ✅ All Python versions passed
@@ -188,262 +174,347 @@ jobs:
           fi
           echo "All Python versions (3.10/3.11/3.12/3.13) passed."
 
+  quality-gates:
+    name: 🧱 Quality Gates
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v5
+
+      - name: 🐍 Set up Python 3.10
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.10'
+
+      - name: 📦 Cache Poetry dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/pypoetry
+            ~/.cache/pip
+          key: ubuntu-latest-poetry-quality-3.10-${{ hashFiles('**/poetry.lock') }}
+          restore-keys: |
+            ubuntu-latest-poetry-quality-3.10-
+
+      - name: 🎭 Install Poetry
+        run: |
+          python -m ensurepip --upgrade || true
+          python -m pip install --upgrade pip
+          python -m pip install poetry
+
+      - name: ⚙️ Configure Poetry
+        run: |
+          poetry config virtualenvs.create true
+          poetry config virtualenvs.in-project true
+
+      - name: 🔒 Verify lock file
+        run: |
+          poetry check --lock
+
+      - name: 📚 Install main and dev dependencies
+        run: |
+          poetry install --only main,dev --no-interaction
+
+      - name: 🎨 Check formatting with black
+        run: |
+          poetry run black --workers 1 --check --diff tensoraerospace/
+
+      - name: 📏 Check import sorting with isort
+        run: |
+          poetry run isort --check-only --diff tensoraerospace/
+
+      - name: 🔍 Fatal lint check
+        run: |
+          poetry run flake8 tensoraerospace --count --select=E9,F63,F7,F82 --show-source --statistics
+
+      - name: 🧱 Run baseline quality gates
+        run: |
+          poetry run python scripts/ci_quality_gate.py flake8 ruff mypy
+
   docs-coverage:
     name: 📚 Documentation Coverage
     runs-on: ubuntu-latest
-    needs: test-matrix-result
+    needs: quality-gates
 
     steps:
-    - name: 🧹 Free up disk space
-      run: |
-        echo "Disk usage before cleanup:"
-        
-        
-        # Remove large unnecessary packages
-        sudo rm -rf /usr/share/dotnet
-        sudo rm -rf /usr/local/lib/android
-        sudo rm -rf /opt/ghc
-        sudo rm -rf /opt/hostedtoolcache/CodeQL
-        
-        # Clean Docker
-        docker system prune -af --volumes || true
-        
-        # Clean apt cache
-        sudo apt-get clean
-        
-        echo "Disk usage after cleanup:"
-        
-    
-    - name: 📥 Checkout code
-      uses: actions/checkout@v5
+      - name: 📥 Checkout code
+        uses: actions/checkout@v5
 
-    - name: 🐍 Set up Python
-      uses: actions/setup-python@v6
-      with:
-        python-version: '3.10'
+      - name: 🐍 Set up Python 3.10
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.10'
 
-    - name: 📦 Cache Poetry dependencies
-      uses: actions/cache@v4
-      with:
-        path: |
-          ~/.cache/pypoetry
-          ~/.cache/pip
-        key: ubuntu-latest-poetry-3.10-${{ hashFiles('**/poetry.lock') }}
-        restore-keys: |
-          ubuntu-latest-poetry-3.10-
+      - name: 📦 Cache Poetry dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/pypoetry
+            ~/.cache/pip
+          key: ubuntu-latest-poetry-docs-3.10-${{ hashFiles('**/poetry.lock') }}
+          restore-keys: |
+            ubuntu-latest-poetry-docs-3.10-
 
-    - name: 🎭 Install Poetry
-      run: |
-        python -m ensurepip --upgrade || true
-        python -m pip install --upgrade pip
-        python -m pip install poetry
+      - name: 🎭 Install Poetry
+        run: |
+          python -m ensurepip --upgrade || true
+          python -m pip install --upgrade pip
+          python -m pip install poetry
 
-    - name: ⚙️ Configure Poetry
-      run: |
-        poetry config virtualenvs.create true
-        poetry config virtualenvs.in-project true
+      - name: ⚙️ Configure Poetry
+        run: |
+          poetry config virtualenvs.create true
+          poetry config virtualenvs.in-project true
 
-    - name: 📚 Install dependencies
-      run: |
-        poetry install --with dev
+      - name: 🔒 Verify lock file
+        run: |
+          poetry check --lock
 
-    - name: 📖 Run Documentation Coverage
-      run: |
-        # Не падаем по порогу, чтобы всё равно опубликовать комментарий
-        poetry run docstr-coverage ./tensoraerospace \
-          --skip-magic --skip-init --skip-file-doc \
-          --fail-under=70.0 2>&1 | tee docstr-coverage.txt || true
+      - name: 📚 Install dependencies
+        run: |
+          poetry install --with dev --no-interaction
 
-    - name: 🔢 Extract docstring coverage percent
-      id: docstr
-      shell: bash
-      run: |
-        PY_OUTPUT=$(python - <<'PY'
-        import re
-        with open('docstr-coverage.txt', encoding='utf-8', errors='ignore') as f:
-            txt=f.read()
-        pct=None
-        # 1) Самый надёжный способ: посчитать из Needed/Found
-        m=re.search(r"Needed:\s*(\d+)\s*[-|].*?Found:\s*(\d+)", txt, re.I|re.S)
-        if m:
-            needed=int(m.group(1)) or 1
-            found=int(m.group(2))
-            pct=f"{found*100.0/needed:.1f}"
-        # 2) Пытаться вытащить из итоговой строки
-        if pct is None:
-            for p in (
-                r"Total\s+coverage:\s*([0-9]+(?:\.[0-9]+)?)%",
-                r"overall\s+documentation\s+coverage\s+is\s+([0-9]+(?:\.[0-9]+)?)%",
-            ):
-                m=re.search(p, txt, re.I)
-                if m:
-                    pct=m.group(1)
-                    break
-        # 3) Фоллбек: любое адекватное последнее число процентов
-        if pct is None:
-            ms=re.findall(r"([0-9]+(?:\.[0-9]+)?)%", txt)
-            pct=ms[-1] if ms else '0'
-        grade_match=re.search(r"Grade:\s*([A-Za-z]+)", txt)
-        grade=grade_match.group(1) if grade_match else ''
-        print(f"{pct} {grade}")
-        PY
-        )
-        read -r PCT GRADE <<< "$PY_OUTPUT"
-        echo "pct=$PCT" >> $GITHUB_OUTPUT
-        echo "grade=$GRADE" >> $GITHUB_OUTPUT
-        PCT_INT=${PCT%.*}
-        COLOR=red
-        if [ "$PCT_INT" -ge 90 ]; then COLOR=brightgreen; elif [ "$PCT_INT" -ge 80 ]; then COLOR=green; elif [ "$PCT_INT" -ge 70 ]; then COLOR=yellowgreen; elif [ "$PCT_INT" -ge 60 ]; then COLOR=yellow; else COLOR=orange; fi
-        echo "color=$COLOR" >> $GITHUB_OUTPUT
+      - name: 📖 Run documentation coverage
+        run: |
+          set -o pipefail
+          poetry run docstr-coverage ./tensoraerospace \
+            --skip-magic --skip-init --skip-file-doc \
+            --fail-under=70.0 2>&1 | tee docstr-coverage.txt
 
-    - name: 📝 Build PR comment (docstring coverage)
-      if: github.event_name == 'pull_request'
-      run: |
-        cat > docstr-comment.md <<MD
-        ### 📚 Docstring coverage
+      - name: 🔢 Extract docstring coverage percent
+        id: docstr
+        shell: bash
+        run: |
+          PY_OUTPUT=$(python - <<'PY'
+          import re
+          with open('docstr-coverage.txt', encoding='utf-8', errors='ignore') as file:
+              text = file.read()
+          matches = re.findall(r"([0-9]+(?:\.[0-9]+)?)%", text)
+          pct = matches[-1] if matches else "0"
+          grade_match = re.search(r"Grade:\s*([A-Za-z]+)", text)
+          grade = grade_match.group(1) if grade_match else ""
+          print(f"{pct} {grade}")
+          PY
+          )
+          read -r PCT GRADE <<< "$PY_OUTPUT"
+          echo "pct=$PCT" >> "$GITHUB_OUTPUT"
+          echo "grade=$GRADE" >> "$GITHUB_OUTPUT"
+          PCT_INT=${PCT%.*}
+          COLOR=red
+          if [ "$PCT_INT" -ge 90 ]; then
+            COLOR=brightgreen
+          elif [ "$PCT_INT" -ge 80 ]; then
+            COLOR=green
+          elif [ "$PCT_INT" -ge 70 ]; then
+            COLOR=yellowgreen
+          elif [ "$PCT_INT" -ge 60 ]; then
+            COLOR=yellow
+          else
+            COLOR=orange
+          fi
+          echo "color=$COLOR" >> "$GITHUB_OUTPUT"
 
-        ![Docstring coverage](https://img.shields.io/badge/docstring--coverage-${{ steps.docstr.outputs.pct }}%25-${{ steps.docstr.outputs.color }})
+      - name: 📝 Build PR comment
+        if: github.event_name == 'pull_request'
+        run: |
+          cat > docstr-comment.md <<MD
+          ### 📚 Docstring coverage
 
-        Coverage: ${{ steps.docstr.outputs.pct }}%${{ steps.docstr.outputs.grade && format(' — Grade: {0}', steps.docstr.outputs.grade) || '' }}
+          ![Docstring coverage](https://img.shields.io/badge/docstring--coverage-${{ steps.docstr.outputs.pct }}%25-${{ steps.docstr.outputs.color }})
 
+          Coverage: ${{ steps.docstr.outputs.pct }}%
+          MD
 
-    - name: 💬 Post sticky PR comment (docstring coverage)
-      if: github.event_name == 'pull_request'
-      uses: marocchino/sticky-pull-request-comment@v3
-      with:
-        recreate: true
-        path: docstr-comment.md
+      - name: 💬 Post sticky PR comment
+        if: github.event_name == 'pull_request'
+        uses: marocchino/sticky-pull-request-comment@v3
+        with:
+          recreate: true
+          header: docstring-coverage
+          path: docstr-comment.md
 
   security:
     name: 🔒 Security Scan
     runs-on: ubuntu-latest
-    needs: test-matrix-result
+    needs: quality-gates
 
     steps:
-    - name: 🧹 Free up disk space
-      run: |
-        sudo rm -rf /usr/share/dotnet
-        sudo rm -rf /usr/local/lib/android
-        sudo rm -rf /opt/ghc
-        sudo rm -rf /opt/hostedtoolcache/CodeQL
-        docker system prune -af --volumes || true
-        sudo apt-get clean
-    
-    - name: 📥 Checkout code
-      uses: actions/checkout@v5
+      - name: 📥 Checkout code
+        uses: actions/checkout@v5
 
-    - name: 🐍 Set up Python
-      uses: actions/setup-python@v6
-      with:
-        python-version: '3.10'
+      - name: 🐍 Set up Python 3.10
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.10'
 
-    - name: 🎭 Install Poetry
-      run: |
-        python -m ensurepip --upgrade || true
-        python -m pip install --upgrade pip
-        python -m pip install poetry
+      - name: 📦 Cache Poetry dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/pypoetry
+            ~/.cache/pip
+          key: ubuntu-latest-poetry-security-3.10-${{ hashFiles('**/poetry.lock') }}
+          restore-keys: |
+            ubuntu-latest-poetry-security-3.10-
 
-    - name: 📚 Install dependencies
-      run: |
-        poetry install --with dev
+      - name: 🎭 Install Poetry
+        run: |
+          python -m ensurepip --upgrade || true
+          python -m pip install --upgrade pip
+          python -m pip install poetry
 
-    - name: 🔍 Run safety check
-      run: |
-        poetry run safety check --json || true
+      - name: ⚙️ Configure Poetry
+        run: |
+          poetry config virtualenvs.create true
+          poetry config virtualenvs.in-project true
 
-    - name: 🛡️ Run bandit security scan
-      run: |
-        poetry run bandit -r tensoraerospace -f json || true
+      - name: 🔒 Verify lock file
+        run: |
+          poetry check --lock
+
+      - name: 📚 Install dev dependencies
+        run: |
+          poetry install --only dev --no-interaction
+
+      - name: 🛡️ Run Bandit baseline gate
+        run: |
+          poetry run python scripts/ci_quality_gate.py bandit
+
+      - name: 🔍 Run dependency audit baseline gate
+        run: |
+          poetry run python -m pip install --quiet "pip-audit>=2.10,<3"
+          poetry run python scripts/dependency_audit_gate.py
 
   build:
     name: 🏗️ Build Package
     runs-on: ubuntu-latest
-    needs: [test-matrix-result, docs-coverage]
+    needs: [version-gate, test-matrix-result, docs-coverage, security]
 
     steps:
-    - name: 🧹 Free up disk space
-      run: |
-        sudo rm -rf /usr/share/dotnet
-        sudo rm -rf /usr/local/lib/android
-        sudo rm -rf /opt/ghc
-        sudo rm -rf /opt/hostedtoolcache/CodeQL
-        docker system prune -af --volumes || true
-        sudo apt-get clean
-    
-    - name: 📥 Checkout code
-      uses: actions/checkout@v5
+      - name: 📥 Checkout code
+        uses: actions/checkout@v5
 
-    - name: 🐍 Set up Python
-      uses: actions/setup-python@v6
-      with:
-        python-version: '3.10'
+      - name: 🐍 Set up Python 3.10
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.10'
 
-    - name: 🎭 Install Poetry
-      run: |
-        python -m ensurepip --upgrade || true
-        python -m pip install --upgrade pip
-        python -m pip install poetry
+      - name: 📦 Cache Poetry dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/pypoetry
+            ~/.cache/pip
+          key: ubuntu-latest-poetry-build-3.10-${{ hashFiles('**/poetry.lock') }}
+          restore-keys: |
+            ubuntu-latest-poetry-build-3.10-
 
-    - name: 📚 Install dependencies
-      run: |
-        poetry install
+      - name: 🎭 Install Poetry
+        run: |
+          python -m ensurepip --upgrade || true
+          python -m pip install --upgrade pip
+          python -m pip install poetry
 
-    - name: 🏷️ Set version suffix (branch + short SHA)
-      shell: bash
-      run: |
-        BASE_VERSION=$(poetry version -s)
-        # PEP 440: TestPyPI/PyPI не принимают локальные версии с '+'
-        # Используем допустимый dev-релиз с числовым суффиксом (timestamp)
-        NEW_VERSION="${BASE_VERSION}.dev$(date +%Y%m%d%H%M%S)"
-        echo "Setting dynamic version: $NEW_VERSION"
-        poetry version "$NEW_VERSION"
+      - name: ⚙️ Configure Poetry
+        run: |
+          poetry config virtualenvs.create true
+          poetry config virtualenvs.in-project true
 
-    - name: 🏗️ Build package
-      run: |
-        poetry build
+      - name: 🔒 Verify lock file
+        run: |
+          poetry check --lock
 
-    - name: 📦 Upload build artifacts
-      uses: actions/upload-artifact@v7
-      continue-on-error: true
-      with:
-        name: dist
-        path: dist/
+      - name: 📚 Install dependencies
+        run: |
+          poetry install --with dev --no-interaction
 
-  publish-github-packages:
-    name: 📦 Publish to TestPyPI
+      - name: 🏷️ Set version suffix
+        shell: bash
+        run: |
+          BASE_VERSION=$(poetry version -s)
+          NEW_VERSION="${BASE_VERSION}.dev$(date +%Y%m%d%H%M%S)"
+          echo "Setting dynamic version: $NEW_VERSION"
+          poetry version "$NEW_VERSION"
+
+      - name: 🏗️ Build package
+        run: |
+          poetry build
+
+      - name: ✅ Verify package metadata
+        run: |
+          poetry run twine check dist/*
+
+      - name: 📦 Run package gate
+        run: |
+          poetry run python scripts/package_gate.py
+
+      - name: 📤 Upload build artifacts
+        uses: actions/upload-artifact@v7
+        with:
+          name: dist
+          path: dist/
+          retention-days: 7
+
+  package-install-matrix:
+    name: 📦 Wheel Install Python ${{ matrix.python-version }}
     runs-on: ubuntu-latest
     needs: build
-    if: (github.event_name == 'push' && startsWith(github.ref, 'refs/heads/')) || (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository)
-    permissions:
-      contents: read
-      packages: write
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ['3.10', '3.11', '3.12', '3.13']
 
     steps:
-    - name: 📥 Download build artifacts
-      uses: actions/download-artifact@v8
-      with:
-        name: dist
-        path: dist
+      - name: 📥 Download build artifacts
+        uses: actions/download-artifact@v8
+        with:
+          name: dist
+          path: dist
 
-    - name: 🐍 Set up Python
-      uses: actions/setup-python@v6
-      with:
-        python-version: '3.10'
+      - name: 🐍 Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v6
+        with:
+          python-version: ${{ matrix.python-version }}
 
-    - name: 📦 Install Twine
-      run: |
-        python -m pip install --upgrade pip
-        pip install twine
+      - name: 📦 Cache pip downloads
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ubuntu-latest-wheel-install-${{ matrix.python-version }}-${{ hashFiles('poetry.lock') }}
+          restore-keys: |
+            ubuntu-latest-wheel-install-${{ matrix.python-version }}-
 
-    - name: 🚀 Publish to TestPyPI
-      env:
-        TWINE_USERNAME: __token__
-        TWINE_PASSWORD: ${{ secrets.PYPI_TEST }}
-      run: |
-        twine upload \
-          --repository-url https://test.pypi.org/legacy/ \
-          dist/*
+      - name: 📦 Install built wheel
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install dist/*.whl
 
+      - name: 🧪 Import installed package
+        run: |
+          python - <<'PY'
+          import importlib.metadata as metadata
+          import tensoraerospace
+
+          print(f"installed tensoraerospace {metadata.version('tensoraerospace')}")
+          print(f"module path: {tensoraerospace.__file__}")
+          PY
+
+  package-install-result:
+    name: 📦 Wheel installs on all Python versions
+    runs-on: ubuntu-latest
+    needs: package-install-matrix
+    if: always()
+
+    steps:
+      - name: ❗ Fail if any wheel install check failed
+        run: |
+          echo "Aggregated result of the wheel install matrix: ${{ needs.package-install-matrix.result }}"
+          if [ "${{ needs.package-install-matrix.result }}" != "success" ]; then
+            echo "::error::Built wheel did not install/import on every Python version (3.10/3.11/3.12/3.13). Blocking the PR."
+            exit 1
+          fi
+          echo "Built wheel installed and imported on Python 3.10/3.11/3.12/3.13."
 
   readthedocs-build:
     name: 📚 Trigger Read the Docs (develop)
@@ -452,24 +523,22 @@ jobs:
     if: github.event_name == 'pull_request' && (github.base_ref == 'develop' || (github.base_ref == 'main' && github.head_ref == 'develop'))
 
     steps:
-    - name: 🔔 Trigger RTD webhook for develop
-      env:
-        RTD_WEBHOOK_URL: ${{ secrets.READTHEDOCS_WEBHOOK_URL }}
-        RTD_WEBHOOK_SECRET: ${{ secrets.READTHEDOCS_WEBHOOK_SECRET }}
-      run: |
-        if [ -z "$RTD_WEBHOOK_URL" ] || [ -z "$RTD_WEBHOOK_SECRET" ]; then
-          echo "READTHEDOCS_WEBHOOK_URL/SECRET not set. Skipping RTD trigger." && exit 0
-        fi
-        # Send the original PR event payload so RTD can build the correct external version
-        # Compute HMAC signatures over the exact body
-        SIG_SHA1=$(openssl dgst -sha1 -hmac "$RTD_WEBHOOK_SECRET" "$GITHUB_EVENT_PATH" | awk '{print $2}')
-        SIG_SHA256=$(openssl dgst -sha256 -hmac "$RTD_WEBHOOK_SECRET" "$GITHUB_EVENT_PATH" | awk '{print $2}')
-        curl -sS -X POST \
-          -H "Content-Type: application/json" \
-          -H "X-GitHub-Event: pull_request" \
-          -H "X-Hub-Signature: sha1=${SIG_SHA1}" \
-          -H "X-Hub-Signature-256: sha256=${SIG_SHA256}" \
-          "$RTD_WEBHOOK_URL" \
-          --data-binary @"$GITHUB_EVENT_PATH" \
-          | tee rtd_response.json
-        echo "RTD response:" && cat rtd_response.json
+      - name: 🔔 Trigger RTD webhook for develop
+        env:
+          RTD_WEBHOOK_URL: ${{ secrets.READTHEDOCS_WEBHOOK_URL }}
+          RTD_WEBHOOK_SECRET: ${{ secrets.READTHEDOCS_WEBHOOK_SECRET }}
+        run: |
+          if [ -z "$RTD_WEBHOOK_URL" ] || [ -z "$RTD_WEBHOOK_SECRET" ]; then
+            echo "READTHEDOCS_WEBHOOK_URL/SECRET not set. Skipping RTD trigger."
+            exit 0
+          fi
+          SIG_SHA1=$(openssl dgst -sha1 -hmac "$RTD_WEBHOOK_SECRET" "$GITHUB_EVENT_PATH" | awk '{print $2}')
+          SIG_SHA256=$(openssl dgst -sha256 -hmac "$RTD_WEBHOOK_SECRET" "$GITHUB_EVENT_PATH" | awk '{print $2}')
+          curl -sS -X POST \
+            -H "Content-Type: application/json" \
+            -H "X-GitHub-Event: pull_request" \
+            -H "X-Hub-Signature: sha1=${SIG_SHA1}" \
+            -H "X-Hub-Signature-256: sha256=${SIG_SHA256}" \
+            "$RTD_WEBHOOK_URL" \
+            --data-binary @"$GITHUB_EVENT_PATH" \
+            | tee rtd_response.json

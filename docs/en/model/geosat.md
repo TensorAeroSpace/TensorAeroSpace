@@ -1,6 +1,6 @@
 # Geostationary Satellite (GeoSat) — Longitudinal Dynamics
 
-Geostationary satellites are spacecraft on geostationary orbits stationary relative to Earth’s surface. This page mirrors the ELV layout: quick start, math model, derivative tables, and API.
+Geostationary satellites are spacecraft on geosationary orbits stationary relative to Earth’s surface. This page mirrors the ELV layout: quick start, math model, derivative tables, and API.
 
 <div class="grid cards" markdown>
 
@@ -152,7 +152,7 @@ Higher reward (closer to 0) indicates better tracking performance. A custom rewa
 
     from tensoraerospace.envs import GeoSatEnv
     from tensoraerospace.utils import generate_time_period
-    from tensoraerospace.signals.standart import unit_step
+    from tensoraerospace.signals.standard import unit_step
 
     dt = 0.01
     tp = generate_time_period(tn=20, dt=dt)
@@ -204,4 +204,4 @@ Higher reward (closer to 0) indicates better tracking performance. A custom rewa
 
 === "Gymnasium environment"
 
-    ::: tensoraerospace.envs.geostat.GeoSatEnv
+    ::: tensoraerospace.envs.geosat.GeoSatEnv

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import cast
+
 import torch
 from torch import nn
 
@@ -46,7 +48,7 @@ class ZNet(nn.Module):
         x = torch.cat([s, a], dim=1)
         taus = taus.unsqueeze(-1)  # (B, N, 1)
         z = self.iqn(x, taus)  # (B, N, 1)
-        return z.squeeze(2)  # (B, N)
+        return cast(torch.Tensor, z.squeeze(2))  # (B, N)
 
 
 class IQN(nn.Module):
@@ -103,7 +105,8 @@ class IQN(nn.Module):
 
         x = self.input_layer(x)  # (B, H)
 
-        cos = torch.cos(taus * self.const_pi_vec)  # (B, N, C)
+        const_pi_vec = cast(torch.Tensor, self.const_pi_vec)
+        cos = torch.cos(taus * const_pi_vec)  # (B, N, C)
         cos = cos.view(B * N, C)  # (B*N, C)
         cos_out = self.embedding_layer(cos)  # (B*N, H)
         cos_out = cos_out.view(B, N, H)  # (B, N, H)
@@ -112,6 +115,6 @@ class IQN(nn.Module):
         h = torch.mul(x_reshaped, cos_out)  # (B, N, H)
 
         h = h.view(B * N, H)  # (B*N, H)
-        out = self.hidden_layers(h)  # (B*N, A)
+        out = cast(torch.Tensor, self.hidden_layers(h))  # (B*N, A)
         out = out.view(B, N, self.A)  # (B, N, A)
         return out

@@ -108,10 +108,11 @@ class HyperParamOptimizationRay(HyperParamOptimizationBase):
         params = getattr(best, "params", {})
         return dict(params) if isinstance(params, dict) else {}
 
-    def plot_parms(self):
+    def plot_parms(self, *args: Any, **kwargs: Any) -> Any:
         """Plot optimization history (not implemented yet).
 
         Raises:
             NotImplementedError: Always.
         """
+        _ = (args, kwargs)
         raise NotImplementedError()

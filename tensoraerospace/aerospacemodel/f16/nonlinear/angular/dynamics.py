@@ -59,7 +59,6 @@ def f16_ode_6dof(
     wy = float(x[I_WY])
     wz = float(x[I_WZ])
     gamma = float(x[I_GAMMA])
-    psi = float(x[I_PSI])
     theta = float(x[I_THETA])
     stab = float(x[I_STAB])
     dstab = float(x[I_DSTAB])

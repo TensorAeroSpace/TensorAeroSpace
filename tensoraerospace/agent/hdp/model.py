@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Any, Optional, Union
+from typing import Any, Optional, Union, cast
 
 import torch
 
@@ -295,11 +295,14 @@ class HDP(ADP):
         Returns:
             HDP: Fully initialized agent with restored weights.
         """
-        return super().from_pretrained(
-            repo_name,
-            access_token=access_token,
-            version=version,
-            load_gradients=load_gradients,
+        return cast(
+            "HDP",
+            super().from_pretrained(
+                repo_name,
+                access_token=access_token,
+                version=version,
+                load_gradients=load_gradients,
+            ),
         )
 
     def publish_to_hub(

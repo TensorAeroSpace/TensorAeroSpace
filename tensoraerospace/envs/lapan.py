@@ -5,7 +5,7 @@ LAPAN Surveillance Aircraft (LSU)-05 NG model, including a legacy environment
 (``LinearLongitudinalLAPAN``) and a normalized variant (``ImprovedLAPANEnv``).
 """
 
-from typing import Any, Callable
+from typing import Callable
 
 import gymnasium as gym
 import numpy as np

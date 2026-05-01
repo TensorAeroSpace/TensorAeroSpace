@@ -4,7 +4,7 @@ from unittest.mock import patch
 import numpy as np
 import pytest
 
-from tensoraerospace.signals.standart import (
+from tensoraerospace.signals.standard import (
     chirp,
     constant_line,
     damped_sinusoid,

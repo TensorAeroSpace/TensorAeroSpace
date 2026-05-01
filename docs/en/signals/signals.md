@@ -13,7 +13,7 @@ TensorAeroSpace provides **17 types of signals** for comprehensive system testin
 
 ```python
 from tensoraerospace.utils import generate_time_period
-from tensoraerospace.signals.standart import unit_step, sinusoid, chirp, doublet
+from tensoraerospace.signals.standard import unit_step, sinusoid, chirp, doublet
 from tensoraerospace.signals.random import full_random_signal
 import numpy as np
 
@@ -49,13 +49,13 @@ A classic step input for exciting transient processes and analyzing system respo
 
 === "API"
 
-    ::: tensoraerospace.signals.standart.unit_step
+    ::: tensoraerospace.signals.standard.unit_step
 
 === "Example"
 
     ```python
     from tensoraerospace.utils import generate_time_period
-    from tensoraerospace.signals.standart import unit_step
+    from tensoraerospace.signals.standard import unit_step
 
     tp = generate_time_period(tn=20)
     u = unit_step(degree=5, tp=tp, time_step=10, output_rad=False)
@@ -71,13 +71,13 @@ Linear increasing signal for testing tracking capability of control systems.
 
 === "API"
 
-    ::: tensoraerospace.signals.standart.ramp
+    ::: tensoraerospace.signals.standard.ramp
 
 === "Example"
 
     ```python
     from tensoraerospace.utils import generate_time_period
-    from tensoraerospace.signals.standart import ramp
+    from tensoraerospace.signals.standard import ramp
 
     tp = generate_time_period(tn=20)
     u = ramp(tp, slope=0.5, time_start=2.0)
@@ -93,13 +93,13 @@ Rectangular pulse for analyzing impulse response and transient behavior.
 
 === "API"
 
-    ::: tensoraerospace.signals.standart.pulse
+    ::: tensoraerospace.signals.standard.pulse
 
 === "Example"
 
     ```python
     from tensoraerospace.utils import generate_time_period
-    from tensoraerospace.signals.standart import pulse
+    from tensoraerospace.signals.standard import pulse
 
     tp = generate_time_period(tn=20)
     u = pulse(tp, amplitude=5.0, time_start=5.0, width=3.0)
@@ -115,13 +115,13 @@ Constant reference signal for setpoint tracking and steady-state analysis.
 
 === "API"
 
-    ::: tensoraerospace.signals.standart.constant_line
+    ::: tensoraerospace.signals.standard.constant_line
 
 === "Example"
 
     ```python
     from tensoraerospace.utils import generate_time_period
-    from tensoraerospace.signals.standart import constant_line
+    from tensoraerospace.signals.standard import constant_line
 
     tp = generate_time_period(tn=20)
     u = constant_line(tp, value_state=3.0)
@@ -139,13 +139,13 @@ Used for frequency analysis and testing linear subsystems.
 
 === "API"
 
-    ::: tensoraerospace.signals.standart.sinusoid
+    ::: tensoraerospace.signals.standard.sinusoid
 
 === "Example"
 
     ```python
     from tensoraerospace.utils import generate_time_period
-    from tensoraerospace.signals.standart import sinusoid
+    from tensoraerospace.signals.standard import sinusoid
 
     tp = generate_time_period(tn=20)
     u = sinusoid(tp=tp, amplitude=10, frequency=0.01)
@@ -161,13 +161,13 @@ Sinusoidal signal with DC offset for testing systems with non-zero operating poi
 
 === "API"
 
-    ::: tensoraerospace.signals.standart.sinusoid_vertical_shift
+    ::: tensoraerospace.signals.standard.sinusoid_vertical_shift
 
 === "Example"
 
     ```python
     from tensoraerospace.utils import generate_time_period
-    from tensoraerospace.signals.standart import sinusoid_vertical_shift
+    from tensoraerospace.signals.standard import sinusoid_vertical_shift
 
     tp = generate_time_period(tn=20)
     u = sinusoid_vertical_shift(tp, frequency=0.5, amplitude=2.0, vertical_shift=5.0)
@@ -183,13 +183,13 @@ Periodic square wave for switching control and relay-based systems.
 
 === "API"
 
-    ::: tensoraerospace.signals.standart.square_wave
+    ::: tensoraerospace.signals.standard.square_wave
 
 === "Example"
 
     ```python
     from tensoraerospace.utils import generate_time_period
-    from tensoraerospace.signals.standart import square_wave
+    from tensoraerospace.signals.standard import square_wave
 
     tp = generate_time_period(tn=20)
     u = square_wave(tp, frequency=0.5, amplitude=3.0, duty_cycle=0.5)
@@ -205,13 +205,13 @@ Smooth periodic signal with symmetric rise and fall times.
 
 === "API"
 
-    ::: tensoraerospace.signals.standart.triangular_wave
+    ::: tensoraerospace.signals.standard.triangular_wave
 
 === "Example"
 
     ```python
     from tensoraerospace.utils import generate_time_period
-    from tensoraerospace.signals.standart import triangular_wave
+    from tensoraerospace.signals.standard import triangular_wave
 
     tp = generate_time_period(tn=20)
     u = triangular_wave(tp, frequency=0.3, amplitude=4.0)
@@ -227,13 +227,13 @@ Periodic sawtooth signal with linear increase from negative to positive amplitud
 
 === "API"
 
-    ::: tensoraerospace.signals.standart.sawtooth
+    ::: tensoraerospace.signals.standard.sawtooth
 
 === "Example"
 
     ```python
     from tensoraerospace.utils import generate_time_period
-    from tensoraerospace.signals.standart import sawtooth
+    from tensoraerospace.signals.standard import sawtooth
 
     tp = generate_time_period(tn=20)
     u = sawtooth(tp, frequency=0.4, amplitude=3.0)
@@ -251,13 +251,13 @@ Swept-frequency signal for system identification and frequency response analysis
 
 === "API"
 
-    ::: tensoraerospace.signals.standart.chirp
+    ::: tensoraerospace.signals.standard.chirp
 
 === "Example"
 
     ```python
     from tensoraerospace.utils import generate_time_period
-    from tensoraerospace.signals.standart import chirp
+    from tensoraerospace.signals.standard import chirp
 
     tp = generate_time_period(tn=20)
     u = chirp(tp, f0=0.1, f1=2.0, amplitude=2.0, method='linear')
@@ -273,14 +273,14 @@ Aerospace maneuver signal consisting of positive and negative pulses for stabili
 
 === "API"
 
-    ::: tensoraerospace.signals.standart.doublet
+    ::: tensoraerospace.signals.standard.doublet
 
 === "Example"
 
     ```python
     import numpy as np
     from tensoraerospace.utils import generate_time_period
-    from tensoraerospace.signals.standart import doublet
+    from tensoraerospace.signals.standard import doublet
 
     tp = generate_time_period(tn=20)
     u = doublet(tp, amplitude=np.deg2rad(10), time_start=5.0, width=1.0)
@@ -296,13 +296,13 @@ Sequence of step changes for testing tracking performance with multiple setpoint
 
 === "API"
 
-    ::: tensoraerospace.signals.standart.multi_step
+    ::: tensoraerospace.signals.standard.multi_step
 
 === "Example"
 
     ```python
     from tensoraerospace.utils import generate_time_period
-    from tensoraerospace.signals.standart import multi_step
+    from tensoraerospace.signals.standard import multi_step
 
     tp = generate_time_period(tn=20)
     u = multi_step(tp, step_times=[2, 5, 8, 12, 16], step_values=[1, 2, -1, 3, -2])
@@ -318,13 +318,13 @@ Smooth exponential approach to final value, modeling first-order system response
 
 === "API"
 
-    ::: tensoraerospace.signals.standart.exponential
+    ::: tensoraerospace.signals.standard.exponential
 
 === "Example"
 
     ```python
     from tensoraerospace.utils import generate_time_period
-    from tensoraerospace.signals.standart import exponential
+    from tensoraerospace.signals.standard import exponential
 
     tp = generate_time_period(tn=20)
     u = exponential(tp, amplitude=10.0, time_constant=2.0, time_start=3.0)
@@ -340,13 +340,13 @@ Bell-shaped pulse for smooth disturbances and band-limited excitations.
 
 === "API"
 
-    ::: tensoraerospace.signals.standart.gaussian_pulse
+    ::: tensoraerospace.signals.standard.gaussian_pulse
 
 === "Example"
 
     ```python
     from tensoraerospace.utils import generate_time_period
-    from tensoraerospace.signals.standart import gaussian_pulse
+    from tensoraerospace.signals.standard import gaussian_pulse
 
     tp = generate_time_period(tn=20)
     u = gaussian_pulse(tp, amplitude=8.0, center=10.0, width=1.5)
@@ -362,14 +362,14 @@ Sum of multiple sinusoids for multi-frequency system excitation and MIMO analysi
 
 === "API"
 
-    ::: tensoraerospace.signals.standart.multisine
+    ::: tensoraerospace.signals.standard.multisine
 
 === "Example"
 
     ```python
     import numpy as np
     from tensoraerospace.utils import generate_time_period
-    from tensoraerospace.signals.standart import multisine
+    from tensoraerospace.signals.standard import multisine
 
     tp = generate_time_period(tn=20)
     u = multisine(tp, frequencies=[0.2, 0.5, 1.0, 1.5], 
@@ -387,13 +387,13 @@ Exponentially decaying oscillation, characteristic of underdamped systems.
 
 === "API"
 
-    ::: tensoraerospace.signals.standart.damped_sinusoid
+    ::: tensoraerospace.signals.standard.damped_sinusoid
 
 === "Example"
 
     ```python
     from tensoraerospace.utils import generate_time_period
-    from tensoraerospace.signals.standart import damped_sinusoid
+    from tensoraerospace.signals.standard import damped_sinusoid
 
     tp = generate_time_period(tn=20)
     u = damped_sinusoid(tp, frequency=1.0, amplitude=5.0, damping=0.3, time_start=2.0)

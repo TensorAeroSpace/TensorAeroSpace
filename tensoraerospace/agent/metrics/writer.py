@@ -7,7 +7,7 @@ import os
 from pathlib import Path
 from typing import Any, Iterable, Mapping, Optional, Sequence, Set, Union
 
-import wandb  # type: ignore[import-untyped]
+import wandb
 
 from . import schema
 from .contract import MANDATORY_METRICS, check_contract
@@ -94,7 +94,7 @@ class _WandbSink:
     ) -> None:
         if not os.environ.get("WANDB_API_KEY"):
             wandb.login()
-        self._run = wandb.init(
+        self._run: Any | None = wandb.init(
             project=project,
             entity=entity,
             name=run_name,
@@ -105,10 +105,12 @@ class _WandbSink:
         )
 
     def add_scalar(self, tag: str, value: float, env_step: int) -> None:
-        self._run.log({tag: float(value)}, step=int(env_step))
+        if self._run is not None:
+            self._run.log({tag: float(value)}, step=int(env_step))
 
     def add_histogram(self, tag: str, values, env_step: int) -> None:
-        self._run.log({tag: wandb.Histogram(values)}, step=int(env_step))
+        if self._run is not None:
+            self._run.log({tag: wandb.Histogram(values)}, step=int(env_step))
 
     def flush(self) -> None:
         pass
