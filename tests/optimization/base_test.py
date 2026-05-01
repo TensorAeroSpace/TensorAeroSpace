@@ -36,6 +36,17 @@ def test_invalid_direction_raises():
         base.HyperParamOptimizationOptuna(direction="bad")
 
 
+def test_base_interface_methods_fail_loudly():
+    opt = base.HyperParamOptimizationBase()
+
+    with pytest.raises(NotImplementedError, match="run_optimization"):
+        opt.run_optimization()
+    with pytest.raises(NotImplementedError, match="get_best_param"):
+        opt.get_best_param()
+    with pytest.raises(NotImplementedError, match="plot_parms"):
+        opt.plot_parms()
+
+
 def test_run_optimization_and_best_param(monkeypatch):
     dummy = _DummyStudy()
 

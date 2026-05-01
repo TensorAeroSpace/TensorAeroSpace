@@ -16,7 +16,7 @@ import importlib
 from abc import ABC
 from typing import Any, Optional
 
-from huggingface_hub import HfApi, snapshot_download
+from huggingface_hub import HfApi, snapshot_download  # type: ignore[import-untyped]
 
 
 def get_class_from_string(class_path):
@@ -65,7 +65,9 @@ class BaseRLModel(ABC):
         Returns:
             object: Environment object used for model training.
         """
-        pass
+        raise NotImplementedError(
+            f"{self.__class__.__name__}.get_env() must be implemented by the agent."
+        )
 
     def train(
         self,
@@ -126,37 +128,49 @@ class BaseRLModel(ABC):
         """
         return self.train(*args, **kwargs)
 
-    def action_probability(self):
+    def action_probability(self, *args: Any, **kwargs: Any) -> Any:
         """Returns action probabilities for the last state.
 
         Returns:
             list: List of action probabilities.
         """
-        pass
+        raise NotImplementedError(
+            f"{self.__class__.__name__}.action_probability() must be implemented "
+            "by agents that expose action probabilities."
+        )
 
-    def save(self):
+    def save(self, *args: Any, **kwargs: Any) -> Any:
         """Save current model to file."""
-        pass
+        raise NotImplementedError(
+            f"{self.__class__.__name__}.save() must be implemented by the agent."
+        )
 
-    def load(self):
+    def load(self, *args: Any, **kwargs: Any) -> Any:
         """Load model from file."""
-        pass
+        raise NotImplementedError(
+            f"{self.__class__.__name__}.load() must be implemented by the agent."
+        )
 
-    def predict(self):
+    def predict(self, *args: Any, **kwargs: Any) -> Any:
         """Make prediction based on input data.
 
         Returns:
             Any: Prediction result.
         """
-        pass
+        raise NotImplementedError(
+            f"{self.__class__.__name__}.predict() must be implemented by the agent."
+        )
 
-    def get_param_env(self):
+    def get_param_env(self) -> dict[str, Any]:
         """Get parameters of the current environment.
 
         Returns:
             dict: Dictionary of environment parameters.
         """
-        pass
+        raise NotImplementedError(
+            f"{self.__class__.__name__}.get_param_env() must be implemented "
+            "by the agent."
+        )
 
     def publish_to_hub(self, repo_name, folder_path, access_token=None):
         """Publish model to Hugging Face Hub.
