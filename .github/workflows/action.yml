@@ -212,9 +212,9 @@ jobs:
         run: |
           poetry check --lock
 
-      - name: 📚 Install dev dependencies
+      - name: 📚 Install main and dev dependencies
         run: |
-          poetry install --only dev --no-interaction
+          poetry install --only main,dev --no-interaction
 
       - name: 🎨 Check formatting with black
         run: |

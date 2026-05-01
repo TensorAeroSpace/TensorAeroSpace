@@ -230,14 +230,12 @@ module = [
     "IPython.*",
     "moviepy.*",
     "mlagents_envs.*",
-    "seaborn.*",
     "plotly.*",
     "tqdm",
     "tqdm.*",
     "wandb",
     "wandb.*",
     "yaml",
-    "yaml.*",
 ]
 ignore_missing_imports = true
 

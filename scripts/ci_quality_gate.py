@@ -152,6 +152,7 @@ def mypy_gate(baseline: dict[str, Any]) -> bool:
             "--no-error-summary",
             "--hide-error-context",
             "--show-error-codes",
+            "--no-incremental",
         ]
     )
     print_output(result, max_lines=200)
