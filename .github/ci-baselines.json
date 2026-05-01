@@ -3,10 +3,10 @@
     "max_total": 139
   },
   "ruff": {
-    "max_total": 55
+    "max_total": 53
   },
   "mypy": {
-    "max_total": 993
+    "max_total": 0
   },
   "bandit": {
     "max_total": 114,

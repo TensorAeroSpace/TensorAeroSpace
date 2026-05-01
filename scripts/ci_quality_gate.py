@@ -149,7 +149,6 @@ def mypy_gate(baseline: dict[str, Any]) -> bool:
         [
             "mypy",
             "tensoraerospace",
-            "--ignore-missing-imports",
             "--no-error-summary",
             "--hide-error-context",
             "--show-error-codes",

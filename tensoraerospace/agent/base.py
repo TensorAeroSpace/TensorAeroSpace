@@ -16,7 +16,7 @@ import importlib
 from abc import ABC
 from typing import Any, Optional
 
-from huggingface_hub import HfApi, snapshot_download  # type: ignore[import-untyped]
+from huggingface_hub import HfApi, snapshot_download
 
 
 def get_class_from_string(class_path):

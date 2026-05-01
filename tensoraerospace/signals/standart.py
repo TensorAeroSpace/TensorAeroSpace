@@ -315,14 +315,19 @@ def chirp(
     elif method == "exponential":
         # When f0 == f1, k = 1 and log(k) = 0; fall back to constant frequency
         if f0 == f1:
-            return amplitude * np.sin(2 * np.pi * f0 * tp)
+            constant_signal: np.ndarray = np.asarray(
+                amplitude * np.sin(2 * np.pi * f0 * tp),
+                dtype=float,
+            )
+            return constant_signal
         # Exponential frequency sweep
         k = (f1 / f0) ** (1.0 / t_max)
         phase = 2 * np.pi * f0 * (k**tp - 1) / np.log(k)
     else:
         raise ValueError("method must be 'linear' or 'exponential'")
 
-    return np.asarray(amplitude * np.sin(phase))
+    signal: np.ndarray = np.asarray(amplitude * np.sin(phase), dtype=float)
+    return signal
 
 
 def doublet(

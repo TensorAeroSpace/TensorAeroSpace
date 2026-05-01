@@ -32,7 +32,7 @@ DEFAULT_FILENAME = "flight_3d_viewer.html"
 
 def _is_notebook() -> bool:
     try:
-        from IPython import get_ipython  # type: ignore
+        from IPython import get_ipython
 
         ip = get_ipython()
         if ip is None:
@@ -98,7 +98,7 @@ def render(
     use_inline = inline if inline is not None else _is_notebook()
 
     if use_inline:
-        from IPython.display import HTML  # type: ignore
+        from IPython.display import HTML
 
         # Wrap in a fixed-height iframe so the page layout doesn't get
         # taken over by the absolute-positioned UI inside.

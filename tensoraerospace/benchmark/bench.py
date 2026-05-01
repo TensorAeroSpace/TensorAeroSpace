@@ -10,7 +10,7 @@ Main components:
     - Interactive visualization using Plotly
 """
 
-from typing import Dict, Optional, Tuple
+from typing import Dict
 
 import numpy as np
 import plotly.express as px
@@ -458,7 +458,7 @@ class ControlBenchmark:
             horizontal_spacing=0.05,
         )
 
-        all_metrics = {}
+        all_metrics: Dict[str, Dict] = {}
 
         if not systems_data:
             return all_metrics
