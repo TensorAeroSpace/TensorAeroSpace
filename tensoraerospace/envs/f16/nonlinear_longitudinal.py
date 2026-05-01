@@ -1,6 +1,6 @@
 """Gymnasium environment wrapping the pure-numpy nonlinear F-16 longitudinal model.
 
-This is the side-by-side numpy counterpart to :mod:`linear_longitudial`. It
+This is the side-by-side numpy counterpart to :mod:`linear_longitudinal`. It
 wraps :class:`tensoraerospace.aerospacemodel.f16.nonlinear.longitudinal.LongitudinalF16`
 which uses the cubic-spline aerodynamic tables ported from the matlab source.
 

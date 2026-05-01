@@ -12,6 +12,7 @@ import json
 import os
 import queue
 import threading
+import warnings
 from pathlib import Path
 from typing import (
     Any,
@@ -222,9 +223,14 @@ class _AsyncBestCheckpointSaver:
                 # Extra metadata (optional)
                 if job.get("meta") is not None:
                     _atomic_write_json(model_dir / "best_meta.json", job["meta"])
-            except Exception:
-                # Never crash training due to background saving.
-                pass
+            except Exception as exc:
+                # Never crash training due to background saving, but do not
+                # hide a broken checkpoint path or serialization issue.
+                warnings.warn(
+                    f"PPO async checkpoint save failed: {exc}",
+                    RuntimeWarning,
+                    stacklevel=2,
+                )
             finally:
                 self._q.task_done()
 
@@ -803,13 +809,17 @@ class PPO(BaseRLModel):
         try:
             if hasattr(self.env, "num_envs") and int(getattr(self.env, "num_envs")) > 1:
                 return True
-        except Exception:
-            pass
+        except (TypeError, ValueError):
+            warnings.warn(
+                "Ignoring non-integer env.num_envs while detecting vector env.",
+                RuntimeWarning,
+                stacklevel=2,
+            )
         if torch.is_tensor(obs):
             return obs.ndim == 2
         try:
             return np.asarray(obs).ndim == 2
-        except Exception:
+        except (TypeError, ValueError):
             return False
 
     def _to_tensor(self, x: Any, *, dtype: torch.dtype = torch.float32) -> torch.Tensor:
@@ -831,7 +841,7 @@ class PPO(BaseRLModel):
             high = torch.as_tensor(
                 self.env.action_space.high, device=self.device, dtype=torch.float32
             )
-        except Exception:
+        except (AttributeError, TypeError, ValueError):
             low = torch.full(
                 (self.env.action_space.shape[0],),
                 -1.0,
@@ -1603,8 +1613,12 @@ class PPO(BaseRLModel):
                             self.env.action_space.high,
                         )
                         env_action = np.clip(env_action, low, high)
-                    except Exception:
-                        pass
+                    except (AttributeError, TypeError, ValueError) as exc:
+                        warnings.warn(
+                            f"PPO could not clip action to env.action_space bounds: {exc}",
+                            RuntimeWarning,
+                            stacklevel=2,
+                        )
                     step_return = self.env.step(env_action)
                     # Single-env training step: advance counter by 1.
                     self.global_env_step += 1
@@ -2126,9 +2140,13 @@ class PPO(BaseRLModel):
                 c_opt_state = torch.load(critic_opt_path, map_location="cpu")
                 new_agent.c_opt.load_state_dict(c_opt_state)
                 _optimizer_state_to_device(new_agent.c_opt, new_agent.device)
-        except Exception:
+        except Exception as exc:
             # Keep default fresh optimizers if checkpoint is incompatible.
-            pass
+            warnings.warn(
+                f"PPO optimizer state could not be restored; using fresh optimizers: {exc}",
+                RuntimeWarning,
+                stacklevel=2,
+            )
 
         # Load training state (best_reward, etc.) if present
         if train_state_path.exists():
@@ -2137,8 +2155,12 @@ class PPO(BaseRLModel):
                     train_state = json.load(f)
                 if "best_reward" in train_state:
                     new_agent.best_reward = float(train_state["best_reward"])
-            except Exception:
-                pass
+            except (OSError, json.JSONDecodeError, TypeError, ValueError) as exc:
+                warnings.warn(
+                    f"PPO training state could not be restored from {train_state_path}: {exc}",
+                    RuntimeWarning,
+                    stacklevel=2,
+                )
 
         # Load normalization statistics if they exist
         if new_agent.normalize_obs and obs_rms_path.exists():

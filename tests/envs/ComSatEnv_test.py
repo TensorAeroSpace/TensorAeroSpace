@@ -6,7 +6,7 @@ from gymnasium import spaces
 from tensoraerospace.envs.comsat import (  # Import the environment from where it is defined
     ComSatEnv,
 )
-from tensoraerospace.signals.standart import unit_step
+from tensoraerospace.signals.standard import unit_step
 from tensoraerospace.utils import convert_tp_to_sec_tp, generate_time_period
 
 # Initial state: [rho (km), rho_dot (m/s), theta_dot (rad/s)]

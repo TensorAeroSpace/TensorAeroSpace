@@ -103,6 +103,17 @@ def test_improved_ultrastick_to_norm_action_edge_cases(ultra_env_default):
     assert a2[1] == pytest.approx(-1.0)
 
 
+def test_improved_ultrastick_invalid_action_raises(ultra_env_default):
+    env = ultra_env_default
+    env.reset()
+
+    with pytest.raises(ValueError, match="numeric"):
+        env._to_norm_action(["bad-action"])  # noqa: SLF001
+
+    with pytest.raises(ValueError, match="finite"):
+        env._to_norm_action([np.nan, 0.0])  # noqa: SLF001
+
+
 def test_improved_ultrastick_step_rate_limit_and_throttle_mapping(ultra_env_default):
     env = ultra_env_default
     env.reset()

@@ -27,7 +27,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 from tensoraerospace.utils import generate_time_period, convert_tp_to_sec_tp
-from tensoraerospace.signals.standart import unit_step
+from tensoraerospace.signals.standard import unit_step
 
 
 def run_simintech(sit_bin: Path, project: Path, extra_args: list[str] | None = None, timeout_sec: int | None = 120) -> None:

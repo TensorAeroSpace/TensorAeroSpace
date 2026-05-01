@@ -26,7 +26,7 @@ Define the discretization and modeling horizon. Form a step reference signal for
 ```python
 import numpy as np
 from tensoraerospace.utils import generate_time_period, convert_tp_to_sec_tp
-from tensoraerospace.signals.standart import unit_step
+from tensoraerospace.signals.standard import unit_step
 
 dt = 0.01  # discretization step, s
 tp = generate_time_period(tn=20, dt=dt)  # array of time steps

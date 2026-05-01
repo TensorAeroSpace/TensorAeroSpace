@@ -82,7 +82,7 @@ import torch
 import matplotlib.pyplot as plt
 from tqdm.auto import tqdm
 
-from tensoraerospace.signals.standart import unit_step
+from tensoraerospace.signals.standard import unit_step
 from tensoraerospace.agent.mpc import (
     MPCAgent,
     MPCConstraints,

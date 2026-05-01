@@ -165,7 +165,7 @@ $$r_t = -|\theta(t) - \theta_{\text{ref}}(t)|$$
 
     from tensoraerospace.envs import LinearLongitudinalELVRocket
     from tensoraerospace.utils import generate_time_period
-    from tensoraerospace.signals.standart import unit_step
+    from tensoraerospace.signals.standard import unit_step
 
     dt = 0.01
     tp = generate_time_period(tn=20, dt=dt)

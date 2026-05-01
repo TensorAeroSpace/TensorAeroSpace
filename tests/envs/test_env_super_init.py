@@ -7,7 +7,7 @@ and reset(seed=42) should work without error.
 import numpy as np
 import pytest
 
-from tensoraerospace.signals.standart import unit_step
+from tensoraerospace.signals.standard import unit_step
 from tensoraerospace.utils import generate_time_period
 
 dt = 0.01
@@ -52,7 +52,7 @@ def _make_comsat():
 
 
 def _make_geosat():
-    from tensoraerospace.envs.geostat import GeoSatEnv
+    from tensoraerospace.envs.geosat import GeoSatEnv
 
     return GeoSatEnv(
         initial_state=[[0], [0], [0]],

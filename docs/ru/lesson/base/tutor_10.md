@@ -53,7 +53,7 @@ import torch
 import matplotlib.pyplot as plt
 
 from tensoraerospace.envs import ImprovedB747Env
-from tensoraerospace.signals.standart import unit_step
+from tensoraerospace.signals.standard import unit_step
 from tensoraerospace.utils import generate_time_period, convert_tp_to_sec_tp
 
 # --- Временная база ---
@@ -627,7 +627,7 @@ import torch
 import matplotlib.pyplot as plt
 
 from tensoraerospace.envs import ImprovedB747Env
-from tensoraerospace.signals.standart import unit_step
+from tensoraerospace.signals.standard import unit_step
 from tensoraerospace.utils import generate_time_period, convert_tp_to_sec_tp
 from tensoraerospace.agent.pid import PID
 from tensoraerospace.agent.ppo.model import PPO

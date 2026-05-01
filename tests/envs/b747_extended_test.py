@@ -6,7 +6,7 @@ import numpy as np
 import pytest
 
 from tensoraerospace.envs.b747 import ImprovedB747Env, LinearLongitudinalB747
-from tensoraerospace.signals.standart import unit_step
+from tensoraerospace.signals.standard import unit_step
 from tensoraerospace.utils import convert_tp_to_sec_tp, generate_time_period
 
 # Test fixtures

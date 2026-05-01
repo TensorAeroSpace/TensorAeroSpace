@@ -6,7 +6,7 @@
 
 ## Контракт формы (прочесть один раз)
 
-Среда ожидает `reference_signal.shape == (len(tracking_states), number_time_steps)`. Для одного канала всегда `np.reshape(sig, (1, -1))`. Все построители в `tensoraerospace.signals.standart` принимают временной вектор `tp = generate_time_period(tn=T, dt=dt)` первым аргументом.
+Среда ожидает `reference_signal.shape == (len(tracking_states), number_time_steps)`. Для одного канала всегда `np.reshape(sig, (1, -1))`. Все построители в `tensoraerospace.signals.standard` принимают временной вектор `tp = generate_time_period(tn=T, dt=dt)` первым аргументом.
 
 ## Шаг 1 — Примитивы
 
@@ -17,7 +17,7 @@ warnings.filterwarnings('ignore')
 import matplotlib.pyplot as plt
 import numpy as np
 
-from tensoraerospace.signals.standart import (
+from tensoraerospace.signals.standard import (
     unit_step, ramp, pulse, sinusoid, sinusoid_vertical_shift,
     square_wave, constant_line,
 )

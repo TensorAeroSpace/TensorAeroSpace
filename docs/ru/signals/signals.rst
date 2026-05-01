@@ -9,14 +9,14 @@ TensorAeroSpace предоставляет **17 типов сигналов** д
 Ступенчатый сигнал
 ~~~~~~~~~~~~~~~~~~
 
-.. autofunction:: tensoraerospace.signals.standart.unit_step
+.. autofunction:: tensoraerospace.signals.standard.unit_step
 
 **Пример**
 
 .. code-block:: python
 
     from tensoraerospace.utils import generate_time_period
-    from tensoraerospace.signals.standart import unit_step
+    from tensoraerospace.signals.standard import unit_step
 
     dt = 0.01
     tp = generate_time_period(tn=20)
@@ -29,14 +29,14 @@ TensorAeroSpace предоставляет **17 типов сигналов** д
 Линейный сигнал (Ramp)
 ~~~~~~~~~~~~~~~~~~~~~~~
 
-.. autofunction:: tensoraerospace.signals.standart.ramp
+.. autofunction:: tensoraerospace.signals.standard.ramp
 
 **Пример**
 
 .. code-block:: python
 
     from tensoraerospace.utils import generate_time_period
-    from tensoraerospace.signals.standart import ramp
+    from tensoraerospace.signals.standard import ramp
 
     tp = generate_time_period(tn=20)
     signal = ramp(tp, slope=0.5, time_start=2.0)
@@ -48,14 +48,14 @@ TensorAeroSpace предоставляет **17 типов сигналов** д
 Импульсный сигнал
 ~~~~~~~~~~~~~~~~~
 
-.. autofunction:: tensoraerospace.signals.standart.pulse
+.. autofunction:: tensoraerospace.signals.standard.pulse
 
 **Пример**
 
 .. code-block:: python
 
     from tensoraerospace.utils import generate_time_period
-    from tensoraerospace.signals.standart import pulse
+    from tensoraerospace.signals.standard import pulse
 
     tp = generate_time_period(tn=20)
     signal = pulse(tp, amplitude=5.0, time_start=5.0, width=3.0)
@@ -67,14 +67,14 @@ TensorAeroSpace предоставляет **17 типов сигналов** д
 Константный сигнал
 ~~~~~~~~~~~~~~~~~~
 
-.. autofunction:: tensoraerospace.signals.standart.constant_line
+.. autofunction:: tensoraerospace.signals.standard.constant_line
 
 **Пример**
 
 .. code-block:: python
 
     from tensoraerospace.utils import generate_time_period
-    from tensoraerospace.signals.standart import constant_line
+    from tensoraerospace.signals.standard import constant_line
 
     tp = generate_time_period(tn=20)
     signal = constant_line(tp, value_state=3.0)
@@ -89,14 +89,14 @@ TensorAeroSpace предоставляет **17 типов сигналов** д
 Синусоидный сигнал
 ~~~~~~~~~~~~~~~~~~
 
-.. autofunction:: tensoraerospace.signals.standart.sinusoid
+.. autofunction:: tensoraerospace.signals.standard.sinusoid
 
 **Пример**
 
 .. code-block:: python
 
     from tensoraerospace.utils import generate_time_period
-    from tensoraerospace.signals.standart import sinusoid
+    from tensoraerospace.signals.standard import sinusoid
 
     dt = 0.01
     tp = generate_time_period(tn=20)
@@ -109,14 +109,14 @@ TensorAeroSpace предоставляет **17 типов сигналов** д
 Синусоида со смещением
 ~~~~~~~~~~~~~~~~~~~~~~~
 
-.. autofunction:: tensoraerospace.signals.standart.sinusoid_vertical_shift
+.. autofunction:: tensoraerospace.signals.standard.sinusoid_vertical_shift
 
 **Пример**
 
 .. code-block:: python
 
     from tensoraerospace.utils import generate_time_period
-    from tensoraerospace.signals.standart import sinusoid_vertical_shift
+    from tensoraerospace.signals.standard import sinusoid_vertical_shift
 
     tp = generate_time_period(tn=20)
     signal = sinusoid_vertical_shift(tp, frequency=0.5, amplitude=2.0, vertical_shift=5.0)
@@ -128,14 +128,14 @@ TensorAeroSpace предоставляет **17 типов сигналов** д
 Прямоугольный сигнал
 ~~~~~~~~~~~~~~~~~~~~
 
-.. autofunction:: tensoraerospace.signals.standart.square_wave
+.. autofunction:: tensoraerospace.signals.standard.square_wave
 
 **Пример**
 
 .. code-block:: python
 
     from tensoraerospace.utils import generate_time_period
-    from tensoraerospace.signals.standart import square_wave
+    from tensoraerospace.signals.standard import square_wave
 
     tp = generate_time_period(tn=20)
     signal = square_wave(tp, frequency=0.5, amplitude=3.0, duty_cycle=0.5)
@@ -147,14 +147,14 @@ TensorAeroSpace предоставляет **17 типов сигналов** д
 Треугольный сигнал
 ~~~~~~~~~~~~~~~~~~
 
-.. autofunction:: tensoraerospace.signals.standart.triangular_wave
+.. autofunction:: tensoraerospace.signals.standard.triangular_wave
 
 **Пример**
 
 .. code-block:: python
 
     from tensoraerospace.utils import generate_time_period
-    from tensoraerospace.signals.standart import triangular_wave
+    from tensoraerospace.signals.standard import triangular_wave
 
     tp = generate_time_period(tn=20)
     signal = triangular_wave(tp, frequency=0.3, amplitude=4.0)
@@ -166,14 +166,14 @@ TensorAeroSpace предоставляет **17 типов сигналов** д
 Пилообразный сигнал
 ~~~~~~~~~~~~~~~~~~~
 
-.. autofunction:: tensoraerospace.signals.standart.sawtooth
+.. autofunction:: tensoraerospace.signals.standard.sawtooth
 
 **Пример**
 
 .. code-block:: python
 
     from tensoraerospace.utils import generate_time_period
-    from tensoraerospace.signals.standart import sawtooth
+    from tensoraerospace.signals.standard import sawtooth
 
     tp = generate_time_period(tn=20)
     signal = sawtooth(tp, frequency=0.4, amplitude=3.0)
@@ -188,14 +188,14 @@ TensorAeroSpace предоставляет **17 типов сигналов** д
 Чирп-сигнал
 ~~~~~~~~~~~
 
-.. autofunction:: tensoraerospace.signals.standart.chirp
+.. autofunction:: tensoraerospace.signals.standard.chirp
 
 **Пример**
 
 .. code-block:: python
 
     from tensoraerospace.utils import generate_time_period
-    from tensoraerospace.signals.standart import chirp
+    from tensoraerospace.signals.standard import chirp
 
     tp = generate_time_period(tn=20)
     signal = chirp(tp, f0=0.1, f1=2.0, amplitude=2.0, method='linear')
@@ -207,7 +207,7 @@ TensorAeroSpace предоставляет **17 типов сигналов** д
 Дублет
 ~~~~~~
 
-.. autofunction:: tensoraerospace.signals.standart.doublet
+.. autofunction:: tensoraerospace.signals.standard.doublet
 
 **Пример**
 
@@ -215,7 +215,7 @@ TensorAeroSpace предоставляет **17 типов сигналов** д
 
     import numpy as np
     from tensoraerospace.utils import generate_time_period
-    from tensoraerospace.signals.standart import doublet
+    from tensoraerospace.signals.standard import doublet
 
     tp = generate_time_period(tn=20)
     signal = doublet(tp, amplitude=np.deg2rad(10), time_start=5.0, width=1.0)
@@ -227,14 +227,14 @@ TensorAeroSpace предоставляет **17 типов сигналов** д
 Мульти-шаговый сигнал
 ~~~~~~~~~~~~~~~~~~~~~
 
-.. autofunction:: tensoraerospace.signals.standart.multi_step
+.. autofunction:: tensoraerospace.signals.standard.multi_step
 
 **Пример**
 
 .. code-block:: python
 
     from tensoraerospace.utils import generate_time_period
-    from tensoraerospace.signals.standart import multi_step
+    from tensoraerospace.signals.standard import multi_step
 
     tp = generate_time_period(tn=20)
     signal = multi_step(tp, step_times=[2, 5, 8, 12, 16], step_values=[1, 2, -1, 3, -2])
@@ -246,14 +246,14 @@ TensorAeroSpace предоставляет **17 типов сигналов** д
 Экспоненциальный сигнал
 ~~~~~~~~~~~~~~~~~~~~~~~
 
-.. autofunction:: tensoraerospace.signals.standart.exponential
+.. autofunction:: tensoraerospace.signals.standard.exponential
 
 **Пример**
 
 .. code-block:: python
 
     from tensoraerospace.utils import generate_time_period
-    from tensoraerospace.signals.standart import exponential
+    from tensoraerospace.signals.standard import exponential
 
     tp = generate_time_period(tn=20)
     signal = exponential(tp, amplitude=10.0, time_constant=2.0, time_start=3.0)
@@ -265,14 +265,14 @@ TensorAeroSpace предоставляет **17 типов сигналов** д
 Гауссов импульс
 ~~~~~~~~~~~~~~~
 
-.. autofunction:: tensoraerospace.signals.standart.gaussian_pulse
+.. autofunction:: tensoraerospace.signals.standard.gaussian_pulse
 
 **Пример**
 
 .. code-block:: python
 
     from tensoraerospace.utils import generate_time_period
-    from tensoraerospace.signals.standart import gaussian_pulse
+    from tensoraerospace.signals.standard import gaussian_pulse
 
     tp = generate_time_period(tn=20)
     signal = gaussian_pulse(tp, amplitude=8.0, center=10.0, width=1.5)
@@ -284,7 +284,7 @@ TensorAeroSpace предоставляет **17 типов сигналов** д
 Мульти-синусоидальный сигнал
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-.. autofunction:: tensoraerospace.signals.standart.multisine
+.. autofunction:: tensoraerospace.signals.standard.multisine
 
 **Пример**
 
@@ -292,7 +292,7 @@ TensorAeroSpace предоставляет **17 типов сигналов** д
 
     import numpy as np
     from tensoraerospace.utils import generate_time_period
-    from tensoraerospace.signals.standart import multisine
+    from tensoraerospace.signals.standard import multisine
 
     tp = generate_time_period(tn=20)
     signal = multisine(tp, frequencies=[0.2, 0.5, 1.0, 1.5], 
@@ -306,14 +306,14 @@ TensorAeroSpace предоставляет **17 типов сигналов** д
 Затухающая синусоида
 ~~~~~~~~~~~~~~~~~~~~
 
-.. autofunction:: tensoraerospace.signals.standart.damped_sinusoid
+.. autofunction:: tensoraerospace.signals.standard.damped_sinusoid
 
 **Пример**
 
 .. code-block:: python
 
     from tensoraerospace.utils import generate_time_period
-    from tensoraerospace.signals.standart import damped_sinusoid
+    from tensoraerospace.signals.standard import damped_sinusoid
 
     tp = generate_time_period(tn=20)
     signal = damped_sinusoid(tp, frequency=1.0, amplitude=5.0, damping=0.3, time_start=2.0)

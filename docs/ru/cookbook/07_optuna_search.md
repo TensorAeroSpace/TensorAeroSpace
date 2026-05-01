@@ -17,7 +17,7 @@ import numpy as np
 import tensoraerospace  # noqa: F401
 from tensoraerospace.agent.pid import PID
 from tensoraerospace.optimization import HyperParamOptimizationOptuna
-from tensoraerospace.signals.standart import unit_step
+from tensoraerospace.signals.standard import unit_step
 from tensoraerospace.utils import generate_time_period
 
 dt = 0.01

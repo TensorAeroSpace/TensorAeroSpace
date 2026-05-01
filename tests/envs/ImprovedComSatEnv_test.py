@@ -5,7 +5,7 @@ import pytest
 from gymnasium import spaces
 
 from tensoraerospace.envs import ImprovedComSatEnv
-from tensoraerospace.signals.standart import unit_step
+from tensoraerospace.signals.standard import unit_step
 from tensoraerospace.utils import generate_time_period
 
 

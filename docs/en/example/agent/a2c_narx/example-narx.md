@@ -12,9 +12,9 @@ from tqdm import tqdm
 import numpy as np
 import torch
 
-from tensoraerospace.envs.f16.linear_longitudial import LinearLongitudinalF16
+from tensoraerospace.envs.f16.linear_longitudinal import LinearLongitudinalF16
 from tensoraerospace.utils import generate_time_period, convert_tp_to_sec_tp
-from tensoraerospace.signals.standart import sinusoid
+from tensoraerospace.signals.standard import sinusoid
 from tensoraerospace.agent.a2c.narx import Actor, Mish, Critic, A2CLearner, Runner
 
 DEVICE = torch.device(

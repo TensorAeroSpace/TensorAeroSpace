@@ -96,7 +96,7 @@ import gymnasium as gym
 import matplotlib.pyplot as plt
 
 from tensoraerospace.utils import generate_time_period, convert_tp_to_sec_tp
-from tensoraerospace.signals.standart import unit_step
+from tensoraerospace.signals.standard import unit_step
 
 # Временная сетка
 dt = 0.01
@@ -207,7 +207,7 @@ import gymnasium as gym
 import matplotlib.pyplot as plt
 
 from tensoraerospace.utils import generate_time_period, convert_tp_to_sec_tp
-from tensoraerospace.signals.standart import unit_step
+from tensoraerospace.signals.standard import unit_step
 
 dt = 0.01
 tp = generate_time_period(tn=20, dt=dt)
@@ -286,7 +286,7 @@ print(f"Суммарная награда: {sum(rewards):.2f}")
 
 ## 5. Эталонные сигналы
 
-Модуль `tensoraerospace.signals.standart` предоставляет готовые генераторы
+Модуль `tensoraerospace.signals.standard` предоставляет готовые генераторы
 эталонных сигналов для задач отслеживания. Все функции принимают массив
 времени `tp` (создается через `generate_time_period`) и возвращают 1-D массив
 той же длины.
@@ -317,7 +317,7 @@ print(f"Суммарная награда: {sum(rewards):.2f}")
 ```python
 import numpy as np
 from tensoraerospace.utils import generate_time_period
-from tensoraerospace.signals.standart import (
+from tensoraerospace.signals.standard import (
     unit_step, sinusoid_vertical_shift, chirp, multi_step, doublet
 )
 
@@ -463,7 +463,7 @@ import gymnasium as gym
 import matplotlib.pyplot as plt
 
 from tensoraerospace.utils import generate_time_period, convert_tp_to_sec_tp
-from tensoraerospace.signals.standart import unit_step
+from tensoraerospace.signals.standard import unit_step
 
 dt = 0.01
 tp = generate_time_period(tn=20, dt=dt)

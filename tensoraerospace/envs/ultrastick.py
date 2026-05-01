@@ -317,28 +317,29 @@ class ImprovedUltrastickEnv(gym.Env):
         if isinstance(a, np.ndarray):
             try:
                 return [float(x) for x in a.astype(float).ravel().tolist()]
-            except Exception:
-                return []
-        try:
-            if isinstance(a, (int, float, np.integer, np.floating)):
-                return [float(a)]
-        except Exception:
-            pass
+            except (TypeError, ValueError) as exc:
+                raise ValueError("Action array must contain numeric values.") from exc
+        if isinstance(a, (int, float, np.integer, np.floating)):
+            return [float(a)]
         try:
             return [float(x) for x in np.asarray(a, dtype=float).ravel().tolist()]
-        except Exception:
-            return []
+        except (TypeError, ValueError) as exc:
+            raise ValueError(
+                f"Action must be numeric or a numeric sequence, got {type(a).__name__}."
+            ) from exc
 
     def _to_norm_action(self, action: Any) -> np.ndarray:
         """Coerce incoming action to normalized shape (2,) in [-1, 1]."""
         try:
             arr = np.asarray(action, dtype=float)
-        except Exception:
+        except (TypeError, ValueError):
             arr_list = self._flatten_action(action)
             arr = np.asarray(arr_list, dtype=float)
         if arr.ndim > 1:
             arr = np.squeeze(arr)
         arr = np.ravel(arr)
+        if not np.all(np.isfinite(arr)):
+            raise ValueError("Action must contain only finite numeric values.")
         if arr.size == 0:
             arr = np.array([0.0, self.prev_thr_norm], dtype=float)
         elif arr.size == 1:

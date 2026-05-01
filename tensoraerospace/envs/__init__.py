@@ -19,7 +19,7 @@ from .elv import (  # noqa: F401
 )
 from .f4c import F4CPitchEnvNormalized as F4CPitchEnvNormalized  # noqa: F401
 from .f4c import LinearLongitudinalF4C as LinearLongitudinalF4C
-from .f16.linear_longitudial import (  # noqa: F401
+from .f16.linear_longitudinal import (  # noqa: F401
     LinearLongitudinalF16 as LinearLongitudinalF16,
 )
 from .f16.nonlinear_angular import (  # noqa: F401
@@ -28,7 +28,7 @@ from .f16.nonlinear_angular import (  # noqa: F401
 from .f16.nonlinear_longitudinal import (  # noqa: F401
     NonlinearLongitudinalF16 as NonlinearLongitudinalF16,
 )
-from .geostat import GeoSatEnv as GeoSatEnv  # noqa: F401
+from .geosat import GeoSatEnv as GeoSatEnv  # noqa: F401
 from .lapan import ImprovedLAPANEnv as ImprovedLAPANEnv  # noqa: F401
 from .lapan import LinearLongitudinalLAPAN as LinearLongitudinalLAPAN  # noqa: F401
 from .rocket import ImprovedMissileEnv as ImprovedMissileEnv

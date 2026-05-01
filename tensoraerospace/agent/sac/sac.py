@@ -8,6 +8,7 @@ and various policy types for aerospace system control.
 import datetime
 import inspect
 import json
+import warnings
 from collections import deque
 from pathlib import Path
 from typing import Any, Deque, Dict, Mapping, Optional, Sequence, Tuple, Union, cast
@@ -669,12 +670,20 @@ class SAC(BaseRLModel):
         """Flush and close TensorBoard writer."""
         try:
             self.writer.flush()
-        except Exception:
-            pass
+        except Exception as exc:
+            warnings.warn(
+                f"SAC metric writer flush failed during close(): {exc}",
+                RuntimeWarning,
+                stacklevel=2,
+            )
         try:
             self.writer.close()
-        except Exception:
-            pass
+        except Exception as exc:
+            warnings.warn(
+                f"SAC metric writer close failed during close(): {exc}",
+                RuntimeWarning,
+                stacklevel=2,
+            )
 
     def get_param_env(self) -> Dict[str, Dict[str, Any]]:
         """Return serializable configuration of environment and policy."""
