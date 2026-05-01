@@ -11,7 +11,8 @@ class IncrementalModel:
     """Provides IncrementalModel class for system identification.
 
     IncrementalModel computes A and x matrices needed for system identification,
-    computes F and G matrices needed for incremental model, and evaluates identified model to provide state estimates at next time step.
+    computes F and G matrices needed for incremental model, and evaluates
+    identified model to provide state estimates at next time step.
 
     Args:
         selected_states: Selected states.

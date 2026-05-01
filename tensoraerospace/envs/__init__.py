@@ -68,6 +68,9 @@ __all__ = [
 ]
 
 try:
-    from .unity_env import get_plane_env, unity_discrete_env
+    from .unity_env import (
+        get_plane_env as get_plane_env,
+        unity_discrete_env as unity_discrete_env,
+    )
 except ImportError:
     pass  # mlagents_envs not installed

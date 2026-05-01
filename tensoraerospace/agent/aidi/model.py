@@ -313,9 +313,7 @@ class AIDIAgent:
         )
 
         # Outer loop — desired rates (p_des, q_des, r_des).
-        p = float(omega[0])
         q = float(omega[1])
-        r = float(omega[2])
         n_z = self._resolve_n_z(observation, q)
         q_des = self.cstar.step(
             c_star_cmd=float(references["C_star"]),

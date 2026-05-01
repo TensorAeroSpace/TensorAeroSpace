@@ -144,7 +144,7 @@ def apply_to_params(params, geo: BaseGeometry, state: DamageState) -> None:
     params.S = mg["S"]
     params.bA = mg["bA"]
     if hasattr(params, "l"):
-        params.l = mg["b"]
+        params.l = mg["b"]  # noqa: E741 - legacy MATLAB parameter name
     params.Jx = inertia["Jx"]
     params.Jy = inertia["Jy"]
     params.Jz = inertia["Jz"]

@@ -1,9 +1,9 @@
 {
   "flake8": {
-    "max_total": 122
+    "max_total": 30
   },
   "ruff": {
-    "max_total": 38
+    "max_total": 0
   },
   "mypy": {
     "max_total": 0

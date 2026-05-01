@@ -17,7 +17,7 @@ from tensoraerospace.envs._rendering import telemetry_render, validate_render_mo
 
 
 class ComSatEnv(gym.Env):
-    """Simulation of "Communication satellite in longitudinal control channel" control object in OpenAI Gym environment for training AI agents.
+    """Gymnasium environment for a communication satellite longitudinal model.
 
     Args:
         initial_state: Initial state.

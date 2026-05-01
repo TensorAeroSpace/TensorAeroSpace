@@ -376,7 +376,7 @@ def get_cz(
     wx: float,
     wy: float,
     V: float,
-    l: float,
+    reference_length: float,
 ) -> float:
     """Lateral-force coefficient Cz. Mirrors GetCz.m.
 
@@ -413,8 +413,8 @@ def get_cz(
         + dcz_nos * (dnos / _NOS_NORM)
         + (dczdel + dczdel_nos * (dnos / _NOS_NORM)) * (del_ / _DEL_NORM)
         + dczdrn * (drn / _DRN_NORM)
-        + czwx * ((wx * l) / (2.0 * V))
-        + czwy * ((wy * l) / (2.0 * V))
+        + czwx * ((wx * reference_length) / (2.0 * V))
+        + czwy * ((wy * reference_length) / (2.0 * V))
     )
 
 
@@ -428,7 +428,7 @@ def get_mx(
     wx: float,
     wy: float,
     V: float,
-    l: float,
+    reference_length: float,
 ) -> float:
     """Roll-moment coefficient mx. Mirrors GetMx.m.
 
@@ -489,8 +489,8 @@ def get_mx(
         + dmx_nos * (dnos / _NOS_NORM)
         + (dmxdel + dmxdel_nos * (dnos / _NOS_NORM)) * (del_ / _DEL_NORM)
         + dmxdrn * (drn / _DRN_NORM)
-        + mxwx * ((wx * l) / (2.0 * V))
-        + mxwy * ((wy * l) / (2.0 * V))
+        + mxwx * ((wx * reference_length) / (2.0 * V))
+        + mxwy * ((wy * reference_length) / (2.0 * V))
         + dmxbt * beta
     )
 
@@ -505,7 +505,7 @@ def get_my(
     wx: float,
     wy: float,
     V: float,
-    l: float,
+    reference_length: float,
 ) -> float:
     """Yaw-moment coefficient my. Mirrors GetMy.m.
 
@@ -566,8 +566,8 @@ def get_my(
         + dmy_nos * (dnos / _NOS_NORM)
         + (dmydel + dmydel_nos * (dnos / _NOS_NORM)) * (del_ / _DEL_NORM)
         + dmydrn * (drn / _DRN_NORM)
-        + mywx * ((wx * l) / (2.0 * V))
-        + mywy * ((wy * l) / (2.0 * V))
+        + mywx * ((wx * reference_length) / (2.0 * V))
+        + mywy * ((wy * reference_length) / (2.0 * V))
         + dmybt * beta
     )
 

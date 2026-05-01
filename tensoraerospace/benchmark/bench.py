@@ -276,7 +276,12 @@ class ControlBenchmark:
                 mode="markers",
                 name=f"Максимум: {max_val:.3f}",
                 marker=dict(color=COLORS[3], size=10, symbol="circle"),
-                hovertemplate=f'Максимум<br>Время: {max_time:.3f}с<br>Значение: {max_val:.3f}<br>Перерегулирование: {metrics["overshoot"]:.1f}%<extra></extra>',
+                hovertemplate=(
+                    f"Максимум<br>Время: {max_time:.3f}с"
+                    f"<br>Значение: {max_val:.3f}"
+                    f"<br>Перерегулирование: {metrics['overshoot']:.1f}%"
+                    "<extra></extra>"
+                ),
             ),
             row=1,
             col=1,

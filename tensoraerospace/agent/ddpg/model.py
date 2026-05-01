@@ -31,6 +31,14 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 
+from ..base import (
+    BaseRLModel,
+    TheEnvironmentDoesNotMatch,
+    get_class_from_string,
+    serialize_env,
+)
+from ..metrics import MetricWriter, create_metric_writer, schema
+
 if TYPE_CHECKING:
     import gymnasium as gym
 else:
@@ -79,16 +87,6 @@ except Exception:
         else:
             for x in iterable:
                 yield x
-
-
-from ..base import (  # noqa: E402
-    BaseRLModel,
-    TheEnvironmentDoesNotMatch,
-    get_class_from_string,
-    serialize_env,
-)
-
-from ..metrics import MetricWriter, create_metric_writer, schema
 
 
 class BoxActionSpace(Protocol):
@@ -1065,7 +1063,6 @@ class DDPG:
             Dictionary mapping parameter names to gradient tensors (or None).
         """
         # Use typing compatible with Python <3.10 to satisfy linters
-        from typing import Dict, Optional
 
         grads: Dict[str, Optional[torch.Tensor]] = {}
         for name, param in model.named_parameters():

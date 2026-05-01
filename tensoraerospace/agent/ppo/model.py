@@ -24,7 +24,6 @@ from typing import (
     Tuple,
     Union,
     cast,
-    overload,
 )
 
 import numpy as np
@@ -1598,13 +1597,11 @@ class PPO(BaseRLModel):
                     )
                     with torch.no_grad():
                         action_raw_t, dist_t = self.actor(state_t)
-                        mu_t = dist_t.mean
                         # `action_raw_t` is the unclamped sampled action; this is
                         # the point at which we compute log_prob for PPO.
                         prob = dist_t.log_prob(action_raw_t).sum(dim=-1, keepdim=True)
                         value = self.critic(state_t)
                     action = action_raw_t  # unclamped, stored in buffer
-                    mu = mu_t
                     # Clip action to environment bounds to avoid invalid controls
                     env_action = action.detach().cpu().numpy()[0]
                     try:

@@ -5,7 +5,6 @@ from typing import List, Tuple, cast
 import numpy as np
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 
 
 def _build_mlp(input_dim: int, layers: List[int], layer_norm: bool) -> nn.Sequential:
@@ -69,7 +68,6 @@ class IQNCritic(nn.Module):
         quantile = quantile.view(quantile.size(0), quantile.size(1), 1)
 
         B, Q, _ = quantile.shape
-        H = self.embedding_dim
 
         # psi
         sa = torch.cat([state, action], dim=1)  # (B,S+A)

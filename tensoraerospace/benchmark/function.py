@@ -133,7 +133,9 @@ def settling_time(
             Threshold value of relative deviation for determining steady-state value range.
 
     Returns:
-        Optional[int]: System settling time in system_signal array indices. If system did not reach steady-state value in given threshold range, returns None.
+        Optional[int]: System settling time in system_signal array indices.
+        If system did not reach steady-state value in given threshold range,
+        returns None.
     """
     # Steady-state value is the average value of last 10% of system response
     y_final = np.mean(system_signal[int(0.9 * len(system_signal)) :])

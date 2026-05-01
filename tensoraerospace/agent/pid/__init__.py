@@ -1,10 +1,10 @@
-from __future__ import annotations
-
 """PID-based control baselines.
 
 This module provides utilities for running classic PID controllers and logging
 their performance in TensorAeroSpace environments.
 """
+
+from __future__ import annotations
 
 import datetime
 import json
@@ -450,7 +450,7 @@ class PID(BaseRLModel):
                 print(f"   Target settling time: {target_settling_time:.1f}s")
                 print(f"   Target overshoot: {target_overshoot}%")
             else:
-                print(f"   Objective: Minimize RMSE and phase lag")
+                print("   Objective: Minimize RMSE and phase lag")
 
         # Compute DC gain for sign determination (Simulink-like automatic sign)
         try:
@@ -655,7 +655,7 @@ class PID(BaseRLModel):
         )
 
         if verbose:
-            print(f"\n   ✅ Optimization completed!")
+            print("\n   ✅ Optimization completed!")
             print(f"   Kp={kp_opt:.4f}, Ki={ki_opt:.4f}, Kd={kd_opt:.4f}")
             if mode == "step_response":
                 print(

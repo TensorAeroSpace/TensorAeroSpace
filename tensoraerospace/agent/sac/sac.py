@@ -616,11 +616,11 @@ class SAC(BaseRLModel):
             for i, done in enumerate(done_np):
                 if done:
                     r = float(ep_returns[i])
-                    l = int(ep_lengths[i])
+                    length = int(ep_lengths[i])
                     returns_window.append(r)
                     self.writer.log_episode(
                         reward=r,
-                        length=l,
+                        length=length,
                         env_step=int(total_env_steps),
                         terminated=bool(terminated_np[i]),
                         truncated=bool(truncated_np[i]),

@@ -6,9 +6,7 @@ components used for imitation learning within TensorAeroSpace.
 
 import datetime
 import json
-import math
 import os
-import random
 from pathlib import Path
 from typing import Any, Mapping, Optional, Sequence, Union
 
@@ -16,7 +14,6 @@ import gymnasium as gym
 import numpy as np
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 import torch.optim as optim
 from torch.distributions import Normal
 
@@ -253,6 +250,8 @@ class GAIL:
             next_state = next_state.reshape(1, -1)
             state = next_state
             total_reward += float(reward)
+            if done:
+                break
         return total_reward
 
     def ppo_update(

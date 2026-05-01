@@ -15,7 +15,6 @@ Control vector::
 
 from __future__ import annotations
 
-import math
 from typing import Any, Callable, Literal, Optional, Sequence
 
 import gymnasium as gym

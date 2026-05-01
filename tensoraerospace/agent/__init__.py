@@ -39,6 +39,6 @@ from .im_gdhp.model import IMGDHPConfig as IMGDHPConfig  # noqa: F401
 # Backward compatibility alias
 from .mpc.mpc import MPC as MPC  # noqa: F401
 from .mpc.mpc import MPCAgent as MPCAgent  # noqa: F401
-from .mpc.mpc import MPCAgent as TorchMPCAgent
+from .mpc.mpc import MPCAgent as TorchMPCAgent  # noqa: F401
 from .ppo.model import PPO as PPO  # noqa: F401
 from .sac.sac import SAC as SAC  # noqa: F401

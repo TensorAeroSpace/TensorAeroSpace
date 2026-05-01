@@ -6,7 +6,7 @@ from tensoraerospace.signals.standard import unit_step
 from tensoraerospace.utils import convert_tp_to_sec_tp, generate_time_period
 
 
-## Запускает SimInTech с указанными параметрами
+# Запускает SimInTech с указанными параметрами
 def process():
     """Launch SimInTech with specified project parameters.
 

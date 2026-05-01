@@ -28,7 +28,7 @@ def _isa_dynamic_pressure(altitude_m: float, velocity_mps: float, g: float) -> f
 @dataclass
 class F16AngularParameters:
     m: float = 9295.44
-    l: float = 9.144
+    l: float = 9.144  # noqa: E741 - legacy MATLAB notation used by callers
     S: float = 27.87
     bA: float = 3.45
     Jx: float = 12874.8
