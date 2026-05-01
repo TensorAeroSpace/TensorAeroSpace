@@ -229,6 +229,7 @@ module = [
     "IPython",
     "IPython.*",
     "moviepy.*",
+    "mlagents_envs.*",
     "seaborn.*",
     "plotly.*",
     "tqdm",

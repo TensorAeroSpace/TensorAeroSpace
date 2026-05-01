@@ -33,12 +33,8 @@ def get_plane_env(
     Returns:
         A Gym-compatible environment wrapping the Unity environment.
     """
-    from mlagents_envs.environment import (
-        UnityEnvironment,  # type: ignore[import-untyped]
-    )
-    from mlagents_envs.envs.unity_gym_env import (
-        UnityToGymWrapper,  # type: ignore[import-untyped]
-    )
+    from mlagents_envs.environment import UnityEnvironment
+    from mlagents_envs.envs.unity_gym_env import UnityToGymWrapper
 
     resolved_path = "" if env_path in (None, "") else str(env_path)
     log_dir_path = Path(log_dir)
