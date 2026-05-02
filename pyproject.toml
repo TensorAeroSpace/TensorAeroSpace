@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "tensoraerospace"
-version = "0.3.13"
+version = "0.3.14"
 description = "Open source deep learning framework that focuses on aerospace objects (rockets, planes, UAVs)"
 readme = "readme.md"
 authors = ["Artemiy Mazaew (mr8bit)", "Vasily Davydov (dexfrost89)", "Yakov Li (yakovglee)"]
