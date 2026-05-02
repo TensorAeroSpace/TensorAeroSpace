@@ -7,7 +7,7 @@ from tqdm import tqdm
 import gymnasium as gym
 
 from tensoraerospace.utils import generate_time_period, convert_tp_to_sec_tp
-from tensoraerospace.signals.standart import unit_step
+from tensoraerospace.signals.standard import unit_step
 from tensoraerospace.agent.ihdp.model import IHDPAgent
 ```
 

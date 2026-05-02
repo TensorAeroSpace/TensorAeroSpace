@@ -9,7 +9,17 @@ from __future__ import annotations
 import datetime
 import json
 from pathlib import Path
-from typing import Any, Callable, Mapping, Optional, Sequence, Tuple, Union
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Callable,
+    Mapping,
+    Optional,
+    Sequence,
+    Tuple,
+    Union,
+    cast,
+)
 
 import numpy as np
 import torch
@@ -17,10 +27,13 @@ import torch.multiprocessing as mp
 import torch.nn as nn
 import torch.nn.functional as F
 
-try:  # Prefer gymnasium when available for typing accuracy
+if TYPE_CHECKING:
     import gymnasium as gym
-except ImportError:  # pragma: no cover - fallback for older environments
-    import gym
+else:
+    try:  # Prefer gymnasium when available for typing accuracy
+        import gymnasium as gym
+    except ImportError:  # pragma: no cover - fallback for older environments
+        import gym
 
 from ..metrics import MetricWriter, create_metric_writer, schema
 from .shared_optim import SharedAdam
@@ -126,7 +139,7 @@ class Net(nn.Module):
         exp_v = log_prob * td.detach().squeeze(-1) + 0.005 * entropy
         a_loss = -exp_v
         total_loss = (a_loss + c_loss.squeeze(-1)).mean()
-        return total_loss
+        return cast(torch.Tensor, total_loss)
 
 
 class Worker(mp.Process):
@@ -172,8 +185,8 @@ class Worker(mp.Process):
         self,
         gnet: Net,
         opt: SharedAdam,
-        global_ep: mp.Value,
-        global_ep_r: mp.Value,
+        global_ep: Any,
+        global_ep_r: Any,
         res_queue: mp.Queue,
         name: int,
         num_actions: int,
@@ -185,9 +198,9 @@ class Worker(mp.Process):
         env_function: Optional[Callable[[int], gym.Env]] = None,
         env: Optional[gym.Env] = None,
         render: bool = False,
-        writer: Optional["torch.utils.tensorboard.SummaryWriter"] = None,
-        global_step: Optional[mp.Value] = None,
-        global_env_step: Optional[mp.Value] = None,
+        writer: Optional[MetricWriter] = None,
+        global_step: Any | None = None,
+        global_env_step: Any | None = None,
     ) -> None:
         """Initialize worker process.
 
@@ -262,7 +275,7 @@ class Worker(mp.Process):
         # initial sync from global to local to avoid stale params
         self.lnet.load_state_dict(self.gnet.state_dict())
         while self.g_ep.value < self.max_ep:
-            reset_out = self.env.reset()
+            reset_out: Any = self.env.reset()
             if isinstance(reset_out, tuple):
                 s = reset_out[0]
             else:
@@ -283,7 +296,7 @@ class Worker(mp.Process):
                 else:
                     low, high = -np.inf, np.inf
                 a_clipped = np.clip(a, low, high)
-                step_out = self.env.step(a_clipped)
+                step_out: Any = self.env.step(a_clipped)
                 # Bump the shared env-step counter exactly once per env.step.
                 # Used as the canonical TB X-axis for all scalar writes.
                 if self.global_env_step is not None:
@@ -297,12 +310,13 @@ class Worker(mp.Process):
                     terminated, truncated = done, False
                 if t == self.max_ep_step - 1:
                     done = True
-                ep_r += r
+                r_float = float(r)
+                ep_r += r_float
                 buffer_a.append(a)
                 buffer_s.append(s)
                 # use raw rewards
                 # normalization strategy should be config-driven
-                buffer_r.append(r)
+                buffer_r.append(r_float)
 
                 if (
                     total_step % self.update_global_iter == 0 or done
@@ -477,8 +491,12 @@ class Agent:
 
         # infer spaces
         probe_env = self.env_function(0)
-        s_dim = int(probe_env.observation_space.shape[0])
-        a_dim = int(probe_env.action_space.shape[0])
+        observation_shape = probe_env.observation_space.shape
+        action_shape = probe_env.action_space.shape
+        if observation_shape is None or action_shape is None:
+            raise TypeError("A3C requires observation and action spaces with shapes.")
+        s_dim = int(observation_shape[0])
+        a_dim = int(action_shape[0])
         probe_env.close()
 
         # global net and optimizer

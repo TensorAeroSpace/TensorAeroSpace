@@ -99,7 +99,7 @@ def test_state_vector_ordering_matches_list_state():
 
 
 def test_set_initial_state_overrides_alpha_correctly():
-    """Regression: the LEGACY inital.py grouped stab/ail/dir before
+    """Regression: the legacy misspelled initial module grouped stab/ail/dir before
     derivatives, producing a permuted vector. The new pure version must
     put alpha at index 0 and dstab at index 9."""
     from tensoraerospace.aerospacemodel.f16.nonlinear.angular import (

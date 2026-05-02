@@ -13,7 +13,7 @@ import pytest
 from gymnasium import spaces
 
 from tensoraerospace.envs.f4c import F4CPitchEnvNormalized, LinearLongitudinalF4C
-from tensoraerospace.signals.standart import unit_step
+from tensoraerospace.signals.standard import unit_step
 from tensoraerospace.utils import generate_time_period
 
 # ---------------------------------------------------------------------------

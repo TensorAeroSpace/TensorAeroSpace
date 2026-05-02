@@ -54,9 +54,11 @@ class ReplayMemory:
             done: Episode termination flag (bool) or mask (0.0/1.0).
 
         """
+        transition = (state, action, reward, next_state, done)
         if len(self.buffer) < self.capacity:
-            self.buffer.append(None)
-        self.buffer[self.position] = (state, action, reward, next_state, done)
+            self.buffer.append(transition)
+        else:
+            self.buffer[self.position] = transition
         self.position = (self.position + 1) % self.capacity
 
     def sample(

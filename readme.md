@@ -2,7 +2,7 @@
 
 <div align="center">
 
-[![en](https://img.shields.io/badge/lang-en-red.svg)](./README.md)
+[![en](https://img.shields.io/badge/lang-en-red.svg)](./readme.md)
 [![ru](https://img.shields.io/badge/lang-ru-green.svg)](./README.ru-ru.md)
 [![Documentation Status](https://readthedocs.org/projects/tensoraerospace/badge/?version=latest)](https://tensoraerospace.readthedocs.io/en/latest/?badge=latest)
 [![Hugging Face](https://img.shields.io/badge/%F0%9F%A4%97%20Hugging%20Face-TensorAeroSpace-FFD21E)](https://huggingface.co/TensorAeroSpace)
@@ -10,7 +10,7 @@
 [![Python](https://img.shields.io/badge/python-3.10--3.13-blue.svg)](https://www.python.org/downloads/)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![GitHub stars](https://img.shields.io/github/stars/tensoraerospace/tensoraerospace.svg)](https://github.com/tensoraerospace/tensoraerospace/stargazers)
-[![Coverage Status](https://coveralls.io/repos/github/TensorAeroSpace/TensorAeroSpace/badge.svg?branch=develop)](https://coveralls.io/github/TensorAeroSpace/TensorAeroSpace?branch=develop)
+[![Coverage Status](https://coveralls.io/repos/github/TensorAeroSpace/TensorAeroSpace/badge.svg?branch=main)](https://coveralls.io/github/TensorAeroSpace/TensorAeroSpace?branch=main)
 
 ![TensorAeroSpace Logo](./img/logo-no-background.png)
 
@@ -71,36 +71,48 @@ pip install tensoraerospace
 ```
 
 #### 🐳 Docker
-The image starts **JupyterLab by default** (see `Dockerfile` CMD).
+The image starts **JupyterLab by default** (see `Dockerfile` CMD). The runtime image is built from the repository sources, installs TensorAeroSpace as a wheel, and includes examples in `/workspace/examples`.
 
 **Ubuntu / Linux (bash):**
 
 ```bash
-docker build -t tensoraerospace . --platform=linux/amd64
+docker pull ghcr.io/tensoraerospace/tensoraerospace:latest
 docker run --rm -it -p 8888:8888 \
-  -v "$(pwd)/example:/app/example" \
-  tensoraerospace
+  -v "$(pwd)/projects:/workspace/projects" \
+  ghcr.io/tensoraerospace/tensoraerospace:latest
+
+# Or build the same image locally from source
+docker build -t tensoraerospace:local . --platform=linux/amd64
+docker run --rm -it -p 8888:8888 \
+  -v "$(pwd)/projects:/workspace/projects" \
+  tensoraerospace:local
 
 # Optional: enable NVIDIA GPU inside the container
 docker run --rm -it --gpus all -p 8888:8888 \
-  -v "$(pwd)/example:/app/example" \
-  tensoraerospace
+  -v "$(pwd)/projects:/workspace/projects" \
+  ghcr.io/tensoraerospace/tensoraerospace:latest
 ```
 
 **Windows (PowerShell):**
 
 ```powershell
-docker build -t tensoraerospace . --platform=linux/amd64
+docker pull ghcr.io/tensoraerospace/tensoraerospace:latest
 docker run --rm -it -p 8888:8888 `
-  -v "${PWD}\example:/app/example" `
-  tensoraerospace
+  -v "${PWD}\projects:/workspace/projects" `
+  ghcr.io/tensoraerospace/tensoraerospace:latest
+
+# Or build the same image locally from source
+docker build -t tensoraerospace:local . --platform=linux/amd64
+docker run --rm -it -p 8888:8888 `
+  -v "${PWD}\projects:/workspace/projects" `
+  tensoraerospace:local
 
 # Optional: enable NVIDIA GPU inside the container
 docker run --rm -it --gpus all -p 8888:8888 `
-  -v "${PWD}\example:/app/example" `
-  tensoraerospace
+  -v "${PWD}\projects:/workspace/projects" `
+  ghcr.io/tensoraerospace/tensoraerospace:latest
 ```
-> Open the printed URL (default `http://127.0.0.1:8888`) and navigate to `example/quickstart.ipynb` to run the SAC walkthrough inside Docker.
+> Open the printed URL (default `http://127.0.0.1:8888`) and navigate to `examples/quickstart.ipynb` to run the SAC walkthrough inside Docker.
 
 ### 🏃‍♂️ Quick Examples
 
@@ -138,7 +150,7 @@ import numpy as np
 
 from tensoraerospace.agent.pid import PID
 from tensoraerospace.utils import generate_time_period
-from tensoraerospace.signals.standart import unit_step
+from tensoraerospace.signals.standard import unit_step
 
 # Simulation setup
 dt = 0.01

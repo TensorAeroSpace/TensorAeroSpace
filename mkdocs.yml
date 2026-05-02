@@ -6,6 +6,17 @@ docs_dir: docs
 
 plugins:
   - search
+  - glightbox:
+      touchNavigation: true
+      loop: false
+      effect: zoom
+      slide_effect: slide
+      width: 100%
+      height: auto
+      zoomable: true
+      draggable: true
+      auto_caption: false
+      caption_position: bottom
   - mkdocstrings:
       default_handler: python
       handlers:
@@ -41,6 +52,7 @@ plugins:
                 - Linear Longitudinal: model/f16.md
                 - Nonlinear Longitudinal: model/f16_nonlinear_longitudinal.md
                 - Nonlinear 6-DoF Angular: model/f16_nonlinear_angular.md
+                - Aircraft Damage Modeling: model/aircraft-damage-modeling.md
               - B747: 
                 - Classic State-Space: model/b747.md
                 - Normalized State-Space: model/b747_imporove.md
@@ -71,6 +83,7 @@ plugins:
               - IMGDHP: agent/imgdhp.md
               - ET-DHP: agent/et_dhp.md
               - AA-INDI: agent/aa_indi.md
+              - AIDI: agent/aidi.md
               - iADP: agent/iadp.md
               - HDP: agent/hdp.md
               - ADHDP: agent/adhdp.md
@@ -143,6 +156,8 @@ plugins:
               - "12 — IM-GDHP on the nonlinear F-16": cookbook/12_imgdhp.md
               - "13 — ET-DHP on the nonlinear F-16": cookbook/13_etdhp.md
               - "14 — AA-INDI on the nonlinear F-16": cookbook/14_aaindi.md
+              - "15 — ET-DHP under in-flight damage": cookbook/15_etdhp_damage.md
+              - "16 — Interactive 3D viewer for F-16 flights": cookbook/16_3d_viewer.md
             - Lessons:
               - Theory:
                 - "Lesson 1 — Introduction and State-Space": lesson/base/tutor_1.md
@@ -179,6 +194,7 @@ plugins:
                 - Линейная продольная: model/f16.md
                 - Нелинейная продольная: model/f16_nonlinear_longitudinal.md
                 - Нелинейная 6-DoF угловая: model/f16_nonlinear_angular.md
+                - Моделирование повреждений ЛА: model/aircraft-damage-modeling.md
               - B747: 
                 - Пространство состояний: model/b747.md
                 - Нормализованное управление: model/b747_imporove.md
@@ -208,6 +224,7 @@ plugins:
               - IMGDHP: agent/imgdhp.md
               - ET-DHP: agent/et_dhp.md
               - AA-INDI: agent/aa_indi.md
+              - AIDI: agent/aidi.md
               - iADP: agent/iadp.md
               - HDP: agent/hdp.md
               - ADHDP: agent/adhdp.md
@@ -280,6 +297,8 @@ plugins:
               - "12 — IM-GDHP на нелинейной F-16": cookbook/12_imgdhp.md
               - "13 — ET-DHP на нелинейной F-16": cookbook/13_etdhp.md
               - "14 — AA-INDI на нелинейной F-16": cookbook/14_aaindi.md
+              - "15 — ET-DHP при повреждении ЛА": cookbook/15_etdhp_damage.md
+              - "16 — Интерактивный 3D-просмотрщик F-16": cookbook/16_3d_viewer.md
             - Уроки:
               - Теория:
                 - "Урок 1 — Введение и пространство состояний": lesson/base/tutor_1.md

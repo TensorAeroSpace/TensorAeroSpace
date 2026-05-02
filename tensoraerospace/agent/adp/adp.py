@@ -30,10 +30,11 @@ import datetime
 import inspect
 import json
 from pathlib import Path
-from typing import Any, Dict, Mapping, Optional, Sequence, Tuple, Union
+from typing import Any, Dict, Mapping, Optional, Sequence, Tuple, Union, cast
 
 import numpy as np
 import torch
+import torch.nn as nn
 import torch.nn.functional as F
 from torch.optim import Adam
 
@@ -233,7 +234,7 @@ class ADP(BaseRLModel):
         self._dhp_action_cycle_episodes = int(dhp_action_cycle_episodes)
         self._prev_u_norm = np.zeros((act_dim,), dtype=np.float32)
         self._prev2_u_norm = np.zeros((act_dim,), dtype=np.float32)
-        self._dhp_pid = None
+        self._dhp_pid: Any = None
         self._adhdp_use_baseline = bool(adhdp_use_baseline)
         self._adhdp_warmstart_actor_episodes = int(adhdp_warmstart_actor_episodes)
         self._adhdp_warmstart_actor_epochs = int(adhdp_warmstart_actor_epochs)
@@ -327,6 +328,7 @@ class ADP(BaseRLModel):
             #  - DHP:       lambda = dJ/dR
             #  - GDHP:      J(R) and lambda = dJ/dR (shared trunk, Fig. 5)
             #  - ADGDHP:    J(R,A) and (dJ/dR, dJ/dA) (Fig. 7)
+            self.critic: nn.Module
             if self.design == "hdp":
                 self.critic = JCritic(
                     self._dhp_input_dim, hidden_sizes=hidden_sizes
@@ -590,7 +592,7 @@ class ADP(BaseRLModel):
         # Always clip to env bounds
         low = np.asarray(self.env.action_space.low, dtype=np.float32).reshape(-1)
         high = np.asarray(self.env.action_space.high, dtype=np.float32).reshape(-1)
-        return np.clip(act, low, high).astype(np.float32)
+        return np.asarray(np.clip(act, low, high).astype(np.float32))
 
     def predict(self, state: np.ndarray, deterministic: bool = True) -> np.ndarray:
         """Alias for compatibility with some agent APIs."""
@@ -817,7 +819,7 @@ class ADP(BaseRLModel):
 
     def _adhdp_policy_action(self, obs: torch.Tensor) -> torch.Tensor:
         """Policy action for canonical ADHDP."""
-        return self.actor(obs)
+        return cast(torch.Tensor, self.actor(obs))
 
     def _warmstart_adhdp_actor_from_pd(
         self, *, episodes: int, max_steps: int | None
@@ -2446,7 +2448,7 @@ class ADP(BaseRLModel):
                         getattr(self, "_adhdp_use_env_cost", True)
                     ):
                         try:
-                            cost_total = float(info.get("cost_total"))  # type: ignore[union-attr]
+                            cost_total = float(info.get("cost_total"))
                             reward_scale = float(getattr(self.env, "reward_scale", 1.0))
                             reward_for_update = -cost_total * reward_scale
                         except Exception:
@@ -2660,7 +2662,7 @@ class ADP(BaseRLModel):
         env_cls: type, kwargs: Dict[str, Any]
     ) -> Dict[str, Any]:
         try:
-            sig = inspect.signature(env_cls.__init__)
+            sig = inspect.signature(env_cls)
         except (TypeError, ValueError):
             return kwargs
 

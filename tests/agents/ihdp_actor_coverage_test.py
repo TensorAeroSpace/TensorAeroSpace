@@ -77,6 +77,20 @@ def test_run_actor_online_populates_buffers():
     assert a.dut_dWb is not None
 
 
+def test_load_dut_dWb_uses_safe_numpy_loading(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    data_dir = tmp_path / "actor_dut_dWb"
+    data_dir.mkdir()
+    np.save(data_dir / "0_dut_dWb.npy", np.array([[1.0]], dtype=np.float32))
+
+    actor = Actor.__new__(Actor)
+    actor.load_dut_dWb()
+
+    assert len(actor.dut_dWb) == 1
+    np.testing.assert_allclose(actor.dut_dWb[0], np.array([[1.0]], dtype=np.float32))
+    assert actor.dut_dWb_1 is actor.dut_dWb
+
+
 def test_train_actor_online_adaptive_alpha_runs():
     a = _mk()
     a.run_actor_online(np.array([[0.1]]), np.array([[0.0]]))

@@ -1,6 +1,6 @@
 """Gymnasium environment wrapping the pure-numpy nonlinear F-16 longitudinal model.
 
-This is the side-by-side numpy counterpart to :mod:`linear_longitudial`. It
+This is the side-by-side numpy counterpart to :mod:`linear_longitudinal`. It
 wraps :class:`tensoraerospace.aerospacemodel.f16.nonlinear.longitudinal.LongitudinalF16`
 which uses the cubic-spline aerodynamic tables ported from the matlab source.
 
@@ -15,13 +15,17 @@ Control vector::
 
 from __future__ import annotations
 
-import math
-from typing import Callable, Optional, Sequence
+from typing import Any, Callable, Literal, Optional, Sequence
 
 import gymnasium as gym
 import numpy as np
 from gymnasium import spaces
 
+from tensoraerospace.aerospacemodel.f16.nonlinear.damage import (
+    DamageManager,
+    DamageProfile,
+    load_f16_geometry,
+)
 from tensoraerospace.aerospacemodel.f16.nonlinear.longitudinal import (
     LongitudinalF16,
 )
@@ -75,7 +79,7 @@ class NonlinearLongitudinalF16(gym.Env):
     before being handed to the underlying numpy model.
     """
 
-    metadata = {"render_modes": ["human", "rgb_array", "live"]}
+    metadata = {"render_modes": ["human", "rgb_array", "live", "3d_web"]}
 
     def __init__(
         self,
@@ -86,10 +90,12 @@ class NonlinearLongitudinalF16(gym.Env):
         state_space: list[str] | None = None,
         control_space: list[str] | None = None,
         output_space: list[str] | None = None,
-        reward_func: callable = None,
+        reward_func: (
+            Callable[[np.ndarray, np.ndarray, int], np.ndarray | float] | None
+        ) = None,
         use_reward: bool = True,
         dt: float = 0.01,
-        integrator: str = "euler",
+        integrator: Literal["euler", "rk4"] = "euler",
         control_bias: float = 0.0,
         feedforward_fn: Callable[[int, np.ndarray], float] | None = None,
         airspeed: float = 200.0,
@@ -97,6 +103,9 @@ class NonlinearLongitudinalF16(gym.Env):
         chart_states: Sequence[str] = ("alpha", "wz", "stab"),
         trail_length: Optional[int] = None,
         initial_pitch: float = 0.0,
+        damage_profile: Optional[DamageProfile] = None,
+        damage_observable: bool = False,
+        damage_event_callback: Optional[Callable] = None,
     ) -> None:
         super().__init__()
 
@@ -123,6 +132,14 @@ class NonlinearLongitudinalF16(gym.Env):
         self.reward_func = (
             reward_func if reward_func is not None else self.default_reward
         )
+        self.damage_profile = damage_profile
+        self.damage_observable = damage_observable
+        self.damage_event_callback = damage_event_callback
+        self._geo_for_damage = (
+            load_f16_geometry()
+            if (damage_observable or damage_profile is not None)
+            else None
+        )
 
         model_x0 = self._build_model_initial_state(self.initial_state, self.state_space)
 
@@ -145,10 +162,17 @@ class NonlinearLongitudinalF16(gym.Env):
             shape=(len(self.control_space),),
             dtype=np.float32,
         )
+        obs_size = len(self.state_space)
+        if damage_observable:
+            geo = self._geo_for_damage
+            if geo is None:
+                raise RuntimeError("Damage observation requires F-16 geometry.")
+            obs_size += len(geo.section_names())
+            obs_size += 1  # engine.thrust_factor
         self.observation_space = spaces.Box(
             low=-np.inf,
             high=np.inf,
-            shape=(len(self.state_space),),
+            shape=(obs_size,),
             dtype=np.float32,
         )
 
@@ -160,12 +184,20 @@ class NonlinearLongitudinalF16(gym.Env):
         self.chart_states = tuple(chart_states)
         self.trail_length = trail_length
         self.initial_pitch = float(initial_pitch)
+        self.damage_manager: Optional[DamageManager] = None
+
+        # Damage history accumulators — populated across an episode for the
+        # 3D web exporter (tensoraerospace.visualization.three_d). Empty
+        # lists when no damage_profile is configured.
+        self.damage_events_log: list[dict] = []
+        self.damage_state_log: list[dict] = []
+
         # Initialised in reset()
         self.position_history = np.zeros((0, 3))
         self.attitude_history = np.zeros((0, 3))
         self.time_history = np.zeros((0,))
         self.chart_history: dict[str, np.ndarray] = {}
-        self._live_renderer = None
+        self._live_renderer: Any = None
 
     @staticmethod
     def _build_model_initial_state(
@@ -192,12 +224,28 @@ class NonlinearLongitudinalF16(gym.Env):
         init_args.pop("model_x0", None)
         return init_args
 
-    def _get_info(self) -> dict[str, float]:
+    def _get_info(self) -> dict[str, object]:
         return {}
+
+    def _build_observation(self, base_obs: np.ndarray) -> np.ndarray:
+        if not self.damage_observable or self.damage_manager is None:
+            return base_obs.astype(np.float32)
+        geo = self._geo_for_damage
+        if geo is None:
+            raise RuntimeError("Damage observation requires F-16 geometry.")
+        names = geo.section_names()
+        loss_vec = np.array(
+            [self.damage_manager.state.section_loss.get(n, 0.0) for n in names],
+            dtype=np.float32,
+        )
+        thrust_vec = np.array(
+            [self.damage_manager.state.engine.thrust_factor], dtype=np.float32
+        )
+        return np.concatenate([base_obs.astype(np.float32), loss_vec, thrust_vec])
 
     def step(
         self, action: np.ndarray
-    ) -> tuple[np.ndarray, float, bool, bool, dict[str, float]]:
+    ) -> tuple[np.ndarray, float, bool, bool, dict[str, object]]:
         action_deg = (
             np.asarray(action, dtype=np.float64).reshape(-1) + self.control_bias
         )
@@ -211,12 +259,39 @@ class NonlinearLongitudinalF16(gym.Env):
         action_rad = np.deg2rad(action_deg)
         self.current_step += 1
 
+        # Damage events (window: prior step → current step)
+        triggered_labels: list[str] = []
+        if self.damage_manager is not None:
+            t_now = self.current_step * self.dt
+            t_prev = (self.current_step - 1) * self.dt
+            triggered = self.damage_manager.update(t_now, t_prev)
+            for ev in triggered:
+                if self.damage_event_callback:
+                    self.damage_event_callback(ev, self.damage_manager.state)
+                triggered_labels.append(ev.label or ev.event_type)
+                self.damage_events_log.append(
+                    {
+                        "time": float(t_now),
+                        "label": ev.label or ev.event_type,
+                        "event_type": ev.event_type,
+                        "payload": dict(ev.payload),
+                    }
+                )
+            if triggered:
+                # Snapshot the post-event damage state
+                self.damage_state_log.append(
+                    {
+                        "time": float(t_now),
+                        "state": self.damage_manager.state.snapshot(),
+                    }
+                )
+
         next_state = self.model.run_step(action_rad)
         # Track histories using the FULL 4-element model state (next_state may
         # be a sliced observation, depending on selected_state_output).
         self._update_history(self.model.current_state)
 
-        reward = 1.0
+        reward: np.ndarray | float = 1.0
         if self.use_reward:
             reward = self.reward_func(
                 next_state, self.reference_signal, self.current_step
@@ -224,11 +299,16 @@ class NonlinearLongitudinalF16(gym.Env):
 
         self.done = self.current_step >= self.number_time_steps - 1
         info = self._get_info()
+        if self.damage_manager is not None:
+            info["damage_state"] = self.damage_manager.state.snapshot()
+            if triggered_labels:
+                info["damage_events_triggered"] = triggered_labels
 
         reward_value = float(np.asarray(reward, dtype=float).squeeze())
 
+        base_obs = np.asarray(next_state).reshape(-1).astype(np.float32)
         return (
-            np.asarray(next_state).reshape(-1).astype(np.float32),
+            self._build_observation(base_obs),
             reward_value,
             self.done,
             False,
@@ -237,7 +317,7 @@ class NonlinearLongitudinalF16(gym.Env):
 
     def reset(
         self, seed: int | None = None, options: dict | None = None
-    ) -> tuple[np.ndarray, dict[str, float]]:
+    ) -> tuple[np.ndarray, dict[str, object]]:
         super().reset(seed=seed)
         self.current_step = 0
         self.done = False
@@ -249,10 +329,38 @@ class NonlinearLongitudinalF16(gym.Env):
             dt=self.dt,
             integrator=self.integrator,
         )
+        if self.damage_profile is not None or self.damage_observable:
+            geo = self._geo_for_damage
+            if geo is None:
+                raise RuntimeError("Damage mode requires F-16 geometry.")
+            self.damage_manager = DamageManager(
+                geometry=geo,
+                params=self.model.param,
+                profile=(self.damage_profile or DamageProfile(events=[])),
+            )
+            if options and "damage_profile" in options:
+                self.damage_manager.set_profile(options["damage_profile"])
+            self.damage_manager.reset(seed=seed)
+            setattr(self.model, "damage_state", self.damage_manager.state)
+            setattr(self.model, "damage_geometry", geo)
+        else:
+            self.damage_manager = None
         info = self._get_info()
-        observation = np.asarray(model_x0, dtype=np.float32)[
+        base_obs = np.asarray(model_x0, dtype=np.float32)[
             self.model.selected_state_index
         ].reshape(-1)
+        observation = self._build_observation(base_obs)
+
+        # Reset accumulator buffers and snapshot initial damage state
+        self.damage_events_log = []
+        self.damage_state_log = []
+        if self.damage_manager is not None:
+            self.damage_state_log.append(
+                {
+                    "time": 0.0,
+                    "state": self.damage_manager.state.snapshot(),
+                }
+            )
 
         self.position_history = np.zeros((1, 3), dtype=np.float64)
         self.attitude_history = np.array([[0.0, self.initial_pitch, 0.0]])
@@ -360,6 +468,8 @@ class NonlinearLongitudinalF16(gym.Env):
                 },
             )
             return self._live_renderer._fig
+        if self.render_mode == "3d_web":
+            return self._render_3d_web()
         raise ValueError(f"Unknown render_mode: {self.render_mode!r}")
 
     def _build_figure(self):
@@ -372,3 +482,8 @@ class NonlinearLongitudinalF16(gym.Env):
             chart_data=self.chart_history,
             trail_length=self.trail_length,
         )
+
+    def _render_3d_web(self):
+        from tensoraerospace.visualization.three_d import render as _render_3d
+
+        return _render_3d(self)

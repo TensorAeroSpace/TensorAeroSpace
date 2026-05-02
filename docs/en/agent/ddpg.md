@@ -41,7 +41,7 @@ import gymnasium as gym
 import numpy as np
 from tensoraerospace.agent.ddpg.model import DDPG
 from tensoraerospace.utils import generate_time_period
-from tensoraerospace.signals.standart import unit_step
+from tensoraerospace.signals.standard import unit_step
 
 # Time grid and reference
 dt = 0.01

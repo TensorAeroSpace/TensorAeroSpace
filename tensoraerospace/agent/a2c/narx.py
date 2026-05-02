@@ -7,7 +7,7 @@ NARX (Nonlinear AutoRegressive with eXogenous inputs) representations.
 import datetime
 import json
 from pathlib import Path
-from typing import Any, Iterable, Mapping, Optional, Sequence, Union
+from typing import Any, Iterable, Mapping, Optional, Sequence, Union, cast
 
 import numpy as np
 import torch
@@ -89,8 +89,7 @@ class Actor(nn.Module):
             nn.Linear(64, n_actions),
         )
 
-        logstds_param = nn.Parameter(torch.full((n_actions,), 0.1))
-        self.register_parameter("logstds", logstds_param)
+        self.logstds = nn.Parameter(torch.full((n_actions,), 0.1))
 
     def forward(self, X: torch.Tensor) -> torch.distributions.Normal:
         """Compute an action distribution for a batch of states."""
@@ -126,15 +125,15 @@ class Critic(nn.Module):
 
     def forward(self, X: torch.Tensor) -> torch.Tensor:
         """Estimate state value for input features."""
-        return self.model(X)
+        return cast(torch.Tensor, self.model(X))
 
 
 def discounted_rewards(
     rewards: Sequence[float], dones: Sequence[float], gamma: float
 ) -> list[float]:
     """Compute discounted returns for a sequence of rewards."""
-    ret = 0
-    discounted = []
+    ret = 0.0
+    discounted: list[float] = []
     for reward, done in zip(rewards[::-1], dones[::-1]):
         ret = reward + ret * gamma * (1 - done)
         discounted.append(ret)
@@ -169,12 +168,14 @@ def process_memory_narx(
     Returns:
         tuple: ``(actions, rewards, states, next_states, dones, critic_states)``.
     """
-    actions = []
-    states = []
-    next_states = []
-    rewards = []
-    dones = []
-    critic_states = []  # Инициализация для хранения состояний и предыдущих действий
+    actions: list[np.ndarray] = []
+    states: list[np.ndarray] = []
+    next_states: list[np.ndarray] = []
+    rewards: list[float] = []
+    dones: list[bool] = []
+    critic_states: list[np.ndarray] = (
+        []
+    )  # Инициализация для хранения состояний и предыдущих действий
 
     # Используем None или 0 как заполнитель для предыдущего действия первого состояния
     prev_state = np.zeros(memory[0][2].shape)
@@ -194,14 +195,23 @@ def process_memory_narx(
     if discount_rewards:
         rewards = discounted_rewards(rewards, dones, gamma)
 
-    actions = t(actions, device=device).view(-1, 1)
-    states = t(states, device=device)
-    next_states = t(next_states, device=device)
-    rewards = t(rewards, device=device).view(-1, 1)
-    dones = t(dones, device=device).view(-1, 1)
-    critic_states = t(critic_states, device=device)  # Преобразование списка в тензор
+    actions_tensor = t(actions, device=device).view(-1, 1)
+    states_tensor = t(states, device=device)
+    next_states_tensor = t(next_states, device=device)
+    rewards_tensor = t(rewards, device=device).view(-1, 1)
+    dones_tensor = t(dones, device=device).view(-1, 1)
+    critic_states_tensor = t(
+        critic_states, device=device
+    )  # Преобразование списка в тензор
 
-    return actions, rewards, states, next_states, dones, critic_states
+    return (
+        actions_tensor,
+        rewards_tensor,
+        states_tensor,
+        next_states_tensor,
+        dones_tensor,
+        critic_states_tensor,
+    )
 
 
 class A2CLearner:
@@ -613,14 +623,24 @@ class Runner:
         """
         self.env = env
         self.actor = actor
-        self.state = None
+        action_shape = self.env.action_space.shape
+        observation_shape = self.env.observation_space.shape
+        if action_shape is None or observation_shape is None:
+            raise TypeError(
+                "Runner requires observation and action spaces with shapes."
+            )
+        self.action_shape = action_shape
+        action_space = getattr(self.env, "action_space")
+        self.action_low = np.asarray(action_space.low, dtype=np.float32)
+        self.action_high = np.asarray(action_space.high, dtype=np.float32)
+        self.state = np.zeros(observation_shape, dtype=np.float32).reshape(-1)
         self.done = True
         self.steps = 0
-        self.episode_reward = 0
+        self.episode_reward = 0.0
         self.episode_length = 0
-        self.episode_rewards = []
+        self.episode_rewards: list[float] = []
         # Initialize previous action as zeros; adjust the size based on your action space
-        self.prev_action = np.zeros(self.env.action_space.shape)
+        self.prev_action = np.zeros(self.action_shape)
         self.writer = writer
         self.device = next(self.actor.parameters()).device
 
@@ -631,13 +651,13 @@ class Runner:
 
     def reset(self) -> None:
         """Reset environment and episode state."""
-        self.episode_reward = 0
+        self.episode_reward = 0.0
         self.episode_length = 0
         self.done = False
         self.state, info = self.env.reset()
         self.state = self._flatten_observation(self.state)
         # Reset previous action at the start of each episode
-        self.prev_action = np.zeros(self.env.action_space.shape)
+        self.prev_action = np.zeros(self.action_shape)
 
     def run(
         self,
@@ -667,24 +687,23 @@ class Runner:
             ).unsqueeze(0)
             dists = self.actor(state_t)
             actions = dists.sample().detach().cpu().numpy()
-            actions_clipped = np.clip(
-                actions, self.env.action_space.low, self.env.action_space.high
-            )
+            actions_clipped = np.clip(actions, self.action_low, self.action_high)
 
             next_state, reward, terminated, truncated, info = self.env.step(
                 actions_clipped[0]
             )
             self.done = terminated or truncated
+            reward_float = float(reward)
             next_state = self._flatten_observation(next_state)
 
             # Here, instead of just the state, we store the state concatenated with the previous action
-            memory.append((actions, reward, self.state, next_state, self.done))
+            memory.append((actions, reward_float, self.state, next_state, self.done))
 
             self.prev_action = actions_clipped[0]  # Update the previous action
             self.state = next_state
             self.steps += 1
             self.episode_length += 1
-            self.episode_reward += reward
+            self.episode_reward += reward_float
 
             if self.done:
                 self.episode_rewards.append(self.episode_reward)

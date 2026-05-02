@@ -14,6 +14,7 @@ Main capabilities:
 """
 
 import warnings
+from typing import Any, cast
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -59,8 +60,8 @@ class ModelBase:
             dt: Discretization step. Defaults to 0.01.
         """
         # Массивы с историей
-        self.u_history = []
-        self.x_history = []
+        self.u_history: list[Any] = []
+        self.x_history: list[Any] = []
 
         # Параметры для модели
         self.dt = dt
@@ -70,8 +71,12 @@ class ModelBase:
         self.selected_state_output = selected_state_output
         self.number_time_steps = 0
         # Текущие состояния, управляющий сигнал и выход системы
-        self.xt = None
-        self.xt1 = None
+        self.xt: Any = None
+        self.xt1: Any = None
+        self.store_states: np.ndarray = np.empty((0, 0))
+        self.store_input: np.ndarray = np.empty((0, 0))
+        self.store_outputs: np.ndarray = np.empty((0, 0))
+        self.output_history: dict[str, np.ndarray] = {}
 
     def _initialize_selected_state_index(self, selected_state_output, list_state):
         """Initialize selected_state_index based on selected_state_output.
@@ -91,14 +96,14 @@ class ModelBase:
         self.ut = None
 
         # Массивы с обработанными данными
-        self.state_history = []
-        self.control_history = []
-        self.store_outputs = []
+        self.state_history: dict[str, np.ndarray] = {}
+        self.control_history: dict[str, np.ndarray] = {}
+        self.store_outputs = np.empty((0, 0))
 
         # Массивы с доступными
         # Пространством состояний и пространством управления
-        self.list_state = []
-        self.control_list = []
+        self.list_state: list[str] = []
+        self.control_list: list[str] = []
 
     def run_step(self, u):
         """Calculate control object state.
@@ -117,8 +122,10 @@ class ModelBase:
         self.time_step = 1
         self.u_history = []
         self.x_history = [self.x0]
-        self.state_history = []
-        self.control_history = []
+        # Historical public state: callers and tests expect an empty list after
+        # restart. get_state/get_control lazily rebuild the dict representation.
+        self.state_history = cast(Any, [])
+        self.control_history = cast(Any, [])
         self.list_state = []
         self.control_list = []
 
@@ -184,7 +191,7 @@ class ModelBase:
         self,
         state_name: str,
         time: np.ndarray,
-        lang: str = "rus",
+        lang: Any = "rus",
         to_deg: bool = False,
         to_rad: bool = False,
         figsize: tuple = (10, 10),
@@ -250,8 +257,8 @@ class ModelBase:
         to_deg: bool = False,
         to_rad: bool = False,
         figsize: tuple = (10, 10),
-        xlim: list = [13, 20],
-        ylim: list = [-3, 3],
+        xlim: tuple[float, float] = (13, 20),
+        ylim: tuple[float, float] = (-3, 3),
         close: bool = False,
     ):
         """Plot control error.

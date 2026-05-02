@@ -853,6 +853,10 @@ class TestADHDPSaveLoad:
             assert os.path.isfile(os.path.join(run_dir, "config.json"))
             assert os.path.isfile(os.path.join(run_dir, "actor.pth"))
             assert os.path.isfile(os.path.join(run_dir, "critic.pth"))
+            actor_state = torch.load(
+                os.path.join(run_dir, "actor.pth"), weights_only=True
+            )
+            assert isinstance(actor_state, dict)
 
     def test_save_with_gradients(self):
         env = _TinyEnv(obs_dim=4, act_dim=1)

@@ -102,7 +102,7 @@ The episode truncates (`truncated=True`) when reaching the maximum number of tim
 ```python
 import numpy as np
 from tensoraerospace.envs import ImprovedComSatEnv
-from tensoraerospace.signals.standart import unit_step
+from tensoraerospace.signals.standard import unit_step
 from tensoraerospace.utils import generate_time_period
 
 # Generate reference signal

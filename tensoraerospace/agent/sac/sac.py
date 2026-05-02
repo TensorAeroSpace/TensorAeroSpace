@@ -8,6 +8,7 @@ and various policy types for aerospace system control.
 import datetime
 import inspect
 import json
+import warnings
 from collections import deque
 from pathlib import Path
 from typing import Any, Deque, Dict, Mapping, Optional, Sequence, Tuple, Union, cast
@@ -230,7 +231,7 @@ class SAC(BaseRLModel):
 
         if return_tensor:
             return action_t
-        return cast(np.ndarray, action_t.detach().cpu().numpy())
+        return action_t.detach().cpu().numpy()
 
     def update_parameters(
         self, memory: ReplayMemory, batch_size: int, updates: int
@@ -572,20 +573,12 @@ class SAC(BaseRLModel):
                 )
 
             # Convert tensors to numpy once per step for replay + metrics
-            obs_np = cast(np.ndarray, obs.detach().cpu().numpy())
-            next_obs_np = cast(np.ndarray, next_obs.detach().cpu().numpy())
-            actions_np = cast(np.ndarray, actions_t.detach().cpu().numpy())
-            reward_np = cast(np.ndarray, reward.detach().cpu().numpy()).reshape(-1)
-            terminated_np = (
-                cast(np.ndarray, terminated.detach().cpu().numpy())
-                .reshape(-1)
-                .astype(bool)
-            )
-            truncated_np = (
-                cast(np.ndarray, truncated.detach().cpu().numpy())
-                .reshape(-1)
-                .astype(bool)
-            )
+            obs_np = obs.detach().cpu().numpy()
+            next_obs_np = next_obs.detach().cpu().numpy()
+            actions_np = actions_t.detach().cpu().numpy()
+            reward_np = reward.detach().cpu().numpy().reshape(-1)
+            terminated_np = terminated.detach().cpu().numpy().reshape(-1).astype(bool)
+            truncated_np = truncated.detach().cpu().numpy().reshape(-1).astype(bool)
             done_np = np.logical_or(terminated_np, truncated_np)
             # IMPORTANT:
             # - For plain (non-auto-reset) envs, time-limit bootstrapping is valid:
@@ -623,11 +616,11 @@ class SAC(BaseRLModel):
             for i, done in enumerate(done_np):
                 if done:
                     r = float(ep_returns[i])
-                    l = int(ep_lengths[i])
+                    length = int(ep_lengths[i])
                     returns_window.append(r)
                     self.writer.log_episode(
                         reward=r,
-                        length=l,
+                        length=length,
                         env_step=int(total_env_steps),
                         terminated=bool(terminated_np[i]),
                         truncated=bool(truncated_np[i]),
@@ -677,12 +670,20 @@ class SAC(BaseRLModel):
         """Flush and close TensorBoard writer."""
         try:
             self.writer.flush()
-        except Exception:
-            pass
+        except Exception as exc:
+            warnings.warn(
+                f"SAC metric writer flush failed during close(): {exc}",
+                RuntimeWarning,
+                stacklevel=2,
+            )
         try:
             self.writer.close()
-        except Exception:
-            pass
+        except Exception as exc:
+            warnings.warn(
+                f"SAC metric writer close failed during close(): {exc}",
+                RuntimeWarning,
+                stacklevel=2,
+            )
 
     def get_param_env(self) -> Dict[str, Dict[str, Any]]:
         """Return serializable configuration of environment and policy."""
@@ -815,7 +816,7 @@ class SAC(BaseRLModel):
         (e.g., action_space/observation_space metadata).
         """
         try:
-            sig = inspect.signature(env_cls.__init__)
+            sig = inspect.signature(env_cls)
         except (TypeError, ValueError):
             return kwargs
 

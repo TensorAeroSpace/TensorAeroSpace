@@ -12,7 +12,7 @@ import numpy as np
 from tqdm import tqdm
 
 from tensoraerospace.agent.ihdp.model import IHDPAgent
-from tensoraerospace.signals.standart import unit_step
+from tensoraerospace.signals.standard import unit_step
 from tensoraerospace.utils import convert_tp_to_sec_tp, generate_time_period
 ```
 

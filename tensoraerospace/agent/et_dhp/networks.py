@@ -10,7 +10,7 @@ random-search phase.
 
 from __future__ import annotations
 
-from typing import Sequence
+from typing import Sequence, cast
 
 import torch
 from torch import nn
@@ -73,7 +73,7 @@ class PlantModelNN(nn.Module):
 
     def forward(self, xu: torch.Tensor) -> torch.Tensor:
         """Return the predicted next state from a concatenated ``[x; u]``."""
-        return self.head(self.backbone(xu))
+        return cast(torch.Tensor, self.head(self.backbone(xu)))
 
 
 class ETDHPActor(nn.Module):
@@ -156,4 +156,4 @@ class ETDHPCritic(nn.Module):
 
     def forward(self, state: torch.Tensor) -> torch.Tensor:
         """Return ``λ(x)`` of shape ``(n_state,)`` (or batched)."""
-        return self.head(self.backbone(state))
+        return cast(torch.Tensor, self.head(self.backbone(state)))

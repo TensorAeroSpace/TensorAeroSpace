@@ -2,7 +2,7 @@
 
 <div align="center">
 
-[![en](https://img.shields.io/badge/lang-en-red.svg)](./README.md)
+[![en](https://img.shields.io/badge/lang-en-red.svg)](./readme.md)
 [![ru](https://img.shields.io/badge/lang-ru-green.svg)](./README.ru-ru.md)
 [![Documentation Status](https://readthedocs.org/projects/tensoraerospace/badge/?version=latest)](https://tensoraerospace.readthedocs.io/en/latest/?badge=latest)
 [![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/TensorAeroSpace/TensorAeroSpace)
@@ -89,41 +89,53 @@ pip install tensoraerospace
 ```
 
 #### 🐳 Docker
-Образ **по умолчанию запускает JupyterLab** (см. `Dockerfile`).
+Образ **по умолчанию запускает JupyterLab** (см. `Dockerfile`). Runtime-образ собирается из исходников репозитория, устанавливает TensorAeroSpace как wheel и содержит примеры в `/workspace/examples`.
 
 **Ubuntu / Linux (bash):**
 
 ```bash
-docker build -t tensoraerospace . --platform=linux/amd64
+docker pull ghcr.io/tensoraerospace/tensoraerospace:latest
 docker run --rm -it -p 8888:8888 \
-  -v "$(pwd)/example:/app/example" \
-  tensoraerospace
+  -v "$(pwd)/projects:/workspace/projects" \
+  ghcr.io/tensoraerospace/tensoraerospace:latest
+
+# Или соберите такой же образ локально из исходников
+docker build -t tensoraerospace:local . --platform=linux/amd64
+docker run --rm -it -p 8888:8888 \
+  -v "$(pwd)/projects:/workspace/projects" \
+  tensoraerospace:local
 
 # Опционально: включить GPU (NVIDIA) внутри контейнера
 docker run --rm -it --gpus all -p 8888:8888 \
-  -v "$(pwd)/example:/app/example" \
-  tensoraerospace
+  -v "$(pwd)/projects:/workspace/projects" \
+  ghcr.io/tensoraerospace/tensoraerospace:latest
 ```
 
 **Windows (PowerShell):**
 
 ```powershell
-docker build -t tensoraerospace . --platform=linux/amd64
+docker pull ghcr.io/tensoraerospace/tensoraerospace:latest
 docker run --rm -it -p 8888:8888 `
-  -v "${PWD}\example:/app/example" `
-  tensoraerospace
+  -v "${PWD}\projects:/workspace/projects" `
+  ghcr.io/tensoraerospace/tensoraerospace:latest
+
+# Или соберите такой же образ локально из исходников
+docker build -t tensoraerospace:local . --platform=linux/amd64
+docker run --rm -it -p 8888:8888 `
+  -v "${PWD}\projects:/workspace/projects" `
+  tensoraerospace:local
 
 # Опционально: включить GPU (NVIDIA) внутри контейнера
 docker run --rm -it --gpus all -p 8888:8888 `
-  -v "${PWD}\example:/app/example" `
-  tensoraerospace
+  -v "${PWD}\projects:/workspace/projects" `
+  ghcr.io/tensoraerospace/tensoraerospace:latest
 ```
-> Откройте выданную ссылку (обычно `http://127.0.0.1:8888`) и перейдите к `example/quickstart.ipynb`, чтобы выполнить SAC walkthrough внутри контейнера.
+> Откройте выданную ссылку (обычно `http://127.0.0.1:8888`) и перейдите к `examples/quickstart.ipynb`, чтобы выполнить SAC walkthrough внутри контейнера.
 
 #### Рекомендуемые версии CUDA и cuDNN
 
-- **CUDA Toolkit**: 12.2.2 (совместим с базовым Docker-образом).
-- **cuDNN**: 8.9.x для CUDA 12 → [официальная документация](https://docs.nvidia.com/deeplearning/cudnn/latest).
+- Docker-образ использует Python runtime и PyTorch wheels из зависимостей проекта; для GPU запускайте контейнер через NVIDIA Container Toolkit с `--gpus all`.
+- Для ручной CUDA/cuDNN установки вне Docker сверяйтесь с CUDA-версией установленного `torch`.
 - Для Apple Silicon используйте `torch` с backend `mps` (CUDA не требуется).
 
 ### 🏃‍♂️ Быстрый пример
@@ -225,7 +237,7 @@ for t in range(N - 1):
 
 <div align="center">
 
-![Демо Unity](./docs/example/env/img/img_demo_unity.gif)
+![Демо Unity](./docs/ru/example/enviroment/img/img_demo_unity.gif)
 
 </div>
 
@@ -240,7 +252,7 @@ TensorAeroSpace легко интегрируется с Unity ML-Agents для 
 
 ### 🔧 Поддержка MATLAB Simulink
 
-![Модель Simulink](docs/example/simulink/img/model.png)
+![Модель Simulink](./docs/ru/example/simulink/img/model.png)
 
 - 📐 **Импорт моделей**: Конвертация моделей Simulink в Python
 - ⚡ **Высокая производительность**: Интеграция скомпилированного C++

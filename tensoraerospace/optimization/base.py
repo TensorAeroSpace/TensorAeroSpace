@@ -8,7 +8,7 @@ extracting the best found configuration.
 """
 
 from abc import ABC
-from typing import Callable
+from typing import Any, Callable
 
 import matplotlib.pyplot as plt
 import optuna
@@ -19,27 +19,33 @@ class HyperParamOptimizationBase(ABC):
 
     def __init__(self) -> None:
         """Initialize the optimization backend."""
-        pass
 
-    def run_optimization(self):
+    def run_optimization(self, *args: Any, **kwargs: Any) -> Any:
         """Run the optimization procedure."""
-        pass
+        raise NotImplementedError(
+            f"{self.__class__.__name__}.run_optimization() must be implemented."
+        )
 
-    def get_best_param(self) -> dict:
+    def get_best_param(self) -> dict[str, Any]:
         """Return the best found hyperparameters.
 
         Returns:
             dict: Best parameters found by the backend.
         """
-        pass
+        raise NotImplementedError(
+            f"{self.__class__.__name__}.get_best_param() must be implemented."
+        )
 
-    def plot_parms(self, fig_size: tuple[float, float]) -> None:
+    def plot_parms(self, *args: Any, **kwargs: Any) -> Any:
         """Plot optimization history.
 
         Args:
-            fig_size: Figure size passed to the underlying plotting backend.
+            *args: Backend-specific positional plotting arguments.
+            **kwargs: Backend-specific keyword plotting arguments.
         """
-        pass
+        raise NotImplementedError(
+            f"{self.__class__.__name__}.plot_parms() must be implemented."
+        )
 
 
 class HyperParamOptimizationOptuna(HyperParamOptimizationBase):
@@ -60,7 +66,7 @@ class HyperParamOptimizationOptuna(HyperParamOptimizationBase):
             raise ValueError("direction must be 'minimize' or 'maximize'")
         self.study = optuna.create_study(direction=direction)
 
-    def run_optimization(self, func: Callable, n_trials: int):
+    def run_optimization(self, func: Callable, n_trials: int) -> None:
         """Run hyperparameter search.
 
         Args:
@@ -69,7 +75,7 @@ class HyperParamOptimizationOptuna(HyperParamOptimizationBase):
         """
         self.study.optimize(func, n_trials=n_trials)
 
-    def get_best_param(self) -> dict:
+    def get_best_param(self) -> dict[str, Any]:
         """Return the best hyperparameters found by Optuna.
 
         Returns:
@@ -86,12 +92,12 @@ class HyperParamOptimizationOptuna(HyperParamOptimizationBase):
         Returns:
             matplotlib.figure.Figure: The created figure.
         """
-        x = []
-        x_labels = []
+        x: list[float] = []
+        x_labels: list[str] = []
         for trial in self.study.trials:
-            if trial.state != optuna.trial.TrialState.COMPLETE:
+            if trial.state != optuna.trial.TrialState.COMPLETE or trial.value is None:
                 continue
-            x.append(trial.value)
+            x.append(float(trial.value))
             x_labels.append(
                 "".join([f"{key}={trial.params[key]}\n" for key in trial.params.keys()])
             )

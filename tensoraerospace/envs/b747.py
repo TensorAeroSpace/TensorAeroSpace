@@ -13,6 +13,7 @@ import numpy as np
 from gymnasium import spaces
 
 from tensoraerospace.aerospacemodel import LongitudinalB747
+from tensoraerospace.envs._rendering import telemetry_render, validate_render_mode
 
 
 class LinearLongitudinalB747(gym.Env):
@@ -36,6 +37,8 @@ class LinearLongitudinalB747(gym.Env):
           the underlying model.
     """
 
+    metadata = {"render_modes": ["human", "ansi"]}
+
     def __init__(
         self,
         initial_state: np.ndarray,
@@ -48,6 +51,7 @@ class LinearLongitudinalB747(gym.Env):
         reward_func: Optional[Callable] = None,
         use_reward: bool = True,
         dt: float = 0.01,
+        render_mode: Optional[str] = None,
     ) -> None:
         """Initialize LinearLongitudinalB747 environment.
 
@@ -66,8 +70,11 @@ class LinearLongitudinalB747(gym.Env):
             reward_func (Callable | None): Reward function. Defaults to None.
             use_reward (bool): Whether to use reward. Defaults to True.
             dt (float): Discretization frequency. Defaults to 0.01.
+            render_mode (str | None): ``None``, ``"human"`` or ``"ansi"``.
         """
+        validate_render_mode(render_mode, self.metadata["render_modes"])
         super().__init__()
+        self.render_mode = render_mode
         self.max_action_value = 25.0
         self.dt = dt
         self.initial_state = initial_state
@@ -149,6 +156,9 @@ class LinearLongitudinalB747(gym.Env):
         self.number_time_steps = number_time_steps
         self.current_step = 0
         self.done = False
+        self._last_observation = np.array(initial_state, dtype=np.float32).reshape(-1)
+        self._last_action: np.ndarray | None = None
+        self._last_reward: float | None = None
 
     @staticmethod
     def reward(
@@ -238,6 +248,9 @@ class LinearLongitudinalB747(gym.Env):
                     self.current_step,
                 )
         self.done = self.current_step >= self.number_time_steps - 1
+        self._last_observation = np.array(next_state, dtype=np.float32).reshape(-1)
+        self._last_action = np.array(action, dtype=np.float32).reshape(-1)
+        self._last_reward = float(reward)
 
         return (
             np.array(next_state, dtype=np.float32).reshape(-1),
@@ -291,18 +304,28 @@ class LinearLongitudinalB747(gym.Env):
             if next_state.shape[0] >= 4:
                 next_state[3] = np.rad2deg(next_state[3])
         observation = next_state.astype(np.float32).reshape(-1)
+        self._last_observation = observation
+        self._last_action = None
+        self._last_reward = None
         return observation, self._get_info()
 
-    def render(self):
-        """Visual display of actions in the environment.
+    def render(self, mode: Optional[str] = None):
+        """Render a lightweight telemetry snapshot.
 
-        Note:
-            Work in progress (WIP status).
-
-        Raises:
-            NotImplementedError: Rendering is not yet implemented.
+        The legacy B747 environment does not have a graphical viewer. To keep
+        ``render_mode="human"`` usable, human mode prints one concise state line;
+        ``ansi`` returns the same line as a string for tests and logs.
         """
-        raise NotImplementedError()
+        selected_mode = self.render_mode if mode is None else mode
+        return telemetry_render(
+            "LinearLongitudinalB747",
+            selected_mode,
+            step=self.current_step,
+            total_steps=self.number_time_steps,
+            state=self._last_observation,
+            action=self._last_action,
+            reward=self._last_reward,
+        )
 
 
 class ImprovedB747Env(gym.Env):

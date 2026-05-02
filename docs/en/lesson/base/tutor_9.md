@@ -95,7 +95,7 @@ import gymnasium as gym
 import matplotlib.pyplot as plt
 
 from tensoraerospace.utils import generate_time_period, convert_tp_to_sec_tp
-from tensoraerospace.signals.standart import unit_step
+from tensoraerospace.signals.standard import unit_step
 
 # Time grid
 dt = 0.01
@@ -205,7 +205,7 @@ import gymnasium as gym
 import matplotlib.pyplot as plt
 
 from tensoraerospace.utils import generate_time_period, convert_tp_to_sec_tp
-from tensoraerospace.signals.standart import unit_step
+from tensoraerospace.signals.standard import unit_step
 
 dt = 0.01
 tp = generate_time_period(tn=20, dt=dt)
@@ -284,7 +284,7 @@ print(f"Total reward:   {sum(rewards):.2f}")
 
 ## 5. Reference Signals
 
-The module `tensoraerospace.signals.standart` provides ready-made reference
+The module `tensoraerospace.signals.standard` provides ready-made reference
 signal generators for tracking tasks. All functions accept a time array `tp`
 (created by `generate_time_period`) and return a 1-D array of the same length.
 
@@ -314,7 +314,7 @@ signal generators for tracking tasks. All functions accept a time array `tp`
 ```python
 import numpy as np
 from tensoraerospace.utils import generate_time_period
-from tensoraerospace.signals.standart import (
+from tensoraerospace.signals.standard import (
     unit_step, sinusoid_vertical_shift, chirp, multi_step, doublet
 )
 
@@ -457,7 +457,7 @@ import gymnasium as gym
 import matplotlib.pyplot as plt
 
 from tensoraerospace.utils import generate_time_period, convert_tp_to_sec_tp
-from tensoraerospace.signals.standart import unit_step
+from tensoraerospace.signals.standard import unit_step
 
 dt = 0.01
 tp = generate_time_period(tn=20, dt=dt)

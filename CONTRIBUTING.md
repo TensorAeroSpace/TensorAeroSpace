@@ -50,7 +50,12 @@ Here's a quick guide to help you get started:
 
 Please follow the coding style and guidelines defined in the project. If none are provided, maintain a consistent coding style with the existing code.
 
+## Community and Security
+
+All contributors are expected to follow the [Code of Conduct](CODE_OF_CONDUCT.md).
+
+Please do not report security vulnerabilities through public issues. Use the private process described in the [Security Policy](SECURITY.md).
+
 ## License
 
 By contributing to this project, you agree that your contributions will be licensed under the [project license](https://github.com/TensorAeroSpace/TensorAeroSpace/blob/main/LICENSE).
-

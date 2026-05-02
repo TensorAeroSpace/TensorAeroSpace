@@ -1,4 +1,3 @@
-
 name: 🚀 Publish Python Package
 
 on:
@@ -12,142 +11,251 @@ on:
         default: 'testpypi'
         type: choice
         options:
-        - testpypi
-        - pypi
+          - testpypi
+          - pypi
+
+permissions:
+  contents: read
 
 jobs:
   test-before-publish:
     name: 🧪 Test Before Publishing
     runs-on: ubuntu-latest
-    
+
     steps:
-    - name: 🧹 Free up disk space (diagnostic + cleanup)
-      run: |
-        set -euxo pipefail
-        echo "Disk usage before cleanup:"
-        df -h
+      - name: 🧹 Free up disk space
+        run: |
+          set -euxo pipefail
+          df -h
+          sudo rm -rf /usr/share/dotnet || true
+          sudo rm -rf /usr/local/lib/android || true
+          sudo rm -rf /opt/ghc || true
+          sudo rm -rf /opt/hostedtoolcache/CodeQL || true
+          docker system prune -af --volumes || true
+          sudo apt-get clean || true
+          df -h
 
-        sudo rm -rf /usr/share/dotnet || true
-        sudo rm -rf /usr/local/lib/android || true
-        sudo rm -rf /opt/ghc || true
-        sudo rm -rf /opt/hostedtoolcache/CodeQL || true
+      - name: 📥 Checkout code
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
 
-        docker system prune -af --volumes || true
-        sudo apt-get clean || true
+      - name: 🐍 Set up Python 3.10
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.10'
 
-        echo "Disk usage after cleanup:"
-        df -h
+      - name: 📦 Cache Poetry dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/pypoetry
+            ~/.cache/pip
+          key: ubuntu-latest-poetry-publish-3.10-${{ hashFiles('**/poetry.lock') }}
+          restore-keys: |
+            ubuntu-latest-poetry-publish-3.10-
 
-    - name: 📥 Checkout code
-      uses: actions/checkout@v5
+      - name: 🎭 Install Poetry
+        run: |
+          python -m ensurepip --upgrade || true
+          python -m pip install --upgrade pip
+          python -m pip install poetry
 
-    - name: 🐍 Set up Python
-      uses: actions/setup-python@v6
-      with:
-        python-version: '3.10'
+      - name: ⚙️ Configure Poetry
+        run: |
+          poetry config virtualenvs.create true
+          poetry config virtualenvs.in-project true
 
-    - name: 🎭 Install Poetry
-      run: |
-        python -m ensurepip --upgrade || true
-        python -m pip install --upgrade pip
-        python -m pip install poetry
+      - name: 🔒 Verify lock file
+        run: |
+          poetry check --lock
 
-    - name: 📚 Install dependencies
-      run: |
-        poetry install --with dev
+      - name: 📚 Install dependencies
+        run: |
+          poetry install --with dev,test --no-interaction
 
-    - name: 🧪 Run tests
-      run: |
-        poetry run pytest tests/ -v \
-          --ignore=tests/agents/a2c_narx_learner_test.py \
-          --ignore=tests/optimization/ray_test.py
+      - name: 🏷️ Verify release version from tag
+        if: github.event_name == 'release'
+        run: |
+          poetry run python scripts/version_gate.py --check-tag "${{ github.event.release.tag_name }}"
 
-    - name: 🏗️ Build package
-      run: |
-        poetry build
+      - name: 🏷️ Verify manual PyPI version from latest tag
+        if: github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'pypi'
+        run: |
+          poetry run python scripts/version_gate.py --check-latest-tag
 
-    - name: ✅ Verify package
-      run: |
-        # Basic verification: check if dist files exist
-        echo "📦 Built packages:"
-        ls -lh dist/
-        
-        # Count wheel and source distribution files
-        WHL_COUNT=$(ls dist/*.whl 2>/dev/null | wc -l)
-        TAR_COUNT=$(ls dist/*.tar.gz 2>/dev/null | wc -l)
-        
-        if [ "$WHL_COUNT" -eq 0 ] || [ "$TAR_COUNT" -eq 0 ]; then
-          echo "❌ Error: Package files not found in dist/"
-          echo "Expected: .whl and .tar.gz files"
-          exit 1
-        fi
-        
-        echo "✅ Package verification passed"
-        echo "  - Found $WHL_COUNT wheel file(s)"
-        echo "  - Found $TAR_COUNT source distribution(s)"
+      - name: 🏷️ Set TestPyPI dev version
+        if: github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'testpypi'
+        shell: bash
+        run: |
+          BASE_VERSION=$(poetry version -s)
+          DEV_VERSION="${BASE_VERSION}.dev$(date +%Y%m%d%H%M%S)"
+          echo "Setting TestPyPI version: $DEV_VERSION"
+          poetry version "$DEV_VERSION"
 
+      - name: 🎨 Check formatting with black
+        run: |
+          poetry run black --workers 1 --check --diff tensoraerospace/
+
+      - name: 📏 Check import sorting with isort
+        run: |
+          poetry run isort --check-only --diff tensoraerospace/
+
+      - name: 🧱 Run quality and security gates
+        run: |
+          poetry run python scripts/ci_quality_gate.py flake8 ruff mypy bandit
+
+      - name: 🔍 Run dependency audit baseline gate
+        run: |
+          poetry run python -m pip install --quiet "pip-audit>=2.10,<3"
+          poetry run python scripts/dependency_audit_gate.py
+
+      - name: 🧪 Run tests
+        run: |
+          poetry run pytest tests/ -v \
+            --ignore=tests/agents/a2c_narx_learner_test.py \
+            --ignore=tests/optimization/ray_test.py
+
+      - name: 🏗️ Build package
+        run: |
+          poetry build
+
+      - name: ✅ Verify package metadata
+        run: |
+          poetry run twine check dist/*
+
+      - name: 📦 Run package gate
+        run: |
+          poetry run python scripts/package_gate.py
+
+      - name: 📤 Upload release artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: dist
+          path: dist/
+          retention-days: 7
+
+  package-install-matrix:
+    name: 📦 Wheel Install Python ${{ matrix.python-version }}
+    runs-on: ubuntu-latest
+    needs: test-before-publish
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ['3.10', '3.11', '3.12', '3.13']
+
+    steps:
+      - name: 📥 Download build artifacts
+        uses: actions/download-artifact@v8
+        with:
+          name: dist
+          path: dist
+
+      - name: 🐍 Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v6
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: 📦 Cache pip downloads
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ubuntu-latest-publish-wheel-install-${{ matrix.python-version }}-${{ github.run_id }}
+          restore-keys: |
+            ubuntu-latest-publish-wheel-install-${{ matrix.python-version }}-
+
+      - name: 📦 Install built wheel
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install dist/*.whl
+
+      - name: 🧪 Import installed package
+        run: |
+          python - <<'PY'
+          import importlib.metadata as metadata
+          import tensoraerospace
+
+          print(f"installed tensoraerospace {metadata.version('tensoraerospace')}")
+          print(f"module path: {tensoraerospace.__file__}")
+          PY
+
+  package-install-result:
+    name: 📦 Wheel installs on all Python versions
+    runs-on: ubuntu-latest
+    needs: package-install-matrix
+    if: always()
+
+    steps:
+      - name: ❗ Fail if any wheel install check failed
+        run: |
+          echo "Aggregated result of the wheel install matrix: ${{ needs.package-install-matrix.result }}"
+          if [ "${{ needs.package-install-matrix.result }}" != "success" ]; then
+            echo "::error::Built wheel did not install/import on every Python version (3.10/3.11/3.12/3.13). Blocking publication."
+            exit 1
+          fi
+          echo "Built wheel installed and imported on Python 3.10/3.11/3.12/3.13."
+
+  publish-testpypi:
+    name: 📦 Publish to TestPyPI
+    runs-on: ubuntu-latest
+    needs: package-install-result
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'testpypi'
+    environment: testpypi
+
+    steps:
+      - name: 📥 Download build artifacts
+        uses: actions/download-artifact@v8
+        with:
+          name: dist
+          path: dist
+
+      - name: 🐍 Set up Python 3.10
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.10'
+
+      - name: 📦 Install Twine
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install twine
+
+      - name: 🚀 Publish to TestPyPI
+        env:
+          TWINE_USERNAME: __token__
+          TWINE_PASSWORD: ${{ secrets.PYPI_TEST }}
+        run: |
+          twine upload --repository-url https://test.pypi.org/legacy/ dist/*
 
   publish-pypi:
     name: 🚀 Publish to PyPI
     runs-on: ubuntu-latest
-    needs: test-before-publish
-    if: github.event.inputs.environment == 'pypi' || (github.event_name == 'release' && github.event.action == 'published' && !contains(github.ref, 'alpha'))
+    needs: package-install-result
+    if: (github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'pypi') || (github.event_name == 'release' && github.event.action == 'published' && !github.event.release.prerelease)
     environment: pypi
 
     steps:
-    - name: 🧹 Free up disk space (diagnostic + cleanup)
-      run: |
-        set -euxo pipefail
-        echo "Disk usage before cleanup:"
-        df -h
+      - name: 📥 Download build artifacts
+        uses: actions/download-artifact@v8
+        with:
+          name: dist
+          path: dist
 
-        sudo rm -rf /usr/share/dotnet || true
-        sudo rm -rf /usr/local/lib/android || true
-        sudo rm -rf /opt/ghc || true
-        sudo rm -rf /opt/hostedtoolcache/CodeQL || true
+      - name: 🐍 Set up Python 3.10
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.10'
 
-        docker system prune -af --volumes || true
-        sudo apt-get clean || true
+      - name: 📦 Install Twine
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install twine
 
-        echo "Disk usage after cleanup:"
-        df -h
-
-    - name: 📥 Checkout code
-      uses: actions/checkout@v5
-
-    - name: 🐍 Set up Python
-      uses: actions/setup-python@v6
-      with:
-        python-version: '3.10'
-
-    - name: 🎭 Install Poetry
-      run: |
-        python -m ensurepip --upgrade || true
-        python -m pip install --upgrade pip
-        python -m pip install poetry
-
-    - name: 📚 Install dependencies
-      run: |
-        poetry install
-
-    - name: 🏷️ Set version from tag
-      if: github.event_name == 'release'
-      run: |
-        VERSION="${{ github.event.release.tag_name }}"
-        VERSION="${VERSION#v}"
-        echo "Setting package version to $VERSION from tag"
-        poetry version "$VERSION"
-
-    - name: 🏗️ Build package
-      run: |
-        poetry build
-
-    - name: 🚀 Publish to PyPI
-      env:
-        POETRY_PYPI_TOKEN_PYPI: ${{ secrets.PYPI_PUBLISH }}
-      run: |
-        poetry publish
-      continue-on-error: true
+      - name: 🚀 Publish to PyPI
+        env:
+          TWINE_USERNAME: __token__
+          TWINE_PASSWORD: ${{ secrets.PYPI_PUBLISH }}
+        run: |
+          twine upload dist/*
 
   readthedocs-release:
     name: 📚 Trigger Read the Docs (release tag + latest)
@@ -156,42 +264,40 @@ jobs:
     if: github.event_name == 'release' && github.event.action == 'published'
 
     steps:
-    - name: 🔔 Trigger RTD webhook for tag and latest
-      env:
-        RTD_WEBHOOK_URL: ${{ secrets.READTHEDOCS_WEBHOOK_URL }}
-        RTD_WEBHOOK_SECRET: ${{ secrets.READTHEDOCS_WEBHOOK_SECRET }}
-        DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
-      run: |
-        if [ -z "$RTD_WEBHOOK_URL" ] || [ -z "$RTD_WEBHOOK_SECRET" ]; then
-          echo "READTHEDOCS_WEBHOOK_URL/SECRET not set. Skipping RTD trigger." && exit 0
-        fi
-        REPO="$GITHUB_REPOSITORY"
-        TAG_NAME="${{ github.event.release.tag_name }}"
-        # 1) Trigger build for the released tag
-        REF_TAG="refs/tags/${TAG_NAME}"
-        DATA_TAG="{\"ref\":\"$REF_TAG\",\"repository\":{\"full_name\":\"$REPO\"}}"
-        SIG_SHA1=$(printf '%s' "$DATA_TAG" | openssl dgst -sha1 -hmac "$RTD_WEBHOOK_SECRET" | awk '{print $2}')
-        SIG_SHA256=$(printf '%s' "$DATA_TAG" | openssl dgst -sha256 -hmac "$RTD_WEBHOOK_SECRET" | awk '{print $2}')
-        echo "Triggering RTD for tag $REF_TAG"
-        curl -sS -X POST \
-          -H "Content-Type: application/json" \
-          -H "X-GitHub-Event: push" \
-          -H "X-Hub-Signature: sha1=${SIG_SHA1}" \
-          -H "X-Hub-Signature-256: sha256=${SIG_SHA256}" \
-          "$RTD_WEBHOOK_URL" \
-          -d "$DATA_TAG" \
-          | tee rtd_response_tag.json
-        # 2) Trigger build for latest (default branch)
-        REF_LATEST="refs/heads/${DEFAULT_BRANCH:-main}"
-        DATA_LATEST="{\"ref\":\"$REF_LATEST\",\"repository\":{\"full_name\":\"$REPO\"}}"
-        SIG_SHA1_L=$(printf '%s' "$DATA_LATEST" | openssl dgst -sha1 -hmac "$RTD_WEBHOOK_SECRET" | awk '{print $2}')
-        SIG_SHA256_L=$(printf '%s' "$DATA_LATEST" | openssl dgst -sha256 -hmac "$RTD_WEBHOOK_SECRET" | awk '{print $2}')
-        echo "Triggering RTD for latest $REF_LATEST"
-        curl -sS -X POST \
-          -H "Content-Type: application/json" \
-          -H "X-GitHub-Event: push" \
-          -H "X-Hub-Signature: sha1=${SIG_SHA1_L}" \
-          -H "X-Hub-Signature-256: sha256=${SIG_SHA256_L}" \
-          "$RTD_WEBHOOK_URL" \
-          -d "$DATA_LATEST" \
-          | tee rtd_response_latest.json
+      - name: 🔔 Trigger RTD webhook for tag and latest
+        env:
+          RTD_WEBHOOK_URL: ${{ secrets.READTHEDOCS_WEBHOOK_URL }}
+          RTD_WEBHOOK_SECRET: ${{ secrets.READTHEDOCS_WEBHOOK_SECRET }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+        run: |
+          if [ -z "$RTD_WEBHOOK_URL" ] || [ -z "$RTD_WEBHOOK_SECRET" ]; then
+            echo "READTHEDOCS_WEBHOOK_URL/SECRET not set. Skipping RTD trigger."
+            exit 0
+          fi
+          REPO="$GITHUB_REPOSITORY"
+          TAG_NAME="${{ github.event.release.tag_name }}"
+          REF_TAG="refs/tags/${TAG_NAME}"
+          DATA_TAG="{\"ref\":\"$REF_TAG\",\"repository\":{\"full_name\":\"$REPO\"}}"
+          SIG_SHA1=$(printf '%s' "$DATA_TAG" | openssl dgst -sha1 -hmac "$RTD_WEBHOOK_SECRET" | awk '{print $2}')
+          SIG_SHA256=$(printf '%s' "$DATA_TAG" | openssl dgst -sha256 -hmac "$RTD_WEBHOOK_SECRET" | awk '{print $2}')
+          curl -sS -X POST \
+            -H "Content-Type: application/json" \
+            -H "X-GitHub-Event: push" \
+            -H "X-Hub-Signature: sha1=${SIG_SHA1}" \
+            -H "X-Hub-Signature-256: sha256=${SIG_SHA256}" \
+            "$RTD_WEBHOOK_URL" \
+            -d "$DATA_TAG" \
+            | tee rtd_response_tag.json
+
+          REF_LATEST="refs/heads/${DEFAULT_BRANCH:-main}"
+          DATA_LATEST="{\"ref\":\"$REF_LATEST\",\"repository\":{\"full_name\":\"$REPO\"}}"
+          SIG_SHA1_L=$(printf '%s' "$DATA_LATEST" | openssl dgst -sha1 -hmac "$RTD_WEBHOOK_SECRET" | awk '{print $2}')
+          SIG_SHA256_L=$(printf '%s' "$DATA_LATEST" | openssl dgst -sha256 -hmac "$RTD_WEBHOOK_SECRET" | awk '{print $2}')
+          curl -sS -X POST \
+            -H "Content-Type: application/json" \
+            -H "X-GitHub-Event: push" \
+            -H "X-Hub-Signature: sha1=${SIG_SHA1_L}" \
+            -H "X-Hub-Signature-256: sha256=${SIG_SHA256_L}" \
+            "$RTD_WEBHOOK_URL" \
+            -d "$DATA_LATEST" \
+            | tee rtd_response_latest.json

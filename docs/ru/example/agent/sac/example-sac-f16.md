@@ -10,7 +10,7 @@ from gymnasium.spaces import Box
 from tqdm import tqdm
 
 from tensoraerospace.utils import generate_time_period, convert_tp_to_sec_tp
-from tensoraerospace.signals.standart import unit_step
+from tensoraerospace.signals.standard import unit_step
 from tensoraerospace.agent.sac import SAC, ReplayMemory
 ```
 

@@ -1,5 +1,3 @@
-import matlab
-
 phi = [0]
 theta = [0]
 psi = [0]
@@ -51,4 +49,4 @@ def set_initial_state(new_initial: dict):
 
     for key, value in new_initial.items():
         initial_state_dict[key] = [value]
-    return matlab.double(list(initial_state_dict.values()))
+    return list(initial_state_dict.values())

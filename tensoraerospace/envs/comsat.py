@@ -13,10 +13,11 @@ import numpy as np
 from gymnasium import spaces
 
 from tensoraerospace.aerospacemodel import ComSat
+from tensoraerospace.envs._rendering import telemetry_render, validate_render_mode
 
 
 class ComSatEnv(gym.Env):
-    """Simulation of "Communication satellite in longitudinal control channel" control object in OpenAI Gym environment for training AI agents.
+    """Gymnasium environment for a communication satellite longitudinal model.
 
     Args:
         initial_state: Initial state.
@@ -29,6 +30,8 @@ class ComSatEnv(gym.Env):
         reward_func: Reward function (WIP status).
     """
 
+    metadata = {"render_modes": ["human", "ansi"]}
+
     def __init__(
         self,
         initial_state: np.ndarray | list[float],
@@ -39,9 +42,12 @@ class ComSatEnv(gym.Env):
         control_space: list[str] | None = None,
         output_space: list[str] | None = None,
         reward_func: Callable | None = None,
+        render_mode: str | None = None,
     ) -> None:
         """Initialize communication satellite environment."""
+        validate_render_mode(render_mode, self.metadata["render_modes"])
         super().__init__()
+        self.render_mode = render_mode
         self.max_action_value = 25.0
         self.initial_state = initial_state
         self.number_time_steps = number_time_steps
@@ -91,6 +97,9 @@ class ComSatEnv(gym.Env):
 
         self.current_step = 0
         self.done = False
+        self._last_observation = np.array(initial_state, dtype=np.float32).reshape(-1)
+        self._last_action: np.ndarray | None = None
+        self._last_reward: float | None = None
 
     def _get_info(self):
         """Return extra diagnostic info (none for now)."""
@@ -114,9 +123,13 @@ class ComSatEnv(gym.Env):
         )
         self.done = self.current_step >= self.number_time_steps - 1
         info = self._get_info()
+        observation = np.asarray(next_state).reshape(-1).astype(np.float32)
+        self._last_observation = observation
+        self._last_action = action.astype(np.float32)
+        self._last_reward = float(reward)
 
         return (
-            np.asarray(next_state).reshape(-1).astype(np.float32),
+            observation,
             reward,
             self.done,
             False,
@@ -131,7 +144,6 @@ class ComSatEnv(gym.Env):
         self.done = False
 
         # Constructor already invokes initialise_system internally.
-        self.model = None
         self.model = ComSat(
             self.initial_state,
             number_time_steps=self.number_time_steps,
@@ -143,11 +155,28 @@ class ComSatEnv(gym.Env):
         observation = np.array(self.initial_state, dtype=np.float32)[
             self.model.selected_state_index
         ].reshape(-1)
+        self._last_observation = observation
+        self._last_action = None
+        self._last_reward = None
         return observation, info
 
-    def render(self):
-        """Render the environment (not implemented)."""
-        raise NotImplementedError()
+    def render(self, mode: str | None = None):
+        """Render a lightweight telemetry snapshot.
+
+        The legacy ComSat environment does not ship a graphical viewer. Human
+        mode prints one concise state line; ``ansi`` returns it as a string for
+        tests and logging.
+        """
+        selected_mode = self.render_mode if mode is None else mode
+        return telemetry_render(
+            "ComSatEnv",
+            selected_mode,
+            step=self.current_step,
+            total_steps=self.number_time_steps,
+            state=self._last_observation,
+            action=self._last_action,
+            reward=self._last_reward,
+        )
 
 
 class ImprovedComSatEnv(gym.Env):
@@ -171,7 +200,7 @@ class ImprovedComSatEnv(gym.Env):
         max_thrust (float): Maximum tangential thrust magnitude.
     """
 
-    metadata = {"render_modes": ["human"]}
+    metadata = {"render_modes": ["human", "ansi"]}
 
     def __init__(
         self,
@@ -182,6 +211,7 @@ class ImprovedComSatEnv(gym.Env):
         initial_thrust: float = 0.0,
         use_initial_action_on_first_step: bool = True,
         nominal_rho: float = 6371.0,
+        render_mode: str | None = None,
     ):
         """Initialize ImprovedComSatEnv environment.
 
@@ -197,8 +227,11 @@ class ImprovedComSatEnv(gym.Env):
                 initial_thrust on first step. Defaults to True.
             nominal_rho (float): Nominal orbital radius in km.
                 Defaults to 6371.0 (Earth radius).
+            render_mode (str | None): ``None``, ``"human"`` or ``"ansi"``.
         """
+        validate_render_mode(render_mode, self.metadata["render_modes"])
         super().__init__()
+        self.render_mode = render_mode
 
         # Normalization parameters and physical constraints
         # Increased to match actual dynamics range
@@ -448,10 +481,15 @@ class ImprovedComSatEnv(gym.Env):
             {},
         )
 
-    def render(self):
-        """Render the environment (not implemented).
-
-        Raises:
-            NotImplementedError: Rendering not yet implemented.
-        """
-        raise NotImplementedError()
+    def render(self, mode: str | None = None):
+        """Render a lightweight telemetry snapshot."""
+        selected_mode = self.render_mode if mode is None else mode
+        return telemetry_render(
+            "ImprovedComSatEnv",
+            selected_mode,
+            step=self.current_step,
+            total_steps=self.number_time_steps,
+            state=self.state,
+            action=np.array([self.previous_action], dtype=np.float32),
+            reward=self._last_reward,
+        )

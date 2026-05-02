@@ -148,7 +148,7 @@ Two numerical integrators are available:
 
     from tensoraerospace.envs import NonlinearLongitudinalF16
     from tensoraerospace.utils import generate_time_period
-    from tensoraerospace.signals.standart import sinusoid
+    from tensoraerospace.signals.standard import sinusoid
 
     dt = 0.01
     tp = generate_time_period(tn=20, dt=dt)

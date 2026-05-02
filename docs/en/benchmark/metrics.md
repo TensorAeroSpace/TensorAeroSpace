@@ -16,7 +16,7 @@ import gymnasium as gym
 
 from tensoraerospace.agent.pid import PID
 from tensoraerospace.utils import generate_time_period, convert_tp_to_sec_tp
-from tensoraerospace.signals.standart import unit_step
+from tensoraerospace.signals.standard import unit_step
 from tensoraerospace.benchmark.function import (
     find_step_function,
     get_lower_upper_bound,
@@ -700,7 +700,7 @@ import matplotlib.patches as mpatches
 
 from tensoraerospace.agent.pid import PID
 from tensoraerospace.utils import generate_time_period, convert_tp_to_sec_tp
-from tensoraerospace.signals.standart import unit_step
+from tensoraerospace.signals.standard import unit_step
 from tensoraerospace.benchmark.function import (
     find_step_function,
     get_lower_upper_bound,

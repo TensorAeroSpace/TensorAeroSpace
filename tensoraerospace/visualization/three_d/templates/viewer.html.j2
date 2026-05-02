@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>{{ title|default('F-16 flight viewer') }}</title>
+<style>
+{{ css }}
+</style>
+</head>
+<body>
+<div id="scene"></div>
+<div id="instrument-panel">
+    <div class="bezel-row">
+        <!-- ADI / Artificial horizon -->
+        <div class="gauge gauge-large" id="gauge-adi">
+            <div class="gauge-label">ADI</div>
+            <svg viewBox="-50 -50 100 100">
+                <defs>
+                    <clipPath id="adi-clip">
+                        <circle r="38" cx="0" cy="0"/>
+                    </clipPath>
+                </defs>
+                <circle r="40" class="adi-bezel"/>
+                <g clip-path="url(#adi-clip)">
+                    <g id="adi-rotor">
+                        <g id="adi-pitch">
+                            <rect x="-50" y="-100" width="100" height="100" class="adi-sky"/>
+                            <rect x="-50" y="0"    width="100" height="100" class="adi-ground"/>
+                            <line x1="-40" y1="0" x2="40" y2="0" class="adi-horizon"/>
+                            <!-- Pitch ladder rungs added by JS -->
+                            <g id="adi-pitch-ladder"></g>
+                        </g>
+                    </g>
+                </g>
+                <!-- Fixed aircraft reticle (stays put through bank/pitch) -->
+                <g class="adi-reticle">
+                    <line x1="-12" y1="0" x2="-3" y2="0"/>
+                    <line x1="3"   y1="0" x2="12" y2="0"/>
+                    <circle r="1.5"/>
+                </g>
+                <!-- Bank pointer at top -->
+                <polygon points="0,-40 -3,-34 3,-34" class="adi-pointer"/>
+            </svg>
+        </div>
+
+        <!-- Airspeed -->
+        <div class="gauge gauge-medium" id="gauge-airspeed">
+            <div class="gauge-label">KNOTS</div>
+            <svg viewBox="-50 -50 100 100">
+                <circle r="44" class="dial-bezel"/>
+                <circle r="42" class="dial-face"/>
+                <g class="dial-ticks" id="airspeed-ticks"></g>
+                <g id="airspeed-labels" class="dial-labels"></g>
+                <line id="airspeed-needle" x1="0" y1="0" x2="0" y2="-32" class="needle"/>
+                <circle r="3" class="needle-hub"/>
+                <text id="airspeed-digital" x="0" y="22" text-anchor="middle" class="digital-readout">0</text>
+            </svg>
+        </div>
+
+        <!-- Altimeter -->
+        <div class="gauge gauge-medium" id="gauge-altimeter">
+            <div class="gauge-label">ALT FT × 1000</div>
+            <svg viewBox="-50 -50 100 100">
+                <circle r="44" class="dial-bezel"/>
+                <circle r="42" class="dial-face"/>
+                <g class="dial-ticks" id="altimeter-ticks"></g>
+                <g id="altimeter-labels" class="dial-labels"></g>
+                <line id="altimeter-needle" x1="0" y1="0" x2="0" y2="-32" class="needle"/>
+                <circle r="3" class="needle-hub"/>
+                <text id="altimeter-digital" x="0" y="22" text-anchor="middle" class="digital-readout">0</text>
+            </svg>
+        </div>
+
+        <!-- HSI / heading -->
+        <div class="gauge gauge-medium" id="gauge-hsi">
+            <div class="gauge-label">HDG</div>
+            <svg viewBox="-50 -50 100 100">
+                <circle r="44" class="dial-bezel"/>
+                <circle r="42" class="dial-face"/>
+                <g id="hsi-rotor">
+                    <g id="hsi-card"></g>
+                </g>
+                <!-- Fixed aircraft symbol (pointing up) -->
+                <polygon points="0,-12 -5,5 0,2 5,5" class="hsi-aircraft"/>
+                <!-- Index pointer at top -->
+                <polygon points="0,-44 -3,-38 3,-38" class="hsi-index"/>
+                <text id="hsi-digital" x="0" y="22" text-anchor="middle" class="digital-readout">000</text>
+            </svg>
+        </div>
+
+        <!-- VVI -->
+        <div class="gauge gauge-medium" id="gauge-vvi">
+            <div class="gauge-label">VVI ft/min</div>
+            <svg viewBox="-50 -50 100 100">
+                <circle r="44" class="dial-bezel"/>
+                <circle r="42" class="dial-face"/>
+                <g class="dial-ticks" id="vvi-ticks"></g>
+                <g id="vvi-labels" class="dial-labels"></g>
+                <line id="vvi-needle" x1="0" y1="0" x2="0" y2="-32" class="needle"/>
+                <circle r="3" class="needle-hub"/>
+                <text id="vvi-digital" x="0" y="22" text-anchor="middle" class="digital-readout">0</text>
+            </svg>
+        </div>
+
+        <!-- AOA strip -->
+        <div class="gauge gauge-narrow" id="gauge-aoa">
+            <div class="gauge-label">AOA °</div>
+            <svg viewBox="-30 -50 60 100">
+                <rect x="-12" y="-40" width="24" height="80" class="strip-bg"/>
+                <line x1="-12" y1="-30" x2="12" y2="-30" class="strip-tick"/>
+                <line x1="-12" y1="-15" x2="12" y2="-15" class="strip-tick"/>
+                <line x1="-12" y1="0"   x2="12" y2="0"   class="strip-tick-major"/>
+                <line x1="-12" y1="15"  x2="12" y2="15"  class="strip-tick"/>
+                <line x1="-12" y1="30"  x2="12" y2="30"  class="strip-tick"/>
+                <text x="14" y="-28" class="strip-label">+25</text>
+                <text x="14" y="3"   class="strip-label">  0</text>
+                <text x="14" y="34"  class="strip-label">-25</text>
+                <polygon id="aoa-pointer" points="-15,0 -8,-4 -8,4" class="strip-pointer"/>
+                <text id="aoa-digital" x="0" y="46" text-anchor="middle" class="digital-readout-small">0.0</text>
+            </svg>
+        </div>
+
+        <!-- G-meter -->
+        <div class="gauge gauge-medium" id="gauge-g">
+            <div class="gauge-label">G LOAD</div>
+            <svg viewBox="-50 -50 100 100">
+                <circle r="44" class="dial-bezel"/>
+                <circle r="42" class="dial-face"/>
+                <!-- Red caution arcs at the extremes (above 6 G, below 0) -->
+                <path d="M 0,-42 A 42,42 0 0 1 36.4,-21" class="dial-redzone"/>
+                <path d="M -42,0 A 42,42 0 0 0 -36.4,21" class="dial-redzone"/>
+                <g class="dial-ticks" id="g-ticks"></g>
+                <g id="g-labels" class="dial-labels"></g>
+                <line id="g-needle" x1="0" y1="0" x2="0" y2="-32" class="needle"/>
+                <circle r="3" class="needle-hub"/>
+                <text id="g-digital" x="0" y="22" text-anchor="middle" class="digital-readout">1.0</text>
+            </svg>
+        </div>
+
+        <!-- Master caution lamp -->
+        <div class="caution-lamp" id="caution-lamp">
+            <div>MASTER</div>
+            <div>CAUTION</div>
+        </div>
+    </div>
+</div>
+<div id="hud">
+    <div><span class="label">t</span><span id="hud-time" class="value">0.00 s</span></div>
+    <div><span class="label">α</span><span id="hud-alpha" class="value">0.00°</span></div>
+    <div><span class="label">β</span><span id="hud-beta" class="value">0.00°</span></div>
+    <div><span class="label">ωx</span><span id="hud-wx" class="value">0.00°/s</span></div>
+    <div><span class="label">ωz</span><span id="hud-wz" class="value">0.00°/s</span></div>
+    <div><span class="label">stab</span><span id="hud-stab" class="value">0.0°</span></div>
+    <div><span class="label">ail</span><span id="hud-ail" class="value">0.0°</span></div>
+    <div><span class="label">dir</span><span id="hud-dir" class="value">0.0°</span></div>
+    <div><span class="label">events</span><span id="hud-events" class="value">—</span></div>
+</div>
+<div id="keyboard-help" style="display:none;">
+    <div class="kbd-title">Keyboard shortcuts</div>
+    <div><kbd>Space</kbd> play / pause</div>
+    <div><kbd>←</kbd> <kbd>→</kbd> scrub ±0.5 s</div>
+    <div><kbd>Shift</kbd>+<kbd>←</kbd>/<kbd>→</kbd> scrub ±5 s</div>
+    <div><kbd>Home</kbd> / <kbd>End</kbd> jump to start / end</div>
+    <div><kbd>1</kbd> 3D · <kbd>2</kbd> top · <kbd>3</kbd> left · <kbd>4</kbd> right</div>
+    <div><kbd>+</kbd> <kbd>-</kbd> speed up / down</div>
+    <div><kbd>C</kbd> toggle charts panel · drag left edge to resize · ⋯ menu to hide / show series</div>
+    <div><kbd>H</kbd> toggle this help</div>
+</div>
+<div id="charts-panel"></div>
+<div id="controls">
+    <button id="btn-play">Pause</button>
+    <input id="timeline" type="range" min="0" max="100" value="0">
+    <button id="btn-cam-3d">3D Camera</button>
+    <button id="btn-cam-top">Top-down</button>
+    <button id="btn-cam-left">Left side</button>
+    <button id="btn-cam-right">Right side</button>
+    <span class="speed-label">speed</span>
+    <select id="speed">
+        <option value="0.25">0.25×</option>
+        <option value="0.5">0.5×</option>
+        <option value="1" selected>1×</option>
+        <option value="2">2×</option>
+        <option value="4">4×</option>
+    </select>
+</div>
+
+<script>
+window.FLIGHT_LOG = {{ flight_log_json|safe }};
+</script>
+<script>
+{{ three_js }}
+</script>
+<script>
+{{ orbit_controls_js }}
+</script>
+<script>
+{{ viewer_js }}
+</script>
+</body>
+</html>

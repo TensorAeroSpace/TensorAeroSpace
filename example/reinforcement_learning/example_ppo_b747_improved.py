@@ -19,7 +19,7 @@ import torch
 
 from tensoraerospace.agent.ppo.model import PPO
 from tensoraerospace.envs.b747 import ImprovedB747Env
-from tensoraerospace.signals.standart import sinusoid_vertical_shift
+from tensoraerospace.signals.standard import sinusoid_vertical_shift
 from tensoraerospace.utils import convert_tp_to_sec_tp, generate_time_period
 
 # Device

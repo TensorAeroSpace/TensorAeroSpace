@@ -1,15 +1,14 @@
 """Distributional critics (IQN-based) for DSAC."""
 
-from typing import List, Tuple
+from typing import List, Tuple, cast
 
 import numpy as np
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 
 
 def _build_mlp(input_dim: int, layers: List[int], layer_norm: bool) -> nn.Sequential:
-    seq = []
+    seq: list[nn.Module] = []
     last = input_dim
     for h in layers:
         seq.append(nn.Linear(last, h))
@@ -69,7 +68,6 @@ class IQNCritic(nn.Module):
         quantile = quantile.view(quantile.size(0), quantile.size(1), 1)
 
         B, Q, _ = quantile.shape
-        H = self.embedding_dim
 
         # psi
         sa = torch.cat([state, action], dim=1)  # (B,S+A)
@@ -83,7 +81,7 @@ class IQNCritic(nn.Module):
         # merge
         psi_exp = psi.view(B, 1, -1)
         psi_phi = phi * psi_exp  # (B,Q,H')
-        out = self.merge(psi_phi)  # (B,Q,1)
+        out = cast(torch.Tensor, self.merge(psi_phi))  # (B,Q,1)
         return out.squeeze(-1)  # (B,Q)
 
 

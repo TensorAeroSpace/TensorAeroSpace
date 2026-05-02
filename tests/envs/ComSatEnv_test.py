@@ -6,7 +6,7 @@ from gymnasium import spaces
 from tensoraerospace.envs.comsat import (  # Import the environment from where it is defined
     ComSatEnv,
 )
-from tensoraerospace.signals.standart import unit_step
+from tensoraerospace.signals.standard import unit_step
 from tensoraerospace.utils import convert_tp_to_sec_tp, generate_time_period
 
 # Initial state: [rho (km), rho_dot (m/s), theta_dot (rad/s)]
@@ -67,3 +67,32 @@ def test_reset_function(env_setup):
     assert env.current_step == 0, "Reset should set step back to zero."
     assert not env.done, "Reset should set done to False."
     assert state.shape == (3,), "Reset state should have shape (3,)."
+
+
+def test_render_modes(capsys):
+    env = ComSatEnv(
+        initial_state=INITIAL_STATE,
+        reference_signal=REFERENCE_SIGNAL,
+        number_time_steps=NUMBER_TIME_STEPS,
+        render_mode="human",
+    )
+
+    assert env.render() is None
+    assert "ComSatEnv" in capsys.readouterr().out
+
+    env.reset()
+    env.step(np.array([10], dtype=np.float32))
+    snapshot = env.render(mode="ansi")
+    assert isinstance(snapshot, str)
+    assert "step=1" in snapshot
+    assert "action=[10]" in snapshot
+
+
+def test_invalid_render_mode_rejected():
+    with pytest.raises(ValueError, match="render_mode"):
+        ComSatEnv(
+            initial_state=INITIAL_STATE,
+            reference_signal=REFERENCE_SIGNAL,
+            number_time_steps=NUMBER_TIME_STEPS,
+            render_mode="rgb_array",
+        )

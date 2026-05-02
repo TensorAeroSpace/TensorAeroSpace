@@ -5,7 +5,7 @@ This module defines the Actor component used by the IHDP agent.
 
 import glob
 import math
-from typing import Any, Tuple
+from typing import Any, Tuple, cast
 
 import numpy as np
 import torch
@@ -59,7 +59,7 @@ def _build_sequential(
     """
     torch.manual_seed(seed)
 
-    modules = []
+    modules: list[nn.Module] = []
     in_features = input_dim
     for i, (neurons, act_name) in enumerate(zip(layers, activations)):
         linear = nn.Linear(in_features, neurons)
@@ -88,7 +88,7 @@ def _get_trainable_parameters(model: nn.Sequential) -> list[torch.Tensor]:
     Returns:
         Ordered list of parameter tensors.
     """
-    params = []
+    params: list[torch.Tensor] = []
     for module in model:
         if isinstance(module, nn.Linear):
             params.append(module.weight)
@@ -218,9 +218,9 @@ class Actor:
         self.number_states = len(selected_states)
         self.number_tracking_states = len(tracking_states)
         self.indices_tracking_states = indices_tracking_states
-        self.xt = None
-        self.xt_ref = None
-        self.ut = 0
+        self.xt: Any = None
+        self.xt_ref: Any = None
+        self.ut: Any = 0
         self.maximum_input = maximum_input
         self.maximum_q_rate = maximum_q_rate
         self.model_path = model_path
@@ -230,8 +230,8 @@ class Actor:
         self.start_training = start_training
 
         # Attributes related to the NN
-        self.model = None
-        self.model_q = None
+        self.model: nn.Sequential = nn.Sequential()
+        self.model_q: nn.Sequential = nn.Sequential()
         if layers[-1] != 1:
             raise Exception("The last layer should have a single neuron.")
         elif len(layers) != len(activations):
@@ -253,26 +253,26 @@ class Actor:
         self.pulse_length_3211 = pulse_length_3211
 
         # Attributes related to the training of the NN
-        self.dut_dWb = None
-        self.dut_dWb_1 = None
+        self.dut_dWb: list[np.ndarray] = []
+        self.dut_dWb_1: list[np.ndarray] = []
 
         # Attributes related to the Adam optimizer
-        self.Adam_opt = None
+        self.Adam_opt: Any = None
 
         # Attributes related to the momentum
-        self.momentum_dict = {}
+        self.momentum_dict: dict[int, Any] = {}
 
         # Attributes related to RMSprop
-        self.rmsprop_dict = {}
+        self.rmsprop_dict: dict[int, Any] = {}
 
         # Declaration of the storage arrays for the weights
-        self.store_weights = {}
-        self.store_weights_q = {}
+        self.store_weights: dict[str, np.ndarray] = {}
+        self.store_weights_q: dict[str, np.ndarray] = {}
 
         # Attributes for the cascaded actor
         self.cascaded_actor = cascaded_actor
-        self.dut_dq_ref = None
-        self.dq_ref_dWb = None
+        self.dut_dq_ref: Any = None
+        self.dq_ref_dWb: list[np.ndarray] = []
         self.store_q = np.zeros((1, self.number_time_steps))
 
         # Integral-correction layer — kills the residual steady-state
@@ -346,14 +346,16 @@ class Actor:
     def load_dut_dWb(self):
         """Load gradient."""
         line = []
-        for file in glob.glob("./actor_dut_dWb/*"):
-            line.append(np.load(file, allow_pickle=True))
+        for file in sorted(glob.glob("./actor_dut_dWb/*")):
+            line.append(np.load(file, allow_pickle=False))
         self.dut_dWb = line
         self.dut_dWb_1 = line
 
     def load_model(self):
         """Load model weights."""
-        self.model.load_state_dict(torch.load(self.model_path))
+        if self.model_path is None:
+            raise ValueError("model_path must be set before loading actor weights")
+        self.model.load_state_dict(torch.load(self.model_path, weights_only=True))
 
     def create_NN(self, store_weights: dict, seed: int) -> Tuple[nn.Sequential, dict]:
         """Create NN with user input.
@@ -416,7 +418,7 @@ class Actor:
         # Ensure parameters require grad
         for p in model.parameters():
             p.requires_grad_(True)
-        return model(nn_input)
+        return cast(torch.Tensor, model(nn_input))
 
     def run_actor_online(self, xt: np.ndarray, xt_ref: np.ndarray) -> np.ndarray:
         """Generate system input with given and real states.
@@ -572,7 +574,7 @@ class Actor:
         # Ensure we return array, not scalar
         if np.isscalar(self.ut):
             return np.array([self.ut])
-        return self.ut
+        return np.asarray(self.ut)
 
     def train_actor_online(
         self, Jt1: np.ndarray, dJt1_dxt1: np.ndarray, G: np.ndarray
@@ -914,8 +916,8 @@ class Actor:
         elif len(args) == 0:
             t = self.time_step + 1
 
-        e0_1 = 0
-        e0_2 = 0
+        e0_1 = 0.0
+        e0_2 = 0.0
         if self.type_PE == "sinusoidal" or self.type_PE == "combined":
             e0_1 = (
                 np.sin(t)
@@ -1055,7 +1057,7 @@ class Actor:
                 ),
                 np.reshape(-self.maximum_input, ut.shape),
             )
-        return ut
+        return np.asarray(ut)
 
     def restart_time_step(self):
         """Reset the internal time-step counter to zero."""
@@ -1069,8 +1071,8 @@ class Actor:
         self.ut = 0
 
         # Attributes related to the training of the NN
-        self.dut_dWb = None
-        self.dut_dWb_1 = None
+        self.dut_dWb = []
+        self.dut_dWb_1 = []
         self.learning_rate = self.learning_rate_0
 
         # Attributes related to the Adam optimizer

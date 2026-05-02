@@ -52,6 +52,17 @@ def test_save_creates_files(dqn_agent_for_save, tmp_path):
     assert not (save_path / "optimizer.pth").exists()
 
 
+def test_save_writes_safe_state_dict(dqn_agent_for_save, tmp_path):
+    """Saved model files should be loadable with weights_only=True."""
+    save_path = tmp_path / "test_agent_state_dict"
+
+    dqn_agent_for_save.save(path=save_path, save_gradients=False)
+
+    state = torch.load(save_path / "model.pth", weights_only=True)
+    assert isinstance(state, dict)
+    assert "fc1.weight" in state
+
+
 def test_save_creates_optimizer_file(dqn_agent_for_save, tmp_path):
     """Test that save creates optimizer file when save_gradients=True."""
     save_path = tmp_path / "test_agent_with_grad"
@@ -105,8 +116,9 @@ def test_load_model_is_usable(dqn_agent_for_save, tmp_path, seed_all):
     # Save agent
     dqn_agent_for_save.save(path=save_path, save_gradients=False)
 
-    # Load model
-    loaded_model = torch.load(save_path / "model.pth", weights_only=False)
+    # Load model through the safe state_dict loader
+    loaded_agent = DQNAgent.load(save_path, env=dqn_agent_for_save.env)
+    loaded_model = loaded_agent.model
 
     # Check it's a nn.Module
     assert isinstance(loaded_model, torch.nn.Module)
@@ -131,8 +143,8 @@ def test_load_model_matches_original(dqn_agent_for_save, tmp_path, seed_all):
     original_q = dqn_agent_for_save.model.predict(obs)
 
     # Load model and get prediction
-    loaded_model = torch.load(save_path / "model.pth", weights_only=False)
-    loaded_q = loaded_model.predict(obs)
+    loaded_agent = DQNAgent.load(save_path, env=dqn_agent_for_save.env)
+    loaded_q = loaded_agent.model.predict(obs)
 
     # Should be identical (same parameters)
     assert np.allclose(original_q, loaded_q, rtol=1e-5)
@@ -145,8 +157,9 @@ def test_load_target_model(dqn_agent_for_save, tmp_path, seed_all):
     # Save agent
     dqn_agent_for_save.save(path=save_path, save_gradients=False)
 
-    # Load target model
-    loaded_target = torch.load(save_path / "target_model.pth", weights_only=False)
+    # Load target model through the safe state_dict loader
+    loaded_agent = DQNAgent.load(save_path, env=dqn_agent_for_save.env)
+    loaded_target = loaded_agent.target_model
 
     assert isinstance(loaded_target, torch.nn.Module)
 
@@ -165,7 +178,7 @@ def test_load_optimizer_state(dqn_agent_for_save, tmp_path):
     dqn_agent_for_save.save(path=save_path, save_gradients=True)
 
     # Load optimizer state
-    optimizer_state = torch.load(save_path / "optimizer.pth", weights_only=False)
+    optimizer_state = torch.load(save_path / "optimizer.pth", weights_only=True)
 
     # Should be a dictionary
     assert isinstance(optimizer_state, dict)
@@ -193,7 +206,7 @@ def test_save_overwrites_existing(dqn_agent_for_save, tmp_path, seed_all):
 
     # First save
     dqn_agent_for_save.save(path=save_path, save_gradients=False)
-    first_model = torch.load(save_path / "model.pth", weights_only=False)
+    first_agent = DQNAgent.load(save_path, env=dqn_agent_for_save.env)
 
     # Modify agent's model
     for param in dqn_agent_for_save.model.parameters():
@@ -201,12 +214,12 @@ def test_save_overwrites_existing(dqn_agent_for_save, tmp_path, seed_all):
 
     # Second save (should overwrite)
     dqn_agent_for_save.save(path=save_path, save_gradients=False)
-    second_model = torch.load(save_path / "model.pth", weights_only=False)
+    second_agent = DQNAgent.load(save_path, env=dqn_agent_for_save.env)
 
     # Get predictions
     obs = np.random.randn(1, 4).astype(np.float32)
-    first_q = first_model.predict(obs)
-    second_q = second_model.predict(obs)
+    first_q = first_agent.model.predict(obs)
+    second_q = second_agent.model.predict(obs)
 
     # Should be different (second save should have updated weights)
     assert not np.allclose(first_q, second_q, rtol=1e-5)
@@ -219,8 +232,9 @@ def test_save_preserves_lazy_layers(dqn_agent_for_save, tmp_path, seed_all):
     # Save agent
     dqn_agent_for_save.save(path=save_path, save_gradients=False)
 
-    # Load model
-    loaded_model = torch.load(save_path / "model.pth", weights_only=False)
+    # Load model through the safe state_dict loader
+    loaded_agent = DQNAgent.load(save_path, env=dqn_agent_for_save.env)
+    loaded_model = loaded_agent.model
 
     # Lazy layer should be initialized after save
     assert hasattr(loaded_model.fc1, "in_features")

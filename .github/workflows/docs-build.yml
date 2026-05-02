@@ -59,18 +59,15 @@ jobs:
           poetry config virtualenvs.create true
           poetry config virtualenvs.in-project true
 
-      - name: 🔄 Sync lock file
+      - name: 🔒 Verify lock file
         run: |
-          if ! poetry check --lock; then
-            echo "Lock file is outdated, updating..."
-            poetry lock
-          fi
+          poetry check --lock
 
       - name: 📚 Install dependencies
         run: |
           # The dev group carries mkdocs, mkdocs-material, mkdocstrings,
           # mkdocs-static-i18n, and griffe — everything mkdocs build needs.
-          poetry install --with dev
+          poetry install --with dev --no-interaction
 
       - name: 🏗️ Build site (strict)
         run: |

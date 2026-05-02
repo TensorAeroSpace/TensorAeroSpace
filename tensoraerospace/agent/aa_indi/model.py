@@ -40,7 +40,7 @@ import datetime
 import json
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Optional, Sequence, Union
+from typing import Any, Optional, Union
 
 import numpy as np
 
@@ -238,7 +238,7 @@ class AAINDIAgent:
     def _corrected_omega(self, omega: np.ndarray) -> np.ndarray:
         """Subtract estimated IMU bias when correction is enabled."""
         if self.cfg.enable_bias_correction:
-            return omega - self.bias_est.bias
+            return np.asarray(omega - self.bias_est.bias)
         return omega
 
     def predict(

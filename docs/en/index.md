@@ -232,7 +232,7 @@ hide:
 
     from tensoraerospace.agent.pid import PID
     from tensoraerospace.utils import generate_time_period
-    from tensoraerospace.signals.standart import unit_step
+    from tensoraerospace.signals.standard import unit_step
 
     # Simulation setup
     dt = 0.01

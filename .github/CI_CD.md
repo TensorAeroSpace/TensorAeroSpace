@@ -1,212 +1,152 @@
 # CI/CD Documentation
 
-Этот документ описывает настройку и использование CI/CD пайплайнов для проекта TensorAeroSpace.
+Этот документ описывает текущие GitHub Actions gates для TensorAeroSpace.
 
-## Обзор GitHub Actions
+## Workflows
 
-Проект использует несколько GitHub Actions workflow для автоматизации различных процессов:
+### Quick Check (`quick-check.yml`)
+**Триггер:** push во все ветки.
 
-### 1. Quick Check (`quick-check.yml`)
-**Триггеры:** Push на **все ветки** (`**`) и Pull Request в **любые ветки** (`**`)
+**Jobs:**
+- **⚡ Quick Test (Python 3.10, Ubuntu)**: `poetry check --lock`, установка runtime/test зависимостей, `compileall`, быстрые env-тесты и import smoke.
+- **📝 Code Quality Check**: `black --check`, `isort --check-only`, fatal `flake8`, baseline gate для `flake8` и `ruff`.
+- **🔒 Dependency Security Check**: `pip-audit` по `poetry.lock` для групп `main,dev,test` через baseline gate.
 
-**Задачи:**
-- **quick-test**: Быстрые тесты на Python 3.10/Ubuntu
-- **code-quality**: Проверка форматирования (black, isort, flake8)
-- **dependency-check**: Проверка безопасности зависимостей (safety check)
+### Main CI (`action.yml`)
+**Триггеры:** pull request в `main`/`develop`, ручной запуск.
 
-### 2. Main CI/CD (`action.yml`)
-**Триггеры:** Push на **все ветки** (`**`) и Pull Request в **любые ветки** (`**`)
+**Required gates:**
+- **🏷️ Version Tag Gate**: `pyproject.toml` должен совпадать с последним stable git tag (`vX.Y.Z`).
+- **✅ All Python versions passed**: матрица Python 3.10, 3.11, 3.12, 3.13.
+- **🧱 Quality Gates**: `black`, `isort`, fatal `flake8`, baseline gates для `flake8`, `ruff`, `mypy`.
+- **📚 Documentation Coverage**: `docstr-coverage` с порогом 70%.
+- **🔒 Security Scan**: baseline gate для `bandit` с конфигом из `pyproject.toml` и baseline gate для `pip-audit`.
+- **🏗️ Build Package**: `poetry build`, `twine check`, package gate по `.github/package-gate.json`.
+- **📦 Wheel installs on all Python versions**: собранный wheel устанавливается через `pip install dist/*.whl` и импортируется на Python 3.10, 3.11, 3.12, 3.13.
+- **🐳 Docker image builds**: сборка `Dockerfile` из исходников, smoke-проверка установленного wheel и примеров внутри runtime-образа.
 
-**Задачи:**
-- **test**: Полное тестирование на матрице Python версий (3.10, 3.11, 3.12) и ОС (Ubuntu, macOS, Windows)
-- **docs-coverage**: Проверка покрытия документации (docstr-coverage)
-- **security**: Сканирование безопасности (safety, bandit)
-- **build**: Сборка пакета и загрузка артефактов
+### Docs Build (`docs-build.yml`)
+**Триггеры:** pull request в `main`/`develop`, push в `main`/`develop`, ручной запуск.
 
-### 3. Publishing (`publish.yml`)
-**Триггеры:** 
-- Release (автоматическая публикация в PyPI)
-- Manual dispatch (ручная публикация в TestPyPI или PyPI)
+Собирает документацию через `mkdocs build --strict --clean`. Любые warnings MkDocs/mkdocstrings считаются ошибкой.
 
-**Задачи:**
-- **test-before-publish**: Предварительное тестирование
-- **publish-testpypi**: Публикация в Test PyPI
-- **publish-pypi**: Публикация в PyPI
+### Coverage Upload (`coverage-main.yml`, `coverage-develop.yml`)
+**Триггеры:** push в соответствующую ветку, ручной запуск.
 
-### 4. Release (`release.yml`)
-**Триггеры:** Push тегов версий (v*.*.*)
+Запускает тесты с coverage и отправляет baseline-отчёт в Coveralls для `main` или `develop`.
+После merge в `main` workflow `coverage-main.yml` заново прогоняет тесты, загружает `coverage.xml` в Coveralls и обновляет baseline для `branch=main`, чтобы coverage badge в README показывал актуальное покрытие основной ветки.
 
-**Задачи:**
-- Автоматическое создание GitHub Release
-- Генерация changelog
-- Загрузка артефактов сборки
+### Notebook Smoke (`notebooks-smoke.yml`)
+**Триггеры:** push в `develop`, ручной запуск.
 
-## Локальная разработка
+После merge в `develop` выполняет curated-набор Jupyter notebook examples через `jupyter nbconvert --execute`. Ошибка любой ячейки валит job.
 
-### Быстрая настройка
+### Docker Image (`docker-image.yml`)
+**Триггеры:** pull request в `main`/`develop`, push в `main`/`develop`, ручной запуск.
+
+На PR workflow собирает `Dockerfile` и проверяет, что runtime-образ:
+- импортирует `tensoraerospace` из `site-packages`;
+- содержит `/workspace/examples` и `/workspace/projects`;
+- не содержит исходную папку `/workspace/tensoraerospace`;
+- запускает lightweight example smoke из `/workspace/examples`.
+
+После merge/push в `develop` тот же job публикует образ в GHCR:
+- `ghcr.io/tensoraerospace/tensoraerospace:develop`;
+- `ghcr.io/tensoraerospace/tensoraerospace:sha-<short-sha>`.
+
+После merge/push в `main` публикуются:
+- `ghcr.io/tensoraerospace/tensoraerospace:main`;
+- `ghcr.io/tensoraerospace/tensoraerospace:latest`;
+- `ghcr.io/tensoraerospace/tensoraerospace:sha-<short-sha>`.
+
+Публикация использует стандартный `GITHUB_TOKEN` с permission `packages: write`; отдельный GHCR secret не нужен.
+
+### Publishing (`publish.yml`)
+**Триггеры:** published GitHub Release, ручной запуск для `testpypi` или `pypi`.
+
+Публикация работает по схеме build-once/publish-from-artifact:
+- `test-before-publish` запускает тесты, quality/security gates, `poetry build`, `twine check` и package gate.
+- перед релизной публикацией `pyproject.toml` сверяется с release tag; для ручной публикации в PyPI версия сверяется с последним stable git tag.
+- собранный wheel устанавливается и импортируется на Python 3.10, 3.11, 3.12, 3.13.
+- `publish-testpypi` публикует уже проверенный artifact в TestPyPI.
+- `publish-pypi` публикует уже проверенный artifact в PyPI.
+- `continue-on-error` для публикации не используется.
+
+## Baseline Gates
+
+Текущий технический долг зафиксирован в `.github/ci-baselines.json`. Gate проходит только если число findings не больше baseline:
+- `flake8.max_total`
+- `ruff.max_total`
+- `mypy.max_total`
+- `bandit.max_total`, `bandit.max_medium`, `bandit.max_high`
+
+Новые PR не должны увеличивать baseline. Уменьшать значения можно отдельными PR после исправления долга.
+
+Текущие dependency vulnerabilities зафиксированы в `.github/pip-audit-baseline.json` как точные `package + version + advisory id`. Gate по умолчанию строит временный pinned requirements из `poetry.lock` для групп `main,dev,test` и запускает `pip-audit --no-deps --disable-pip`, поэтому результат не зависит от случайного состояния локальной `.venv`. Если запись исчезла после обновления зависимости, gate показывает её как resolved и продолжает проходить.
+
+Package thresholds находятся в `.github/package-gate.json`:
+- количество wheel/sdist artifacts;
+- максимальный размер одного artifact;
+- общий размер `dist`;
+- uncompressed wheel size;
+- максимальный размер одного файла внутри пакета.
+
+## Version Gate
+
+Версионирование идёт через git tags. `scripts/version_gate.py` читает `[tool.poetry].version` из `pyproject.toml` и сравнивает его с последним stable semver tag вида `vX.Y.Z`.
+
+Для текущего состояния репозитория latest stable tag: `v0.3.13`, поэтому `pyproject.toml` должен содержать `version = "0.3.13"`.
+
+Перед публикацией по GitHub Release workflow проверяет точное совпадение release tag и `pyproject.toml`, а не меняет версию на лету.
+
+## Local Commands
+
+Все команды выполняются через Poetry:
+
 ```bash
-# Установка зависимостей
-make install
-
-# Настройка pre-commit hooks
-make pre-commit-install
-
-# Проверка окружения
-make dev-setup
-```
-
-### Основные команды
-
-#### Тестирование
-```bash
-make test           # Все тесты
-make test-quick     # Быстрые тесты
-make test-agents    # Тесты агентов
-make test-envs      # Тесты окружений
-make test-signals   # Тесты сигналов
-make test-bench     # Бенчмарки
-```
-
-#### Качество кода
-```bash
-make lint           # Линтинг (flake8, mypy, bandit)
-make format         # Форматирование (black, isort)
-make format-check   # Проверка форматирования
-make security       # Проверка безопасности
-```
-
-#### Документация
-```bash
-make docs           # Генерация документации
-make docs-serve     # Запуск локального сервера документации
-make docs-coverage  # Проверка покрытия документации
-```
-
-#### Сборка и публикация
-```bash
-make build          # Сборка пакета
-make publish-test   # Публикация в Test PyPI
-make publish        # Публикация в PyPI (с подтверждением)
-```
-
-#### Версионирование
-```bash
-make version        # Показать текущую версию
-make bump-patch     # Увеличить patch версию
-make bump-minor     # Увеличить minor версию
-make bump-major     # Увеличить major версию
-```
-
-### Pre-commit hooks
-
-Проект настроен с pre-commit hooks для автоматической проверки кода перед коммитом:
-
-```bash
-# Установка hooks
-pre-commit install
-
-# Ручной запуск на всех файлах
-pre-commit run --all-files
-
-# Или через Makefile
-make pre-commit
-```
-
-## Workflow для разработчиков
-
-### 1. Создание новой функции
-```bash
-# Создание ветки
-git checkout -b feature/new-feature
-
-# Разработка с проверками
-make test-quick     # Быстрая проверка
-make lint          # Проверка качества кода
-make format        # Форматирование
-
-# Коммит (pre-commit hooks запустятся автоматически)
-git add .
-git commit -m "feat: добавить новую функцию"
-
-# Push (запустится quick-check workflow)
-git push origin feature/new-feature
-```
-
-### 2. Pull Request
-- Создайте PR в GitHub
-- Автоматически запустятся все проверки
-- После одобрения и merge в main запустится полный CI/CD
-
-### 3. Релиз
-```bash
-# Обновление версии
-make bump-minor  # или bump-patch/bump-major
-
-# Создание тега
-git tag v1.2.0
-git push origin v1.2.0
-
-# Автоматически создастся GitHub Release и публикация в PyPI
-```
-
-## Конфигурация IDE
-
-### VS Code
-Проект включает настройки VS Code:
-- `.vscode/settings.json` - настройки редактора
-- `.vscode/tasks.json` - задачи для выполнения команд
-- `.vscode/launch.json` - конфигурации отладки
-- `.vscode/extensions.json` - рекомендуемые расширения
-
-### PyCharm
-Рекомендуемые настройки:
-- Интерпретатор: `.venv/bin/python`
-- Форматтер: Black
-- Линтер: Flake8
-- Type checker: MyPy
-
-## Troubleshooting
-
-### Проблемы с тестами
-```bash
-# Очистка кэша
-make clean
-
-# Переустановка зависимостей
-make install
-
-# Проверка окружения
-python -c "import tensoraerospace; print('OK')"
-```
-
-### Проблемы с форматированием
-```bash
-# Автоматическое исправление
-make format
-
-# Проверка без изменений
+poetry install --with dev,test
+poetry check --lock
+make version-check
 make format-check
-```
-
-### Проблемы с безопасностью
-```bash
-# Проверка уязвимостей
+make lint
 make security
-
-# Обновление зависимостей
-poetry update
+make dependency-audit
+make package-gate
+docker build --platform=linux/amd64 -t tensoraerospace:local .
+docker run --rm tensoraerospace:local python -c "import tensoraerospace"
 ```
 
-## Мониторинг и уведомления
+Полезные прямые команды:
 
-- **GitHub Actions**: Автоматические уведомления о статусе сборки
-- **Dependabot**: Еженедельные обновления зависимостей
-- **Security alerts**: Уведомления о уязвимостях
+```bash
+poetry run python scripts/ci_quality_gate.py flake8 ruff mypy bandit
+poetry run python scripts/version_gate.py --check-latest-tag
+poetry run python scripts/version_gate.py --sync-latest-tag
+poetry run python -m pip install --quiet "pip-audit>=2.10,<3"
+poetry run python scripts/dependency_audit_gate.py
+poetry build
+poetry run twine check dist/*
+poetry run python scripts/package_gate.py
+```
 
-## Дополнительные ресурсы
+## Branch Protection
 
-- [GitHub Actions Documentation](https://docs.github.com/en/actions)
-- [Poetry Documentation](https://python-poetry.org/docs/)
-- [Pre-commit Documentation](https://pre-commit.com/)
-- [Black Documentation](https://black.readthedocs.io/)
-- [Pytest Documentation](https://docs.pytest.org/)
+`.github/settings.yml` должен требовать для `main` и `develop` следующие PR checks:
+- `🏷️ Version Tag Gate`
+- `✅ All Python versions passed`
+- `🧱 Quality Gates`
+- `📚 Documentation Coverage`
+- `🔒 Security Scan`
+- `🏗️ Build Package`
+- `📦 Wheel installs on all Python versions`
+- `🐳 Docker image builds`
+- `🏗️ mkdocs build --strict`
+
+Не добавляйте push-only workflows в required PR checks, иначе PR может зависнуть в ожидании статуса, который не создаётся.
+
+## Required Secrets
+
+- `PYPI_TEST`: token для TestPyPI.
+- `PYPI_PUBLISH`: token для PyPI.
+- `READTHEDOCS_WEBHOOK_URL` и `READTHEDOCS_WEBHOOK_SECRET`: опционально, для Read the Docs webhook.
+- GHCR публикация использует стандартный `GITHUB_TOKEN`; отдельный registry secret не требуется.

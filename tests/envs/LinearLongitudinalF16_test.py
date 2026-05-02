@@ -6,7 +6,7 @@ from tensoraerospace.aerospacemodel.f16.linear.longitudinal.model import Longitu
 from tensoraerospace.envs.f16 import (  # Import the environment class
     LinearLongitudinalF16,
 )
-from tensoraerospace.signals.standart import unit_step
+from tensoraerospace.signals.standard import unit_step
 from tensoraerospace.utils import convert_tp_to_sec_tp, generate_time_period
 
 INITIAL_STATE = [[0], [0]]

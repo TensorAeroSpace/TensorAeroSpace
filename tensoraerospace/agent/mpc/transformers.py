@@ -5,6 +5,7 @@ transformer-based sequence models used in some MPC-related implementations.
 """
 
 import math
+from typing import cast
 
 import torch
 import torch.nn as nn
@@ -54,8 +55,9 @@ class PositionalEncoding(nn.Module):
             torch.Tensor: Tensor with positional encoding applied.
         """
         # x shape: (batch, seq_len, d_model)
-        x = x + self.pe[:, : x.size(1), :]
-        return self.dropout(x)
+        pe = cast(torch.Tensor, self.pe)
+        x = x + pe[:, : x.size(1), :]
+        return cast(torch.Tensor, self.dropout(x))
 
 
 class TransformerDynamicsModel(nn.Module):

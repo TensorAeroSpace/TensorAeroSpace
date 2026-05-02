@@ -63,7 +63,7 @@ class NARX(nn.Module):
         output = self.output_layer(hidden)
         return output
 
-    def train(self, predcit_tensor, target_tensor):
+    def train(self, mode=True, *args, **kwargs):
         """Perform one gradient update step.
 
         Note:
@@ -76,6 +76,12 @@ class NARX(nn.Module):
         Returns:
             float: Loss value after one update step.
         """
+        if isinstance(mode, bool) and not args and not kwargs:
+            return super().train(mode)
+        predcit_tensor = mode
+        if not args:
+            raise TypeError("NARX.train() missing target_tensor")
+        target_tensor = args[0]
         loss = self.criterion(predcit_tensor, target_tensor)
         self.optimizer.zero_grad()
         loss.backward()
