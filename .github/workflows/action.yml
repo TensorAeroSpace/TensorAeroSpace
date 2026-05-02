@@ -41,9 +41,15 @@ jobs:
           poetry config virtualenvs.create true
           poetry config virtualenvs.in-project true
 
-      - name: 🏷️ Verify pyproject version matches latest stable tag
+      - name: 🏷️ Verify pyproject version is release-ready vs latest stable tag
+        # Release-prep PRs (e.g. ``develop -> main`` with a version bump) need
+        # ``pyproject.toml`` to land BEFORE the matching tag exists, so a strict
+        # equality check would always fail. ``--check-release-ready`` accepts
+        # either equality with the latest stable tag or a single-step increment
+        # (patch+1, minor+1.0, or major+1.0.0). The strict equality check still
+        # runs at release publish time via ``--check-tag`` in publish.yml.
         run: |
-          poetry run python scripts/version_gate.py --check-latest-tag
+          poetry run python scripts/version_gate.py --check-release-ready
 
   test:
     name: 🐍 Test Python ${{ matrix.python-version }}
