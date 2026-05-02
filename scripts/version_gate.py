@@ -15,6 +15,7 @@ DEFAULT_PYPROJECT = ROOT / "pyproject.toml"
 SECTION_RE = re.compile(r"^\[[^\]]+\]\s*$")
 STABLE_TAG_RE = re.compile(r"^v?(\d+)\.(\d+)\.(\d+)$")
 TAG_VERSION_RE = re.compile(r"^v?([0-9]+[.][0-9]+[.][0-9]+[A-Za-z0-9.+_-]*)$")
+STABLE_VERSION_RE = re.compile(r"^(\d+)\.(\d+)\.(\d+)$")
 VERSION_LINE_RE = re.compile(
     r'^(?P<prefix>\s*version\s*=\s*")(?P<version>[^"]+)(?P<suffix>".*)$'
 )
@@ -134,6 +135,78 @@ def check_version(pyproject_version: str, expected_version: str, source: str) ->
     return False
 
 
+def parse_stable_version(version: str) -> tuple[int, int, int] | None:
+    match = STABLE_VERSION_RE.match(version)
+    if not match:
+        return None
+    return tuple(int(part) for part in match.groups())  # type: ignore[return-value]
+
+
+def is_valid_next_increment(
+    latest_key: tuple[int, int, int], candidate_key: tuple[int, int, int]
+) -> bool:
+    """Return True iff ``candidate_key`` is exactly one valid semver increment ahead.
+
+    Acceptable increments relative to a latest tag ``X.Y.Z``:
+      * patch:  ``X.Y.(Z+1)``
+      * minor:  ``X.(Y+1).0``
+      * major:  ``(X+1).0.0``
+    """
+    lmaj, lmin, lpatch = latest_key
+    return candidate_key in {
+        (lmaj, lmin, lpatch + 1),
+        (lmaj, lmin + 1, 0),
+        (lmaj + 1, 0, 0),
+    }
+
+
+def check_release_ready(pyproject_version: str, latest: StableTag) -> bool:
+    """Allow ``pyproject_version`` to either match ``latest`` or be one step ahead.
+
+    Used by the pre-merge gate on release-prep PRs so the version bump can land
+    on the integration branch before the matching tag exists.
+    """
+    if pyproject_version == latest.version:
+        print(
+            f"PASS: pyproject.toml version {pyproject_version} matches "
+            f"latest stable tag {latest.tag}."
+        )
+        return True
+
+    candidate_key = parse_stable_version(pyproject_version)
+    if candidate_key is None:
+        print(
+            f"FAIL: pyproject.toml version '{pyproject_version}' is not a stable "
+            "semver string (X.Y.Z); release-prep gate requires a clean release version.",
+            file=sys.stderr,
+        )
+        return False
+
+    if is_valid_next_increment(latest.key, candidate_key):
+        print(
+            f"PASS: pyproject.toml version {pyproject_version} is a valid next "
+            f"increment from latest stable tag {latest.tag} ({latest.version})."
+        )
+        return True
+
+    lmaj, lmin, lpatch = latest.key
+    expected = ", ".join(
+        [
+            latest.version,
+            f"{lmaj}.{lmin}.{lpatch + 1}",
+            f"{lmaj}.{lmin + 1}.0",
+            f"{lmaj + 1}.0.0",
+        ]
+    )
+    print(
+        f"FAIL: pyproject.toml version {pyproject_version} is not aligned with "
+        f"latest stable tag {latest.tag} ({latest.version}). "
+        f"Expected one of: {expected}.",
+        file=sys.stderr,
+    )
+    return False
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--pyproject", type=Path, default=DEFAULT_PYPROJECT)
@@ -142,6 +215,16 @@ def parse_args() -> argparse.Namespace:
         "--check-latest-tag",
         action="store_true",
         help="Require pyproject.toml version to match the latest stable git tag.",
+    )
+    parser.add_argument(
+        "--check-release-ready",
+        action="store_true",
+        help=(
+            "Require pyproject.toml version to either match the latest stable git "
+            "tag or be a valid one-step increment (patch+1, minor+1.0, or "
+            "major+1.0.0). Use this on release-prep PRs so the version bump can "
+            "land before the matching tag exists."
+        ),
     )
     parser.add_argument(
         "--check-tag",
@@ -175,6 +258,12 @@ def main() -> int:
             if not check_version(
                 pyproject_version, latest.version, f"latest stable tag {latest.tag}"
             ):
+                return 1
+
+        if args.check_release_ready:
+            did_work = True
+            latest = latest_stable_tag()
+            if not check_release_ready(pyproject_version, latest):
                 return 1
 
         if args.check_tag:
