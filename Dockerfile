@@ -1,4 +1,4 @@
-FROM python:3.11-slim-bookworm AS wheel-builder
+FROM python:3.13-slim-bookworm AS wheel-builder
 
 ENV DEBIAN_FRONTEND=noninteractive \
     PYTHONUNBUFFERED=1 \
@@ -20,7 +20,7 @@ COPY tensoraerospace ./tensoraerospace
 RUN python -m pip install --upgrade pip build && \
     python -m build --wheel --outdir /tmp/dist
 
-FROM python:3.11-slim-bookworm
+FROM python:3.13-slim-bookworm
 
 ENV DEBIAN_FRONTEND=noninteractive \
     PYTHONUNBUFFERED=1 \
