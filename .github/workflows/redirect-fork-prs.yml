@@ -1,0 +1,59 @@
+name: Redirect external PRs to develop
+
+# Re-targets pull requests opened against `main` from forks (or by Dependabot)
+# onto `develop`, so the `main` branch only receives release-prep merges from
+# maintainers. Internal collaborators with explicit OWNER/MEMBER/COLLABORATOR
+# association are left alone — they may still legitimately PR into `main` for
+# release work.
+
+on:
+  pull_request_target:
+    types: [opened, reopened]
+    branches:
+      - main
+
+permissions:
+  pull-requests: write
+
+jobs:
+  retarget:
+    if: >-
+      github.event.pull_request.head.repo.full_name != github.repository
+      || github.actor == 'dependabot[bot]'
+      || (
+        github.event.pull_request.author_association != 'OWNER'
+        && github.event.pull_request.author_association != 'MEMBER'
+        && github.event.pull_request.author_association != 'COLLABORATOR'
+      )
+    runs-on: ubuntu-latest
+    steps:
+      - name: Re-target PR base to develop
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const pr = context.payload.pull_request;
+            const reason = pr.head.repo.full_name !== context.repo.owner + '/' + context.repo.repo
+              ? 'opened from a fork'
+              : (context.actor === 'dependabot[bot]'
+                  ? 'opened by Dependabot'
+                  : 'opened by an external contributor');
+
+            await github.rest.pulls.update({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: pr.number,
+              base: 'develop'
+            });
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: pr.number,
+              body: [
+                `🔀 This PR was ${reason}, so its base branch was automatically`,
+                'switched from `main` to `develop`. The `main` branch is reserved',
+                'for release-prep merges performed by maintainers — all incoming',
+                'changes flow through `develop` first. No action required from you;',
+                'reviewers will pick this up against `develop`.'
+              ].join('\n')
+            });
