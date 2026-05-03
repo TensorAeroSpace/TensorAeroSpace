@@ -1,10 +1,8 @@
-Integrating your own Simulink model
-======================================
+# Integrating your own Simulink model
 
 Below is a short and practical path: generate code from Simulink, build a dynamic library, and run your model from Python via `ctypes`.
 
-Goals and requirements
-------------------
+## Goals and requirements
 
 - What you will get:
   - **Build artifacts** from Simulink (`*.c`, `*.h`) and a **dynamic library** (`.so`/`.dylib`/`.dll`).
@@ -14,8 +12,7 @@ Goals and requirements
   - A C/C++ compiler (GCC/Clang/MSVC) and linker utilities.
   - Python 3.8+ and `matplotlib` for visualization (optional).
 
-Step 1. Generate C/C++ code in Simulink
-----------------------------------------
+## Step 1. Generate C/C++ code in Simulink
 
 - Add `In1`/`Out1` blocks to define the model inputs and outputs.
 - In the settings, select: `Code Generation -> System target file: ert_shrlib.tlc` (Embedded Coder).
@@ -26,8 +23,7 @@ Step 1. Generate C/C++ code in Simulink
 !!! note "Simulation step"
     The simulation step is set in the Simulink model parameters. It will be used by the step function in the generated code.
 
-Artifact structure and naming conventions
--------------------------------------------
+## Artifact structure and naming conventions
 
 After the build, the model directory will contain files such as:
 
@@ -38,8 +34,7 @@ After the build, the model directory will contain files such as:
   - Outputs: `MODEL_NAME_Y`
   - Initialize/step/terminate: `MODEL_NAME_initialize`, `MODEL_NAME_step`, `MODEL_NAME_terminate`
 
-Step 2. Build the dynamic library
---------------------------------------
+## Step 2. Build the dynamic library
 
 The build is performed in the directory containing the generated `*.c` files.
 
@@ -70,8 +65,7 @@ The build is performed in the directory containing the generated `*.c` files.
 !!! tip "Hint"
     Sometimes you need to add system libraries (e.g., `-lm` on Linux). If the linker reports missing symbols, check the build output and add the necessary flags.
 
-Quick check: loading the library
-------------------------------------
+## Quick check: loading the library
 
 Before integrating into your code, make sure the library loads:
 
@@ -84,8 +78,7 @@ print(ctypes.CDLL(os.path.abspath("model.so")))  # replace with .dylib or .dll
     - On Windows, dependent DLLs may need to be in the same directory or listed in `PATH`.
     - If you see `OSError: [WinError 126] The specified module could not be found`, check the locations of all dependencies and the architecture (x64 vs x86).
 
-Step 3. Describe the input/output interface in Python
-------------------------------------------------
+## Step 3. Describe the input/output interface in Python
 
 Open the generated header `MODEL_NAME.h` and find the `External inputs` and `External outputs` sections. Create `ctypes` structures based on them.
 
@@ -115,8 +108,7 @@ class ExtY(ctypes.Structure):
 !!! info "Names and types"
     Always take field names and their types from `MODEL_NAME.h`. The names of global structures and functions use the model name: `MODEL_NAME_U`, `MODEL_NAME_Y`, `MODEL_NAME_initialize`, `MODEL_NAME_step`, `MODEL_NAME_terminate`.
 
-Step 4. Example: running from Python
---------------------------------
+## Step 4. Example: running from Python
 
 Below is a minimal example that loads the library, executes 2100 steps, and plots the results. Substitute your actual model name and library path (`.so`/`.dylib`/`.dll`).
 
@@ -181,8 +173,7 @@ plt.subplot(3, 2, 5); plt.plot(alpha); plt.title("$\\alpha$, rad")
 plt.tight_layout(); plt.show()
 ```
 
-Common issues and solutions
---------------------------------------
+## Common issues and solutions
 
 - "Cannot find `MODEL_NAME_U`/`MODEL_NAME_Y`":
   - Make sure you are using the correct model name prefix (as in the `.h` file).
@@ -193,8 +184,7 @@ Common issues and solutions
   - Check that the `ctypes` field types match those in `MODEL_NAME.h`.
   - Make sure the library is built for the same architecture as Python (x64/x86).
 
-Useful links
----------------
+## Useful links
 
 - Repository with a model example: [tensoraerospace/simulink-example](https://github.com/tensoraerospace/simulink-example)
 - Converting and running Simulink models: see also the "Simulink to Python" section in the documentation.

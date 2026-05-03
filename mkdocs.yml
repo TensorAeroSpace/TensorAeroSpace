@@ -59,7 +59,7 @@ plugins:
               - B747: 
                 - Classic State-Space: model/b747.md
                 - Normalized State-Space: model/b747_imporove.md
-              - EVL: model/evl.md
+              - ELV: model/elv.md
               - Typical Rocket: model/typical_rocket.md
               - ComSat: model/comsat.md
               - F4C: model/f4c.md
@@ -204,7 +204,7 @@ plugins:
               - B747: 
                 - Пространство состояний: model/b747.md
                 - Нормализованное управление: model/b747_imporove.md
-              - EVL: model/evl.md
+              - ELV: model/elv.md
               - Typical Rocket: model/typical_rocket.md
               - ComSat: model/comsat.md
               - F4C: model/f4c.md

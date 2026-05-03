@@ -61,7 +61,7 @@ tp = generate_time_period(tn=tn, dt=dt)
 N = len(tp)
 
 # Ступенчатый сигнал задания: 5 градусов, начало на 1 секунде
-reference = unit_step(degree=5, tp=tp, time_step=100, output_rad=True).reshape(1, -1)
+reference = unit_step(degree=5, tp=tp, time_step=1.0, output_rad=True).reshape(1, -1)
 
 # Создание среды Boeing 747
 env = gym.make(
@@ -814,7 +814,7 @@ tn = 40
 tp = generate_time_period(tn=tn, dt=dt)
 N = len(tp)
 
-reference = unit_step(degree=5, tp=tp, time_step=100, output_rad=True).reshape(1, -1)
+reference = unit_step(degree=5, tp=tp, time_step=1.0, output_rad=True).reshape(1, -1)
 
 env = gym.make(
     "LinearLongitudinalB747-v0",

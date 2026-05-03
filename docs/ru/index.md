@@ -186,7 +186,7 @@ tp = generate_time_period(tn=10, dt=dt)  # 10 секунд
 N = len(tp)
 
 # Опорный сигнал для слежения по alpha (ступенька 5° в радианах)
-reference = unit_step(degree=5, tp=tp, time_step=100, output_rad=True).reshape(1, -1)
+reference = unit_step(degree=5, tp=tp, time_step=2.0, output_rad=True).reshape(1, -1)
 
 # Создание среды F-16 (порядок состояний: [alpha, q])
 env = gym.make(

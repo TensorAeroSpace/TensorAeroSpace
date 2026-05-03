@@ -241,7 +241,7 @@ hide:
 
     # Reference signal for alpha tracking (5 deg step in radians)
     reference = unit_step(
-        degree=5, tp=tp, time_step=100, output_rad=True
+        degree=5, tp=tp, time_step=2.0, output_rad=True
     ).reshape(1, -1)
 
     # Create F-16 longitudinal environment

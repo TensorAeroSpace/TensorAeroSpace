@@ -144,7 +144,6 @@ cfg = IMGDHPConfig(
 | Артефакт | Путь |
 |----------|------|
 | Основной comparison-ноутбук (этот документ) | `example/comparison/comparison_f16_nonlinear_ml_vs_pid.ipynb` |
-| Demo каскадного актора | `example/comparison/comparison_f16_nonlinear_cascaded_ihdp_vs_pid.ipynb` |
 | IADP companion (rate tracking, sinusoid) | `example/reinforcement_learning/example_iadp_nonlinear_f16.ipynb` |
 | IM-GDHP companion (полный episode-train) | `example/reinforcement_learning/example_im_gdhp_nonlinear_f16.ipynb` |
 | PID baseline (linear F-16) | `example/comparison/pid_f16_baseline.ipynb` |

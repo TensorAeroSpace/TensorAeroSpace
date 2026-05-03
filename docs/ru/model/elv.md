@@ -2,7 +2,7 @@
 
 ELV (Expendable Launch Vehicle) — ракета‑носитель для выведения полезной нагрузки на орбиту. Реализован продольный канал полёта как линейная модель в пространстве состояний и совместимая среда Gymnasium.
 
-![Expendable launch vehicle](img/evl.png){ width=800 }
+![Expendable launch vehicle](img/elv.png){ width=800 }
 
 <div class="grid cards" markdown>
 
