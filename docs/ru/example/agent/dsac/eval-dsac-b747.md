@@ -77,6 +77,7 @@ env.unwrapped.model.plot_transient_process(
 )
 
 # 5. Вычисление метрик бенчмарка
+system_signal = env.unwrapped.model.get_state("theta", to_deg=True)
 benchmark = ControlBenchmark()
 benchmark.plot(ref[0], system_signal, tps=t, signal_val=0.0, dt=dt)
 print(benchmark.generate_report(ref[0], system_signal, signal_val=0.0, dt=dt))

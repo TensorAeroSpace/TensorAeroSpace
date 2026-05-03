@@ -196,5 +196,5 @@ agent.train()
 
 ## Связанные примеры
 
-- [Unity с DQN](../example/enviroment/unity_example.md) — обучение DQN-агента (дискретные действия)
+- [Unity с DQN](../example/environment/unity_example.md) — обучение DQN-агента (дискретные действия)
 - [Unity с SAC](../example/agent/sac/example-sac-unity.md) — обучение SAC-агента (непрерывное управление)

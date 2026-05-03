@@ -218,7 +218,22 @@ agent = ADHDP(env, critic_cycle_episodes=5, action_cycle_episodes=5)
 
 - `ImprovedB747Env` — продольная динамика Boeing 747 со слежением за опорным сигналом
 
-## Справочник API
+## Унифицированный интерфейс обучения
+
+ADHDP реализует общую унифицированную сигнатуру `train()` из
+`BaseRLModel`:
+
+```python
+agent.train(num_episodes=200, max_steps=500)
+```
+
+ADHDP‑специфичные параметры, принимаемые через `**kwargs`:
+
+- `show_progress` (`bool`, устаревший псевдоним `verbose`) — управляет
+  индикатором прогресса tqdm.
+- `progress_desc` (`str`) — подпись описания tqdm.
+
+## Документация API
 
 ::: tensoraerospace.agent.adhdp.model.ADHDP
 

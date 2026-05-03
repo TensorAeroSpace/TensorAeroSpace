@@ -107,14 +107,23 @@ ref shape:         (1, 500)
 
 ## Шаг 3 — Обзор сред
 
-| Env id | Модель | `tracking_states` | Примечания |
+| Env id | Модель | `tracking_states` (по умолчанию) | Примечания |
 |---|---|---|---|
-| `LinearLongitudinalF16-v0` | 4-стат. линейная F-16 | `alpha`, `theta`, `wz` | Bootstrap для PID/MPC. |
-| `NonlinearLongitudinalF16-v0` | NumPy нелинейная F-16 (прод.) | `alpha`, `wz` | Нужен `control_bias` для трима. |
-| `NonlinearAngularF16-v0` | 6-DoF нелинейная F-16 | `p`, `q`, `r` | 3 канала управления. |
-| `LinearB747-v0` | Линейный B747 | `theta`, `alpha` | Классический baseline. |
-| `NonlinearB747-v0` | Нелинейный B747 | разное | MPC-Transformer демо. |
-| `UnityEnv-v0` | Unity-рендер | настраивается | Нужен Unity build. |
+| `LinearLongitudinalF16-v0` | 4-стат. линейная F-16 | `alpha`, `q` | Bootstrap для PID/MPC. Допустимо переопределить, например `["alpha"]` или `["alpha","theta","wz"]`. |
+| `NonlinearLongitudinalF16-v0` | NumPy нелинейная F-16 (прод.) | `alpha` | Нужен `control_bias` для трима. |
+| `NonlinearAngularF16-v0` | 6-DoF нелинейная F-16 | настраивается | 3–4 канала управления (см. `split_stab`). |
+| `LinearLongitudinalB747-v0` | Линейный B747 | `theta` | Классический baseline. |
+| `ImprovedB747-v0` | Нормализованная нелинейная B747 | настраивается | Используется в большинстве RL-экспериментов и MPC-демо. |
+
+Среды Unity не регистрируются как `gym.make`-id и инициализируются через
+фабрики `get_plane_env()` / `unity_discrete_env()` (см.
+[Unity-окружение](../guide/unity_env.md)).
+
+Полный список регистраций — в `tensoraerospace/__init__.py` (есть также
+`LinearLongitudinalX15-v0`, `LinearLongitudinalLAPAN-v0`,
+`LinearLongitudinalUAV-v0`, `LinearLongitudinalUltrastick-v0`,
+`LinearLongitudinalELVRocket-v0`, `LinearLongitudinalMissileModel-v0`,
+`LinearLongitudinalF4C-v0`, `GeoSat-v0`, `ComSat-v0` и их Improved-варианты).
 
 Запустите `gym.make(<id>).unwrapped.__doc__` или смотрите [Объекты управления](../model/f16.md) для полной документации.
 

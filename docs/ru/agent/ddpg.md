@@ -67,6 +67,29 @@ agent.learn(max_frames=12000, max_steps=500, batch_size=128)
 !!! tip
     Эксплорейшн обеспечивается OU‑шумом: контролируйте `sigma` и `decay_period`, чтобы плавно снижать силу шума.
 
+## Унифицированный интерфейс обучения
+
+DDPG поддерживает общий унифицированный API `train()` из `BaseRLModel`:
+
+```python
+agent.train(
+    num_episodes=24,
+    max_steps=500,
+    batch_size=128,
+    warmup_frames=2_000,
+)
+```
+
+Под капотом `train()` пересчитывает `num_episodes * max_steps` в бюджет
+`max_frames` и вызывает устаревший метод `learn()`. Поддерживаемые
+DDPG‑специфичные именованные аргументы (передаются через `**kwargs`):
+
+- `max_frames`, `batch_size`, `gamma`, `soft_tau`, `warmup_frames`,
+  `updates_per_step`, `target_value_clip`.
+
+Старый вызов `agent.learn(max_frames=..., max_steps=..., batch_size=...)`
+продолжает работать без изменений.
+
 ## Документация API
 
 ::: tensoraerospace.agent.ddpg.model.DDPG

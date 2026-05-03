@@ -167,10 +167,6 @@ docker run \
 - Несоответствие версий `mlagents`: убедитесь, что версия совместима с ML-Agents (`mlagents==1.1.0`).
 - Не подключается к билду: проверьте `build_path` и права на запуск (Linux: `chmod +x`).
 
-## Пример запуска обучения модели
-
-![Training Example](../../model/img/example_run.jpg){ width=800 }
-
 ## Связанные примеры
 
 - [Unity с SAC](../agent/sac/example-sac-unity.md) — SAC-агент для непрерывного управления

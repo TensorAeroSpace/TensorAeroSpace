@@ -52,11 +52,14 @@ plugins:
                 - Linear Longitudinal: model/f16.md
                 - Nonlinear Longitudinal: model/f16_nonlinear_longitudinal.md
                 - Nonlinear 6-DoF Angular: model/f16_nonlinear_angular.md
-                - Aircraft Damage Modeling: model/aircraft-damage-modeling.md
+                - Aircraft Damage Modeling:
+                  - Overview and quick start: model/aircraft-damage-modeling.md
+                  - Implementation and examples: model/aircraft-damage-modeling-code.md
+                  - Mathematics: model/aircraft-damage-modeling-math.md
               - B747: 
                 - Classic State-Space: model/b747.md
                 - Normalized State-Space: model/b747_imporove.md
-              - EVL: model/evl.md
+              - ELV: model/elv.md
               - Typical Rocket: model/typical_rocket.md
               - ComSat: model/comsat.md
               - F4C: model/f4c.md
@@ -109,7 +112,7 @@ plugins:
                 - IHDP & IM-GDHP vs PID (Nonlinear F-16): comparison/ihdp_imgdhp_vs_pid_f16_nonlinear.md
               - Signals: signals/signals.md
             - Examples:
-              - Environments: example/enviroment/gymnasium.md
+              - Environments: example/environment/gymnasium.md
               - IHDP:
                 - Linear F16: example/agent/ihdp/example_ihdp.md
                 - Walkthrough (step-by-step): example/agent/ihdp/example_ihdp_walkthrough.md
@@ -137,7 +140,7 @@ plugins:
                 - Simulink to Python: example/simulink/sim_pyth.md
                 - Your Simulink: example/simulink/your_sim.md
               - Unity:
-                - Unity with DQN: example/enviroment/unity_example.md
+                - Unity with DQN: example/environment/unity_example.md
               - Simintech:
                 - Simintech: example/simintech/simintech.md
                 - Simintech to Python: example/simintech/simintechToPython.md
@@ -194,11 +197,14 @@ plugins:
                 - Линейная продольная: model/f16.md
                 - Нелинейная продольная: model/f16_nonlinear_longitudinal.md
                 - Нелинейная 6-DoF угловая: model/f16_nonlinear_angular.md
-                - Моделирование повреждений ЛА: model/aircraft-damage-modeling.md
+                - Моделирование повреждений ЛА:
+                  - Обзор и быстрый старт: model/aircraft-damage-modeling.md
+                  - Реализация и примеры: model/aircraft-damage-modeling-code.md
+                  - Математика: model/aircraft-damage-modeling-math.md
               - B747: 
                 - Пространство состояний: model/b747.md
                 - Нормализованное управление: model/b747_imporove.md
-              - EVL: model/evl.md
+              - ELV: model/elv.md
               - Typical Rocket: model/typical_rocket.md
               - ComSat: model/comsat.md
               - F4C: model/f4c.md
@@ -250,7 +256,7 @@ plugins:
                 - IHDP и IM-GDHP vs PID (нелинейная F-16): comparison/ihdp_imgdhp_vs_pid_f16_nonlinear.md
               - Сигналы: signals/signals.md
             - Примеры:
-              - Окружения: example/enviroment/gymnasium.md
+              - Окружения: example/environment/gymnasium.md
               - IHDP:
                 - Линейная F16: example/agent/ihdp/example_ihdp.md
                 - Пошаговый пример: example/agent/ihdp/example_ihdp_walkthrough.md
@@ -278,7 +284,7 @@ plugins:
                 - Simulink в Python: example/simulink/sim_pyth.md
                 - Ваш Simulink: example/simulink/your_sim.md
               - Unity:
-                - Unity с DQN: example/enviroment/unity_example.md
+                - Unity с DQN: example/environment/unity_example.md
               - Simintech:
                 - Simintech: example/simintech/simintech.md
                 - Simintech в Python: example/simintech/simintechToPython.md
@@ -348,6 +354,7 @@ extra:
   static:
     - assets
 extra_javascript:
+  - javascripts/mathjax.js
   - https://polyfill.io/v3/polyfill.min.js?features=es6
   - https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js
 
@@ -355,6 +362,11 @@ markdown_extensions:
   - admonition
   - attr_list
   - md_in_html
+  - toc:
+      permalink: true
+      slugify: !!python/object/apply:pymdownx.slugs.slugify
+        kwds:
+          case: lower
   - pymdownx.highlight:
       anchor_linenums: true
       linenums: false

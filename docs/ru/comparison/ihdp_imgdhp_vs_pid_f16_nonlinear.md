@@ -90,7 +90,7 @@ actor_settings = {
 
 ### 3.3 IM-GDHP+I — Incremental-Model GDHP с интегральной коррекцией
 
-`IMGDHPAgent` — более современный adaptive RL-контроллер (RLS-идентифицированная инкрементная модель + GDHP-критик). Стандартный пайплайн (`example/reinforcement_learning/example_im_gdhp_nonlinear_f16.ipynb`) обучает его за `~80` эпизодов; для one-pass бенчмарка в этом сравнении IM-GDHP запускается с `exploration_noise_std=0.0` (детерминированный forward pass), и тот же external `+I`-компенсатор, что и для IHDP. Интегральный канал гарантирует нулевую статическую ошибку, IM-GDHP forward pass добавляет нелинейную коррекцию поверх.
+`IMGDHPAgent` — более современный adaptive RL-контроллер (RLS-идентифицированная инкрементальная модель + GDHP-критик). Стандартный пайплайн (`example/reinforcement_learning/example_im_gdhp_nonlinear_f16.ipynb`) обучает его за `~80` эпизодов; для one-pass бенчмарка в этом сравнении IM-GDHP запускается с `exploration_noise_std=0.0` (детерминированный forward pass), и тот же external `+I`-компенсатор, что и для IHDP. Интегральный канал гарантирует нулевую статическую ошибку, IM-GDHP forward pass добавляет нелинейную коррекцию поверх.
 
 ```python
 cfg = IMGDHPConfig(
@@ -123,7 +123,7 @@ cfg = IMGDHPConfig(
 
 **Оба ML-контроллера выполняют требование ТЗ.** IHDP+I в `~4×` быстрее auto-tuned PID, IM-GDHP+I в `~2.1×` быстрее, у обоих overshoot ниже 5 %, нулевая статическая ошибка и не более одного колебания после settling.
 
-**Зачем staircase-эталон?** Online-обучаемые контроллеры нуждаются в *активной фазе адаптации*: критик и инкрементная модель сходятся на серии мини-шагов в первые 90 с. К моменту целевого шага в `t = 150 с` контроллер уже идентифицировал объект в окрестности тримминга. На single-step без warmup'а IHDP даёт overshoot 25–30 % — staircase-предобработка как раз и обеспечивает чистый переходный процесс.
+**Зачем staircase-эталон?** Online-обучаемые контроллеры нуждаются в *активной фазе адаптации*: критик и инкрементальная модель сходятся на серии мини-шагов в первые 90 с. К моменту целевого шага в `t = 150 с` контроллер уже идентифицировал объект в окрестности тримминга. На single-step без warmup'а IHDP даёт overshoot 25–30 % — staircase-предобработка как раз и обеспечивает чистый переходный процесс.
 
 **Зачем интегральная коррекция?** IHDP и IM-GDHP минимизируют квадратичный LQ-functional `Q · err² + R · u²` без integral-state в augmented-векторе. LQR-policy без integral action имеет конечный остаточный steady-state error — это математическое свойство формулировки, а не вопрос настройки. Малое слагаемое `−K_I · ∫err dτ` устраняет offset без модификации актора или критика — точно так же, как работает классический PI-компенсатор.
 
@@ -144,7 +144,6 @@ cfg = IMGDHPConfig(
 | Артефакт | Путь |
 |----------|------|
 | Основной comparison-ноутбук (этот документ) | `example/comparison/comparison_f16_nonlinear_ml_vs_pid.ipynb` |
-| Demo каскадного актора | `example/comparison/comparison_f16_nonlinear_cascaded_ihdp_vs_pid.ipynb` |
 | IADP companion (rate tracking, sinusoid) | `example/reinforcement_learning/example_iadp_nonlinear_f16.ipynb` |
 | IM-GDHP companion (полный episode-train) | `example/reinforcement_learning/example_im_gdhp_nonlinear_f16.ipynb` |
 | PID baseline (linear F-16) | `example/comparison/pid_f16_baseline.ipynb` |

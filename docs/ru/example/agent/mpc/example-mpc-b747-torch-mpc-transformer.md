@@ -296,11 +296,6 @@ for step in tqdm(range(env.unwrapped.number_time_steps - 2)):
 
 ## Результаты
 
-### Визуализация переходного процесса
-
-<!-- TODO: ВСТАВИТЬ ГРАФИК ПЕРЕХОДНОГО ПРОЦЕССА СЮДА -->
-<!-- ![Переходный процесс Transformer](../../../../../assets/mpc/transformer_step_response.png) -->
-
 ### Метрики качества
 
 | Метрика | Значение | Описание |

@@ -75,10 +75,32 @@ env = gym.make('LinearLongitudinalF16-v0',
 expert_data = np.load('expert_f16.npy')
 agent = GAIL(env, learning_rate=3e-3, max_steps=20, mini_batch_size=16, epochs=4, data=expert_data)
 agent.learn(max_frames=5000, max_reward=-1)
+
+# Унифицированный API (обёртка над learn)
+agent.train(num_episodes=250, max_steps=20, max_reward=-1)
 ```
+
+## Унифицированный интерфейс обучения
+
+GAIL предоставляет общий унифицированный API `train()` из `BaseRLModel`.
+Внутри он делегирует вызов устаревшему методу `learn()`, пересчитывая
+`num_episodes * max_steps` в бюджет `max_frames`. GAIL‑специфичные
+параметры, принимаемые через `**kwargs`:
+
+- `max_frames` (`int`): переопределяет вычисленный бюджет шагов.
+- `max_reward` (`float`): порог раннего останова по средней награде на
+  тесте.
 
 !!! tip
     Качество `expert_data` критично: добавьте демо с разными начальными условиями и манёврами.
+
+!!! warning "Gymnasium 5-tuple API"
+    Реализация использует современный 5‑элементный API `step` из Gymnasium:
+    ```python
+    next_state, reward, terminated, truncated, info = env.step(action)
+    done = terminated or truncated
+    ```
+    Если вы переходите со старого кода с 4‑элементным API (`next_state, reward, done, info = env.step(action)`), убедитесь, что среда совместима с Gymnasium и возвращает 5‑элементный кортеж.
 
 ## Документация API
 

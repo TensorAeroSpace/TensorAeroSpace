@@ -64,7 +64,7 @@ number_time_steps = len(tp)
 
 # --- Задающий сигнал: ступенька 1 градус в момент t = 5 с ---
 reference = np.reshape(
-    unit_step(degree=1, tp=tp, time_step=50, output_rad=True),
+    unit_step(degree=1, tp=tp, time_step=5.0, output_rad=True),
     (1, -1),
 )
 
@@ -90,7 +90,7 @@ print(f"Пространство наблюдений : {env.observation_space}"
 | Параметр | Описание |
 |---|---|
 | `degree=1` | Амплитуда ступеньки в градусах (преобразуется в радианы при `output_rad=True`). |
-| `time_step=50` | Индекс начала ступеньки (50 * dt = 5 с). |
+| `time_step=5.0` | Время начала ступеньки в секундах. |
 | `initial_state` | Самолет начинает в балансировочном режиме: нулевые отклонения. |
 | `dt=0.1` | Шаг дискретизации; 0.1 с -- хороший баланс между разрешением и скоростью. |
 
@@ -644,7 +644,7 @@ tps = convert_tp_to_sec_tp(tp, dt=dt)
 number_time_steps = len(tp)
 
 reference = np.reshape(
-    unit_step(degree=1, tp=tp, time_step=50, output_rad=True),
+    unit_step(degree=1, tp=tp, time_step=5.0, output_rad=True),
     (1, -1),
 )
 initial_state = np.array([0.0, 0.0, 0.0, 0.0], dtype=np.float32)
