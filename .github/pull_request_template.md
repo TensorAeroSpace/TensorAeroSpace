@@ -1,5 +1,10 @@
 # Pull Request
 
+> ⚠️ **Base branch should be `develop`.** External and Dependabot PRs are
+> retargeted automatically; for internal contributors please open the PR
+> against `develop` directly. Only release-prep merges go to `main` and are
+> done by maintainers.
+
 ## 📋 Description
 A clear and concise description of the changes in this PR.
 

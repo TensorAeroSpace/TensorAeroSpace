@@ -9,7 +9,7 @@
 Чтобы добавить объект, пишите **два класса и один вызов регистрации**:
 
 1. **Функция динамики** `f(x, u, t, params) -> xdot` — чистый NumPy, без Gymnasium-зависимостей.
-2. **Класс Gymnasium-среды**, обёртка над динамикой с интегратором, совместимый с контрактом `state_space`/`tracking_states`/`reference_signal`. На практике наследуйте `tensoraerospace.envs.base.BaseEnv` (или скопируйте одну из существующих сред, например `envs/b747/linear.py`).
+2. **Класс Gymnasium-среды**, обёртка над динамикой с интегратором, совместимый с контрактом `state_space`/`tracking_states`/`reference_signal`. В репозитории нет общего базового класса — за образец возьмите одну из существующих сред: например, `tensoraerospace/envs/b747.py` (`LinearLongitudinalB747`/`ImprovedB747Env`) или `tensoraerospace/envs/f16/linear_longitudinal.py`.
 3. `gym.register('<NewPlant>-v0', entry_point='...')` — чтобы `gym.make` его нашёл.
 
 ## 1. Функция динамики

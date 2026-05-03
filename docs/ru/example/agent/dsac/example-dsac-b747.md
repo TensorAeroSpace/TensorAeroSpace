@@ -22,8 +22,11 @@ python example/reinforcement_learning/example_dsac_b747.py
 
 ```python
 import numpy as np
+import torch
 from tensoraerospace.agent import DSAC
 from tensoraerospace.envs.b747 import ImprovedB747Env
+
+device = "cuda" if torch.cuda.is_available() else "cpu"
 
 def make_reference(steps: int, step_deg: float = 5.0) -> np.ndarray:
     ref = np.zeros((1, steps), dtype=np.float32)

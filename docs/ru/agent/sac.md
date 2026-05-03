@@ -65,19 +65,61 @@ agent.save('./runs')
 !!! tip
     Для непрерывного пространства действий используйте `GaussianPolicy` с `automatic_entropy_tuning=True` — это стабилизирует степень исследовательности.
 
+## Унифицированный интерфейс обучения
+
+Все RL‑агенты TensorAeroSpace используют общую сигнатуру `train()`,
+определённую в `BaseRLModel`:
+
+```python
+def train(
+    self,
+    num_episodes: int = 100,
+    *,
+    max_steps: Optional[int] = None,
+    save_best: bool = False,
+    save_path: Optional[str] = None,
+    verbose: bool = True,
+    **kwargs,
+) -> dict
+```
+
+Для SAC через `**kwargs` принимаются следующие специфичные опции:
+
+- `save_best_with_gradients` (`bool`): включать состояния оптимизаторов
+  в чекпоинты лучших моделей.
+
+Пример:
+
+```python
+stats = agent.train(
+    num_episodes=100,
+    max_steps=500,
+    save_best=True,
+    save_path='./runs/sac_best',
+)
+print(stats['best_reward'], len(stats['episode_rewards']))
+```
+
 ## Практические советы
 
 - Увеличивайте `batch_size` и `memory_capacity` для более стабильных градиентов
 - `tau` в пределах 0.005–0.02 для мягкого обновления target‑сети
 - Если политика детерминированная — установите `alpha=0` и отключите автонастройку
+- При использовании `DeterministicPolicy` с `action_space=None` учтите, что `action_scale` и `action_bias` теперь являются `torch.Tensor` (а не Python‑числами)
+
+!!! warning "Gymnasium 5-tuple API"
+    Реализация использует современный 5‑элементный API `step` из Gymnasium:
+    ```python
+    next_state, reward, terminated, truncated, info = env.step(action)
+    done = terminated or truncated
+    ```
+    Если вы переходите со старого кода с 4‑элементным API (`next_state, reward, done, info = env.step(action)`), убедитесь, что среда совместима с Gymnasium и возвращает 5‑элементный кортеж.
 
 ## Документация API
 
 ::: tensoraerospace.agent.sac.sac.SAC
 
 ::: tensoraerospace.agent.sac.replay_memory.ReplayMemory
-
-::: tensoraerospace.agent.sac.model.ValueNetwork
 
 ::: tensoraerospace.agent.sac.model.QNetwork
 

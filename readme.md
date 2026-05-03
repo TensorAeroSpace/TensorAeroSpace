@@ -29,9 +29,10 @@
 **TensorAeroSpace** is a cutting-edge Python framework that combines aerospace engineering with modern machine learning. It provides:
 
 - 🎯 **Control Systems**: Advanced control algorithms including PID, MPC, and modern RL approaches
-- ✈️ **Aerospace Models**: High-fidelity aircraft and spacecraft simulation models
+- ✈️ **Aerospace Models**: High-fidelity aircraft and spacecraft simulation models — including a **fully nonlinear F-16** (longitudinal + 6-DoF angular)
+- 💥 **In-flight Damage Simulation**: Schedule wing-tip loss, jammed control surfaces, engine flameout — the env recomputes mass, inertia, aerodynamics on-the-fly
 - 🎮 **OpenAI Gym Integration**: Ready-to-use environments for reinforcement learning
-- 🧠 **RL Algorithms**: State-of-the-art reinforcement learning implementations
+- 🧠 **RL Algorithms**: State-of-the-art reinforcement learning implementations, including online-adaptive critics (iADP, IM-GDHP, ET-DHP, AIDI, AA-INDI) for fault-tolerant control
 - 🔧 **Extensible Architecture**: Easy to extend and customize for your specific needs
 
 ## 🧭 Applied Use Cases
@@ -191,36 +192,109 @@ for t in range(N - 1):
         break
 ```
 
+---
+
+#### 💥 In-flight Damage Modeling (Nonlinear F-16)
+
+Schedule failures during a simulation — wingtip loss, jammed control surfaces, engine flameout, structural changes — and the env recomputes mass, inertia, aerodynamic coefficients, and control-surface effectiveness in real time. The control agent then faces a different plant from the moment the damage event fires.
+
+```python
+import numpy as np
+
+from tensoraerospace.aerospacemodel.f16.nonlinear.damage import (
+    WING_STRIKE_LEFT_TIP,  # ready-made: full loss of left wingtip at t=10s
+)
+from tensoraerospace.envs.f16.nonlinear_angular import NonlinearAngularF16
+
+env = NonlinearAngularF16(
+    initial_state=np.zeros(14),
+    number_time_steps=2000,
+    damage_profile=WING_STRIKE_LEFT_TIP,
+    split_stab=True,
+)
+obs, _ = env.reset()
+for _ in range(2000):
+    obs, r, term, trunc, info = env.step(np.zeros(4))
+    if info.get("damage_events_triggered"):
+        print(info["damage_events_triggered"])  # → ['left_tip_full_loss']
+```
+
+What's modelled:
+
+- **Section loss** (wing/stabilator/vtail): mass *m*, wing area *S*, span *b*, MAC, CG, inertia tensor **J**, aerodynamic coefficients all recomputed from per-section contributions via Huygens-Steiner.
+- **Control-surface failure** (`jam` / `efficiency_loss` / `lost`): commanded vector $\mathbf{u}_{cmd} \to \mathbf{u}_{eff}$ before the integrator.
+- **Engine failure** (partial / full): effective thrust scaled or zeroed.
+- **Structural changes** (dropped stores, ice accretion): Δ on mass / CG / inertia.
+
+7 ready-made presets (`WING_STRIKE_LEFT_TIP`, `ELEVATOR_JAM_NEUTRAL`, `RUDDER_LOST`, `ENGINE_FLAMEOUT`, `BIRDSTRIKE_COMPOUND`, …) plus a `RandomDamageProfileGenerator` for RL curricula. Without `damage_profile` the env is byte-for-byte identical to the un-damaged baseline.
+
+> 📖 **Full reference**: [Aircraft Damage Modeling docs](https://tensoraerospace.readthedocs.io/en/latest/model/aircraft-damage-modeling/) — overview, code/examples, mathematics.
+
 ## 🤖 Supported Algorithms
 
-| Algorithm | Type | Save/Load | HuggingFace Hub | Status |
-|-----------|------|:---------:|:---------------:|:------:|
-| **SAC** | Soft Actor-Critic | ✅ | ✅ `from_pretrained` / `publish_to_hub` | ✅ |
-| **PPO** | Proximal Policy Optimization | ✅ | ✅ `from_pretrained` / `publish_to_hub` | ✅ |
-| **DDPG** | Deep Deterministic Policy Gradient | ✅ | ✅ `from_pretrained` / `publish_to_hub` | ✅ |
-| **DSAC** | Distributional Soft Actor-Critic | ✅ | ✅ `from_pretrained` / `publish_to_hub` | ✅ |
-| **DQN** | Deep Q-Learning | ✅ | ✅ `from_pretrained` / `publish_to_hub` | ✅ |
-| **A2C** | Advantage Actor-Critic | ✅ | ✅ `from_pretrained` / `publish_to_hub` | ✅ |
-| **A2C-NARX** | A2C with NARX Critic | ✅ | ✅ `from_pretrained` / `publish_to_hub` | ✅ |
-| **A3C** | Asynchronous Advantage Actor-Critic | ✅ | ✅ `from_pretrained` / `publish_to_hub` | ✅ |
-| **GAIL** | Imitation Learning (Adversarial) | ✅ | ✅ `from_pretrained` / `publish_to_hub` | ✅ |
-| **MPC** | Model Predictive Control | ✅ | ✅ `from_pretrained` / `publish_to_hub` | ✅ |
-| **ADP** | Adaptive Dynamic Programming | ✅ | ✅ `from_pretrained` / `publish_to_hub` | ✅ |
-| **ADHDP** | Action-Dependent HDP | ✅ | ✅ `from_pretrained` / `publish_to_hub` | ✅ |
-| **HDP** | Heuristic Dynamic Programming | ✅ | ✅ `from_pretrained` / `publish_to_hub` | ✅ |
-| **PID** | Proportional-Integral-Derivative | ✅ | ✅ `from_pretrained` / `publish_to_hub` | ✅ |
-| **IHDP** | Incremental Heuristic Dynamic Programming | ✅ | ❌ | ✅ |
-| **NARX** | Nonlinear Autoregressive Network | ✅ | ✅ `from_pretrained` / `publish_to_hub` | ✅ |
+### Classical control
+
+| Algorithm | Description |
+|-----------|-------------|
+| **PID** | Proportional-Integral-Derivative regulator with anti-windup and MATLAB-style auto-tuning. Strong baseline for state-space tasks; the auto-tuner extracts the env's `(A, B, C, D)` matrices and runs differential evolution on a step-response cost. |
+| **MPC** | Model Predictive Control with three pluggable plant-model variants — MLP, NARX, and Transformer — driving a receding-horizon QP/optimisation. Use it when an explicit model is known or learnable from data. |
+
+### Deep RL — on-policy
+
+| Algorithm | Description |
+|-----------|-------------|
+| **PPO** | Proximal Policy Optimization — clipped-surrogate on-policy actor-critic. Stable and easy to tune; the standard «just works» starting point for continuous and discrete control. |
+| **A2C** | Advantage Actor-Critic — synchronous on-policy actor-critic baseline; simpler than PPO, useful when you need a clean reference implementation. |
+| **A2C-NARX** | A2C with a NARX-network critic — captures temporal structure better than an MLP critic; good for tasks where state alone doesn't expose phase / lag. |
+| **A3C** | Asynchronous Advantage Actor-Critic — many workers update a shared global net in parallel. Best for CPU-parallel distributed training (e.g. Unity environments). |
+
+### Deep RL — off-policy
+
+| Algorithm | Description |
+|-----------|-------------|
+| **SAC** | Soft Actor-Critic — off-policy stochastic actor-critic with maximum entropy. Sample-efficient continuous-control default; ships with `from_pretrained` / `publish_to_hub` HuggingFace integration. |
+| **DSAC** | Distributional Soft Actor-Critic — SAC with quantile (IQN-style) twin critics + CAPS regularisation. Better tracking dynamics than vanilla SAC, especially under sensor noise or when the cost surface is multi-modal. |
+| **DDPG** | Deep Deterministic Policy Gradient — off-policy deterministic actor-critic. Foundational; SAC supersedes it in most cases, but DDPG remains useful for low-noise low-bandwidth tasks. |
+| **DQN** | Deep Q-Learning — off-policy value-based learning for discrete action spaces; used here for Unity environments with discrete action sets. |
+
+### Imitation learning
+
+| Algorithm | Description |
+|-----------|-------------|
+| **GAIL** | Generative Adversarial Imitation Learning — learn from expert demonstrations without an explicit reward signal. Useful for cloning a known PID/MPC trajectory before fine-tuning with an RL critic. |
+
+### Adaptive Dynamic Programming (model-based critics)
+
+| Algorithm | Description |
+|-----------|-------------|
+| **HDP** | Heuristic Dynamic Programming — actor-critic with an offline-trained plant-model network providing the policy gradient via `∂f/∂u`. |
+| **ADHDP** | Action-Dependent HDP — value function depends on `(state, action)`; bypasses the explicit model gradient at the cost of larger critic input. |
+| **ADP** | Generic Adaptive Dynamic Programming — value-iteration-style adaptive controller without an explicit plant model. |
+| **IHDP** | Incremental HDP — actor-critic with **online incremental linearisation** of the plant; adaptive without needing a pre-trained plant network. Strong baseline for online flight control. |
+| **NARX** | Nonlinear Autoregressive Network — used both as a plant model for MPC and as a critic for `A2C-NARX`. |
+
+### Online-adaptive critics for fault-tolerant flight (new)
+
+| Algorithm | Description |
+|-----------|-------------|
+| **iADP** | Incremental Approximate Dynamic Programming — online RLS identification of the local incremental model `(F̃, G̃)` plus a closed-form quadratic policy. Recovers from in-flight plant changes in tens of milliseconds; no fault detection needed. |
+| **IM-GDHP** | Incremental-Model GDHP — online RLS plant identifier coupled to a GDHP critic. Lightweight (no neural plant network), interpretable, with explicit `(F, G)`. |
+| **ET-DHP** | Event-Triggered Dual HDP — Lipschitz event trigger fires actor/critic updates only when the tracking error breaches a threshold. Bandwidth-aware execution useful for embedded deployments. |
+| **AIDI** | Adaptive Incremental Dynamic Inversion — INDI with a per-row VFF-RLS that adapts the multiplicative scaling `Θ` of the onboard control-effectiveness matrix. Fault-tolerant and model-agnostic. |
+| **AA-INDI** | Adaptive Augmented INDI — incremental nonlinear dynamic inversion with online RLS adaptation; designed for asymmetric actuator failures and flying-wing-style coupled control surfaces. |
 
 ## ✈️ Aircraft & Spacecraft Models
 
 <details>
 <summary><b>🛩️ Fixed-Wing Aircraft</b></summary>
 
-- **General Dynamics F-16 Fighting Falcon** - High-fidelity fighter jet model
-- **Boeing 747** - Commercial airliner dynamics
-- **McDonnell Douglas F-4C Phantom II** - Military aircraft model
-- **North American X-15** - Hypersonic research aircraft
+- **General Dynamics F-16 Fighting Falcon** — high-fidelity fighter jet, available in **three forms**:
+  - linear longitudinal (state-space, fast),
+  - **nonlinear longitudinal** (NumPy ODE, full lookup tables),
+  - **nonlinear 6-DoF angular** (full body-frame angular dynamics, with optional **split-stab** asymmetric control).
+- **Boeing 747** — commercial airliner dynamics (linear + normalised `ImprovedB747Env`)
+- **McDonnell Douglas F-4C Phantom II** — military aircraft model
+- **North American X-15** — hypersonic research aircraft
 
 </details>
 

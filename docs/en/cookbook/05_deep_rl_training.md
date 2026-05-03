@@ -77,7 +77,7 @@ That plot is the eval output of [`eval_dsac_b747_step_response.ipynb`](../exampl
 If SAC / PPO don't converge for your env, the usual culprits are:
 
 - **Reward too sparse.** Shape a dense tracking reward like `-||y - y_r||²` instead of thresholded signals.
-- **Action not normalised.** The `_improved` envs (`LinearB747Improved-v0`, etc.) pre-normalise the action to `[-1, 1]`. Prefer them when you can.
+- **Action not normalised.** The `_improved` envs (`ImprovedB747-v0`, etc.) pre-normalise the action to `[-1, 1]`. Prefer them when you can.
 - **Training horizon too short.** `max_episodes = 30` in the PPO default gets you a warm-up, not a policy. Raise to 200+ for anything non-trivial.
 
 ## Step 4 — Evaluate

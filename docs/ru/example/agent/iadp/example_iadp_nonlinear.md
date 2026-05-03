@@ -4,7 +4,7 @@
 
 ## Ключевая идея
 
-iADP объединяет **онлайн-RLS-идентификатор** инкрементной модели \(\Delta X_{t+1} \approx \tilde{F} \Delta X_t + \tilde{G} \Delta\delta_t\) с **пакетным МНК для политики оценки** квадратичной функции ценности \(V_\pi(X_t) = X_t^T \tilde{P} X_t\). Политика — аналитический минимизатор правой части уравнения Беллмана (eq. (11)):
+iADP объединяет **онлайн-RLS-идентификатор** инкрементальной модели \(\Delta X_{t+1} \approx \tilde{F} \Delta X_t + \tilde{G} \Delta\delta_t\) с **пакетным МНК для политики оценки** квадратичной функции ценности \(V_\pi(X_t) = X_t^T \tilde{P} X_t\). Политика — аналитический минимизатор правой части уравнения Беллмана (eq. (11)):
 
 \[
 \Delta\delta_t = -(R + \gamma\,\tilde{G}^T \tilde{P} \tilde{G})^{-1}\bigl[R\,\delta_{t-1} + \gamma\,\tilde{G}^T \tilde{P} X_t + \gamma\,\tilde{G}^T \tilde{P} \tilde{F} \Delta X_t\bigr].
@@ -205,5 +205,5 @@ fault = run_iadp(wz_cmd, N, fault_gain=0.5, fault_at_step=fault_step)
 
 - [Документация iADP](../../../agent/iadp.md) — теория, полный API, референс гиперпараметров.
 - [AA-INDI на нелинейной F-16](../aa_indi/example_aaindi_nonlinear.md) — INDI-альтернатива на том же объекте и том же профиле отказа.
-- [IM-GDHP на нелинейной F-16](../imgdhp/example_imgdhp_nonlinear.md) — инкрементный подход на основе GDHP.
+- [IM-GDHP на нелинейной F-16](../imgdhp/example_imgdhp_nonlinear.md) — инкрементальный подход на основе GDHP.
 - [ET-DHP на нелинейной F-16](../et_dhp/example_etdhp_nonlinear.md) — событийный DHP.

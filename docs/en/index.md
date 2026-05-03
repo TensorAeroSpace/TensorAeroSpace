@@ -78,7 +78,7 @@ hide:
 
     Compatible environments and a simple API for training and evaluation.
 
-    [:octicons-arrow-right-24: Learn more](example/enviroment/gymnasium.md)
+    [:octicons-arrow-right-24: Learn more](example/environment/gymnasium.md)
 
 -   :material-school-outline: **Tutorials**
 
@@ -241,7 +241,7 @@ hide:
 
     # Reference signal for alpha tracking (5 deg step in radians)
     reference = unit_step(
-        degree=5, tp=tp, time_step=100, output_rad=True
+        degree=5, tp=tp, time_step=2.0, output_rad=True
     ).reshape(1, -1)
 
     # Create F-16 longitudinal environment
@@ -285,7 +285,7 @@ hide:
 - Lessons: [lesson/0intro](lesson/0intro.md)
 - Models: [model/f16](model/f16.md), [model/b747](model/b747.md)
 - Algorithms: [agent/sac](agent/sac.md), [agent/ppo](agent/ppo.md), [agent/ddpg](agent/ddpg.md)
-- Examples: [example/enviroment/gymnasium](example/enviroment/gymnasium.md)
+- Examples: [example/environment/gymnasium](example/environment/gymnasium.md)
 
 ---
 
@@ -325,5 +325,5 @@ Need help? Open an issue on GitHub or check the tutorials section.
 
 <div style="text-align:center; margin: 1.2rem 0 0.2rem;">
   <a href="guide/installation.md" class="md-button md-button--primary">Get started</a>
-  <a href="example/enviroment/gymnasium.md" class="md-button">View examples</a>
+  <a href="example/environment/gymnasium.md" class="md-button">View examples</a>
 </div>

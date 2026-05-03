@@ -4,7 +4,7 @@ IHDP — инкрементальный вариант Heuristic Dynamic Program
 
 ## Ключевые идеи
 
-- Инкрементная модель линейризует динамику локально по данным онлайн
+- Инкрементальная модель линеаризует динамику локально по данным онлайн
 - Actor формирует управляющее воздействие по ошибке слежения
 - Critic оценивает стоимостную функцию и даёт градиенты Actor
 
@@ -14,7 +14,7 @@ IHDP — инкрементальный вариант Heuristic Dynamic Program
 
 | Компонент | Роль | Реализация |
 | --- | --- | --- |
-| Incremental model | Онлайн-идентификация и линейризация динамики | `tensoraerospace.agent.ihdp.Incremental_model.IncrementalModel` |
+| Incremental model | Онлайн-идентификация и линеаризация динамики | `tensoraerospace.agent.ihdp.Incremental_model.IncrementalModel` |
 | Actor | Генерация управляющего сигнала (NN) | `tensoraerospace.agent.ihdp.Actor` |
 | Critic | Оценка J(x) и градиента dJ/dx (NN) | `tensoraerospace.agent.ihdp.Critic` |
 | IHDPAgent | Оркестрация модулей, шаг predict и обучение | `tensoraerospace.agent.ihdp.model.IHDPAgent` |

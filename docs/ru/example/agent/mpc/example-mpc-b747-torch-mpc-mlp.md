@@ -304,9 +304,6 @@ for step in tqdm(range(env.unwrapped.number_time_steps - 2)):
 
 ### Визуализация переходного процесса
 
-<!-- TODO: ВСТАВИТЬ ГРАФИК ПЕРЕХОДНОГО ПРОЦЕССА СЮДА -->
-<!-- ![Переходный процесс MLP](../../../../../assets/mpc/mlp_step_response.png) -->
-
 ```python
 t_plot = np.arange(len(hist_theta_deg)) * DT
 

@@ -150,6 +150,21 @@ agent.train()
 !!! tip
     Для непрерывного действия используйте дискретизацию или политику на базе DDPG/SAC.
 
+## Унифицированный интерфейс обучения
+
+DQN поддерживает общую унифицированную сигнатуру `train()` из `BaseRLModel`:
+
+```python
+# Старый вызов (по‑прежнему работает):
+agent.train()
+
+# Унифицированный вызов — переопределяет self.train_nums на num_episodes * max_steps:
+agent.train(num_episodes=100, max_steps=200)
+```
+
+Если `num_episodes` и `max_steps` не указаны, агент использует бюджет
+шагов `train_nums`, заданный при создании.
+
 ## Документация API
 
 ::: tensoraerospace.agent.dqn.model.Model

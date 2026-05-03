@@ -7,7 +7,6 @@
 
 | :material-python: Python | Статус |
 |-------------------------:|:------:|
-
 | 3.10                     | ✅ |
 | 3.11                     | ✅ |
 | 3.12                     | ✅ |
@@ -212,7 +211,7 @@ for t in range(N - 1):
 
 ## Следующие шаги
 
-[:material-play-circle-outline: Examples](../example/enviroment/gymnasium.md){ .md-button .md-button--primary }
+[:material-play-circle-outline: Examples](../example/environment/gymnasium.md){ .md-button .md-button--primary }
 [:material-airplane-takeoff: Models](../model/f16.md){ .md-button }
 [:material-robot-outline: Algorithms](../agent/sac.md){ .md-button }
 [:material-book-open-variant: Tutorials](../lesson/0intro.md){ .md-button }

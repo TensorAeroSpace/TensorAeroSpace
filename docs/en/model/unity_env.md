@@ -196,5 +196,5 @@ Launch the container and mount the library and Unity build:
 
 ## Related Examples
 
-- [Unity with DQN](../example/enviroment/unity_example.md) — train a DQN agent (discrete actions)
+- [Unity with DQN](../example/environment/unity_example.md) — train a DQN agent (discrete actions)
 - [Unity with SAC](../example/agent/sac/example-sac-unity.md) — train a SAC agent (continuous control)

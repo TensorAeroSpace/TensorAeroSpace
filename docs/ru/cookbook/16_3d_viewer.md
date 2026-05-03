@@ -113,8 +113,6 @@ render(env, inline=True)   # → IPython.display.HTML
 
 ![3D-просмотрщик F-16 с потерей законцовки](img/16_3d_viewer_screenshot.png)
 
-*Placeholder — скриншот будет добавлен после первого рендера просмотрщика.*
-
 ## Смотрите также
 
 - [Моделирование повреждений ЛА](../model/aircraft-damage-modeling.md)

@@ -109,7 +109,7 @@ Advantage (TD-ошибка) отсоединяется при вычислени
 
 ## Алгоритм обучения (псевдокод)
 
-```python
+```text
 # Глобальная настройка
 global_net = Net(s_dim, a_dim).share_memory()
 optimizer = SharedAdam(global_net.parameters(), lr)
