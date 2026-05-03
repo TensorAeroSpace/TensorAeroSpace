@@ -371,7 +371,7 @@ number_time_steps = len(tp)                            # общее число �
 
 # Опорный сигнал: ступенька 1 градус угла тангажа (в радианах)
 reference = np.reshape(
-    unit_step(degree=1, tp=tp, time_step=50, output_rad=True),
+    unit_step(degree=1, tp=tp, time_step=5.0, output_rad=True),
     (1, -1),
 )
 
@@ -495,7 +495,7 @@ tp = generate_time_period(tn=40, dt=dt)
 tps = convert_tp_to_sec_tp(tp, dt=dt)
 number_time_steps = len(tp)
 reference = np.reshape(
-    unit_step(degree=1, tp=tp, time_step=50, output_rad=True),
+    unit_step(degree=1, tp=tp, time_step=5.0, output_rad=True),
     (1, -1),
 )
 
@@ -574,19 +574,19 @@ print(f"Вознаграждение П-регулятора: {total_reward_clas
 ```python
 # Вариант А: большая амплитуда ступеньки
 reference_a = np.reshape(
-    unit_step(degree=2, tp=tp, time_step=50, output_rad=True),
+    unit_step(degree=2, tp=tp, time_step=5.0, output_rad=True),
     (1, -1),
 )
 
 # Вариант Б: более ранняя ступенька
 reference_b = np.reshape(
-    unit_step(degree=1, tp=tp, time_step=20, output_rad=True),
+    unit_step(degree=1, tp=tp, time_step=2.0, output_rad=True),
     (1, -1),
 )
 
 # Вариант В: большая амплитуда, поздняя ступенька
 reference_c = np.reshape(
-    unit_step(degree=5, tp=tp, time_step=100, output_rad=True),
+    unit_step(degree=5, tp=tp, time_step=10.0, output_rad=True),
     (1, -1),
 )
 ```

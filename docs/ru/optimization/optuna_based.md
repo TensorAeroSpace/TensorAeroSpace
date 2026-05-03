@@ -38,8 +38,3 @@ opt.plot_parms(figsize=(12, 4))
 
 - `direction`: выберите `"minimize"` или `"maximize"` для целевой метрики.
 - Для Ray Tune используйте `run_optimization(func, param_space, tune_config=...)` и далее обрабатывайте `self.results` (см. Ray Tune docs).
-# Optimization
-
-**В разработке** - данная страница будет содержать документацию по оптимизации.
-
-<!-- TODO: Конвертировать из optimization/optuna_based.rst -->

@@ -185,5 +185,5 @@ env.close()
 
 ## Связанные примеры
 
-- [Unity с DQN](../example/enviroment/unity_example.md) — обучение DQN-агента
+- [Unity с DQN](../example/environment/unity_example.md) — обучение DQN-агента
 - [Unity с SAC](../example/agent/sac/example-sac-unity.md) — обучение SAC-агента (непрерывное управление)

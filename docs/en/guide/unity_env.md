@@ -185,5 +185,5 @@ env.close()
 
 ## Related Examples
 
-- [Unity with DQN](../example/enviroment/unity_example.md) — train a DQN agent
+- [Unity with DQN](../example/environment/unity_example.md) — train a DQN agent
 - [Unity with SAC](../example/agent/sac/example-sac-unity.md) — train a SAC agent (continuous control)

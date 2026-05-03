@@ -1,5 +1,4 @@
-Пример использования SAC
-===========================================================
+# Пример использования SAC
 
 ```python
 import gymnasium as gym
@@ -102,7 +101,7 @@ for _ in itertools.count(1):
 
 ```python
 # Визуализация переходного процесса по alpha
-env.model.plot_transient_process('alpha', tps, reference_signals[0], to_deg=True, figsize=(15,4))
+env.unwrapped.model.plot_transient_process('alpha', tps, reference_signals[0], to_deg=True, figsize=(15,4))
 ```
 
 <!-- Изображение отсутствует в репозитории; закомментировано, чтобы избежать предупреждения сборки. -->

@@ -211,7 +211,7 @@ Run the container (the image starts **JupyterLab by default**) and mount the exa
 
 ## Next steps
 
-[:material-play-circle-outline: Examples](../example/enviroment/gymnasium.md){ .md-button .md-button--primary }
+[:material-play-circle-outline: Examples](../example/environment/gymnasium.md){ .md-button .md-button--primary }
 [:material-airplane-takeoff: Models](../model/f16.md){ .md-button }
 [:material-robot-outline: Algorithms](../agent/sac.md){ .md-button }
 [:material-book-open-variant: Tutorials](../lesson/0intro.md){ .md-button }

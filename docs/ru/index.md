@@ -78,7 +78,7 @@ hide:
 
     Совместимые environments и простой API для обучения и оценки.
 
-    [:octicons-arrow-right-24: Подробнее](example/enviroment/gymnasium.md)
+    [:octicons-arrow-right-24: Подробнее](example/environment/gymnasium.md)
 
 -   :material-school-outline: **Учебные уроки**
 
@@ -223,7 +223,7 @@ for t in range(N - 1):
 - Уроки: [lesson/0intro](lesson/0intro.md)
 - Модели: [model/f16](model/f16.md), [model/b747](model/b747.md)
 - Алгоритмы: [agent/sac](agent/sac.md), [agent/ppo](agent/ppo.md), [agent/ddpg](agent/ddpg.md)
-- Примеры: [example/enviroment/gymnasium](example/enviroment/gymnasium.md)
+- Примеры: [example/environment/gymnasium](example/environment/gymnasium.md)
 
 ---
 
@@ -263,5 +263,5 @@ for t in range(N - 1):
 
 <div style="text-align:center; margin: 1.2rem 0 0.2rem;">
   <a href="guide/installation.md" class="md-button md-button--primary">Начать сейчас</a>
-  <a href="example/enviroment/gymnasium.md" class="md-button">Посмотреть примеры</a>
+  <a href="example/environment/gymnasium.md" class="md-button">Посмотреть примеры</a>
 </div>

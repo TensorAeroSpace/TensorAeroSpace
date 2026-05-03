@@ -1,5 +1,4 @@
-Пример использования IHDP вместе с LinearLongitudinalF16-v0
-===========================================================
+# Пример использования IHDP вместе с LinearLongitudinalF16-v0
 
 ```python
 import numpy as np
@@ -71,7 +70,7 @@ critic_settings = {
     "activations": ("tanh", "linear"),
     "WB_limits": 30,
     "NN_initial": 120,
-    "indices_tracking_states": env.indices_tracking_states,
+    "indices_tracking_states": env.unwrapped.indices_tracking_states,
 }
 ```
 
@@ -81,11 +80,11 @@ model = IHDPAgent(
     actor_settings,
     critic_settings,
     incremental_settings,
-    env.tracking_states,
-    env.state_space,
-    env.control_space,
+    env.unwrapped.tracking_states,
+    env.unwrapped.state_space,
+    env.unwrapped.control_space,
     number_time_steps,
-    env.indices_tracking_states,
+    env.unwrapped.indices_tracking_states,
 )
 
 xt = np.array([[np.deg2rad(3)], [0]])
@@ -98,13 +97,13 @@ for step in tqdm(range(number_time_steps - 1)):
 
 ```python
 # Визуализация
-env.model.plot_transient_process('alpha', tps, reference_signals[0], to_deg=True, figsize=(15,4))
+env.unwrapped.model.plot_transient_process('alpha', tps, reference_signals[0], to_deg=True, figsize=(15,4))
 ```
 
 ![alpha](img/output_9_0.png)
 
 ```python
-env.model.plot_state('wz', tps, to_deg=True, figsize=(15,4))
+env.unwrapped.model.plot_state('wz', tps, to_deg=True, figsize=(15,4))
 ```
 
 ![wz](img/output_10_1.png)
