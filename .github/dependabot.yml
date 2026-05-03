@@ -6,6 +6,7 @@ updates:
   # Обновления Python зависимостей через Poetry
   - package-ecosystem: "pip"
     directory: "/"
+    target-branch: "develop"
     schedule:
       interval: "weekly"
       day: "monday"
@@ -36,6 +37,7 @@ updates:
   # Обновления GitHub Actions
   - package-ecosystem: "github-actions"
     directory: "/"
+    target-branch: "develop"
     schedule:
       interval: "weekly"
       day: "monday"
@@ -57,6 +59,7 @@ updates:
   # Обновления Docker
   - package-ecosystem: "docker"
     directory: "/"
+    target-branch: "develop"
     schedule:
       interval: "weekly"
       day: "tuesday"
