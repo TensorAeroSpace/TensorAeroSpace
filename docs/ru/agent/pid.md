@@ -38,22 +38,41 @@ $$
 ## Быстрый старт
 
 ```python
+import numpy as np
 import gymnasium as gym
+
 from tensoraerospace.agent.pid import PID
+from tensoraerospace.signals.standard import unit_step
+from tensoraerospace.utils import generate_time_period
+
+# Опорный сигнал — ступенька 5° по тангажу
+dt = 0.01
+tp = generate_time_period(tn=20, dt=dt)
+number_time_steps = len(tp)
+reference_signal = np.reshape(
+    unit_step(degree=5, tp=tp, time_step=2.0, output_rad=True),
+    [1, -1],
+)
 
 # Создаём окружение
-env = gym.make('LinearLongitudinalB747-v0', number_time_steps=2000)
+env = gym.make(
+    'LinearLongitudinalB747-v0',
+    number_time_steps=number_time_steps,
+    reference_signal=reference_signal,
+)
 
 # Создаём PID-регулятор
-pid = PID(env=env, kp=-0.1, ki=-0.01, kd=-0.05, dt=0.01)
+pid = PID(env=env, kp=-0.1, ki=-0.01, kd=-0.05, dt=dt)
 
 # Цикл управления
 obs, info = env.reset()
-for _ in range(2000):
-    reference = info['reference']
+for k in range(number_time_steps):
+    reference = float(reference_signal[0, k])
     measurement = obs[3]  # theta (угол тангажа)
     action = pid.select_action(reference, measurement)
-    obs, reward, done, truncated, info = env.step([action])
+    obs, reward, terminated, truncated, info = env.step([action])
+    if terminated or truncated:
+        break
 ```
 
 ## Автоматический подбор в стиле MATLAB
@@ -223,7 +242,7 @@ print(f"Перерегулирование: {result.overshoot:.1f}%")
 !!! tip "Начальная точка"
     Для большинства аэрокосмических систем начните с `mode="step_response"` и `target_overshoot=10.0`. Это даёт хороший баланс между скоростью и устойчивостью.
 
-## Справочник API
+## Документация API
 
 ::: tensoraerospace.agent.pid.PID
 

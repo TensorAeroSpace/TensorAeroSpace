@@ -72,7 +72,7 @@ agent.learn()          # запускает тренировочный цикл 
 
 ![DSAC на нормированной B747 — слежение за ступенькой](img/05_dsac_b747_tracking.png)
 
-Этот график — eval-вывод ноутбука [`eval_dsac_b747_step_response.ipynb`](../example/agent/dsac/example-dsac-b747.md), который оценивает агента, обученного ~1000 эпизодов скриптом `train-dsac-b747-step-response.py`. Воспроизведение ~30 минут на CPU; CUDA-GPU ужимает до ~5 минут.
+Этот график — eval-вывод ноутбука [`eval_dsac_b747_step_response.ipynb`](../example/agent/dsac/example-dsac-b747.md), который оценивает агента, обученного ~1000 эпизодов скриптом `train_dsac_b747_step_response.py`. Воспроизведение ~30 минут на CPU; CUDA-GPU ужимает до ~5 минут.
 
 Если SAC / PPO у вас не сходятся, обычные причины:
 

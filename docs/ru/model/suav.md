@@ -45,16 +45,16 @@
 
 === "Переменные"
 
-- **u**: продольная скорость, м/с
-- **w**: нормальная скорость, м/с
-- **θ**: тангаж, рад
-- **q**: угловая скорость тангажа, рад/с
-- **h**: высота, м
-- **η**: отклонение стабилизатора, рад
-- **δ_t**: отклонение РУД (тяж), рад
+    - **u**: продольная скорость, м/с
+    - **w**: нормальная скорость, м/с
+    - **θ**: тангаж, рад
+    - **q**: угловая скорость тангажа, рад/с
+    - **h**: высота, м
+    - **η**: отклонение стабилизатора, рад
+    - **δ_t**: отклонение РУД (тяж), рад
 
-!!! note "О единицах измерения"
-    Углы и угловые скорости — в радианах. Методы API позволяют работать в градусах.
+    !!! note "О единицах измерения"
+        Углы и угловые скорости — в радианах. Методы API позволяют работать в градусах.
 
 ## Математическая модель {#математическая-модель}
 
@@ -123,63 +123,63 @@ $$r_t = -|\theta(t) - \theta_{\text{ref}}(t)|$$
 
 === "Gymnasium"
 
-```python
-import gymnasium as gym 
-import numpy as np
+    ```python
+    import gymnasium as gym 
+    import numpy as np
 
-from tensoraerospace.envs import LinearLongitudinalUltrastick
-from tensoraerospace.utils import generate_time_period
-from tensoraerospace.signals.standard import unit_step
+    from tensoraerospace.envs import LinearLongitudinalUltrastick
+    from tensoraerospace.utils import generate_time_period
+    from tensoraerospace.signals.standard import unit_step
 
-dt = 0.01
-tp = generate_time_period(tn=20, dt=dt)
-number_time_steps = len(tp)
-reference_signals = unit_step(degree=5, tp=tp, time_step=10, output_rad=True).reshape(1, -1)
+    dt = 0.01
+    tp = generate_time_period(tn=20, dt=dt)
+    number_time_steps = len(tp)
+    reference_signals = unit_step(degree=5, tp=tp, time_step=10, output_rad=True).reshape(1, -1)
 
-env = gym.make(
-    'LinearLongitudinalUltrastick-v0',
-    number_time_steps=number_time_steps, 
-    initial_state=[[0],[0],[0],[0],[0]],
-    reference_signal=reference_signals,
-)
-state, info = env.reset()
-for _ in range(200):
-    action = np.array([[1.0, 0.1]])  # [η, δ_t]
-    state, reward, terminated, truncated, info = env.step(action)
-    if terminated or truncated:
-        break
-```
+    env = gym.make(
+        'LinearLongitudinalUltrastick-v0',
+        number_time_steps=number_time_steps, 
+        initial_state=[[0],[0],[0],[0],[0]],
+        reference_signal=reference_signals,
+    )
+    state, info = env.reset()
+    for _ in range(200):
+        action = np.array([[1.0, 0.1]])  # [η, δ_t]
+        state, reward, terminated, truncated, info = env.step(action)
+        if terminated or truncated:
+            break
+    ```
 
 === "Только модель"
 
-```python
-import numpy as np
-from tensoraerospace.aerospacemodel import Ultrastick
+    ```python
+    import numpy as np
+    from tensoraerospace.aerospacemodel import Ultrastick
 
-dt = 0.01
-number_time_steps = 200
+    dt = 0.01
+    number_time_steps = 200
 
-x0 = np.array([0.0, 0.0, 0.0, 0.0, 0.0])
+    x0 = np.array([0.0, 0.0, 0.0, 0.0, 0.0])
 
-model = Ultrastick(
-    x0=x0,
-    number_time_steps=number_time_steps,
-    selected_state_output=["u", "w", "q", "theta", "h"],
-    dt=dt,
-)
+    model = Ultrastick(
+        x0=x0,
+        number_time_steps=number_time_steps,
+        selected_state_output=["u", "w", "q", "theta", "h"],
+        dt=dt,
+    )
 
-for t in range(number_time_steps - 1):
-    u = np.array([1.0, 0.1])  # [η, δ_t]
-    x_next = model.run_step(u)
-```
+    for t in range(number_time_steps - 1):
+        u = np.array([1.0, 0.1])  # [η, δ_t]
+        x_next = model.run_step(u)
+    ```
 
 ## Python API
 
 === "Модель"
 
-::: tensoraerospace.aerospacemodel.ultrastick.Ultrastick
+    ::: tensoraerospace.aerospacemodel.ultrastick.Ultrastick
 
 === "Среда Gymnasium"
 
-::: tensoraerospace.envs.ultrastick.LinearLongitudinalUltrastick
+    ::: tensoraerospace.envs.ultrastick.LinearLongitudinalUltrastick
 

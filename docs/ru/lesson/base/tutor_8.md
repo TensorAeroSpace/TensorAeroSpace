@@ -274,7 +274,7 @@ from tensoraerospace.agent import HDP
 * **Ключевая идея:** Вариант с моделью, использующий обученную модель системы наряду с сетями актора и критика.
 * **Когда использовать:** Когда есть (или можно обучить) прямая модель объекта управления и нужно использовать ее для ускорения сходимости.
 
-### 4.11 IHDP --- Integral Heuristic Dynamic Programming
+### 4.11 IHDP --- Incremental Heuristic Dynamic Programming
 
 ```python
 from tensoraerospace.agent import IHDPAgent

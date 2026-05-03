@@ -256,7 +256,7 @@ profile_b = aileron_efficiency_loss_schedule(
 profile_c = rudder_total_loss(t_inject=10.0)
 ```
 
-См. также готовый пример в `example/example_aidi_damage_f16.ipynb`.
+См. также готовый пример в `example/reinforcement_learning/example_aidi_damage_f16.ipynb`.
 
 ## Пользовательские сценарии
 
@@ -489,10 +489,10 @@ RL-агенты в 60-секундной миссии с инжектирова�
 
 | Пример | Путь | Формат |
 |--------|------|--------|
-| iADP (Incremental ADP) | `example/example_iadp_damage_f16.py` | исполняемый скрипт |
-| ET-DHP (Event-Triggered DHP) | `example/example_etdhp_damage_f16.py` | исполняемый скрипт |
-| ET-DHP (notebook-версия) | `example/example_etdhp_damage_f16.ipynb` | Jupyter-ноутбук |
-| AIDI (Adaptive Incremental Inversion) | `example/example_aidi_damage_f16.ipynb` | Jupyter-ноутбук |
+| iADP (Incremental ADP) | `example/reinforcement_learning/example_iadp_damage_f16.py` | исполняемый скрипт |
+| ET-DHP (Event-Triggered DHP) | `example/reinforcement_learning/example_etdhp_damage_f16.py` | исполняемый скрипт |
+| ET-DHP (notebook-версия) | `example/reinforcement_learning/example_etdhp_damage_f16.ipynb` | Jupyter-ноутбук |
+| AIDI (Adaptive Incremental Inversion) | `example/reinforcement_learning/example_aidi_damage_f16.ipynb` | Jupyter-ноутбук |
 
 ### Общий сценарий
 
@@ -548,7 +548,7 @@ env = gym.make(
 
 iADP (Incremental Approximate Dynamic Programming) использует RLS
 (Recursive Least Squares — рекурсивный метод наименьших квадратов) с
-фиксированным забыванием для онлайн-отслеживания локальной инкрементной
+фиксированным забыванием для онлайн-отслеживания локальной инкрементальной
 модели $\tilde{F}, \tilde{G}$, после чего получает оптимальное управление
 в замкнутой форме:
 

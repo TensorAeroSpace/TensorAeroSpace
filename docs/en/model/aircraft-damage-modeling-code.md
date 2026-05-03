@@ -250,7 +250,7 @@ profile_b = aileron_efficiency_loss_schedule(
 profile_c = rudder_total_loss(t_inject=10.0)
 ```
 
-A ready-to-run example is in `example/example_aidi_damage_f16.ipynb`.
+A ready-to-run example is in `example/reinforcement_learning/example_aidi_damage_f16.ipynb`.
 
 ## Custom scenarios
 
@@ -482,10 +482,10 @@ provide a direct apples-to-apples comparison.
 
 | Example | Path | Format |
 |---------|------|--------|
-| iADP (Incremental ADP) | `example/example_iadp_damage_f16.py` | runnable script |
-| ET-DHP (Event-Triggered DHP) | `example/example_etdhp_damage_f16.py` | runnable script |
-| ET-DHP (notebook version) | `example/example_etdhp_damage_f16.ipynb` | Jupyter notebook |
-| AIDI (Adaptive Incremental Inversion) | `example/example_aidi_damage_f16.ipynb` | Jupyter notebook |
+| iADP (Incremental ADP) | `example/reinforcement_learning/example_iadp_damage_f16.py` | runnable script |
+| ET-DHP (Event-Triggered DHP) | `example/reinforcement_learning/example_etdhp_damage_f16.py` | runnable script |
+| ET-DHP (notebook version) | `example/reinforcement_learning/example_etdhp_damage_f16.ipynb` | Jupyter notebook |
+| AIDI (Adaptive Incremental Inversion) | `example/reinforcement_learning/example_aidi_damage_f16.ipynb` | Jupyter notebook |
 
 ### Common scenario
 

@@ -62,6 +62,14 @@ class ExtU(ctypes.Structure):
 
 ### 3) Пример использования из Python
 
+В этом примере `ExtY` объявлен **без** поля `sim_time` — упрощённая
+4-полевая версия для случая, когда сборка Embedded Coder не выводит время
+симуляции наружу. Если `sim_time` присутствует в сгенерированной структуре
+(см. п. 2 выше), используйте 5-полевой вариант — порядок полей в `_fields_`
+обязан **точно совпадать** с заголовком `MODEL_NAME.h`, иначе чтение через
+`in_dll(...)` вернёт мусор. Какой вариант брать — определяется тем, как
+вы сконфигурировали порты модели в Simulink.
+
 ```python
 import os
 import ctypes
@@ -69,6 +77,8 @@ import matplotlib.pyplot as plt
 from tensoraerospace.aerospacemodel.utils.rtwtypes import real_T
 
 class ExtY(ctypes.Structure):
+    # 4-полевой вариант: sim_time в эту сборку не выведен.
+    # Если в MODEL_NAME.h структура содержит sim_time, добавьте поле сюда.
     _fields_ = [("u", real_T), ("w", real_T), ("q", real_T), ("theta", real_T)]
 
 class ExtU(ctypes.Structure):

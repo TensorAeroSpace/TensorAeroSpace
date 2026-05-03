@@ -205,7 +205,7 @@ plt.title('HDP: Слежение по тангажу')
 plt.show()
 ```
 
-## Справочник API
+## Документация API
 
 ::: tensoraerospace.agent.hdp.model.HDP
 

@@ -2,7 +2,7 @@
 
 Этот рецепт пошагово разбирает `example_etdhp_damage_f16.ipynb`: обучение агента **ET-DHP** на здоровой нелинейной продольной модели F-16, а затем 60-секундный прогон с **реальным повреждением, инжектируемым на t = 20 с**. Повреждение проходит через подсистему [моделирование повреждений ЛА](../model/aircraft-damage-modeling.md) — среда пересчитывает массу, площадь и тензор инерции на лету, а продольное ОДУ подхватывает strip-theory корректировки `ΔCy / ΔMy`, так что агент действительно летит на другом объекте управления, начиная с t = 20 с.
 
-**Документация агента.** [ET-DHP](../agent/et_dhp.md) · **Notebook.** `example/reinforcement_learning/example_etdhp_damage_f16.ipynb` · **Скрипт-компаньон (iADP).** `example/reinforcement_learning/example_iadp_damage_f16.py` · **Связанный рецепт.** [Рецепт 13 — ET-DHP на нелинейной F-16](13_etdhp.md).
+**Документация агента.** [ET-DHP](../agent/et_dhp.md) · **Notebook.** `example/reinforcement_learning/example_etdhp_damage_f16.ipynb` · **Скрипт ET-DHP.** `example/reinforcement_learning/example_etdhp_damage_f16.py` · **Скрипт iADP (для сравнения).** `example/reinforcement_learning/example_iadp_damage_f16.py` · **Связанный рецепт.** [Рецепт 13 — ET-DHP на нелинейной F-16](13_etdhp.md).
 
 ## Зачем этот рецепт
 
