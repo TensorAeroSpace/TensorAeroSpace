@@ -144,3 +144,8 @@ register(
     id="NonlinearSkywalkerX8-v0",
     entry_point="tensoraerospace.envs:NonlinearSkywalkerX8Env",
 )
+
+register(
+    id="NonlinearAAIShadow-v0",
+    entry_point="tensoraerospace.envs:NonlinearAAIShadowEnv",
+)

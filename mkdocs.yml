@@ -74,6 +74,8 @@ plugins:
                 - Usage examples: model/quadrotor_examples.md
               - Skywalker X8 (small UAV):
                 - Nonlinear 6-DoF: model/skywalker_x8_nonlinear.md
+              - AAI RQ-7 Shadow (class-II UAV):
+                - Nonlinear 6-DoF: model/aai_shadow_nonlinear.md
               - X15:
                 - Classic State-Space: model/x15.md
                 - Normalized State-Space: model/x15_improved.md
@@ -232,6 +234,8 @@ plugins:
                 - Примеры использования: model/quadrotor_examples.md
               - Skywalker X8 (малый БПЛА):
                 - Нелинейный 6-DoF: model/skywalker_x8_nonlinear.md
+              - AAI RQ-7 Shadow (БПЛА класса II):
+                - Нелинейный 6-DoF: model/aai_shadow_nonlinear.md
               - X15:
                 - Пространство состояний: model/x15.md
                 - Нормализованное управление: model/x15_improved.md
