@@ -77,7 +77,7 @@ ray = ["ray"]
 [tool.poetry.group.dev.dependencies]
 pytest = ">=9.0.3,<10.0.0"
 ruff = ">=0.1.5"
-ipykernel = "^6.26.0"
+ipykernel = ">=6.26,<8.0"
 docstr-coverage = "^2.3.1"
 pytest-cov = "^5.0.0"
 mypy = "^1.10.0"
@@ -112,7 +112,7 @@ jupyter = "^1.0.0"
 # jupyter depends on nbconvert with a broad range; keep the lower bound above
 # CVE-2025-53000, CVE-2026-39377, and CVE-2026-39378.
 nbconvert = ">=7.17.1"
-ipykernel = "^6.29.4"
+ipykernel = ">=6.29.4,<8.0.0"
 qtconsole = "^5.7.0"
 jupyter-core = "^5.8.1"
 
