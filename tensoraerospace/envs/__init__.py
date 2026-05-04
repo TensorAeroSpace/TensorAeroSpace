@@ -8,6 +8,7 @@ here for convenience, and are also registered in the top-level
 
 from .b747 import ImprovedB747Env as ImprovedB747Env  # noqa: F401
 from .b747 import LinearLongitudinalB747 as LinearLongitudinalB747
+from .b737_nonlinear import NonlinearB737Env as NonlinearB737Env  # noqa: F401
 from .b747_nonlinear import NonlinearB747Env as NonlinearB747Env  # noqa: F401
 from .b747_vec_torch import (  # noqa: F401
     ImprovedB747VecEnvTorch as ImprovedB747VecEnvTorch,
@@ -69,6 +70,7 @@ __all__ = [
     "ImprovedX15Env",
     "LinearLongitudinalX15",
     "NonlinearQuadrotorEnv",
+    "NonlinearB737Env",
     "NonlinearB747Env",
     "NonlinearX15Env",
 ]

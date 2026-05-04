@@ -134,3 +134,8 @@ register(
     id="NonlinearX15-v0",
     entry_point="tensoraerospace.envs:NonlinearX15Env",
 )
+
+register(
+    id="NonlinearB737-v0",
+    entry_point="tensoraerospace.envs:NonlinearB737Env",
+)
