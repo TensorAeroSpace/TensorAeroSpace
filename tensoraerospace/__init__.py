@@ -119,3 +119,8 @@ register(
     id="F4CPitchNormalized-v0",
     entry_point="tensoraerospace.envs:F4CPitchEnvNormalized",
 )
+
+register(
+    id="NonlinearQuadrotor-v0",
+    entry_point="tensoraerospace.envs:NonlinearQuadrotorEnv",
+)

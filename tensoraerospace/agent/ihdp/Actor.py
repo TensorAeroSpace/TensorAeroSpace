@@ -729,7 +729,8 @@ class Actor:
             # Train the actor
             Jt1 = Jt1.flatten()[0]
             chain_rule = Jt1 * np.matmul(
-                np.reshape(G[self.indices_tracking_states[0], :], [-1, 1]).T, dJt1_dxt1
+                np.reshape(G[self.indices_tracking_states, :], [-1, 1]).T,
+                dJt1_dxt1,
             )
 
             chain_rule = chain_rule.flatten()[0]
@@ -823,7 +824,8 @@ class Actor:
             # Train the actor
             Jt1 = Jt1.flatten()[0]
             chain_rule = Jt1 * np.matmul(
-                np.reshape(G[self.indices_tracking_states[0], :], [-1, 1]).T, dJt1_dxt1
+                np.reshape(G[self.indices_tracking_states, :], [-1, 1]).T,
+                dJt1_dxt1,
             )
 
             chain_rule = chain_rule.flatten()[0]
@@ -1031,7 +1033,7 @@ class Actor:
                     xt[self.indices_tracking_states, :], [-1, 1]
                 )
             xt_error = np.reshape(tracked_states - xt_ref, [-1, 1])
-            nn_input = torch.tensor(np.array([xt_error]).astype("float32"))
+            nn_input = torch.tensor(xt_error.flatten().reshape(1, -1).astype("float32"))
 
             with torch.no_grad():
                 ut = self.model(nn_input).numpy()

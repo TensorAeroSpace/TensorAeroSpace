@@ -65,6 +65,9 @@ plugins:
               - F4C: model/f4c.md
               - GeoSat: model/geosat.md
               - UAV: model/uav.md
+              - Quadrotor:
+                - Nonlinear 6-DoF: model/quadrotor_nonlinear.md
+                - Usage examples: model/quadrotor_examples.md
               - X15:
                 - Classic State-Space: model/x15.md
                 - Normalized State-Space: model/x15_improved.md
@@ -210,6 +213,9 @@ plugins:
               - F4C: model/f4c.md
               - GeoSat: model/geosat.md
               - UAV: model/uav.md
+              - Quadrotor:
+                - Нелинейный 6-DoF: model/quadrotor_nonlinear.md
+                - Примеры использования: model/quadrotor_examples.md
               - X15:
                 - Пространство состояний: model/x15.md
                 - Нормализованное управление: model/x15_improved.md

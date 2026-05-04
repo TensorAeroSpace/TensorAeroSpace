@@ -40,6 +40,7 @@ from .ultrastick import ImprovedUltrastickEnv as ImprovedUltrastickEnv  # noqa: 
 from .ultrastick import (  # noqa: F401
     LinearLongitudinalUltrastick as LinearLongitudinalUltrastick,
 )
+from .quadrotor import NonlinearQuadrotorEnv as NonlinearQuadrotorEnv  # noqa: F401
 from .x15 import ImprovedX15Env as ImprovedX15Env  # noqa: F401
 from .x15 import LinearLongitudinalX15 as LinearLongitudinalX15
 
@@ -65,6 +66,7 @@ __all__ = [
     "ImprovedUltrastickEnv",
     "ImprovedX15Env",
     "LinearLongitudinalX15",
+    "NonlinearQuadrotorEnv",
 ]
 
 try:
