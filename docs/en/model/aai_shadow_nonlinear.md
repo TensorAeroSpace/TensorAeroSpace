@@ -1,5 +1,7 @@
 # AAI RQ-7 Shadow — Class-II Tactical UAV (Nonlinear 6-DoF, SI units)
 
+![AAI RQ-7 Shadow in cruise flight above the cloud layer](img/aai_shadow_hero.png)
+
 `tensoraerospace.aerospacemodel.aai_shadow.nonlinear` — full nonlinear
 6-DoF model of the **AAI RQ-7 Shadow** (RQ-7B configuration), a
 class-II tactical reconnaissance UAV operated by the US Army and

@@ -1,5 +1,7 @@
 # AAI RQ-7 Shadow — тактический БПЛА класса II (нелинейная 6-DoF, СИ)
 
+![AAI RQ-7 Shadow в крейсерском полёте над облачным слоем](img/aai_shadow_hero.png)
+
 `tensoraerospace.aerospacemodel.aai_shadow.nonlinear` — полная нелинейная
 6-DoF модель **AAI RQ-7 Shadow** (конфигурация RQ-7B), тактического
 разведывательного БПЛА класса II, эксплуатируемого армией США и рядом
