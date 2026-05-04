@@ -124,3 +124,8 @@ register(
     id="NonlinearQuadrotor-v0",
     entry_point="tensoraerospace.envs:NonlinearQuadrotorEnv",
 )
+
+register(
+    id="NonlinearB747-v0",
+    entry_point="tensoraerospace.envs:NonlinearB747Env",
+)
