@@ -43,6 +43,9 @@ from .ultrastick import ImprovedUltrastickEnv as ImprovedUltrastickEnv  # noqa: 
 from .ultrastick import (  # noqa: F401
     LinearLongitudinalUltrastick as LinearLongitudinalUltrastick,
 )
+from .skywalker_x8_nonlinear import (  # noqa: F401
+    NonlinearSkywalkerX8Env as NonlinearSkywalkerX8Env,
+)
 from .x15 import ImprovedX15Env as ImprovedX15Env  # noqa: F401
 from .x15 import LinearLongitudinalX15 as LinearLongitudinalX15
 from .x15_nonlinear import NonlinearX15Env as NonlinearX15Env  # noqa: F401
@@ -72,6 +75,7 @@ __all__ = [
     "NonlinearQuadrotorEnv",
     "NonlinearB737Env",
     "NonlinearB747Env",
+    "NonlinearSkywalkerX8Env",
     "NonlinearX15Env",
 ]
 

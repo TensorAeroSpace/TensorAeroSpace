@@ -209,6 +209,7 @@ class Actor:
                 tracking error. Default ``500`` (==5 s at dt=0.01s).
         """
         self.number_inputs = len(selected_inputs)
+        self.selected_inputs = selected_inputs
         self.selected_states = selected_states
         self.cascade_tracking_state = (
             cascade_tracking_state
@@ -220,8 +221,9 @@ class Actor:
         self.indices_tracking_states = indices_tracking_states
         self.xt: Any = None
         self.xt_ref: Any = None
-        self.ut: Any = 0
-        self.maximum_input = maximum_input
+        self.ut: Any = np.zeros((self.number_inputs, 1))
+        self.maximum_input = self._as_control_row(maximum_input, "maximum_input")
+        self.maximum_input_column = self.maximum_input.reshape(-1, 1)
         self.maximum_q_rate = maximum_q_rate
         self.model_path = model_path
         # Attributes related to time
@@ -232,8 +234,13 @@ class Actor:
         # Attributes related to the NN
         self.model: nn.Sequential = nn.Sequential()
         self.model_q: nn.Sequential = nn.Sequential()
-        if layers[-1] != 1:
-            raise Exception("The last layer should have a single neuron.")
+        if cascaded_actor and self.number_inputs != 1:
+            raise ValueError("cascaded_actor currently supports exactly one input.")
+        if layers[-1] != self.number_inputs:
+            raise Exception(
+                "The last actor layer must have one neuron per selected input "
+                f"({self.number_inputs}); got {layers[-1]}."
+            )
         elif len(layers) != len(activations):
             raise Exception(
                 "The number of layers needs to be equal to the number of activations."
@@ -249,7 +256,7 @@ class Actor:
 
         # Attributes related to the persistent excitation
         self.type_PE = type_PE
-        self.amplitude_3211 = amplitude_3211
+        self.amplitude_3211 = self._as_control_row(amplitude_3211, "amplitude_3211")
         self.pulse_length_3211 = pulse_length_3211
 
         # Attributes related to the training of the NN
@@ -284,6 +291,18 @@ class Actor:
         self.integral_clamp = math.radians(float(integral_clamp_deg))
         self.integral_warmup_steps = int(integral_warmup_steps)
         self.integral_state = 0.0
+
+    def _as_control_row(self, value: Any, name: str) -> np.ndarray:
+        """Return a ``(1, number_inputs)`` vector, broadcasting scalars."""
+        arr = np.asarray(value, dtype=float).reshape(-1)
+        if arr.size == 1:
+            arr = np.full(self.number_inputs, float(arr[0]), dtype=float)
+        elif arr.size != self.number_inputs:
+            raise ValueError(
+                f"{name} must be scalar or have {self.number_inputs} elements; "
+                f"got {arr.size}."
+            )
+        return arr.reshape(1, self.number_inputs)
 
     def build_actor_model(self):
         """Function creating Actor network. This is a fully connected network.
@@ -420,6 +439,83 @@ class Actor:
             p.requires_grad_(True)
         return cast(torch.Tensor, model(nn_input))
 
+    def _output_param_jacobian(
+        self, output: torch.Tensor, params: list[torch.Tensor]
+    ) -> list[np.ndarray]:
+        """Compute ``du_i / dparam`` for each actor output.
+
+        For the legacy SISO case the returned arrays keep their old parameter
+        shapes. For MIMO actors each entry has shape
+        ``(number_inputs, *param.shape)``.
+        """
+        flat_output = output.reshape(-1)
+        if flat_output.numel() == 1:
+            grads = torch.autograd.grad(
+                flat_output[0],
+                params,
+                create_graph=False,
+                retain_graph=False,
+                allow_unused=True,
+            )
+            return [
+                (torch.zeros_like(param) if grad is None else grad).detach().numpy()
+                for grad, param in zip(grads, params)
+            ]
+
+        jacobian: list[list[np.ndarray]] = [[] for _ in params]
+        for output_index, scalar_output in enumerate(flat_output):
+            grads = torch.autograd.grad(
+                scalar_output,
+                params,
+                create_graph=False,
+                retain_graph=output_index < flat_output.numel() - 1,
+                allow_unused=True,
+            )
+            for param_index, (grad, param) in enumerate(zip(grads, params)):
+                grad_tensor = torch.zeros_like(param) if grad is None else grad
+                jacobian[param_index].append(grad_tensor.detach().numpy())
+        return [np.stack(param_grads, axis=0) for param_grads in jacobian]
+
+    def _scaled_output_gradient_gain(self) -> np.ndarray:
+        """Derivative of final saturated-free actor output wrt NN output."""
+        if self.activations[-1] == "sigmoid":
+            return (2.0 * self.maximum_input).reshape(-1)
+        if self.activations[-1] == "tanh":
+            return self.maximum_input.reshape(-1)
+        raise Exception("There is no code for the defined output activation function.")
+
+    def _critic_to_input_gradient(
+        self, Jt1: np.ndarray, dJt1_dxt1: np.ndarray, G: np.ndarray
+    ) -> np.ndarray:
+        """Compute the MIMO chain term ``dE/du`` from ``G = dx/du``."""
+        J_scalar = float(np.asarray(Jt1, dtype=float).reshape(-1)[0])
+        dJdx = np.asarray(dJt1_dxt1, dtype=float).reshape(-1, 1)
+        G_arr = np.asarray(G, dtype=float)
+        if G_arr.ndim == 1:
+            G_arr = G_arr.reshape(-1, 1)
+        G_tracked = G_arr[self.indices_tracking_states, :]
+        return (J_scalar * (G_tracked.T @ dJdx)).reshape(-1)
+
+    def _weighted_param_gradient(
+        self, dE_du: np.ndarray, dut_dparam: np.ndarray
+    ) -> np.ndarray:
+        """Combine per-output Jacobians into one parameter update tensor."""
+        coeff = np.asarray(dE_du, dtype=float).reshape(-1)
+        if (
+            self.number_inputs > 1
+            and dut_dparam.ndim > 0
+            and dut_dparam.shape[0] == self.number_inputs
+        ):
+            coeff = coeff * self._scaled_output_gradient_gain()
+            return np.tensordot(coeff, dut_dparam, axes=(0, 0))
+        # Legacy SISO path: preserve the historical update scale.
+        return float(coeff[0]) * dut_dparam
+
+    def _clip_actor_output(self, ut: np.ndarray) -> np.ndarray:
+        return np.clip(
+            np.asarray(ut, dtype=float), -self.maximum_input, self.maximum_input
+        )
+
     def run_actor_online(self, xt: np.ndarray, xt_ref: np.ndarray) -> np.ndarray:
         """Generate system input with given and real states.
 
@@ -537,44 +633,20 @@ class Actor:
                 p.requires_grad_(True)
             ut_tensor = self.model(nn_input)
             params = _get_trainable_parameters(self.model)
-            grads = torch.autograd.grad(
-                ut_tensor,
-                params,
-                create_graph=False,
-                retain_graph=False,
-            )
-            self.dut_dWb = [g.detach().numpy() for g in grads]
+            self.dut_dWb = self._output_param_jacobian(ut_tensor, params)
 
             ut = ut_tensor.detach().numpy()
 
         e0 = self.compute_persistent_excitation()
 
         if self.activations[-1] == "sigmoid":
-            self.ut = max(
-                min(
-                    (2 * self.maximum_input * ut) - self.maximum_input + e0,
-                    np.reshape(self.maximum_input, ut.shape),
-                ),
-                np.reshape(-self.maximum_input, ut.shape),
+            self.ut = self._clip_actor_output(
+                (2.0 * self.maximum_input * ut) - self.maximum_input + e0
             )
         elif self.activations[-1] == "tanh":
-            ut = max(
-                min(
-                    (self.maximum_input * ut),
-                    np.reshape(self.maximum_input, ut.shape),
-                ),
-                np.reshape(-self.maximum_input, ut.shape),
-            )
+            self.ut = self._clip_actor_output((self.maximum_input * ut) + e0)
 
-            self.ut = max(
-                min(ut + e0, np.reshape(self.maximum_input, ut.shape)),
-                np.reshape(-self.maximum_input, ut.shape),
-            )
-
-        # Ensure we return array, not scalar
-        if np.isscalar(self.ut):
-            return np.array([self.ut])
-        return np.asarray(self.ut)
+        return np.asarray(self.ut, dtype=float).reshape(self.number_inputs, 1)
 
     def train_actor_online(
         self, Jt1: np.ndarray, dJt1_dxt1: np.ndarray, G: np.ndarray
@@ -587,16 +659,10 @@ class Actor:
             G: dx/du, obtained from incremental model.
         """
 
-        Jt1 = Jt1.flatten()[0]
-
-        chain_rule = Jt1 * np.matmul(
-            np.reshape(G[self.indices_tracking_states, :], [-1, 1]).T, dJt1_dxt1
-        )
-
-        chain_rule = chain_rule.flatten()[0]
+        dE_du = self._critic_to_input_gradient(Jt1, dJt1_dxt1, G)
         params = _get_trainable_parameters(self.model)
         for count in range(len(self.dut_dWb)):
-            update = chain_rule * self.dut_dWb[count]
+            update = self._weighted_param_gradient(dE_du, self.dut_dWb[count])
             with torch.no_grad():
                 params[count] -= torch.tensor(
                     np.reshape(
@@ -727,16 +793,10 @@ class Actor:
             Jt1_after, _ = critic.evaluate_critic(xt1_est_after, xt_ref1)
         else:
             # Train the actor
-            Jt1 = Jt1.flatten()[0]
-            chain_rule = Jt1 * np.matmul(
-                np.reshape(G[self.indices_tracking_states, :], [-1, 1]).T,
-                dJt1_dxt1,
-            )
-
-            chain_rule = chain_rule.flatten()[0]
+            dE_du = self._critic_to_input_gradient(Jt1, dJt1_dxt1, G)
             if self.time_step > self.start_training:
                 for count in range(len(self.dut_dWb)):
-                    gradient = chain_rule * self.dut_dWb[count]
+                    gradient = self._weighted_param_gradient(dE_du, self.dut_dWb[count])
                     self.model, self.learning_rate = self.compute_Adam_update(
                         count, gradient, self.model, self.learning_rate
                     )
@@ -822,17 +882,11 @@ class Actor:
             Jt1_after, _ = critic.evaluate_critic(xt1_est_after, xt_ref1)
         else:
             # Train the actor
-            Jt1 = Jt1.flatten()[0]
-            chain_rule = Jt1 * np.matmul(
-                np.reshape(G[self.indices_tracking_states, :], [-1, 1]).T,
-                dJt1_dxt1,
-            )
-
-            chain_rule = chain_rule.flatten()[0]
+            dE_du = self._critic_to_input_gradient(Jt1, dJt1_dxt1, G)
             if self.time_step > self.start_training:
                 params = _get_trainable_parameters(self.model)
                 for count in range(len(self.dut_dWb)):
-                    gradient = chain_rule * self.dut_dWb[count]
+                    gradient = self._weighted_param_gradient(dE_du, self.dut_dWb[count])
                     with torch.no_grad():
                         params[count] -= torch.tensor(
                             np.reshape(
@@ -911,7 +965,7 @@ class Actor:
         with torch.no_grad():
             param.clamp_(-self.WB_limits, self.WB_limits)
 
-    def compute_persistent_excitation(self, *args: int) -> float:
+    def compute_persistent_excitation(self, *args: int) -> np.ndarray:
         """Compute the persistent excitation term for the current time step."""
         if len(args) == 1:
             t = args[0] + 1
@@ -919,7 +973,7 @@ class Actor:
             t = self.time_step + 1
 
         e0_1 = 0.0
-        e0_2 = 0.0
+        e0_2_scale = 0.0
         if self.type_PE == "sinusoidal" or self.type_PE == "combined":
             e0_1 = (
                 np.sin(t)
@@ -930,17 +984,17 @@ class Actor:
 
         if self.type_PE == "3211" or self.type_PE == "combined":
             if t < 3 * self.pulse_length_3211 / 7:
-                e0_2 = 0.5 * self.amplitude_3211
+                e0_2_scale = 0.5
             elif t < 5 * self.pulse_length_3211 / 7:
-                e0_2 = -0.5 * self.amplitude_3211
+                e0_2_scale = -0.5
             elif t < 6 * self.pulse_length_3211 / 7:
-                e0_2 = 0.8 * self.amplitude_3211
+                e0_2_scale = 0.8
             elif t < self.pulse_length_3211:
-                e0_2 = -self.amplitude_3211
+                e0_2_scale = -1.0
 
-        e0 = e0_1 + e0_2
-
-        return float(e0)
+        e0 = np.full((1, self.number_inputs), float(e0_1), dtype=float)
+        e0 += e0_2_scale * self.amplitude_3211
+        return e0
 
     def update_actor_attributes(self) -> None:
         """Update time-dependent actor attributes after each time step."""
@@ -1044,22 +1098,12 @@ class Actor:
             e0 = self.compute_persistent_excitation()
 
         if self.activations[-1] == "sigmoid":
-            ut = max(
-                min(
-                    (2 * self.maximum_input * ut) - self.maximum_input + e0,
-                    np.reshape(self.maximum_input, ut.shape),
-                ),
-                np.reshape(-self.maximum_input, ut.shape),
+            ut = self._clip_actor_output(
+                (2.0 * self.maximum_input * ut) - self.maximum_input + e0
             )
         elif self.activations[-1] == "tanh":
-            ut = max(
-                min(
-                    ((self.maximum_input + 10) * ut) + e0,
-                    np.reshape(self.maximum_input, ut.shape),
-                ),
-                np.reshape(-self.maximum_input, ut.shape),
-            )
-        return np.asarray(ut)
+            ut = self._clip_actor_output((self.maximum_input * ut) + e0)
+        return np.asarray(ut, dtype=float).reshape(self.number_inputs, 1)
 
     def restart_time_step(self):
         """Reset the internal time-step counter to zero."""
@@ -1070,7 +1114,7 @@ class Actor:
         self.time_step = 0
         self.xt = None
         self.xt_ref = None
-        self.ut = 0
+        self.ut = np.zeros((self.number_inputs, 1))
 
         # Attributes related to the training of the NN
         self.dut_dWb = []
