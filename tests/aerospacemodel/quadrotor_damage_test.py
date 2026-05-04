@@ -6,17 +6,16 @@ import numpy as np
 import pytest
 
 from tensoraerospace.aerospacemodel.quadrotor.damage import (
-    DamageProfile,
     LANZON_M1_LOSS,
     LU_M1_50PCT_LOSS,
+    WEAR_DEGRADATION_M3,
+    DamageProfile,
     MotorEfficiencyDecay,
     RotorDamageEvent,
     RotorDamageManager,
     RotorDamageState,
     RotorLossEvent,
-    WEAR_DEGRADATION_M3,
 )
-
 
 # ---- RotorDamageState ------------------------------------------------------
 
@@ -72,9 +71,7 @@ def test_rotor_loss_event_zeros_mu():
 
 def test_motor_efficiency_decay_arms_decay():
     s = RotorDamageState.healthy()
-    MotorEfficiencyDecay(
-        trigger_time=2.0, rotor_id=1, tau=4.0, mu_floor=0.2
-    ).apply(s)
+    MotorEfficiencyDecay(trigger_time=2.0, rotor_id=1, tau=4.0, mu_floor=0.2).apply(s)
     assert s.tau[1] == 4.0
     assert s.mu_floor[1] == 0.2
     # mu itself is still 1.0 right after the event triggers
@@ -113,9 +110,11 @@ def test_damage_profile_pending_events_window():
 
 def test_manager_applies_events_in_window():
     mgr = RotorDamageManager(
-        DamageProfile(events=[
-            RotorDamageEvent(trigger_time=1.0, rotor_id=0, mu=0.7),
-        ])
+        DamageProfile(
+            events=[
+                RotorDamageEvent(trigger_time=1.0, rotor_id=0, mu=0.7),
+            ]
+        )
     )
     fired = mgr.update(t_current=1.5, t_previous=0.0, dt=0.01)
     assert len(fired) == 1

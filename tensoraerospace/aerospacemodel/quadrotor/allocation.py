@@ -75,7 +75,7 @@ class XConfigAllocator:
     """
 
     k_T: float = 7.5e-6
-    k_M: float = 1.2e-7   # ≈ 0.016 · k_T  (yaw moment per unit thrust)
+    k_M: float = 1.2e-7  # ≈ 0.016 · k_T  (yaw moment per unit thrust)
     arm_length: float = 0.225
 
     def __post_init__(self) -> None:
@@ -89,10 +89,10 @@ class XConfigAllocator:
         kT, kM = self.k_T, self.k_M
         self._M = np.array(
             [
-                [ kT,     kT,    kT,     kT  ],
+                [kT, kT, kT, kT],
                 [-kT * a, kT * a, kT * a, -kT * a],
-                [ kT * a, -kT * a, kT * a, -kT * a],
-                [ kM,     kM,   -kM,    -kM  ],
+                [kT * a, -kT * a, kT * a, -kT * a],
+                [kM, kM, -kM, -kM],
             ],
             dtype=np.float64,
         )

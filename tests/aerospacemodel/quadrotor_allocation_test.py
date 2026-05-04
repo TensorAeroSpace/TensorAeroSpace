@@ -35,7 +35,7 @@ def test_unmix_mix_roundtrip_identity():
     a = _allocator()
     rng = np.random.default_rng(1)
     for _ in range(20):
-        T = rng.uniform(5.0, 30.0)               # N — well above hover thrust
+        T = rng.uniform(5.0, 30.0)  # N — well above hover thrust
         # Limit τ magnitudes so each rotor stays positive.
         # Crude bound: |τ_x|, |τ_y| < T·a, |τ_z| · a/k_M·k_T < T·... — use small fractions.
         tau_x = rng.uniform(-0.1, 0.1)

@@ -33,9 +33,7 @@ class DamageEvent:
         if self.trigger_time < 0:
             raise ValueError(f"trigger_time must be >= 0; got {self.trigger_time}")
         if not 0 <= self.rotor_id <= 3:
-            raise ValueError(
-                f"rotor_id must be in {{0, 1, 2, 3}}; got {self.rotor_id}"
-            )
+            raise ValueError(f"rotor_id must be in {{0, 1, 2, 3}}; got {self.rotor_id}")
 
     def apply(self, state: RotorDamageState) -> None:  # pragma: no cover
         raise NotImplementedError
@@ -112,6 +110,4 @@ class DamageProfile:
         self, t_current: float, t_previous: float
     ) -> list[DamageEvent]:
         """Events triggering in the half-open window ``(t_previous, t_current]``."""
-        return [
-            e for e in self.events if t_previous < e.trigger_time <= t_current
-        ]
+        return [e for e in self.events if t_previous < e.trigger_time <= t_current]

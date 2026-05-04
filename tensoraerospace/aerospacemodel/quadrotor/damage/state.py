@@ -25,21 +25,19 @@ class RotorDamageState:
       explicit-Euler step per integrator tick.
     """
 
-    mu: np.ndarray = field(
-        default_factory=lambda: np.ones(4, dtype=np.float64)
-    )
-    tau: np.ndarray = field(
-        default_factory=lambda: np.zeros(4, dtype=np.float64)
-    )
-    mu_floor: np.ndarray = field(
-        default_factory=lambda: np.zeros(4, dtype=np.float64)
-    )
+    mu: np.ndarray = field(default_factory=lambda: np.ones(4, dtype=np.float64))
+    tau: np.ndarray = field(default_factory=lambda: np.zeros(4, dtype=np.float64))
+    mu_floor: np.ndarray = field(default_factory=lambda: np.zeros(4, dtype=np.float64))
 
     def __post_init__(self) -> None:
         self.mu = np.asarray(self.mu, dtype=np.float64).reshape(-1)
         self.tau = np.asarray(self.tau, dtype=np.float64).reshape(-1)
         self.mu_floor = np.asarray(self.mu_floor, dtype=np.float64).reshape(-1)
-        for name, arr in (("mu", self.mu), ("tau", self.tau), ("mu_floor", self.mu_floor)):
+        for name, arr in (
+            ("mu", self.mu),
+            ("tau", self.tau),
+            ("mu_floor", self.mu_floor),
+        ):
             if arr.size != 4:
                 raise ValueError(f"{name} must have 4 elements; got {arr.size}")
         if np.any(self.mu < 0) or np.any(self.mu > 1):
@@ -63,9 +61,9 @@ class RotorDamageState:
         active = self.tau > 0
         if not np.any(active):
             return
-        self.mu[active] += -(1.0 / self.tau[active]) * (
-            self.mu[active] - self.mu_floor[active]
-        ) * dt
+        self.mu[active] += (
+            -(1.0 / self.tau[active]) * (self.mu[active] - self.mu_floor[active]) * dt
+        )
         self.mu = np.clip(self.mu, 0.0, 1.0)
 
     def snapshot(self) -> dict:

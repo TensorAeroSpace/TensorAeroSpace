@@ -16,12 +16,12 @@ class QuadrotorParameters:
     """Inertial + geometric parameters of a single rigid-body quadrotor."""
 
     # Mass and gravity
-    m: float = 1.5             # mass, kg
-    g: float = 9.81            # gravitational acceleration, m/s²
+    m: float = 1.5  # mass, kg
+    g: float = 9.81  # gravitational acceleration, m/s²
 
     # Diagonal inertia tensor about body-frame principal axes (kg·m²)
     Jx: float = 0.0211
-    Jy: float = 0.0211         # symmetric: Jx == Jy for an X / + frame
+    Jy: float = 0.0211  # symmetric: Jx == Jy for an X / + frame
     Jz: float = 0.0366
 
     # Geometry
@@ -36,9 +36,9 @@ class QuadrotorParameters:
 
     # Actuator limits — used by the env layer for clipping; the bare ODE
     # is happy with any input.
-    thrust_max: float = 30.0    # N (≈ 2·m·g, typical 2:1 thrust-to-weight)
+    thrust_max: float = 30.0  # N (≈ 2·m·g, typical 2:1 thrust-to-weight)
     thrust_min: float = 0.0
-    torque_max: float = 1.5     # N·m, per-axis
+    torque_max: float = 1.5  # N·m, per-axis
 
 
 def default_parameters() -> QuadrotorParameters:

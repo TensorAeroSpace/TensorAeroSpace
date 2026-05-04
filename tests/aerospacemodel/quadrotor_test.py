@@ -37,9 +37,9 @@ def test_hover_equilibrium_is_exact():
     u_hover = np.array([m.hover_thrust, 0.0, 0.0, 0.0])
     for _ in range(1000):  # 10 s
         m.run_step(u_hover)
-    assert np.max(np.abs(m.current_state)) < 1e-9, (
-        "hover should be a numerically exact equilibrium"
-    )
+    assert (
+        np.max(np.abs(m.current_state)) < 1e-9
+    ), "hover should be a numerically exact equilibrium"
 
 
 def test_free_fall_without_drag_matches_textbook():
@@ -65,8 +65,8 @@ def test_free_fall_with_linear_drag_matches_analytic():
     z = float(m.current_state[2])
 
     p = m.param
-    v_term = p.m * p.g / p.kdz       # terminal velocity
-    tau = p.m / p.kdz                # 1/e time-constant
+    v_term = p.m * p.g / p.kdz  # terminal velocity
+    tau = p.m / p.kdz  # 1/e time-constant
     analytic = v_term * 10.0 + v_term * tau * (np.exp(-10.0 / tau) - 1.0)
     assert abs(z - analytic) / analytic < 1e-3
 
@@ -85,8 +85,8 @@ def test_gyro_coupling_term_in_angular_dynamics():
     """ODE produces the (Jy-Jz)·q·r / Jx coupling term verbatim."""
     p_param = default_parameters()
     state = _zero_state()
-    state[10] = 1.0   # q
-    state[11] = 1.0   # r
+    state[10] = 1.0  # q
+    state[11] = 1.0  # r
     dx = quadrotor_ode_6dof(state, np.zeros(4), 0.0, p_param)
     expected = (p_param.Jy - p_param.Jz) * 1.0 * 1.0 / p_param.Jx
     assert abs(dx[9] - expected) < 1e-12

@@ -45,10 +45,18 @@ from tensoraerospace.aerospacemodel.quadrotor.damage import (
 from tensoraerospace.aerospacemodel.quadrotor.nonlinear import NonlinearQuadrotor
 
 MODEL_STATE_ORDER = [
-    "x_e", "y_e", "z_e",
-    "u_b", "v_b", "w_b",
-    "phi", "theta", "psi",
-    "p", "q", "r",
+    "x_e",
+    "y_e",
+    "z_e",
+    "u_b",
+    "v_b",
+    "w_b",
+    "phi",
+    "theta",
+    "psi",
+    "p",
+    "q",
+    "r",
 ]
 
 
@@ -147,9 +155,7 @@ class NonlinearQuadrotorEnv(gym.Env):
         )
         self._step_index = 0
 
-        if self.damage_profile is not None or (
-            options and "damage_profile" in options
-        ):
+        if self.damage_profile is not None or (options and "damage_profile" in options):
             self.damage_manager = RotorDamageManager(
                 profile=self.damage_profile or DamageProfile(events=[])
             )

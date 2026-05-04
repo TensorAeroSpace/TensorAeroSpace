@@ -11,18 +11,18 @@ initial_state = np.zeros((12, 1), dtype=np.float64)
 
 
 initial_state_dict = {
-    "x_e":   0.0,
-    "y_e":   0.0,
-    "z_e":   0.0,
-    "u_b":   0.0,
-    "v_b":   0.0,
-    "w_b":   0.0,
-    "phi":   0.0,
+    "x_e": 0.0,
+    "y_e": 0.0,
+    "z_e": 0.0,
+    "u_b": 0.0,
+    "v_b": 0.0,
+    "w_b": 0.0,
+    "phi": 0.0,
     "theta": 0.0,
-    "psi":   0.0,
-    "p":     0.0,
-    "q":     0.0,
-    "r":     0.0,
+    "psi": 0.0,
+    "p": 0.0,
+    "q": 0.0,
+    "r": 0.0,
 }
 
 
@@ -37,8 +37,6 @@ def set_initial_state(**overrides) -> np.ndarray:
     state = np.zeros((12, 1), dtype=np.float64)
     for k, v in overrides.items():
         if k not in initial_state_dict:
-            raise KeyError(
-                f"Unknown state component {k!r}; valid keys are {layout}"
-            )
+            raise KeyError(f"Unknown state component {k!r}; valid keys are {layout}")
         state[layout.index(k), 0] = float(v)
     return state

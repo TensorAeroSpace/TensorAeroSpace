@@ -39,9 +39,17 @@ def _rotation_be(phi: float, theta: float, psi: float) -> np.ndarray:
     cpsi, spsi = np.cos(psi), np.sin(psi)
     return np.array(
         [
-            [cth * cpsi, sphi * sth * cpsi - cphi * spsi, cphi * sth * cpsi + sphi * spsi],
-            [cth * spsi, sphi * sth * spsi + cphi * cpsi, cphi * sth * spsi - sphi * cpsi],
-            [-sth,       sphi * cth,                       cphi * cth                    ],
+            [
+                cth * cpsi,
+                sphi * sth * cpsi - cphi * spsi,
+                cphi * sth * cpsi + sphi * spsi,
+            ],
+            [
+                cth * spsi,
+                sphi * sth * spsi + cphi * cpsi,
+                cphi * sth * spsi - sphi * cpsi,
+            ],
+            [-sth, sphi * cth, cphi * cth],
         ],
         dtype=np.float64,
     )
@@ -124,10 +132,18 @@ def quadrotor_ode_6dof(
 
     return np.array(
         [
-            pos_dot[0], pos_dot[1], pos_dot[2],
-            v_b_dot[0], v_b_dot[1], v_b_dot[2],
-            phi_dot, theta_dot, psi_dot,
-            p_dot, q_dot, r_dot,
+            pos_dot[0],
+            pos_dot[1],
+            pos_dot[2],
+            v_b_dot[0],
+            v_b_dot[1],
+            v_b_dot[2],
+            phi_dot,
+            theta_dot,
+            psi_dot,
+            p_dot,
+            q_dot,
+            r_dot,
         ],
         dtype=np.float64,
     )

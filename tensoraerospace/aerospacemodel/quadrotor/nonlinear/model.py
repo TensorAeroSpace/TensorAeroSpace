@@ -22,10 +22,18 @@ ArrayLike = Union[np.ndarray, Sequence[Sequence[float]], Sequence[float]]
 
 
 _STATE_LIST = [
-    "x_e", "y_e", "z_e",      # earth-frame position (NED), m
-    "u_b", "v_b", "w_b",      # body-frame velocity, m/s
-    "phi", "theta", "psi",    # Euler ZYX 321, rad
-    "p", "q", "r",            # body-frame angular rates, rad/s
+    "x_e",
+    "y_e",
+    "z_e",  # earth-frame position (NED), m
+    "u_b",
+    "v_b",
+    "w_b",  # body-frame velocity, m/s
+    "phi",
+    "theta",
+    "psi",  # Euler ZYX 321, rad
+    "p",
+    "q",
+    "r",  # body-frame angular rates, rad/s
 ]
 _CONTROL_LIST = ["T", "tau_x", "tau_y", "tau_z"]
 

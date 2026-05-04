@@ -40,7 +40,9 @@ class RotorDamageManager:
         """Add a one-shot event for this episode (single-fire)."""
         self._injected.append(event)
 
-    def update(self, t_current: float, t_previous: float, dt: float) -> list[DamageEvent]:
+    def update(
+        self, t_current: float, t_previous: float, dt: float
+    ) -> list[DamageEvent]:
         """Apply events in ``(t_previous, t_current]`` and advance decay.
 
         Args:

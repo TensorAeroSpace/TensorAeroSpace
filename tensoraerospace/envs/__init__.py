@@ -31,6 +31,7 @@ from .f16.nonlinear_longitudinal import (  # noqa: F401
 from .geosat import GeoSatEnv as GeoSatEnv  # noqa: F401
 from .lapan import ImprovedLAPANEnv as ImprovedLAPANEnv  # noqa: F401
 from .lapan import LinearLongitudinalLAPAN as LinearLongitudinalLAPAN  # noqa: F401
+from .quadrotor import NonlinearQuadrotorEnv as NonlinearQuadrotorEnv  # noqa: F401
 from .rocket import ImprovedMissileEnv as ImprovedMissileEnv
 from .rocket import (  # noqa: F401
     LinearLongitudinalMissileModel as LinearLongitudinalMissileModel,
@@ -40,7 +41,6 @@ from .ultrastick import ImprovedUltrastickEnv as ImprovedUltrastickEnv  # noqa: 
 from .ultrastick import (  # noqa: F401
     LinearLongitudinalUltrastick as LinearLongitudinalUltrastick,
 )
-from .quadrotor import NonlinearQuadrotorEnv as NonlinearQuadrotorEnv  # noqa: F401
 from .x15 import ImprovedX15Env as ImprovedX15Env  # noqa: F401
 from .x15 import LinearLongitudinalX15 as LinearLongitudinalX15
 
