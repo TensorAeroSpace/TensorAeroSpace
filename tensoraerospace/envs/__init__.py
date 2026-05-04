@@ -44,6 +44,7 @@ from .ultrastick import (  # noqa: F401
 )
 from .x15 import ImprovedX15Env as ImprovedX15Env  # noqa: F401
 from .x15 import LinearLongitudinalX15 as LinearLongitudinalX15
+from .x15_nonlinear import NonlinearX15Env as NonlinearX15Env  # noqa: F401
 
 __all__ = [
     "ImprovedB747Env",
@@ -69,6 +70,7 @@ __all__ = [
     "LinearLongitudinalX15",
     "NonlinearQuadrotorEnv",
     "NonlinearB747Env",
+    "NonlinearX15Env",
 ]
 
 try:

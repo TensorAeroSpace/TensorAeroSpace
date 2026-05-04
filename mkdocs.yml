@@ -73,6 +73,7 @@ plugins:
               - X15:
                 - Classic State-Space: model/x15.md
                 - Normalized State-Space: model/x15_improved.md
+                - Nonlinear 6-DoF (Hypersonic): model/x15_nonlinear.md
               - LSU:
                 - Classic State-Space: model/lsu.md
                 - Normalized State-Space: model/lapan_improved.md
@@ -225,6 +226,7 @@ plugins:
               - X15:
                 - Пространство состояний: model/x15.md
                 - Нормализованное управление: model/x15_improved.md
+                - Нелинейный 6-DoF (гиперзвук): model/x15_nonlinear.md
               - LSU:
                 - Пространство состояний: model/lsu.md
                 - Нормализованное управление: model/lapan_improved.md
