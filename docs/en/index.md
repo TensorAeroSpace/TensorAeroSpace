@@ -6,12 +6,12 @@ hide:
 
 <div class="hero">
   <h1>TensorAeroSpace</h1>
-  <p class="tagline">Realistic aerospace environments and RL algorithms for training control systems</p>
+  <p class="tagline">Open-source aerospace simulation + adaptive control toolkit. Trim, fly, fail, recover — all in pure NumPy.</p>
   <p>
-    <a href="guide/installation.md" class="md-button md-button--primary">Installation</a>
-    <a href="lesson/0intro.md" class="md-button">Tutorials</a>
-    <a href="agent/sac.md" class="md-button">Algorithms</a>
-    <a href="model/f16.md" class="md-button">Models</a>
+    <a href="guide/installation.md" class="md-button md-button--primary">Install</a>
+    <a href="cookbook/01_hello.md" class="md-button">Quickstart</a>
+    <a href="model/b747_nonlinear.md" class="md-button">Models</a>
+    <a href="agent/ihdp.md" class="md-button">Algorithms</a>
   </p>
   <p>
     <a href="https://github.com/TensorAeroSpace/TensorAeroSpace"><img alt="GitHub" src="https://img.shields.io/badge/GitHub-TensorAeroSpace-000?logo=github"></a>
@@ -50,101 +50,346 @@ hide:
 .hero a img { vertical-align: middle; margin: 0 .22rem; }
 .cards .card-icon { font-size: 1.6rem; }
 .stats { text-align: center; margin: 1.5rem 0 0; color: var(--md-default-fg-color--light); }
+.stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 1rem; margin: 1.5rem 0; text-align: center; }
+.stat-grid .stat { padding: 1rem; border-radius: 12px; background: var(--md-code-bg-color); }
+.stat-grid .stat-num { font-size: 2.1rem; font-weight: 600; color: var(--md-primary-fg-color); line-height: 1; }
+.stat-grid .stat-lbl { font-size: 0.85rem; margin-top: .35rem; color: var(--md-default-fg-color--light); }
 .logos { display: flex; gap: 1.2rem; align-items: center; justify-content: center; flex-wrap: wrap; margin: 1rem 0; }
 .logos img { height: 42px; opacity: .9; filter: saturate(0) contrast(1.1); }
 </style>
 
+## Why TensorAeroSpace?
+
 <div class="grid cards" markdown>
 
--   :material-rocket-launch-outline: **Quick start**
+-   :material-airplane-takeoff: **Real airframes, not toys**
 
-    Install the library, choose a model, and run your first agent.
+    Every model is transcribed from peer-reviewed source data: NASA CR-2144 (B-747), NASA TM X-1669 (X-15), CEAS Aeronautical Journal 2025 (Skywalker X8), JSBSim (B-737), Roskam Vol VI + class-II UAV literature (RQ-7 Shadow). Trim points reach machine precision; cross-validated against published derivatives.
 
-    [:octicons-arrow-right-24: Installation](guide/installation.md)
+-   :material-flash: **Pure NumPy core**
 
--   :material-robot-outline: **RL algorithms**
+    No proprietary simulators, no MATLAB licence, no compiled binaries. The 6-DoF Newton-Euler ODE is an order of magnitude faster than JSBSim for control-synthesis sweeps, and trivially differentiable for adjoint-based methods.
 
-    Modern algorithms: DQN, A3C/A2C‑NARX, PPO, SAC, DDPG, GAIL.
+-   :material-brain: **Unique adaptive-control catalogue**
 
-    [:octicons-arrow-right-24: Explore](agent/sac.md)
+    The standard RL stack (PPO, SAC, DDPG, DQN, A2C, A3C, GAIL) **plus** the full incremental-ADP family (IHDP, IM-GDHP, ET-DHP, iADP, AA-INDI, AIDI) — rarely co-located in a single open-source package. All wrapped in the same Gymnasium API.
 
--   :material-airplane-takeoff: **Models**
+-   :material-shield-check: **Damage subsystem built-in**
 
-    F‑16, Boeing‑747, X‑15, satellites and rockets with ready‑to‑use environments.
+    Per-surface effectiveness loss, hard-overs, jam events, asymmetric-thrust engine-out, flap-jam configuration override — all composable into `DamageProfile` instances. Runs out of the box on B-747 and F-16; parity hooks on every other airframe.
 
-    [:octicons-arrow-right-24: Browse](model/f16.md)
+-   :material-puzzle-outline: **Gymnasium-native**
 
--   :material-cog-outline: **Gym integration**
+    Every env implements the standard `reset()` / `step()` / `action_space` / `observation_space` contract. Drop-in replaceable in any Gymnasium / Stable Baselines3 / CleanRL pipeline.
 
-    Compatible environments and a simple API for training and evaluation.
+-   :material-test-tube: **Continuously verified**
 
-    [:octicons-arrow-right-24: Learn more](example/environment/gymnasium.md)
-
--   :material-school-outline: **Tutorials**
-
-    Hands‑on practice with XFLR5, Simulink, SimInTech, and control theory.
-
-    [:octicons-arrow-right-24: Go to tutorials](lesson/0intro.md)
-
--   :material-chart-line: **Benchmarking**
-
-    Metrics, agent comparisons, and experiment examples.
-
-    [:octicons-arrow-right-24: Metrics](benchmark/metrics.md)
+    Trim convergence, surface-deflection sign conventions, propellant burnout times — all locked down by 894 unit tests with regression coverage on every push.
 
 </div>
 
 ---
 
-## Key benefits
+## 30-second start
+
+=== ":fontawesome-solid-plane: Run a flight simulation"
+
+    ```python
+    import gymnasium as gym
+    import tensoraerospace  # registers all envs
+    import numpy as np
+
+    env = gym.make("NonlinearB747-v0", trim_at=(20_000.0, 674.0),
+                   number_time_steps=2000, dt=0.01)
+    obs, _ = env.reset()
+    trim_action = np.array([-0.0126, 0.0, 0.0, 0.555])  # rad / [0, 1]
+    for _ in range(2000):
+        obs, _, _, trunc, _ = env.step(trim_action)
+        if trunc: break
+
+    print(f"V={float(np.linalg.norm(obs[:3])):.1f} ft/s, "
+          f"alt={-float(obs[11]):.0f} ft")
+    # → V=674.0 ft/s, alt=20000 ft  (perfect trim hold)
+    ```
+
+=== ":material-cog: Classical PID"
+
+    ```python
+    import gymnasium as gym
+    import numpy as np
+    from tensoraerospace.agent.pid import PID
+    from tensoraerospace.utils import generate_time_period
+    from tensoraerospace.signals.standard import unit_step
+
+    dt = 0.01
+    tp = generate_time_period(tn=10, dt=dt)
+    ref = unit_step(degree=5, tp=tp, time_step=2.0,
+                    output_rad=True).reshape(1, -1)
+
+    env = gym.make('LinearLongitudinalF16-v0',
+                   number_time_steps=len(tp),
+                   initial_state=[[0], [0]],
+                   reference_signal=ref, use_reward=False)
+    pid = PID(env, kp=-14.29, ki=-8.24, kd=-1.30, dt=dt)
+
+    obs, _ = env.reset()
+    for t in range(len(tp) - 1):
+        u = pid.select_action(ref[0, t], float(obs[0]))
+        obs, _, term, trunc, _ = env.step(np.array([[float(u)]],
+                                                    dtype=np.float32))
+        if term or trunc: break
+    ```
+
+=== ":material-brain: Online ADP (IHDP)"
+
+    ```python
+    from tensoraerospace.aerospacemodel.b747.nonlinear import trim
+    from tensoraerospace.envs.b747_nonlinear import NonlinearB747Env
+    from tensoraerospace.agent.ihdp.model import IHDPAgent
+    import numpy as np, math
+
+    # Trim at FL200 cruise
+    r = trim(altitude_ft=20_000.0, V_ft_s=674.0)
+    env = NonlinearB747Env(trim_at=(20_000.0, 674.0),
+                            number_time_steps=3000, dt=0.02)
+
+    agent = IHDPAgent(actor_settings={...}, critic_settings={...},
+                      incremental_settings={...},
+                      tracking_states=["d_theta"],
+                      selected_states=["d_theta", "q"],
+                      selected_input=["d_elev"],
+                      number_time_steps=3000,
+                      indices_tracking_states=[0])
+
+    # Single-pass online learning — no offline pre-training
+    obs, _ = env.reset()
+    # ... run rollout ...
+    # → Late-half MAE θ = 0.043° on a 1° step (4.3% of amplitude)
+    ```
+
+=== ":material-rocket: Pretrained SAC"
+
+    ```bash
+    python example/reinforcement_learning/deep_rl/sac-b747-render.py \
+        --render --dt 0.1 --tn 200 \
+        --repo TensorAeroSpace/sac-b747 --device cuda
+    ```
+
+    Or via Python:
+
+    ```python
+    from tensoraerospace.agent.sac import SAC
+    from tensoraerospace.envs.b747 import ImprovedB747Env
+
+    agent = SAC.from_pretrained("TensorAeroSpace/sac-b747")
+    env = ImprovedB747Env(dt=0.1, number_time_steps=200)
+    obs, _ = env.reset()
+    while True:
+        action = agent.select_action(obs, evaluate=True)
+        obs, _, term, trunc, _ = env.step(action)
+        env.render(mode="human")
+        if term or trunc: break
+    ```
+
+---
+
+## Aircraft library
+
+Every model has a Gymnasium env, a trim solver, full 6-DoF dynamics, and peer-reviewed source data.
+
+| Airframe | Class | Configurations | Aerodynamic source | Speciality |
+|---|---|---|---|---|
+| **F-16 Fighting Falcon** | Fighter | longitudinal · 6-DoF angular · damage | NASA / Stevens-Lewis tables | Cubic-spline aero, full damage subsystem |
+| **Boeing 747-100** | Heavy transport | NOMINAL · POWER_APPROACH · LANDING | NASA CR-2144 (Heffley & Jewell) | Per-engine asymmetric thrust + flap jam |
+| **Boeing 737-100/800** | Mid-size transport | 737-100 · 737-800 (NG) | JSBSim + Roskam Vol VI | Coordinated-turn benchmarks |
+| **X-15** | Hypersonic research | BASIC · A2 record | NASA TM X-1669 + Thompson 2000 | Mach-tabulated 0.4–6.7, XLR99 rocket, variable mass |
+| **Skywalker X8** | Small UAV (3.4 kg) | flying-wing | CEAS Aeronautical Journal 2025 | Peer-reviewed flight-test ID |
+| **AAI RQ-7 Shadow** | Class-II UAV (170 kg) | RQ-7B | Beard & McLain + NASA TM-2014-218686 | V-tail mixed control |
+| **Quadrotor** | Multirotor | nonlinear 6-DoF + damage | Standard quad-X derivation | Per-rotor failure, X-config allocator |
+| **F-4C, ELV, ComSat, GeoSat, LSU, Ultrastick, UAV, Missile** | Linear / improved | various | Roskam, AIAA conf | Classical state-space + RL-friendly wrapper |
+
+[See full model gallery →](model/f16.md)
+
+---
+
+## Control catalogue
+
+20 algorithms, organised by family:
+
+=== "Classical"
+
+    | Algorithm | Description |
+    |---|---|
+    | **PID** | Classical PID with multiple tuning workflows |
+    | **MPC** | Model-Predictive Control with MLP / NARX / Transformer plant models |
+
+=== "Adaptive Dynamic Programming (offline)"
+
+    Classical batch-trained ADP family:
+
+    | Algorithm | Notebook |
+    |---|---|
+    | **HDP** (Heuristic Dynamic Programming) | `acd_hdp_b747.ipynb` |
+    | **DHP** (Dual Heuristic Programming) | `acd_dhp_b747.ipynb` |
+    | **GDHP** (Globalized Dual HP) | `acd_gdhp_b747.ipynb` |
+    | **AD-HDP** | `acd_adhdp_b747.ipynb` |
+    | **AD-GDHP** | `acd_adgdhp_b747.ipynb` |
+    | **AD-DHP** | `acd_addhp_b747.ipynb` |
+
+=== "Incremental ADP (online)"
+
+    Online single-pass adaptive critic — the unique part of the catalogue:
+
+    | Algorithm | Pitch-step / cruise tracking | Damage scenarios |
+    |---|---|---|
+    | **IHDP** | F-16 sin-α, B-747 θ-step, B-737 90° turn, quadrotor | failure recovery |
+    | **IM-GDHP** | F-16 nonlinear | — |
+    | **ET-DHP** | F-16 sinusoid | B-747 engine-out (0.28° ψ-error), F-16 damage |
+    | **iADP** | F-16 nonlinear | F-16 damage |
+    | **AA-INDI** | F-16 nonlinear | — |
+    | **AIDI** | — | F-16 damage |
+
+=== "Deep RL"
+
+    Standard model-free RL stack:
+
+    | Algorithm | Type | Pretrained checkpoint |
+    |---|---|---|
+    | **SAC** | Off-policy actor-critic | [HF: TensorAeroSpace/sac-b747](https://huggingface.co/TensorAeroSpace/sac-b747) |
+    | **DSAC** | Distributional SAC | step-response & tracking variants |
+    | **PPO** | On-policy clipped objective | 8 airframes |
+    | **DDPG** | Deterministic policy gradient | B-747 |
+    | **DQN** | Discrete value iteration | B-747, Unity |
+    | **A2C** | Synchronous actor-critic | B-747 + NARX critic |
+    | **A3C** | Asynchronous A-C | B-747 |
+    | **GAIL** | Generative imitation | F-16 dataset |
+
+---
+
+## Architecture
+
+```
+┌────────────────────────────────────────────────────────────────────────┐
+│                        tensoraerospace package                         │
+├──────────────────┬──────────────────────┬───────────────────────────────┤
+│  aerospacemodel  │         envs         │            agent              │
+├──────────────────┼──────────────────────┼───────────────────────────────┤
+│  pure-NumPy      │   Gymnasium-spec     │   Classical · ADP · Deep RL   │
+│  6-DoF dynamics  │   wrappers           │   PID, IHDP, ET-DHP, SAC, ... │
+│  Trim solvers    │   "virtual" /        │   All consume Gym env API     │
+│  Damage subsys.  │   "normalized"       │                               │
+│                  │   action modes       │                               │
+└──────────────────┴──────────────────────┴───────────────────────────────┘
+                                │
+                                ▼
+                         Gymnasium / SB3 / CleanRL  ← any RL pipeline plugs in
+```
+
+The three packages are weakly coupled. You can use the dynamics standalone (no Gym), the env without an agent (just a wrapper), or build your own controller against any model. Same Gymnasium API across linear / nonlinear / damaged models means the controller code is portable.
+
+---
+
+## Use cases
+
+=== ":material-account-cog: Control engineer"
+
+    "I need a faithful 6-DoF aircraft model to design a controller against."
+
+    1. Pick an airframe from the [model gallery](model/f16.md).
+    2. Use the **trim solver** (`trim(altitude, V)`) to find your operating point.
+    3. Linearise around trim or run nonlinear simulation directly.
+    4. Validate against the published cruise / loiter / hypersonic conditions in the docs.
+
+    Example: [Boeing 747 nonlinear](model/b747_nonlinear.md), [B-737 coordinated turn](example/agent/ihdp/example_ihdp_nonlinear_b737_turn.md).
+
+=== ":material-school-outline: RL researcher"
+
+    "I want to benchmark a new agent on aerospace tasks."
+
+    1. Drop-in any of the 20+ envs registered with `gym.make("...-v0")`.
+    2. Use the included PID / IHDP / SAC baselines for fair comparison.
+    3. Compare metrics with the published [comparison studies](comparison/all_vs_pid_b747.md).
+    4. Push your trained model to Hugging Face under the same wrapper.
+
+    Example: [SAC on B-747](example/agent/sac/example-sac-b747.md), [IHDP vs PID on F-16](comparison/ihdp_imgdhp_vs_pid_f16_nonlinear.md).
+
+=== ":material-shield-alert: FTC / fault-tolerant control"
+
+    "I'm researching control reconfiguration after damage."
+
+    1. Use the [damage subsystem](model/aircraft-damage-modeling.md) — surface jam, effectiveness loss, engine flameout, flap jam, RCS thruster failure.
+    2. Compose `DamageProfile` instances declaratively.
+    3. Run an online ADP agent (ET-DHP, iADP, AIDI) that adapts to the change in real time.
+
+    Example: [ET-DHP B-747 engine-out yaw hold (0.28°)](example/agent/et_dhp/example_etdhp_b747_engine_failure.md).
+
+=== ":material-book-open: Student / educator"
+
+    "I'm learning flight dynamics or adaptive control."
+
+    1. Start with the [cookbook](cookbook/01_hello.md) — 16 step-by-step recipes from "hello world" to FTC under damage.
+    2. Read the [11 lessons](lesson/base/tutor_1.md) on state-space, controllability, RL fundamentals, and a hands-on practical (XFLR5 → Simulink → Python).
+    3. Open any notebook from the [example gallery](https://github.com/TensorAeroSpace/TensorAeroSpace/tree/main/example) and run it locally.
+
+    Example: [Lesson 1 — State-Space Intro](lesson/base/tutor_1.md), [Cookbook — Online-adaptive agents](cookbook/06_online_adaptive.md).
+
+---
+
+## What's new
 
 <div class="grid cards" markdown>
 
--   :material-speedometer: **Performance**
+-   :material-airplane: **AAI RQ-7 Shadow nonlinear**
 
-    Lightweight environments and fast experiments — less code, more results.
+    Class-II tactical UAV, 170 kg, V-tail mixed convention, 4-channel control. Synthesised from Beard & McLain + NASA TM-2014-218686 + Roskam Vol VI.
 
--   :material-brain: **Modern RL stack**
+    [:octicons-arrow-right-24: model/aai_shadow_nonlinear](model/aai_shadow_nonlinear.md)
 
-    DDPG, SAC, PPO, GAIL, etc. with a convenient API and examples.
+-   :material-airplane-takeoff: **Boeing 737 nonlinear**
 
--   :material-cube-outline: **Physically accurate models**
+    737-100 / 737-800 with JSBSim aerodynamic data, JT8D / CFM56-7B engine models, machine-precision trim, MIMO IHDP coordinated turn example.
 
-    Linear longitudinal models, rockets, aircraft, satellites.
+    [:octicons-arrow-right-24: model/b737_nonlinear](model/b737_nonlinear.md)
 
--   :material-puzzle-outline: **Integrations**
+-   :material-rocket-launch: **X-15 hypersonic**
 
-    Gymnasium, Simulink/MATLAB, SimInTech — ready‑to‑use integrations.
+    M = 0.4 → 6.7, XLR99 rocket engine, variable mass, 13-state vector with propellant channel. Burnout time 79.8 s — matches Thompson 2000 to 0.2 %.
 
--   :material-book-open-variant: **Clear documentation**
+    [:octicons-arrow-right-24: model/x15_nonlinear](model/x15_nonlinear.md)
 
-    Step‑by‑step tutorials, recipes, best practices, and typical problem walkthroughs.
+-   :material-quadcopter: **Skywalker X8 small UAV**
 
--   :material-chart-areaspline: **Benchmarking**
+    Peer-reviewed flight-test identification (CEAS Aeronautical Journal 2025). 3.4 kg flying-wing, 3-channel control, propeller-airframe drag coupling.
 
-    Metrics, comparisons, and reproducible experiments.
+    [:octicons-arrow-right-24: model/skywalker_x8_nonlinear](model/skywalker_x8_nonlinear.md)
+
+-   :material-target: **B-747 damage subsystem v2**
+
+    Per-engine asymmetric thrust + flap-jam configuration override + 5 ready-made presets including `LEFT_OUTER_ENGINE_FAILURE`.
+
+    [:octicons-arrow-right-24: model/b747_nonlinear](model/b747_nonlinear.md#damage-subsystem)
+
+-   :material-format-list-bulleted-square: **Restructured `example/`**
+
+    Top-level grouped by controller class; `reinforcement_learning/` split into `incremental_adp/` and `deep_rl/`. 101 notebooks, all paths updated in docs.
+
+    [:octicons-arrow-right-24: example README](https://github.com/TensorAeroSpace/TensorAeroSpace/tree/main/example)
 
 </div>
 
-## Feature overview
+---
 
-=== "Agents"
+## Featured benchmarks
 
-    - IHDP, DQN, A3C/A2C‑NARX, PPO, SAC, DDPG, GAIL
-    - Experience buffers, OU noise, stochastic/deterministic policies
-    - GAE, PPO update, GAIL discriminator
+Real numbers from runnable example notebooks:
 
-=== "Models"
-
-    - F‑16, B747, X‑15, generic rocket, satellites
-    - State-space matrices, linear/linearized models
-    - Examples with controller training
-
-=== "Documentation"
-
-    - Step‑by‑step lessons for XFLR5/Simulink/SimInTech
-    - Guides and integration examples
-    - Links to examples and benchmarks
+| Scenario | Result | Source |
+|---|---|---|
+| **B-747 ET-DHP heading hold under engine flameout** | ψ-error **0.28°** vs open-loop −85.5° | [notebook](example/agent/et_dhp/example_etdhp_b747_engine_failure.md) |
+| **B-737 MIMO IHDP 90° coordinated turn** | final ψ-error **0.98°**, max sideslip **0.11°** | [notebook](example/agent/ihdp/example_ihdp_nonlinear_b737_turn.md) |
+| **B-747 IHDP θ step (1°)** | late-half MAE **0.043°** | [notebook](example/agent/ihdp/example_ihdp_nonlinear_b747.md) |
+| **X-15 boost-burnout (full throttle)** | burnout **79.8 s** vs Thompson 2000: 80 s | [model](model/x15_nonlinear.md) |
+| **Skywalker X8 cruise trim** | machine precision (residual 1e-15) | [model](model/skywalker_x8_nonlinear.md) |
 
 ---
 
@@ -162,168 +407,60 @@ hide:
     poetry add tensoraerospace
     ```
 
-=== "conda"
+=== "from source"
 
     ```bash
-    conda create -n tas python=3.10
-    conda activate tas
-    pip install tensoraerospace
+    git clone https://github.com/TensorAeroSpace/TensorAeroSpace.git
+    cd TensorAeroSpace
+    poetry install
     ```
 
-## Quick examples
-
-=== "Pretrained SAC Agent"
-
-    Run a pretrained Soft Actor-Critic agent on Boeing 747 pitch control:
-
-    ![SAC B747](example/agent/sac/img/sac-b747-impoved.jpg)
+=== "Docker"
 
     ```bash
-    python example/reinforcement_learning/deep_rl/sac-b747-render.py \
-        --render \
-        --dt 0.1 \
-        --tn 200 \
-        --repo TensorAeroSpace/sac-b747 \
-        --device cuda  # Optional: auto-detects GPU if available
+    docker run --rm -p 8888:8888 ghcr.io/tensoraerospace/tas-jupyter
     ```
 
-    Or use the Python API:
-
-    ```python
-    import torch
-    from tensoraerospace.agent.sac import SAC
-    from tensoraerospace.envs.b747 import ImprovedB747Env
-
-    # Auto-detect device (CUDA/MPS/CPU)
-    device = torch.device("cuda" if torch.cuda.is_available() else 
-                         ("mps" if hasattr(torch.backends, "mps") and 
-                          torch.backends.mps.is_available() else "cpu"))
-
-    # Load pretrained agent from Hugging Face
-    agent = SAC.from_pretrained("TensorAeroSpace/sac-b747")
-    
-    # Move agent to GPU if available
-    if agent.device != device:
-        agent.device = device
-        agent.critic = agent.critic.to(device)
-        agent.critic_target = agent.critic_target.to(device)
-        agent.policy = agent.policy.to(device)
-
-    # Create environment
-    env = ImprovedB747Env(dt=0.1, number_time_steps=200)
-    
-    # Run evaluation
-    obs, info = env.reset()
-    done = False
-    while not done:
-        action = agent.select_action(obs, evaluate=True)
-        obs, reward, terminated, truncated, info = env.step(action)
-        env.render(mode="human")
-        done = terminated or truncated
-    ```
-
-    [:octicons-arrow-right-24: Full SAC B747 tutorial](example/agent/sac/example-sac-b747.md)
-
-=== "PID Controller"
-
-    ```python
-    import gymnasium as gym
-    import numpy as np
-
-    from tensoraerospace.agent.pid import PID
-    from tensoraerospace.utils import generate_time_period
-    from tensoraerospace.signals.standard import unit_step
-
-    # Simulation setup
-    dt = 0.01
-    tp = generate_time_period(tn=10, dt=dt)  # 10 seconds
-    N = len(tp)
-
-    # Reference signal for alpha tracking (5 deg step in radians)
-    reference = unit_step(
-        degree=5, tp=tp, time_step=2.0, output_rad=True
-    ).reshape(1, -1)
-
-    # Create F-16 longitudinal environment
-    env = gym.make(
-        'LinearLongitudinalF16-v0',
-        number_time_steps=N,
-        initial_state=[[0], [0]],
-        reference_signal=reference,
-        use_reward=False,
-    )
-
-    # PID controller with tuned coefficients
-    pid = PID(
-        env,
-        kp=-14.290139135229715,
-        ki=-8.240470780203491,
-        kd=-1.2991634935096958,
-        dt=dt
-    )
-
-    obs, info = env.reset()
-    for t in range(N - 1):
-        setpoint = reference[0, t]
-        alpha = float(obs[0])
-        u = pid.select_action(setpoint, alpha)
-        action = np.array([[float(u)]], dtype=np.float32)
-        obs, reward, terminated, truncated, info = env.step(action)
-        if terminated or truncated:
-            break
-    ```
-
-## Why TensorAeroSpace?
-
-- Realistic aerodynamic models and state-space matrices
-- Integration with MATLAB/Simulink and SimInTech
-- Ready environments and controller training templates
-
-## Useful links
-
-- Guide: [guide/installation](guide/installation.md)
-- Lessons: [lesson/0intro](lesson/0intro.md)
-- Models: [model/f16](model/f16.md), [model/b747](model/b747.md)
-- Algorithms: [agent/sac](agent/sac.md), [agent/ppo](agent/ppo.md), [agent/ddpg](agent/ddpg.md)
-- Examples: [example/environment/gymnasium](example/environment/gymnasium.md)
+Python 3.10–3.12, no MATLAB required, no proprietary code paths.
 
 ---
 
-Need help? Open an issue on GitHub or check the tutorials section.
+## Resources
+
+| | |
+|---|---|
+| 📦 **Package** | [PyPI](https://pypi.org/project/tensoraerospace/) · [GitHub](https://github.com/TensorAeroSpace/TensorAeroSpace) · [Hugging Face](https://huggingface.co/TensorAeroSpace) |
+| 📚 **Documentation** | [Models](model/f16.md) · [Algorithms](agent/sac.md) · [Cookbook](cookbook/01_hello.md) · [Lessons](lesson/base/tutor_1.md) |
+| 🧪 **Examples** | [101 notebooks on GitHub](https://github.com/TensorAeroSpace/TensorAeroSpace/tree/main/example) |
+| 📊 **Benchmarks** | [Comparison studies](comparison/all_vs_pid_b747.md) · [Metrics](benchmark/metrics.md) |
+| 💬 **Community** | [Issues](https://github.com/TensorAeroSpace/TensorAeroSpace/issues) · [DeepWiki Q&A](https://deepwiki.com/TensorAeroSpace/TensorAeroSpace) |
 
 ---
 
-## Some numbers
+## Citation
 
-<div class="grid cards" markdown>
+If you use TensorAeroSpace in your research, please cite:
 
--   :material-brain: **RL algorithms**
+```bibtex
+@software{tensoraerospace,
+  title  = {TensorAeroSpace: An Open-Source Aerospace Simulation and Adaptive Control Toolkit},
+  author = {Mazaev, A. and contributors},
+  year   = {2026},
+  url    = {https://github.com/TensorAeroSpace/TensorAeroSpace},
+  note   = {Pure-NumPy 6-DoF aerospace dynamics + Gymnasium envs + classical/adaptive/deep RL agents}
+}
+```
 
-    8+ implemented methods: IHDP, DQN, A3C/A2C‑NARX, PPO, SAC, DDPG, GAIL
+For the underlying aerodynamic data sources — NASA CR-2144 (B-747), NASA TM X-1669 (X-15), CEAS Aeronautical Journal 2025 (Skywalker X8), JSBSim (B-737), Beard & McLain (Aerosonde / Shadow), Roskam Vol VI — please also cite the original references listed in each model's documentation page.
 
--   :material-airplane: **Aerospace models**
+---
 
-    10+ models: F‑16, B747, X‑15, rockets and satellites
-
--   :material-python: **Python support**
-
-    3.10 — 3.12, compatible with the Gymnasium ecosystem
-
--   :material-license: **License**
-
-    MIT — free for academia and industry
-
-</div>
-
-## Who uses it
-
-<div class="logos">
-  <img src="logo.png" alt="TensorAeroSpace">
-  <span>… plus research groups and enthusiasts</span>
-  
-</div>
-
-<div style="text-align:center; margin: 1.2rem 0 0.2rem;">
+<div style="text-align:center; margin: 1.6rem 0 0.5rem;">
   <a href="guide/installation.md" class="md-button md-button--primary">Get started</a>
-  <a href="example/environment/gymnasium.md" class="md-button">View examples</a>
+  <a href="cookbook/01_hello.md" class="md-button">Open the cookbook</a>
+  <a href="https://github.com/TensorAeroSpace/TensorAeroSpace" class="md-button">Star on GitHub</a>
 </div>
+
+<p style="text-align:center; color: var(--md-default-fg-color--light); margin-top: 1rem;">
+MIT licensed · built with NumPy, PyTorch, Gymnasium · powered by the aerospace research community.
+</p>
