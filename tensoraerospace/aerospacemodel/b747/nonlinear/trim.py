@@ -52,12 +52,23 @@ class TrimResult:
         """Pack the trim into a 12-element state vector ready for the model."""
         u_b = self.V_ft_s * np.cos(self.alpha_rad)
         w_b = self.V_ft_s * np.sin(self.alpha_rad)
-        return np.array([
-            u_b, 0.0, w_b,         # u, v, w
-            0.0, 0.0, 0.0,         # p, q, r
-            0.0, self.theta_rad, psi,  # phi, theta, psi
-            0.0, 0.0, -self.altitude_ft,  # x_e, y_e, z_e
-        ], dtype=np.float64)
+        return np.array(
+            [
+                u_b,
+                0.0,
+                w_b,  # u, v, w
+                0.0,
+                0.0,
+                0.0,  # p, q, r
+                0.0,
+                self.theta_rad,
+                psi,  # phi, theta, psi
+                0.0,
+                0.0,
+                -self.altitude_ft,  # x_e, y_e, z_e
+            ],
+            dtype=np.float64,
+        )
 
 
 def trim(
@@ -89,12 +100,23 @@ def trim(
         # In level flight γ = 0 ⇒ θ = α
         u_b = V_ft_s * np.cos(alpha)
         w_b = V_ft_s * np.sin(alpha)
-        x = np.array([
-            u_b, 0.0, w_b,
-            0.0, 0.0, 0.0,
-            0.0, alpha, 0.0,
-            0.0, 0.0, -altitude_ft,
-        ], dtype=np.float64)
+        x = np.array(
+            [
+                u_b,
+                0.0,
+                w_b,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                alpha,
+                0.0,
+                0.0,
+                0.0,
+                -altitude_ft,
+            ],
+            dtype=np.float64,
+        )
         u = np.array([de, 0.0, 0.0, dT], dtype=np.float64)
         dx = b747_ode_6dof(x, u, 0.0, p)
         # Three equations: u̇, ẇ, q̇  (indices 0, 2, 4)

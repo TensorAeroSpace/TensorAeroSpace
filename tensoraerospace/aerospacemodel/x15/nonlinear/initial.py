@@ -24,12 +24,19 @@ import numpy as np
 from .flight_conditions import X15FlightCondition, get_flight_condition
 from .params import X15Configuration, X15Parameters, default_parameters
 
-
 STATE_LIST = [
-    "u", "v", "w",
-    "p", "q", "r",
-    "phi", "theta", "psi",
-    "x_e", "y_e", "z_e",
+    "u",
+    "v",
+    "w",
+    "p",
+    "q",
+    "r",
+    "phi",
+    "theta",
+    "psi",
+    "x_e",
+    "y_e",
+    "z_e",
     "m_prop",
 ]
 STATE_DIM = len(STATE_LIST)
@@ -38,7 +45,7 @@ STATE_DIM = len(STATE_LIST)
 def default_state() -> np.ndarray:
     """Zero state vector with full propellant (13 elements)."""
     x = np.zeros(STATE_DIM, dtype=np.float64)
-    x[12] = 13_000.0   # default to BASIC config full load
+    x[12] = 13_000.0  # default to BASIC config full load
     return x
 
 
@@ -59,11 +66,11 @@ def initial_state_from_fc(
     V = fc.V_ft_s
     alpha = math.radians(fc.alpha0_deg)
     x = np.zeros(STATE_DIM, dtype=np.float64)
-    x[0] = V * math.cos(alpha)         # u_b
-    x[1] = 0.0                          # v_b
-    x[2] = V * math.sin(alpha)          # w_b
-    x[7] = alpha                        # theta (γ = 0)
-    x[11] = -fc.altitude_ft             # z_e (NED: positive down)
+    x[0] = V * math.cos(alpha)  # u_b
+    x[1] = 0.0  # v_b
+    x[2] = V * math.sin(alpha)  # w_b
+    x[7] = alpha  # theta (γ = 0)
+    x[11] = -fc.altitude_ft  # z_e (NED: positive down)
     x[12] = fc.propellant_lb
     return x
 

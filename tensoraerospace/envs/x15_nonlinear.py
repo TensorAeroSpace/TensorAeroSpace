@@ -42,12 +42,19 @@ from tensoraerospace.aerospacemodel.x15.nonlinear.flight_conditions import (
     get_flight_condition,
 )
 
-
 STATE_ORDER = [
-    "u", "v", "w",
-    "p", "q", "r",
-    "phi", "theta", "psi",
-    "x_e", "y_e", "z_e",
+    "u",
+    "v",
+    "w",
+    "p",
+    "q",
+    "r",
+    "phi",
+    "theta",
+    "psi",
+    "x_e",
+    "y_e",
+    "z_e",
     "m_prop",
 ]
 
@@ -112,21 +119,29 @@ class NonlinearX15Env(gym.Env):
 
         # Observation: 13-D state (12-D rigid body + propellant)
         high_obs = np.full(13, np.inf, dtype=np.float64)
-        self.observation_space = spaces.Box(low=-high_obs, high=high_obs, dtype=np.float64)
+        self.observation_space = spaces.Box(
+            low=-high_obs, high=high_obs, dtype=np.float64
+        )
 
         if action_space == "virtual":
-            high_act = np.array([
-                np.deg2rad(15.0),    # all-flying stab
-                np.deg2rad(15.0),
-                np.deg2rad(8.5),
-                1.0,
-            ], dtype=np.float64)
-            low_act = np.array([
-                -np.deg2rad(15.0),
-                -np.deg2rad(15.0),
-                -np.deg2rad(8.5),
-                0.0,
-            ], dtype=np.float64)
+            high_act = np.array(
+                [
+                    np.deg2rad(15.0),  # all-flying stab
+                    np.deg2rad(15.0),
+                    np.deg2rad(8.5),
+                    1.0,
+                ],
+                dtype=np.float64,
+            )
+            low_act = np.array(
+                [
+                    -np.deg2rad(15.0),
+                    -np.deg2rad(15.0),
+                    -np.deg2rad(8.5),
+                    0.0,
+                ],
+                dtype=np.float64,
+            )
         else:
             high_act = np.ones(4, dtype=np.float64)
             low_act = -np.ones(4, dtype=np.float64)
@@ -140,8 +155,7 @@ class NonlinearX15Env(gym.Env):
         initial_state, flight_condition_id, trim_at, trim_throttle, config
     ) -> np.ndarray:
         provided = sum(
-            int(x is not None)
-            for x in (initial_state, flight_condition_id, trim_at)
+            int(x is not None) for x in (initial_state, flight_condition_id, trim_at)
         )
         if provided == 0:
             raise ValueError(
@@ -154,23 +168,24 @@ class NonlinearX15Env(gym.Env):
         if initial_state is not None:
             x0 = np.asarray(initial_state, dtype=np.float64).reshape(-1)
             if x0.size != 13:
-                raise ValueError(
-                    f"initial_state must have 13 elements; got {x0.size}"
-                )
+                raise ValueError(f"initial_state must have 13 elements; got {x0.size}")
             return x0
         if flight_condition_id is not None:
             fc = get_flight_condition(int(flight_condition_id))
             return initial_state_from_fc(fc, config=config)
         alt, V = trim_at
         result = trim(
-            altitude_ft=float(alt), V_ft_s=float(V),
-            config=config, throttle=float(trim_throttle),
+            altitude_ft=float(alt),
+            V_ft_s=float(V),
+            config=config,
+            throttle=float(trim_throttle),
         )
         # X-15 trim is approximate at most operating points — accept
         # any state fsolve returned, but flag a warning if residual is
         # huge (> 100 ft/s² or rad/s²).
         if result.residual > 100.0:
             import warnings
+
             warnings.warn(
                 f"X-15 trim at h={alt:.0f}ft, V={V:.1f}ft/s, throttle="
                 f"{trim_throttle:.2f} did not converge "
@@ -184,12 +199,15 @@ class NonlinearX15Env(gym.Env):
         if self.action_mode == "virtual":
             return action.astype(np.float64, copy=True)
         u_e, u_a, u_r, u_T = action[0], action[1], action[2], action[3]
-        return np.array([
-            float(u_e) * np.deg2rad(15.0),
-            float(u_a) * np.deg2rad(15.0),
-            float(u_r) * np.deg2rad(8.5),
-            (float(u_T) + 1.0) * 0.5,
-        ], dtype=np.float64)
+        return np.array(
+            [
+                float(u_e) * np.deg2rad(15.0),
+                float(u_a) * np.deg2rad(15.0),
+                float(u_r) * np.deg2rad(8.5),
+                (float(u_T) + 1.0) * 0.5,
+            ],
+            dtype=np.float64,
+        )
 
     # ---- gym API -------------------------------------------------------
 

@@ -26,7 +26,6 @@ from tensoraerospace.aerospacemodel.b737.nonlinear import (
 from tensoraerospace.aerospacemodel.b737.nonlinear.aero import AeroState
 from tensoraerospace.envs.b737_nonlinear import NonlinearB737Env
 
-
 # ---- Geometry & atmosphere ------------------------------------------------
 
 
@@ -94,10 +93,10 @@ def test_engine_idle_floor_below_zero_throttle():
 
 def test_asymmetric_thrust_zero_when_engines_healthy():
     p = default_parameters()
-    T, N = b737_thrust_with_asymmetry(throttle=0.7, mach=0.5,
-                                       altitude_ft=20_000.0, params=p)
-    T_scalar = b737_thrust(throttle=0.7, mach=0.5,
-                            altitude_ft=20_000.0, params=p)
+    T, N = b737_thrust_with_asymmetry(
+        throttle=0.7, mach=0.5, altitude_ft=20_000.0, params=p
+    )
+    T_scalar = b737_thrust(throttle=0.7, mach=0.5, altitude_ft=20_000.0, params=p)
     assert T == pytest.approx(T_scalar, rel=1e-9)
     assert N == 0.0
 
@@ -116,11 +115,11 @@ def test_left_engine_failure_yaws_nose_left():
         engines_mu = {1: 0.0, 2: 1.0}
 
     p.damage_state = _DamageState()
-    T, N = b737_thrust_with_asymmetry(throttle=1.0, mach=0.0,
-                                       altitude_ft=0.0, params=p)
+    T, N = b737_thrust_with_asymmetry(throttle=1.0, mach=0.0, altitude_ft=0.0, params=p)
     # Total thrust ≈ half (one engine alive)
-    T_full = b737_thrust(throttle=1.0, mach=0.0, altitude_ft=0.0,
-                          params=default_parameters())
+    T_full = b737_thrust(
+        throttle=1.0, mach=0.0, altitude_ft=0.0, params=default_parameters()
+    )
     assert 0.45 * T_full < T < 0.55 * T_full
     # N < 0 ⇒ nose left (toward dead engine)
     assert N < 0.0
@@ -133,8 +132,17 @@ def test_left_engine_failure_yaws_nose_left():
 
 def test_aero_lift_increases_with_alpha_in_pre_stall():
     p = default_parameters()
-    common = dict(beta=0.0, V=820.0, p=0.0, q=0.0, r=0.0,
-                  altitude_ft=25_000.0, de=0.0, da=0.0, dr=0.0)
+    common = dict(
+        beta=0.0,
+        V=820.0,
+        p=0.0,
+        q=0.0,
+        r=0.0,
+        altitude_ft=25_000.0,
+        de=0.0,
+        da=0.0,
+        dr=0.0,
+    )
     L0 = b737_aero(AeroState(alpha=math.radians(0.0), **common), p).L
     L5 = b737_aero(AeroState(alpha=math.radians(5.0), **common), p).L
     assert L5 > L0
@@ -147,8 +155,17 @@ def test_aero_lift_increases_with_alpha_in_pre_stall():
 
 def test_aero_pitching_moment_is_statically_stable():
     p = default_parameters()
-    common = dict(beta=0.0, V=820.0, p=0.0, q=0.0, r=0.0,
-                  altitude_ft=25_000.0, de=0.0, da=0.0, dr=0.0)
+    common = dict(
+        beta=0.0,
+        V=820.0,
+        p=0.0,
+        q=0.0,
+        r=0.0,
+        altitude_ft=25_000.0,
+        de=0.0,
+        da=0.0,
+        dr=0.0,
+    )
     m_low = b737_aero(AeroState(alpha=math.radians(2.0), **common), p).m
     m_high = b737_aero(AeroState(alpha=math.radians(6.0), **common), p).m
     assert m_high < m_low
@@ -157,9 +174,17 @@ def test_aero_pitching_moment_is_statically_stable():
 def test_aero_elevator_creates_pitch_down_moment_when_de_positive():
     """Elevator deflection conventionally produces pitch-down at +δe."""
     p = default_parameters()
-    common = dict(alpha=math.radians(2.0), beta=0.0, V=820.0,
-                  p=0.0, q=0.0, r=0.0, altitude_ft=25_000.0,
-                  da=0.0, dr=0.0)
+    common = dict(
+        alpha=math.radians(2.0),
+        beta=0.0,
+        V=820.0,
+        p=0.0,
+        q=0.0,
+        r=0.0,
+        altitude_ft=25_000.0,
+        da=0.0,
+        dr=0.0,
+    )
     m_neutral = b737_aero(AeroState(de=0.0, **common), p).m
     m_pos = b737_aero(AeroState(de=math.radians(5.0), **common), p).m
     assert m_pos < m_neutral
@@ -192,8 +217,7 @@ def test_throttle_increase_accelerates_along_x():
 
 def test_trim_b737_100_at_typical_cruise_converges():
     """737-100 cruise ~ FL250, M=0.74."""
-    r = trim(altitude_ft=25_000.0, V_ft_s=738.0,
-             config=B737Configuration.B737_100)
+    r = trim(altitude_ft=25_000.0, V_ft_s=738.0, config=B737Configuration.B737_100)
     assert r.converged
     assert r.residual < 1e-6
     assert 0.0 < r.throttle <= 1.0
@@ -202,8 +226,7 @@ def test_trim_b737_100_at_typical_cruise_converges():
 
 def test_trim_b737_800_at_typical_cruise_converges():
     """737-NG cruise ~ FL350, M=0.83."""
-    r = trim(altitude_ft=35_000.0, V_ft_s=820.0,
-             config=B737Configuration.B737_800)
+    r = trim(altitude_ft=35_000.0, V_ft_s=820.0, config=B737Configuration.B737_800)
     assert r.converged
     assert r.residual < 1e-6
     assert 0.0 < r.throttle <= 1.0
@@ -224,8 +247,9 @@ def test_trim_holds_steady_state_for_5_seconds():
 
 
 def test_env_make_via_gym_registry_works():
-    env = gym.make("NonlinearB737-v0", trim_at=(25_000.0, 738.0),
-                   number_time_steps=10).unwrapped
+    env = gym.make(
+        "NonlinearB737-v0", trim_at=(25_000.0, 738.0), number_time_steps=10
+    ).unwrapped
     obs, _ = env.reset()
     assert obs.shape == (12,)
 
@@ -244,8 +268,9 @@ def test_env_action_size_validated():
 
 
 def test_env_normalized_action_space_is_pm_one():
-    env = NonlinearB737Env(trim_at=(25_000.0, 738.0), number_time_steps=10,
-                            action_space="normalized")
+    env = NonlinearB737Env(
+        trim_at=(25_000.0, 738.0), number_time_steps=10, action_space="normalized"
+    )
     np.testing.assert_allclose(env.action_space.high, np.ones(4))
     np.testing.assert_allclose(env.action_space.low, -np.ones(4))
 
@@ -281,5 +306,5 @@ def test_env_with_initial_state_holds_trim_briefly():
     for _ in range(20):  # 0.2 s
         obs, _, _, _, _ = env.step(u_trim_rad)
     # Should be very close to the trimmed state still
-    V = float(np.sqrt(obs[0]**2 + obs[1]**2 + obs[2]**2))
+    V = float(np.sqrt(obs[0] ** 2 + obs[1] ** 2 + obs[2] ** 2))
     assert abs(V - r.V_ft_s) < 1.0

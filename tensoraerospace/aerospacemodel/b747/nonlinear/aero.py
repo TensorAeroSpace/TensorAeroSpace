@@ -39,16 +39,16 @@ from .params import (
 class AeroState:
     """Inputs to the aerodynamic build (one ODE evaluation)."""
 
-    alpha: float       # angle of attack, rad
-    beta: float        # sideslip, rad
-    V: float           # true airspeed, ft/s
-    p: float           # body roll rate, rad/s
-    q: float           # body pitch rate, rad/s
-    r: float           # body yaw rate, rad/s
+    alpha: float  # angle of attack, rad
+    beta: float  # sideslip, rad
+    V: float  # true airspeed, ft/s
+    p: float  # body roll rate, rad/s
+    q: float  # body pitch rate, rad/s
+    r: float  # body yaw rate, rad/s
     altitude_ft: float
-    de: float          # elevator deflection, rad
-    da: float          # aileron deflection, rad
-    dr: float          # rudder deflection, rad
+    de: float  # elevator deflection, rad
+    da: float  # aileron deflection, rad
+    dr: float  # rudder deflection, rad
     alphadot: float = 0.0
 
 
@@ -56,12 +56,12 @@ class AeroState:
 class AeroForces:
     """Stability-axis forces & moments from one aero evaluation."""
 
-    L: float           # lift, lb (acts +Z stability)
-    D: float           # drag, lb (acts +X stability, *backward*)
-    Y: float           # side force, lb (body axis)
-    l: float           # rolling moment, lb·ft (body axis)
-    m: float           # pitching moment, lb·ft (body axis)
-    n: float           # yawing moment, lb·ft (body axis)
+    L: float  # lift, lb (acts +Z stability)
+    D: float  # drag, lb (acts +X stability, *backward*)
+    Y: float  # side force, lb (body axis)
+    l: float  # rolling moment, lb·ft (body axis)
+    m: float  # pitching moment, lb·ft (body axis)
+    n: float  # yawing moment, lb·ft (body axis)
 
 
 def _select_trim_point(
@@ -147,11 +147,7 @@ def b747_aero(state: AeroState, params: B747Parameters) -> AeroForces:
         + lon.C_LM * dM
         + lon.C_Lde * state.de
     )
-    C_D = (
-        lon.C_D0
-        + lon.C_Da * da_pert
-        + lon.C_DM * dM
-    )
+    C_D = lon.C_D0 + lon.C_Da * da_pert + lon.C_DM * dM
     C_m = (
         lon.C_ma * da_pert
         + lon.C_mq * qhat

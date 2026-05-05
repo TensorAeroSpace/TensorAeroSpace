@@ -16,8 +16,8 @@ from __future__ import annotations
 
 import warnings
 
-import numpy as np
 import matplotlib.pyplot as plt
+import numpy as np
 
 warnings.filterwarnings("ignore")
 
@@ -74,15 +74,19 @@ def run_step_response(
             for label in info["damage_events_triggered"]:
                 triggers.append((k * dt, label))
         if trunc:
-            log_t = log_t[:k + 1]
-            log_theta = log_theta[:k + 1]
-            log_q = log_q[:k + 1]
-            log_alt = log_alt[:k + 1]
-            log_V = log_V[:k + 1]
+            log_t = log_t[: k + 1]
+            log_theta = log_theta[: k + 1]
+            log_q = log_q[: k + 1]
+            log_alt = log_alt[: k + 1]
+            log_V = log_V[: k + 1]
             break
     return dict(
-        t=log_t, theta=np.rad2deg(log_theta), q=np.rad2deg(log_q),
-        altitude=log_alt, V=log_V, triggers=triggers,
+        t=log_t,
+        theta=np.rad2deg(log_theta),
+        q=np.rad2deg(log_q),
+        altitude=log_alt,
+        V=log_V,
+        triggers=triggers,
     )
 
 
@@ -105,14 +109,19 @@ def main() -> None:
     print(f"  Δh = {healthy['altitude'][-1] - healthy['altitude'][0]:+.0f} ft\n")
 
     # 3. Same step with 50% elevator loss at t=5 s
-    profile = DamageProfile(events=[
-        SurfaceEffectivenessEvent(
-            trigger_time=5.0, surface="elevator", mu=0.5,
-            label="elevator_50pct_loss",
-        ),
-    ])
+    profile = DamageProfile(
+        events=[
+            SurfaceEffectivenessEvent(
+                trigger_time=5.0,
+                surface="elevator",
+                mu=0.5,
+                label="elevator_50pct_loss",
+            ),
+        ]
+    )
     damaged = run_step_response(
-        elevator_step_deg=-1.0, duration_s=10.0,
+        elevator_step_deg=-1.0,
+        duration_s=10.0,
         damage_profile=profile,
     )
     print("Damaged step response (elevator → 50% effectiveness at t=5s):")
@@ -125,23 +134,34 @@ def main() -> None:
     # 4. Plot comparison
     fig, axes = plt.subplots(3, 1, figsize=(10, 8), sharex=True)
     axes[0].plot(healthy["t"], healthy["theta"], "tab:blue", label="healthy")
-    axes[0].plot(damaged["t"], damaged["theta"], "tab:red", linestyle="--",
-                 label="50% elev loss @ 5s")
+    axes[0].plot(
+        damaged["t"],
+        damaged["theta"],
+        "tab:red",
+        linestyle="--",
+        label="50% elev loss @ 5s",
+    )
     axes[0].axvline(5.0, color="k", linestyle=":", linewidth=0.6, alpha=0.5)
-    axes[0].set_ylabel(r"pitch $\theta$, deg"); axes[0].legend(); axes[0].grid(True)
+    axes[0].set_ylabel(r"pitch $\theta$, deg")
+    axes[0].legend()
+    axes[0].grid(True)
 
     axes[1].plot(healthy["t"], healthy["q"], "tab:blue")
     axes[1].plot(damaged["t"], damaged["q"], "tab:red", linestyle="--")
     axes[1].axvline(5.0, color="k", linestyle=":", linewidth=0.6, alpha=0.5)
-    axes[1].set_ylabel(r"pitch rate $q$, deg/s"); axes[1].grid(True)
+    axes[1].set_ylabel(r"pitch rate $q$, deg/s")
+    axes[1].grid(True)
 
     axes[2].plot(healthy["t"], healthy["altitude"], "tab:blue")
     axes[2].plot(damaged["t"], damaged["altitude"], "tab:red", linestyle="--")
     axes[2].axvline(5.0, color="k", linestyle=":", linewidth=0.6, alpha=0.5)
-    axes[2].set_xlabel("time, s"); axes[2].set_ylabel("altitude, ft")
+    axes[2].set_xlabel("time, s")
+    axes[2].set_ylabel("altitude, ft")
     axes[2].grid(True)
-    fig.suptitle("B-747 nonlinear: open-loop elevator step (−1°)\n"
-                 "Healthy vs. 50% elevator effectiveness loss")
+    fig.suptitle(
+        "B-747 nonlinear: open-loop elevator step (−1°)\n"
+        "Healthy vs. 50% elevator effectiveness loss"
+    )
     plt.tight_layout()
     out = "/tmp/b747_nonlinear_step_response.png"
     plt.savefig(out, dpi=120)

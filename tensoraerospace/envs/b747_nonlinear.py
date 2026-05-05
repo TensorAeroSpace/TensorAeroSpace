@@ -42,12 +42,19 @@ from tensoraerospace.aerospacemodel.b747.nonlinear.flight_conditions import (
     get_flight_condition,
 )
 
-
 STATE_ORDER = [
-    "u", "v", "w",
-    "p", "q", "r",
-    "phi", "theta", "psi",
-    "x_e", "y_e", "z_e",
+    "u",
+    "v",
+    "w",
+    "p",
+    "q",
+    "r",
+    "phi",
+    "theta",
+    "psi",
+    "x_e",
+    "y_e",
+    "z_e",
 ]
 
 
@@ -112,22 +119,30 @@ class NonlinearB747Env(gym.Env):
         # Observation: 12-D state (no extra dressing — agents that need
         # a different observation shape should compose this env).
         high_obs = np.full(12, np.inf, dtype=np.float64)
-        self.observation_space = spaces.Box(low=-high_obs, high=high_obs, dtype=np.float64)
+        self.observation_space = spaces.Box(
+            low=-high_obs, high=high_obs, dtype=np.float64
+        )
 
         if action_space == "virtual":
             # [δ_e, δ_a, δ_r, δ_T] — physical units
-            high_act = np.array([
-                np.deg2rad(25.0),
-                np.deg2rad(20.0),
-                np.deg2rad(25.0),
-                1.0,
-            ], dtype=np.float64)
-            low_act = np.array([
-                -np.deg2rad(25.0),
-                -np.deg2rad(20.0),
-                -np.deg2rad(25.0),
-                0.0,
-            ], dtype=np.float64)
+            high_act = np.array(
+                [
+                    np.deg2rad(25.0),
+                    np.deg2rad(20.0),
+                    np.deg2rad(25.0),
+                    1.0,
+                ],
+                dtype=np.float64,
+            )
+            low_act = np.array(
+                [
+                    -np.deg2rad(25.0),
+                    -np.deg2rad(20.0),
+                    -np.deg2rad(25.0),
+                    0.0,
+                ],
+                dtype=np.float64,
+            )
         else:
             high_act = np.ones(4, dtype=np.float64)
             low_act = -np.ones(4, dtype=np.float64)
@@ -146,8 +161,7 @@ class NonlinearB747Env(gym.Env):
         initial_state, flight_condition_id, trim_at, config
     ) -> np.ndarray:
         provided = sum(
-            int(x is not None)
-            for x in (initial_state, flight_condition_id, trim_at)
+            int(x is not None) for x in (initial_state, flight_condition_id, trim_at)
         )
         if provided == 0:
             raise ValueError(
@@ -160,9 +174,7 @@ class NonlinearB747Env(gym.Env):
         if initial_state is not None:
             x0 = np.asarray(initial_state, dtype=np.float64).reshape(-1)
             if x0.size != 12:
-                raise ValueError(
-                    f"initial_state must have 12 elements; got {x0.size}"
-                )
+                raise ValueError(f"initial_state must have 12 elements; got {x0.size}")
             return x0
         if flight_condition_id is not None:
             fc = get_flight_condition(int(flight_condition_id))
@@ -183,13 +195,19 @@ class NonlinearB747Env(gym.Env):
             return action.astype(np.float64, copy=True)
         # normalized: [-1, +1] → physical
         u_e, u_a, u_r, u_T = action[0], action[1], action[2], action[3]
-        return np.array([
-            float(u_e) * self.action_space.high[0] if False else
-            float(u_e) * np.deg2rad(25.0),
-            float(u_a) * np.deg2rad(20.0),
-            float(u_r) * np.deg2rad(25.0),
-            (float(u_T) + 1.0) * 0.5,
-        ], dtype=np.float64)
+        return np.array(
+            [
+                (
+                    float(u_e) * self.action_space.high[0]
+                    if False
+                    else float(u_e) * np.deg2rad(25.0)
+                ),
+                float(u_a) * np.deg2rad(20.0),
+                float(u_r) * np.deg2rad(25.0),
+                (float(u_T) + 1.0) * 0.5,
+            ],
+            dtype=np.float64,
+        )
 
     # ---- gym API -------------------------------------------------------
 
@@ -208,6 +226,7 @@ class NonlinearB747Env(gym.Env):
                 B747DamageManager,
                 DamageProfile,
             )
+
             profile = self.damage_profile or DamageProfile(events=[])
             if options and "damage_profile" in options:
                 profile = options["damage_profile"]
@@ -242,11 +261,13 @@ class NonlinearB747Env(gym.Env):
                 if self.damage_event_callback is not None:
                     self.damage_event_callback(ev, self.damage_manager.state)
                 triggered_labels.append(ev.label or type(ev).__name__)
-                self.damage_events_log.append({
-                    "time": float(t_now),
-                    "label": ev.label or type(ev).__name__,
-                    "kind": type(ev).__name__,
-                })
+                self.damage_events_log.append(
+                    {
+                        "time": float(t_now),
+                        "label": ev.label or type(ev).__name__,
+                        "kind": type(ev).__name__,
+                    }
+                )
             # Apply per-surface effectiveness multipliers + jam holds
             ds = self.damage_manager.state
             u_virtual = ds.apply(u_virtual)

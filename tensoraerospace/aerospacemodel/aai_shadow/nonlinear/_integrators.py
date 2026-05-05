@@ -7,11 +7,15 @@ from typing import Callable
 import numpy as np
 
 
-def euler(f: Callable, x: np.ndarray, u: np.ndarray, t: float, dt: float, params) -> np.ndarray:
+def euler(
+    f: Callable, x: np.ndarray, u: np.ndarray, t: float, dt: float, params
+) -> np.ndarray:
     return x + dt * f(x, u, t, params)
 
 
-def rk4(f: Callable, x: np.ndarray, u: np.ndarray, t: float, dt: float, params) -> np.ndarray:
+def rk4(
+    f: Callable, x: np.ndarray, u: np.ndarray, t: float, dt: float, params
+) -> np.ndarray:
     k1 = f(x, u, t, params)
     k2 = f(x + 0.5 * dt * k1, u, t + 0.5 * dt, params)
     k3 = f(x + 0.5 * dt * k2, u, t + 0.5 * dt, params)

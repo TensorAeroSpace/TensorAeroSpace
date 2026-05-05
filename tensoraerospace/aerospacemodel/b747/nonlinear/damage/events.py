@@ -45,9 +45,7 @@ class DamageEvent:
         if self.trigger_time < 0:
             raise ValueError(f"trigger_time must be ≥ 0; got {self.trigger_time}")
         if self.surface not in SURFACES:
-            raise ValueError(
-                f"surface must be one of {SURFACES}; got {self.surface!r}"
-            )
+            raise ValueError(f"surface must be one of {SURFACES}; got {self.surface!r}")
 
     def apply(self, state: B747DamageState) -> None:  # pragma: no cover
         raise NotImplementedError
@@ -188,6 +186,4 @@ class DamageProfile:
         self, t_current: float, t_previous: float
     ) -> list[AnyDamageEvent]:
         """Events that fall in the half-open window ``(t_previous, t_current]``."""
-        return [
-            ev for ev in self.events if t_previous < ev.trigger_time <= t_current
-        ]
+        return [ev for ev in self.events if t_previous < ev.trigger_time <= t_current]

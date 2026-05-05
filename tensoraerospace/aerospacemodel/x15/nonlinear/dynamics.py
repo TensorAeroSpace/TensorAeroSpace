@@ -60,10 +60,16 @@ def x15_ode_6dof(
     # Aerodynamic forces & moments — body axis components
     aero = x15_aero(
         AeroState(
-            alpha=alpha, beta=beta, V=V_safe,
-            p=p, q=q, r=r,
+            alpha=alpha,
+            beta=beta,
+            V=V_safe,
+            p=p,
+            q=q,
+            r=r,
             altitude_ft=altitude_ft,
-            de=de, da=da, dr=dr,
+            de=de,
+            da=da,
+            dr=dr,
         ),
         params,
     )
@@ -115,25 +121,42 @@ def x15_ode_6dof(
     dpsi = (q * sphi + r * cphi) / max(cth, 1e-9)
 
     # Earth-fixed (NED) position rate from body-axis velocity
-    DCM = np.array([
-        [cth * np.cos(psi),
-         sphi * sth * np.cos(psi) - cphi * np.sin(psi),
-         cphi * sth * np.cos(psi) + sphi * np.sin(psi)],
-        [cth * np.sin(psi),
-         sphi * sth * np.sin(psi) + cphi * np.cos(psi),
-         cphi * sth * np.sin(psi) - sphi * np.cos(psi)],
-        [-sth, sphi * cth, cphi * cth],
-    ])
+    DCM = np.array(
+        [
+            [
+                cth * np.cos(psi),
+                sphi * sth * np.cos(psi) - cphi * np.sin(psi),
+                cphi * sth * np.cos(psi) + sphi * np.sin(psi),
+            ],
+            [
+                cth * np.sin(psi),
+                sphi * sth * np.sin(psi) + cphi * np.cos(psi),
+                cphi * sth * np.sin(psi) - sphi * np.cos(psi),
+            ],
+            [-sth, sphi * cth, cphi * cth],
+        ]
+    )
     pos_dot = DCM @ np.array([u_b, v_b, w_b])
 
     # Mass loss — propellant decrement is *negative* time derivative
     # because mdot_lb_s is reported as a positive magnitude.
     dm_prop = -float(mdot_lb_s)
 
-    return np.array([
-        du, dv, dw,
-        dp, dq, dr_dot,
-        dphi, dtheta, dpsi,
-        pos_dot[0], pos_dot[1], pos_dot[2],
-        dm_prop,
-    ], dtype=np.float64)
+    return np.array(
+        [
+            du,
+            dv,
+            dw,
+            dp,
+            dq,
+            dr_dot,
+            dphi,
+            dtheta,
+            dpsi,
+            pos_dot[0],
+            pos_dot[1],
+            pos_dot[2],
+            dm_prop,
+        ],
+        dtype=np.float64,
+    )

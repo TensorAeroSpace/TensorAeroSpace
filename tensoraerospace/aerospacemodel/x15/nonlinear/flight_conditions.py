@@ -25,9 +25,9 @@ class X15FlightCondition:
     altitude_ft: float
     mach: float
     V_ft_s: float
-    alpha0_deg: float           # trim α at the anchor
-    elevator0_deg: float        # trim elevator deflection
-    propellant_lb: float        # remaining propellant at the anchor
+    alpha0_deg: float  # trim α at the anchor
+    elevator0_deg: float  # trim elevator deflection
+    propellant_lb: float  # remaining propellant at the anchor
 
 
 # Walker/Wolowicz Table 2 + Thompson 2000 mission profiles.
@@ -39,33 +39,53 @@ class X15FlightCondition:
 # FC5 — A2-style hypersonic record @ 102 kft, M=6.7, ablative, A2 mass.
 X15_FLIGHT_CONDITIONS: list[X15FlightCondition] = [
     X15FlightCondition(
-        fc_id=1, label="boost_start",
-        altitude_ft=45_000.0, mach=0.83, V_ft_s=796.5,
-        alpha0_deg=4.5, elevator0_deg=-2.5,
+        fc_id=1,
+        label="boost_start",
+        altitude_ft=45_000.0,
+        mach=0.83,
+        V_ft_s=796.5,
+        alpha0_deg=4.5,
+        elevator0_deg=-2.5,
         propellant_lb=13_000.0,
     ),
     X15FlightCondition(
-        fc_id=2, label="boost_climb",
-        altitude_ft=70_000.0, mach=2.5, V_ft_s=2_412.0,
-        alpha0_deg=5.0, elevator0_deg=-3.0,
+        fc_id=2,
+        label="boost_climb",
+        altitude_ft=70_000.0,
+        mach=2.5,
+        V_ft_s=2_412.0,
+        alpha0_deg=5.0,
+        elevator0_deg=-3.0,
         propellant_lb=10_500.0,
     ),
     X15FlightCondition(
-        fc_id=3, label="cruise_M4",
-        altitude_ft=100_000.0, mach=4.0, V_ft_s=3_865.0,
-        alpha0_deg=4.0, elevator0_deg=-2.0,
+        fc_id=3,
+        label="cruise_M4",
+        altitude_ft=100_000.0,
+        mach=4.0,
+        V_ft_s=3_865.0,
+        alpha0_deg=4.0,
+        elevator0_deg=-2.0,
         propellant_lb=6_500.0,
     ),
     X15FlightCondition(
-        fc_id=4, label="coast_high",
-        altitude_ft=200_000.0, mach=5.0, V_ft_s=4_876.0,
-        alpha0_deg=10.0, elevator0_deg=-1.0,
+        fc_id=4,
+        label="coast_high",
+        altitude_ft=200_000.0,
+        mach=5.0,
+        V_ft_s=4_876.0,
+        alpha0_deg=10.0,
+        elevator0_deg=-1.0,
         propellant_lb=0.0,
     ),
     X15FlightCondition(
-        fc_id=5, label="hypersonic_record",
-        altitude_ft=102_000.0, mach=6.7, V_ft_s=6_525.0,
-        alpha0_deg=4.5, elevator0_deg=-2.0,
+        fc_id=5,
+        label="hypersonic_record",
+        altitude_ft=102_000.0,
+        mach=6.7,
+        V_ft_s=6_525.0,
+        alpha0_deg=4.5,
+        elevator0_deg=-2.0,
         propellant_lb=2_000.0,
     ),
 ]

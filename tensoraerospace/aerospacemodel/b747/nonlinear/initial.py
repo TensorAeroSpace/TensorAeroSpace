@@ -18,10 +18,18 @@ import numpy as np
 from .flight_conditions import B747FlightCondition, get_flight_condition
 
 STATE_LIST = [
-    "u", "v", "w",
-    "p", "q", "r",
-    "phi", "theta", "psi",
-    "x_e", "y_e", "z_e",
+    "u",
+    "v",
+    "w",
+    "p",
+    "q",
+    "r",
+    "phi",
+    "theta",
+    "psi",
+    "x_e",
+    "y_e",
+    "z_e",
 ]
 
 
@@ -50,13 +58,13 @@ def initial_state_from_fc(
     alpha = np.deg2rad(fc.alpha0_deg)
     V = fc.V_ft_s
     state = np.zeros(12, dtype=np.float64)
-    state[0] = V * np.cos(alpha)        # u
-    state[1] = 0.0                      # v (β = 0)
-    state[2] = V * np.sin(alpha)        # w
-    state[6] = np.deg2rad(bank_deg)     # phi
-    state[7] = alpha                     # theta = α₀ for γ = 0
+    state[0] = V * np.cos(alpha)  # u
+    state[1] = 0.0  # v (β = 0)
+    state[2] = V * np.sin(alpha)  # w
+    state[6] = np.deg2rad(bank_deg)  # phi
+    state[7] = alpha  # theta = α₀ for γ = 0
     state[8] = psi
-    state[11] = -fc.altitude_ft         # NED z (positive down)
+    state[11] = -fc.altitude_ft  # NED z (positive down)
     return state
 
 
@@ -70,7 +78,9 @@ def set_initial_state(
 
     Unspecified entries default to zero (or to ``state`` if supplied).
     """
-    base = default_state() if state is None else np.asarray(state, dtype=np.float64).copy()
+    base = (
+        default_state() if state is None else np.asarray(state, dtype=np.float64).copy()
+    )
     for k, v in overrides.items():
         if k not in STATE_LIST:
             raise ValueError(f"unknown state key: {k!r} (allowed: {STATE_LIST})")

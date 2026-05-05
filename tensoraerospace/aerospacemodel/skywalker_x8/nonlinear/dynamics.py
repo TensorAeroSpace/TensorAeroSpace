@@ -52,10 +52,15 @@ def x8_ode_6dof(
 
     aero = x8_aero(
         AeroState(
-            alpha=alpha, beta=beta, V=V_safe,
-            p=p, q=q, r=r,
+            alpha=alpha,
+            beta=beta,
+            V=V_safe,
+            p=p,
+            q=q,
+            r=r,
             altitude_m=altitude_m,
-            de=de, da=da,
+            de=de,
+            da=da,
             CT=CT_val,
         ),
         params,
@@ -95,20 +100,37 @@ def x8_ode_6dof(
     dtheta = q * cphi - r * sphi
     dpsi = (q * sphi + r * cphi) / max(cth, 1e-9)
 
-    DCM = np.array([
-        [cth * np.cos(psi),
-         sphi * sth * np.cos(psi) - cphi * np.sin(psi),
-         cphi * sth * np.cos(psi) + sphi * np.sin(psi)],
-        [cth * np.sin(psi),
-         sphi * sth * np.sin(psi) + cphi * np.cos(psi),
-         cphi * sth * np.sin(psi) - sphi * np.cos(psi)],
-        [-sth, sphi * cth, cphi * cth],
-    ])
+    DCM = np.array(
+        [
+            [
+                cth * np.cos(psi),
+                sphi * sth * np.cos(psi) - cphi * np.sin(psi),
+                cphi * sth * np.cos(psi) + sphi * np.sin(psi),
+            ],
+            [
+                cth * np.sin(psi),
+                sphi * sth * np.sin(psi) + cphi * np.cos(psi),
+                cphi * sth * np.sin(psi) - sphi * np.cos(psi),
+            ],
+            [-sth, sphi * cth, cphi * cth],
+        ]
+    )
     pos_dot = DCM @ np.array([u_b, v_b, w_b])
 
-    return np.array([
-        du, dv, dw,
-        dp, dq, dr_dot,
-        dphi, dtheta, dpsi,
-        pos_dot[0], pos_dot[1], pos_dot[2],
-    ], dtype=np.float64)
+    return np.array(
+        [
+            du,
+            dv,
+            dw,
+            dp,
+            dq,
+            dr_dot,
+            dphi,
+            dtheta,
+            dpsi,
+            pos_dot[0],
+            pos_dot[1],
+            pos_dot[2],
+        ],
+        dtype=np.float64,
+    )

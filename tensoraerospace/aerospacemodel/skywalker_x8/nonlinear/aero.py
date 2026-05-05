@@ -43,19 +43,18 @@ from .params import (
     isa_speed_of_sound_m_s,
 )
 
-
 # Identified coefficient values — paper Table 8.
 
 # Drag
 _CD0 = 0.058
 _CDq = 0.480
-_CDCT = -0.217   # propeller-thrust coupling
-_CDk1 = -0.034   # linear in CL
-_CDk2 = 0.225    # quadratic in CL
+_CDCT = -0.217  # propeller-thrust coupling
+_CDk1 = -0.034  # linear in CL
+_CDk2 = 0.225  # quadratic in CL
 
 # Lift
-_CL0 = -0.077    # negative — see paper Sec. 3.5 discussion
-_CLa = 2.573     # per rad
+_CL0 = -0.077  # negative — see paper Sec. 3.5 discussion
+_CLa = 2.573  # per rad
 _CLq = 17.119
 _CLde = 1.369
 
@@ -91,16 +90,16 @@ _Cnda = -0.007
 class AeroState:
     """Inputs to one aero evaluation (SI units)."""
 
-    alpha: float       # rad
-    beta: float        # rad
-    V: float           # m/s
-    p: float           # rad/s
-    q: float           # rad/s
-    r: float           # rad/s
+    alpha: float  # rad
+    beta: float  # rad
+    V: float  # m/s
+    p: float  # rad/s
+    q: float  # rad/s
+    r: float  # rad/s
     altitude_m: float
-    de: float          # collective elevon (elevator), rad
-    da: float          # differential elevon (aileron), rad
-    CT: float = 0.0    # propeller thrust coefficient (passed by engine module)
+    de: float  # collective elevon (elevator), rad
+    da: float  # differential elevon (aileron), rad
+    CT: float = 0.0  # propeller thrust coefficient (passed by engine module)
     alphadot: float = 0.0
 
 
@@ -140,43 +139,19 @@ def x8_aero(state: AeroState, params: SkywalkerX8Parameters) -> AeroForces:
     C_L = _CL0 + _CLa * state.alpha + _CLq * qhat + _CLde * state.de
 
     # Drag — depends on CL² and prop thrust coefficient
-    C_D = (
-        _CD0
-        + _CDq * qhat
-        + _CDCT * float(state.CT)
-        + _CDk1 * C_L
-        + _CDk2 * C_L * C_L
-    )
+    C_D = _CD0 + _CDq * qhat + _CDCT * float(state.CT) + _CDk1 * C_L + _CDk2 * C_L * C_L
 
     # Pitching moment
     C_m = _Cm0 + _Cma * state.alpha + _Cmq * qhat + _Cmde * state.de
 
     # Side force
-    C_Y = (
-        _CY0
-        + _CYb * state.beta
-        + _CYp * phat
-        + _CYr * rhat
-        + _CYda * state.da
-    )
+    C_Y = _CY0 + _CYb * state.beta + _CYp * phat + _CYr * rhat + _CYda * state.da
 
     # Rolling moment
-    C_l = (
-        _Cl0
-        + _Clb * state.beta
-        + _Clp * phat
-        + _Clr * rhat
-        + _Clda * state.da
-    )
+    C_l = _Cl0 + _Clb * state.beta + _Clp * phat + _Clr * rhat + _Clda * state.da
 
     # Yawing moment (no rudder term — flying wing)
-    C_n = (
-        _Cn0
-        + _Cnb * state.beta
-        + _Cnp * phat
-        + _Cnr * rhat
-        + _Cnda * state.da
-    )
+    C_n = _Cn0 + _Cnb * state.beta + _Cnp * phat + _Cnr * rhat + _Cnda * state.da
 
     L = qbar * S * C_L
     D = qbar * S * C_D

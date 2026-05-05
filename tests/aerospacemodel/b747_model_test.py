@@ -149,7 +149,9 @@ def test_b747_plot_output_smoke_mocked():
     )
 
     mock_fig = MagicMock()
-    with patch("tensoraerospace.aerospacemodel.b747.linear.longitudinal.plt") as mock_plt:
+    with patch(
+        "tensoraerospace.aerospacemodel.b747.linear.longitudinal.plt"
+    ) as mock_plt:
         mock_plt.figure.return_value = mock_fig
         # Test rus lang branch
         fig = model.plot_output("theta", time=t, lang="rus")

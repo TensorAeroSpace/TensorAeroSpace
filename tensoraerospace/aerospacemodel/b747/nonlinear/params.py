@@ -23,13 +23,12 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import Optional
 
-
 # ---- ISA standard atmosphere (US customary) ----------------------------
 
-_T0_R = 518.67           # sea-level temperature, °R
+_T0_R = 518.67  # sea-level temperature, °R
 _RHO0_SLUG_FT3 = 0.002378  # sea-level density, slug/ft³
-_LAPSE_R_FT = 0.00356616   # ISA lapse rate, °R/ft (= 6.5e-3 K/m)
-_R_FT_R = 1716.49        # specific gas constant for air, ft²/(s²·°R)
+_LAPSE_R_FT = 0.00356616  # ISA lapse rate, °R/ft (= 6.5e-3 K/m)
+_R_FT_R = 1716.49  # specific gas constant for air, ft²/(s²·°R)
 _TROPOPAUSE_FT = 36089.0
 _T_TROPO_R = 389.97
 _GAMMA_AIR = 1.4
@@ -63,9 +62,9 @@ def isa_speed_of_sound_ft_s(altitude_ft: float) -> float:
 class B747Configuration(Enum):
     """Discrete B-747 configurations covered in NASA CR-2144 §IX."""
 
-    NOMINAL = "nominal"          # TOGW − 40% fuel, clean
+    NOMINAL = "nominal"  # TOGW − 40% fuel, clean
     POWER_APPROACH = "power_approach"  # 20° flaps, gear up, 1.4 V_s
-    LANDING = "landing"          # 30° flaps, gear down, 1.2 V_s
+    LANDING = "landing"  # 30° flaps, gear down, 1.2 V_s
 
 
 # Geometry — common to all three configurations (CR-2144 figure IX-2)
@@ -84,12 +83,12 @@ class B747Parameters:
     """
 
     config: B747Configuration = B747Configuration.NOMINAL
-    weight_lb: float = 636_600.0     # CR-2144 p. 212 (TOGW − 40% fuel)
-    Ix: float = 18.2e6               # slug·ft²
+    weight_lb: float = 636_600.0  # CR-2144 p. 212 (TOGW − 40% fuel)
+    Ix: float = 18.2e6  # slug·ft²
     Iy: float = 33.1e6
     Iz: float = 49.7e6
     Ixz: float = 0.97e6
-    cg_frac_cbar: float = 0.25       # c.g. as fraction of mean aerodynamic chord
+    cg_frac_cbar: float = 0.25  # c.g. as fraction of mean aerodynamic chord
     g_ft_s2: float = 32.174
 
     # Geometry (do NOT mutate — see module-level constants above)
@@ -112,9 +111,9 @@ class B747Parameters:
 
     # Engine — 4 × Pratt & Whitney JT9D-7. Numbers from Boeing 747-100
     # type certificate; idle thrust assumed 5% of max.
-    engine_thrust_max_lb: float = 188_400.0   # 4 × 47,100 lb sea-level static
+    engine_thrust_max_lb: float = 188_400.0  # 4 × 47,100 lb sea-level static
     engine_idle_frac: float = 0.05
-    engine_tau_s: float = 1.0     # spool-up time constant
+    engine_tau_s: float = 1.0  # spool-up time constant
 
     # Damage subsystem hooks (parity with F-16). None = healthy.
     damage_state: Optional[object] = None
@@ -167,18 +166,27 @@ def default_parameters(
         return B747Parameters(
             config=B747Configuration.NOMINAL,
             weight_lb=636_600.0,
-            Ix=18.2e6, Iy=33.1e6, Iz=49.7e6, Ixz=0.97e6,
+            Ix=18.2e6,
+            Iy=33.1e6,
+            Iz=49.7e6,
+            Ixz=0.97e6,
         )
     if config is B747Configuration.POWER_APPROACH:
         return B747Parameters(
             config=B747Configuration.POWER_APPROACH,
             weight_lb=564_000.0,
-            Ix=13.7e6, Iy=30.5e6, Iz=43.1e6, Ixz=0.825e6,
+            Ix=13.7e6,
+            Iy=30.5e6,
+            Iz=43.1e6,
+            Ixz=0.825e6,
         )
     if config is B747Configuration.LANDING:
         return B747Parameters(
             config=B747Configuration.LANDING,
-            weight_lb=564_000.0,    # CR-2144 lists Landing under Max Landing Weight
-            Ix=13.7e6, Iy=30.5e6, Iz=43.1e6, Ixz=0.825e6,
+            weight_lb=564_000.0,  # CR-2144 lists Landing under Max Landing Weight
+            Ix=13.7e6,
+            Iy=30.5e6,
+            Iz=43.1e6,
+            Ixz=0.825e6,
         )
     raise ValueError(f"unknown B747Configuration: {config!r}")

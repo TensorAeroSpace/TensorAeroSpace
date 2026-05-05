@@ -8,25 +8,25 @@ import pytest
 
 import tensoraerospace  # noqa: F401  (registers gym envs)
 from tensoraerospace.aerospacemodel.b747.nonlinear import (
-    B747Configuration,
     B747_FLIGHT_CONDITIONS,
+    B747Configuration,
     initial_state_from_fc,
     trim,
 )
 from tensoraerospace.aerospacemodel.b747.nonlinear.damage import (
     AILERON_TOTAL_LOSS,
-    B747DamageManager,
-    B747DamageState,
-    DamageProfile,
     ELEVATOR_50PCT_LOSS,
     ELEVATOR_JAMMED_NOSE_UP,
-    EngineFailureEvent,
     FLAPS_JAMMED_LANDING,
     FLAPS_JAMMED_RETRACTED,
-    FlapJamEvent,
     LEFT_OUTER_ENGINE_FAILURE,
     LEFT_TWO_ENGINES_OUT,
     RUDDER_HYDRAULIC_LEAK,
+    B747DamageManager,
+    B747DamageState,
+    DamageProfile,
+    EngineFailureEvent,
+    FlapJamEvent,
     SurfaceEffectivenessDecay,
     SurfaceEffectivenessEvent,
     SurfaceJamEvent,
@@ -41,14 +41,14 @@ from tensoraerospace.aerospacemodel.b747.nonlinear.params import (
 )
 from tensoraerospace.envs.b747_nonlinear import NonlinearB747Env
 
-
 # ---- Trim finder ---------------------------------------------------------
 
 
 def test_trim_at_fc1_landing_recovers_published_alpha_within_one_degree():
     fc = B747_FLIGHT_CONDITIONS[0]  # Landing
     r = trim(
-        altitude_ft=fc.altitude_ft, V_ft_s=fc.V_ft_s,
+        altitude_ft=fc.altitude_ft,
+        V_ft_s=fc.V_ft_s,
         config=B747Configuration.LANDING,
         initial_guess=(np.deg2rad(8.0), 0.0, 0.6),
     )
@@ -62,11 +62,14 @@ def test_trim_simulation_holds_state_for_5_seconds():
     from tensoraerospace.aerospacemodel.b747.nonlinear import NonlinearB747
 
     r = trim(
-        altitude_ft=0.0, V_ft_s=221.0, config=B747Configuration.LANDING,
+        altitude_ft=0.0,
+        V_ft_s=221.0,
+        config=B747Configuration.LANDING,
         initial_guess=(np.deg2rad(8.0), 0.0, 0.6),
     )
-    m = NonlinearB747(x0=r.to_state(), dt=0.01, integrator="rk4",
-                      config=B747Configuration.LANDING)
+    m = NonlinearB747(
+        x0=r.to_state(), dt=0.01, integrator="rk4", config=B747Configuration.LANDING
+    )
     u = np.array([r.elevator_rad, 0.0, 0.0, r.throttle])
     for _ in range(500):  # 5 s
         m.run_step(u)
@@ -119,7 +122,8 @@ def test_env_action_size_validated():
 def test_env_invalid_action_mode_raises():
     with pytest.raises(ValueError, match="virtual"):
         NonlinearB747Env(
-            flight_condition_id=4, number_time_steps=10,
+            flight_condition_id=4,
+            number_time_steps=10,
             action_space="hybrid",  # type: ignore[arg-type]
         )
 
@@ -128,24 +132,27 @@ def test_env_invalid_action_mode_raises():
 
 
 def test_virtual_action_space_bounds_match_actuator_limits():
-    env = NonlinearB747Env(flight_condition_id=4, action_space="virtual",
-                           number_time_steps=10)
+    env = NonlinearB747Env(
+        flight_condition_id=4, action_space="virtual", number_time_steps=10
+    )
     assert env.action_space.high[0] == pytest.approx(np.deg2rad(25.0))
     assert env.action_space.high[3] == 1.0
     assert env.action_space.low[3] == 0.0
 
 
 def test_normalized_action_space_is_pm_one():
-    env = NonlinearB747Env(flight_condition_id=4, action_space="normalized",
-                           number_time_steps=10)
+    env = NonlinearB747Env(
+        flight_condition_id=4, action_space="normalized", number_time_steps=10
+    )
     np.testing.assert_allclose(env.action_space.high, np.ones(4))
     np.testing.assert_allclose(env.action_space.low, -np.ones(4))
 
 
 def test_normalized_zero_action_is_neutral_with_idle_throttle():
     """In normalised mode, zero action ⇒ all surfaces neutral, throttle = 0.5."""
-    env = NonlinearB747Env(flight_condition_id=4, action_space="normalized",
-                           number_time_steps=10)
+    env = NonlinearB747Env(
+        flight_condition_id=4, action_space="normalized", number_time_steps=10
+    )
     env.reset()
     obs, _, _, _, info = env.step(np.zeros(4))
     # Just confirm we got a valid response
@@ -175,8 +182,9 @@ def test_damage_state_healthy_has_full_effectiveness():
 
 def test_damage_state_rejects_invalid_mu():
     with pytest.raises(ValueError, match="must be in"):
-        B747DamageState(mu={"elevator": 1.5, "aileron": 1.0, "rudder": 1.0,
-                            "throttle": 1.0})
+        B747DamageState(
+            mu={"elevator": 1.5, "aileron": 1.0, "rudder": 1.0, "throttle": 1.0}
+        )
 
 
 def test_damage_state_apply_multiplies_effectiveness():
@@ -251,9 +259,13 @@ def test_negative_trigger_time_raises():
 
 
 def test_manager_applies_events_in_window():
-    mgr = B747DamageManager(DamageProfile(events=[
-        SurfaceEffectivenessEvent(trigger_time=1.0, surface="elevator", mu=0.6),
-    ]))
+    mgr = B747DamageManager(
+        DamageProfile(
+            events=[
+                SurfaceEffectivenessEvent(trigger_time=1.0, surface="elevator", mu=0.6),
+            ]
+        )
+    )
     fired = mgr.update(t_current=1.5, t_previous=0.0, dt=0.01)
     assert len(fired) == 1
     assert mgr.state.mu["elevator"] == 0.6
@@ -271,9 +283,13 @@ def test_manager_inject_event_is_single_fire():
 
 
 def test_manager_reset_clears_state_and_injected():
-    mgr = B747DamageManager(DamageProfile(events=[
-        SurfaceEffectivenessEvent(trigger_time=0.5, surface="elevator", mu=0.5),
-    ]))
+    mgr = B747DamageManager(
+        DamageProfile(
+            events=[
+                SurfaceEffectivenessEvent(trigger_time=0.5, surface="elevator", mu=0.5),
+            ]
+        )
+    )
     mgr.inject_event(SurfaceJamEvent(trigger_time=0.6, surface="rudder", jam_value=0.0))
     mgr.update(t_current=1.0, t_previous=0.0, dt=0.01)
     assert mgr.state.mu["elevator"] == 0.5
@@ -321,8 +337,9 @@ def test_rudder_decay_preset_decreases_over_time():
 
 
 def test_env_damage_event_triggers_in_info_dict():
-    env = NonlinearB747Env(flight_condition_id=4, number_time_steps=500,
-                           damage_profile=ELEVATOR_50PCT_LOSS)
+    env = NonlinearB747Env(
+        flight_condition_id=4, number_time_steps=500, damage_profile=ELEVATOR_50PCT_LOSS
+    )
     env.reset()
     triggered = False
     for k in range(500):
@@ -390,7 +407,10 @@ def test_jt9d_thrust_with_asymmetry_matches_scalar_thrust_when_healthy():
     params = default_parameters()
     T_scalar = jt9d_thrust(throttle=0.7, mach=0.65, altitude_ft=20_000.0, params=params)
     T_total, N_yaw = jt9d_thrust_with_asymmetry(
-        throttle=0.7, mach=0.65, altitude_ft=20_000.0, params=params,
+        throttle=0.7,
+        mach=0.65,
+        altitude_ft=20_000.0,
+        params=params,
     )
     assert abs(T_total - T_scalar) < 1e-6
     assert abs(N_yaw) < 1e-6
@@ -409,10 +429,14 @@ def test_jt9d_thrust_with_asymmetry_left_outer_out_yaws_left():
         engines_mu={1: 0.0, 2: 1.0, 3: 1.0, 4: 1.0},
     )
     T_total, N_yaw = jt9d_thrust_with_asymmetry(
-        throttle=0.8, mach=0.65, altitude_ft=20_000.0, params=params,
+        throttle=0.8,
+        mach=0.65,
+        altitude_ft=20_000.0,
+        params=params,
     )
-    T_scalar_full = jt9d_thrust(throttle=0.8, mach=0.65,
-                                altitude_ft=20_000.0, params=default_parameters())
+    T_scalar_full = jt9d_thrust(
+        throttle=0.8, mach=0.65, altitude_ft=20_000.0, params=default_parameters()
+    )
     # Three of four engines remain → ≈ 75% of full thrust
     assert 0.70 < T_total / T_scalar_full < 0.80
     # Negative yaw moment (nose left, toward dead engine)
@@ -429,7 +453,10 @@ def test_jt9d_thrust_with_asymmetry_right_outer_out_yaws_right():
         engines_mu={1: 1.0, 2: 1.0, 3: 1.0, 4: 0.0},
     )
     _, N_yaw = jt9d_thrust_with_asymmetry(
-        throttle=0.8, mach=0.65, altitude_ft=20_000.0, params=params,
+        throttle=0.8,
+        mach=0.65,
+        altitude_ft=20_000.0,
+        params=params,
     )
     assert N_yaw > 0.0
 
@@ -459,7 +486,8 @@ def test_left_two_engines_out_preset_yaws_aircraft_left():
     # (nose moves left). Verify by integration over 10 s after the failure.
     env = NonlinearB747Env(
         trim_at=(20_000.0, 674.0),
-        number_time_steps=3000, dt=0.01,
+        number_time_steps=3000,
+        dt=0.01,
         damage_profile=LEFT_TWO_ENGINES_OUT,
     )
     obs, _ = env.reset()
@@ -493,7 +521,8 @@ def test_flap_jam_event_validates_config_type():
 def test_flaps_jammed_landing_preset_overrides_aero_config():
     env = NonlinearB747Env(
         trim_at=(20_000.0, 674.0),
-        number_time_steps=2000, dt=0.01,
+        number_time_steps=2000,
+        dt=0.01,
         damage_profile=FLAPS_JAMMED_LANDING,
         config=B747Configuration.NOMINAL,
     )
@@ -515,10 +544,16 @@ def test_flap_jam_changes_pitching_moment_at_same_state():
     )
 
     state = AeroState(
-        alpha=np.deg2rad(3.0), beta=0.0, V=300.0,
-        p=0.0, q=0.0, r=0.0,
+        alpha=np.deg2rad(3.0),
+        beta=0.0,
+        V=300.0,
+        p=0.0,
+        q=0.0,
+        r=0.0,
         altitude_ft=0.0,
-        de=0.0, da=0.0, dr=0.0,
+        de=0.0,
+        da=0.0,
+        dr=0.0,
     )
 
     # Healthy NOMINAL configuration

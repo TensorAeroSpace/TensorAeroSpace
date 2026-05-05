@@ -14,11 +14,11 @@ This package exposes both the **linear** and **nonlinear** X-15 models:
 
 from .linear import LongitudinalX15
 from .nonlinear import (
+    X15_FLIGHT_CONDITIONS,
     NonlinearX15,
     X15Configuration,
     X15FlightCondition,
     X15Parameters,
-    X15_FLIGHT_CONDITIONS,
     initial_state_from_fc,
     set_initial_state,
     trim,

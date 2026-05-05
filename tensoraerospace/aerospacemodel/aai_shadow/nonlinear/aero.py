@@ -45,22 +45,21 @@ import numpy as np
 
 from .params import AAIShadowParameters, isa_density_kg_m3
 
-
 # ---- Identified / synthesised derivatives (paper-reviewed class) --------
 
 # Lift
 _CL0 = 0.28
-_CLa = 5.0       # /rad — high-AR rectangular wing
+_CLa = 5.0  # /rad — high-AR rectangular wing
 _CLq = 7.95
 _CLde = 0.43
 
 # Drag
-_CD0 = 0.030     # clean surveillance UAV with retractable launch gear
-_CDk2 = 0.043    # 1 / (π · AR · e), AR ≈ 8.75 (RQ-7B), e = 0.85
+_CD0 = 0.030  # clean surveillance UAV with retractable launch gear
+_CDk2 = 0.043  # 1 / (π · AR · e), AR ≈ 8.75 (RQ-7B), e = 0.85
 
 # Pitch
 _Cm0 = 0.0
-_Cma = -1.50     # /rad — strong static stability (large tail volume)
+_Cma = -1.50  # /rad — strong static stability (large tail volume)
 _Cmq = -38.0
 _Cmadot = -7.0
 _Cmde = -1.20
@@ -69,14 +68,14 @@ _Cmde = -1.20
 _CYb = -0.83
 _CYp = 0.0
 _CYr = 0.30
-_CYdr = 0.18    # V-tail effective rudder side-force
+_CYdr = 0.18  # V-tail effective rudder side-force
 
 # Roll
 _Clb = -0.13
 _Clp = -0.51
 _Clr = 0.25
 _Clda = 0.17
-_Cldr = 0.024   # V-tail roll-yaw cross-coupling
+_Cldr = 0.024  # V-tail roll-yaw cross-coupling
 
 # Yaw
 _Cnb = 0.073
@@ -90,16 +89,16 @@ _Cndr = -0.069  # V-tail rudder yaw moment
 class AeroState:
     """Inputs to one aero evaluation (SI units)."""
 
-    alpha: float       # rad
-    beta: float        # rad
-    V: float           # m/s
-    p: float           # rad/s
-    q: float           # rad/s
-    r: float           # rad/s
+    alpha: float  # rad
+    beta: float  # rad
+    V: float  # m/s
+    p: float  # rad/s
+    q: float  # rad/s
+    r: float  # rad/s
     altitude_m: float
-    de: float          # collective ruddervator (elevator-equivalent), rad
-    da: float          # aileron, rad
-    dr: float          # differential ruddervator (rudder-equivalent), rad
+    de: float  # collective ruddervator (elevator-equivalent), rad
+    da: float  # aileron, rad
+    dr: float  # differential ruddervator (rudder-equivalent), rad
     alphadot: float = 0.0
 
 
@@ -146,20 +145,18 @@ def shadow_aero(state: AeroState, params: AAIShadowParameters) -> AeroForces:
         + _Cmde * state.de
     )
 
-    C_Y = (
-        _CYb * state.beta
-        + _CYp * phat + _CYr * rhat
-        + _CYdr * state.dr
-    )
+    C_Y = _CYb * state.beta + _CYp * phat + _CYr * rhat + _CYdr * state.dr
     C_l = (
         _Clb * state.beta
-        + _Clp * phat + _Clr * rhat
+        + _Clp * phat
+        + _Clr * rhat
         + _Clda * state.da
         + _Cldr * state.dr
     )
     C_n = (
         _Cnb * state.beta
-        + _Cnp * phat + _Cnr * rhat
+        + _Cnp * phat
+        + _Cnr * rhat
         + _Cnda * state.da
         + _Cndr * state.dr
     )

@@ -38,16 +38,16 @@ from .params import B737Parameters, isa_density_slug_ft3, isa_speed_of_sound_ft_
 
 @dataclass
 class AeroState:
-    alpha: float       # rad
-    beta: float        # rad
-    V: float           # ft/s
-    p: float           # rad/s
-    q: float           # rad/s
-    r: float           # rad/s
+    alpha: float  # rad
+    beta: float  # rad
+    V: float  # ft/s
+    p: float  # rad/s
+    q: float  # rad/s
+    r: float  # rad/s
     altitude_ft: float
-    de: float          # elevator, rad
-    da: float          # aileron, rad
-    dr: float          # rudder, rad
+    de: float  # elevator, rad
+    da: float  # aileron, rad
+    dr: float  # rudder, rad
     alphadot: float = 0.0
 
 
@@ -66,23 +66,23 @@ class AeroForces:
 # ~5.5/rad up to α ≈ 13°, then post-stall behaviour clamped to limit
 # numerical blow-up if the integrator over-shoots into post-stall.
 _ALPHA_GRID = np.array([-0.20, -0.10, 0.0, 0.10, 0.20, 0.23, 0.30, 0.40, 0.60])
-_CL_TABLE   = np.array([-0.85, -0.30, 0.20, 0.75, 1.25, 1.45, 1.20, 0.90, 0.60])
+_CL_TABLE = np.array([-0.85, -0.30, 0.20, 0.75, 1.25, 1.45, 1.20, 0.90, 0.60])
 
 # C_D base table (JSBSim CD0)
 _CD_ALPHA_GRID = np.array([-1.57, -0.26, -0.10, 0.0, 0.10, 0.26, 1.57])
-_CD_TABLE      = np.array([ 1.50,  0.042, 0.025, 0.021, 0.025, 0.042, 1.50])
+_CD_TABLE = np.array([1.50, 0.042, 0.025, 0.021, 0.025, 0.042, 1.50])
 
 # Mach compressibility (JSBSim CDmach)
 _MACH_GRID_CD = np.array([0.0, 0.79, 0.85, 0.90, 1.10, 1.80])
-_CD_MACH      = np.array([0.0, 0.0,  0.005, 0.012, 0.023, 0.015])
+_CD_MACH = np.array([0.0, 0.0, 0.005, 0.012, 0.023, 0.015])
 
 # Mach-dependent elevator effectiveness (JSBSim Cmde)
 _MACH_GRID_CMDE = np.array([0.0, 0.5, 0.85, 1.0, 1.5, 2.0])
-_CMDE_TABLE     = np.array([-1.20, -1.10, -0.90, -0.70, -0.45, -0.30])
+_CMDE_TABLE = np.array([-1.20, -1.10, -0.90, -0.70, -0.45, -0.30])
 
 # Mach-dependent aileron rolling-moment effectiveness (JSBSim Clda)
 _MACH_GRID_CLDA = np.array([0.0, 0.5, 0.85, 1.0, 1.5, 2.0])
-_CLDA_TABLE     = np.array([0.10, 0.090, 0.080, 0.070, 0.050, 0.033])
+_CLDA_TABLE = np.array([0.10, 0.090, 0.080, 0.070, 0.050, 0.033])
 
 
 def _interp(x: np.ndarray, xp: np.ndarray, fp: np.ndarray) -> float:
@@ -115,9 +115,9 @@ def b737_aero(state: AeroState, params: B737Parameters) -> AeroForces:
     C_L = C_L_alpha + C_Lde * state.de
 
     C_D_alpha = _interp(state.alpha, _CD_ALPHA_GRID, _CD_TABLE)
-    C_Di = 0.043 * (C_L ** 2)
+    C_Di = 0.043 * (C_L**2)
     C_D_mach = _interp(M, _MACH_GRID_CD, _CD_MACH)
-    C_D_beta = 1.23 * (state.beta * state.beta) / (1.57 ** 2)  # quadratic up to ±90°
+    C_D_beta = 1.23 * (state.beta * state.beta) / (1.57**2)  # quadratic up to ±90°
     C_Dde = 0.059 * abs(state.de)
     C_D = C_D_alpha + C_Di + C_D_mach + C_D_beta + C_Dde
 
@@ -130,8 +130,7 @@ def b737_aero(state: AeroState, params: B737Parameters) -> AeroForces:
 
     # Lateral-directional (JSBSim CYb, Clb, Clp, Clr, Clda, Cldr,
     # Cnb, Cnr, Cndr; rudder side-force omitted as JSBSim sets it ≈ 0)
-    C_Y = -1.0 * state.beta + 0.0 * phat + 0.0 * rhat \
-           + 0.0 * state.da + 0.15 * state.dr
+    C_Y = -1.0 * state.beta + 0.0 * phat + 0.0 * rhat + 0.0 * state.da + 0.15 * state.dr
     C_l = (
         -0.09 * state.beta
         - 0.40 * phat
@@ -143,7 +142,7 @@ def b737_aero(state: AeroState, params: B737Parameters) -> AeroForces:
         0.26 * state.beta
         + 0.0 * phat
         - 0.35 * rhat
-        - 0.005 * state.da   # adverse aileron yaw
+        - 0.005 * state.da  # adverse aileron yaw
         - 0.20 * state.dr
     )
 

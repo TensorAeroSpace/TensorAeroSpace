@@ -10,9 +10,9 @@ import pytest
 
 import tensoraerospace  # noqa: F401  (registers gym envs)
 from tensoraerospace.aerospacemodel.x15.nonlinear import (
+    X15_FLIGHT_CONDITIONS,
     NonlinearX15,
     X15Configuration,
-    X15_FLIGHT_CONDITIONS,
     XLR99Engine,
     default_parameters,
     initial_state_from_fc,
@@ -27,7 +27,6 @@ from tensoraerospace.aerospacemodel.x15.nonlinear import (
 )
 from tensoraerospace.aerospacemodel.x15.nonlinear.aero import AeroState
 from tensoraerospace.envs.x15_nonlinear import NonlinearX15Env
-
 
 # ---- Geometry & atmosphere -------------------------------------------------
 
@@ -134,15 +133,33 @@ def test_aero_lift_increases_with_alpha():
     """Lift slope C_L_α > 0 throughout the X-15 envelope."""
     p = default_parameters()
     L_low = x15_aero(
-        AeroState(alpha=math.radians(0.0), beta=0.0, V=2000.0,
-                  p=0.0, q=0.0, r=0.0, altitude_ft=70_000.0,
-                  de=0.0, da=0.0, dr=0.0),
+        AeroState(
+            alpha=math.radians(0.0),
+            beta=0.0,
+            V=2000.0,
+            p=0.0,
+            q=0.0,
+            r=0.0,
+            altitude_ft=70_000.0,
+            de=0.0,
+            da=0.0,
+            dr=0.0,
+        ),
         p,
     ).L
     L_high = x15_aero(
-        AeroState(alpha=math.radians(8.0), beta=0.0, V=2000.0,
-                  p=0.0, q=0.0, r=0.0, altitude_ft=70_000.0,
-                  de=0.0, da=0.0, dr=0.0),
+        AeroState(
+            alpha=math.radians(8.0),
+            beta=0.0,
+            V=2000.0,
+            p=0.0,
+            q=0.0,
+            r=0.0,
+            altitude_ft=70_000.0,
+            de=0.0,
+            da=0.0,
+            dr=0.0,
+        ),
         p,
     ).L
     assert L_high > L_low
@@ -152,12 +169,30 @@ def test_aero_lift_slope_decreases_at_hypersonic_mach():
     """C_L_α drops from ~3.5 at low M toward Newtonian 2.0 at hypersonic M."""
     p = default_parameters()
     # Same α, h, dyn pressure scaled by V²
-    state_lo = AeroState(alpha=math.radians(5.0), beta=0.0, V=600.0,
-                          p=0.0, q=0.0, r=0.0, altitude_ft=20_000.0,
-                          de=0.0, da=0.0, dr=0.0)
-    state_hi = AeroState(alpha=math.radians(5.0), beta=0.0, V=6500.0,
-                          p=0.0, q=0.0, r=0.0, altitude_ft=100_000.0,
-                          de=0.0, da=0.0, dr=0.0)
+    state_lo = AeroState(
+        alpha=math.radians(5.0),
+        beta=0.0,
+        V=600.0,
+        p=0.0,
+        q=0.0,
+        r=0.0,
+        altitude_ft=20_000.0,
+        de=0.0,
+        da=0.0,
+        dr=0.0,
+    )
+    state_hi = AeroState(
+        alpha=math.radians(5.0),
+        beta=0.0,
+        V=6500.0,
+        p=0.0,
+        q=0.0,
+        r=0.0,
+        altitude_ft=100_000.0,
+        de=0.0,
+        da=0.0,
+        dr=0.0,
+    )
     f_lo = x15_aero(state_lo, p)
     f_hi = x15_aero(state_hi, p)
     # Compute C_L = L / (q_dyn S)
@@ -167,14 +202,23 @@ def test_aero_lift_slope_decreases_at_hypersonic_mach():
     qS_hi = 0.5 * rho_hi * 6500.0**2 * p.S_ft2
     CL_lo = f_lo.L / qS_lo
     CL_hi = f_hi.L / qS_hi
-    assert CL_lo > CL_hi   # hypersonic lift slope is smaller
+    assert CL_lo > CL_hi  # hypersonic lift slope is smaller
 
 
 def test_aero_pitching_moment_is_statically_stable():
     """C_m_α < 0 — increase in α produces a nose-down pitching moment."""
     p = default_parameters()
-    common = dict(beta=0.0, V=2000.0, p=0.0, q=0.0, r=0.0,
-                  altitude_ft=70_000.0, de=0.0, da=0.0, dr=0.0)
+    common = dict(
+        beta=0.0,
+        V=2000.0,
+        p=0.0,
+        q=0.0,
+        r=0.0,
+        altitude_ft=70_000.0,
+        de=0.0,
+        da=0.0,
+        dr=0.0,
+    )
     m_low = x15_aero(AeroState(alpha=math.radians(2.0), **common), p).m
     m_high = x15_aero(AeroState(alpha=math.radians(8.0), **common), p).m
     assert m_high < m_low
@@ -186,7 +230,7 @@ def test_aero_pitching_moment_is_statically_stable():
 def test_initial_state_from_fc_packs_published_values():
     fc = X15_FLIGHT_CONDITIONS[2]  # FC3 cruise_M4
     x = initial_state_from_fc(fc)
-    V = float(np.sqrt(x[0]**2 + x[1]**2 + x[2]**2))
+    V = float(np.sqrt(x[0] ** 2 + x[1] ** 2 + x[2] ** 2))
     assert V == pytest.approx(fc.V_ft_s, rel=1e-6)
     assert -x[11] == pytest.approx(fc.altitude_ft)
     assert x[12] == pytest.approx(fc.propellant_lb)
@@ -194,11 +238,12 @@ def test_initial_state_from_fc_packs_published_values():
 
 
 def test_set_initial_state_with_explicit_overrides():
-    x = set_initial_state(altitude_ft=75_000.0, V_ft_s=3000.0,
-                           alpha_deg=6.0, propellant_lb=8000.0)
+    x = set_initial_state(
+        altitude_ft=75_000.0, V_ft_s=3000.0, alpha_deg=6.0, propellant_lb=8000.0
+    )
     assert -x[11] == pytest.approx(75_000.0)
     assert x[12] == pytest.approx(8000.0)
-    V = float(np.sqrt(x[0]**2 + x[1]**2 + x[2]**2))
+    V = float(np.sqrt(x[0] ** 2 + x[1] ** 2 + x[2] ** 2))
     assert V == pytest.approx(3000.0, rel=1e-6)
 
 
@@ -230,13 +275,14 @@ def test_x15_ode_propellant_decreases_under_thrust():
 def test_x15_ode_thrust_along_x_increases_du():
     """Engaging the rocket should accelerate body x-velocity."""
     p = default_parameters()
-    x = set_initial_state(altitude_ft=70_000.0, V_ft_s=2000.0,
-                           alpha_deg=4.0, propellant_lb=10_000.0)
+    x = set_initial_state(
+        altitude_ft=70_000.0, V_ft_s=2000.0, alpha_deg=4.0, propellant_lb=10_000.0
+    )
     u_off = np.array([0.0, 0.0, 0.0, 0.0])
     u_on = np.array([0.0, 0.0, 0.0, 1.0])
     f_off = x15_ode_6dof(x, u_off, 0.0, p)
     f_on = x15_ode_6dof(x, u_on, 0.0, p)
-    assert f_on[0] > f_off[0]   # du/dt with thrust > du/dt without thrust
+    assert f_on[0] > f_off[0]  # du/dt with thrust > du/dt without thrust
 
 
 # ---- Variable-mass dynamics ----------------------------------------------
@@ -245,9 +291,11 @@ def test_x15_ode_thrust_along_x_increases_du():
 def test_burnout_time_at_full_throttle_around_80s():
     """Full burn from full propellant should take ~80 s — match Thompson 2000."""
     m = NonlinearX15(
-        x0=set_initial_state(altitude_ft=70_000.0, V_ft_s=2000.0,
-                             alpha_deg=4.0, propellant_lb=17_900.0),
-        dt=0.1, integrator="rk4",
+        x0=set_initial_state(
+            altitude_ft=70_000.0, V_ft_s=2000.0, alpha_deg=4.0, propellant_lb=17_900.0
+        ),
+        dt=0.1,
+        integrator="rk4",
     )
     u = np.array([math.radians(-3.0), 0.0, 0.0, 1.0])
     burnout_t = None
@@ -262,15 +310,17 @@ def test_burnout_time_at_full_throttle_around_80s():
 
 def test_engine_running_property_tracks_propellant():
     m = NonlinearX15(
-        x0=set_initial_state(altitude_ft=70_000.0, V_ft_s=2000.0,
-                             alpha_deg=4.0, propellant_lb=100.0),
-        dt=0.1, integrator="rk4",
+        x0=set_initial_state(
+            altitude_ft=70_000.0, V_ft_s=2000.0, alpha_deg=4.0, propellant_lb=100.0
+        ),
+        dt=0.1,
+        integrator="rk4",
     )
     assert m.engine_running
     u = np.array([math.radians(-3.0), 0.0, 0.0, 1.0])
     for _ in range(20):
         m.run_step(u)
-    assert not m.engine_running   # 100 lb burns off in < 1 s
+    assert not m.engine_running  # 100 lb burns off in < 1 s
 
 
 # ---- Trim ---------------------------------------------------------------
@@ -280,8 +330,7 @@ def test_powered_trim_returns_positive_climb_angle():
     """At full throttle the X-15 climbs (γ > 0). Just check that the trimmer
     returns a state with positive flight-path angle, even if the residual
     is non-zero (the X-15 has no true equilibrium at full thrust)."""
-    r = trim(altitude_ft=60_000.0, V_ft_s=1500.0, throttle=0.5,
-             propellant_lb=10_000.0)
+    r = trim(altitude_ft=60_000.0, V_ft_s=1500.0, throttle=0.5, propellant_lb=10_000.0)
     # The natural γ at half throttle should be climbing — even if the
     # solver hits its iteration limit, the gamma_rad value should be
     # bounded and physically sensible.
@@ -290,8 +339,7 @@ def test_powered_trim_returns_positive_climb_angle():
 
 def test_glide_trim_converges_at_low_altitude():
     """Post-burnout glide at moderate altitude has a well-defined trim."""
-    r = trim(altitude_ft=30_000.0, V_ft_s=800.0, throttle=0.0,
-             propellant_lb=0.0)
+    r = trim(altitude_ft=30_000.0, V_ft_s=800.0, throttle=0.0, propellant_lb=0.0)
     assert r.converged
     assert r.gamma_rad < 0.0  # glide ⇒ descending
     assert r.residual < 1e-6
@@ -307,12 +355,11 @@ def test_level_trim_reports_non_convergence_for_x15():
 
 def test_trim_to_state_round_trip():
     """trim().to_state() should pack back into a valid 13-D state."""
-    r = trim(altitude_ft=30_000.0, V_ft_s=800.0, throttle=0.0,
-             propellant_lb=0.0)
+    r = trim(altitude_ft=30_000.0, V_ft_s=800.0, throttle=0.0, propellant_lb=0.0)
     state = r.to_state()
     assert state.size == 13
     # Velocity magnitude reconstruction
-    V = float(np.sqrt(state[0]**2 + state[1]**2 + state[2]**2))
+    V = float(np.sqrt(state[0] ** 2 + state[1] ** 2 + state[2] ** 2))
     assert V == pytest.approx(r.V_ft_s, rel=1e-6)
     # Altitude reconstruction
     assert -state[11] == pytest.approx(r.altitude_ft)
@@ -322,8 +369,9 @@ def test_trim_to_state_round_trip():
 
 
 def test_env_make_via_gym_registry_works():
-    env = gym.make("NonlinearX15-v0", flight_condition_id=2,
-                   number_time_steps=10).unwrapped
+    env = gym.make(
+        "NonlinearX15-v0", flight_condition_id=2, number_time_steps=10
+    ).unwrapped
     obs, _ = env.reset()
     assert obs.shape == (13,)
 
@@ -342,8 +390,9 @@ def test_env_step_without_reset_raises():
 
 
 def test_env_normalized_action_space_is_pm_one():
-    env = NonlinearX15Env(flight_condition_id=2, number_time_steps=10,
-                          action_space="normalized")
+    env = NonlinearX15Env(
+        flight_condition_id=2, number_time_steps=10, action_space="normalized"
+    )
     np.testing.assert_allclose(env.action_space.high, np.ones(4))
     np.testing.assert_allclose(env.action_space.low, -np.ones(4))
 
@@ -368,9 +417,11 @@ def test_env_info_reports_propellant_and_engine_state():
 def test_env_engine_flames_out_when_propellant_runs_out():
     """Run env with full throttle until burnout — info should report engine_running=False."""
     env = NonlinearX15Env(
-        initial_state=set_initial_state(altitude_ft=70_000.0, V_ft_s=2000.0,
-                                         alpha_deg=4.0, propellant_lb=200.0),
-        number_time_steps=200, dt=0.1,
+        initial_state=set_initial_state(
+            altitude_ft=70_000.0, V_ft_s=2000.0, alpha_deg=4.0, propellant_lb=200.0
+        ),
+        number_time_steps=200,
+        dt=0.1,
     )
     env.reset()
     flameout_seen = False
@@ -398,6 +449,7 @@ def test_env_rejects_multiple_initialisers():
 
 def test_linear_x15_backward_compat():
     """Ensure old-style import path still resolves after restructuring."""
-    from tensoraerospace.aerospacemodel.x15 import LongitudinalX15  # noqa: F401
     from tensoraerospace.aerospacemodel import LongitudinalX15 as L2  # noqa: F401
+    from tensoraerospace.aerospacemodel.x15 import LongitudinalX15  # noqa: F401
+
     assert L2 is LongitudinalX15

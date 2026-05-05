@@ -10,8 +10,8 @@ import pytest
 
 import tensoraerospace  # noqa: F401  (registers gym envs)
 from tensoraerospace.aerospacemodel.aai_shadow.nonlinear import (
-    NonlinearAAIShadow,
     AAIShadowParameters,
+    NonlinearAAIShadow,
     default_parameters,
     isa_density_kg_m3,
     isa_speed_of_sound_m_s,
@@ -23,7 +23,6 @@ from tensoraerospace.aerospacemodel.aai_shadow.nonlinear import (
 )
 from tensoraerospace.aerospacemodel.aai_shadow.nonlinear.aero import AeroState
 from tensoraerospace.envs.aai_shadow_nonlinear import NonlinearAAIShadowEnv
-
 
 # ---- Geometry & atmosphere -------------------------------------------
 
@@ -52,8 +51,9 @@ def test_aspect_ratio_high_for_surveillance_uav():
 
 def test_aero_lift_increases_with_alpha():
     p = default_parameters()
-    common = dict(beta=0.0, V=36.0, p=0.0, q=0.0, r=0.0,
-                  altitude_m=1000.0, de=0.0, da=0.0, dr=0.0)
+    common = dict(
+        beta=0.0, V=36.0, p=0.0, q=0.0, r=0.0, altitude_m=1000.0, de=0.0, da=0.0, dr=0.0
+    )
     L0 = shadow_aero(AeroState(alpha=math.radians(0.0), **common), p).L
     L4 = shadow_aero(AeroState(alpha=math.radians(4.0), **common), p).L
     assert L4 > L0
@@ -62,8 +62,9 @@ def test_aero_lift_increases_with_alpha():
 def test_aero_pitching_moment_static_stability():
     """Cmα = -1.5/rad → nose-down moment increases with α."""
     p = default_parameters()
-    common = dict(beta=0.0, V=36.0, p=0.0, q=0.0, r=0.0,
-                  altitude_m=1000.0, de=0.0, da=0.0, dr=0.0)
+    common = dict(
+        beta=0.0, V=36.0, p=0.0, q=0.0, r=0.0, altitude_m=1000.0, de=0.0, da=0.0, dr=0.0
+    )
     m_a0 = shadow_aero(AeroState(alpha=math.radians(0.0), **common), p).m
     m_a5 = shadow_aero(AeroState(alpha=math.radians(5.0), **common), p).m
     assert m_a5 < m_a0
@@ -72,9 +73,17 @@ def test_aero_pitching_moment_static_stability():
 def test_aero_yaw_stiffness_positive():
     """Cnβ = +0.073 — weather-cock stability."""
     p = default_parameters()
-    common = dict(alpha=math.radians(3.0), V=36.0,
-                  p=0.0, q=0.0, r=0.0, altitude_m=1000.0,
-                  de=0.0, da=0.0, dr=0.0)
+    common = dict(
+        alpha=math.radians(3.0),
+        V=36.0,
+        p=0.0,
+        q=0.0,
+        r=0.0,
+        altitude_m=1000.0,
+        de=0.0,
+        da=0.0,
+        dr=0.0,
+    )
     n0 = shadow_aero(AeroState(beta=0.0, **common), p).n
     n5 = shadow_aero(AeroState(beta=math.radians(5.0), **common), p).n
     assert n5 > n0
@@ -82,9 +91,17 @@ def test_aero_yaw_stiffness_positive():
 
 def test_aero_aileron_creates_roll_moment():
     p = default_parameters()
-    common = dict(alpha=math.radians(3.0), beta=0.0, V=36.0,
-                  p=0.0, q=0.0, r=0.0, altitude_m=1000.0,
-                  de=0.0, dr=0.0)
+    common = dict(
+        alpha=math.radians(3.0),
+        beta=0.0,
+        V=36.0,
+        p=0.0,
+        q=0.0,
+        r=0.0,
+        altitude_m=1000.0,
+        de=0.0,
+        dr=0.0,
+    )
     l_neutral = shadow_aero(AeroState(da=0.0, **common), p).l
     l_right = shadow_aero(AeroState(da=math.radians(5.0), **common), p).l
     assert l_right > l_neutral
@@ -93,9 +110,17 @@ def test_aero_aileron_creates_roll_moment():
 def test_aero_rudder_creates_yaw_moment():
     """Cnδr = -0.069 → positive δr → negative yaw (nose-left)."""
     p = default_parameters()
-    common = dict(alpha=math.radians(3.0), beta=0.0, V=36.0,
-                  p=0.0, q=0.0, r=0.0, altitude_m=1000.0,
-                  de=0.0, da=0.0)
+    common = dict(
+        alpha=math.radians(3.0),
+        beta=0.0,
+        V=36.0,
+        p=0.0,
+        q=0.0,
+        r=0.0,
+        altitude_m=1000.0,
+        de=0.0,
+        da=0.0,
+    )
     n_neutral = shadow_aero(AeroState(dr=0.0, **common), p).n
     n_right_rud = shadow_aero(AeroState(dr=math.radians(5.0), **common), p).n
     assert n_right_rud < n_neutral
@@ -103,8 +128,9 @@ def test_aero_rudder_creates_yaw_moment():
 
 def test_aero_drag_increases_with_lift():
     p = default_parameters()
-    common = dict(beta=0.0, V=36.0, p=0.0, q=0.0, r=0.0,
-                  altitude_m=1000.0, de=0.0, da=0.0, dr=0.0)
+    common = dict(
+        beta=0.0, V=36.0, p=0.0, q=0.0, r=0.0, altitude_m=1000.0, de=0.0, da=0.0, dr=0.0
+    )
     D0 = shadow_aero(AeroState(alpha=math.radians(0.0), **common), p).D
     D8 = shadow_aero(AeroState(alpha=math.radians(8.0), **common), p).D
     assert D8 > D0
@@ -187,7 +213,7 @@ def test_trim_to_state_round_trip():
     r = trim(altitude_m=1000.0, V_m_s=36.0)
     x = r.to_state()
     assert x.shape == (12,)
-    V = float(np.sqrt(x[0]**2 + x[1]**2 + x[2]**2))
+    V = float(np.sqrt(x[0] ** 2 + x[1] ** 2 + x[2] ** 2))
     assert V == pytest.approx(r.V_m_s, rel=1e-6)
 
 
@@ -195,8 +221,9 @@ def test_trim_to_state_round_trip():
 
 
 def test_env_make_via_gym_registry_works():
-    env = gym.make("NonlinearAAIShadow-v0",
-                   trim_at=(1000.0, 36.0), number_time_steps=10).unwrapped
+    env = gym.make(
+        "NonlinearAAIShadow-v0", trim_at=(1000.0, 36.0), number_time_steps=10
+    ).unwrapped
     obs, _ = env.reset()
     assert obs.shape == (12,)
 
@@ -215,8 +242,9 @@ def test_env_action_size_validated():
 
 
 def test_env_normalized_action_space_is_pm_one():
-    env = NonlinearAAIShadowEnv(trim_at=(1000.0, 36.0), number_time_steps=10,
-                                  action_space="normalized")
+    env = NonlinearAAIShadowEnv(
+        trim_at=(1000.0, 36.0), number_time_steps=10, action_space="normalized"
+    )
     np.testing.assert_allclose(env.action_space.high, np.ones(4))
     np.testing.assert_allclose(env.action_space.low, -np.ones(4))
 
@@ -245,11 +273,12 @@ def test_env_rejects_multiple_initialisers():
 
 def test_env_holds_trim_briefly():
     r = trim(altitude_m=1000.0, V_m_s=36.0)
-    env = NonlinearAAIShadowEnv(initial_state=r.to_state(),
-                                  number_time_steps=200, dt=0.02)
+    env = NonlinearAAIShadowEnv(
+        initial_state=r.to_state(), number_time_steps=200, dt=0.02
+    )
     obs, _ = env.reset()
     u_trim = np.array([float(r.elevator_rad), 0.0, 0.0, float(r.throttle)])
     for _ in range(50):  # 1 s
         obs, _, _, _, _ = env.step(u_trim)
-    V = float(np.sqrt(obs[0]**2 + obs[1]**2 + obs[2]**2))
+    V = float(np.sqrt(obs[0] ** 2 + obs[1] ** 2 + obs[2] ** 2))
     assert abs(V - r.V_m_s) < 1.0

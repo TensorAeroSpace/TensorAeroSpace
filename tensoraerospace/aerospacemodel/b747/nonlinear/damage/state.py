@@ -35,7 +35,6 @@ import numpy as np
 
 from ..params import B747Configuration
 
-
 _SURFACES = ("elevator", "aileron", "rudder", "throttle")
 _ENGINES = (1, 2, 3, 4)
 
@@ -45,9 +44,13 @@ class B747DamageState:
     """Combined actuator + propulsion + configuration damage state."""
 
     mu: dict[str, float] = field(default_factory=lambda: {s: 1.0 for s in _SURFACES})
-    jam: dict[str, Optional[float]] = field(default_factory=lambda: {s: None for s in _SURFACES})
+    jam: dict[str, Optional[float]] = field(
+        default_factory=lambda: {s: None for s in _SURFACES}
+    )
     tau: dict[str, float] = field(default_factory=lambda: {s: 0.0 for s in _SURFACES})
-    mu_floor: dict[str, float] = field(default_factory=lambda: {s: 0.0 for s in _SURFACES})
+    mu_floor: dict[str, float] = field(
+        default_factory=lambda: {s: 0.0 for s in _SURFACES}
+    )
     engines_mu: dict[int, float] = field(
         default_factory=lambda: {i: 1.0 for i in _ENGINES}
     )

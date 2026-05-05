@@ -38,10 +38,9 @@ from dataclasses import dataclass
 
 from .params import SkywalkerX8Parameters, isa_density_kg_m3
 
-
 # Calibrated thrust model constants — match Løw-Hansen 2025 trim point.
-_T_STATIC_FULL_N = 40.0     # static thrust at full throttle (sea level)
-_V_ZERO_THRUST_M_S = 35.0   # airspeed at which thrust would reach zero
+_T_STATIC_FULL_N = 40.0  # static thrust at full throttle (sea level)
+_V_ZERO_THRUST_M_S = 35.0  # airspeed at which thrust would reach zero
 
 
 @dataclass
@@ -71,7 +70,9 @@ class X8Propeller:
 
 
 def x8_thrust(
-    throttle: float, V_m_s: float, altitude_m: float,
+    throttle: float,
+    V_m_s: float,
+    altitude_m: float,
     params: SkywalkerX8Parameters,
 ) -> tuple[float, float]:
     """Calibrated thrust model. Returns ``(T_N, CT_value)``.
@@ -97,6 +98,6 @@ def x8_thrust(
     omega_p = max(thr, 0.05) * params.omega_max_rad_s
     n = omega_p / (2.0 * math.pi)
     rho = isa_density_kg_m3(altitude_m)
-    denom = rho * (params.prop_diameter_m ** 4) * (n * n)
+    denom = rho * (params.prop_diameter_m**4) * (n * n)
     CT_val = T / denom if denom > 1e-9 else 0.0
     return float(T), float(max(CT_val, 0.0))

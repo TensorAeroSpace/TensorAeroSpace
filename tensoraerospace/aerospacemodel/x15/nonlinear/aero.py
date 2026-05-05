@@ -34,16 +34,16 @@ from .params import X15Parameters, isa_density_slug_ft3, isa_speed_of_sound_ft_s
 class AeroState:
     """Inputs to one aero evaluation."""
 
-    alpha: float       # rad
-    beta: float        # rad
-    V: float           # ft/s
-    p: float           # rad/s
-    q: float           # rad/s
-    r: float           # rad/s
+    alpha: float  # rad
+    beta: float  # rad
+    V: float  # ft/s
+    p: float  # rad/s
+    q: float  # rad/s
+    r: float  # rad/s
     altitude_ft: float
-    de: float          # all-flying horizontal stabilizer, rad
-    da: float          # aileron, rad
-    dr: float          # rudder, rad
+    de: float  # all-flying horizontal stabilizer, rad
+    da: float  # aileron, rad
+    dr: float  # rudder, rad
     alphadot: float = 0.0
 
 
@@ -201,18 +201,24 @@ def x15_aero(state: AeroState, params: X15Parameters) -> AeroForces:
 
     C_Y = (
         C_Yb * state.beta
-        + C_Yp * phat + C_Yr * rhat
-        + C_Yda * state.da + C_Ydr * state.dr
+        + C_Yp * phat
+        + C_Yr * rhat
+        + C_Yda * state.da
+        + C_Ydr * state.dr
     )
     C_l = (
         C_lb * state.beta
-        + C_lp * phat + C_lr * rhat
-        + C_lda * state.da + C_ldr * state.dr
+        + C_lp * phat
+        + C_lr * rhat
+        + C_lda * state.da
+        + C_ldr * state.dr
     )
     C_n = (
         C_nb * state.beta
-        + C_np * phat + C_nr * rhat
-        + C_nda * state.da + C_ndr * state.dr
+        + C_np * phat
+        + C_nr * rhat
+        + C_nda * state.da
+        + C_ndr * state.dr
     )
 
     S = params.S_ft2

@@ -44,13 +44,12 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import Optional
 
-
 # ---- ISA / hypersonic atmosphere (US customary, US Std. 1976) ---------
 
-_T0_R = 518.67           # sea-level temperature, °R
+_T0_R = 518.67  # sea-level temperature, °R
 _RHO0_SLUG_FT3 = 0.002378  # sea-level density, slug/ft³
-_LAPSE_R_FT = 0.00356616   # ISA lapse rate, °R/ft (= 6.5e-3 K/m)
-_R_FT_R = 1716.49        # specific gas constant, ft²/(s²·°R)
+_LAPSE_R_FT = 0.00356616  # ISA lapse rate, °R/ft (= 6.5e-3 K/m)
+_R_FT_R = 1716.49  # specific gas constant, ft²/(s²·°R)
 _TROPOPAUSE_FT = 36089.0
 _T_TROPO_R = 389.97
 _GAMMA_AIR = 1.4
@@ -97,15 +96,15 @@ def isa_speed_of_sound_ft_s(altitude_ft: float) -> float:
 class X15Configuration(Enum):
     """X-15 airframe configurations covered by this model."""
 
-    BASIC = "basic"     # stock X-15-1 / X-15-3, single internal propellant
-    A2 = "a2"           # X-15A-2 with external tanks (Mach 6.7 record airframe)
+    BASIC = "basic"  # stock X-15-1 / X-15-3, single internal propellant
+    A2 = "a2"  # X-15A-2 with external tanks (Mach 6.7 record airframe)
 
 
 # ---- Geometry (constant across configurations) ------------------------
 
-S_FT2 = 200.0         # planform reference area, ft²
-B_FT = 22.36          # span, ft
-CBAR_FT = 10.27       # mean aerodynamic chord, ft
+S_FT2 = 200.0  # planform reference area, ft²
+B_FT = 22.36  # span, ft
+CBAR_FT = 10.27  # mean aerodynamic chord, ft
 
 
 @dataclass
@@ -132,7 +131,7 @@ class X15Parameters:
     empty_weight_lb: float = 14_600.0
     # Empty-airframe inertias (slug·ft²). Walker/Wolowicz Table 1.
     Ix_empty: float = 3_650.0
-    Iy_empty: float = 80_000.0   # matches x15_data.m Iy
+    Iy_empty: float = 80_000.0  # matches x15_data.m Iy
     Iz_empty: float = 82_000.0
     Ixz_empty: float = 590.0
 
@@ -147,7 +146,7 @@ class X15Parameters:
     # 1018 gal LOX × 9.5 lb/gal + 1445 gal NH3 × 5.7 lb/gal ≈ 17 900 lb.
     propellant_full_lb: float = 17_900.0
 
-    cg_frac_cbar: float = 0.22       # c.g. as fraction of MAC (Walker/Wolowicz)
+    cg_frac_cbar: float = 0.22  # c.g. as fraction of MAC (Walker/Wolowicz)
     g_ft_s2: float = 32.174
 
     # Geometry
@@ -158,19 +157,19 @@ class X15Parameters:
     # Actuator dynamics — first-order lag with rate limit. Real X-15
     # used hydraulic surface actuators rated ~ 60 deg/s.
     elevator_tau_s: float = 0.05
-    elevator_max_rad: float = math.radians(15.0)   # all-flying horizontal tail
+    elevator_max_rad: float = math.radians(15.0)  # all-flying horizontal tail
     elevator_rate_max_rad_s: float = math.radians(60.0)
     aileron_tau_s: float = 0.05
     aileron_max_rad: float = math.radians(15.0)
     aileron_rate_max_rad_s: float = math.radians(60.0)
     rudder_tau_s: float = 0.05
-    rudder_max_rad: float = math.radians(8.5)      # vertical stab is small
+    rudder_max_rad: float = math.radians(8.5)  # vertical stab is small
     rudder_rate_max_rad_s: float = math.radians(60.0)
 
     # XLR99 rocket engine. Numbers from NASA TM X-2670 / Thompson 2000.
-    engine_thrust_max_lb: float = 57_000.0   # rated thrust at full throttle
-    engine_throttle_min: float = 0.30        # XLR99 cannot run below 30 %
-    engine_isp_s: float = 254.0              # ammonia-LOX, sea-level Isp
+    engine_thrust_max_lb: float = 57_000.0  # rated thrust at full throttle
+    engine_throttle_min: float = 0.30  # XLR99 cannot run below 30 %
+    engine_isp_s: float = 254.0  # ammonia-LOX, sea-level Isp
 
     # Damage subsystem hooks (parity with B-747 / F-16). None = healthy.
     damage_state: Optional[object] = None
@@ -217,10 +216,16 @@ def default_parameters(
         return X15Parameters(
             config=X15Configuration.A2,
             empty_weight_lb=16_050.0,
-            Ix_empty=3_900.0, Iy_empty=92_000.0, Iz_empty=94_000.0, Ixz_empty=620.0,
-            Ix_full=3_900.0, Iy_full=110_000.0, Iz_full=112_000.0, Ixz_full=720.0,
+            Ix_empty=3_900.0,
+            Iy_empty=92_000.0,
+            Iz_empty=94_000.0,
+            Ixz_empty=620.0,
+            Ix_full=3_900.0,
+            Iy_full=110_000.0,
+            Iz_full=112_000.0,
+            Ixz_full=720.0,
             propellant_full_lb=30_900.0,
-            engine_thrust_max_lb=57_000.0,   # same XLR99
+            engine_thrust_max_lb=57_000.0,  # same XLR99
         )
     raise ValueError(f"unknown X15Configuration: {config!r}")
 

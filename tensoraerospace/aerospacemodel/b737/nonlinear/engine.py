@@ -40,8 +40,8 @@ _RHO0_SLUG_FT3 = 0.002378
 # 737-800 has them ~ 18 ft outboard. We use a single value here —
 # the moment arm difference is < 10 % across the family.
 ENGINE_Y_POSITIONS_FT: dict[int, float] = {
-    1: -16.5,   # left
-    2: +16.5,   # right
+    1: -16.5,  # left
+    2: +16.5,  # right
 }
 
 
@@ -50,10 +50,10 @@ class B737Engine:
     """Twin-engine cluster — JT8D-9 or CFM56-7B."""
 
     n_engines: int = 2
-    sls_thrust_per_engine_lb: float = 14_500.0   # JT8D-9 default
+    sls_thrust_per_engine_lb: float = 14_500.0  # JT8D-9 default
     idle_frac: float = 0.05
     spool_tau_s: float = 1.5
-    bypass_ratio: float = 1.0   # JT8D ≈ 1, CFM56 ≈ 5.5
+    bypass_ratio: float = 1.0  # JT8D ≈ 1, CFM56 ≈ 5.5
     use_ram_recovery: bool = True
 
     @property
@@ -81,7 +81,7 @@ class B737Engine:
         ram = 1.0 - 0.49 * math.sqrt(m)
         ram = max(ram, 0.05)
         sigma_pow = 0.7 if altitude_ft < 36_089.0 else 1.0
-        eta = ram * (sigma ** sigma_pow)
+        eta = ram * (sigma**sigma_pow)
         return float(self.total_sls_thrust_lb * eta * pla_eff)
 
 
@@ -93,14 +93,14 @@ def _engine_for_config(params: B737Parameters) -> B737Engine:
             sls_thrust_per_engine_lb=params.engine_thrust_max_lb / params.n_engines,
             idle_frac=params.engine_idle_frac,
             spool_tau_s=params.engine_tau_s,
-            bypass_ratio=1.0,   # JT8D-9
+            bypass_ratio=1.0,  # JT8D-9
         )
     return B737Engine(
         n_engines=params.n_engines,
         sls_thrust_per_engine_lb=params.engine_thrust_max_lb / params.n_engines,
         idle_frac=params.engine_idle_frac,
         spool_tau_s=params.engine_tau_s,
-        bypass_ratio=5.5,   # CFM56-7B
+        bypass_ratio=5.5,  # CFM56-7B
     )
 
 

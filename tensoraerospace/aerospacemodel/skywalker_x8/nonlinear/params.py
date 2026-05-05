@@ -65,13 +65,12 @@ import math
 from dataclasses import dataclass, field
 from typing import Optional
 
-
 # ---- ISA atmosphere (SI units) ------------------------------------------
 
 _T0_K = 288.15
 _RHO0_KG_M3 = 1.225
 _LAPSE_K_M = 0.0065
-_R_AIR = 287.05      # specific gas constant for air, J/(kg·K)
+_R_AIR = 287.05  # specific gas constant for air, J/(kg·K)
 _TROPOPAUSE_M = 11_000.0
 _T_TROPO_K = 216.65
 _GAMMA_AIR = 1.4
@@ -108,7 +107,7 @@ class SkywalkerX8Parameters:
 
     # Mass / inertia (paper Table 1)
     mass_kg: float = 3.364
-    Ix: float = 0.325            # kg·m²
+    Ix: float = 0.325  # kg·m²
     Iy: float = 0.140
     Iz: float = 0.400
     Ixz: float = 0.029
@@ -131,7 +130,7 @@ class SkywalkerX8Parameters:
     throttle_tau_s: float = 0.20
 
     # Propeller (paper Tables 6, 7)
-    prop_diameter_m: float = 0.3556        # 14" Aeronaut CAM
+    prop_diameter_m: float = 0.3556  # 14" Aeronaut CAM
     prop_inertia_kg_m2: float = 3.46e-4
 
     # CT(J) cubic polynomial — Table 6
@@ -147,8 +146,8 @@ class SkywalkerX8Parameters:
     # Motor — Hacker A40-12 (paper Table 7)
     motor_KE_V_per_rad_s: float = 0.0157
     motor_resistance_ohm: float = 0.017
-    motor_zero_load_current_A: float = 0.5    # paper-typical Im0
-    battery_voltage_V: float = 16.0           # 4S nominal, paper Fig. 7
+    motor_zero_load_current_A: float = 0.5  # paper-typical Im0
+    battery_voltage_V: float = 16.0  # 4S nominal, paper Fig. 7
 
     # No-load motor speed at full throttle — used as the normalising
     # factor for the airframe-drag CDCT coupling in the simplified

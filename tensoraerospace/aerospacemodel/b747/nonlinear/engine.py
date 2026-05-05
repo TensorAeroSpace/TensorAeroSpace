@@ -42,10 +42,10 @@ _RHO0_SLUG_FT3 = 0.002378
 # centerline, ft). Conventional 4-engine cluster: inner engines at BL.430
 # ≈ 35.8 ft, outer engines at BL.860 ≈ 71.7 ft; sign indicates wing side.
 ENGINE_Y_POSITIONS_FT: dict[int, float] = {
-    1: -71.7,   # left outer
-    2: -35.8,   # left inner
-    3: +35.8,   # right inner
-    4: +71.7,   # right outer
+    1: -71.7,  # left outer
+    2: -35.8,  # left inner
+    3: +35.8,  # right inner
+    4: +71.7,  # right outer
 }
 
 
@@ -56,7 +56,7 @@ class JT9DEngine:
     n_engines: int = 4
     sls_thrust_per_engine_lb: float = 47_100.0
     idle_frac: float = 0.05
-    spool_tau_s: float = 1.0    # for future first-order thrust dynamics
+    spool_tau_s: float = 1.0  # for future first-order thrust dynamics
     use_ram_recovery: bool = True
 
     @property
@@ -78,7 +78,7 @@ class JT9DEngine:
         ram = max(ram, 0.05)
         # Stratospheric branch (h ≥ 36089 ft) decays faster
         sigma_pow = 0.7 if altitude_ft < 36089.0 else 1.0
-        eta = ram * (sigma ** sigma_pow)
+        eta = ram * (sigma**sigma_pow)
         return float(self.total_sls_thrust_lb * eta * pla_eff)
 
 

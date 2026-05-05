@@ -33,7 +33,6 @@ from tensoraerospace.aerospacemodel.b747.nonlinear.params import (
     isa_speed_of_sound_ft_s,
 )
 
-
 # ---- Parameter & flight-condition sanity ---------------------------------
 
 
@@ -131,10 +130,16 @@ def test_aero_at_trim_landing_returns_lift_close_to_weight():
     fc = B747_FLIGHT_CONDITIONS[0]
     p = default_parameters(B747Configuration.LANDING)
     state = AeroState(
-        alpha=np.deg2rad(fc.alpha0_deg), beta=0.0,
-        V=fc.V_ft_s, p=0.0, q=0.0, r=0.0,
+        alpha=np.deg2rad(fc.alpha0_deg),
+        beta=0.0,
+        V=fc.V_ft_s,
+        p=0.0,
+        q=0.0,
+        r=0.0,
         altitude_ft=fc.altitude_ft,
-        de=0.0, da=0.0, dr=0.0,
+        de=0.0,
+        da=0.0,
+        dr=0.0,
     )
     forces = b747_aero(state, p)
     # Lift / weight ratio: should be ≈ 1.0 (steady level flight) within a few %
@@ -146,10 +151,16 @@ def test_aero_zero_alpha_zero_controls_zero_pitching_moment_lat_dir():
     fc = B747_FLIGHT_CONDITIONS[3]  # FC4
     p = default_parameters(B747Configuration.NOMINAL)
     state = AeroState(
-        alpha=np.deg2rad(fc.alpha0_deg), beta=0.0,
-        V=fc.V_ft_s, p=0.0, q=0.0, r=0.0,
+        alpha=np.deg2rad(fc.alpha0_deg),
+        beta=0.0,
+        V=fc.V_ft_s,
+        p=0.0,
+        q=0.0,
+        r=0.0,
         altitude_ft=fc.altitude_ft,
-        de=0.0, da=0.0, dr=0.0,
+        de=0.0,
+        da=0.0,
+        dr=0.0,
     )
     forces = b747_aero(state, p)
     assert forces.Y == pytest.approx(0.0, abs=1e-6)
@@ -162,9 +173,7 @@ def test_aero_zero_alpha_zero_controls_zero_pitching_moment_lat_dir():
 
 def test_step_runs_for_full_episode_without_blowing_up():
     fc = B747_FLIGHT_CONDITIONS[3]
-    m = NonlinearB747(
-        x0=initial_state_from_fc(fc), dt=0.01, integrator="rk4"
-    )
+    m = NonlinearB747(x0=initial_state_from_fc(fc), dt=0.01, integrator="rk4")
     u = np.array([0.0, 0.0, 0.0, 0.32])  # cruise throttle
     for _ in range(200):  # 2 s
         m.run_step(u)

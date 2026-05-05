@@ -20,12 +20,19 @@ from tensoraerospace.aerospacemodel.aai_shadow.nonlinear import (
     trim,
 )
 
-
 STATE_ORDER = [
-    "u", "v", "w",
-    "p", "q", "r",
-    "phi", "theta", "psi",
-    "x_e", "y_e", "z_e",
+    "u",
+    "v",
+    "w",
+    "p",
+    "q",
+    "r",
+    "phi",
+    "theta",
+    "psi",
+    "x_e",
+    "y_e",
+    "z_e",
 ]
 
 
@@ -68,21 +75,29 @@ class NonlinearAAIShadowEnv(gym.Env):
         self.damage_event_callback = damage_event_callback
 
         high_obs = np.full(12, np.inf, dtype=np.float64)
-        self.observation_space = spaces.Box(low=-high_obs, high=high_obs, dtype=np.float64)
+        self.observation_space = spaces.Box(
+            low=-high_obs, high=high_obs, dtype=np.float64
+        )
 
         if action_space == "virtual":
-            high_act = np.array([
-                np.deg2rad(20.0),    # elevator (collective ruddervator)
-                np.deg2rad(20.0),    # aileron
-                np.deg2rad(15.0),    # rudder (differential ruddervator)
-                1.0,                  # throttle
-            ], dtype=np.float64)
-            low_act = np.array([
-                -np.deg2rad(20.0),
-                -np.deg2rad(20.0),
-                -np.deg2rad(15.0),
-                0.0,
-            ], dtype=np.float64)
+            high_act = np.array(
+                [
+                    np.deg2rad(20.0),  # elevator (collective ruddervator)
+                    np.deg2rad(20.0),  # aileron
+                    np.deg2rad(15.0),  # rudder (differential ruddervator)
+                    1.0,  # throttle
+                ],
+                dtype=np.float64,
+            )
+            low_act = np.array(
+                [
+                    -np.deg2rad(20.0),
+                    -np.deg2rad(20.0),
+                    -np.deg2rad(15.0),
+                    0.0,
+                ],
+                dtype=np.float64,
+            )
         else:
             high_act = np.ones(4, dtype=np.float64)
             low_act = -np.ones(4, dtype=np.float64)
@@ -101,9 +116,7 @@ class NonlinearAAIShadowEnv(gym.Env):
         if initial_state is not None:
             x0 = np.asarray(initial_state, dtype=np.float64).reshape(-1)
             if x0.size != 12:
-                raise ValueError(
-                    f"initial_state must have 12 elements; got {x0.size}"
-                )
+                raise ValueError(f"initial_state must have 12 elements; got {x0.size}")
             return x0
         alt, V = trim_at
         result = trim(altitude_m=float(alt), V_m_s=float(V))
@@ -118,12 +131,15 @@ class NonlinearAAIShadowEnv(gym.Env):
         if self.action_mode == "virtual":
             return action.astype(np.float64, copy=True)
         u_e, u_a, u_r, u_T = action[0], action[1], action[2], action[3]
-        return np.array([
-            float(u_e) * np.deg2rad(20.0),
-            float(u_a) * np.deg2rad(20.0),
-            float(u_r) * np.deg2rad(15.0),
-            (float(u_T) + 1.0) * 0.5,
-        ], dtype=np.float64)
+        return np.array(
+            [
+                float(u_e) * np.deg2rad(20.0),
+                float(u_a) * np.deg2rad(20.0),
+                float(u_r) * np.deg2rad(15.0),
+                (float(u_T) + 1.0) * 0.5,
+            ],
+            dtype=np.float64,
+        )
 
     # ---- gym API -------------------------------------------------------
 

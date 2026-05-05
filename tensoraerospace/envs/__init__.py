@@ -6,12 +6,12 @@ here for convenience, and are also registered in the top-level
 ``tensoraerospace`` package.
 """
 
-from .b747 import ImprovedB747Env as ImprovedB747Env  # noqa: F401
-from .b747 import LinearLongitudinalB747 as LinearLongitudinalB747
 from .aai_shadow_nonlinear import (  # noqa: F401
     NonlinearAAIShadowEnv as NonlinearAAIShadowEnv,
 )
 from .b737_nonlinear import NonlinearB737Env as NonlinearB737Env  # noqa: F401
+from .b747 import ImprovedB747Env as ImprovedB747Env  # noqa: F401
+from .b747 import LinearLongitudinalB747 as LinearLongitudinalB747
 from .b747_nonlinear import NonlinearB747Env as NonlinearB747Env  # noqa: F401
 from .b747_vec_torch import (  # noqa: F401
     ImprovedB747VecEnvTorch as ImprovedB747VecEnvTorch,
@@ -41,13 +41,13 @@ from .rocket import ImprovedMissileEnv as ImprovedMissileEnv
 from .rocket import (  # noqa: F401
     LinearLongitudinalMissileModel as LinearLongitudinalMissileModel,
 )
+from .skywalker_x8_nonlinear import (  # noqa: F401
+    NonlinearSkywalkerX8Env as NonlinearSkywalkerX8Env,
+)
 from .uav import LinearLongitudinalUAV as LinearLongitudinalUAV  # noqa: F401
 from .ultrastick import ImprovedUltrastickEnv as ImprovedUltrastickEnv  # noqa: F401
 from .ultrastick import (  # noqa: F401
     LinearLongitudinalUltrastick as LinearLongitudinalUltrastick,
-)
-from .skywalker_x8_nonlinear import (  # noqa: F401
-    NonlinearSkywalkerX8Env as NonlinearSkywalkerX8Env,
 )
 from .x15 import ImprovedX15Env as ImprovedX15Env  # noqa: F401
 from .x15 import LinearLongitudinalX15 as LinearLongitudinalX15

@@ -40,9 +40,7 @@ class NonlinearSkywalkerX8(ModelBase):
     ) -> None:
         x0_arr = np.asarray(x0, dtype=np.float64).reshape(-1)
         if x0_arr.size != 12:
-            raise ValueError(
-                f"x0 must have 12 elements; got {x0_arr.size}"
-            )
+            raise ValueError(f"x0 must have 12 elements; got {x0_arr.size}")
         super().__init__(x0_arr, selected_state_output, t0, dt)
         self.action_space_length = len(_CONTROL_LIST)
         self.param: SkywalkerX8Parameters = default_parameters()

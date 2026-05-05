@@ -46,7 +46,6 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import Optional
 
-
 # ---- ISA standard atmosphere (US customary) ----------------------------
 
 _T0_R = 518.67
@@ -85,8 +84,8 @@ def isa_speed_of_sound_ft_s(altitude_ft: float) -> float:
 class B737Configuration(Enum):
     """Discrete Boeing 737 configurations covered by this model."""
 
-    B737_100 = "737-100"   # original 737, JSBSim defaults
-    B737_800 = "737-800"   # 737NG, CFM56-7B engines
+    B737_100 = "737-100"  # original 737, JSBSim defaults
+    B737_800 = "737-800"  # 737NG, CFM56-7B engines
 
 
 # Geometry per configuration (constant — cf. JSBSim 737.xml + Boeing TCDS A16WE)
@@ -103,8 +102,8 @@ class B737Parameters:
     """
 
     config: B737Configuration = B737Configuration.B737_100
-    weight_lb: float = 100_000.0          # mid-cruise weight, JSBSim default
-    Ix: float = 562_000.0                 # slug·ft²
+    weight_lb: float = 100_000.0  # mid-cruise weight, JSBSim default
+    Ix: float = 562_000.0  # slug·ft²
     Iy: float = 1_473_000.0
     Iz: float = 1_894_000.0
     Ixz: float = 8_000.0
@@ -118,10 +117,10 @@ class B737Parameters:
 
     # Actuator dynamics (Roskam Vol 6 + JSBSim limits)
     elevator_tau_s: float = 0.10
-    elevator_max_rad: float = math.radians(17.2)        # ±0.30 rad per JSBSim
+    elevator_max_rad: float = math.radians(17.2)  # ±0.30 rad per JSBSim
     elevator_rate_max_rad_s: float = math.radians(40.0)
     aileron_tau_s: float = 0.10
-    aileron_max_rad: float = math.radians(20.1)         # ±0.35 rad per JSBSim
+    aileron_max_rad: float = math.radians(20.1)  # ±0.35 rad per JSBSim
     aileron_rate_max_rad_s: float = math.radians(40.0)
     rudder_tau_s: float = 0.10
     rudder_max_rad: float = math.radians(20.1)
@@ -129,7 +128,7 @@ class B737Parameters:
 
     # Engines — defaults are 2 × CFM56-7B at 27 300 lbf SLS (737-800).
     # The 737-100 default config below overrides to 2 × JT8D-9 @ 14 500 lbf.
-    engine_thrust_max_lb: float = 54_600.0   # 2 × 27 300 lb (737-800)
+    engine_thrust_max_lb: float = 54_600.0  # 2 × 27 300 lb (737-800)
     engine_idle_frac: float = 0.05
     engine_tau_s: float = 1.5
     n_engines: int = 2
@@ -151,9 +150,14 @@ def default_parameters(
         return B737Parameters(
             config=B737Configuration.B737_100,
             weight_lb=100_000.0,
-            Ix=562_000.0, Iy=1_473_000.0, Iz=1_894_000.0, Ixz=8_000.0,
-            S_ft2=1_171.0, b_ft=94.7, cbar_ft=12.31,
-            engine_thrust_max_lb=29_000.0,   # 2 × 14 500 lbf JT8D-9
+            Ix=562_000.0,
+            Iy=1_473_000.0,
+            Iz=1_894_000.0,
+            Ixz=8_000.0,
+            S_ft2=1_171.0,
+            b_ft=94.7,
+            cbar_ft=12.31,
+            engine_thrust_max_lb=29_000.0,  # 2 × 14 500 lbf JT8D-9
             n_engines=2,
         )
     if config is B737Configuration.B737_800:
@@ -162,9 +166,14 @@ def default_parameters(
             # 737-800 typical operating weight (mid-cruise, half fuel).
             # Derived by scaling JSBSim numbers by FAA TCDS A16WE ratios.
             weight_lb=140_000.0,
-            Ix=820_000.0, Iy=2_300_000.0, Iz=3_000_000.0, Ixz=12_000.0,
-            S_ft2=1_341.0, b_ft=117.5, cbar_ft=12.97,
-            engine_thrust_max_lb=54_600.0,   # 2 × 27 300 lbf CFM56-7B27
+            Ix=820_000.0,
+            Iy=2_300_000.0,
+            Iz=3_000_000.0,
+            Ixz=12_000.0,
+            S_ft2=1_341.0,
+            b_ft=117.5,
+            cbar_ft=12.97,
+            engine_thrust_max_lb=54_600.0,  # 2 × 27 300 lbf CFM56-7B27
             n_engines=2,
         )
     raise ValueError(f"unknown B737Configuration: {config!r}")

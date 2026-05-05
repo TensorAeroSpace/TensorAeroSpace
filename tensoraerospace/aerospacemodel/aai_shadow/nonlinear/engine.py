@@ -28,14 +28,15 @@ from __future__ import annotations
 
 from .params import AAIShadowParameters, isa_density_kg_m3
 
-
 # Calibration constants
-_T_STATIC_FULL_N = 380.0      # full-throttle static thrust at sea level
-_V_ZERO_THRUST_M_S = 65.0     # airspeed at which thrust would reach zero
+_T_STATIC_FULL_N = 380.0  # full-throttle static thrust at sea level
+_V_ZERO_THRUST_M_S = 65.0  # airspeed at which thrust would reach zero
 
 
 def shadow_thrust(
-    throttle: float, V_m_s: float, altitude_m: float,
+    throttle: float,
+    V_m_s: float,
+    altitude_m: float,
     params: AAIShadowParameters,
 ) -> tuple[float, float]:
     """Calibrated thrust model. Returns ``(T_N, CT_value)``.

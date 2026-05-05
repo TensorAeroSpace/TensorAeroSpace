@@ -57,7 +57,6 @@ import math
 from dataclasses import dataclass
 from typing import Optional
 
-
 # ---- ISA atmosphere (SI) — same as Skywalker X8 module ----------------
 
 _T0_K = 288.15
@@ -101,7 +100,7 @@ class AAIShadowParameters:
     # references; FAS RQ-7 fact sheet weight + Roskam Vol VI inertia
     # estimation for high-aspect-ratio twin-boom)
     mass_kg: float = 170.0
-    Ix: float = 50.0       # kg·m²
+    Ix: float = 50.0  # kg·m²
     Iy: float = 80.0
     Iz: float = 120.0
     Ixz: float = 5.0
@@ -110,9 +109,9 @@ class AAIShadowParameters:
     # configuration with the larger 20.4 ft wingspan; the original
     # RQ-7A had b=4.27 m / S=1.67 m² but the RQ-7B is the variant
     # actually published with the 36 m/s cruise speed used here).
-    S_m2: float = 4.42       # planform area, RQ-7B
-    b_m: float = 6.22        # 20.4 ft wingspan
-    cbar_m: float = 0.71     # ≈ S/b for rectangular wing
+    S_m2: float = 4.42  # planform area, RQ-7B
+    b_m: float = 6.22  # 20.4 ft wingspan
+    cbar_m: float = 0.71  # ≈ S/b for rectangular wing
     cg_frac_cbar: float = 0.25
 
     g_m_s2: float = 9.80665
@@ -133,10 +132,10 @@ class AAIShadowParameters:
     # Calibrated thrust model (see :mod:`.engine`):
     #   * Static, full throttle: T ≈ 380 N (~ 38 hp at static prop η)
     #   * Cruise (35 m/s, 70 % throttle): T ≈ 70 N
-    engine_max_power_kW: float = 28.0          # 38 hp
+    engine_max_power_kW: float = 28.0  # 38 hp
     engine_idle_frac: float = 0.10
-    prop_diameter_m: float = 0.61              # 24" 2-blade pusher
-    prop_static_efficiency: float = 0.55       # static thrust factor
+    prop_diameter_m: float = 0.61  # 24" 2-blade pusher
+    prop_static_efficiency: float = 0.55  # static thrust factor
 
     # Damage subsystem hooks (parity with the rest of the family)
     damage_state: Optional[object] = None

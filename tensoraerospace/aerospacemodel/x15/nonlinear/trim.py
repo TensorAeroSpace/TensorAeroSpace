@@ -173,11 +173,7 @@ def level_trim(
     sol, info, ier, _ = fsolve(residual, list(initial_guess), full_output=True)
     res_vec = residual(sol)
     res_norm = float(np.linalg.norm(res_vec))
-    converged = (
-        ier == 1
-        and res_norm <= tol
-        and 0.0 <= float(sol[2]) <= 1.0
-    )
+    converged = ier == 1 and res_norm <= tol and 0.0 <= float(sol[2]) <= 1.0
     return TrimResult(
         alpha_rad=float(sol[0]),
         elevator_rad=float(sol[1]),
