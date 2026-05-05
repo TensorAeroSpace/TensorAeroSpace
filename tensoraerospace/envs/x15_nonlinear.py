@@ -38,7 +38,6 @@ from tensoraerospace.aerospacemodel.x15.nonlinear import (
     trim,
 )
 from tensoraerospace.aerospacemodel.x15.nonlinear.flight_conditions import (
-    X15FlightCondition,
     get_flight_condition,
 )
 

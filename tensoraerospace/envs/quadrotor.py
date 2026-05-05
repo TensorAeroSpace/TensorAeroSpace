@@ -148,7 +148,7 @@ class NonlinearQuadrotorEnv(gym.Env):
 
     # ---- gym API -------------------------------------------------------
 
-    def reset(self, *, seed=None, options=None):  # type: ignore[override]
+    def reset(self, *, seed=None, options=None):
         super().reset(seed=seed)
         self.model = NonlinearQuadrotor(
             x0=self.initial_state, dt=self.dt, integrator=self.integrator
@@ -170,7 +170,7 @@ class NonlinearQuadrotorEnv(gym.Env):
 
         return self.model.current_state.copy(), {}
 
-    def step(self, action):  # type: ignore[override]
+    def step(self, action):
         if self.model is None:
             raise RuntimeError("env.reset() must be called before step()")
 

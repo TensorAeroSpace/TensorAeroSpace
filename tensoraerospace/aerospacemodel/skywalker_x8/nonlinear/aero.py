@@ -35,12 +35,10 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-import numpy as np
 
 from .params import (
     SkywalkerX8Parameters,
     isa_density_kg_m3,
-    isa_speed_of_sound_m_s,
 )
 
 # Identified coefficient values — paper Table 8.
@@ -110,7 +108,7 @@ class AeroForces:
     L: float
     D: float
     Y: float
-    l: float
+    l: float  # noqa: E741 — body-axis rolling moment, standard aero notation
     m: float
     n: float
 

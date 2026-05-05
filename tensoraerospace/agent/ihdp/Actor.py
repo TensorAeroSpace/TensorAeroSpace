@@ -494,7 +494,7 @@ class Actor:
         if G_arr.ndim == 1:
             G_arr = G_arr.reshape(-1, 1)
         G_tracked = G_arr[self.indices_tracking_states, :]
-        return (J_scalar * (G_tracked.T @ dJdx)).reshape(-1)
+        return np.asarray((J_scalar * (G_tracked.T @ dJdx)).reshape(-1))
 
     def _weighted_param_gradient(
         self, dE_du: np.ndarray, dut_dparam: np.ndarray

@@ -10,7 +10,7 @@ import numpy as np
 def euler(
     f: Callable, x: np.ndarray, u: np.ndarray, t: float, dt: float, params
 ) -> np.ndarray:
-    return x + dt * f(x, u, t, params)
+    return np.asarray(x + dt * f(x, u, t, params))
 
 
 def rk4(
@@ -20,4 +20,4 @@ def rk4(
     k2 = f(x + 0.5 * dt * k1, u, t + 0.5 * dt, params)
     k3 = f(x + 0.5 * dt * k2, u, t + 0.5 * dt, params)
     k4 = f(x + dt * k3, u, t + dt, params)
-    return x + (dt / 6.0) * (k1 + 2.0 * k2 + 2.0 * k3 + k4)
+    return np.asarray(x + (dt / 6.0) * (k1 + 2.0 * k2 + 2.0 * k3 + k4))

@@ -54,7 +54,7 @@ class AeroForces:
     L: float
     D: float
     Y: float
-    l: float
+    l: float  # noqa: E741 — body-axis rolling moment, standard aero notation
     m: float
     n: float
 

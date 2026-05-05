@@ -79,8 +79,7 @@ def quadrotor_ode_6dof(
     if u.size != 4:
         raise ValueError(f"control must have 4 elements; got {u.size}")
 
-    # Unpack state
-    _x_e, _y_e, _z_e = x[0], x[1], x[2]
+    # Unpack state (positions x[0:3] not needed in body-frame dynamics)
     u_b, v_b, w_b = x[3], x[4], x[5]
     phi, theta, psi = x[6], x[7], x[8]
     p, q, r = x[9], x[10], x[11]

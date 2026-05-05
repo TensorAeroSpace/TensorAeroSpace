@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Optional
 
-from .events import DamageEvent, DamageProfile
+from .events import AnyDamageEvent, DamageProfile
 from .state import B747DamageState
 
 
@@ -21,7 +21,7 @@ class B747DamageManager:
     def __init__(self, profile: Optional[DamageProfile] = None) -> None:
         self.profile: DamageProfile = profile or DamageProfile(events=[])
         self.state: B747DamageState = B747DamageState.healthy()
-        self._injected: list[DamageEvent] = []
+        self._injected: list["AnyDamageEvent"] = []
 
     def reset(self, *, seed: Optional[int] = None) -> None:
         """Clear all damage and re-baseline (called by ``env.reset``).
@@ -34,23 +34,23 @@ class B747DamageManager:
     def set_profile(self, profile: DamageProfile) -> None:
         self.profile = profile
 
-    def inject_event(self, event: DamageEvent) -> None:
+    def inject_event(self, event: "AnyDamageEvent") -> None:
         """Add a one-shot event for this episode (single-fire)."""
         self._injected.append(event)
 
     def update(
         self, t_current: float, t_previous: float, dt: float
-    ) -> list[DamageEvent]:
+    ) -> list["AnyDamageEvent"]:
         """Apply events in ``(t_previous, t_current]`` and advance decay.
 
         Returns the list of events that fired during this step.
         """
-        triggered: list[DamageEvent] = []
+        triggered: list["AnyDamageEvent"] = []
         for ev in self.profile.get_pending_events(t_current, t_previous):
             ev.apply(self.state)
             triggered.append(ev)
 
-        remaining: list[DamageEvent] = []
+        remaining: list["AnyDamageEvent"] = []
         for ev in self._injected:
             if t_previous < ev.trigger_time <= t_current:
                 ev.apply(self.state)

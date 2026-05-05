@@ -59,7 +59,7 @@ class AeroForces:
     L: float  # lift, lb (acts +Z stability)
     D: float  # drag, lb (acts +X stability, *backward*)
     Y: float  # side force, lb (body axis)
-    l: float  # rolling moment, lb·ft (body axis)
+    l: float  # noqa: E741 — body-axis rolling moment, standard aero notation
     m: float  # pitching moment, lb·ft (body axis)
     n: float  # yawing moment, lb·ft (body axis)
 

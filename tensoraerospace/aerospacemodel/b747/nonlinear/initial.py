@@ -15,7 +15,7 @@ from typing import Optional
 
 import numpy as np
 
-from .flight_conditions import B747FlightCondition, get_flight_condition
+from .flight_conditions import B747FlightCondition
 
 STATE_LIST = [
     "u",

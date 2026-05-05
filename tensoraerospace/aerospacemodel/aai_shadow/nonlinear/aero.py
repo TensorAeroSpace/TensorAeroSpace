@@ -41,7 +41,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-import numpy as np
 
 from .params import AAIShadowParameters, isa_density_kg_m3
 
@@ -109,7 +108,7 @@ class AeroForces:
     L: float
     D: float
     Y: float
-    l: float
+    l: float  # noqa: E741 — body-axis rolling moment, standard aero notation
     m: float
     n: float
 

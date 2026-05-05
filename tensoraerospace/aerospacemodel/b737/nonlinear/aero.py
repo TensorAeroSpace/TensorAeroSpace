@@ -56,7 +56,7 @@ class AeroForces:
     L: float
     D: float
     Y: float
-    l: float
+    l: float  # noqa: E741 — body-axis rolling moment, standard aero notation
     m: float
     n: float
 
@@ -85,7 +85,7 @@ _MACH_GRID_CLDA = np.array([0.0, 0.5, 0.85, 1.0, 1.5, 2.0])
 _CLDA_TABLE = np.array([0.10, 0.090, 0.080, 0.070, 0.050, 0.033])
 
 
-def _interp(x: np.ndarray, xp: np.ndarray, fp: np.ndarray) -> float:
+def _interp(x: float, xp: np.ndarray, fp: np.ndarray) -> float:
     return float(np.interp(x, xp, fp))
 
 

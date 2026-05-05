@@ -38,7 +38,6 @@ from tensoraerospace.aerospacemodel.b747.nonlinear import (
     trim,
 )
 from tensoraerospace.aerospacemodel.b747.nonlinear.flight_conditions import (
-    B747FlightCondition,
     get_flight_condition,
 )
 
@@ -211,7 +210,7 @@ class NonlinearB747Env(gym.Env):
 
     # ---- gym API -------------------------------------------------------
 
-    def reset(self, *, seed: Optional[int] = None, options=None):  # type: ignore[override]
+    def reset(self, *, seed: Optional[int] = None, options=None):
         super().reset(seed=seed)
         self.model = NonlinearB747(
             x0=self.initial_state,
@@ -242,7 +241,7 @@ class NonlinearB747Env(gym.Env):
         self.damage_events_log = []
         return self.model.current_state.copy(), {}
 
-    def step(self, action):  # type: ignore[override]
+    def step(self, action):
         if self.model is None:
             raise RuntimeError("env.reset() must be called before step()")
 

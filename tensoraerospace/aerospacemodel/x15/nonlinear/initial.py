@@ -21,8 +21,8 @@ from typing import Optional
 
 import numpy as np
 
-from .flight_conditions import X15FlightCondition, get_flight_condition
-from .params import X15Configuration, X15Parameters, default_parameters
+from .flight_conditions import X15FlightCondition
+from .params import X15Configuration, default_parameters
 
 STATE_LIST = [
     "u",

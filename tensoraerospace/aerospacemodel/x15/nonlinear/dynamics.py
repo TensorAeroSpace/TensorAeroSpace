@@ -37,7 +37,7 @@ from __future__ import annotations
 import numpy as np
 
 from .aero import AeroState, x15_aero
-from .params import X15Parameters, isa_speed_of_sound_ft_s
+from .params import X15Parameters
 
 
 def x15_ode_6dof(

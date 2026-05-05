@@ -64,15 +64,15 @@ jobs:
           - label: pid-use
             notebook: example/pid_controllers/pid_use.ipynb
           - label: ihdp-linear
-            notebook: example/general_examples/example_ihdp.ipynb
+            notebook: example/reinforcement_learning/incremental_adp/example_ihdp_linear_f16.ipynb
           - label: ihdp-nonlinear-f16
-            notebook: example/reinforcement_learning/example_ihdp_nonlinear_f16.ipynb
+            notebook: example/reinforcement_learning/incremental_adp/example_ihdp_nonlinear_f16.ipynb
           - label: etdhp-nonlinear-f16
-            notebook: example/reinforcement_learning/example_etdhp_nonlinear_f16.ipynb
+            notebook: example/reinforcement_learning/incremental_adp/example_etdhp_nonlinear_f16.ipynb
           - label: aaindi-nonlinear-f16
-            notebook: example/reinforcement_learning/example_aaindi_nonlinear_f16.ipynb
+            notebook: example/reinforcement_learning/incremental_adp/example_aaindi_nonlinear_f16.ipynb
           - label: iadp-nonlinear-f16
-            notebook: example/reinforcement_learning/example_iadp_nonlinear_f16.ipynb
+            notebook: example/reinforcement_learning/incremental_adp/example_iadp_nonlinear_f16.ipynb
           - label: cookbook-01-hello
             notebook: example/cookbook/recipe_01_hello.ipynb
           - label: cookbook-03-signals
