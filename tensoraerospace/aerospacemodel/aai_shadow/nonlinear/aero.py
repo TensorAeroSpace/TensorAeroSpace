@@ -41,7 +41,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-
 from .params import AAIShadowParameters, isa_density_kg_m3
 
 # ---- Identified / synthesised derivatives (paper-reviewed class) --------

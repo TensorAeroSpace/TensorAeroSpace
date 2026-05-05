@@ -35,7 +35,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-
 from .params import (
     SkywalkerX8Parameters,
     isa_density_kg_m3,
