@@ -23,7 +23,7 @@
 ## Запуск
 
 ```bash
-python example/reinforcement_learning/train_dsac_b747_tracking.py
+python example/reinforcement_learning/deep_rl/train_dsac_b747_tracking.py
 ```
 
 Скрипт показывает предпросмотр задающего сигнала и ждёт закрытия окна перед началом обучения.

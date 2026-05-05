@@ -29,7 +29,7 @@ Curriculum решает эти проблемы:
 ## Запуск
 
 ```bash
-python example/reinforcement_learning/train_dsac_b747_step_response.py
+python example/reinforcement_learning/deep_rl/train_dsac_b747_step_response.py
 ```
 
 Мониторинг обучения через TensorBoard:

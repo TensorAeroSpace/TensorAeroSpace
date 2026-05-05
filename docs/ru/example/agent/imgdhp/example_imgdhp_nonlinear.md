@@ -1,6 +1,6 @@
 # Пример: IM-GDHP на F-16 — онлайн адаптивное управление
 
-Пример демонстрирует агент **Incremental Model-based Global Dual Heuristic Programming (IM-GDHP)** на продольном канале F-16. Агент сочетает онлайн-идентификацию инкрементальной линейной модели объекта методом RLS с двухголовым GDHP-критиком, одновременно обучающим функцию стоимости \(J\) и её градиент \(\lambda = \partial J/\partial y\). Исходный ноутбук: `example/reinforcement_learning/example_im_gdhp_nonlinear_f16.ipynb`.
+Пример демонстрирует агент **Incremental Model-based Global Dual Heuristic Programming (IM-GDHP)** на продольном канале F-16. Агент сочетает онлайн-идентификацию инкрементальной линейной модели объекта методом RLS с двухголовым GDHP-критиком, одновременно обучающим функцию стоимости \(J\) и её градиент \(\lambda = \partial J/\partial y\). Исходный ноутбук: `example/reinforcement_learning/incremental_adp/example_im_gdhp_nonlinear_f16.ipynb`.
 
 **Источник:** Bo Sun & Erik-Jan van Kampen, *"Intelligent adaptive optimal control using incremental model-based global dual heuristic programming subject to partial observability"*, Applied Soft Computing 103, 2021.
 

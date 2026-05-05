@@ -203,6 +203,7 @@ class IHDPAgent(object):
         else:
             xt_for_actor = xt_tracked
         ut = self.actor.run_actor_online(xt_for_actor, xt_ref)
+        ut = np.asarray(ut, dtype=float).reshape(len(self.selected_input), 1)
 
         # Optional integral correction. IHDP minimises a quadratic LQ
         # cost without an integral term, so the policy keeps a small
@@ -221,11 +222,12 @@ class IHDPAgent(object):
                         self.actor.integral_clamp,
                     )
                 )
+            correction = np.zeros_like(ut)
+            correction[0, 0] = self.actor.integral_gain * self.actor.integral_state
             ut = np.clip(
-                np.asarray(ut, dtype=float)
-                - self.actor.integral_gain * self.actor.integral_state,
-                -self.actor.maximum_input,
-                self.actor.maximum_input,
+                ut - correction,
+                -self.actor.maximum_input_column,
+                self.actor.maximum_input_column,
             )
 
         G = self.incremental_model.identify_incremental_model_LS(xt, ut)

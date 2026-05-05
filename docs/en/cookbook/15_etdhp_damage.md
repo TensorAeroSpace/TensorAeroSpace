@@ -2,7 +2,7 @@
 
 This recipe walks through `example_etdhp_damage_f16.ipynb` end-to-end: training the **ET-DHP** agent on a healthy F-16 longitudinal model, then evaluating it for 60 s with a **real damage event injected at t = 20 s**. The damage plumbing is the [aircraft damage modeling](../model/aircraft-damage-modeling.md) subsystem — the env recomputes mass, area, and inertias on the fly, and the longitudinal ODE picks up the strip-theory `ΔCy / ΔMy` corrections, so the agent really does fly a different plant from t = 20 s onward.
 
-**Agent docs.** [ET-DHP](../agent/et_dhp.md) · **Notebook.** `example/reinforcement_learning/example_etdhp_damage_f16.ipynb` · **Companion script (iADP).** `example/reinforcement_learning/example_iadp_damage_f16.py` · **Related recipe.** [Recipe 13 — ET-DHP on the nonlinear F-16](13_etdhp.md).
+**Agent docs.** [ET-DHP](../agent/et_dhp.md) · **Notebook.** `example/reinforcement_learning/incremental_adp/example_etdhp_damage_f16.ipynb` · **Companion script (iADP).** `example/reinforcement_learning/incremental_adp/example_iadp_damage_f16.py` · **Related recipe.** [Recipe 13 — ET-DHP on the nonlinear F-16](13_etdhp.md).
 
 ## Why this recipe
 
@@ -129,10 +129,10 @@ The companion **iADP** example (linked at the top) skips this problem entirely: 
 
 ```bash
 # Notebook — full narrative with plots:
-jupyter lab example/reinforcement_learning/example_etdhp_damage_f16.ipynb
+jupyter lab example/reinforcement_learning/incremental_adp/example_etdhp_damage_f16.ipynb
 
 # Or the script — same logic, faster to iterate:
-poetry run python example/reinforcement_learning/example_etdhp_damage_f16.py
+poetry run python example/reinforcement_learning/incremental_adp/example_etdhp_damage_f16.py
 ```
 
 Total runtime is ~3-5 minutes (dominated by the 6 training episodes; each is 60 s of simulation at dt = 10 ms with online actor/critic gradient steps).
@@ -142,4 +142,4 @@ Total runtime is ~3-5 minutes (dominated by the 6 training episodes; each is 60 
 - [Aircraft damage modeling](../model/aircraft-damage-modeling.md) — the damage subsystem in detail.
 - [Recipe 13 — ET-DHP on the nonlinear F-16](13_etdhp.md) — same agent, no damage.
 - [Recipe 09 — Fault tolerance](09_fault_tolerance.md) — broader context on adaptive RL under failures.
-- iADP example with damage: `example/reinforcement_learning/example_iadp_damage_f16.py` — same scenario, online plant identification.
+- iADP example with damage: `example/reinforcement_learning/incremental_adp/example_iadp_damage_f16.py` — same scenario, online plant identification.

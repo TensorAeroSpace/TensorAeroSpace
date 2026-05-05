@@ -24,13 +24,13 @@
 Откройте ноутбук в Jupyter или VS Code:
 
 ```bash
-jupyter notebook example/reinforcement_learning/eval_dsac_b747.ipynb
+jupyter notebook example/reinforcement_learning/deep_rl/eval_dsac_b747.ipynb
 ```
 
 Или запустите напрямую с `nbconvert`:
 
 ```bash
-jupyter nbconvert --execute --to notebook example/reinforcement_learning/eval_dsac_b747.ipynb
+jupyter nbconvert --execute --to notebook example/reinforcement_learning/deep_rl/eval_dsac_b747.ipynb
 ```
 
 ## Основной код

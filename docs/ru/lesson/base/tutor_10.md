@@ -595,7 +595,7 @@ tensorboard --logdir runs
 
 * **DSAC (Distributional SAC)**: Управление с учетом рисков, где критик
   предсказывает полное распределение отдачи. См. `tensoraerospace.agent.dsac`
-  и пример `example/reinforcement_learning/train_dsac_b747_step_response.py`.
+  и пример `example/reinforcement_learning/deep_rl/train_dsac_b747_step_response.py`.
 * **MPC (Model Predictive Control)**: Использование обученной или аналитической
   модели динамики с оптимизацией на скользящем горизонте. См.
   `tensoraerospace.agent.mpc`.

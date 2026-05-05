@@ -586,7 +586,7 @@ matplotlib.
 
 * **DSAC (Distributional SAC)**: Risk-aware control where the critic predicts
   a full return distribution. See `tensoraerospace.agent.dsac` and the example
-  `example/reinforcement_learning/train_dsac_b747_step_response.py`.
+  `example/reinforcement_learning/deep_rl/train_dsac_b747_step_response.py`.
 * **MPC (Model Predictive Control)**: Use a learned or analytical dynamics model
   with receding-horizon optimization. See `tensoraerospace.agent.mpc`.
 * **ADP / ADHDP**: Adaptive Dynamic Programming methods that combine neural

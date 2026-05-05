@@ -54,7 +54,7 @@ for _ in range(2000):
         print(info["damage_events_triggered"])
 ```
 
-Готовый к запуску пример находится в файле `example/f16_damage_dogfight_demo.py`.
+Готовый к запуску пример находится в файле `example/failure_demos/f16_damage_dogfight_demo.py`.
 
 ## Что моделируется
 

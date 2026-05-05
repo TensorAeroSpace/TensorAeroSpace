@@ -1,6 +1,6 @@
 # Example: ET-DHP on the nonlinear F-16 — sinusoidal α-tracking
 
-This example trains an **Event-Triggered Dual Heuristic Programming (ET-DHP)** agent on the same benchmark the IHDP example uses: a 3° amplitude, 0.1 Hz sinusoidal α reference on the [nonlinear F-16 longitudinal model](../../../model/f16_nonlinear_longitudinal.md). The two reactive agents can be compared on equal footing because both use the same global trim, the same inverse-model feedforward, and the same 80-second reference signal. Source notebook: `example/reinforcement_learning/example_etdhp_nonlinear_f16.ipynb`.
+This example trains an **Event-Triggered Dual Heuristic Programming (ET-DHP)** agent on the same benchmark the IHDP example uses: a 3° amplitude, 0.1 Hz sinusoidal α reference on the [nonlinear F-16 longitudinal model](../../../model/f16_nonlinear_longitudinal.md). The two reactive agents can be compared on equal footing because both use the same global trim, the same inverse-model feedforward, and the same 80-second reference signal. Source notebook: `example/reinforcement_learning/incremental_adp/example_etdhp_nonlinear_f16.ipynb`.
 
 **Reference:** Bo Sun, Cheng Liu, Killian Dally, Erik-Jan van Kampen. *"Intelligent Aircraft Stabilization Control with Event-Triggered Scheme"*, CEAS EuroGNC 2022.
 
