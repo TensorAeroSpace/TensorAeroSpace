@@ -1,6 +1,6 @@
 # Example: IHDP on the nonlinear B-747 — pitch step tracking
 
-This example trains an **Incremental Heuristic Dynamic Programming (IHDP)** agent to drive the pitch angle \(\theta\) of the [nonlinear Boeing 747-100 6-DoF model](../../../model/b747_nonlinear.md) to a step reference at cruise (FL200, \(V \approx 674\) ft/s). The source notebook lives at `example/reinforcement_learning/example_ihdp_nonlinear_b747.ipynb`.
+This example trains an **Incremental Heuristic Dynamic Programming (IHDP)** agent to drive the pitch angle \(\theta\) of the [nonlinear Boeing 747-100 6-DoF model](../../../model/b747_nonlinear.md) to a step reference at cruise (FL200, \(V \approx 674\) ft/s). The source notebook lives at `example/reinforcement_learning/incremental_adp/example_ihdp_nonlinear_b747.ipynb`.
 
 ## Why this differs from the F-16 IHDP example
 

@@ -150,7 +150,7 @@ $(1 - f_s)$, и параметры ЛА `m`, площадь крыла `S`, ра
 двусторонней потери `ΔCy ≈ -0.10`, т.е. ~12 % от здоровой подъёмной силы.
 **Справа**: асимметричная (только левая) потеря порождает дельту момента
 крена `ΔMx`, масштабирующуюся и с `α`, и с `f` — это та физика, что стоит
-за догфайт-сценарием в `example/f16_damage_dogfight_demo.py`.
+за догфайт-сценарием в `example/failure_demos/f16_damage_dogfight_demo.py`.
 
 Концептуальный спутник ниже собирает ту же физику в единое side-by-side
 сравнение: симметричная потеря сохраняет балансировку и снижает только
@@ -197,7 +197,7 @@ env.render()  # → вкладка браузера или ячейка Jupyter
 
 ### Проработанный пример — потеря законцовки в полёте
 
-`example/f16_damage_dogfight_demo.py` запускает угловую модель F-16 с
+`example/failure_demos/f16_damage_dogfight_demo.py` запускает угловую модель F-16 с
 `damage_profile=WING_STRIKE_LEFT_TIP` (полная потеря `left_tip` на
 t = 10 с). С нулевой командой РУС траектория чётко показывает асимметрию
 — до повреждения ЛА держит горизонтальный полёт; после повреждения
@@ -256,7 +256,7 @@ profile_b = aileron_efficiency_loss_schedule(
 profile_c = rudder_total_loss(t_inject=10.0)
 ```
 
-См. также готовый пример в `example/reinforcement_learning/example_aidi_damage_f16.ipynb`.
+См. также готовый пример в `example/reinforcement_learning/incremental_adp/example_aidi_damage_f16.ipynb`.
 
 ## Пользовательские сценарии
 
@@ -489,10 +489,10 @@ RL-агенты в 60-секундной миссии с инжектирова�
 
 | Пример | Путь | Формат |
 |--------|------|--------|
-| iADP (Incremental ADP) | `example/reinforcement_learning/example_iadp_damage_f16.py` | исполняемый скрипт |
-| ET-DHP (Event-Triggered DHP) | `example/reinforcement_learning/example_etdhp_damage_f16.py` | исполняемый скрипт |
-| ET-DHP (notebook-версия) | `example/reinforcement_learning/example_etdhp_damage_f16.ipynb` | Jupyter-ноутбук |
-| AIDI (Adaptive Incremental Inversion) | `example/reinforcement_learning/example_aidi_damage_f16.ipynb` | Jupyter-ноутбук |
+| iADP (Incremental ADP) | `example/reinforcement_learning/incremental_adp/example_iadp_damage_f16.py` | исполняемый скрипт |
+| ET-DHP (Event-Triggered DHP) | `example/reinforcement_learning/incremental_adp/example_etdhp_damage_f16.py` | исполняемый скрипт |
+| ET-DHP (notebook-версия) | `example/reinforcement_learning/incremental_adp/example_etdhp_damage_f16.ipynb` | Jupyter-ноутбук |
+| AIDI (Adaptive Incremental Inversion) | `example/reinforcement_learning/incremental_adp/example_aidi_damage_f16.ipynb` | Jupyter-ноутбук |
 
 ### Общий сценарий
 

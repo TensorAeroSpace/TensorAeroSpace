@@ -230,6 +230,6 @@ env.w_jerk = 0.05       # Высокое подавление дрожания
 ## См. также
 
 - [Базовая модель ComSat](../model/comsat.md): Описание математической модели
-- Пример обучения PPO: `example/reinforcement_learning/example_ppo_comsat_improved.py`
+- Пример обучения PPO: `example/reinforcement_learning/deep_rl/example_ppo_comsat_improved.py`
 - [ImprovedB747Env](../model/b747.md): Аналогичная улучшенная среда для самолёта
 

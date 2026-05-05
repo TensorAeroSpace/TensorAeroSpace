@@ -90,7 +90,7 @@ The agent keeps the same save/load/Hugging-Face round-trip API as `aa_indi`/`et_
 
 ## Worked example
 
-`example/reinforcement_learning/example_aidi_damage_f16.ipynb` — a full fault-recovery walkthrough on the nonlinear F-16: trim, baseline, 25 % stab efficiency loss at t = 5 s, side-by-side adaptive vs frozen-Θ runs.
+`example/reinforcement_learning/incremental_adp/example_aidi_damage_f16.ipynb` — a full fault-recovery walkthrough on the nonlinear F-16: trim, baseline, 25 % stab efficiency loss at t = 5 s, side-by-side adaptive vs frozen-Θ runs.
 
 ## Benchmark CLI
 

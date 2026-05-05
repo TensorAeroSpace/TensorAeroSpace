@@ -428,5 +428,5 @@ profile = DamageProfile(events=[
   CR-2144 reference, equations, validation.
 * [Aircraft Damage Modeling](aircraft-damage-modeling.md) — general
   damage-subsystem concept (F-16 version).
-* `example/reinforcement_learning/example_dsac_b747.ipynb` — DSAC
+* `example/reinforcement_learning/deep_rl/example_dsac_b747.ipynb` — DSAC
   pitch-tracking on the B-747 model.

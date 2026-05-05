@@ -2,7 +2,7 @@
 
 ![B-747 на крейсе с дымным следом от отказавшего двигателя](img/etdhp_b747_engine_failure_hero.png)
 
-Пример обучает агент **Event-Triggered Dual Heuristic Programming (ET-DHP)** удерживать [нелинейный Boeing 747-100](../../../model/b747_nonlinear.md) на исходном курсе $\psi_0 = 0$ после отказа **левого внешнего двигателя** в момент $t = 10$ с. Исходный ноутбук: `example/reinforcement_learning/example_etdhp_b747_engine_failure.ipynb`.
+Пример обучает агент **Event-Triggered Dual Heuristic Programming (ET-DHP)** удерживать [нелинейный Boeing 747-100](../../../model/b747_nonlinear.md) на исходном курсе $\psi_0 = 0$ после отказа **левого внешнего двигателя** в момент $t = 10$ с. Исходный ноутбук: `example/reinforcement_learning/incremental_adp/example_etdhp_b747_engine_failure.ipynb`.
 
 > Отказ двигателя реализован через пресет [`LEFT_OUTER_ENGINE_FAILURE`](../../../model/b747_nonlinear.md#подсистема-повреждений) подсистемы повреждений B-747. Эффективность двигателя №1 обнуляется, а модель двигателя возвращает yaw-момент от асимметричной тяги, рассчитанный по поперечной координате двигателя $y_1 = -71{,}7$ ft (компоновка из CR-2144 Figure IX-2).
 

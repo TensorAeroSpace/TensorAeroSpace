@@ -529,7 +529,7 @@ for sc in scenarios:
 
 * [Quadrotor (нелинейный 6-DoF)](quadrotor_nonlinear.md) — теория, СК,
   уравнения и валидация модели.
-* `example/reinforcement_learning/example_ihdp_quadrotor.ipynb` —
+* `example/reinforcement_learning/incremental_adp/example_ihdp_quadrotor.ipynb` —
   online-IHDP на ступенчатом отклике по высоте.
-* `example/reinforcement_learning/example_etdhp_quadrotor_damage.ipynb`
+* `example/reinforcement_learning/incremental_adp/example_etdhp_quadrotor_damage.ipynb`
   — ET-DHP с offline-предобученной plant-network в сценарии отказа M1.

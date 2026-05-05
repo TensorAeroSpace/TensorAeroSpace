@@ -2,7 +2,7 @@
 
 This example trains a **Soft Actor-Critic (SAC)** agent to track a 5° angle-of-attack step on the `LinearLongitudinalF16-v0` Gymnasium environment. SAC is an off-policy, stochastic actor-critic algorithm with a maximum-entropy objective — well suited to continuous-action control problems where exploration matters and gradient-free alternatives (like IHDP) struggle to cover the state space.
 
-Source notebook: `example/reinforcement_learning/example-sac-f16.ipynb`.
+Source notebook: `example/reinforcement_learning/deep_rl/example-sac-f16.ipynb`.
 
 ## When SAC vs the adaptive-critic family
 

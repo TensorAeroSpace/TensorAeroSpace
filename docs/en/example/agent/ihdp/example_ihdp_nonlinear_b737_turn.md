@@ -2,7 +2,7 @@
 
 ![Boeing 737 in mid-bank during a coordinated turn over the cloud layer](img/ihdp_b737_turn_hero.png)
 
-This example demonstrates a **single MIMO IHDP agent** controlling the lateral-directional channel of the [nonlinear Boeing 737](../../../model/b737_nonlinear.md) during a 200-second commanded heading change of 0° → 90°. Source notebook: `example/reinforcement_learning/example_ihdp_nonlinear_b737_turn.ipynb`.
+This example demonstrates a **single MIMO IHDP agent** controlling the lateral-directional channel of the [nonlinear Boeing 737](../../../model/b737_nonlinear.md) during a 200-second commanded heading change of 0° → 90°. Source notebook: `example/reinforcement_learning/incremental_adp/example_ihdp_nonlinear_b737_turn.ipynb`.
 
 ## Architecture
 

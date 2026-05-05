@@ -179,7 +179,7 @@ hide:
     ![SAC B747](example/agent/sac/img/sac-b747-impoved.jpg)
 
     ```bash
-    python example/reinforcement_learning/sac-b747-render.py \
+    python example/reinforcement_learning/deep_rl/sac-b747-render.py \
         --render \
         --dt 0.1 \
         --tn 200 \

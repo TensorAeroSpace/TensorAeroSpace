@@ -2,7 +2,7 @@
 
 ![Boeing 737 в крене во время скоординированного поворота над облачным слоем](img/ihdp_b737_turn_hero.png)
 
-Этот пример демонстрирует **один MIMO-агент IHDP**, управляющий боково-направленным каналом [нелинейного Boeing 737](../../../model/b737_nonlinear.md) при 200-секундной командной смене курса 0° → 90°. Исходный ноутбук: `example/reinforcement_learning/example_ihdp_nonlinear_b737_turn.ipynb`.
+Этот пример демонстрирует **один MIMO-агент IHDP**, управляющий боково-направленным каналом [нелинейного Boeing 737](../../../model/b737_nonlinear.md) при 200-секундной командной смене курса 0° → 90°. Исходный ноутбук: `example/reinforcement_learning/incremental_adp/example_ihdp_nonlinear_b737_turn.ipynb`.
 
 ## Архитектура
 

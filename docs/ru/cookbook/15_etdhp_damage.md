@@ -2,7 +2,7 @@
 
 Этот рецепт пошагово разбирает `example_etdhp_damage_f16.ipynb`: обучение агента **ET-DHP** на здоровой нелинейной продольной модели F-16, а затем 60-секундный прогон с **реальным повреждением, инжектируемым на t = 20 с**. Повреждение проходит через подсистему [моделирование повреждений ЛА](../model/aircraft-damage-modeling.md) — среда пересчитывает массу, площадь и тензор инерции на лету, а продольное ОДУ подхватывает strip-theory корректировки `ΔCy / ΔMy`, так что агент действительно летит на другом объекте управления, начиная с t = 20 с.
 
-**Документация агента.** [ET-DHP](../agent/et_dhp.md) · **Notebook.** `example/reinforcement_learning/example_etdhp_damage_f16.ipynb` · **Скрипт ET-DHP.** `example/reinforcement_learning/example_etdhp_damage_f16.py` · **Скрипт iADP (для сравнения).** `example/reinforcement_learning/example_iadp_damage_f16.py` · **Связанный рецепт.** [Рецепт 13 — ET-DHP на нелинейной F-16](13_etdhp.md).
+**Документация агента.** [ET-DHP](../agent/et_dhp.md) · **Notebook.** `example/reinforcement_learning/incremental_adp/example_etdhp_damage_f16.ipynb` · **Скрипт ET-DHP.** `example/reinforcement_learning/incremental_adp/example_etdhp_damage_f16.py` · **Скрипт iADP (для сравнения).** `example/reinforcement_learning/incremental_adp/example_iadp_damage_f16.py` · **Связанный рецепт.** [Рецепт 13 — ET-DHP на нелинейной F-16](13_etdhp.md).
 
 ## Зачем этот рецепт
 
@@ -129,10 +129,10 @@ $$u^*_t \;=\; u_b \cdot \tanh\!\Bigl(-\tfrac{1}{2}\,\gamma\,R^{-1} G^{T} \lambda
 
 ```bash
 # Notebook — полное повествование с графиками:
-jupyter lab example/reinforcement_learning/example_etdhp_damage_f16.ipynb
+jupyter lab example/reinforcement_learning/incremental_adp/example_etdhp_damage_f16.ipynb
 
 # Или скрипт — та же логика, быстрее итерироваться:
-poetry run python example/reinforcement_learning/example_etdhp_damage_f16.py
+poetry run python example/reinforcement_learning/incremental_adp/example_etdhp_damage_f16.py
 ```
 
 Полное время прогона ~3-5 минут (доминирует обучение из 6 эпизодов; каждый — 60 с симуляции при dt = 10 мс с онлайн-градиентными шагами actor/critic).
@@ -142,4 +142,4 @@ poetry run python example/reinforcement_learning/example_etdhp_damage_f16.py
 - [Моделирование повреждений ЛА](../model/aircraft-damage-modeling.md) — подсистема повреждений в деталях.
 - [Рецепт 13 — ET-DHP на нелинейной F-16](13_etdhp.md) — тот же агент без повреждения.
 - [Рецепт 09 — Отказоустойчивость](09_fault_tolerance.md) — общий контекст адаптивного RL при отказах.
-- iADP пример с повреждением: `example/reinforcement_learning/example_iadp_damage_f16.py` — тот же сценарий, онлайн-идентификация объекта управления.
+- iADP пример с повреждением: `example/reinforcement_learning/incremental_adp/example_iadp_damage_f16.py` — тот же сценарий, онлайн-идентификация объекта управления.

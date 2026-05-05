@@ -1,6 +1,6 @@
 # Пример: IHDP на нелинейном B-747 — слежение за ступенькой по тангажу
 
-Пример обучает агент **Incremental Heuristic Dynamic Programming (IHDP)** удерживать угол тангажа \(\theta\) [нелинейной модели Boeing 747-100 6-DoF](../../../model/b747_nonlinear.md) на ступенчатом задании на крейсерском режиме (FL200, \(V \approx 674\) ft/s). Исходный ноутбук: `example/reinforcement_learning/example_ihdp_nonlinear_b747.ipynb`.
+Пример обучает агент **Incremental Heuristic Dynamic Programming (IHDP)** удерживать угол тангажа \(\theta\) [нелинейной модели Boeing 747-100 6-DoF](../../../model/b747_nonlinear.md) на ступенчатом задании на крейсерском режиме (FL200, \(V \approx 674\) ft/s). Исходный ноутбук: `example/reinforcement_learning/incremental_adp/example_ihdp_nonlinear_b747.ipynb`.
 
 ## Чем это отличается от примера IHDP на F-16
 

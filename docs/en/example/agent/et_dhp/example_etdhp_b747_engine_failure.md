@@ -2,7 +2,7 @@
 
 ![B-747 in cruise with smoke trailing from a failed engine](img/etdhp_b747_engine_failure_hero.png)
 
-This example trains an **Event-Triggered Dual Heuristic Programming (ET-DHP)** agent to keep the [nonlinear Boeing 747-100](../../../model/b747_nonlinear.md) on its initial heading $\psi_0 = 0$ after the **left outer engine** flames out at $t = 10$ s. Source notebook: `example/reinforcement_learning/example_etdhp_b747_engine_failure.ipynb`.
+This example trains an **Event-Triggered Dual Heuristic Programming (ET-DHP)** agent to keep the [nonlinear Boeing 747-100](../../../model/b747_nonlinear.md) on its initial heading $\psi_0 = 0$ after the **left outer engine** flames out at $t = 10$ s. Source notebook: `example/reinforcement_learning/incremental_adp/example_etdhp_b747_engine_failure.ipynb`.
 
 > Engine failure is implemented through the [`LEFT_OUTER_ENGINE_FAILURE`](../../../model/b747_nonlinear.md#damage-subsystem) preset of the B-747 damage subsystem. Engine #1's effectiveness drops to zero, and the engine model returns an asymmetric-thrust yaw moment computed from the engine's spanwise position $y_1 = -71.7$ ft (CR-2144 Figure IX-2 layout).
 

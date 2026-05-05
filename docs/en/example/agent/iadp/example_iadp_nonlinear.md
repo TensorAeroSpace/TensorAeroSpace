@@ -1,6 +1,6 @@
 # Example: iADP on the nonlinear F-16 — pitch-rate tracking with fault injection
 
-This example runs the [**iADP**](../../../agent/iadp.md) agent on a sinusoidal pitch-rate command using the [nonlinear F-16 longitudinal model](../../../model/f16_nonlinear_longitudinal.md), and shows the controller recovering after a mid-episode 50 % elevator effectiveness loss. Source notebook: `example/reinforcement_learning/example_iadp_nonlinear_f16.ipynb`.
+This example runs the [**iADP**](../../../agent/iadp.md) agent on a sinusoidal pitch-rate command using the [nonlinear F-16 longitudinal model](../../../model/f16_nonlinear_longitudinal.md), and shows the controller recovering after a mid-episode 50 % elevator effectiveness loss. Source notebook: `example/reinforcement_learning/incremental_adp/example_iadp_nonlinear_f16.ipynb`.
 
 ## Idea
 

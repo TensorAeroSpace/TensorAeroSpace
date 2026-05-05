@@ -52,7 +52,7 @@ for _ in range(2000):
         print(info["damage_events_triggered"])
 ```
 
-A runnable version of this snippet ships at `example/f16_damage_dogfight_demo.py`.
+A runnable version of this snippet ships at `example/failure_demos/f16_damage_dogfight_demo.py`.
 
 ## What is modelled
 
