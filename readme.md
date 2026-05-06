@@ -4,17 +4,21 @@
 
 [![en](https://img.shields.io/badge/lang-en-red.svg)](./readme.md)
 [![ru](https://img.shields.io/badge/lang-ru-green.svg)](./README.ru-ru.md)
+[![PyPI version](https://img.shields.io/pypi/v/tensoraerospace.svg)](https://pypi.org/project/tensoraerospace/)
+[![PyPI downloads](https://img.shields.io/pypi/dm/tensoraerospace.svg)](https://pypi.org/project/tensoraerospace/)
+[![Quick Check](https://img.shields.io/github/actions/workflow/status/TensorAeroSpace/TensorAeroSpace/quick-check.yml?branch=develop&label=tests)](https://github.com/TensorAeroSpace/TensorAeroSpace/actions/workflows/quick-check.yml)
+[![Coverage Status](https://coveralls.io/repos/github/TensorAeroSpace/TensorAeroSpace/badge.svg?branch=main)](https://coveralls.io/github/TensorAeroSpace/TensorAeroSpace?branch=main)
 [![Documentation Status](https://readthedocs.org/projects/tensoraerospace/badge/?version=latest)](https://tensoraerospace.readthedocs.io/en/latest/?badge=latest)
 [![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/TensorAeroSpace/TensorAeroSpace)
 [![Python](https://img.shields.io/badge/python-3.10--3.13-blue.svg)](https://www.python.org/downloads/)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
-[![GitHub stars](https://img.shields.io/github/stars/tensoraerospace/tensoraerospace.svg)](https://github.com/tensoraerospace/tensoraerospace/stargazers)
+[![GitHub stars](https://img.shields.io/github/stars/TensorAeroSpace/TensorAeroSpace.svg)](https://github.com/TensorAeroSpace/TensorAeroSpace/stargazers)
 
-![TensorAeroSpace logo](./img/logo-no-background.png)
+<img src="./img/logo-no-background.png" alt="TensorAeroSpace logo" width="360">
 
 **Open-source aerospace simulation toolkit + adaptive control catalogue**
 
-*Pure-NumPy 6-DoF dynamics · Gymnasium-native envs · Classical / ADP / Deep RL agents · 894 tests*
+*Pure-NumPy 6-DoF dynamics · Gymnasium-native envs · Classical / ADP / Deep RL agents*
 
 [📖 Documentation](https://tensoraerospace.readthedocs.io/) • [🚀 Quickstart](#-quickstart) • [💡 Examples](./example/) • [🤝 Contributing](CONTRIBUTING.md)
 
@@ -22,17 +26,57 @@
 
 ---
 
+## 📑 Contents
+
+- [🌟 Overview](#-overview)
+- [📊 How it compares](#-how-it-compares)
+- [🧭 Application areas](#-application-areas)
+- [🚀 Quickstart](#-quickstart)
+- [🤖 Supported algorithms](#-supported-algorithms)
+- [✈️ Aircraft & spacecraft library](#%EF%B8%8F-aircraft--spacecraft-library)
+- [🎮 Simulation environments](#-simulation-environments)
+- [📚 Examples & guides](#-examples--guides)
+- [⚠️ Known limitations](#%EF%B8%8F-known-limitations)
+- [🛠️ Development](#%EF%B8%8F-development)
+- [🎓 How to cite](#-how-to-cite)
+- [📖 Documentation](#-documentation)
+- [🤝 Community & support](#-community--support)
+- [⭐ Star history](#-star-history)
+- [📄 License](#-license)
+
+---
+
 ## 🌟 Overview
 
-**TensorAeroSpace** ships **12+ aircraft and spacecraft models** (7 of them as full nonlinear 6-DoF airframes with peer-reviewed source data), **20 control algorithms** spanning classical PID/MPC through the full incremental-ADP family to modern deep RL, and **101 runnable example notebooks** covering trim, cruise, coordinated turns, in-flight damage and fault recovery — all glued together by the standard Gymnasium API.
+**TensorAeroSpace** ships **12+ aircraft and spacecraft models** (7 of them as full nonlinear 6-DoF airframes with peer-reviewed source data), **20+ control algorithms** spanning classical PID/MPC through the full incremental-ADP family to modern deep RL, and **100+ runnable example notebooks** covering trim, cruise, coordinated turns, in-flight damage and fault recovery — all glued together by the standard Gymnasium API.
 
 Why it stands out:
 
 - 🎯 **Real airframes, not toys.** B-747 transcribed from NASA CR-2144, X-15 from NASA TM X-1669, Skywalker X8 from CEAS Aeronautical Journal 2025, B-737 from JSBSim + Roskam, RQ-7 Shadow from Beard & McLain. Trim-points reach machine precision.
-- ⚡ **Pure NumPy core.** No proprietary simulators, no MATLAB licence, no compiled binaries. Order-of-magnitude faster than JSBSim for control-synthesis sweeps.
+- ⚡ **Pure NumPy core.** No proprietary simulators, no MATLAB licence, no compiled binaries — lightweight for control-synthesis sweeps with no startup overhead or XML parsing.
 - 🧠 **Unique adaptive-control catalogue.** Standard RL stack (PPO, SAC, DDPG, DQN, A2C, A3C, GAIL) **plus** the full incremental-ADP family (IHDP, IM-GDHP, ET-DHP, iADP, AA-INDI, AIDI) — rarely co-located in a single OSS package.
 - 💥 **Damage subsystem built-in.** Per-surface effectiveness loss, hard-overs, jam events, asymmetric-thrust engine-out, flap-jam configuration override — all composable into `DamageProfile` instances.
-- 🧪 **894 unit tests.** Trim convergence, surface-deflection sign conventions, propellant burnout times all locked down by regression coverage.
+- 🧪 **Locked down by regression coverage.** Trim convergence, surface-deflection sign conventions, propellant burnout times — all under unit tests.
+- 🤗 **Hugging Face Hub native.** All PyTorch agents inherit `from_pretrained` / `publish_to_hub` from `tensoraerospace.agent.base` — pretrained checkpoints live at [huggingface.co/TensorAeroSpace](https://huggingface.co/TensorAeroSpace).
+
+## 📊 How it compares
+
+How TensorAeroSpace positions against the tools control engineers and RL researchers usually reach for:
+
+| | **TensorAeroSpace** | **JSBSim** | **MATLAB / Simulink** | **Stable-Baselines3** | **Gymnasium** |
+|---|---|---|---|---|---|
+| **License** | MIT (open-source) | LGPL (open-source) | Commercial | MIT (open-source) | MIT (open-source) |
+| **Core language** | Python (pure NumPy) | C++ + XML | Proprietary + C | Python (PyTorch) | Python |
+| **6-DoF airframes bundled** | 7 peer-reviewed | 30+ | None bundled | None | None |
+| **Damage / FTC subsystem** | ✅ built-in (mass, CG, inertia, surfaces, engines) | Partial (failure scripts) | Manual (Stateflow) | ❌ | ❌ |
+| **Classical control (PID/MPC)** | ✅ with autotuning | ❌ | ✅ (Toolboxes) | ❌ | ❌ |
+| **Adaptive Dynamic Programming** | ✅ IHDP, IM-GDHP, ET-DHP, iADP, AA-INDI, AIDI | ❌ | ❌ (manual) | ❌ | ❌ |
+| **Deep RL agents** | ✅ PPO, SAC, DSAC, DDPG, DQN, A2C, A3C, GAIL | ❌ | ❌ (Reinforcement Learning Toolbox separate) | ✅ | ❌ (API only) |
+| **Gymnasium env API** | ✅ native | Indirect | Custom | Consumer | ✅ definition |
+| **Hugging Face Hub integration** | ✅ `from_pretrained` / `publish_to_hub` | ❌ | ❌ | ❌ | ❌ |
+| **Best fit** | Adaptive flight control + FTC research | High-fidelity flight simulation | Industrial control prototyping | General RL benchmarks | RL environment standard |
+
+> Pick TensorAeroSpace when you need a **single Python package** that ships realistic airframes **and** the controllers to fly them — including online adaptive critics rarely co-located in any other OSS toolkit.
 
 ## 🧭 Application areas
 
@@ -56,7 +100,7 @@ Each area has working examples and documentation (see [📚 Examples & guides](#
 | **OS** | Linux x86_64, Windows 10, macOS 13 | Ubuntu 22.04 LTS / Windows 11 |
 | **CPU** | 4 cores, AVX | 8+ cores, AVX2/FMA |
 | **RAM** | 8 GB | 16–32 GB for RL/Simulink |
-| **GPU** | Optional | NVIDIA RTX with ≥8 GB VRAM for SAC/DSAC/PPO, CUDA 12.2 |
+| **GPU** | Optional | NVIDIA RTX with ≥8 GB VRAM for SAC/DSAC/PPO, CUDA ≥ 12.0 |
 | **Python** | 3.10–3.13 | 3.11/3.12 |
 | **Optional** | Git, Poetry or pip, Docker | MATLAB/Simulink R2022b+ (Simulink examples), Unity 2021.3.5f1/2023.2.20f1 |
 
@@ -75,8 +119,19 @@ poetry run pytest   # quick smoke test
 #### pip
 
 ```bash
-pip install tensoraerospace
+pip install tensoraerospace                  # core (NumPy, gymnasium, PyTorch)
+pip install 'tensoraerospace[ray]'           # + Ray RLlib for distributed training
 ```
+
+Additional development environments are exposed as Poetry groups (used when working from a clone):
+
+| Group | Purpose | Install |
+|---|---|---|
+| `dev` | linters, mypy, pytest plugins, mkdocs | `poetry install --with dev` |
+| `test` | extra fixtures and CI helpers | `poetry install --with test` |
+| `jupyter` | `nbconvert`, kernels, notebook execution | `poetry install --with jupyter` |
+
+> Combine groups: `poetry install --with dev,jupyter` reproduces the CI environment used by `notebooks-smoke.yml`.
 
 #### 🐳 Docker
 
@@ -112,6 +167,8 @@ env = gym.make('LinearLongitudinalF16-v0',
                number_time_steps=N, initial_state=[[0], [0]],
                reference_signal=reference, use_reward=False)
 pid = PID(env, kp=-14.290, ki=-8.240, kd=-1.299, dt=dt)
+# Tip: skip the magic numbers and let the autotuner find them
+#      pid = PID(env, dt=dt); pid.tune_matlab_style()
 
 obs, _ = env.reset()
 for t in range(N - 1):
@@ -132,7 +189,7 @@ env = NonlinearAngularF16(
     initial_state=np.zeros(14),
     number_time_steps=2000,
     damage_profile=WING_STRIKE_LEFT_TIP,  # left-tip loss at t=10s
-    split_stab=True,
+    split_stab=True,                      # split stabilator into left/right halves for asymmetric damage
 )
 obs, _ = env.reset()
 for _ in range(2000):
@@ -142,12 +199,6 @@ for _ in range(2000):
 ```
 
 What's modelled: **section loss** (mass / S / b / MAC / c.g. / inertia tensor / aero coefficients all recomputed via Huygens-Steiner), **surface failure** (jam / efficiency loss / lost), **engine flameout** (partial / full thrust scaling), **structural events** (payload drop, icing, Δm / Δc.g. / ΔJ).
-
-- **Section loss** (wing/stabilator/vtail): mass *m*, wing area *S*, span *b*, MAC, CG, inertia tensor **J**, aerodynamic coefficients all recomputed from per-section contributions via Huygens-Steiner.
-- **Control-surface failure** (`jam` / `efficiency_loss` / `lost`): commanded vector **u**<sub>cmd</sub> → **u**<sub>eff</sub> before the integrator.
-- **Engine failure** (partial / full): effective thrust scaled or zeroed.
-- **Structural changes** (dropped stores, ice accretion): Δ on mass / CG / inertia.
-
 
 📖 [Aircraft damage modelling guide](https://tensoraerospace.readthedocs.io/en/latest/model/aircraft-damage-modeling/)
 
@@ -173,7 +224,7 @@ What's modelled: **section loss** (mass / S / b / MAC / c.g. / inertia tensor / 
 
 | Algorithm | Description |
 |---|---|
-| **SAC** | Soft Actor-Critic — off-policy, maximum-entropy. Data-efficient default for continuous control; ships with `from_pretrained` / `publish_to_hub` Hugging Face integration. |
+| **SAC** | Soft Actor-Critic — off-policy, maximum-entropy. Data-efficient default for continuous control. |
 | **DSAC** | Distributional SAC with quantile (IQN-style) twin critics + CAPS regularisation. Better tracking dynamics than vanilla SAC under sensor noise / multi-modal cost. |
 | **DDPG** | Deep Deterministic Policy Gradient — foundational; SAC outperforms it in most cases but DDPG remains useful for quiet low-frequency tasks. |
 | **DQN** | Deep Q-Learning — value-based for discrete action spaces; used here for Unity envs with discrete control. |
@@ -216,7 +267,11 @@ What's modelled: **section loss** (mass / S / b / MAC / c.g. / inertia tensor / 
 | **X-15** | Hypersonic research | NASA TM X-1669 + Thompson 2000 | Mach 0.4–6.7 tabulated, XLR99 rocket, variable mass |
 | **Skywalker X8** | Small UAV (3.4 kg) | CEAS Aeronautical Journal 2025 | Peer-reviewed flight-test ID, flying-wing |
 | **AAI RQ-7 Shadow** | Class-II UAV (170 kg) | Beard & McLain + NASA TM-2014-218686 | V-tail mixed control, 4-channel |
-| **F-4C Phantom II** | Military fighter-bomber | Roskam | Linear longitudinal + improved env |
+
+### 🪶 Linear longitudinal models
+
+- **F-4C Phantom II** (`LongitudinalF4C`) — military fighter-bomber, Roskam-derived linear longitudinal channel + improved env wrapper.
+- Other linear plants — `LongitudinalF16`, `LongitudinalB747`, `LongitudinalX15`, `LongitudinalUAV`, `LongitudinalCessna170`, `LongitudinalSuperSonic` — live alongside their nonlinear counterparts; see [📊 State-space matrices for classical synthesis](#-state-space-matrices-for-classical-synthesis).
 
 ### 🚁 UAVs and drones
 
@@ -238,7 +293,7 @@ What's modelled: **section loss** (mass / S / b / MAC / c.g. / inertia tensor / 
 
 <div align="center">
 
-![Unity demo](./docs/ru/example/environment/img/img_demo_unity.gif)
+![Unity demo](./docs/en/example/environment/img/img_demo_unity.gif)
 
 </div>
 
@@ -249,27 +304,29 @@ What's modelled: **section loss** (mass / S / b / MAC / c.g. / inertia tensor / 
 
 > 📁 Example environment: [UnityAirplaneEnvironment](https://github.com/TensorAeroSpace/UnityAirplaneEnvironment)
 
-### 🔧 MATLAB Simulink support
+### 🔧 MATLAB / Simulink integration *(experimental)*
 
-![Simulink model](./docs/ru/example/simulink/img/model.png)
+![Simulink model](./docs/en/example/simulink/img/model.png)
 
-- 📐 **Model import** — convert Simulink models to Python
-- ⚡ **High performance** via compiled C++
-- 🔄 **Bidirectional** MATLAB ↔ Python workflow
-- 📊 **Cross-platform validation**
+What ships today:
 
-### 📊 State-space matrices
+- 📦 **Reference Simulink models** under [`tensoraerospace/aerospacemodel/simulinkModel/`](./tensoraerospace/aerospacemodel/simulinkModel/) — F-4C and X-15 plant models in `.slx` format for cross-validating Python implementations.
+- 🎛️ **MATLAB-style PID autotuning** — the `PID.tune_matlab_style()` API extracts `(A, B, C, D)` from any linear env and runs differential-evolution gain optimisation. See [`example/pid_controllers/pid_matlab_tuning.ipynb`](./example/pid_controllers/pid_matlab_tuning.ipynb).
+- 📚 **Hands-on lessons** — [Lesson 4: MATLAB scripting](./docs/en/lesson/4matlabscript.md) and [Lesson 5: Simulink models](./docs/en/lesson/5simulinkmodel.md) walk through the import / validation workflow.
 
-Mathematical foundation for control-system design:
+> **Status**: Simulink interop is community-maintained — model parsing helpers live in the lessons rather than being a turnkey importer. PRs welcome.
 
-- 🧮 **Linear models** — state-space representation
-- 🎛️ **Control synthesis** — modern control theory
-- 📈 **Analysis tools** — stability, controllability, observability
-- 🔄 **Linearisation** — from nonlinear models
+### 📊 State-space matrices for classical synthesis
+
+Linear plant models expose `(A, B, C, D)` for direct use with classical-control workflows:
+
+- 🧮 **`LongitudinalF16`** ([`f16/linear/longitudinal/`](./tensoraerospace/aerospacemodel/f16/linear/longitudinal/)) — F-16 short-period + phugoid
+- 🪶 **`LongitudinalF4C`**, **`LongitudinalB747`**, **`LongitudinalX15`**, **`LongitudinalUAV`**, **`LongitudinalCessna170`**, **`LongitudinalSuperSonic`** — extra peer-validated linear plants under [`tensoraerospace/aerospacemodel/`](./tensoraerospace/aerospacemodel/)
+- 🎛️ **`PID.tune_matlab_style(env)`** — autotunes gains against the env's state-space matrices via differential-evolution against a step-response criterion
 
 ## 📚 Examples & guides
 
-The [`example/`](./example/) directory ships **101 runnable notebooks**, organised by controller class. The folder was recently restructured for predictable navigation — see [`example/README.md`](./example/README.md) for the full map.
+The [`example/`](./example/) directory ships **100+ runnable notebooks**, organised by controller class. The folder was recently restructured for predictable navigation — see [`example/README.md`](./example/README.md) for the full map.
 
 | Category | Folder | Highlights |
 |---|---|---|
@@ -284,14 +341,14 @@ The [`example/`](./example/) directory ships **101 runnable notebooks**, organis
 | 📖 **Cookbook** | [`cookbook/`](./example/cookbook/) | Step-by-step recipes from "hello world" to FTC |
 | 🔧 **Optimization** | [`optimization/`](./example/optimization/) | Optuna hyperparameter search |
 
-### 🆕 Featured new examples
+### 🌟 Featured examples
 
 | Example | Aircraft | Result |
 |---|---|---|
 | [**ET-DHP heading hold under engine flameout**](./example/reinforcement_learning/incremental_adp/example_etdhp_b747_engine_failure.ipynb) | B-747 | ψ-error **0.28°** vs open-loop −85.5° |
 | [**MIMO IHDP 90° coordinated turn**](./example/reinforcement_learning/incremental_adp/example_ihdp_nonlinear_b737_turn.ipynb) | B-737 | Final ψ-error **0.98°**, max sideslip 0.11° |
 | [**IHDP θ-step tracking on nonlinear B-747**](./example/reinforcement_learning/incremental_adp/example_ihdp_nonlinear_b747.ipynb) | B-747 | Late-half MAE **0.043°** |
-| [**X-15 hypersonic boost-burnout demo**](./example/aircraft/example_b747_nonlinear.py) | X-15 | Burnout 79.8 s vs Thompson 2000: 80 s |
+| [**PPO on X-15 (improved env)**](./example/reinforcement_learning/deep_rl/example_ppo_x15_improved.ipynb) | X-15 | End-to-end deep-RL training on the variable-mass hypersonic plant |
 
 ### Quick run commands
 
@@ -313,18 +370,50 @@ poetry run python example/reinforcement_learning/deep_rl/train_dsac_b747_step_re
 - [Optuna optimisation](https://tensoraerospace.readthedocs.io/en/latest/example/optimization/example_optimization.html)
 - [Unity guide](https://tensoraerospace.readthedocs.io/en/latest/guide/unity_env.html)
 
+## ⚠️ Known limitations
+
+We are deliberate about scope — calling out what's intentionally **not** modelled prevents users wasting time on edge cases the project does not yet cover.
+
+- 🚀 **X-15** — atmospheric envelope (M = 0.4–6.7, h ≤ 250 kft) only. Exoatmospheric attitude control via peroxide RCS thrusters is **not modelled**.
+- ✈️ **B-737** — clean cruise envelope only. High-lift devices (flaps, slats, gear) have coefficient hooks but **values are not yet applied**.
+- 💥 **Damage subsystem coverage**:
+  - **F-16 nonlinear** — fully covered (sections, surfaces, engine, structural).
+  - **B-747 nonlinear** — engine flameout + flap-jam events; no section-loss or icing.
+  - **Other airframes** (B-737, X-15, Skywalker X8, AAI Shadow, Quadrotor) — engine / per-rotor failures only; no aero / mass / inertia recomputation.
+- 🔧 **Simulink interop** — community-maintained: reference `.slx` plants ship for cross-validation, but there is **no turnkey Simulink → Python importer** yet.
+- 🛰️ **Spacecraft envs** (ELV, GeoSat, ComSat, Generic missile) — basic dynamics only; no atmospheric re-entry, no orbit perturbations beyond two-body.
+- 🎮 **Unity ML-Agents bridge** — lives in a [separate repo](https://github.com/TensorAeroSpace/UnityAirplaneEnvironment) and requires manual scene setup; no automated CI for that interaction layer.
+
+PRs filling any of these gaps are warmly welcome — see [CONTRIBUTING.md](CONTRIBUTING.md).
+
 ## 🛠️ Development
 
 ```bash
 git clone https://github.com/tensoraerospace/tensoraerospace.git
 cd tensoraerospace
 poetry install --with dev
-poetry run pytest                      # all 894 tests
+poetry run pytest                      # full suite
 poetry run pytest tests/aerospacemodel # specific category
 poetry run mkdocs serve -a 0.0.0.0:8000 # docs preview
 ```
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
+
+## 🎓 How to cite
+
+If TensorAeroSpace contributed to your research or product, please cite it:
+
+```bibtex
+@software{tensoraerospace,
+  title  = {TensorAeroSpace: Open-source aerospace simulation toolkit and adaptive control catalogue},
+  author = {{TensorAeroSpace contributors}},
+  year   = {2026},
+  url    = {https://github.com/TensorAeroSpace/TensorAeroSpace},
+  note   = {Pure-NumPy 6-DoF dynamics, Gymnasium-native environments, classical / ADP / Deep RL agents}
+}
+```
+
+Plain-text form: *TensorAeroSpace contributors. (2026). TensorAeroSpace: Open-source aerospace simulation toolkit and adaptive control catalogue. https://github.com/TensorAeroSpace/TensorAeroSpace*
 
 ## 📖 Documentation
 
@@ -332,13 +421,23 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 - 🚀 **API reference**: detailed module-by-module
 - 📝 **16-recipe cookbook**: from hello-world to FTC under damage
 - 💡 **11-lesson tutorial**: state-space → controllability → RL fundamentals → XFLR5 / Simulink hands-on
+- 🤗 **Pretrained agents on Hugging Face**: [huggingface.co/TensorAeroSpace](https://huggingface.co/TensorAeroSpace) — SAC / DDPG / PPO checkpoints. Load via `Agent.from_pretrained("TensorAeroSpace/<repo>")` in Python, or pass `--repo TensorAeroSpace/<name>` to the bundled render scripts (e.g. `ddpg-b747-render.py`).
 - ❓ **Q&A**: [DeepWiki AI assistant](https://deepwiki.com/TensorAeroSpace/TensorAeroSpace)
 
 ## 🤝 Community & support
 
 - 💬 [GitHub Discussions](https://github.com/tensoraerospace/tensoraerospace/discussions)
 - 🐛 [Issue tracker](https://github.com/tensoraerospace/tensoraerospace/issues)
-- 📧 [Email support](mailto:support@tensoraerospace.org)
+
+## ⭐ Star history
+
+<a href="https://star-history.com/#TensorAeroSpace/TensorAeroSpace&Date">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=TensorAeroSpace/TensorAeroSpace&type=Date&theme=dark" />
+    <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/svg?repos=TensorAeroSpace/TensorAeroSpace&type=Date" />
+    <img alt="TensorAeroSpace star history" src="https://api.star-history.com/svg?repos=TensorAeroSpace/TensorAeroSpace&type=Date" />
+  </picture>
+</a>
 
 ## 📄 License
 
@@ -348,15 +447,5 @@ MIT — see [LICENSE](LICENSE).
 
 - The Gymnasium / OpenAI Gym team for the canonical RL environment API
 - The Unity ML-Agents team for 3D simulation infrastructure
-- The aerospace research community for decades of open published derivative data — NASA CR-2144 (Heffley & Jewell), NASA TM X-1669 (Walker & Wolowicz), CEAS Aeronautical Journal 2025 (Løw-Hansen et al.), JSBSim, Roskam, Beard & McLain, Mattingly
+- The aerospace research community for decades of open published derivative data (sources cited inline in the [aircraft library](#%EF%B8%8F-aircraft--spacecraft-library))
 - Every contributor who has made this project possible
-
----
-
-<div align="center">
-
-**⭐ Star us on GitHub if TensorAeroSpace helps your work! ⭐**
-
-Made with ❤️ by the TensorAeroSpace team
-
-</div>

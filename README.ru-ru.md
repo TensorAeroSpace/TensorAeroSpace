@@ -4,17 +4,21 @@
 
 [![en](https://img.shields.io/badge/lang-en-red.svg)](./readme.md)
 [![ru](https://img.shields.io/badge/lang-ru-green.svg)](./README.ru-ru.md)
+[![PyPI version](https://img.shields.io/pypi/v/tensoraerospace.svg)](https://pypi.org/project/tensoraerospace/)
+[![PyPI downloads](https://img.shields.io/pypi/dm/tensoraerospace.svg)](https://pypi.org/project/tensoraerospace/)
+[![Quick Check](https://img.shields.io/github/actions/workflow/status/TensorAeroSpace/TensorAeroSpace/quick-check.yml?branch=develop&label=tests)](https://github.com/TensorAeroSpace/TensorAeroSpace/actions/workflows/quick-check.yml)
+[![Coverage Status](https://coveralls.io/repos/github/TensorAeroSpace/TensorAeroSpace/badge.svg?branch=main)](https://coveralls.io/github/TensorAeroSpace/TensorAeroSpace?branch=main)
 [![Documentation Status](https://readthedocs.org/projects/tensoraerospace/badge/?version=latest)](https://tensoraerospace.readthedocs.io/en/latest/?badge=latest)
 [![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/TensorAeroSpace/TensorAeroSpace)
 [![Python](https://img.shields.io/badge/python-3.10--3.13-blue.svg)](https://www.python.org/downloads/)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
-[![GitHub stars](https://img.shields.io/github/stars/tensoraerospace/tensoraerospace.svg)](https://github.com/tensoraerospace/tensoraerospace/stargazers)
+[![GitHub stars](https://img.shields.io/github/stars/TensorAeroSpace/TensorAeroSpace.svg)](https://github.com/TensorAeroSpace/TensorAeroSpace/stargazers)
 
-![Логотип TensorAeroSpace](./img/logo-no-background.png)
+<img src="./img/logo-no-background.png" alt="Логотип TensorAeroSpace" width="360">
 
 **Open-source аэрокосмический симулятор + каталог адаптивного управления**
 
-*Pure-NumPy 6-DoF динамика · Gymnasium-native среды · Classical / ADP / Deep RL агенты · 894 теста*
+*Pure-NumPy 6-DoF динамика · Gymnasium-native среды · Classical / ADP / Deep RL агенты*
 
 [📖 Документация](https://tensoraerospace.readthedocs.io/) • [🚀 Быстрый старт](#-быстрый-старт) • [💡 Примеры](./example/) • [🤝 Участие в разработке](CONTRIBUTING.md)
 
@@ -22,17 +26,57 @@
 
 ---
 
+## 📑 Содержание
+
+- [🌟 Обзор](#-обзор)
+- [📊 Сравнение с альтернативами](#-сравнение-с-альтернативами)
+- [🧭 Направления прикладного использования](#-направления-прикладного-использования)
+- [🚀 Быстрый старт](#-быстрый-старт)
+- [🤖 Поддерживаемые алгоритмы](#-поддерживаемые-алгоритмы)
+- [✈️ Модели самолётов и космических аппаратов](#%EF%B8%8F-модели-самолётов-и-космических-аппаратов)
+- [🎮 Среды моделирования](#-среды-моделирования)
+- [📚 Примеры и руководства](#-примеры-и-руководства)
+- [⚠️ Известные ограничения](#%EF%B8%8F-известные-ограничения)
+- [🛠️ Разработка](#%EF%B8%8F-разработка)
+- [🎓 Как цитировать](#-как-цитировать)
+- [📖 Документация](#-документация-1)
+- [🤝 Сообщество и поддержка](#-сообщество-и-поддержка)
+- [⭐ История звёзд](#-история-звёзд)
+- [📄 Лицензия](#-лицензия)
+
+---
+
 ## 🌟 Обзор
 
-**TensorAeroSpace** содержит **12+ моделей самолётов и космических аппаратов** (7 из них — полные нелинейные 6-DoF планеры с рецензированными исходными данными), **20 алгоритмов управления** от классического PID/MPC через семейство incremental-ADP до современного deep RL, и **101 исполняемый example-notebook** с trim, крейсом, координированными поворотами, повреждениями в полёте и восстановлением — всё связано через стандартный Gymnasium API.
+**TensorAeroSpace** содержит **12+ моделей самолётов и космических аппаратов** (7 из них — полные нелинейные 6-DoF планеры с рецензированными исходными данными), **20+ алгоритмов управления** от классического PID/MPC через семейство incremental-ADP до современного deep RL, и **100+ исполняемых example-notebook'ов** с trim, крейсом, координированными поворотами, повреждениями в полёте и восстановлением — всё связано через стандартный Gymnasium API.
 
 Чем выделяется:
 
 - 🎯 **Реальные самолёты, не игрушки.** B-747 транскрибирован из NASA CR-2144, X-15 из NASA TM X-1669, Skywalker X8 из CEAS Aeronautical Journal 2025, B-737 из JSBSim + Roskam, RQ-7 Shadow из Beard & McLain. Trim-точки достигают машинной точности.
-- ⚡ **Ядро — чистый NumPy.** Никаких проприетарных симуляторов, MATLAB-лицензий, скомпилированных бинарников. На порядок быстрее JSBSim для свипов синтеза управления.
+- ⚡ **Ядро — чистый NumPy.** Никаких проприетарных симуляторов, MATLAB-лицензий, скомпилированных бинарников — лёгкое ядро для свипов синтеза управления, без startup-оверхеда и парсинга XML.
 - 🧠 **Уникальный каталог адаптивного управления.** Стандартный RL-стек (PPO, SAC, DDPG, DQN, A2C, A3C, GAIL) **плюс** полная семья incremental-ADP (IHDP, IM-GDHP, ET-DHP, iADP, AA-INDI, AIDI) — редко в одном OSS-пакете.
 - 💥 **Подсистема повреждений из коробки.** Per-surface потеря эффективности, hard-overs, jam-события, асимметричная тяга при отказе двигателя, override flap-jam — всё в `DamageProfile`.
-- 🧪 **894 unit-теста.** Сходимость trim, конвенции знаков, время выгорания топлива — всё под регрессионным покрытием.
+- 🧪 **Закрыто регрессионным покрытием.** Сходимость trim, конвенции знаков, время выгорания топлива — всё под unit-тестами.
+- 🤗 **Hugging Face Hub из коробки.** Все PyTorch-агенты наследуют `from_pretrained` / `publish_to_hub` от `tensoraerospace.agent.base` — предобученные чекпойнты живут на [huggingface.co/TensorAeroSpace](https://huggingface.co/TensorAeroSpace).
+
+## 📊 Сравнение с альтернативами
+
+Как TensorAeroSpace позиционируется относительно инструментов, к которым обычно тянутся инженеры по управлению и RL-исследователи:
+
+| | **TensorAeroSpace** | **JSBSim** | **MATLAB / Simulink** | **Stable-Baselines3** | **Gymnasium** |
+|---|---|---|---|---|---|
+| **Лицензия** | MIT (открытая) | LGPL (открытая) | Коммерческая | MIT (открытая) | MIT (открытая) |
+| **Язык ядра** | Python (чистый NumPy) | C++ + XML | Проприетарный + C | Python (PyTorch) | Python |
+| **Готовых 6-DoF планеров** | 7 (peer-reviewed) | 30+ | Нет встроенных | Нет | Нет |
+| **Подсистема повреждений / FTC** | ✅ из коробки (масса, ЦМ, инерция, поверхности, двигатели) | Частично (failure-скрипты) | Вручную (Stateflow) | ❌ | ❌ |
+| **Классическое управление (PID/MPC)** | ✅ с автонастройкой | ❌ | ✅ (Toolbox) | ❌ | ❌ |
+| **Адаптивное динамическое программирование** | ✅ IHDP, IM-GDHP, ET-DHP, iADP, AA-INDI, AIDI | ❌ | ❌ (вручную) | ❌ | ❌ |
+| **Deep RL агенты** | ✅ PPO, SAC, DSAC, DDPG, DQN, A2C, A3C, GAIL | ❌ | ❌ (Reinforcement Learning Toolbox отдельно) | ✅ | ❌ (только API) |
+| **Gymnasium env API** | ✅ нативно | Опосредованно | Свой формат | Потребитель | ✅ определение |
+| **Интеграция с Hugging Face Hub** | ✅ `from_pretrained` / `publish_to_hub` | ❌ | ❌ | ❌ | ❌ |
+| **Когда выбирать** | Адаптивное управление полётом + FTC-исследования | Высокоточная симуляция полёта | Промышленное прототипирование контуров | Универсальные RL-бенчмарки | Стандарт RL-окружений |
+
+> Выбирайте TensorAeroSpace, когда нужен **единый Python-пакет** с реалистичными планерами **и** контроллерами для управления ими — включая онлайн-адаптивные критики, которые редко встречаются в одном OSS-инструменте.
 
 ## 🧭 Направления прикладного использования
 
@@ -56,7 +100,7 @@
 | **ОС** | Linux x86_64, Windows 10, macOS 13 | Ubuntu 22.04 LTS / Windows 11 |
 | **CPU** | 4 ядра, AVX | 8+ ядер, AVX2/FMA |
 | **RAM** | 8 ГБ | 16–32 ГБ для RL/Simulink |
-| **GPU** | Необязательно | NVIDIA RTX с ≥8 ГБ VRAM для SAC/DSAC/PPO, поддержка CUDA 12.2 |
+| **GPU** | Необязательно | NVIDIA RTX с ≥8 ГБ VRAM для SAC/DSAC/PPO, поддержка CUDA ≥ 12.0 |
 | **Python** | 3.10–3.13 | 3.11/3.12 |
 | **Доп. ПО** | Git, Poetry или pip, Docker | MATLAB/Simulink R2022b+ (Simulink-примеры), Unity 2021.3.5f1/2023.2.20f1 |
 
@@ -78,14 +122,25 @@ git clone https://github.com/tensoraerospace/tensoraerospace.git
 cd tensoraerospace
 poetry install
 poetry shell        # активация виртуального окружения
-poetry run pytest   # быстрая проверка (894 теста)
+poetry run pytest   # быстрая проверка
 ```
 
 #### Использование pip
 
 ```bash
-pip install tensoraerospace
+pip install tensoraerospace                  # ядро (NumPy, gymnasium, PyTorch)
+pip install 'tensoraerospace[ray]'           # + Ray RLlib для распределённого обучения
 ```
+
+Дополнительные среды разработки оформлены как Poetry-группы (используются при работе из клона репозитория):
+
+| Группа | Назначение | Установка |
+|---|---|---|
+| `dev` | линтеры, mypy, pytest-плагины, mkdocs | `poetry install --with dev` |
+| `test` | дополнительные фикстуры и CI-хелперы | `poetry install --with test` |
+| `jupyter` | `nbconvert`, kernels, исполнение блокнотов | `poetry install --with jupyter` |
+
+> Группы можно совмещать: `poetry install --with dev,jupyter` воспроизводит CI-окружение из `notebooks-smoke.yml`.
 
 #### 🐳 Docker
 
@@ -123,6 +178,8 @@ env = gym.make('LinearLongitudinalF16-v0',
                number_time_steps=N, initial_state=[[0], [0]],
                reference_signal=reference, use_reward=False)
 pid = PID(env, kp=-14.290, ki=-8.240, kd=-1.299, dt=dt)
+# Подсказка: можно не задавать магические числа, а дать автонастройщику их найти
+#            pid = PID(env, dt=dt); pid.tune_matlab_style()
 
 obs, _ = env.reset()
 for t in range(N - 1):
@@ -143,7 +200,7 @@ env = NonlinearAngularF16(
     initial_state=np.zeros(14),
     number_time_steps=2000,
     damage_profile=WING_STRIKE_LEFT_TIP,  # потеря левой законцовки на t=10 с
-    split_stab=True,
+    split_stab=True,                      # разделить стабилизатор на левую/правую половины для асимметричных повреждений
 )
 obs, _ = env.reset()
 for _ in range(2000):
@@ -153,11 +210,6 @@ for _ in range(2000):
 ```
 
 Что моделируется: **потеря секции** (m, S, b, MAC, ЦМ, J, аэро-коэффициенты пересчитываются через теорему Гюйгенса-Штейнера), **отказ рулевой поверхности** (jam / efficiency_loss / lost), **отказ двигателя** (масштабирование/обнуление тяги), **структурные изменения** (сброс груза, обледенение).
-
-- **Потеря секции** (крыло/стабилизатор/киль): масса *m*, площадь крыла *S*, размах *b*, MAC, ЦМ, тензор инерции **J**, аэродинамические коэффициенты — всё пересчитывается из посекционных вкладов через теорему Гюйгенса-Штейнера.
-- **Отказ рулевой поверхности** (`jam` / `efficiency_loss` / `lost`): команда **u**<sub>cmd</sub> → **u**<sub>eff</sub> перед интегратором.
-- **Отказ двигателя** (частичный/полный): эффективная тяга масштабируется или зануляется.
-- **Структурные изменения** (сброс груза, обледенение): Δ массы / ЦМ / инерции.
 
 📖 [Полный референс по моделированию повреждений ЛА](https://tensoraerospace.readthedocs.io/ru/latest/model/aircraft-damage-modeling/)
 
@@ -183,7 +235,7 @@ for _ in range(2000):
 
 | Алгоритм | Описание |
 |---|---|
-| **SAC** | Soft Actor-Critic — off-policy с максимизацией энтропии. Эффективный по данным дефолт для непрерывного управления; интеграция HuggingFace через `from_pretrained` / `publish_to_hub`. |
+| **SAC** | Soft Actor-Critic — off-policy с максимизацией энтропии. Эффективный по данным дефолт для непрерывного управления. |
 | **DSAC** | Distributional SAC с квантильными (IQN-стиль) сдвоенными критиками + CAPS-регуляризацией. Лучшая динамика слежения по сравнению с обычным SAC. |
 | **DDPG** | Deep Deterministic Policy Gradient — основополагающий, но SAC превосходит его в большинстве случаев. |
 | **DQN** | Deep Q-Learning — value-based для дискретных пространств действий; используется для Unity-окружений. |
@@ -226,7 +278,11 @@ for _ in range(2000):
 | **X-15** | Гиперзвуковой research | NASA TM X-1669 + Thompson 2000 | Mach 0.4–6.7 tabulated, ракета XLR99, переменная масса |
 | **Skywalker X8** | Малый UAV (3.4 кг) | CEAS Aeronautical Journal 2025 | Рецензированная flight-test ID, flying-wing |
 | **AAI RQ-7 Shadow** | UAV класса II (170 кг) | Beard & McLain + NASA TM-2014-218686 | V-tail mixed control, 4-канальное |
-| **F-4C Phantom II** | Военный истребитель-бомбардировщик | Roskam | Linear longitudinal + improved env |
+
+### 🪶 Линейные продольные модели
+
+- **F-4C Phantom II** (`LongitudinalF4C`) — военный истребитель-бомбардировщик, линейный продольный канал по Roskam + improved-обёртка среды.
+- Остальные линейные планеры — `LongitudinalF16`, `LongitudinalB747`, `LongitudinalX15`, `LongitudinalUAV`, `LongitudinalCessna170`, `LongitudinalSuperSonic` — живут рядом со своими нелинейными версиями; см. [📊 Матрицы пространства состояний для классического синтеза](#-матрицы-пространства-состояний-для-классического-синтеза).
 
 ### 🚁 БПЛА и дроны
 
@@ -259,27 +315,29 @@ for _ in range(2000):
 
 > 📁 Пример среды: [UnityAirplaneEnvironment](https://github.com/TensorAeroSpace/UnityAirplaneEnvironment)
 
-### 🔧 Поддержка MATLAB Simulink
+### 🔧 Интеграция с MATLAB / Simulink *(экспериментально)*
 
 ![Модель Simulink](./docs/ru/example/simulink/img/model.png)
 
-- 📐 **Импорт моделей** Simulink в Python
-- ⚡ **Высокая производительность** через скомпилированный C++
-- 🔄 **Двунаправленный** workflow MATLAB ↔ Python
-- 📊 **Кросс-платформенная валидация**
+Что есть сейчас:
 
-### 📊 Матрицы пространства состояний
+- 📦 **Эталонные Simulink-модели** в [`tensoraerospace/aerospacemodel/simulinkModel/`](./tensoraerospace/aerospacemodel/simulinkModel/) — `.slx`-файлы F-4C и X-15 для кросс-валидации Python-реализаций.
+- 🎛️ **PID-автонастройка в стиле MATLAB** — метод `PID.tune_matlab_style()` извлекает `(A, B, C, D)` из любой линейной среды и оптимизирует коэффициенты дифференциальной эволюцией. См. [`example/pid_controllers/pid_matlab_tuning.ipynb`](./example/pid_controllers/pid_matlab_tuning.ipynb).
+- 📚 **Практические уроки** — [Урок 4: MATLAB scripting](./docs/ru/lesson/4matlabscript.md) и [Урок 5: модели Simulink](./docs/ru/lesson/5simulinkmodel.md) проводят через workflow импорта и валидации.
 
-Математическая основа для проектирования систем управления:
+> **Статус**: Simulink-интероп поддерживается сообществом — хелперы парсинга моделей живут в уроках, а не как готовый импортёр. PR приветствуются.
 
-- 🧮 **Линейные модели** — представление в state-space
-- 🎛️ **Синтез управления** — современная теория управления
-- 📈 **Инструменты анализа** — устойчивость, управляемость, наблюдаемость
-- 🔄 **Линеаризация** нелинейных моделей
+### 📊 Матрицы пространства состояний для классического синтеза
+
+Линейные модели объектов отдают `(A, B, C, D)` напрямую для классического workflow:
+
+- 🧮 **`LongitudinalF16`** ([`f16/linear/longitudinal/`](./tensoraerospace/aerospacemodel/f16/linear/longitudinal/)) — F-16, короткопериодическое + фугоидное движение
+- 🪶 **`LongitudinalF4C`**, **`LongitudinalB747`**, **`LongitudinalX15`**, **`LongitudinalUAV`**, **`LongitudinalCessna170`**, **`LongitudinalSuperSonic`** — дополнительные валидированные линейные планеры в [`tensoraerospace/aerospacemodel/`](./tensoraerospace/aerospacemodel/)
+- 🎛️ **`PID.tune_matlab_style(env)`** — автонастройка коэффициентов по матрицам среды через дифференциальную эволюцию по step-response критерию
 
 ## 📚 Примеры и руководства
 
-В директории [`./example`](./example/) — **101 исполняемый notebook**, организованных по классу регулятора. Папка недавно реструктуризирована для предсказуемой навигации — см. [`example/README.md`](./example/README.md) для полной карты.
+В директории [`./example`](./example/) — **100+ исполняемых notebook'ов**, организованных по классу регулятора. Папка недавно реструктуризирована для предсказуемой навигации — см. [`example/README.md`](./example/README.md) для полной карты.
 
 | Категория | Папка | Highlights |
 |---|---|---|
@@ -294,14 +352,14 @@ for _ in range(2000):
 | 📖 **Cookbook** | [`cookbook/`](./example/cookbook/) | Step-by-step рецепты от "hello world" до FTC |
 | 🔧 **Оптимизация** | [`optimization/`](./example/optimization/) | Optuna hyperparameter search |
 
-### 🆕 Новые избранные примеры
+### 🌟 Избранные примеры
 
 | Пример | Самолёт | Результат |
 |---|---|---|
 | [**ET-DHP heading hold под отказом двигателя**](./example/reinforcement_learning/incremental_adp/example_etdhp_b747_engine_failure.ipynb) | B-747 | ψ-error **0.28°** vs open-loop −85.5° |
 | [**MIMO IHDP координированный поворот 90°**](./example/reinforcement_learning/incremental_adp/example_ihdp_nonlinear_b737_turn.ipynb) | B-737 | финальная ψ-error **0.98°**, max сайдслип 0.11° |
 | [**IHDP θ-step tracking на нелинейном B-747**](./example/reinforcement_learning/incremental_adp/example_ihdp_nonlinear_b747.ipynb) | B-747 | late-half MAE **0.043°** |
-| [**X-15 hypersonic boost-burnout демо**](./example/aircraft/example_b747_nonlinear.py) | X-15 | выгорание 79.8 с vs Thompson 2000: 80 с |
+| [**PPO на X-15 (improved env)**](./example/reinforcement_learning/deep_rl/example_ppo_x15_improved.ipynb) | X-15 | End-to-end deep-RL обучение на гиперзвуковом объекте с переменной массой |
 
 ### Быстрые команды запуска
 
@@ -323,18 +381,50 @@ poetry run python example/reinforcement_learning/deep_rl/train_dsac_b747_step_re
 - [Optuna optimization](https://tensoraerospace.readthedocs.io/ru/latest/example/optimization/example_optimization.html)
 - [Unity Guide](https://tensoraerospace.readthedocs.io/ru/latest/guide/unity_env.html)
 
+## ⚠️ Известные ограничения
+
+Мы намеренно ограничиваем область — честный список того, что **не моделируется**, экономит время пользователям и предотвращает попытки покрыть кейсы, которые проект пока не охватывает.
+
+- 🚀 **X-15** — только атмосферный конверт (M = 0.4–6.7, h ≤ 250 kft). Внеатмосферное управление пероксидными RCS-двигателями **не моделируется**.
+- ✈️ **B-737** — только режим крейсерского полёта. Высокоподъёмная механизация (закрылки, предкрылки, шасси) имеет хуки коэффициентов, но **значения пока не активированы**.
+- 💥 **Покрытие подсистемы повреждений**:
+  - **F-16 nonlinear** — полное покрытие (секции, поверхности, двигатель, структурные изменения).
+  - **B-747 nonlinear** — отказ двигателя + jam закрылков; нет section-loss и обледенения.
+  - **Остальные планеры** (B-737, X-15, Skywalker X8, AAI Shadow, Quadrotor) — только отказы двигателя/винтов; без пересчёта аэродинамики/массы/инерции.
+- 🔧 **Simulink интероп** — поддерживается сообществом: эталонные `.slx`-планеры есть для кросс-валидации, но **готового Simulink → Python импортёра пока нет**.
+- 🛰️ **Космические среды** (ELV, GeoSat, ComSat, Generic missile) — только базовая динамика; нет атмосферного входа, нет возмущений орбиты помимо двух тел.
+- 🎮 **Unity ML-Agents мост** — живёт в [отдельном репозитории](https://github.com/TensorAeroSpace/UnityAirplaneEnvironment) и требует ручной настройки сцены; нет автоматизированного CI для слоя интеграции.
+
+PR, закрывающие любой из этих пунктов, тепло приветствуются — см. [CONTRIBUTING.md](CONTRIBUTING.md).
+
 ## 🛠️ Разработка
 
 ```bash
 git clone https://github.com/tensoraerospace/tensoraerospace.git
 cd tensoraerospace
 poetry install --with dev
-poetry run pytest                       # все 894 теста
+poetry run pytest                       # полный набор тестов
 poetry run pytest tests/aerospacemodel  # конкретная категория
 poetry run mkdocs serve -a 0.0.0.0:8000 # preview документации
 ```
 
 См. [CONTRIBUTING.md](CONTRIBUTING.md) для рекомендаций.
+
+## 🎓 Как цитировать
+
+Если TensorAeroSpace помог вашему исследованию или продукту, пожалуйста, процитируйте:
+
+```bibtex
+@software{tensoraerospace,
+  title  = {TensorAeroSpace: Open-source aerospace simulation toolkit and adaptive control catalogue},
+  author = {{TensorAeroSpace contributors}},
+  year   = {2026},
+  url    = {https://github.com/TensorAeroSpace/TensorAeroSpace},
+  note   = {Pure-NumPy 6-DoF dynamics, Gymnasium-native environments, classical / ADP / Deep RL agents}
+}
+```
+
+Текстовый вариант: *TensorAeroSpace contributors. (2026). TensorAeroSpace: Open-source aerospace simulation toolkit and adaptive control catalogue. https://github.com/TensorAeroSpace/TensorAeroSpace*
 
 ## 📖 Документация
 
@@ -342,13 +432,23 @@ poetry run mkdocs serve -a 0.0.0.0:8000 # preview документации
 - 🚀 **API reference** — детальная документация по модулям
 - 📝 **16-рецептовый cookbook** — от "hello world" до FTC под повреждением
 - 💡 **11-урочный туториал** — state-space → controllability → RL fundamentals → XFLR5 / Simulink hands-on
+- 🤗 **Предобученные агенты на Hugging Face**: [huggingface.co/TensorAeroSpace](https://huggingface.co/TensorAeroSpace) — чекпойнты SAC / DDPG / PPO. Загружаются через `Agent.from_pretrained("TensorAeroSpace/<repo>")` из Python или флагом `--repo TensorAeroSpace/<name>` в render-скриптах (например, `ddpg-b747-render.py`).
 - ❓ **Q&A**: [DeepWiki AI assistant](https://deepwiki.com/TensorAeroSpace/TensorAeroSpace)
 
 ## 🤝 Сообщество и поддержка
 
 - 💬 [GitHub Discussions](https://github.com/tensoraerospace/tensoraerospace/discussions)
 - 🐛 [Issue tracker](https://github.com/tensoraerospace/tensoraerospace/issues)
-- 📧 [Email support](mailto:support@tensoraerospace.org)
+
+## ⭐ История звёзд
+
+<a href="https://star-history.com/#TensorAeroSpace/TensorAeroSpace&Date">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=TensorAeroSpace/TensorAeroSpace&type=Date&theme=dark" />
+    <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/svg?repos=TensorAeroSpace/TensorAeroSpace&type=Date" />
+    <img alt="История звёзд TensorAeroSpace" src="https://api.star-history.com/svg?repos=TensorAeroSpace/TensorAeroSpace&type=Date" />
+  </picture>
+</a>
 
 ## 📄 Лицензия
 
@@ -358,15 +458,5 @@ MIT — см. [LICENSE](LICENSE).
 
 - Команде Gymnasium / OpenAI Gym за каноничный RL environment API
 - Команде Unity ML-Agents за инфраструктуру 3D-симуляции
-- Аэрокосмическому исследовательскому сообществу за десятилетия открытых опубликованных производных — NASA CR-2144 (Heffley & Jewell), NASA TM X-1669 (Walker & Wolowicz), CEAS Aeronautical Journal 2025 (Løw-Hansen et al.), JSBSim, Roskam, Beard & McLain, Mattingly
+- Аэрокосмическому исследовательскому сообществу за десятилетия открытых опубликованных производных (источники приведены в [таблице самолётов](#%EF%B8%8F-модели-самолётов-и-космических-аппаратов))
 - Каждому контрибьютору, делающему этот проект возможным
-
----
-
-<div align="center">
-
-**⭐ Поставьте звезду на GitHub, если TensorAeroSpace полезен для вашей работы! ⭐**
-
-Сделано с ❤️ командой TensorAeroSpace
-
-</div>
