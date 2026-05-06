@@ -56,18 +56,30 @@ plugins:
                   - Overview and quick start: model/aircraft-damage-modeling.md
                   - Implementation and examples: model/aircraft-damage-modeling-code.md
                   - Mathematics: model/aircraft-damage-modeling-math.md
-              - B747: 
+              - B737:
+                - Nonlinear 6-DoF: model/b737_nonlinear.md
+              - B747:
                 - Classic State-Space: model/b747.md
                 - Normalized State-Space: model/b747_imporove.md
+                - Nonlinear 6-DoF: model/b747_nonlinear.md
+                - Usage examples: model/b747_examples.md
               - ELV: model/elv.md
               - Typical Rocket: model/typical_rocket.md
               - ComSat: model/comsat.md
               - F4C: model/f4c.md
               - GeoSat: model/geosat.md
               - UAV: model/uav.md
+              - Quadrotor:
+                - Nonlinear 6-DoF: model/quadrotor_nonlinear.md
+                - Usage examples: model/quadrotor_examples.md
+              - Skywalker X8 (small UAV):
+                - Nonlinear 6-DoF: model/skywalker_x8_nonlinear.md
+              - AAI RQ-7 Shadow (class-II UAV):
+                - Nonlinear 6-DoF: model/aai_shadow_nonlinear.md
               - X15:
                 - Classic State-Space: model/x15.md
                 - Normalized State-Space: model/x15_improved.md
+                - Nonlinear 6-DoF (Hypersonic): model/x15_nonlinear.md
               - LSU:
                 - Classic State-Space: model/lsu.md
                 - Normalized State-Space: model/lapan_improved.md
@@ -117,8 +129,11 @@ plugins:
                 - Linear F16: example/agent/ihdp/example_ihdp.md
                 - Walkthrough (step-by-step): example/agent/ihdp/example_ihdp_walkthrough.md
                 - Nonlinear F16 (α-tracking): example/agent/ihdp/example_ihdp_nonlinear.md
+                - Nonlinear B747 (θ step): example/agent/ihdp/example_ihdp_nonlinear_b747.md
+                - Nonlinear B737 (90° coordinated turn): example/agent/ihdp/example_ihdp_nonlinear_b737_turn.md
               - IMGDHP (Nonlinear F16): example/agent/imgdhp/example_imgdhp_nonlinear.md
               - ET-DHP (Nonlinear F16): example/agent/et_dhp/example_etdhp_nonlinear.md
+              - ET-DHP B747 (engine-out yaw hold): example/agent/et_dhp/example_etdhp_b747_engine_failure.md
               - AA-INDI (Nonlinear F16): example/agent/aa_indi/example_aaindi_nonlinear.md
               - iADP (Nonlinear F16): example/agent/iadp/example_iadp_nonlinear.md
               - SAC F16: example/agent/sac/example-sac-f16.md
@@ -201,18 +216,30 @@ plugins:
                   - Обзор и быстрый старт: model/aircraft-damage-modeling.md
                   - Реализация и примеры: model/aircraft-damage-modeling-code.md
                   - Математика: model/aircraft-damage-modeling-math.md
-              - B747: 
+              - B737:
+                - Нелинейный 6-DoF: model/b737_nonlinear.md
+              - B747:
                 - Пространство состояний: model/b747.md
                 - Нормализованное управление: model/b747_imporove.md
+                - Нелинейный 6-DoF: model/b747_nonlinear.md
+                - Примеры использования: model/b747_examples.md
               - ELV: model/elv.md
               - Typical Rocket: model/typical_rocket.md
               - ComSat: model/comsat.md
               - F4C: model/f4c.md
               - GeoSat: model/geosat.md
               - UAV: model/uav.md
+              - Quadrotor:
+                - Нелинейный 6-DoF: model/quadrotor_nonlinear.md
+                - Примеры использования: model/quadrotor_examples.md
+              - Skywalker X8 (малый БПЛА):
+                - Нелинейный 6-DoF: model/skywalker_x8_nonlinear.md
+              - AAI RQ-7 Shadow (БПЛА класса II):
+                - Нелинейный 6-DoF: model/aai_shadow_nonlinear.md
               - X15:
                 - Пространство состояний: model/x15.md
                 - Нормализованное управление: model/x15_improved.md
+                - Нелинейный 6-DoF (гиперзвук): model/x15_nonlinear.md
               - LSU:
                 - Пространство состояний: model/lsu.md
                 - Нормализованное управление: model/lapan_improved.md
@@ -261,8 +288,11 @@ plugins:
                 - Линейная F16: example/agent/ihdp/example_ihdp.md
                 - Пошаговый пример: example/agent/ihdp/example_ihdp_walkthrough.md
                 - Нелинейная F16 (слежение α): example/agent/ihdp/example_ihdp_nonlinear.md
+                - Нелинейный B747 (ступенька θ): example/agent/ihdp/example_ihdp_nonlinear_b747.md
+                - Нелинейный B737 (поворот на 90°): example/agent/ihdp/example_ihdp_nonlinear_b737_turn.md
               - IMGDHP (Нелинейная F16): example/agent/imgdhp/example_imgdhp_nonlinear.md
               - ET-DHP (Нелинейная F16): example/agent/et_dhp/example_etdhp_nonlinear.md
+              - ET-DHP B747 (отказ двигателя, удержание ψ): example/agent/et_dhp/example_etdhp_b747_engine_failure.md
               - AA-INDI (Нелинейная F16): example/agent/aa_indi/example_aaindi_nonlinear.md
               - iADP (Нелинейная F16): example/agent/iadp/example_iadp_nonlinear.md
               - SAC F16: example/agent/sac/example-sac-f16.md

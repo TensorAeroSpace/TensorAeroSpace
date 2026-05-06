@@ -1,6 +1,6 @@
 # Пример: IHDP на нелинейной F-16 — слежение за синусоидальным α
 
-Пример обучает агент **Incremental Heuristic Dynamic Programming (IHDP)** слежению за синусоидальным задающим углом атаки на чисто-NumPy [нелинейной модели F-16](../../../model/f16_nonlinear_longitudinal.md). Исходный ноутбук: `example/reinforcement_learning/example_ihdp_nonlinear_f16.ipynb`.
+Пример обучает агент **Incremental Heuristic Dynamic Programming (IHDP)** слежению за синусоидальным задающим углом атаки на чисто-NumPy [нелинейной модели F-16](../../../model/f16_nonlinear_longitudinal.md). Исходный ноутбук: `example/reinforcement_learning/incremental_adp/example_ihdp_nonlinear_f16.ipynb`.
 
 ## Ключевая идея: feedforward + IHDP-residual
 

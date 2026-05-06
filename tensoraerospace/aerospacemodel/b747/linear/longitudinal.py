@@ -25,9 +25,9 @@ except ModuleNotFoundError:  # pragma: no cover
 if TYPE_CHECKING:  # pragma: no cover
     from matplotlib.figure import Figure
 
-from .base import ModelBase
-from .f16.nonlinear.utils import output2dict
-from .utils.constant import state_to_latex_eng, state_to_latex_rus
+from ...base import ModelBase
+from ...f16.nonlinear.utils import output2dict
+from ...utils.constant import state_to_latex_eng, state_to_latex_rus
 
 
 class LongitudinalB747(ModelBase):

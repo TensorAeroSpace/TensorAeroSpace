@@ -2,7 +2,7 @@
 
 Trains an **Advantage Actor-Critic (A2C)** agent whose actor/critic networks use a **NARX (Nonlinear AutoRegressive with eXogenous inputs)** layout to track a sinusoidal pitch-angle reference on `LinearLongitudinalF16-v0`.
 
-Source notebook: `example/general_examples/example-narx.ipynb`.
+Source notebook: `example/reinforcement_learning/deep_rl/example_narx.ipynb`.
 
 ## 1. Imports and device
 

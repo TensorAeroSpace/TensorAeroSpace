@@ -90,7 +90,7 @@ This is the standard *feedforward + integral* pattern from aerospace control: th
 
 ### 3.3 IM-GDHP+I — Incremental-Model GDHP with integral correction
 
-`IMGDHPAgent` is a more recent adaptive RL controller (RLS-identified incremental model + GDHP critic). The standard pipeline (`example/reinforcement_learning/example_im_gdhp_nonlinear_f16.ipynb`) trains it for `~80` episodes; for the single-pass benchmark used here, IM-GDHP is run with `exploration_noise_std=0.0` (deterministic forward pass) and the same external `+I` compensator that we used for IHDP. The integral channel guarantees zero static error; the IM-GDHP forward pass adds a nonlinear correction on top.
+`IMGDHPAgent` is a more recent adaptive RL controller (RLS-identified incremental model + GDHP critic). The standard pipeline (`example/reinforcement_learning/incremental_adp/example_im_gdhp_nonlinear_f16.ipynb`) trains it for `~80` episodes; for the single-pass benchmark used here, IM-GDHP is run with `exploration_noise_std=0.0` (deterministic forward pass) and the same external `+I` compensator that we used for IHDP. The integral channel guarantees zero static error; the IM-GDHP forward pass adds a nonlinear correction on top.
 
 ```python
 cfg = IMGDHPConfig(
@@ -145,6 +145,6 @@ The technical-task requirement that machine-learning controllers should achieve 
 |----------|------|
 | Main comparison notebook (this document) | `example/comparison/comparison_f16_nonlinear_ml_vs_pid.ipynb` |
 | Cascade-actor demo | `example/comparison/comparison_f16_nonlinear_cascaded_ihdp_vs_pid.ipynb` |
-| IADP companion (rate tracking, sinusoid) | `example/reinforcement_learning/example_iadp_nonlinear_f16.ipynb` |
-| IM-GDHP companion (full episode-train) | `example/reinforcement_learning/example_im_gdhp_nonlinear_f16.ipynb` |
+| IADP companion (rate tracking, sinusoid) | `example/reinforcement_learning/incremental_adp/example_iadp_nonlinear_f16.ipynb` |
+| IM-GDHP companion (full episode-train) | `example/reinforcement_learning/incremental_adp/example_im_gdhp_nonlinear_f16.ipynb` |
 | PID baseline (linear F-16) | `example/comparison/pid_f16_baseline.ipynb` |

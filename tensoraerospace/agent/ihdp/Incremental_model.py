@@ -72,8 +72,50 @@ class IncrementalModel:
         self.discretisation_time = discretisation_time
 
         # Limitations of the system
-        self.input_magnitude_limits = input_magnitude_limits
-        self.input_rate_limits = input_rate_limits
+        self.input_magnitude_limits = self._as_input_column(
+            input_magnitude_limits, "input_magnitude_limits"
+        )
+        self.input_rate_limits = self._as_input_column(
+            input_rate_limits, "input_rate_limits"
+        )
+
+    def _as_input_column(self, value, name: str) -> np.ndarray:
+        """Return a ``(number_inputs, 1)`` vector, broadcasting scalars."""
+        arr = np.asarray(value, dtype=float).reshape(-1)
+        if arr.size == 1:
+            arr = np.full(self.number_inputs, float(arr[0]), dtype=float)
+        elif arr.size != self.number_inputs:
+            raise ValueError(
+                f"{name} must be scalar or have {self.number_inputs} elements; "
+                f"got {arr.size}."
+            )
+        return arr.reshape(self.number_inputs, 1)
+
+    def _as_input_signal(self, value: np.ndarray) -> np.ndarray:
+        arr = np.asarray(value, dtype=float)
+        if arr.ndim == 1:
+            arr = arr.reshape(-1, 1)
+        elif arr.ndim == 2 and arr.shape[1] != 1:
+            arr = arr.reshape(-1, 1)
+        if arr.shape != (self.number_inputs, 1):
+            raise ValueError(
+                f"input has shape {arr.shape}, but incremental model expects "
+                f"({self.number_inputs}, 1)."
+            )
+        return arr
+
+    def _apply_input_limits(self, value: np.ndarray) -> np.ndarray:
+        ut_0 = self._as_input_signal(value)
+        rate_limited = np.clip(
+            ut_0,
+            self.ut_1 - self.input_rate_limits * self.discretisation_time,
+            self.ut_1 + self.input_rate_limits * self.discretisation_time,
+        )
+        return np.clip(
+            rate_limited,
+            -self.input_magnitude_limits,
+            self.input_magnitude_limits,
+        )
 
     def save_matrix(self):
         """Save identification matrices to disk (NumPy .npy files)."""
@@ -165,38 +207,12 @@ class IncrementalModel:
                 f"({self.number_states}, 1)."
             )
 
+        ut_0 = self._as_input_signal(ut_0)
+
         # Verifying that the inputs meets the platforms constraints
         if self.time_step == 0:
             self.ut_1 = ut_0
-        ut = max(
-            min(
-                max(
-                    min(
-                        ut_0,
-                        np.reshape(
-                            np.array(
-                                [
-                                    self.ut_1
-                                    + self.input_rate_limits * self.discretisation_time
-                                ]
-                            ),
-                            [-1, 1],
-                        ),
-                    ),
-                    np.reshape(
-                        np.array(
-                            [
-                                self.ut_1
-                                - self.input_rate_limits * self.discretisation_time
-                            ]
-                        ),
-                        [-1, 1],
-                    ),
-                ),
-                np.array([[self.input_magnitude_limits]]),
-            ),
-            -np.array([[self.input_magnitude_limits]]),
-        )
+        ut = self._apply_input_limits(ut_0)
 
         # Store the input variables
         self.xt = xt_arr
@@ -235,36 +251,7 @@ class IncrementalModel:
         elif len(args) == 1:
             # Estimate the next time step states
             ut_0 = args[0]
-            ut = max(
-                min(
-                    max(
-                        min(
-                            ut_0,
-                            np.reshape(
-                                np.array(
-                                    [
-                                        self.ut_1
-                                        + self.input_rate_limits
-                                        * self.discretisation_time
-                                    ]
-                                ),
-                                [-1, 1],
-                            ),
-                        ),
-                        np.reshape(
-                            np.array(
-                                [
-                                    self.ut_1
-                                    - self.input_rate_limits * self.discretisation_time
-                                ]
-                            ),
-                            [-1, 1],
-                        ),
-                    ),
-                    np.array([[self.input_magnitude_limits]]),
-                ),
-                -np.array([[self.input_magnitude_limits]]),
-            )
+            ut = self._apply_input_limits(ut_0)
 
             delta_ut = ut - self.ut_1
             xt1_est = (
@@ -272,43 +259,14 @@ class IncrementalModel:
             )
             return np.asarray(xt1_est)
         elif len(args) == 2:
-            self.xt = args[0]
-            ut_0 = args[1]
+            self.xt = np.asarray(args[0], dtype=float).reshape(-1, 1)
+            ut_0 = self._as_input_signal(args[1])
             if self.time_step == 0:
                 self.ut_1 = ut_0
                 self.xt_1 = self.xt
             # Estimate the next time step states
 
-            ut = max(
-                min(
-                    max(
-                        min(
-                            ut_0,
-                            np.reshape(
-                                np.array(
-                                    [
-                                        self.ut_1
-                                        + self.input_rate_limits
-                                        * self.discretisation_time
-                                    ]
-                                ),
-                                [-1, 1],
-                            ),
-                        ),
-                        np.reshape(
-                            np.array(
-                                [
-                                    self.ut_1
-                                    - self.input_rate_limits * self.discretisation_time
-                                ]
-                            ),
-                            [-1, 1],
-                        ),
-                    ),
-                    np.array([[self.input_magnitude_limits]]),
-                ),
-                -np.array([[self.input_magnitude_limits]]),
-            )
+            ut = self._apply_input_limits(ut_0)
 
             self.delta_ut = ut - self.ut_1
             self.delta_xt = self.xt - self.xt_1

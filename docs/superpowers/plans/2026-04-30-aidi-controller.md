@@ -36,7 +36,7 @@ Create:
 - `tensoraerospace/scripts/__init__.py` (only if it does not already exist)
 - `tensoraerospace/scripts/benchmark_aidi.py`
 - `tests/scripts/test_benchmark_aidi.py`
-- `example/reinforcement_learning/example_aidi_damage_f16.ipynb`
+- `example/reinforcement_learning/incremental_adp/example_aidi_damage_f16.ipynb`
 - `docs/algorithms/aidi.md`
 
 Modify:
@@ -2333,7 +2333,7 @@ git commit -m "test(aidi): integration test — F-16 + CE-loss recovery vs froze
 ## Task 11: Example notebook
 
 **Files:**
-- Create: `example/reinforcement_learning/example_aidi_damage_f16.ipynb`
+- Create: `example/reinforcement_learning/incremental_adp/example_aidi_damage_f16.ipynb`
 
 - [ ] **Step 1: Author the notebook**
 
@@ -2368,13 +2368,13 @@ references.
 
 - [ ] **Step 2: Execute the notebook end-to-end**
 
-Run: `jupyter nbconvert --to notebook --execute --inplace example/reinforcement_learning/example_aidi_damage_f16.ipynb`
+Run: `jupyter nbconvert --to notebook --execute --inplace example/reinforcement_learning/incremental_adp/example_aidi_damage_f16.ipynb`
 Expected: completes without errors; produces all plots inline.
 
 - [ ] **Step 3: Commit**
 
 ```bash
-git add example/reinforcement_learning/example_aidi_damage_f16.ipynb
+git add example/reinforcement_learning/incremental_adp/example_aidi_damage_f16.ipynb
 git commit -m "docs(example): AIDI fault-recovery notebook on F-16 nonlinear angular"
 ```
 
@@ -2733,7 +2733,7 @@ as `aa_indi`/`et_dhp`.
 
 ## Worked example
 
-See `example/reinforcement_learning/example_aidi_damage_f16.ipynb` for a
+See `example/reinforcement_learning/incremental_adp/example_aidi_damage_f16.ipynb` for a
 complete fault-recovery walk-through.
 
 ## Benchmark CLI

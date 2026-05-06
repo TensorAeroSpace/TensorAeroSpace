@@ -24,13 +24,13 @@ This notebook demonstrates how to **load a pretrained DSAC agent** and evaluate 
 Open the notebook in Jupyter or VS Code:
 
 ```bash
-jupyter notebook example/reinforcement_learning/eval_dsac_b747.ipynb
+jupyter notebook example/reinforcement_learning/deep_rl/eval_dsac_b747.ipynb
 ```
 
 Or run directly if you have `nbconvert` installed:
 
 ```bash
-jupyter nbconvert --execute --to notebook example/reinforcement_learning/eval_dsac_b747.ipynb
+jupyter nbconvert --execute --to notebook example/reinforcement_learning/deep_rl/eval_dsac_b747.ipynb
 ```
 
 ## Core code

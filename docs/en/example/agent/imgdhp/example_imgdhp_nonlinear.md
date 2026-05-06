@@ -1,6 +1,6 @@
 # Example: IM-GDHP on the F-16 — online adaptive control
 
-This example exercises the **Incremental Model-based Global Dual Heuristic Programming (IM-GDHP)** agent on F-16 longitudinal control. The agent combines an online RLS-identified incremental linear plant model with a dual-head GDHP critic that jointly learns the cost-to-go \(J\) and its gradient \(\lambda = \partial J/\partial y\). The source notebook is `example/reinforcement_learning/example_im_gdhp_nonlinear_f16.ipynb`.
+This example exercises the **Incremental Model-based Global Dual Heuristic Programming (IM-GDHP)** agent on F-16 longitudinal control. The agent combines an online RLS-identified incremental linear plant model with a dual-head GDHP critic that jointly learns the cost-to-go \(J\) and its gradient \(\lambda = \partial J/\partial y\). The source notebook is `example/reinforcement_learning/incremental_adp/example_im_gdhp_nonlinear_f16.ipynb`.
 
 **Reference:** Bo Sun & Erik-Jan van Kampen, *"Intelligent adaptive optimal control using incremental model-based global dual heuristic programming subject to partial observability"*, Applied Soft Computing 103, 2021.
 

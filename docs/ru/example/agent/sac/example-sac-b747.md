@@ -61,7 +61,7 @@ pip install -U tensoraerospace pygame torch
 Запустите предобученного агента с параметрами по умолчанию (автоопределение GPU):
 
 ```bash
-python example/reinforcement_learning/sac-b747-render.py \
+python example/reinforcement_learning/deep_rl/sac-b747-render.py \
     --render \
     --dt 0.1 \
     --tn 200 \
@@ -71,7 +71,7 @@ python example/reinforcement_learning/sac-b747-render.py \
 Или явно укажите устройство:
 
 ```bash
-python example/reinforcement_learning/sac-b747-render.py \
+python example/reinforcement_learning/deep_rl/sac-b747-render.py \
     --render \
     --dt 0.1 \
     --tn 200 \
@@ -355,13 +355,13 @@ xvfb-run -a python your_script.py
 **Решение**: Скрипт автоматически определяет GPU, но вы можете указать явно:
 ```bash
 # Явное использование CUDA
-python example/reinforcement_learning/sac-b747-render.py --device cuda
+python example/reinforcement_learning/deep_rl/sac-b747-render.py --device cuda
 
 # Использование MPS (Apple Silicon)
-python example/reinforcement_learning/sac-b747-render.py --device mps
+python example/reinforcement_learning/deep_rl/sac-b747-render.py --device mps
 
 # Принудительно CPU
-python example/reinforcement_learning/sac-b747-render.py --device cpu
+python example/reinforcement_learning/deep_rl/sac-b747-render.py --device cpu
 ```
 
 Скрипт автоматически перенесёт загруженную модель на указанное устройство. Проверьте вывод консоли для информации об устройстве:

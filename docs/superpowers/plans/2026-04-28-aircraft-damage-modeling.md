@@ -3527,7 +3527,7 @@ git commit -m "feat(f16-damage): add RandomDamageProfileGenerator for RL"
 ### Task 8.2: Demo notebook (dogfight wing strike)
 
 **Files:**
-- Create: `example/f16_damage_dogfight_demo.ipynb` (or `.py` script — see step)
+- Create: `example/failure_demos/f16_damage_dogfight_demo.py` (or `.py` script — see step)
 
 - [ ] **Step 1: Decide format**
 
@@ -3539,7 +3539,7 @@ ls /home/mr8bit/Projects/TensorAeroSpace/example/
 
 - [ ] **Step 2: Create demo script**
 
-Create `example/f16_damage_dogfight_demo.py`:
+Create `example/failure_demos/f16_damage_dogfight_demo.py`:
 
 ```python
 """Demo: F-16 with left-wingtip damage at t=10s.
@@ -3585,7 +3585,7 @@ if __name__ == "__main__":
 - [ ] **Step 3: Run the demo**
 
 ```bash
-poetry run python example/f16_damage_dogfight_demo.py
+poetry run python example/failure_demos/f16_damage_dogfight_demo.py
 ```
 
 Expected: prints the trigger event around t=10s and a non-zero final/max roll rate.
@@ -3593,7 +3593,7 @@ Expected: prints the trigger event around t=10s and a non-zero final/max roll ra
 - [ ] **Step 4: Commit**
 
 ```bash
-git add example/f16_damage_dogfight_demo.py
+git add example/failure_demos/f16_damage_dogfight_demo.py
 git commit -m "docs(f16-damage): add dogfight wing-strike demo script"
 ```
 

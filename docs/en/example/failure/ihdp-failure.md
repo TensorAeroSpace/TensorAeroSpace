@@ -2,7 +2,7 @@
 
 Demonstrates how the **Incremental Heuristic Dynamic Programming (IHDP)** controller adapts when the aircraft dynamics change mid-flight. We train on `LinearLongitudinalF16-v0` for 40 seconds, then at \(t=25\) s mutate an element of the discrete-time A-matrix to simulate a control-surface or airflow fault.
 
-Source notebook: `example/general_examples/example-ihdp-failure.ipynb`.
+Source notebook: `example/failure_demos/example_ihdp_failure.ipynb`.
 
 ## 1. Imports
 
