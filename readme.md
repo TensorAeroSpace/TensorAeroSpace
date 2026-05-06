@@ -222,7 +222,7 @@ for _ in range(2000):
 What's modelled:
 
 - **Section loss** (wing/stabilator/vtail): mass *m*, wing area *S*, span *b*, MAC, CG, inertia tensor **J**, aerodynamic coefficients all recomputed from per-section contributions via Huygens-Steiner.
-- **Control-surface failure** (`jam` / `efficiency_loss` / `lost`): commanded vector $\mathbf{u}_{cmd} \to \mathbf{u}_{eff}$ before the integrator.
+- **Control-surface failure** (`jam` / `efficiency_loss` / `lost`): commanded vector **u**<sub>cmd</sub> → **u**<sub>eff</sub> before the integrator.
 - **Engine failure** (partial / full): effective thrust scaled or zeroed.
 - **Structural changes** (dropped stores, ice accretion): Δ on mass / CG / inertia.
 
