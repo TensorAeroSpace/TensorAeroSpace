@@ -5,7 +5,7 @@ Minimal DSAC training run for longitudinal pitch control of the normalized `Impr
 ## Run it
 
 ```bash
-python example/reinforcement_learning/example_dsac_b747.py
+python example/reinforcement_learning/deep_rl/example_dsac_b747.py
 ```
 
 What happens:

@@ -103,7 +103,7 @@ jobs:
           PY
 
           docker run --rm "$LOCAL_TAG" \
-            python /workspace/examples/reinforcement_learning/test_comsat_simple.py
+            python /workspace/examples/reinforcement_learning/deep_rl/test_comsat_simple.py
 
       - name: 🔐 Log in to GHCR
         if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop')

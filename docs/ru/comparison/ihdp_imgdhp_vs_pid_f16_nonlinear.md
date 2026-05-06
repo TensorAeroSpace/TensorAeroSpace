@@ -90,7 +90,7 @@ actor_settings = {
 
 ### 3.3 IM-GDHP+I — Incremental-Model GDHP с интегральной коррекцией
 
-`IMGDHPAgent` — более современный adaptive RL-контроллер (RLS-идентифицированная инкрементальная модель + GDHP-критик). Стандартный пайплайн (`example/reinforcement_learning/example_im_gdhp_nonlinear_f16.ipynb`) обучает его за `~80` эпизодов; для one-pass бенчмарка в этом сравнении IM-GDHP запускается с `exploration_noise_std=0.0` (детерминированный forward pass), и тот же external `+I`-компенсатор, что и для IHDP. Интегральный канал гарантирует нулевую статическую ошибку, IM-GDHP forward pass добавляет нелинейную коррекцию поверх.
+`IMGDHPAgent` — более современный adaptive RL-контроллер (RLS-идентифицированная инкрементальная модель + GDHP-критик). Стандартный пайплайн (`example/reinforcement_learning/incremental_adp/example_im_gdhp_nonlinear_f16.ipynb`) обучает его за `~80` эпизодов; для one-pass бенчмарка в этом сравнении IM-GDHP запускается с `exploration_noise_std=0.0` (детерминированный forward pass), и тот же external `+I`-компенсатор, что и для IHDP. Интегральный канал гарантирует нулевую статическую ошибку, IM-GDHP forward pass добавляет нелинейную коррекцию поверх.
 
 ```python
 cfg = IMGDHPConfig(
@@ -144,6 +144,6 @@ cfg = IMGDHPConfig(
 | Артефакт | Путь |
 |----------|------|
 | Основной comparison-ноутбук (этот документ) | `example/comparison/comparison_f16_nonlinear_ml_vs_pid.ipynb` |
-| IADP companion (rate tracking, sinusoid) | `example/reinforcement_learning/example_iadp_nonlinear_f16.ipynb` |
-| IM-GDHP companion (полный episode-train) | `example/reinforcement_learning/example_im_gdhp_nonlinear_f16.ipynb` |
+| IADP companion (rate tracking, sinusoid) | `example/reinforcement_learning/incremental_adp/example_iadp_nonlinear_f16.ipynb` |
+| IM-GDHP companion (полный episode-train) | `example/reinforcement_learning/incremental_adp/example_im_gdhp_nonlinear_f16.ipynb` |
 | PID baseline (linear F-16) | `example/comparison/pid_f16_baseline.ipynb` |

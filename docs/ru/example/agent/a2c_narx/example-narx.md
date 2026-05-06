@@ -2,7 +2,7 @@
 
 Обучение агента **Advantage Actor-Critic (A2C)**, в котором сети актора и критика имеют схему **NARX (Nonlinear AutoRegressive with eXogenous inputs)**, отслеживающего синусоидальное задание угла тангажа на `LinearLongitudinalF16-v0`.
 
-Исходный ноутбук: `example/general_examples/example-narx.ipynb`.
+Исходный ноутбук: `example/reinforcement_learning/deep_rl/example_narx.ipynb`.
 
 ## 1. Импорты и устройство
 

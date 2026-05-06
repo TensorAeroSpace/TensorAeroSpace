@@ -2,7 +2,7 @@
 
 В этом примере **Soft Actor-Critic (SAC)** обучается отслеживать ступеньку по углу атаки 5° на среде `LinearLongitudinalF16-v0`. SAC — это off-policy стохастический actor-critic с максимизацией энтропии, хорошо подходящий для непрерывных задач управления, где важно исследование, а градиентно-свободные альтернативы (например, IHDP) с трудом покрывают пространство состояний.
 
-Исходный ноутбук: `example/reinforcement_learning/example-sac-f16.ipynb`.
+Исходный ноутбук: `example/reinforcement_learning/deep_rl/example-sac-f16.ipynb`.
 
 ## Когда выбирать SAC, а когда — адаптивный критик
 

@@ -144,7 +144,7 @@ The two panels show this duality. **Left**: symmetric tip loss reduces
 i.e. ~12 % of the healthy lift. **Right**: asymmetric (left-only) loss
 generates a roll-moment delta `ΔMx` that scales with both `α` and `f` —
 this is the physics behind the dogfight scenario in
-`example/f16_damage_dogfight_demo.py`.
+`example/failure_demos/f16_damage_dogfight_demo.py`.
 
 The conceptual companion below collects the same physics into a single
 side-by-side comparison: symmetric loss preserves balance and only
@@ -191,7 +191,7 @@ for a walkthrough.
 
 ### Worked example — wing tip loss in flight
 
-`example/f16_damage_dogfight_demo.py` runs the angular F-16 with
+`example/failure_demos/f16_damage_dogfight_demo.py` runs the angular F-16 with
 `damage_profile=WING_STRIKE_LEFT_TIP` (full loss of `left_tip` at
 t = 10 s). With zero stick command, the trajectory shows the asymmetry
 clearly — pre-damage the aircraft holds straight-and-level; post-damage
@@ -250,7 +250,7 @@ profile_b = aileron_efficiency_loss_schedule(
 profile_c = rudder_total_loss(t_inject=10.0)
 ```
 
-A ready-to-run example is in `example/reinforcement_learning/example_aidi_damage_f16.ipynb`.
+A ready-to-run example is in `example/reinforcement_learning/incremental_adp/example_aidi_damage_f16.ipynb`.
 
 ## Custom scenarios
 
@@ -482,10 +482,10 @@ provide a direct apples-to-apples comparison.
 
 | Example | Path | Format |
 |---------|------|--------|
-| iADP (Incremental ADP) | `example/reinforcement_learning/example_iadp_damage_f16.py` | runnable script |
-| ET-DHP (Event-Triggered DHP) | `example/reinforcement_learning/example_etdhp_damage_f16.py` | runnable script |
-| ET-DHP (notebook version) | `example/reinforcement_learning/example_etdhp_damage_f16.ipynb` | Jupyter notebook |
-| AIDI (Adaptive Incremental Inversion) | `example/reinforcement_learning/example_aidi_damage_f16.ipynb` | Jupyter notebook |
+| iADP (Incremental ADP) | `example/reinforcement_learning/incremental_adp/example_iadp_damage_f16.py` | runnable script |
+| ET-DHP (Event-Triggered DHP) | `example/reinforcement_learning/incremental_adp/example_etdhp_damage_f16.py` | runnable script |
+| ET-DHP (notebook version) | `example/reinforcement_learning/incremental_adp/example_etdhp_damage_f16.ipynb` | Jupyter notebook |
+| AIDI (Adaptive Incremental Inversion) | `example/reinforcement_learning/incremental_adp/example_aidi_damage_f16.ipynb` | Jupyter notebook |
 
 ### Common scenario
 

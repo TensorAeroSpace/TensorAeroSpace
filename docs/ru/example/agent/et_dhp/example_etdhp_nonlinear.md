@@ -1,6 +1,6 @@
 # Пример: ET-DHP на нелинейной F-16 — слежение за синусоидальным α
 
-Пример обучает агент **Event-Triggered Dual Heuristic Programming (ET-DHP)** на том же задании, что и пример IHDP: синусоида по углу атаки амплитудой 3° и частотой 0.1 Гц на [нелинейной модели F-16](../../../model/f16_nonlinear_longitudinal.md). Оба реактивных агента можно сравнивать на равных, потому что у них одинаковый глобальный трим, одинаковый inverse-model feedforward и одинаковый 80-секундный задающий сигнал. Исходный ноутбук: `example/reinforcement_learning/example_etdhp_nonlinear_f16.ipynb`.
+Пример обучает агент **Event-Triggered Dual Heuristic Programming (ET-DHP)** на том же задании, что и пример IHDP: синусоида по углу атаки амплитудой 3° и частотой 0.1 Гц на [нелинейной модели F-16](../../../model/f16_nonlinear_longitudinal.md). Оба реактивных агента можно сравнивать на равных, потому что у них одинаковый глобальный трим, одинаковый inverse-model feedforward и одинаковый 80-секундный задающий сигнал. Исходный ноутбук: `example/reinforcement_learning/incremental_adp/example_etdhp_nonlinear_f16.ipynb`.
 
 **Источник:** Bo Sun, Cheng Liu, Killian Dally, Erik-Jan van Kampen. *"Intelligent Aircraft Stabilization Control with Event-Triggered Scheme"*, CEAS EuroGNC 2022.
 

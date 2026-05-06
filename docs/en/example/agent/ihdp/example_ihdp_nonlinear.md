@@ -1,6 +1,6 @@
 # Example: IHDP on the nonlinear F-16 — sinusoidal α-tracking
 
-This example trains an **Incremental Heuristic Dynamic Programming (IHDP)** agent to track a sinusoidal angle-of-attack reference on the pure-NumPy [nonlinear F-16 longitudinal model](../../../model/f16_nonlinear_longitudinal.md). The source notebook lives at `example/reinforcement_learning/example_ihdp_nonlinear_f16.ipynb`.
+This example trains an **Incremental Heuristic Dynamic Programming (IHDP)** agent to track a sinusoidal angle-of-attack reference on the pure-NumPy [nonlinear F-16 longitudinal model](../../../model/f16_nonlinear_longitudinal.md). The source notebook lives at `example/reinforcement_learning/incremental_adp/example_ihdp_nonlinear_f16.ipynb`.
 
 ## Key idea: feedforward + IHDP residual
 

@@ -1,6 +1,6 @@
 # Example: AA-INDI on the nonlinear F-16 — pitch-rate tracking with fault injection
 
-This example trains an [**AA-INDI** agent](../../../agent/aa_indi.md) to track a pitch-rate command on the pure-NumPy [nonlinear F-16 longitudinal model](../../../model/f16_nonlinear_longitudinal.md), then injects a 50 % elevator-effectiveness loss mid-episode and watches the closed loop ride through it. Source notebook: `example/reinforcement_learning/example_aaindi_nonlinear_f16.ipynb`.
+This example trains an [**AA-INDI** agent](../../../agent/aa_indi.md) to track a pitch-rate command on the pure-NumPy [nonlinear F-16 longitudinal model](../../../model/f16_nonlinear_longitudinal.md), then injects a 50 % elevator-effectiveness loss mid-episode and watches the closed loop ride through it. Source notebook: `example/reinforcement_learning/incremental_adp/example_aaindi_nonlinear_f16.ipynb`.
 
 ## Key idea
 

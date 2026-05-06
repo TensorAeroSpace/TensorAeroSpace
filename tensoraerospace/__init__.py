@@ -119,3 +119,33 @@ register(
     id="F4CPitchNormalized-v0",
     entry_point="tensoraerospace.envs:F4CPitchEnvNormalized",
 )
+
+register(
+    id="NonlinearQuadrotor-v0",
+    entry_point="tensoraerospace.envs:NonlinearQuadrotorEnv",
+)
+
+register(
+    id="NonlinearB747-v0",
+    entry_point="tensoraerospace.envs:NonlinearB747Env",
+)
+
+register(
+    id="NonlinearX15-v0",
+    entry_point="tensoraerospace.envs:NonlinearX15Env",
+)
+
+register(
+    id="NonlinearB737-v0",
+    entry_point="tensoraerospace.envs:NonlinearB737Env",
+)
+
+register(
+    id="NonlinearSkywalkerX8-v0",
+    entry_point="tensoraerospace.envs:NonlinearSkywalkerX8Env",
+)
+
+register(
+    id="NonlinearAAIShadow-v0",
+    entry_point="tensoraerospace.envs:NonlinearAAIShadowEnv",
+)

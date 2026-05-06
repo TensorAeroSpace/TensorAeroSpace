@@ -23,7 +23,7 @@ Sine tracking tests the agent's ability to:
 ## Run it
 
 ```bash
-python example/reinforcement_learning/train_dsac_b747_tracking.py
+python example/reinforcement_learning/deep_rl/train_dsac_b747_tracking.py
 ```
 
 The script displays a preview of the reference signal and waits for you to close the window before training starts.

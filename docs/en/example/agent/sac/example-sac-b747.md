@@ -61,7 +61,7 @@ pip install -U tensoraerospace pygame torch
 Run the pretrained agent with default parameters (auto-detects GPU):
 
 ```bash
-python example/reinforcement_learning/sac-b747-render.py \
+python example/reinforcement_learning/deep_rl/sac-b747-render.py \
     --render \
     --dt 0.1 \
     --tn 200 \
@@ -71,7 +71,7 @@ python example/reinforcement_learning/sac-b747-render.py \
 Or explicitly specify device:
 
 ```bash
-python example/reinforcement_learning/sac-b747-render.py \
+python example/reinforcement_learning/deep_rl/sac-b747-render.py \
     --render \
     --dt 0.1 \
     --tn 200 \
@@ -355,13 +355,13 @@ xvfb-run -a python your_script.py
 **Solution**: The script auto-detects GPU, but you can explicitly specify:
 ```bash
 # Explicitly use CUDA
-python example/reinforcement_learning/sac-b747-render.py --device cuda
+python example/reinforcement_learning/deep_rl/sac-b747-render.py --device cuda
 
 # Use MPS (Apple Silicon)
-python example/reinforcement_learning/sac-b747-render.py --device mps
+python example/reinforcement_learning/deep_rl/sac-b747-render.py --device mps
 
 # Force CPU
-python example/reinforcement_learning/sac-b747-render.py --device cpu
+python example/reinforcement_learning/deep_rl/sac-b747-render.py --device cpu
 ```
 
 The script will automatically move the loaded model to the specified device. Check the console output for device information:

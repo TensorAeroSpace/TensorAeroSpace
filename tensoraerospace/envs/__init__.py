@@ -6,8 +6,13 @@ here for convenience, and are also registered in the top-level
 ``tensoraerospace`` package.
 """
 
+from .aai_shadow_nonlinear import (  # noqa: F401
+    NonlinearAAIShadowEnv as NonlinearAAIShadowEnv,
+)
+from .b737_nonlinear import NonlinearB737Env as NonlinearB737Env  # noqa: F401
 from .b747 import ImprovedB747Env as ImprovedB747Env  # noqa: F401
 from .b747 import LinearLongitudinalB747 as LinearLongitudinalB747
+from .b747_nonlinear import NonlinearB747Env as NonlinearB747Env  # noqa: F401
 from .b747_vec_torch import (  # noqa: F401
     ImprovedB747VecEnvTorch as ImprovedB747VecEnvTorch,
 )
@@ -31,9 +36,13 @@ from .f16.nonlinear_longitudinal import (  # noqa: F401
 from .geosat import GeoSatEnv as GeoSatEnv  # noqa: F401
 from .lapan import ImprovedLAPANEnv as ImprovedLAPANEnv  # noqa: F401
 from .lapan import LinearLongitudinalLAPAN as LinearLongitudinalLAPAN  # noqa: F401
+from .quadrotor import NonlinearQuadrotorEnv as NonlinearQuadrotorEnv  # noqa: F401
 from .rocket import ImprovedMissileEnv as ImprovedMissileEnv
 from .rocket import (  # noqa: F401
     LinearLongitudinalMissileModel as LinearLongitudinalMissileModel,
+)
+from .skywalker_x8_nonlinear import (  # noqa: F401
+    NonlinearSkywalkerX8Env as NonlinearSkywalkerX8Env,
 )
 from .uav import LinearLongitudinalUAV as LinearLongitudinalUAV  # noqa: F401
 from .ultrastick import ImprovedUltrastickEnv as ImprovedUltrastickEnv  # noqa: F401
@@ -42,6 +51,7 @@ from .ultrastick import (  # noqa: F401
 )
 from .x15 import ImprovedX15Env as ImprovedX15Env  # noqa: F401
 from .x15 import LinearLongitudinalX15 as LinearLongitudinalX15
+from .x15_nonlinear import NonlinearX15Env as NonlinearX15Env  # noqa: F401
 
 __all__ = [
     "ImprovedB747Env",
@@ -65,6 +75,12 @@ __all__ = [
     "ImprovedUltrastickEnv",
     "ImprovedX15Env",
     "LinearLongitudinalX15",
+    "NonlinearAAIShadowEnv",
+    "NonlinearQuadrotorEnv",
+    "NonlinearB737Env",
+    "NonlinearB747Env",
+    "NonlinearSkywalkerX8Env",
+    "NonlinearX15Env",
 ]
 
 try:

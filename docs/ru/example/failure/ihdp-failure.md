@@ -2,7 +2,7 @@
 
 Демонстрация того, как регулятор **Incremental Heuristic Dynamic Programming (IHDP)** адаптируется при изменении динамики в полёте. Обучаемся на `LinearLongitudinalF16-v0` в течение 40 секунд, а в момент \(t=25\) с изменяем элемент дискретной матрицы A — имитация отказа управляющей поверхности или изменения аэродинамики.
 
-Исходный ноутбук: `example/general_examples/example-ihdp-failure.ipynb`.
+Исходный ноутбук: `example/failure_demos/example_ihdp_failure.ipynb`.
 
 ## 1. Импорты
 

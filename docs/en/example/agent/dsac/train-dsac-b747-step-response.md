@@ -29,7 +29,7 @@ The curriculum addresses these issues by:
 ## Run it
 
 ```bash
-python example/reinforcement_learning/train_dsac_b747_step_response.py
+python example/reinforcement_learning/deep_rl/train_dsac_b747_step_response.py
 ```
 
 Monitor training with TensorBoard:
