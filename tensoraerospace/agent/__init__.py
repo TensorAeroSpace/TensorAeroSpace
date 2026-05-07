@@ -43,3 +43,7 @@ from .ppo.model import PPO as PPO  # noqa: F401
 from .sac.sac import SAC as SAC  # noqa: F401
 
 TorchMPCAgent = MPCAgent
+
+# Unified Fault-Tolerant Control (UFTC) — Phase 1 MVP
+from .uftc import UFTCConfig as UFTCConfig  # noqa: F401
+from .uftc import UFTCController as UFTCController  # noqa: F401
