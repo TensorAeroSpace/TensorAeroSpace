@@ -1,39 +1,7 @@
-"""Composite FDD detector: NominalKalman + CUSUM.
-
-Score formulation
------------------
-A pure Mahalanobis score  ``d_t = nu^T S^{-1} nu``  has expected value
-``~0.94`` under H₀ (well below the CUSUM drift of 3.0) and only ``~1.77``
-under a partial-control-authority fault (G → 0.05 G).  Both values are
-below the drift, so the CUSUM cannot distinguish the two reliably.
-
-The reason is that reducing G *lowers* the nominal control contribution to
-the innovation:  ``nu ≈ (G_fault – G) u + noise``.  Because u is zero-mean,
-the expected innovation stays zero, but the per-step variance *decreases*
-under the fault — a Mahalanobis-only CUSUM cannot detect a variance drop.
-
-To recover sensitivity the detector augments the Mahalanobis score with a
-**control-projection term**
-
-    ctrl_proj = –(nu^T u_prev) / ‖u_prev‖
-
-Under H₀ this term has zero mean (innovations are uncorrelated with
-control).  Under a partial-authority fault (G_fault < G_nominal) the
-innovation satisfies  ``E[nu | u] = (G_fault – G) u``, so
-
-    E[ctrl_proj] = ‖(G – G_fault) u‖ · E[‖u‖] / ‖u‖ > 0
-
-Multiplying by ``ctrl_projection_alpha`` shifts the fault distribution
-above the CUSUM drift while keeping the nominal distribution well below it.
-The default ``ctrl_projection_alpha = 20.0`` was chosen so that
-``E[score_fault] ≈ drift``, derived from typical fault magnitudes:
-
-    alpha ≈ (drift − E[maha_fault]) / E[ctrl_proj_fault]
-          ≈ (3.0 − 1.77) / 0.060 ≈ 20
-"""
+"""Composite FDD detector: NominalKalman + CUSUM."""
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 import numpy as np
 
@@ -59,8 +27,6 @@ class FDDConfig:
     cooldown_steps: int = 200
     # Innovation gating: skip Kalman update when innovation is too far out.
     innovation_sigma_gate: float = 5.0
-    # Control-projection augmentation scale (see module docstring).
-    ctrl_projection_alpha: float = 20.0
 
 
 @dataclass
@@ -75,12 +41,7 @@ class FDDOutput:
 
 
 class FDDDetector:
-    """One nominal Kalman + one CUSUM detector → FDDOutput.
-
-    The CUSUM is fed a hybrid score that combines the standard Mahalanobis
-    distance with a control-projection term; see module docstring for the
-    rationale.
-    """
+    """One nominal Kalman + one CUSUM detector → FDDOutput."""
 
     def __init__(
         self,
@@ -91,7 +52,6 @@ class FDDDetector:
         *,
         dt: float,
         innovation_sigma_gate: float = 5.0,
-        ctrl_projection_alpha: float = 20.0,
     ) -> None:
         self.n_state = int(n_state)
         self.n_control = int(n_control)
@@ -99,7 +59,6 @@ class FDDDetector:
         self.cpd = cpd
         self.dt = float(dt)
         self.innovation_sigma_gate = float(innovation_sigma_gate)
-        self.ctrl_projection_alpha = float(ctrl_projection_alpha)
 
     @classmethod
     def from_config(
@@ -127,8 +86,7 @@ class FDDDetector:
         )
         return cls(n_state=n_state, n_control=n_control,
                    kalman=kf, cpd=cpd, dt=dt,
-                   innovation_sigma_gate=config.innovation_sigma_gate,
-                   ctrl_projection_alpha=config.ctrl_projection_alpha)
+                   innovation_sigma_gate=config.innovation_sigma_gate)
 
     def warm_start(
         self,
@@ -141,31 +99,22 @@ class FDDDetector:
     def step(self, x_meas: np.ndarray, u_prev: np.ndarray) -> FDDOutput:
         """Run Kalman + CUSUM; return FDDOutput.
 
-        Score = max(maha + alpha * ctrl_proj, 0), where
+        The fault score is the Mahalanobis distance of the Kalman
+        innovation under the predicted innovation covariance ``S``::
 
-        * ``maha``      = ``nu^T S^{-1} nu``  (Mahalanobis innovation distance),
-        * ``ctrl_proj`` = ``–(nu^T u_prev) / ‖u_prev‖``  (control-projection
-          term; positive when innovation is anti-correlated with control,
-          which is the signature of partial control-authority loss).
+            d_t = νᵀ S⁻¹ ν.
+
+        Under nominal dynamics this is approximately χ²-distributed with
+        ``n_state`` degrees of freedom; under most faults the
+        innovation either grows in magnitude or shifts in direction
+        relative to ``S``, increasing ``d_t``.
         """
         kal = self.kalman.step(x_meas, u_prev)
-
-        # Mahalanobis distance (regularised solve).
         try:
-            maha = float(kal.nu @ np.linalg.solve(kal.S, kal.nu))
+            d_t = float(kal.nu @ np.linalg.solve(kal.S, kal.nu))
         except np.linalg.LinAlgError:
-            maha = float(kal.nu @ (np.linalg.pinv(kal.S) @ kal.nu))
-        maha = max(maha, 0.0)
-
-        # Control-projection augmentation.
-        u = np.asarray(u_prev, dtype=np.float64).reshape(-1)
-        u_norm = float(np.linalg.norm(u))
-        if u_norm > 1e-8:
-            ctrl_proj = float(-kal.nu @ u) / u_norm
-        else:
-            ctrl_proj = 0.0
-
-        d_t = max(maha + self.ctrl_projection_alpha * ctrl_proj, 0.0)
+            d_t = float(kal.nu @ (np.linalg.pinv(kal.S) @ kal.nu))
+        d_t = max(d_t, 0.0)
 
         cp = self.cpd.update(d_t)
 

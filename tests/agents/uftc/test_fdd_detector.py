@@ -55,13 +55,15 @@ def test_step_fault_triggers_within_2s() -> None:
         u = rng.normal(0.0, 0.5, size=2)
         x = x + F @ x + G @ u + rng.normal(0.0, 0.05, size=2)
         fdd.step(x, u)
-    # Fault: G drops to ~zero (control surface lost).
-    G_fault = G * 0.05
+    # Fault: measurement bias step on the first sensor (e.g. an IMU
+    # axis stuck-at offset). Pure Mahalanobis innovation distance grows
+    # quadratically with the bias and CUSUM accumulates fast.
+    bias = np.array([0.5, 0.0])
     fired_at = None
     for k in range(400):  # 4 s at dt=0.01
         u = rng.normal(0.0, 0.5, size=2)
-        x = x + F @ x + G_fault @ u + rng.normal(0.0, 0.05, size=2)
-        out = fdd.step(x, u)
+        x = x + F @ x + G @ u + rng.normal(0.0, 0.05, size=2)
+        out = fdd.step(x + bias, u)
         if out.fault_present and fired_at is None:
             fired_at = k
             break
