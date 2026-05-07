@@ -61,10 +61,35 @@ class UFTCController(BaseRLModel):
         self.n_state = int(n_state)
         self.n_control = int(n_control)
         self.cfg = config if config is not None else UFTCConfig()
+        self._omega_indices = (
+            np.asarray(self.cfg.omega_indices, dtype=np.int64)
+            if self.cfg.omega_indices is not None
+            else None
+        )
+        if self._omega_indices is not None:
+            if self._omega_indices.ndim != 1 or self._omega_indices.size == 0:
+                raise ValueError("omega_indices must be a non-empty 1-D list")
+            if np.any(self._omega_indices < 0) or np.any(
+                self._omega_indices >= self.n_state
+            ):
+                raise ValueError(
+                    f"omega_indices={self.cfg.omega_indices!r} are out of "
+                    f"bounds for n_state={self.n_state}"
+                )
+        self.n_inner_state = (
+            int(self._omega_indices.size)
+            if self._omega_indices is not None
+            else self.n_state
+        )
 
         # Inner / middle dt sync to outer dt.
         inner_dict = dict(self.cfg.inner_cfg.__dict__)
         inner_dict["dt"] = self.cfg.dt
+        inner_g0 = inner_dict.get("G_init")
+        if inner_g0 is not None and self._omega_indices is not None:
+            inner_g0_arr = np.asarray(inner_g0, dtype=np.float64)
+            if inner_g0_arr.shape == (self.n_state, self.n_control):
+                inner_dict["G_init"] = inner_g0_arr[self._omega_indices].copy()
         self.cfg.inner_cfg = AAINDIConfig(**inner_dict)
         middle_dict = {k: v for k, v in self.cfg.middle_cfg.__dict__.items()
                        if k != "history"}
@@ -73,10 +98,12 @@ class UFTCController(BaseRLModel):
 
         # L2 inner.
         inner_base = AAINDIAgent(
-            n_state=n_state, n_control=n_control, config=self.cfg.inner_cfg,
+            n_state=self.n_inner_state,
+            n_control=n_control,
+            config=self.cfg.inner_cfg,
         )
         sm_obs = SuperTwistingObserver(
-            n_axes=n_state, k1=self.cfg.sm_obs_k1,
+            n_axes=self.n_inner_state, k1=self.cfg.sm_obs_k1,
             k2=self.cfg.sm_obs_k2, dt=self.cfg.dt,
         )
         mode_sw = ModeSwitcher(
@@ -123,7 +150,7 @@ class UFTCController(BaseRLModel):
             innovation_norm=0.0, time_since_event=0.0,
         )
         self._last_u_indi = np.zeros(n_control, dtype=np.float64)
-        self._last_omega_ref = np.zeros(n_state, dtype=np.float64)
+        self._last_omega_ref = np.zeros(self.n_inner_state, dtype=np.float64)
 
     def predict(
         self,
@@ -209,10 +236,9 @@ class UFTCController(BaseRLModel):
 
     def _extract_omega(self, x_obs: np.ndarray) -> np.ndarray:
         x = np.asarray(x_obs, dtype=np.float64).reshape(-1)
-        if self.cfg.omega_indices is None:
+        if self._omega_indices is None:
             return x[: self.n_state]
-        idx = np.asarray(self.cfg.omega_indices, dtype=np.int64)
-        return x[idx]
+        return x[self._omega_indices]
 
     def _extract_alpha(self, x_obs: np.ndarray) -> float:
         if self.cfg.alpha_index is None:
@@ -330,7 +356,7 @@ def _uftc_save(self, path: _Union[str, _Path, None] = None) -> str:
         sm_z=self.inner.sm_obs._z,
         mode=np.asarray(self.inner.mode),
         prev_omega=(prev_omega if prev_omega is not None
-                    else np.zeros(self.n_state, dtype=np.float64)),
+                    else np.zeros(self.n_inner_state, dtype=np.float64)),
         has_prev_omega=np.asarray(prev_omega is not None),
         fdd_fault_present=np.asarray(self._last_fdd.fault_present),
         fdd_severity=np.asarray(self._last_fdd.severity),

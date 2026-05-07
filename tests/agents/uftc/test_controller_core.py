@@ -81,3 +81,26 @@ def test_no_omega_indices_yields_ref_as_omega_ref() -> None:
     ctl.predict(np.zeros(3), ref, time_step=0)
     # Internal state cached after predict.
     assert np.allclose(ctl._last_omega_ref, ref)
+
+
+def test_full_state_controller_extracts_inner_rate_state() -> None:
+    ctl = _make_controller(
+        n_state=9,
+        n_control=4,
+        omega_indices=[6, 7, 8],
+        middle_lookahead_dt=0.5,
+        warmup_steps=0,
+    )
+    x = np.zeros(9)
+    x[6:9] = [0.03, -0.02, 0.01]
+    ref = np.zeros(9)
+
+    u = ctl.predict(x, ref, time_step=0)
+    assert u.shape == (4,)
+    assert ctl.n_state == 9
+    assert ctl.n_inner_state == 3
+    assert ctl.inner.base.n_state == 3
+    assert np.allclose(ctl._last_omega_ref, -x[6:9] / 0.5)
+
+    ctl.learn(x * 0.8, ref, time_step=0)
+    assert ctl.diagnostics()["step"] == 1
