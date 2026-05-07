@@ -31,6 +31,7 @@ from tensoraerospace.aerospacemodel.f16.nonlinear.damage import (
     ELEVATOR_JAM_NEUTRAL,
 )
 from tensoraerospace.agent import UFTCConfig, UFTCController
+from tensoraerospace.agent.aa_indi.model import AAINDIConfig
 from tensoraerospace.agent.uftc import FDDConfig
 from tensoraerospace.envs.f16.nonlinear_angular import NonlinearAngularF16
 
@@ -82,6 +83,7 @@ def test_uftc_detects_elevator_jam_and_stays_bounded() -> None:
             dt=0.01, fdd_warmup_steps=400,
             omega_indices=[0, 1, 2],
             middle_lookahead_dt=0.05,
+            inner_cfg=AAINDIConfig(seed=0),
             fdd_cfg=FDDConfig(
                 adapt_Q=False, adapt_R=False,
                 process_noise=1e-6,
