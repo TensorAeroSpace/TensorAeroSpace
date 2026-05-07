@@ -88,7 +88,43 @@ def test_kalman_reset_returns_state_to_initial() -> None:
     rng = np.random.default_rng(2)
     for _ in range(50):
         kf.step(rng.normal(size=2), rng.normal(size=2))
-    P_post = kf.P.copy()
     kf.reset()
-    assert not np.allclose(kf.P, P_post)  # state mutated by reset
     assert np.allclose(kf.x_hat, 0.0)
+    assert np.allclose(kf.P, np.eye(kf.n_state))
+
+
+def test_kalman_validates_alpha_range() -> None:
+    F = np.zeros((2, 2))
+    G = np.eye(2)
+    with pytest.raises(ValueError):
+        NominalKalman(F_nominal=F, G_nominal=G, Q=np.eye(2), R=np.eye(2),
+                      alpha_Q=-0.1)
+    with pytest.raises(ValueError):
+        NominalKalman(F_nominal=F, G_nominal=G, Q=np.eye(2), R=np.eye(2),
+                      alpha_R=1.5)
+    with pytest.raises(ValueError):
+        NominalKalman(F_nominal=F, G_nominal=G, Q=np.eye(2), R=np.eye(2),
+                      alpha_Q=0.0)
+
+
+def test_kalman_adaptation_changes_Q_and_R() -> None:
+    rng = np.random.default_rng(3)
+    F = np.zeros((2, 2))
+    G = np.eye(2)
+    kf = NominalKalman(F_nominal=F, G_nominal=G,
+                       Q=np.eye(2) * 1e-3, R=np.eye(2) * 1e-2,
+                       alpha_Q=0.95, alpha_R=0.95,
+                       adapt_Q=True, adapt_R=True)
+    Q0 = kf.Q.copy()
+    R0 = kf.R.copy()
+    x = np.zeros(2)
+    for _ in range(200):
+        u = rng.normal(0.0, 0.5, size=2)
+        x = x + F @ x + G @ u + rng.normal(0.0, 0.05, size=2)
+        kf.step(x, u)
+    # Both Q and R must adapt away from their initial values.
+    assert not np.allclose(kf.Q, Q0)
+    assert not np.allclose(kf.R, R0)
+    # Both must remain PSD (smallest eigenvalue >= 0).
+    assert np.linalg.eigvalsh(kf.Q).min() >= -1e-12
+    assert np.linalg.eigvalsh(kf.R).min() >= -1e-12

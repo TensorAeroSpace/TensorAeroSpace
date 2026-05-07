@@ -65,6 +65,19 @@ class NominalKalman:
         self.adapt_Q = bool(adapt_Q)
         self.adapt_R = bool(adapt_R)
 
+        if not 0.0 < alpha_Q <= 1.0:
+            raise ValueError("alpha_Q must lie in (0, 1]")
+        if not 0.0 < alpha_R <= 1.0:
+            raise ValueError("alpha_R must lie in (0, 1]")
+
+        # Lower bounds for Q and R eigenvalues: 1 % of the smallest initial
+        # eigenvalue of each matrix (≥ 1e-9).  This prevents the transient
+        # collapse to near-zero during warm-up when P_init=I >> ν νᵀ (the
+        # Lu 2015 Sage-Husa formulae yield a negative target on the first few
+        # steps before the filter settles to its steady-state covariance).
+        self._R_eig_floor = max(1e-9, np.linalg.eigvalsh(self.R).min() * 1e-2)
+        self._Q_eig_floor = max(1e-9, np.linalg.eigvalsh(self.Q).min() * 1e-2)
+
         self.n_state = self.F.shape[0]
         self.n_control = self.G.shape[1]
         if self.F.shape != (self.n_state, self.n_state):
@@ -107,6 +120,14 @@ class NominalKalman:
                 )
             self.G = G_arr
 
+    @staticmethod
+    def _psd_project(M: np.ndarray, *, floor: float = 0.0) -> np.ndarray:
+        """Clip eigenvalues to >= floor; reconstruct symmetric matrix."""
+        # eigh is fine because we already symmetrise the input.
+        w, V = np.linalg.eigh(0.5 * (M + M.T))
+        w_clipped = np.clip(w, floor, None)
+        return (V * w_clipped) @ V.T
+
     def step(self, x_meas: np.ndarray, u_prev: np.ndarray) -> KalmanStep:
         """Run one Kalman update.
 
@@ -143,21 +164,26 @@ class NominalKalman:
         I_KH = np.eye(self.n_state) - K  # H = I
         P_post = I_KH @ P_prior @ I_KH.T + K @ self.R @ K.T
 
-        # Sage-Husa adaptive Q, R. Both updates are EMA on outer products.
+        # Sage-Husa adaptive R (Lu 2015 eq. 14): R̂ = (1-b)·R + b·(ν νᵀ − P_prior)
+        # PSD projection uses _R_eig_floor (1 % of initial R) to prevent R from
+        # collapsing to near-zero during warm-up when P_prior >> ν νᵀ.
         if self.adapt_R:
-            residual = x - x_post  # H·x_post = x_post
-            self.R = self.alpha_R * self.R + (1.0 - self.alpha_R) * (
-                np.outer(residual, residual) + I_KH @ P_prior @ I_KH.T
-            )
-            # Keep R symmetric and positive-definite-ish.
+            R_target = np.outer(nu, nu) - P_prior
+            self.R = self.alpha_R * self.R + (1.0 - self.alpha_R) * R_target
             self.R = 0.5 * (self.R + self.R.T)
+            self.R = self._psd_project(self.R, floor=self._R_eig_floor)
 
+        # Sage-Husa adaptive Q (Lu 2015 eq. 15): Q̂ = (1-a)·Q + a·(K ν νᵀ Kᵀ + P_post − F·P·Fᵀ)
+        # The bracket can be indefinite when P_post < F·P·Fᵀ + Q_old; PSD
+        # projection with _Q_eig_floor keeps Q from collapsing to near-zero
+        # during warm-up (same transient issue as R).
         if self.adapt_Q:
             dx = K @ nu
-            self.Q = self.alpha_Q * self.Q + (1.0 - self.alpha_Q) * (
-                np.outer(dx, dx) + P_post - F_jac @ self.P @ F_jac.T
-            )
+            Q_target = (np.outer(dx, dx) + P_post
+                        - F_jac @ self.P @ F_jac.T)
+            self.Q = self.alpha_Q * self.Q + (1.0 - self.alpha_Q) * Q_target
             self.Q = 0.5 * (self.Q + self.Q.T)
+            self.Q = self._psd_project(self.Q, floor=self._Q_eig_floor)
 
         # Persist posterior state.
         self.x_hat = x_post
