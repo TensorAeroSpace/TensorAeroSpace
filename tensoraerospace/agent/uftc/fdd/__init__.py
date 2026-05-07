@@ -1,4 +1,6 @@
 """Fault Detection and Diagnosis primitives for UFTC."""
 from __future__ import annotations
 
-__all__: list[str] = []
+from .kalman_3step import KalmanStep, NominalKalman
+
+__all__ = ["KalmanStep", "NominalKalman"]
