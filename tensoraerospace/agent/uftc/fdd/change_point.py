@@ -23,10 +23,14 @@ class ChangePointDetector:
     """One-sided CUSUM detector on a positive scalar score (e.g. Mahalanobis).
 
     Args:
-        n_dim: Dimension of the underlying innovation vector. Used as
-            the default ``drift`` value (the mean of χ²_n).
+        n_dim: Dimension of the underlying innovation vector.
         drift: Per-step decrement subtracted from each input. ``None``
-            defaults to ``n_dim``.
+            defaults to ``n_dim * 1.5``. The factor 1.5 ensures a negative
+            expected increment under H₀ (where ``E[d_t] = n_dim`` for a
+            χ²_n score), preventing the CUSUM from drifting upward and
+            crossing ``h_alarm`` in the absence of faults. Using ``drift =
+            n_dim`` would make the process a martingale and eventually
+            trigger a false alarm over long runs.
         h_alarm: Upper threshold; CUSUM crossing this triggers an alarm.
         h_clear: Lower threshold; CUSUM falling below this clears the
             alarm (after cooldown). Must be strictly less than h_alarm.
