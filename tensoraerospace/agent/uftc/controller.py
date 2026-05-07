@@ -230,3 +230,206 @@ class UFTCController(BaseRLModel):
                 },
             },
         }
+
+
+# ---------------------------------------------------------------------------
+# Save / from_pretrained — multi-component layout.
+#
+# A saved UFTCController is a directory with the following children:
+#
+#     <save_dir>/
+#     ├── config.json           # UFTCConfig + nested configs (numpy → list)
+#     ├── manifest.json         # subdir names produced by inner/middle saves
+#     ├── controller_state.npz  # _step, _last_u, _last_omega_ref, sm state
+#     ├── inner/<sub>/          # AAINDIAgent.save() output
+#     ├── middle/<sub>/         # IADPAgent.save() output
+#     └── fdd/
+#         ├── kalman.npz        # F, G, Q, R, x_hat, P
+#         └── cpd.npz           # cusum, alarm, cooldown, time_since_alarm
+# ---------------------------------------------------------------------------
+
+import dataclasses as _dataclasses
+import datetime as _datetime
+import json as _json
+from pathlib import Path as _Path
+from typing import Union as _Union
+
+
+def _to_jsonable(obj):
+    if isinstance(obj, np.ndarray):
+        return obj.tolist()
+    if _dataclasses.is_dataclass(obj):
+        return {k: _to_jsonable(v)
+                for k, v in _dataclasses.asdict(obj).items()
+                if k != "history"}
+    if isinstance(obj, dict):
+        return {k: _to_jsonable(v) for k, v in obj.items()}
+    if isinstance(obj, (list, tuple)):
+        return [_to_jsonable(v) for v in obj]
+    return obj
+
+
+def _from_jsonable_for_iadpconfig(payload: dict) -> dict:
+    arr_keys = ("Q", "R", "F_init", "G_init", "P_init", "excitation_signal")
+    out = dict(payload)
+    for k in arr_keys:
+        if out.get(k) is not None:
+            out[k] = np.asarray(out[k], dtype=np.float64)
+    return out
+
+
+def _uftc_save(self, path: _Union[str, _Path, None] = None) -> str:
+    base = _Path.cwd() if path is None else _Path(path)
+    run_dir = base / (
+        _datetime.datetime.now().strftime("%b%d_%H-%M-%S")
+        + f"_{self.__class__.__name__}"
+    )
+    run_dir.mkdir(parents=True, exist_ok=True)
+
+    cfg_payload = {
+        "policy": {
+            "name": (f"{self.__class__.__module__}."
+                     f"{self.__class__.__name__}"),
+            "params": {
+                "n_state": self.n_state,
+                "n_control": self.n_control,
+            },
+            "config": _to_jsonable(self.cfg),
+        },
+    }
+    (run_dir / "config.json").write_text(_json.dumps(cfg_payload, indent=2))
+
+    inner_dir = self.inner.base.save(run_dir / "inner")
+    middle_dir = self.middle.base.save(run_dir / "middle")
+
+    fdd_dir = run_dir / "fdd"
+    fdd_dir.mkdir(parents=True, exist_ok=True)
+    np.savez(
+        fdd_dir / "kalman.npz",
+        F=self.fdd.kalman.F, G=self.fdd.kalman.G,
+        Q=self.fdd.kalman.Q, R=self.fdd.kalman.R,
+        x_hat=self.fdd.kalman.x_hat, P=self.fdd.kalman.P,
+    )
+    np.savez(
+        fdd_dir / "cpd.npz",
+        cusum=np.asarray(self.fdd.cpd._cusum),
+        alarm=np.asarray(self.fdd.cpd._alarm),
+        cooldown=np.asarray(self.fdd.cpd._cooldown),
+        time_since_alarm=np.asarray(self.fdd.cpd._time_since_alarm),
+    )
+
+    prev_omega = self.inner._prev_omega
+    np.savez(
+        run_dir / "controller_state.npz",
+        step=np.asarray(self._step),
+        last_u=self._last_u_indi,
+        last_omega_ref=self._last_omega_ref,
+        fdd_active=np.asarray(self._fdd_active),
+        fdd_ready=np.asarray(getattr(self, "_fdd_ready", self._fdd_active)),
+        sm_s=self.inner.sm_obs._s,
+        sm_z=self.inner.sm_obs._z,
+        mode=np.asarray(self.inner.mode),
+        prev_omega=(prev_omega if prev_omega is not None
+                    else np.zeros(self.n_state, dtype=np.float64)),
+        has_prev_omega=np.asarray(prev_omega is not None),
+        fdd_fault_present=np.asarray(self._last_fdd.fault_present),
+        fdd_severity=np.asarray(self._last_fdd.severity),
+        fdd_confidence=np.asarray(self._last_fdd.confidence),
+        fdd_innovation_norm=np.asarray(self._last_fdd.innovation_norm),
+        fdd_time_since_event=np.asarray(self._last_fdd.time_since_event),
+    )
+
+    (run_dir / "manifest.json").write_text(_json.dumps({
+        "inner_subdir": _Path(inner_dir).name,
+        "middle_subdir": _Path(middle_dir).name,
+    }, indent=2))
+    return str(run_dir)
+
+
+@classmethod
+def _uftc_from_pretrained(cls, repo_name: str,
+                          access_token=None, version=None):
+    p = _Path(str(repo_name)).expanduser()
+    if p.is_dir():
+        return cls._load_from_dir(p)
+    from huggingface_hub import snapshot_download
+    folder = snapshot_download(repo_id=str(repo_name),
+                               token=access_token, revision=version)
+    return cls._load_from_dir(_Path(folder))
+
+
+@classmethod
+def _uftc_load_from_dir(cls, folder: _Path):
+    cfg_payload = _json.loads((folder / "config.json").read_text())
+    params = cfg_payload["policy"]["params"]
+    cfg_dict = cfg_payload["policy"]["config"]
+
+    inner_cfg = AAINDIConfig(**cfg_dict["inner_cfg"])
+    middle_cfg = IADPConfig(**_from_jsonable_for_iadpconfig(
+        cfg_dict["middle_cfg"]))
+    fdd_cfg = FDDConfig(**cfg_dict["fdd_cfg"])
+    rls_pol = RLSResetPolicy(**cfg_dict["rls_reset_policy"])
+
+    cfg = UFTCConfig(
+        **{k: v for k, v in cfg_dict.items() if k not in (
+            "inner_cfg", "middle_cfg", "fdd_cfg", "rls_reset_policy")},
+        inner_cfg=inner_cfg, middle_cfg=middle_cfg,
+        fdd_cfg=fdd_cfg, rls_reset_policy=rls_pol,
+    )
+
+    ctl = cls(
+        n_state=int(params["n_state"]),
+        n_control=int(params["n_control"]),
+        nominal_F=np.zeros((params["n_state"], params["n_state"])),
+        nominal_G=np.zeros((params["n_state"], params["n_control"])),
+        config=cfg,
+    )
+
+    manifest = _json.loads((folder / "manifest.json").read_text())
+    ctl.inner.base = AAINDIAgent._load_from_dir(
+        folder / "inner" / manifest["inner_subdir"])
+    ctl.middle.base = IADPAgent._load_from_dir(
+        folder / "middle" / manifest["middle_subdir"])
+    ctl.middle._gamma_nominal = ctl.middle.base.rls.gamma_rls
+
+    with np.load(folder / "fdd" / "kalman.npz") as npz:
+        ctl.fdd.kalman.F = npz["F"]
+        ctl.fdd.kalman.G = npz["G"]
+        ctl.fdd.kalman.Q = npz["Q"]
+        ctl.fdd.kalman.R = npz["R"]
+        ctl.fdd.kalman.x_hat = npz["x_hat"]
+        ctl.fdd.kalman.P = npz["P"]
+    with np.load(folder / "fdd" / "cpd.npz") as npz:
+        ctl.fdd.cpd._cusum = float(npz["cusum"])
+        ctl.fdd.cpd._alarm = bool(npz["alarm"])
+        ctl.fdd.cpd._cooldown = int(npz["cooldown"])
+        ctl.fdd.cpd._time_since_alarm = int(npz["time_since_alarm"])
+
+    with np.load(folder / "controller_state.npz") as npz:
+        ctl._step = int(npz["step"])
+        ctl._last_u_indi = npz["last_u"]
+        ctl._last_omega_ref = npz["last_omega_ref"]
+        ctl._fdd_active = bool(npz["fdd_active"])
+        if "fdd_ready" in npz.files:
+            ctl._fdd_ready = bool(npz["fdd_ready"])
+        ctl.inner.sm_obs._s = npz["sm_s"]
+        ctl.inner.sm_obs._z = npz["sm_z"]
+        ctl.inner.mode_switch._mode = str(npz["mode"])
+        if "has_prev_omega" in npz.files and bool(npz["has_prev_omega"]):
+            ctl.inner._prev_omega = npz["prev_omega"].copy()
+        else:
+            ctl.inner._prev_omega = None
+        if "fdd_severity" in npz.files:
+            ctl._last_fdd = FDDOutput(
+                fault_present=bool(npz["fdd_fault_present"]),
+                severity=float(npz["fdd_severity"]),
+                confidence=float(npz["fdd_confidence"]),
+                innovation_norm=float(npz["fdd_innovation_norm"]),
+                time_since_event=float(npz["fdd_time_since_event"]),
+            )
+    return ctl
+
+
+UFTCController.save = _uftc_save
+UFTCController.from_pretrained = _uftc_from_pretrained
+UFTCController._load_from_dir = _uftc_load_from_dir
