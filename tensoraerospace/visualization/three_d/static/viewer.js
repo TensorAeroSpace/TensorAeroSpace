@@ -1499,6 +1499,135 @@
         return group;
     }
 
+    // ---- New OBJ-aligned movable surfaces ----
+    // The static B-747 silhouette is provided by the embedded OBJ. The only
+    // procedural pieces that remain in the OBJ build path are small slabs
+    // hinged on the OBJ trailing edges (so the existing per-frame rotation
+    // hooks — by group name — keep animating them) plus invisible smoke
+    // anchors at the OBJ's engine nacelles.
+    //
+    // bodyToThree(bx, by, bz) = [bx, -bz, by]  — so:
+    //   three.z axis ≡ body.y axis (span-wise, lateral). Rotating .rotation.z
+    //                              tilts a span-wise slab in pitch — used for
+    //                              ailerons and elevator.
+    //   three.y axis ≡ body.-z axis (vertical). Rotating .rotation.y is yaw
+    //                              — used for the rudder.
+
+    function _b747AileronSurface(side) {
+        // Outboard wing trailing edge. Hinge sits at the inboard end of the
+        // slab so the leading-edge spans outboard along body.y.
+        // OBJ wingspan extends to body.y ≈ ±31 m at scale 5; ailerons live
+        // outboard between body.y ≈ 17..27 m (aft of wing trailing edge ≈
+        // body.x ≈ -10 m near the tip).
+        const sign = side === "left" ? -1.0 : +1.0;
+        const hinge = new THREE.Group();
+        hinge.name = side === "left" ? "aileron_left" : "aileron_right";
+        const h = bodyToThree(-9.5, sign * 17.0, -0.30);
+        hinge.position.set(h[0], h[1], h[2]);
+
+        const span_m = 9.0;
+        const chord_m = 1.6;
+        const thick_m = 0.12;
+        const geom = new THREE.BoxGeometry(chord_m, thick_m, span_m);
+        const mat = new THREE.MeshStandardMaterial({
+            color: 0x9aa0a8, metalness: 0.45, roughness: 0.55,
+        });
+        const mesh = new THREE.Mesh(geom, mat);
+        // Shift the slab so its leading edge (forward face) lies on the
+        // hinge axis, and its inboard end sits at the hinge group origin.
+        mesh.position.set(-chord_m / 2, 0, sign * span_m / 2);
+        hinge.add(mesh);
+        return hinge;
+    }
+
+    function _b747ElevatorSurface(side) {
+        // Tailplane trailing edge. OBJ tailplane spans roughly body.y ∈
+        // ±8 m at body.x ≈ -28 m. Elevator is the rear strip.
+        const sign = side === "left" ? -1.0 : +1.0;
+        const hinge = new THREE.Group();
+        hinge.name = side === "left" ? "stab_left" : "stab_right";
+        const h = bodyToThree(-29.5, sign * 1.5, -1.4);
+        hinge.position.set(h[0], h[1], h[2]);
+
+        const span_m = 6.5;
+        const chord_m = 1.4;
+        const thick_m = 0.10;
+        const geom = new THREE.BoxGeometry(chord_m, thick_m, span_m);
+        const mat = new THREE.MeshStandardMaterial({
+            color: 0x9aa0a8, metalness: 0.45, roughness: 0.55,
+        });
+        const mesh = new THREE.Mesh(geom, mat);
+        mesh.position.set(-chord_m / 2, 0, sign * span_m / 2);
+        hinge.add(mesh);
+        return hinge;
+    }
+
+    function _b747RudderSurface() {
+        // Vertical-tail trailing edge. OBJ V-tail top is around body.z ≈
+        // -12 m (12 m above CG), root at body.z ≈ -2 m. Hinge at the root
+        // trailing edge; the slab extends upward along body.-z (= three.y).
+        const hinge = new THREE.Group();
+        hinge.name = "rudder";
+        const h = bodyToThree(-30.0, 0.0, -3.5);
+        hinge.position.set(h[0], h[1], h[2]);
+
+        const height_m = 8.0;
+        const chord_m = 1.3;
+        const thick_m = 0.10;
+        // Box: chord along three.x, height along three.y (vertical),
+        // thickness along three.z (lateral).
+        const geom = new THREE.BoxGeometry(chord_m, height_m, thick_m);
+        const mat = new THREE.MeshStandardMaterial({
+            color: 0x8d949e, metalness: 0.45, roughness: 0.55,
+        });
+        const mesh = new THREE.Mesh(geom, mat);
+        // Leading edge of the slab on the hinge axis; slab extends upward.
+        mesh.position.set(-chord_m / 2, height_m / 2, 0);
+        hinge.add(mesh);
+        return hinge;
+    }
+
+    function _b747EngineSmokeAnchor(id, bx, by) {
+        // Invisible group at the OBJ engine nacelle. Holds:
+        //   - a tiny invisible cylinder so existing per-frame code that
+        //     looks up the engine by name (e.g. for HUD or sectionMaterials)
+        //     still finds an addressable object;
+        //   - a Sprite (`engine_<id>_smoke`) hidden by default that the
+        //     damage driver scales / fades up when engines_mu[id] drops.
+        const group = new THREE.Group();
+        group.name = "engine_" + id;
+        const p = bodyToThree(bx, by, +2.4);
+        group.position.set(p[0], p[1], p[2]);
+
+        // Tiny invisible placeholder mesh (so sectionMaterials.set("engine_<id>")
+        // still finds something — preserves the F-16 damage-pipeline shape).
+        const placeholder = new THREE.Mesh(
+            new THREE.BoxGeometry(0.01, 0.01, 0.01),
+            new THREE.MeshBasicMaterial({
+                color: 0x000000, transparent: true, opacity: 0.0,
+                depthWrite: false, visible: false,
+            }),
+        );
+        placeholder.visible = false;
+        group.add(placeholder);
+
+        const smoke = new THREE.Sprite(new THREE.SpriteMaterial({
+            map: _b747SmokeTexture(),
+            color: 0x404040,
+            transparent: true,
+            opacity: 0.0,
+            depthWrite: false,
+        }));
+        smoke.name = "engine_" + id + "_smoke";
+        // Drift the smoke aft of the nacelle (body x is forward, so aft is -x).
+        smoke.position.set(-7.0, 0, 0);
+        smoke.scale.set(8.0, 8.0, 1.0);
+        smoke.visible = false;
+        group.add(smoke);
+
+        return group;
+    }
+
     // ---- Inline OBJ parser (UMD-friendly; no ESM loader required) ----
     // Handles the v / vn / vt / f / o subset emitted by Blender. Materials
     // are intentionally ignored — the loaded OBJ has no MTL and we apply a
@@ -1620,7 +1749,10 @@
         const aircraft = new THREE.Group();
         aircraft.name = "aircraft";
 
-        // ---- 1. Static OBJ silhouette (fuselage / wings / tailplane) ----
+        // ---- 1. Static OBJ silhouette (fuselage / wings / tailplane / V-tail
+        //         / engine nacelles). When loaded, this is the SOLE static
+        //         visual representation — no procedural composite is added on
+        //         top, so we don't end up rendering a chimera. ----
         // OBJ frame (Blender export, B-747-400F mesh, anonymous objects):
         //   x = body forward axis; nose at +x≈11, tail at +x≈-3.
         //   y = world-down (Blender Z-up exported as -Y); cabin floor near
@@ -1629,37 +1761,52 @@
         //       z≈12.97 — NOT at zero. Wing spans z∈[6.78, 19.16].
         // Three frame here: x=fwd, y=up, z=right (see bodyToThree).
         // Map: three.x = obj.x;  three.y = -obj.y;  three.z = obj.z - 12.97.
-        // Then translate: obj.x is centred at ~3.71 → shift to 0 to align
-        // the OBJ's visual centre with the body-frame CG (where procedural
-        // engines / hinge groups are positioned).
         // Scale: real B-747 fuselage length ≈ 70.7 m; OBJ x-span ≈ 14.17.
         // Scale factor → 70.7/14.17 ≈ 5.0. (Matches wingspan: real ≈64.4 m,
-        // OBJ z-span ≈12.4 → 5.2. Use 5.0 as a balanced compromise; the
-        // procedural engines/control surfaces are tuned in metres.)
+        // OBJ z-span ≈12.4 → 5.2. Use 5.0 as a balanced compromise.)
         const OBJ_SCALE = 5.0;
         const objMesh = _loadB747ObjMesh(OBJ_SCALE);
         if (objMesh) {
             objMesh.name = "_static_decor_b747_obj";
             aircraft.add(objMesh);
+        } else {
+            // ---- Fallback: OBJ embed missing — render the legacy
+            //      procedural composite so the viewer still works. ----
+            aircraft.add(_b747FuselageGroup());
+            aircraft.add(_b747VtailMesh());
+            aircraft.add(_b747Tailplane("right"));
+            aircraft.add(_b747Tailplane("left"));
+            aircraft.add(_b747Rudder());
+            aircraft.add(_b747Aileron("right"));
+            aircraft.add(_b747Aileron("left"));
+            aircraft.add(_b747Engine(1, -1.0, -23.0));
+            aircraft.add(_b747Engine(2, +0.5, -13.5));
+            aircraft.add(_b747Engine(3, +0.5, +13.5));
+            aircraft.add(_b747Engine(4, -1.0, +23.0));
+            return aircraft;
         }
 
-        // ---- 2. Procedural movable parts (ailerons, elevator, engines) ----
-        // Reused from the previous procedural build path so the existing
-        // per-frame animation hooks (search "stab_left"/"aileron_left"/
-        // "rudder"/"engine_<id>_exhaust") keep working unchanged.
-        aircraft.add(_b747Tailplane("right"));
-        aircraft.add(_b747Tailplane("left"));
-        aircraft.add(_b747VtailMesh());
-        aircraft.add(_b747Rudder());
-        aircraft.add(_b747Aileron("right"));
-        aircraft.add(_b747Aileron("left"));
+        // ---- 2. Movable surfaces — small slabs hinged at the OBJ trailing
+        //         edges. Group names match the per-frame animation hooks
+        //         ("stab_left", "stab_right", "aileron_left", "aileron_right",
+        //         "rudder"). ----
+        aircraft.add(_b747AileronSurface("left"));
+        aircraft.add(_b747AileronSurface("right"));
+        aircraft.add(_b747ElevatorSurface("left"));
+        aircraft.add(_b747ElevatorSurface("right"));
+        aircraft.add(_b747RudderSurface());
 
-        // Engine numbering follows the B-747 model: 1..4 left-to-right.
-        // (engines_mu[0..3] in the env damage state maps to engine_<id+1>.)
-        aircraft.add(_b747Engine(1, -1.0, -23.0));
-        aircraft.add(_b747Engine(2, +0.5, -13.5));
-        aircraft.add(_b747Engine(3, +0.5, +13.5));
-        aircraft.add(_b747Engine(4, -1.0, +23.0));
+        // ---- 3. Engine smoke anchors — invisible by default; the damage
+        //         driver pops their `engine_<id>_smoke` sprite when
+        //         engines_mu[id] drops below 1.0. NO visible nacelle: the
+        //         OBJ already provides the four nacelles. ----
+        // Engine body coords (B-747 layout): outer pair at body.y ≈ ±21 m,
+        // inner pair at body.y ≈ ±10 m; both pairs forward of CG and slung
+        // below the wing (body.z = +2.4, since +z is down).
+        aircraft.add(_b747EngineSmokeAnchor(1, -2.0, -22.0));
+        aircraft.add(_b747EngineSmokeAnchor(2, +1.0, -12.0));
+        aircraft.add(_b747EngineSmokeAnchor(3, +1.0, +12.0));
+        aircraft.add(_b747EngineSmokeAnchor(4, -2.0, +22.0));
 
         return aircraft;
     }
