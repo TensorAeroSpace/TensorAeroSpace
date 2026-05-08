@@ -13,11 +13,19 @@ from .l1 import (
     HJReachabilityShield,
     HJShieldConfig,
 )
+from .l4 import (
+    DSACConfig,
+    DSACOuter,
+    LongitudinalTrimFreeConfig,
+    LongitudinalTrimFreeWrapper,
+)
 from .middle import IADPMiddle, RLSResetPolicy
 
 __all__ = [
     "ConformalMargin",
     "ConformalMarginConfig",
+    "DSACConfig",
+    "DSACOuter",
     "DeepReachConfig",
     "DeepReachValueFn",
     "FDDConfig",
@@ -28,6 +36,8 @@ __all__ = [
     "HJReachabilityShield",
     "HJShieldConfig",
     "IADPMiddle",
+    "LongitudinalTrimFreeConfig",
+    "LongitudinalTrimFreeWrapper",
     "ModeSwitcher",
     "RLSResetPolicy",
     "SuperTwistingObserver",

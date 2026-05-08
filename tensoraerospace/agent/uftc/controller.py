@@ -74,6 +74,21 @@ class UFTCConfig:
     glr_h_clear: float = 8.0
     glr_cooldown_steps: int = 200
 
+    # Phase 3 — L4 D-SAC outer
+    enable_l4_outer: bool = False
+    l4_n_ref_dim: int = 0          # if 0 and enable_l4_outer, defaults to n_state
+    l4_action_scale: float = 0.1
+    l4_actor_hidden: tuple = (64, 64)
+    l4_critic_hidden: tuple = (64, 64)
+    l4_n_quantiles: int = 16
+    l4_cvar_alpha: float = 0.2
+    l4_glr_reset_threshold: float = 0.10
+    l4_eval_mode: bool = True
+    l4_replay_capacity: int = 10_000
+    l4_batch_size: int = 64
+    l4_seed: int = 0
+    l4_trim_free: Optional[dict] = None    # {V_idx, gamma_idx, alpha_idx, q_idx}
+
 
 class UFTCController(BaseRLModel):
     """Top-level UFTC orchestrator (Phase 1 MVP)."""
@@ -223,6 +238,39 @@ class UFTCController(BaseRLModel):
                 conformal_margin=cm,
             )
 
+        # Phase 3 — L4 D-SAC outer-loop reference planner.
+        self.l4: Optional[Any] = None
+        self.l4_trim_free: Optional[Any] = None
+        self._last_r_eff: Optional[np.ndarray] = None
+        self._last_beta: float = 0.0
+        self._last_reset_hint: bool = False
+        if self.cfg.enable_l4_outer:
+            from tensoraerospace.agent.uftc.l4 import (
+                DSACConfig,
+                DSACOuter,
+                LongitudinalTrimFreeConfig,
+                LongitudinalTrimFreeWrapper,
+            )
+            n_ref = self.cfg.l4_n_ref_dim or self.n_state
+            dsac_cfg = DSACConfig(
+                n_state=self.n_state, n_ref_dim=n_ref, n_action=n_ref,
+                cvar_alpha=self.cfg.l4_cvar_alpha,
+                n_quantiles=self.cfg.l4_n_quantiles,
+                actor_hidden=tuple(self.cfg.l4_actor_hidden),
+                critic_hidden=tuple(self.cfg.l4_critic_hidden),
+                glr_reset_threshold=self.cfg.l4_glr_reset_threshold,
+                eval_mode=self.cfg.l4_eval_mode,
+                action_scale=self.cfg.l4_action_scale,
+                replay_capacity=self.cfg.l4_replay_capacity,
+                batch_size=self.cfg.l4_batch_size,
+                seed=self.cfg.l4_seed,
+            )
+            self.l4 = DSACOuter(dsac_cfg)
+            if self.cfg.l4_trim_free:
+                tf_cfg = LongitudinalTrimFreeConfig(
+                    enabled=True, **self.cfg.l4_trim_free)
+                self.l4_trim_free = LongitudinalTrimFreeWrapper(tf_cfg)
+
         # Rolling state.
         self._step = 0
         self._last_fdd: FDDOutput = _zero_fdd_output(self.n_state)
@@ -236,7 +284,27 @@ class UFTCController(BaseRLModel):
         reference: np.ndarray,
         time_step: int = 0,
     ) -> np.ndarray:
-        u_iadp, omega_ref = self.middle.predict(x_obs, reference, time_step)
+        # Phase 3 — L4 outer planner perturbs/replaces the reference fed to L3.
+        if self.l4 is not None:
+            fdd_for_l4 = (self._last_fdd if self._last_fdd is not None
+                          else _zero_fdd_output(self.n_state))
+            r_eff, beta_t, reset_hint = self.l4.predict(
+                x_obs, reference, fdd_for_l4, monitor_alarm="OK")
+            if self.l4_trim_free is not None:
+                r_eff = self.l4_trim_free.apply(
+                    r_eff[: self.l4.cfg.n_ref_dim],
+                    x_obs=x_obs, base_reference=reference)
+            self._last_r_eff = np.asarray(r_eff, dtype=np.float64).copy()
+            self._last_beta = float(beta_t)
+            self._last_reset_hint = bool(reset_hint)
+            reference_for_l3 = r_eff
+        else:
+            self._last_r_eff = None
+            self._last_beta = 0.0
+            self._last_reset_hint = False
+            reference_for_l3 = reference
+
+        u_iadp, omega_ref = self.middle.predict(x_obs, reference_for_l3, time_step)
         omega_meas = self._extract_omega(x_obs)
         alpha = self._extract_alpha(x_obs)
         u_indi = self.inner.predict(
@@ -300,6 +368,25 @@ class UFTCController(BaseRLModel):
             next_x_obs, reference, time_step=time_step, fdd=self._last_fdd,
         )
 
+        if (self.l4 is not None
+                and self._last_u_safe is not None
+                and self._last_r_eff is not None):
+            from tensoraerospace.agent.uftc.l4 import Transition
+            r_eff_vec = np.asarray(self._last_r_eff, dtype=np.float64).copy()
+            n_ref = int(self.l4.cfg.n_ref_dim)
+            x_for_err = np.asarray(next_x_obs, dtype=np.float64).reshape(-1)[:n_ref]
+            r_for_err = r_eff_vec.reshape(-1)[:n_ref]
+            self.l4.learn(Transition(
+                s=np.asarray(next_x_obs, dtype=np.float64).reshape(-1)[:self.n_state].copy(),
+                a_actual=np.asarray(self._last_u_safe, dtype=np.float64).copy(),
+                r_used=r_eff_vec,
+                reward=float(-(np.linalg.norm(x_for_err - r_for_err) ** 2)),
+                s_next=np.asarray(next_x_obs, dtype=np.float64).reshape(-1)[:self.n_state].copy(),
+                done=False,
+                fdd=self._last_fdd,
+                alarm="OK",
+            ))
+
         self._step += 1
         return {
             **{f"inner_{k}": v for k, v in inner_diag.items()},
@@ -355,6 +442,16 @@ class UFTCController(BaseRLModel):
                                       if last is not None else 0.0),
                 "active": (bool(last.active) if last is not None else False),
             }
+        if self.l4 is not None:
+            diag["l4"] = {
+                "enabled": True,
+                "beta_t": float(self._last_beta),
+                "reset_hint": bool(self._last_reset_hint),
+                "frozen_until": self.l4._frozen_until,
+                "hold_mode": bool(self.l4._hold_mode),
+                "replay_size": int(len(self.l4.replay)),
+                "eval_mode": bool(self.l4.cfg.eval_mode),
+            }
         return diag
 
     def reset(self) -> None:
@@ -363,12 +460,17 @@ class UFTCController(BaseRLModel):
         self.fdd.reset()
         if self.l1 is not None:
             self.l1.reset()
+        if self.l4 is not None:
+            self.l4.reset()
         self._step = 0
         self._fdd_active = self._fdd_ready and self.cfg.fdd_warmup_steps == 0
         self._last_fdd = _zero_fdd_output(self.n_state)
         self._last_u_indi.fill(0.0)
         self._last_u_safe = None
         self._last_l1_out = None
+        self._last_r_eff = None
+        self._last_beta = 0.0
+        self._last_reset_hint = False
         self._last_omega_ref.fill(0.0)
 
     def _extract_omega(self, x_obs: np.ndarray) -> np.ndarray:
