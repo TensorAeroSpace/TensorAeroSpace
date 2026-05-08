@@ -299,3 +299,6 @@ _research/
 
 # Drafts of journal articles — kept local, not shared via the repo
 article/
+
+# Local training artifacts (DeepReach value functions, etc.)
+artifacts/
