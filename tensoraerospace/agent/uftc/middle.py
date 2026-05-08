@@ -93,6 +93,20 @@ class IADPMiddle:
         self._gamma_active = float(self.reset_policy.forgetting_drop)
         self._recover_countdown = int(self.reset_policy.forgetting_recover_steps)
 
+    def force_reset(self, severity_hint: float = 1.0) -> None:
+        """Inflate RLS covariance and drop forgetting factor independent of FDD.
+
+        Used as a Phase 4 macro-action sink. Severity scales the inflation
+        multiplier; ``1.0`` matches the standard FDD-triggered reset.
+        """
+        sev = float(max(0.1, min(severity_hint, 5.0)))
+        inflate = float(self.reset_policy.cov_inflation) * sev
+        n = int(self.base.rls.Phi.shape[0])
+        self.base.rls.Phi = self.base.rls.Phi + inflate * np.eye(n, dtype=np.float64)
+        self.base.rls.gamma_rls = float(self.reset_policy.forgetting_drop)
+        self._gamma_active = float(self.reset_policy.forgetting_drop)
+        self._recover_countdown = int(self.reset_policy.forgetting_recover_steps)
+
     def _derive_omega_ref(
         self,
         x_obs: np.ndarray,
