@@ -5,13 +5,16 @@ from .actor import ActorConfig, GaussianActor
 from .critic import CriticConfig, QRDistCritic, qr_huber_loss, soft_update
 from .cvar import cvar_alpha_fn, risk_gate
 from .dsac import DSACConfig
+from .replay import PrioritizedReplay, Transition
 
 __all__ = [
     "ActorConfig",
     "CriticConfig",
     "DSACConfig",
     "GaussianActor",
+    "PrioritizedReplay",
     "QRDistCritic",
+    "Transition",
     "cvar_alpha_fn",
     "qr_huber_loss",
     "risk_gate",
