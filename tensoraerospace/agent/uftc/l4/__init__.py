@@ -6,6 +6,7 @@ from .critic import CriticConfig, QRDistCritic, qr_huber_loss, soft_update
 from .cvar import cvar_alpha_fn, risk_gate
 from .dsac import DSACConfig, DSACOuter
 from .replay import PrioritizedReplay, Transition
+from .trim_free import LongitudinalTrimFreeConfig, LongitudinalTrimFreeWrapper
 
 __all__ = [
     "ActorConfig",
@@ -13,6 +14,8 @@ __all__ = [
     "DSACConfig",
     "DSACOuter",
     "GaussianActor",
+    "LongitudinalTrimFreeConfig",
+    "LongitudinalTrimFreeWrapper",
     "PrioritizedReplay",
     "QRDistCritic",
     "Transition",
