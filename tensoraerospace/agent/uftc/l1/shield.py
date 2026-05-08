@@ -24,6 +24,26 @@ from .value_fn import HJValueFunction
 LOG = logging.getLogger(__name__)
 
 
+class _Identity:
+    """Always-safe constant value function placeholder.
+
+    Used by :class:`UFTCController` when ``enable_l1_shield=True`` but no
+    ``l1_value_fn_path`` is supplied — reports ``V(x) ≡ 1`` (deep inside the
+    safe set), zero gradient and unit Lipschitz constant. The shield then
+    short-circuits to the nominal control on every call: a no-op shield
+    until a real :class:`DeepReachValueFn` is wired in.
+    """
+
+    def value(self, x: np.ndarray) -> float:                  # noqa: D401
+        return 1.0
+
+    def gradient(self, x: np.ndarray) -> np.ndarray:
+        return np.zeros_like(np.asarray(x, dtype=np.float64).reshape(-1))
+
+    def lipschitz_const(self) -> float:
+        return 1.0
+
+
 @dataclass
 class HJShieldConfig:
     h_clear: float = 0.20

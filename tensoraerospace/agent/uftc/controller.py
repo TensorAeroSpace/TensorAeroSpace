@@ -18,6 +18,20 @@ from .inner import ModeSwitcher, SuperTwistingObserver, WrappedAAINDI
 from .middle import IADPMiddle, RLSResetPolicy
 
 
+def _zero_fdd_output(n_state: int) -> FDDOutput:
+    """Return a benign all-zero :class:`FDDOutput` (Phase-2 schema)."""
+    return FDDOutput(
+        fault_present=False,
+        severity=0.0,
+        confidence=0.0,
+        innovation_norm=0.0,
+        time_since_event=0.0,
+        fault_kind="none",
+        severity_abrupt=0.0,
+        severity_gradual=0.0,
+    )
+
+
 @dataclass
 class UFTCConfig:
     """Hyper-parameters for :class:`UFTCController`."""
@@ -43,6 +57,22 @@ class UFTCConfig:
     middle_lookahead_dt: float = 0.05
 
     enable_outer: bool = False  # placeholder for L4 D-SAC (Phase 3)
+
+    # Phase 2 — L1 HJ-reachability shield
+    enable_l1_shield: bool = False
+    l1_h_clear: float = 0.20
+    l1_cbf_lambda: float = 1.0
+    l1_u_min: Optional[list] = None
+    l1_u_max: Optional[list] = None
+    l1_value_fn_path: Optional[str] = None
+    l1_conformal_eps_0: float = 0.05
+
+    # Phase 2 — GLR slow-drift detector (composed into FDDDetector)
+    enable_glr: bool = False
+    glr_window: int = 200
+    glr_h_alarm: float = 30.0
+    glr_h_clear: float = 8.0
+    glr_cooldown_steps: int = 200
 
 
 class UFTCController(BaseRLModel):
@@ -143,13 +173,61 @@ class UFTCController(BaseRLModel):
         self._fdd_ready = nominal_F is not None and nominal_G is not None
         self._fdd_active = self._fdd_ready and self.cfg.fdd_warmup_steps == 0
 
+        # Phase 2 — GLR slow-drift detector wired into the existing FDD.
+        if self.cfg.enable_glr:
+            from .fdd.glr import GLRConfig, GLRDetector
+            self.fdd.glr = GLRDetector(
+                n_dim=self.n_state,
+                cfg=GLRConfig(
+                    window=self.cfg.glr_window,
+                    h_alarm=self.cfg.glr_h_alarm,
+                    h_clear=self.cfg.glr_h_clear,
+                    cooldown_steps=self.cfg.glr_cooldown_steps,
+                ),
+            )
+
+        # Phase 2 — HJ-reachability safety shield.
+        self.l1: Optional[Any] = None
+        if self.cfg.enable_l1_shield:
+            from .l1 import (
+                ConformalMargin,
+                ConformalMarginConfig,
+                DeepReachValueFn,
+                HJReachabilityShield,
+                HJShieldConfig,
+            )
+            from .l1.shield import _Identity
+            if self.cfg.l1_value_fn_path is None:
+                # No saved network — use the placeholder constant V_θ that
+                # always reports "deep inside safe set". The shield then
+                # short-circuits to nominal control on every call.
+                value_fn = _Identity()
+            else:
+                value_fn = DeepReachValueFn.load(self.cfg.l1_value_fn_path)
+            cm = ConformalMargin(
+                ConformalMarginConfig(eps_0=self.cfg.l1_conformal_eps_0),
+                lipschitz_const=value_fn.lipschitz_const(),
+            )
+            self.l1 = HJReachabilityShield(
+                n_state=self.n_state, n_control=self.n_control,
+                value_fn=value_fn,
+                dynamics_fn=None,                # uses RLS-borrow path
+                cfg=HJShieldConfig(
+                    h_clear=self.cfg.l1_h_clear,
+                    cbf_lambda=self.cfg.l1_cbf_lambda,
+                    u_min=(np.asarray(self.cfg.l1_u_min, dtype=np.float64)
+                           if self.cfg.l1_u_min is not None else None),
+                    u_max=(np.asarray(self.cfg.l1_u_max, dtype=np.float64)
+                           if self.cfg.l1_u_max is not None else None),
+                ),
+                conformal_margin=cm,
+            )
+
         # Rolling state.
         self._step = 0
-        self._last_fdd: FDDOutput = FDDOutput(
-            fault_present=False, severity=0.0, confidence=0.0,
-            innovation_norm=0.0, time_since_event=0.0,
-        )
+        self._last_fdd: FDDOutput = _zero_fdd_output(self.n_state)
         self._last_u_indi = np.zeros(n_control, dtype=np.float64)
+        self._last_u_safe: Optional[np.ndarray] = None
         self._last_omega_ref = np.zeros(self.n_inner_state, dtype=np.float64)
 
     def predict(
@@ -171,7 +249,26 @@ class UFTCController(BaseRLModel):
         )
         self._last_u_indi = u_indi.copy()
         self._last_omega_ref = omega_ref.copy()
-        return u_indi
+
+        if self.l1 is not None:
+            # IADP RLS estimates ``F̃, G̃`` over the augmented state
+            # (n_aug = 2*n_state); slice to the first ``n_state`` rows/cols
+            # so the shield sees a square (n_state, n_state) Jacobian.
+            F_full = self.middle.base.F[: self.n_state, : self.n_state]
+            G_full = self.middle.base.G[: self.n_state, : self.n_control]
+            self.l1.set_dynamics_jacobian(F_full, G_full)
+            fdd = self._last_fdd if self._last_fdd is not None \
+                else _zero_fdd_output(self.n_state)
+            x_obs_arr = np.asarray(x_obs, dtype=np.float64).reshape(-1)[: self.n_state]
+            out = self.l1.filter(x_obs_arr, u_indi, fdd, monitor_alarm="OK")
+            u_out = np.asarray(out.u_safe, dtype=np.float64).reshape(-1)
+            self._last_l1_out = out
+        else:
+            u_out = u_indi
+            self._last_l1_out = None
+
+        self._last_u_safe = u_out.copy()
+        return u_out
 
     def learn(
         self,
@@ -194,7 +291,10 @@ class UFTCController(BaseRLModel):
             self._fdd_active = True
 
         if self._fdd_active and self._step % self.cfg.fdd_update_every == 0:
-            self._last_fdd = self.fdd.step(next_x_obs, self._last_u_indi)
+            u_for_fdd = (self._last_u_safe
+                         if self._last_u_safe is not None
+                         else self._last_u_indi)
+            self._last_fdd = self.fdd.step(next_x_obs, u_for_fdd)
 
         middle_diag = self.middle.learn(
             next_x_obs, reference, time_step=time_step, fdd=self._last_fdd,
@@ -208,11 +308,21 @@ class UFTCController(BaseRLModel):
             "fdd_severity": self._last_fdd.severity,
             "fdd_confidence": self._last_fdd.confidence,
             "fdd_innovation_norm": self._last_fdd.innovation_norm,
+            "fdd": {
+                "fault_present": bool(self._last_fdd.fault_present),
+                "severity": float(self._last_fdd.severity),
+                "severity_abrupt": float(self._last_fdd.severity_abrupt),
+                "severity_gradual": float(self._last_fdd.severity_gradual),
+                "fault_kind": str(self._last_fdd.fault_kind),
+                "confidence": float(self._last_fdd.confidence),
+                "innovation_norm": float(self._last_fdd.innovation_norm),
+                "time_since_event": float(self._last_fdd.time_since_event),
+            },
         }
 
     def diagnostics(self) -> dict:
         """Snapshot of all sub-components for logging / plotting."""
-        return {
+        diag = {
             "step": int(self._step),
             "fault_present": bool(self._last_fdd.fault_present),
             "severity": float(self._last_fdd.severity),
@@ -222,16 +332,43 @@ class UFTCController(BaseRLModel):
             "mode": str(self.inner.mode),
             "fdd_ready": bool(self._fdd_ready),
             "fdd_active": bool(self._fdd_active),
+            "fdd": {
+                "fault_present": bool(self._last_fdd.fault_present),
+                "severity": float(self._last_fdd.severity),
+                "severity_abrupt": float(self._last_fdd.severity_abrupt),
+                "severity_gradual": float(self._last_fdd.severity_gradual),
+                "fault_kind": str(self._last_fdd.fault_kind),
+                "confidence": float(self._last_fdd.confidence),
+                "innovation_norm": float(self._last_fdd.innovation_norm),
+                "time_since_event": float(self._last_fdd.time_since_event),
+                "glr_active": bool(self.fdd.glr is not None),
+            },
         }
+        if self.l1 is not None:
+            last = getattr(self, "_last_l1_out", None)
+            diag["l1"] = {
+                "enabled": True,
+                "severity": float(self._last_fdd.severity),
+                "hjb_value": (float(last.hjb_value)
+                              if last is not None else 0.0),
+                "intervention_norm": (float(last.intervention_norm)
+                                      if last is not None else 0.0),
+                "active": (bool(last.active) if last is not None else False),
+            }
+        return diag
 
     def reset(self) -> None:
         self.inner.reset()
         self.middle.reset()
         self.fdd.reset()
+        if self.l1 is not None:
+            self.l1.reset()
         self._step = 0
         self._fdd_active = self._fdd_ready and self.cfg.fdd_warmup_steps == 0
-        self._last_fdd = FDDOutput(False, 0.0, 0.0, 0.0, 0.0)
+        self._last_fdd = _zero_fdd_output(self.n_state)
         self._last_u_indi.fill(0.0)
+        self._last_u_safe = None
+        self._last_l1_out = None
         self._last_omega_ref.fill(0.0)
 
     def _extract_omega(self, x_obs: np.ndarray) -> np.ndarray:
