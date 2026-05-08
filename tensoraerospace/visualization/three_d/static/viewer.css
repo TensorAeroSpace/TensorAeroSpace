@@ -57,6 +57,14 @@ html, body {
     font-size: 13px;
 }
 #controls button:hover { filter: brightness(1.2); }
+#controls button.active {
+    background: #f5d544;
+    color: #11131a;
+}
+#controls button.secondary {
+    background: #30384a;
+    color: #e8e8f0;
+}
 #timeline {
     flex: 1;
     height: 6px;
