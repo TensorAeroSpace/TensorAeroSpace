@@ -252,6 +252,10 @@ class UFTCController(BaseRLModel):
                 LongitudinalTrimFreeWrapper,
             )
             n_ref = self.cfg.l4_n_ref_dim or self.n_state
+            # ``n_action`` matches the actor's output (= reference-perturbation
+            # space). The replay's ``a_actual`` is ``u_safe`` re-projected into
+            # this space (right-pad with zeros / left-truncate to ``n_action``)
+            # so the critic input ``(s, a_actual)`` has consistent shape.
             dsac_cfg = DSACConfig(
                 n_state=self.n_state, n_ref_dim=n_ref, n_action=n_ref,
                 cvar_alpha=self.cfg.l4_cvar_alpha,
@@ -374,11 +378,18 @@ class UFTCController(BaseRLModel):
             from tensoraerospace.agent.uftc.l4 import Transition
             r_eff_vec = np.asarray(self._last_r_eff, dtype=np.float64).copy()
             n_ref = int(self.l4.cfg.n_ref_dim)
+            n_action = int(self.l4.cfg.n_action)
             x_for_err = np.asarray(next_x_obs, dtype=np.float64).reshape(-1)[:n_ref]
             r_for_err = r_eff_vec.reshape(-1)[:n_ref]
+            # Project ``u_safe`` (n_control,) into action-space (n_action,) by
+            # right-pad / truncate. This is the off-policy correction:
+            # ``a_actual`` is the env-applied action embedded in actor space.
+            u_raw = np.asarray(self._last_u_safe, dtype=np.float64).reshape(-1)
+            a_actual = np.zeros(n_action, dtype=np.float64)
+            a_actual[: min(n_action, u_raw.size)] = u_raw[: min(n_action, u_raw.size)]
             self.l4.learn(Transition(
                 s=np.asarray(next_x_obs, dtype=np.float64).reshape(-1)[:self.n_state].copy(),
-                a_actual=np.asarray(self._last_u_safe, dtype=np.float64).copy(),
+                a_actual=a_actual,
                 r_used=r_eff_vec,
                 reward=float(-(np.linalg.norm(x_for_err - r_for_err) ** 2)),
                 s_next=np.asarray(next_x_obs, dtype=np.float64).reshape(-1)[:self.n_state].copy(),

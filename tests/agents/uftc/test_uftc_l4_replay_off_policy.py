@@ -40,6 +40,12 @@ def test_replay_records_post_shield_action() -> None:
     snap = ctl.l4.replay.snapshot()
     assert len(snap) >= 30
     # Replay's ``a_actual`` must match the action returned by predict() —
-    # the post-shield ``u_safe``.
+    # the post-shield ``u_safe`` (projected into the actor's action-space
+    # by right-pad / truncate to ``n_action``).
+    n_action = int(ctl.l4.cfg.n_action)
     for i, tr in enumerate(snap):
-        np.testing.assert_allclose(tr.a_actual, us_seen[i], atol=1e-9)
+        u = us_seen[i].reshape(-1)
+        expected = np.zeros(n_action)
+        m = min(n_action, u.size)
+        expected[:m] = u[:m]
+        np.testing.assert_allclose(tr.a_actual, expected, atol=1e-9)
