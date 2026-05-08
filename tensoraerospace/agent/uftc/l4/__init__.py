@@ -4,13 +4,14 @@ from __future__ import annotations
 from .actor import ActorConfig, GaussianActor
 from .critic import CriticConfig, QRDistCritic, qr_huber_loss, soft_update
 from .cvar import cvar_alpha_fn, risk_gate
-from .dsac import DSACConfig
+from .dsac import DSACConfig, DSACOuter
 from .replay import PrioritizedReplay, Transition
 
 __all__ = [
     "ActorConfig",
     "CriticConfig",
     "DSACConfig",
+    "DSACOuter",
     "GaussianActor",
     "PrioritizedReplay",
     "QRDistCritic",
