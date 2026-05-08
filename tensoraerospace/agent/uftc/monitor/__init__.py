@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from .alarm import AlarmStateMachine
+from .certificate import CertificateReport, run_certificate
 from .components import (
     collect_vstate,
     extract_v_dsac,
@@ -22,6 +23,7 @@ from .intervention import MacroAction, MacroActionDispatcher
 __all__ = [
     "AlarmLevel",
     "AlarmStateMachine",
+    "CertificateReport",
     "CompositeLyapunovMonitor",
     "MacroAction",
     "MacroActionDispatcher",
@@ -34,4 +36,5 @@ __all__ = [
     "extract_v_hj",
     "extract_v_iadp",
     "extract_v_indi",
+    "run_certificate",
 ]
