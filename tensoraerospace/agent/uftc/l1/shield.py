@@ -88,6 +88,9 @@ class HJReachabilityShield:
         self._hold_one_tick = False
         self._last_u_safe: np.ndarray | None = None
         self._cached_FG: tuple[np.ndarray, np.ndarray] | None = None
+        # Phase 4 — monitor V_HJ extractor reads these.
+        self._last_v_x: float | None = None
+        self._last_eps: float | None = None
 
     # ----- macro-action sink -----
     def request_actuator_hold(self) -> None:
@@ -119,6 +122,9 @@ class HJReachabilityShield:
 
         v_x = float(self.value_fn.value(x))
         eps_t = float(self.conformal.compute(fdd, monitor_alarm))
+        # Phase 4 — cache for monitor V_HJ extractor.
+        self._last_v_x = v_x
+        self._last_eps = eps_t
         h_safe = v_x - eps_t
         if h_safe > self.cfg.h_clear:
             self._last_u_safe = u_nominal.copy()
@@ -144,6 +150,8 @@ class HJReachabilityShield:
         self._hold_one_tick = False
         self._last_u_safe = None
         self._cached_FG = None
+        self._last_v_x = None
+        self._last_eps = None
 
     # ----- internal -----
     def _affine_FG(self, x: np.ndarray, u_nominal: np.ndarray) -> tuple[np.ndarray, np.ndarray]:

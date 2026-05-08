@@ -89,6 +89,22 @@ class UFTCConfig:
     l4_seed: int = 0
     l4_trim_free: Optional[dict] = None    # {V_idx, gamma_idx, alpha_idx, q_idx}
 
+    # Phase 4 — composite Lyapunov monitor
+    enable_monitor: bool = False
+    monitor_c_weights: tuple = (0.2, 0.2, 0.2, 0.2, 0.2)
+    monitor_a_diag: tuple = (0.5, 0.5, 0.5, 0.5, 0.5)
+    monitor_eps_matrix: tuple = (
+        (0.0, 0.05, 0.05, 0.05, 0.05),
+        (0.05, 0.0, 0.05, 0.05, 0.05),
+        (0.05, 0.05, 0.0, 0.05, 0.05),
+        (0.05, 0.05, 0.05, 0.0, 0.05),
+        (0.05, 0.05, 0.05, 0.05, 0.0),
+    )
+    monitor_d_disturbance: tuple = (0.05, 0.05, 0.05, 0.05, 0.05)
+    monitor_alarm_warn_frac: float = 0.7
+    monitor_alarm_critical_frac: float = 0.95
+    monitor_cooldown_steps: int = 200
+
 
 class UFTCController(BaseRLModel):
     """Top-level UFTC orchestrator (Phase 1 MVP)."""
@@ -282,6 +298,34 @@ class UFTCController(BaseRLModel):
         self._last_u_safe: Optional[np.ndarray] = None
         self._last_omega_ref = np.zeros(self.n_inner_state, dtype=np.float64)
 
+        # Phase 4 — composite Lyapunov monitor.
+        self.monitor = None
+        self.dispatcher = None
+        self._monitor_out = None
+        self._monitor_alarm = "OK"
+        self._last_dispatch_diag: dict = {}
+        if self.cfg.enable_monitor:
+            from tensoraerospace.agent.uftc.monitor import (
+                CompositeLyapunovMonitor,
+                MacroActionDispatcher,
+                MonitorConfig,
+                MonitorOutput,
+            )
+            mcfg = MonitorConfig(
+                c_weights=tuple(self.cfg.monitor_c_weights),
+                a_diag=tuple(self.cfg.monitor_a_diag),
+                eps_matrix=tuple(tuple(row) for row in self.cfg.monitor_eps_matrix),
+                d_disturbance=tuple(self.cfg.monitor_d_disturbance),
+                alarm_warn_frac=float(self.cfg.monitor_alarm_warn_frac),
+                alarm_critical_frac=float(self.cfg.monitor_alarm_critical_frac),
+                cooldown_steps=int(self.cfg.monitor_cooldown_steps),
+            )
+            self.monitor = CompositeLyapunovMonitor(mcfg)
+            self.dispatcher = MacroActionDispatcher(
+                l3=self.middle, l4=self.l4, l1=self.l1,
+            )
+            self._monitor_out = MonitorOutput.zero()
+
     def predict(
         self,
         x_obs: np.ndarray,
@@ -398,8 +442,33 @@ class UFTCController(BaseRLModel):
                 alarm="OK",
             ))
 
+        # Phase 4 — composite Lyapunov monitor (passive: collect VState, step,
+        # dispatch macro-actions). Runs after middle.learn so RLS state is
+        # current; failures are caught at the controller boundary.
+        monitor_block: Optional[dict] = None
+        dispatch_diag: dict = {}
+        if self.monitor is not None:
+            try:
+                from tensoraerospace.agent.uftc.monitor import collect_vstate
+                vstate = collect_vstate(self)
+                self._monitor_out = self.monitor.step(vstate)
+                self._monitor_alarm = self._monitor_out.alarm
+                if self.dispatcher is not None:
+                    dispatch_diag = self.dispatcher.dispatch(
+                        self._monitor_out.interventions, self._step,
+                    )
+                self._last_dispatch_diag = dispatch_diag
+                monitor_block = {
+                    "alarm": str(self._monitor_out.alarm),
+                    "V_total": float(self._monitor_out.V_total),
+                    "mu_uub_pred": float(self._monitor_out.mu_uub_pred),
+                    "margin": float(self._monitor_out.margin),
+                }
+            except Exception:                          # pragma: no cover
+                monitor_block = None
+
         self._step += 1
-        return {
+        out = {
             **{f"inner_{k}": v for k, v in inner_diag.items()},
             **{f"middle_{k}": v for k, v in middle_diag.items()},
             "fault_present": self._last_fdd.fault_present,
@@ -417,6 +486,10 @@ class UFTCController(BaseRLModel):
                 "time_since_event": float(self._last_fdd.time_since_event),
             },
         }
+        if monitor_block is not None:
+            out["monitor"] = monitor_block
+            out.update(dispatch_diag)
+        return out
 
     def diagnostics(self) -> dict:
         """Snapshot of all sub-components for logging / plotting."""
@@ -463,6 +536,14 @@ class UFTCController(BaseRLModel):
                 "replay_size": int(len(self.l4.replay)),
                 "eval_mode": bool(self.l4.cfg.eval_mode),
             }
+        if self.monitor is not None and self._monitor_out is not None:
+            diag["monitor"] = {
+                "enabled": True,
+                "alarm": str(self._monitor_out.alarm),
+                "V_total": float(self._monitor_out.V_total),
+                "mu_uub_pred": float(self._monitor_out.mu_uub_pred),
+                "margin": float(self._monitor_out.margin),
+            }
         return diag
 
     def reset(self) -> None:
@@ -483,6 +564,12 @@ class UFTCController(BaseRLModel):
         self._last_beta = 0.0
         self._last_reset_hint = False
         self._last_omega_ref.fill(0.0)
+        if self.monitor is not None:
+            self.monitor.reset()
+            from tensoraerospace.agent.uftc.monitor import MonitorOutput
+            self._monitor_out = MonitorOutput.zero()
+            self._monitor_alarm = "OK"
+            self._last_dispatch_diag = {}
 
     def _extract_omega(self, x_obs: np.ndarray) -> np.ndarray:
         x = np.asarray(x_obs, dtype=np.float64).reshape(-1)

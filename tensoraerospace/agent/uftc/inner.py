@@ -163,6 +163,9 @@ class WrappedAAINDI:
         self._n_state = base.n_state
         self._n_control = base.n_control
         self._prev_omega: np.ndarray | None = None
+        # Phase 4 — monitor V_INDI extractor reads these.
+        self._last_omega_meas: np.ndarray | None = None
+        self._last_omega_ref: np.ndarray | None = None
 
     def predict(
         self,
@@ -184,6 +187,9 @@ class WrappedAAINDI:
             raise ValueError(f"omega_ref size mismatch: {omega_ref_v.size}")
         if u_target.size != self._n_control:
             raise ValueError(f"u_blend_target size mismatch: {u_target.size}")
+        # Phase 4 — cache for monitor V_INDI extractor.
+        self._last_omega_meas = omega_meas_v.copy()
+        self._last_omega_ref = omega_ref_v.copy()
 
         # SM observer with omega_dot ~ (ω_meas − ω_meas_prev)/dt as a
         # first-order proxy for the unmeasured angular acceleration; the
@@ -237,6 +243,8 @@ class WrappedAAINDI:
         self.sm_obs.reset()
         self.mode_switch.reset()
         self._prev_omega = None
+        self._last_omega_meas = None
+        self._last_omega_ref = None
 
     @property
     def mode(self) -> str:

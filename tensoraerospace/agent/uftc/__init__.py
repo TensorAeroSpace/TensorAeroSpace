@@ -20,8 +20,22 @@ from .l4 import (
     LongitudinalTrimFreeWrapper,
 )
 from .middle import IADPMiddle, RLSResetPolicy
+from .monitor import (
+    AlarmStateMachine,
+    CertificateReport,
+    CompositeLyapunovMonitor,
+    MacroAction,
+    MacroActionDispatcher,
+    MonitorConfig,
+    MonitorOutput,
+    VState,
+    run_certificate,
+)
 
 __all__ = [
+    "AlarmStateMachine",
+    "CertificateReport",
+    "CompositeLyapunovMonitor",
     "ConformalMargin",
     "ConformalMarginConfig",
     "DSACConfig",
@@ -38,10 +52,16 @@ __all__ = [
     "IADPMiddle",
     "LongitudinalTrimFreeConfig",
     "LongitudinalTrimFreeWrapper",
+    "MacroAction",
+    "MacroActionDispatcher",
     "ModeSwitcher",
+    "MonitorConfig",
+    "MonitorOutput",
     "RLSResetPolicy",
     "SuperTwistingObserver",
     "UFTCConfig",
     "UFTCController",
+    "VState",
     "WrappedAAINDI",
+    "run_certificate",
 ]

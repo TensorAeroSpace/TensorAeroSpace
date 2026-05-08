@@ -85,6 +85,8 @@ class DSACOuter:
         self._frozen_until: int | None = None
         self._hold_mode = False
         self._step = 0
+        # Phase 4 — monitor V_DSAC extractor reads this.
+        self._last_z: np.ndarray | None = None
 
     # ----- predict -----
     def predict(self, x_obs: np.ndarray, base_reference: np.ndarray,
@@ -98,6 +100,8 @@ class DSACOuter:
             else:
                 a, _ = self.actor.rsample(x)
             z = self.critic1(x, a)
+        # Phase 4 — cache critic quantiles for monitor V_DSAC.
+        self._last_z = z.detach().cpu().numpy().reshape(-1)
         a_np = a.cpu().numpy().reshape(-1) * float(self.cfg.action_scale)
         if self._hold_mode:
             r_tilde = np.asarray(base_reference, dtype=np.float64).copy()
@@ -175,6 +179,7 @@ class DSACOuter:
 
     def reset(self) -> None:
         self._hold_mode = False
+        self._last_z = None
 
     # ----- save/load -----
     def save(self, dir_path: str | Path) -> None:
