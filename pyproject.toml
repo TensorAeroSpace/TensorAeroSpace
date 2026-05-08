@@ -70,6 +70,7 @@ anywidget = ">=0.9,<1.0"
 # extra so the metrics layer works out of the box.
 tensorboard = ">=2.15"
 ray = {extras = ["tune"], version = "^2.52.0", optional = true}
+cvxpy = "<1.8"
 
 [tool.poetry.extras]
 ray = ["ray"]
