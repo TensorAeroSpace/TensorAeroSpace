@@ -37,6 +37,11 @@ class ControlFailure:
 class EngineState:
     thrust_factor: float = 1.0
     hard_failure: bool = False
+    # Slow-drift / gradual thrust degradation factor (Phase 2 Task 12).
+    # Multiplicative scaling that ramps over time via DamageManager. Kept
+    # separate from ``thrust_factor`` (used for discrete failures) so legacy
+    # ENGINE_FLAMEOUT semantics remain bit-identical when thrust_scale=1.0.
+    thrust_scale: float = 1.0
 
 
 @dataclass
@@ -87,6 +92,7 @@ class DamageState:
             "engine": {
                 "thrust_factor": self.engine.thrust_factor,
                 "hard_failure": self.engine.hard_failure,
+                "thrust_scale": self.engine.thrust_scale,
             },
             "structural": {
                 "extra_mass_delta_kg": self.structural.extra_mass_delta_kg,

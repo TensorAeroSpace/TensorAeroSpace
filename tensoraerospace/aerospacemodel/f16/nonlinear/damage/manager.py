@@ -35,6 +35,10 @@ class DamageManager:
         self.profile: DamageProfile = profile or DamageProfile(events=[])
         self.state = DamageState.healthy(geometry)
         self._injected: list[DamageEvent] = []
+        # Active linear-ramp engine events (Phase 2 Task 12). Each entry is
+        # (t_start, t_end, value_start, value_end, target). Tracked across
+        # ``update()`` calls so thrust_scale advances every step until t_end.
+        self._active_ramps: list[tuple[float, float, float, float, str]] = []
 
     def reset(self, *, seed: Optional[int] = None) -> None:
         """Clear all damage and re-apply baseline params.
@@ -44,6 +48,7 @@ class DamageManager:
         """
         self.state = DamageState.healthy(self.geometry)
         self._injected = []
+        self._active_ramps = []
         apply_to_params(self.params, self.geometry, self.state)
 
     def set_profile(self, profile: DamageProfile) -> None:
@@ -54,7 +59,12 @@ class DamageManager:
         self._injected.append(event)
 
     def update(self, t_current: float, t_previous: float) -> list[DamageEvent]:
-        """Trigger any events in (t_previous, t_current]; return them."""
+        """Trigger any events in (t_previous, t_current]; return them.
+
+        Also advances any active linear-ramp engine events (Task 12). The
+        ramp continues to update ``state.engine.thrust_scale`` on every
+        ``update()`` call between ``t_start`` and ``t_end``.
+        """
         triggered: list[DamageEvent] = []
 
         # Profile events
@@ -72,10 +82,49 @@ class DamageManager:
                 remaining.append(ev)
         self._injected = remaining
 
-        if triggered:
+        # Advance active linear ramps every step (independent of triggered).
+        ramp_changed = self._advance_ramps(t_current)
+
+        if triggered or ramp_changed:
             apply_to_params(self.params, self.geometry, self.state)
 
         return triggered
+
+    def _advance_ramps(self, t_current: float) -> bool:
+        """Update state values for all active linear ramps; prune finished ones.
+
+        Returns True if any ramp value changed (so ``apply_to_params`` should
+        be re-run). Setting the value at exactly ``t_end`` clamps to the end
+        value; ramps past their ``t_end`` are removed after one final write.
+        """
+        if not self._active_ramps:
+            return False
+        changed = False
+        kept: list[tuple[float, float, float, float, str]] = []
+        for t_start, t_end, v_start, v_end, target in self._active_ramps:
+            if t_current <= t_start:
+                # Ramp not yet started — keep, write start value.
+                value = v_start
+                still_active = True
+            elif t_current >= t_end:
+                value = v_end
+                still_active = False  # final write, then prune
+            else:
+                frac = (t_current - t_start) / (t_end - t_start)
+                value = v_start + (v_end - v_start) * frac
+                still_active = True
+            if target == "thrust_scale":
+                if self.state.engine.thrust_scale != value:
+                    self.state.engine.thrust_scale = float(value)
+                    changed = True
+            elif target == "thrust_factor":
+                if self.state.engine.thrust_factor != value:
+                    self.state.engine.thrust_factor = float(value)
+                    changed = True
+            if still_active:
+                kept.append((t_start, t_end, v_start, v_end, target))
+        self._active_ramps = kept
+        return changed
 
     def _apply_event(self, ev: DamageEvent) -> None:
         if ev.event_type == "section_loss":
@@ -88,10 +137,47 @@ class DamageManager:
             cf = ControlFailure(**payload)
             self.state.set_control_failure(surface, cf)
         elif ev.event_type == "engine_failure":
-            if "thrust_factor" in ev.payload:
-                self.state.engine.thrust_factor = float(ev.payload["thrust_factor"])
-            if "hard_failure" in ev.payload:
-                self.state.engine.hard_failure = bool(ev.payload["hard_failure"])
+            # Linear-ramp form (Task 12): payload has ramp="linear" plus
+            # *_start / *_end values for thrust_scale or thrust_factor and
+            # the event carries ``duration``. Existing instantaneous form
+            # (e.g. ENGINE_FLAMEOUT) is preserved as the else-branch.
+            if ev.payload.get("ramp") == "linear":
+                t_start = float(ev.trigger_time)
+                duration = ev.duration if ev.duration is not None else 0.0
+                t_end = t_start + float(duration)
+                if "thrust_scale_start" in ev.payload \
+                        or "thrust_scale_end" in ev.payload:
+                    v_start = float(ev.payload.get("thrust_scale_start", 1.0))
+                    v_end = float(ev.payload.get("thrust_scale_end", 0.0))
+                    self.state.engine.thrust_scale = v_start
+                    self._active_ramps.append(
+                        (t_start, t_end, v_start, v_end, "thrust_scale")
+                    )
+                elif "thrust_factor_start" in ev.payload \
+                        or "thrust_factor_end" in ev.payload:
+                    v_start = float(ev.payload.get("thrust_factor_start", 1.0))
+                    v_end = float(ev.payload.get("thrust_factor_end", 0.0))
+                    self.state.engine.thrust_factor = v_start
+                    self._active_ramps.append(
+                        (t_start, t_end, v_start, v_end, "thrust_factor")
+                    )
+                if "hard_failure" in ev.payload:
+                    self.state.engine.hard_failure = bool(
+                        ev.payload["hard_failure"]
+                    )
+            else:
+                if "thrust_factor" in ev.payload:
+                    self.state.engine.thrust_factor = float(
+                        ev.payload["thrust_factor"]
+                    )
+                if "thrust_scale" in ev.payload:
+                    self.state.engine.thrust_scale = float(
+                        ev.payload["thrust_scale"]
+                    )
+                if "hard_failure" in ev.payload:
+                    self.state.engine.hard_failure = bool(
+                        ev.payload["hard_failure"]
+                    )
         elif ev.event_type == "structural_change":
             if "mass_delta_kg" in ev.payload:
                 self.state.structural.extra_mass_delta_kg += float(

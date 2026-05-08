@@ -144,6 +144,26 @@ ENGINE_FLAMEOUT = DamageProfile(
     ]
 )
 
+ENGINE_THRUST_DRIFT = DamageProfile(
+    events=[
+        DamageEvent(
+            # trigger on the first sub-step (any t_current > 0); the ramp
+            # itself is anchored at trigger_time and runs for ``duration``.
+            trigger_time=1e-6,
+            event_type="engine_failure",
+            payload={
+                "thrust_scale_start": 1.0,
+                "thrust_scale_end": 0.0,
+                "ramp": "linear",
+            },
+            label="engine_thrust_drift",
+            # 1 %/s slow drift over 100 s — matches the plan's behavioural
+            # target ("at default 1 %/s loss, after 5 s thrust scale ≈ 0.95").
+            duration=100.0,
+        ),
+    ]
+)
+
 BIRDSTRIKE_COMPOUND = DamageProfile(
     events=[
         DamageEvent(
