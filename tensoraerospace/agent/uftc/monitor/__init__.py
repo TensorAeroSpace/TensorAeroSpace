@@ -17,11 +17,14 @@ from .composite import (
     MonitorOutput,
     VState,
 )
+from .intervention import MacroAction, MacroActionDispatcher
 
 __all__ = [
     "AlarmLevel",
     "AlarmStateMachine",
     "CompositeLyapunovMonitor",
+    "MacroAction",
+    "MacroActionDispatcher",
     "MonitorConfig",
     "MonitorOutput",
     "VState",
