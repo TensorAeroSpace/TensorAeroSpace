@@ -14,6 +14,13 @@
         document.body.innerHTML = "<div style='padding:24px;color:#f88'>No FLIGHT_LOG injected.</div>";
         return;
     }
+    const MODEL_NAME = ((log.metadata && log.metadata.model) || "").toLowerCase();
+    const AIRCRAFT_TYPE = ((log.metadata && log.metadata.aircraft_type)
+        || (log.geometry && log.geometry.aircraft_type)
+        || MODEL_NAME);
+    const IS_B747 = AIRCRAFT_TYPE.toLowerCase().includes("b747")
+        || AIRCRAFT_TYPE.toLowerCase().includes("b-747");
+    if (IS_B747) document.body.classList.add("aircraft-b747");
 
     const traj = log.trajectory;
     const T = traj.time.length;
@@ -21,6 +28,7 @@
     // ---- Scene setup ----
     const sceneEl = document.getElementById("scene");
     const renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.domElement.style.touchAction = "none";
     // Cap DPR at 2 — going to 3+ on retina screens triples pixel count
     // for negligible visual gain on this geometry density (Three.js
     // best practice: render-pixel-ratio).
@@ -81,8 +89,11 @@
     const fillLight = new THREE.HemisphereLight(0x6a7fb5, 0x3a3530, 0.4);
     scene.add(fillLight);
 
-    // Ground grid (10 x 10 units, 100 m subdivisions)
-    const grid = new THREE.GridHelper(2000, 40, 0x303048, 0x202030);
+    // Ground grid. B-747 scenarios can cover tens of kilometres, so the
+    // grid/far plane are scaled up when the log declares a wide-body model.
+    const GRID_SIZE = IS_B747 ? 80000 : 2000;
+    const GRID_DIVS = IS_B747 ? 80 : 40;
+    const grid = new THREE.GridHelper(GRID_SIZE, GRID_DIVS, 0x303048, 0x202030);
     grid.position.y = 0;
     scene.add(grid);
 
@@ -90,16 +101,21 @@
     // Near=1m: we never look from < 1 m away. Far=8000m for long trails.
     // Tighter near plane improves depth-buffer precision (camera-near-far rule).
     const camera = new THREE.PerspectiveCamera(
-        55, sceneEl.clientWidth / sceneEl.clientHeight, 1, 8000,
+        55, sceneEl.clientWidth / sceneEl.clientHeight, 1,
+        IS_B747 ? 150000 : 8000,
     );
-    camera.position.set(20, 14, 20);
+    if (IS_B747) camera.position.set(90, 55, 95);
+    else camera.position.set(20, 14, 20);
     camera.lookAt(0, 0, 0);
 
     const controls = new THREE.OrbitControls(camera, renderer.domElement);
     controls.enableDamping = true;
     controls.dampingFactor = 0.08;
-    controls.minDistance = 5;
-    controls.maxDistance = 1500;
+    controls.rotateSpeed = IS_B747 ? 0.9 : 1.0;
+    controls.zoomSpeed = IS_B747 ? 1.4 : 1.0;
+    controls.panSpeed = IS_B747 ? 1.1 : 1.0;
+    controls.minDistance = IS_B747 ? 20 : 5;
+    controls.maxDistance = IS_B747 ? 12000 : 1500;
 
     // Camera modes: each frame, after the aircraft is repositioned,
     // updateCamera() places the camera so the view follows the aircraft.
@@ -120,7 +136,16 @@
     // So the offsets below are intuitive: +x = ahead, +y = above, +z = right.
     // applyEuler(aircraft.rotation) maps them to world coords each frame
     // so the camera rolls/pitches/yaws with the aircraft.
-    const FOLLOW_OFFSETS = {
+    const FOLLOW_OFFSETS = IS_B747 ? {
+        top:   { offset: new THREE.Vector3(0,  220,   0),
+                 up:     new THREE.Vector3(1,    0,   0) },
+        left:  { offset: new THREE.Vector3(0,   30, -140),
+                 up:     new THREE.Vector3(0,    1,   0) },
+        right: { offset: new THREE.Vector3(0,   30,  140),
+                 up:     new THREE.Vector3(0,    1,   0) },
+        "3d":  { offset: new THREE.Vector3(90, 55, 95),
+                 up:     new THREE.Vector3(0,   1,   0) },
+    } : {
         // Above the cockpit, looking down. "Up" on screen is aircraft fwd.
         top:   { offset: new THREE.Vector3(0,  60,   0),
                  up:     new THREE.Vector3(1,   0,   0) },
@@ -174,25 +199,49 @@
         controls.target.copy(p);
         camera.up.set(0, 1, 0);
         controls.update();
+        syncCameraButtons();
     }
 
     function presetTopDown() {
         cameraMode = "top";
         controls.enabled = false;
         updateCamera();
+        syncCameraButtons();
     }
 
     function presetLeftSide() {
         cameraMode = "left";
         controls.enabled = false;
         updateCamera();
+        syncCameraButtons();
     }
 
     function presetRightSide() {
         cameraMode = "right";
         controls.enabled = false;
         updateCamera();
+        syncCameraButtons();
     }
+
+    function syncCameraButtons() {
+        const ids = {
+            "3d": "btn-cam-3d",
+            top: "btn-cam-top",
+            left: "btn-cam-left",
+            right: "btn-cam-right",
+        };
+        for (const [mode, id] of Object.entries(ids)) {
+            const btn = document.getElementById(id);
+            if (btn) btn.classList.toggle("active", cameraMode === mode);
+        }
+    }
+
+    // If the user starts dragging the 3D canvas while a fixed camera
+    // preset is active, switch back to free orbit immediately. This avoids
+    // the "mouse drag does nothing" failure mode.
+    renderer.domElement.addEventListener("pointerdown", () => {
+        if (cameraMode !== "3d") preset3DCamera();
+    }, { capture: true });
 
     // ---- Procedural F-16 mesh ----
     // Hand-tuned to look recognisably like an F-16 while preserving
@@ -1206,7 +1255,416 @@
         return launcherGroup;
     }
 
-    function buildAircraft(geometry) {
+    const B747_COLORS = {
+        fuselage: 0xd9dfe6,
+        belly:    0x8f9aaa,
+        canopy:   0x10243a,
+        wing:     0xb8c0c8,
+        edge:     0x505a64,
+        tail:     0xaab3bd,
+        engine:   0x6d7682,
+        fan:      0x1d232b,
+    };
+
+    const B747_RIGHT_WING_POLYGONS = {
+        right_root: [
+            [ +7.5,  2.8],
+            [ +0.5, 12.0],
+            [-11.5, 12.0],
+            [-15.0,  2.8],
+        ],
+        right_mid: [
+            [ +0.5, 12.0],
+            [ -7.5, 23.0],
+            [-18.8, 23.0],
+            [-11.5, 12.0],
+        ],
+        right_tip: [
+            [ -7.5, 23.0],
+            [-13.5, 29.8],
+            [-21.0, 29.8],
+            [-18.8, 23.0],
+        ],
+    };
+
+    function _b747FuselageGroup() {
+        const group = new THREE.Group();
+        const N = 28;
+        const defs = [
+            [ +35.0, 0.00, 0.00],
+            [ +32.5, 1.30, 1.25],
+            [ +27.0, 2.85, 2.75],
+            [ +18.0, 3.05, 3.05],
+            [  +5.0, 3.20, 3.15],
+            [ -10.0, 3.15, 3.10],
+            [ -24.0, 2.80, 2.75],
+            [ -32.0, 1.60, 1.55],
+            [ -35.0, 0.35, 0.35],
+        ];
+        const stations = defs.map(([bx, rx, ry]) => ({
+            bx, ring: _ovalRing(rx, ry, N),
+        }));
+        const pairs = [];
+        for (let i = 1; i < stations.length; i++) {
+            pairs.push({ geom: _fuseSegment(stations[i - 1], stations[i]) });
+        }
+        pairs.push({ geom: _fuseCap(stations[1], stations[0].bx, +1) });
+        pairs.push({
+            geom: _fuseCap(stations[stations.length - 2],
+                           stations[stations.length - 1].bx, -1),
+        });
+        const fuse = new THREE.Mesh(_mergeGeoms(pairs), _stdMat(B747_COLORS.fuselage));
+        fuse.name = "fuselage_main";
+        group.add(fuse);
+        for (const { geom } of pairs) geom.dispose();
+
+        // Dark cockpit windscreen band on the upper nose.
+        const windscreen = new THREE.Mesh(
+            new THREE.BoxGeometry(4.6, 0.08, 1.15),
+            _stdMat(B747_COLORS.canopy, {
+                metalness: 0.7, roughness: 0.08, transparent: true, opacity: 0.82,
+            }),
+        );
+        windscreen.position.set(27.5, 2.35, 0);
+        group.add(windscreen);
+
+        // Passenger-window strip as two dark rows.
+        const rowGeom = new THREE.BoxGeometry(38.0, 0.04, 0.16);
+        const rowMat = _stdMat(0x17283a, { metalness: 0.4, roughness: 0.2 });
+        for (const side of [-1, +1]) {
+            const row = new THREE.Mesh(rowGeom, rowMat);
+            row.position.set(3.0, 1.28, side * 3.05);
+            group.add(row);
+        }
+        return group;
+    }
+
+    function _b747VtailMesh() {
+        const verts = new Float32Array([
+            ...bodyToThree(-25.0, 0.0, -2.2),
+            ...bodyToThree(-33.0, 0.0, -2.2),
+            ...bodyToThree(-31.5, 0.0, -12.5),
+            ...bodyToThree(-25.0, 0.0, -2.2),
+            ...bodyToThree(-31.5, 0.0, -12.5),
+            ...bodyToThree(-22.5, 0.0, -3.0),
+        ]);
+        const geom = new THREE.BufferGeometry();
+        geom.setAttribute("position", new THREE.BufferAttribute(verts, 3));
+        geom.computeVertexNormals();
+        const mesh = new THREE.Mesh(geom, _stdMat(B747_COLORS.tail));
+        mesh.name = "vtail";
+        return mesh;
+    }
+
+    function _b747Tailplane(side) {
+        const sign = side === "right" ? +1 : -1;
+        const group = new THREE.Group();
+        group.name = side === "right" ? "stab_right" : "stab_left";
+        const hinge = bodyToThree(-27.0, sign * 1.4, -1.0);
+        group.position.set(hinge[0], hinge[1], hinge[2]);
+        const rel = [
+            [  0.0, 0.0],
+            [ -4.0, sign * 7.5],
+            [-11.5, sign * 7.5],
+            [ -7.5, 0.0],
+        ];
+        const verts = new Float32Array([
+            ...bodyToThree(rel[0][0], rel[0][1], -0.08),
+            ...bodyToThree(rel[1][0], rel[1][1], -0.08),
+            ...bodyToThree(rel[2][0], rel[2][1], -0.08),
+            ...bodyToThree(rel[0][0], rel[0][1], -0.08),
+            ...bodyToThree(rel[2][0], rel[2][1], -0.08),
+            ...bodyToThree(rel[3][0], rel[3][1], -0.08),
+        ]);
+        const geom = new THREE.BufferGeometry();
+        geom.setAttribute("position", new THREE.BufferAttribute(verts, 3));
+        geom.computeVertexNormals();
+        group.add(new THREE.Mesh(geom, _stdMat(B747_COLORS.tail, { unique: true })));
+        return group;
+    }
+
+    function _b747Aileron(side) {
+        const sign = side === "right" ? +1 : -1;
+        const group = new THREE.Group();
+        group.name = side === "right" ? "aileron_right" : "aileron_left";
+        const hinge = bodyToThree(-13.5, sign * 20.5, -0.05);
+        group.position.set(hinge[0], hinge[1], hinge[2]);
+        const rel = [
+            [ 0.0, 0.0],
+            [-2.0, sign * 6.8],
+            [-3.2, sign * 6.8],
+            [-1.0, 0.0],
+        ];
+        const verts = new Float32Array([
+            ...bodyToThree(rel[0][0], rel[0][1], -0.10),
+            ...bodyToThree(rel[1][0], rel[1][1], -0.10),
+            ...bodyToThree(rel[2][0], rel[2][1], -0.10),
+            ...bodyToThree(rel[0][0], rel[0][1], -0.10),
+            ...bodyToThree(rel[2][0], rel[2][1], -0.10),
+            ...bodyToThree(rel[3][0], rel[3][1], -0.10),
+        ]);
+        const geom = new THREE.BufferGeometry();
+        geom.setAttribute("position", new THREE.BufferAttribute(verts, 3));
+        geom.computeVertexNormals();
+        group.add(new THREE.Mesh(geom, _stdMat(0x8f98a4, { unique: true })));
+        return group;
+    }
+
+    function _b747Rudder() {
+        const group = new THREE.Group();
+        group.name = "rudder";
+        const hinge = bodyToThree(-29.0, 0.0, -3.0);
+        group.position.set(hinge[0], hinge[1], hinge[2]);
+        const verts = new Float32Array([
+            ...bodyToThree(0.0, 0.0, 0.0),
+            ...bodyToThree(-3.0, 0.0, -8.8),
+            ...bodyToThree(-4.5, 0.0, 0.0),
+        ]);
+        const geom = new THREE.BufferGeometry();
+        geom.setAttribute("position", new THREE.BufferAttribute(verts, 3));
+        geom.computeVertexNormals();
+        group.add(new THREE.Mesh(geom, _stdMat(0x8994a0, { unique: true })));
+        return group;
+    }
+
+    // Procedural soft-disk texture used by the per-engine smoke sprite.
+    // Generated once and shared. Cached on first call.
+    let _b747SmokeTex = null;
+    function _b747SmokeTexture() {
+        if (_b747SmokeTex) return _b747SmokeTex;
+        const size = 64;
+        const cv = document.createElement("canvas");
+        cv.width = cv.height = size;
+        const ctx = cv.getContext("2d");
+        const grad = ctx.createRadialGradient(
+            size / 2, size / 2, 0, size / 2, size / 2, size / 2,
+        );
+        grad.addColorStop(0.0, "rgba(60,60,60,0.95)");
+        grad.addColorStop(0.4, "rgba(70,70,70,0.55)");
+        grad.addColorStop(1.0, "rgba(80,80,80,0.0)");
+        ctx.fillStyle = grad;
+        ctx.fillRect(0, 0, size, size);
+        const tex = new THREE.CanvasTexture(cv);
+        _b747SmokeTex = tex;
+        return tex;
+    }
+
+    function _b747Engine(id, bx, by) {
+        const group = new THREE.Group();
+        group.name = "engine_" + id;
+        const p = bodyToThree(bx, by, +2.4);
+        group.position.set(p[0], p[1], p[2]);
+
+        const nacelle = new THREE.Mesh(
+            new THREE.CylinderGeometry(1.15, 1.05, 3.2, 24, 1, true),
+            _stdMat(B747_COLORS.engine, { metalness: 0.68, roughness: 0.30, unique: true }),
+        );
+        nacelle.rotation.z = Math.PI / 2;
+        group.add(nacelle);
+
+        const fan = new THREE.Mesh(
+            new THREE.CircleGeometry(0.95, 24),
+            _stdMat(B747_COLORS.fan, { metalness: 0.35, roughness: 0.55 }),
+        );
+        fan.rotation.y = Math.PI / 2;
+        fan.position.set(1.65, 0, 0);
+        group.add(fan);
+
+        const plume = new THREE.Mesh(
+            new THREE.ConeGeometry(0.55, 4.0, 16, 1, true),
+            new THREE.MeshBasicMaterial({
+                color: 0xff8844, transparent: true, opacity: 0.35,
+            }),
+        );
+        plume.name = "engine_" + id + "_exhaust";
+        plume.rotation.z = Math.PI / 2;
+        plume.position.set(-3.2, 0, 0);
+        group.add(plume);
+
+        // Smoke trail — visible only when this engine is failing/failed.
+        // applyDamageState() drives `visible` and `scale` from engines_mu.
+        const smoke = new THREE.Sprite(new THREE.SpriteMaterial({
+            map: _b747SmokeTexture(),
+            color: 0x404040,
+            transparent: true,
+            opacity: 0.0,
+            depthWrite: false,
+        }));
+        smoke.name = "engine_" + id + "_smoke";
+        smoke.position.set(-7.0, 0, 0);
+        smoke.scale.set(8.0, 8.0, 1.0);
+        smoke.visible = false;
+        group.add(smoke);
+
+        return group;
+    }
+
+    // ---- Inline OBJ parser (UMD-friendly; no ESM loader required) ----
+    // Handles the v / vn / vt / f / o subset emitted by Blender. Materials
+    // are intentionally ignored — the loaded OBJ has no MTL and we apply a
+    // single uniform aluminium-grey material below. Returns a THREE.Group
+    // with one mesh per `o` block (so we can later toggle individual blocks
+    // if needed). Triangulates polygonal faces by fan-fill from vertex 0.
+    function _parseOBJ(text, vertTransform) {
+        // vertTransform: optional ([x,y,z]) → [x',y',z'] mapping baked into
+        // the geometry buffers. Used to centre + mirror the OBJ once at
+        // parse time, so child position/scale/rotation can stay identity.
+        const xform = vertTransform || ((x, y, z) => [x, y, z]);
+        const positions = [];   // 1-indexed → element 0 unused
+        const normals = [];     // 1-indexed
+        positions.push(null); normals.push(null);
+        const groups = [];      // [{ name, faces: [[ {p,n}, ... ], ...] }]
+        let current = { name: "default", faces: [] };
+        groups.push(current);
+        const lines = text.split("\n");
+        for (let i = 0; i < lines.length; i++) {
+            const line = lines[i].trim();
+            if (!line || line[0] === "#") continue;
+            const sp = line.indexOf(" ");
+            if (sp < 0) continue;
+            const tag = line.substring(0, sp);
+            const rest = line.substring(sp + 1);
+            if (tag === "v") {
+                const a = rest.split(/\s+/);
+                const tv = xform(+a[0], +a[1], +a[2]);
+                positions.push(tv);
+            } else if (tag === "vn") {
+                // Skip normals from the file: the vertex transform may
+                // mirror an axis, which inverts face winding. We let
+                // computeVertexNormals() rebuild them from triangulated
+                // geometry below for correctness.
+                normals.push(null);
+            } else if (tag === "f") {
+                const verts = rest.split(/\s+/).map((tok) => {
+                    // tok is "p", "p/t", "p/t/n", or "p//n"
+                    const parts = tok.split("/");
+                    return {
+                        p: parseInt(parts[0], 10),
+                        n: parts.length >= 3 ? parseInt(parts[2], 10) : 0,
+                    };
+                });
+                if (verts.length >= 3) current.faces.push(verts);
+            } else if (tag === "o" || tag === "g") {
+                current = { name: rest, faces: [] };
+                groups.push(current);
+            }
+            // Ignore vt / mtllib / usemtl / s.
+        }
+        // Build a THREE.Group with one mesh per non-empty `o` block.
+        const root = new THREE.Group();
+        const sharedMat = new THREE.MeshStandardMaterial({
+            color: 0xc8cbcd, metalness: 0.45, roughness: 0.55,
+            polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 1,
+        });
+        for (const g of groups) {
+            if (!g.faces.length) continue;
+            // Triangulate (fan from vertex 0). Build the position buffer;
+            // normals are recomputed below.
+            const pos = [];
+            for (const face of g.faces) {
+                for (let j = 1; j < face.length - 1; j++) {
+                    const a = face[0], b = face[j], c = face[j + 1];
+                    for (const v of [a, b, c]) {
+                        const p = positions[v.p];
+                        if (!p) continue;
+                        pos.push(p[0], p[1], p[2]);
+                    }
+                }
+            }
+            if (!pos.length) continue;
+            const geom = new THREE.BufferGeometry();
+            geom.setAttribute("position",
+                new THREE.BufferAttribute(new Float32Array(pos), 3));
+            geom.computeVertexNormals();
+            const mesh = new THREE.Mesh(geom, sharedMat);
+            mesh.name = "_static_decor_obj_" + g.name.replace(/\s+/g, "_");
+            mesh.castShadow = false;
+            mesh.receiveShadow = false;
+            root.add(mesh);
+        }
+        return root;
+    }
+
+    function _decodeBase64ToString(b64) {
+        // atob(b64) returns a binary string (one byte per char). Convert to
+        // a UTF-8 JS string. The OBJ is plain ASCII so binary≡UTF-8 here.
+        const bin = atob(b64);
+        // Fast path: ASCII OBJ data — return directly.
+        return bin;
+    }
+
+    function _loadB747ObjMesh(scale) {
+        const b64 = (typeof window !== "undefined") ? window.B747_OBJ_B64 : "";
+        if (!b64) return null;
+        try {
+            const text = _decodeBase64ToString(b64);
+            // OBJ frame → Three frame transform, baked into vertex data:
+            //   1. Translate so the OBJ visual centre is at the origin
+            //      (fuselage axial centre x=3.71, mid-cabin y=-4.40,
+            //       lateral centerline z=12.97).
+            //   2. Mirror the y axis (OBJ "down" → Three "up").
+            //   3. Uniform scale so the model reads at body-frame metres.
+            const xform = (x, y, z) => [
+                (x - 3.71) * scale,
+                -(y + 4.40) * scale,
+                (z - 12.97) * scale,
+            ];
+            return _parseOBJ(text, xform);
+        } catch (err) {
+            console.warn("B-747 OBJ parse failed; falling back to procedural:", err);
+            return null;
+        }
+    }
+
+    function buildB747Aircraft(geometry) {
+        const aircraft = new THREE.Group();
+        aircraft.name = "aircraft";
+
+        // ---- 1. Static OBJ silhouette (fuselage / wings / tailplane) ----
+        // OBJ frame (Blender export, B-747-400F mesh, anonymous objects):
+        //   x = body forward axis; nose at +x≈11, tail at +x≈-3.
+        //   y = world-down (Blender Z-up exported as -Y); cabin floor near
+        //       y≈-4.4, top of the hump near y≈-1.75.
+        //   z = lateral (wingspan); model is offset, fuselage centerline at
+        //       z≈12.97 — NOT at zero. Wing spans z∈[6.78, 19.16].
+        // Three frame here: x=fwd, y=up, z=right (see bodyToThree).
+        // Map: three.x = obj.x;  three.y = -obj.y;  three.z = obj.z - 12.97.
+        // Then translate: obj.x is centred at ~3.71 → shift to 0 to align
+        // the OBJ's visual centre with the body-frame CG (where procedural
+        // engines / hinge groups are positioned).
+        // Scale: real B-747 fuselage length ≈ 70.7 m; OBJ x-span ≈ 14.17.
+        // Scale factor → 70.7/14.17 ≈ 5.0. (Matches wingspan: real ≈64.4 m,
+        // OBJ z-span ≈12.4 → 5.2. Use 5.0 as a balanced compromise; the
+        // procedural engines/control surfaces are tuned in metres.)
+        const OBJ_SCALE = 5.0;
+        const objMesh = _loadB747ObjMesh(OBJ_SCALE);
+        if (objMesh) {
+            objMesh.name = "_static_decor_b747_obj";
+            aircraft.add(objMesh);
+        }
+
+        // ---- 2. Procedural movable parts (ailerons, elevator, engines) ----
+        // Reused from the previous procedural build path so the existing
+        // per-frame animation hooks (search "stab_left"/"aileron_left"/
+        // "rudder"/"engine_<id>_exhaust") keep working unchanged.
+        aircraft.add(_b747Tailplane("right"));
+        aircraft.add(_b747Tailplane("left"));
+        aircraft.add(_b747VtailMesh());
+        aircraft.add(_b747Rudder());
+        aircraft.add(_b747Aileron("right"));
+        aircraft.add(_b747Aileron("left"));
+
+        // Engine numbering follows the B-747 model: 1..4 left-to-right.
+        // (engines_mu[0..3] in the env damage state maps to engine_<id+1>.)
+        aircraft.add(_b747Engine(1, -1.0, -23.0));
+        aircraft.add(_b747Engine(2, +0.5, -13.5));
+        aircraft.add(_b747Engine(3, +0.5, +13.5));
+        aircraft.add(_b747Engine(4, -1.0, +23.0));
+
+        return aircraft;
+    }
+
+    function buildF16Aircraft(geometry) {
         const aircraft = new THREE.Group();
         aircraft.name = "aircraft";
 
@@ -1302,6 +1760,10 @@
         aircraft.add(lStripMesh);
 
         return aircraft;
+    }
+
+    function buildAircraft(geometry) {
+        return IS_B747 ? buildB747Aircraft(geometry) : buildF16Aircraft(geometry);
     }
 
     const aircraft = buildAircraft(log.geometry);
@@ -1506,6 +1968,7 @@
     exhaust.name = "exhaust";
     exhaust.rotation.z = Math.PI / 2;
     exhaust.position.set(-9.0, 0, 0);
+    exhaust.visible = !IS_B747;
     aircraft.add(exhaust);
 
     // ---- Damage state machinery ----
@@ -1555,6 +2018,7 @@
                                                        // we lerp from base
     const DAMAGE_RED = new THREE.Color(0xc0392b);
     const JAM_YELLOW = new THREE.Color(0xf1c40f);
+    const ENGINE_AMBER = new THREE.Color(0xff8c2a);
 
     // Per-section damage animation state.
     //   when:  sim time at which the section first became damaged
@@ -1661,9 +2125,22 @@
                 ref.mesh.material.opacity = ref.opacity;
                 ref.mesh.material.emissive = new THREE.Color(0x000000);
             }
-            exhaust.visible = true;
+            exhaust.visible = !IS_B747;
             exhaust.material.opacity = 0.7;
             exhaust.scale.set(1, 1, 1);
+            for (let eid = 1; eid <= 4; eid++) {
+                const plume = aircraft.getObjectByName("engine_" + eid + "_exhaust");
+                if (plume) {
+                    plume.visible = IS_B747;
+                    plume.material.opacity = 0.35;
+                    plume.scale.set(1, 1, 1);
+                }
+                const smoke = aircraft.getObjectByName("engine_" + eid + "_smoke");
+                if (smoke) {
+                    smoke.visible = false;
+                    smoke.material.opacity = 0.0;
+                }
+            }
             return;
         }
 
@@ -1704,10 +2181,48 @@
         if (engine.hard_failure) {
             exhaust.visible = false;
         } else {
-            exhaust.visible = true;
+            exhaust.visible = !IS_B747;
             const tf = Math.max(0.0, Math.min(1.0, engine.thrust_factor));
             exhaust.material.opacity = 0.2 + 0.5 * tf;
             exhaust.scale.set(tf, 1, 1);
+        }
+
+        // B-747 engine-out state uses per-engine multipliers rather than
+        // the F-16 single-engine {thrust_factor, hard_failure} payload.
+        const enginesMu = state.engines_mu || null;
+        if (enginesMu) {
+            for (let eid = 1; eid <= 4; eid++) {
+                const key = String(eid);
+                const mu = Math.max(0.0, Math.min(1.0,
+                    enginesMu[key] ?? enginesMu[eid] ?? 1.0));
+                const ref = sectionMaterials.get("engine_" + eid);
+                if (ref) {
+                    ref.mesh.material.color.copy(ref.color).lerp(DAMAGE_RED, 1.0 - mu);
+                    ref.mesh.material.emissive = ENGINE_AMBER.clone()
+                        .multiplyScalar(mu < 0.99 ? 0.7 * (1.0 - mu) : 0.0);
+                }
+                const plume = aircraft.getObjectByName("engine_" + eid + "_exhaust");
+                if (plume) {
+                    plume.visible = mu > 0.02;
+                    plume.material.opacity = 0.10 + 0.35 * mu;
+                    plume.scale.set(Math.max(0.15, mu), 1, 1);
+                }
+                // Smoke trail — opacity / size grow as the engine fails.
+                // mu=1.0  → no smoke; mu=0.0 → full plume of grey smoke.
+                const smoke = aircraft.getObjectByName("engine_" + eid + "_smoke");
+                if (smoke) {
+                    const dmg = 1.0 - mu;
+                    if (dmg > 0.02) {
+                        smoke.visible = true;
+                        smoke.material.opacity = 0.85 * dmg;
+                        const s = 4.0 + 8.0 * dmg;
+                        smoke.scale.set(s, s, 1.0);
+                    } else {
+                        smoke.visible = false;
+                        smoke.material.opacity = 0.0;
+                    }
+                }
+            }
         }
     }
 
@@ -1720,7 +2235,7 @@
     // points on long episodes; one point every TRAIL_SAMPLE_STRIDE
     // frames (plus the latest frame, always) keeps the curve smooth.
     const TRAIL_SAMPLE_STRIDE = 5;
-    const TRAIL_RADIUS = 0.6;
+    const TRAIL_RADIUS = IS_B747 ? 6.0 : 0.6;
     const TRAIL_RADIAL_SEGMENTS = 6;
     const trailMat = new THREE.MeshBasicMaterial({
         color: 0x4a90e2, transparent: true, opacity: 0.65,
@@ -2099,7 +2614,7 @@
     const dt = log.metadata.dt;
     let frame = 0;
     let playing = true;
-    let speed = 1.0;
+    let speed = IS_B747 ? 8.0 : 1.0;
     let lastTickMs = performance.now();
 
     function setFrame(idx) {
@@ -2314,12 +2829,14 @@
 
     const btnPlay = document.getElementById("btn-play");
     btnPlay.addEventListener("click", () => {
+        if (!playing && frame >= T - 1) setFrame(0);
         playing = !playing;
         btnPlay.textContent = playing ? "Pause" : "Play";
         if (playing) lastTickMs = performance.now();
     });
 
     const speedSelect = document.getElementById("speed");
+    speedSelect.value = String(speed);
     speedSelect.addEventListener("change", () => {
         speed = parseFloat(speedSelect.value);
     });
@@ -2328,6 +2845,19 @@
     document.getElementById("btn-cam-top").addEventListener("click", presetTopDown);
     document.getElementById("btn-cam-left").addEventListener("click", presetLeftSide);
     document.getElementById("btn-cam-right").addEventListener("click", presetRightSide);
+    const fullscreenBtn = document.getElementById("btn-fullscreen");
+    if (fullscreenBtn) {
+        fullscreenBtn.classList.add("secondary");
+        fullscreenBtn.addEventListener("click", async () => {
+            const target = document.documentElement;
+            try {
+                if (!document.fullscreenElement) await target.requestFullscreen();
+                else await document.exitFullscreen();
+            } catch (_) {
+                // Fullscreen may be blocked inside some notebook iframes.
+            }
+        });
+    }
 
     window.addEventListener("resize", () => {
         camera.aspect = sceneEl.clientWidth / sceneEl.clientHeight;
@@ -2344,7 +2874,7 @@
         return tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT";
     }
 
-    const SPEED_STEPS = [0.25, 0.5, 1, 2, 4];
+    const SPEED_STEPS = [0.25, 0.5, 1, 2, 4, 8, 16, 32];
     function _changeSpeed(direction) {
         const i = SPEED_STEPS.indexOf(speed);
         const ni = Math.max(0, Math.min(SPEED_STEPS.length - 1,
@@ -2423,12 +2953,19 @@
         }
     });
 
+    window.addEventListener("focus", () => {
+        lastTickMs = performance.now();
+    });
+    document.addEventListener("visibilitychange", () => {
+        lastTickMs = performance.now();
+    });
+
     // ---- Animation loop ----
     function animate() {
         requestAnimationFrame(animate);
         if (playing) {
             const now = performance.now();
-            const elapsed = (now - lastTickMs) / 1000.0;
+            const elapsed = Math.min((now - lastTickMs) / 1000.0, 0.25);
             const advance = (elapsed / dt) * speed;
             const next = frame + advance;
             if (next >= T - 1) {
@@ -2445,5 +2982,6 @@
     }
 
     setFrame(0);
+    syncCameraButtons();
     animate();
 })();

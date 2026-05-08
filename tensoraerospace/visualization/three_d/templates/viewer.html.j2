@@ -170,10 +170,11 @@
 <div id="controls">
     <button id="btn-play">Pause</button>
     <input id="timeline" type="range" min="0" max="100" value="0">
-    <button id="btn-cam-3d">3D Camera</button>
+    <button id="btn-cam-3d">Free orbit</button>
     <button id="btn-cam-top">Top-down</button>
     <button id="btn-cam-left">Left side</button>
     <button id="btn-cam-right">Right side</button>
+    <button id="btn-fullscreen">Fullscreen</button>
     <span class="speed-label">speed</span>
     <select id="speed">
         <option value="0.25">0.25×</option>
@@ -181,11 +182,15 @@
         <option value="1" selected>1×</option>
         <option value="2">2×</option>
         <option value="4">4×</option>
+        <option value="8">8×</option>
+        <option value="16">16×</option>
+        <option value="32">32×</option>
     </select>
 </div>
 
 <script>
 window.FLIGHT_LOG = {{ flight_log_json|safe }};
+window.B747_OBJ_B64 = "{{ b747_obj_b64 }}";
 </script>
 <script>
 {{ three_js }}

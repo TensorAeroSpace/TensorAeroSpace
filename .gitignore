@@ -200,6 +200,9 @@ cython_debug/
 # Machine Learning specific
 checkpoints/
 models/
+# But allow the static 3-D mesh models that ship with the visualization package.
+!tensoraerospace/visualization/three_d/static/models/
+!tensoraerospace/visualization/three_d/static/models/**
 weights/
 logs/
 runs/
