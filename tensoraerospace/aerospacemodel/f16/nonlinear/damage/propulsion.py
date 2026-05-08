@@ -12,7 +12,16 @@ from .state import DamageState
 
 
 def effective_thrust(base_thrust: float, state: DamageState) -> float:
-    """Apply engine.thrust_factor and hard_failure to a base thrust value."""
+    """Apply engine damage factors to a base thrust value.
+
+    Combines the discrete-failure multiplier ``thrust_factor`` (used by
+    ENGINE_FLAMEOUT and similar abrupt presets) with the slow-drift
+    multiplier ``thrust_scale`` (Phase 2 Task 12 ENGINE_THRUST_DRIFT).
+    Both default to 1.0 in healthy state, so this is bit-identical to
+    the legacy single-factor behaviour when no drift is in effect.
+    """
     if state.engine.hard_failure:
         return 0.0
-    return float(base_thrust * state.engine.thrust_factor)
+    return float(
+        base_thrust * state.engine.thrust_factor * state.engine.thrust_scale
+    )

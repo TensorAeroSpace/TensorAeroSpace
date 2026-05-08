@@ -246,6 +246,15 @@ def f16_ode_6dof(
         if not (thrust == thrust):  # NaN check
             thrust = p.T_thrust
 
+        # Apply engine-damage multipliers (thrust_factor for abrupt
+        # failures, thrust_scale for slow drift). No-op when damage_state
+        # is None or both factors are 1.0 (default healthy values), so
+        # bit-identical to legacy behaviour for healthy aircraft.
+        if damage_state is not None:
+            from ..damage.propulsion import effective_thrust as _eff_thrust
+
+            thrust = _eff_thrust(thrust, damage_state)
+
         # Energy: dV/dt = (T·cos(α)·cos(β) − D) / m − g·sin(γ)
         dV = (thrust * cos_a * cos_b - drag) / p.m - p.g * sin_gamma_path
 
