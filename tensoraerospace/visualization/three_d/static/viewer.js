@@ -1491,22 +1491,24 @@
             engine_4: new THREE.Vector3(-2.22, -6.86,  21.08),
         };
         aircraft.updateWorldMatrix(true, true);
+        // First pass: re-parent GLB engine nodes into their hinge groups.
         for (const [glb, anchor] of engineMap) {
             const meshNode = found[glb];
             const anchorGroup = hingeRefs[anchor];
             if (!meshNode || !anchorGroup) continue;
             const localCen = ENGINE_LOCAL[anchor].clone();
-            // Re-parent meshNode into anchorGroup (preserve world tx)
             anchorGroup.position.copy(localCen);
             anchorGroup.updateMatrix();
             anchorGroup.updateWorldMatrix(false, false);
             anchorGroup.attach(meshNode);
             meshNode.updateMatrix();
-            // Failure marker — exact same pattern as the debug cubes
-            // that proved out the coordinate system: fresh Mesh, plain
-            // BoxGeometry, MeshBasicMaterial, added directly to aircraft.
-            // Hidden by default, shown by applyDamageState when
-            // engines_mu[id] < 0.98.
+        }
+        // Second pass — UNCONDITIONALLY create the failure markers using
+        // the same recipe as the debug cubes. Independent of engineMap
+        // success so we always have markers even if a GLB node isn't
+        // found by name.
+        for (const [anchor, pos] of Object.entries(ENGINE_LOCAL)) {
+            const eid = anchor.split("_")[1];
             const marker = new THREE.Mesh(
                 new THREE.BoxGeometry(3, 3, 3),
                 new THREE.MeshBasicMaterial({
@@ -1515,8 +1517,8 @@
                 }),
             );
             marker.renderOrder = 999;
-            marker.position.copy(localCen);
-            marker.name = "engine_" + anchor.split("_")[1] + "_smoke";
+            marker.position.copy(pos);
+            marker.name = "engine_" + eid + "_smoke";
             marker.visible = false;
             aircraft.add(marker);
             smokeRefs[anchor] = marker;
