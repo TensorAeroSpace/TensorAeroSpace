@@ -2562,9 +2562,13 @@
     let speed = 1.0;   // real-time playback by default (sim time = wall time)
     let lastTickMs = performance.now();
 
-    function setFrame(idx) {
-        idx = Math.max(0, Math.min(T - 1, Math.floor(idx)));
-        frame = idx;
+    function setFrame(frameFloat) {
+        // Keep `frame` as float so fractional advance per animation tick
+        // accumulates correctly. Without this, at speed=1 with dt=0.05 and
+        // 60 fps render rate, advance per tick ≈ 0.33 < 1.0 → flooring
+        // resets the accumulator each tick and playback stalls.
+        frame = Math.max(0, Math.min(T - 1, frameFloat));
+        const idx = Math.floor(frame);
         const pos = traj.position[idx];
         const att = traj.attitude[idx];
         // Three.js uses Y-up, right-handed; the env body frame is x-fwd,
