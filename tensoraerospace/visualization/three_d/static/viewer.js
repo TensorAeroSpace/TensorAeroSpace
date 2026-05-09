@@ -1283,15 +1283,19 @@
 
     // Helper: a small black-dot marker anchored to an engine. Pops on
     // engine failure (driven by applyDamageState via engines_mu).
+    // Implemented as a small Mesh (sphere) rather than a Sprite, because
+    // Sprite world placement was unreliable when the parent's transform
+    // changed mid-load.
     function _b747SmokeSprite() {
-        const smoke = new THREE.Sprite(new THREE.SpriteMaterial({
-            map: _b747SmokeTexture(),
-            color: 0x000000,
-            transparent: true,
-            opacity: 0.0,
-            depthWrite: false,
-        }));
-        smoke.scale.set(2.5, 2.5, 1.0);
+        const smoke = new THREE.Mesh(
+            new THREE.SphereGeometry(1.5, 16, 12),
+            new THREE.MeshBasicMaterial({
+                color: 0x000000,
+                transparent: true,
+                opacity: 0.0,
+                depthTest: true,
+            }),
+        );
         smoke.visible = false;
         return smoke;
     }
@@ -2150,19 +2154,13 @@
                     plume.material.opacity = 0.10 + 0.35 * mu;
                     plume.scale.set(Math.max(0.15, mu), 1, 1);
                 }
-                // Failure marker — small black dot at the failed engine.
-                // mu=1.0  → hidden; mu<0.98 → solid black dot, fixed size.
+                // Failure marker — small black sphere at the failed engine.
+                // mu=1.0  → hidden; mu<0.98 → solid black, fixed size.
                 const smoke = aircraft.getObjectByName("engine_" + eid + "_smoke");
                 if (smoke) {
                     const dmg = 1.0 - mu;
-                    if (dmg > 0.02) {
-                        smoke.visible = true;
-                        smoke.material.opacity = 1.0;
-                        smoke.scale.set(2.5, 2.5, 1.0);
-                    } else {
-                        smoke.visible = false;
-                        smoke.material.opacity = 0.0;
-                    }
+                    smoke.visible = dmg > 0.02;
+                    smoke.material.opacity = smoke.visible ? 1.0 : 0.0;
                 }
             }
         }
