@@ -1,4 +1,4 @@
-"""Convert a completed F-16 episode into a JSON-serializable flight log.
+"""Convert a completed aircraft episode into a JSON-serializable flight log.
 
 The flight log is the single source of truth that the future three.js
 viewer will consume. Schema is versioned (FLIGHT_LOG_VERSION) so future
@@ -19,6 +19,7 @@ from tensoraerospace.aerospacemodel.f16.nonlinear.damage.presets import (
 )
 
 FLIGHT_LOG_VERSION = 1
+_FT_TO_M = 0.3048
 
 
 def build_flight_log(env) -> dict[str, Any]:
@@ -42,6 +43,14 @@ def build_flight_log(env) -> dict[str, Any]:
     """
     if env.model is None:
         raise ValueError("env.model is None — call env.reset() first")
+    if _is_b747_env(env):
+        return _build_b747_flight_log(env)
+
+    return _build_f16_flight_log(env)
+
+
+def _build_f16_flight_log(env) -> dict[str, Any]:
+    """Build a JSON-serializable flight log from an F-16-compatible env."""
 
     pos = np.asarray(env.position_history, dtype=np.float64)
     att = np.asarray(env.attitude_history, dtype=np.float64)
@@ -175,6 +184,112 @@ def build_flight_log(env) -> dict[str, Any]:
     }
 
 
+def _is_b747_env(env) -> bool:
+    model = getattr(env, "model", None)
+    if model is None:
+        return False
+    if "B747" in type(env).__name__ or "B747" in type(model).__name__:
+        return True
+    state_names = getattr(model, "list_state", None) or getattr(
+        env, "state_order", None
+    )
+    return bool(state_names and {"x_e", "y_e", "z_e"}.issubset(set(state_names)))
+
+
+def _control_history(model, n_steps: int) -> np.ndarray:
+    raw = getattr(model, "u_history", [])
+    if not raw:
+        return np.zeros((n_steps, 4), dtype=np.float64)
+    arr = np.asarray([np.asarray(u, dtype=np.float64).reshape(-1) for u in raw])
+    if arr.ndim != 2 or arr.shape[1] < 4:
+        return np.zeros((n_steps, 4), dtype=np.float64)
+    arr = arr[:, :4]
+    # x_history includes the initial state, while u_history starts after
+    # the first step. Pad the first row with the first applied command so
+    # controls stay aligned with state/time arrays.
+    arr = np.vstack([arr[0:1], arr])
+    if arr.shape[0] < n_steps:
+        arr = np.vstack([arr, np.repeat(arr[-1:], n_steps - arr.shape[0], axis=0)])
+    return arr[:n_steps]
+
+
+def _build_b747_flight_log(env) -> dict[str, Any]:
+    """Build a 3D-viewer flight log from ``NonlinearB747Env``.
+
+    B-747 model state layout:
+    ``[u, v, w, p, q, r, phi, theta, psi, x_e, y_e, z_e]`` in ft / rad.
+    The WebGL viewer uses metres for scene coordinates, so positions,
+    altitude and airspeed are converted here.
+    """
+    x_hist = np.asarray(
+        [np.asarray(x, dtype=np.float64).reshape(-1) for x in env.model.x_history],
+        dtype=np.float64,
+    )
+    if x_hist.ndim != 2 or x_hist.shape[1] != 12:
+        raise ValueError(
+            f"B-747 flight log expects 12-state history; got {x_hist.shape}"
+        )
+
+    n_steps = x_hist.shape[0]
+    dt = float(getattr(env, "dt", getattr(env.model, "dt", 0.0)))
+    t0 = float(getattr(env.model, "t0", 0.0))
+    time = t0 + np.arange(n_steps, dtype=np.float64) * dt
+
+    pos_m = x_hist[:, 9:12] * _FT_TO_M
+    att = x_hist[:, [6, 7, 8]]
+    uvw = x_hist[:, 0:3]
+    airspeed_ft_s = np.linalg.norm(uvw, axis=1)
+    safe_v = np.maximum(airspeed_ft_s, 1e-9)
+    alpha = np.arctan2(x_hist[:, 2], x_hist[:, 0])
+    beta = np.arcsin(np.clip(x_hist[:, 1] / safe_v, -1.0, 1.0))
+    controls = _control_history(env.model, n_steps)
+
+    references_out = _auto_extract_references(env, n_steps)
+    references_raw = getattr(env, "reference_signals", None) or {}
+    for key, seq in references_raw.items():
+        arr = np.asarray(seq, dtype=np.float64).reshape(-1)
+        if arr.size == 0:
+            continue
+        if arr.size < n_steps:
+            arr = np.concatenate([arr, np.full(n_steps - arr.size, arr[-1])])
+        elif arr.size > n_steps:
+            arr = arr[:n_steps]
+        references_out[str(key)] = arr.tolist()
+
+    return {
+        "version": FLIGHT_LOG_VERSION,
+        "metadata": {
+            "model": "B-747",
+            "aircraft_type": "b747",
+            "dt": dt,
+            "n_steps": int(n_steps),
+            "airspeed": float(airspeed_ft_s[0] * _FT_TO_M),
+            "split_stab": False,
+            "params": _serialise_params(env),
+        },
+        "geometry": {"aircraft_type": "b747", "sections": []},
+        "trajectory": {
+            "time": time.tolist(),
+            "position": pos_m.tolist(),
+            "attitude": att.tolist(),
+            "alpha": alpha.tolist(),
+            "beta": beta.tolist(),
+            "wx": x_hist[:, 3].tolist(),
+            "wy": x_hist[:, 4].tolist(),
+            "wz": x_hist[:, 5].tolist(),
+            "stab": controls[:, 0].tolist(),
+            "ail": controls[:, 1].tolist(),
+            "dir": controls[:, 2].tolist(),
+            "throttle": controls[:, 3].tolist(),
+            "altitude_m": (-x_hist[:, 11] * _FT_TO_M).tolist(),
+            "airspeed_mps": (airspeed_ft_s * _FT_TO_M).tolist(),
+            "references": references_out,
+        },
+        "damage_events": list(getattr(env, "damage_events_log", [])),
+        "damage_state_history": list(getattr(env, "damage_state_log", [])),
+    }
+
+
 # Map env state-vector names to viewer chart keys + the multiplier
 # applied to convert raw env units (rad / m / m/s) to chart display
 # units (deg / m / m/s). Channels not in this table are ignored.
@@ -254,6 +369,10 @@ def _serialise_params(env) -> dict[str, float]:
         "q",
         "S",
         "bA",
+        "weight_lb",
+        "S_ft2",
+        "b_ft",
+        "cbar_ft",
         "Jx",
         "Jy",
         "Jz",

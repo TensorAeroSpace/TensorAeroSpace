@@ -305,3 +305,4 @@ article/
 
 # Local training artifacts (DeepReach value functions, etc.)
 artifacts/
+/example/**/*.html

@@ -25,6 +25,7 @@ state vector before each integrator step (see :mod:`.b747.nonlinear.damage`).
 
 from __future__ import annotations
 
+from dataclasses import asdict, is_dataclass
 from typing import Any, Callable, Literal, Optional
 
 import gymnasium as gym
@@ -80,7 +81,7 @@ class NonlinearB747Env(gym.Env):
             each event triggers (for logging / TensorBoard hooks).
     """
 
-    metadata = {"render_modes": []}
+    metadata = {"render_modes": ["3d_web"]}
 
     def __init__(
         self,
@@ -92,6 +93,7 @@ class NonlinearB747Env(gym.Env):
         dt: float = 0.01,
         integrator: Literal["euler", "rk4"] = "rk4",
         action_space: Literal["virtual", "normalized"] = "virtual",
+        render_mode: Optional[str] = None,
         config: B747Configuration = B747Configuration.NOMINAL,
         damage_profile: Optional[Any] = None,
         damage_event_callback: Optional[Callable[[Any, Any], None]] = None,
@@ -106,6 +108,9 @@ class NonlinearB747Env(gym.Env):
         self.dt = float(dt)
         self.integrator = integrator
         self.action_mode = action_space
+        self.render_mode = render_mode
+        if render_mode is not None and render_mode not in self.metadata["render_modes"]:
+            raise ValueError(f"unsupported render_mode: {render_mode!r}")
         if action_space not in ("virtual", "normalized"):
             raise ValueError(
                 'action_space must be "virtual" or "normalized"; '
@@ -152,6 +157,8 @@ class NonlinearB747Env(gym.Env):
         self.damage_manager: Optional[Any] = None
         self._step_index: int = 0
         self.damage_events_log: list[dict] = []
+        self.damage_state_log: list[dict] = []
+        self.reference_signals: dict[str, list[float]] = {}
 
     # ---- helpers ------------------------------------------------------
 
@@ -239,6 +246,14 @@ class NonlinearB747Env(gym.Env):
             self.model.damage_state = None
 
         self.damage_events_log = []
+        self.damage_state_log = []
+        if self.damage_manager is not None:
+            self.damage_state_log.append(
+                {
+                    "time": 0.0,
+                    "state": self.damage_manager.state.snapshot(),
+                }
+            )
         return self.model.current_state.copy(), {}
 
     def step(self, action):
@@ -260,11 +275,12 @@ class NonlinearB747Env(gym.Env):
                 if self.damage_event_callback is not None:
                     self.damage_event_callback(ev, self.damage_manager.state)
                 triggered_labels.append(ev.label or type(ev).__name__)
-                self.damage_events_log.append(
+                self.damage_events_log.append(self._serialise_damage_event(ev, t_now))
+            if triggered:
+                self.damage_state_log.append(
                     {
                         "time": float(t_now),
-                        "label": ev.label or type(ev).__name__,
-                        "kind": type(ev).__name__,
+                        "state": self.damage_manager.state.snapshot(),
                     }
                 )
             # Apply per-surface effectiveness multipliers + jam holds
@@ -287,3 +303,30 @@ class NonlinearB747Env(gym.Env):
                 info["damage_events_triggered"] = list(triggered_labels)
 
         return next_state, reward, terminated, truncated, info
+
+    @staticmethod
+    def _serialise_damage_event(ev: Any, t_now: float) -> dict:
+        event_type = getattr(ev, "event_type", type(ev).__name__)
+        if is_dataclass(ev):
+            payload = asdict(ev)
+            payload.pop("trigger_time", None)
+            label = payload.pop("label", None)
+        else:
+            payload = dict(getattr(ev, "payload", {}) or {})
+            label = getattr(ev, "label", None)
+        return {
+            "time": float(t_now),
+            "label": label or event_type,
+            "event_type": event_type,
+            "kind": type(ev).__name__,
+            "payload": payload,
+        }
+
+    def render(self):
+        if self.render_mode is None:
+            return None
+        if self.render_mode == "3d_web":
+            from tensoraerospace.visualization.three_d import render as _render_3d
+
+            return _render_3d(self)
+        raise ValueError(f"Unknown render_mode: {self.render_mode!r}")
