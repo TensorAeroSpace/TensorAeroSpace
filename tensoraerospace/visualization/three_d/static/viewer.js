@@ -1256,176 +1256,11 @@
     }
 
     const B747_COLORS = {
-        fuselage: 0xd9dfe6,
-        belly:    0x8f9aaa,
-        canopy:   0x10243a,
-        wing:     0xb8c0c8,
-        edge:     0x505a64,
-        tail:     0xaab3bd,
-        engine:   0x6d7682,
-        fan:      0x1d232b,
+        // Healthy nacelle tint (used by engine-damage lerp). Other colours
+        // come from the GLB material directly.
+        engine_healthy: 0xc8cbcd,
+        engine_failed:  0x404040,
     };
-
-    const B747_RIGHT_WING_POLYGONS = {
-        right_root: [
-            [ +7.5,  2.8],
-            [ +0.5, 12.0],
-            [-11.5, 12.0],
-            [-15.0,  2.8],
-        ],
-        right_mid: [
-            [ +0.5, 12.0],
-            [ -7.5, 23.0],
-            [-18.8, 23.0],
-            [-11.5, 12.0],
-        ],
-        right_tip: [
-            [ -7.5, 23.0],
-            [-13.5, 29.8],
-            [-21.0, 29.8],
-            [-18.8, 23.0],
-        ],
-    };
-
-    function _b747FuselageGroup() {
-        const group = new THREE.Group();
-        const N = 28;
-        const defs = [
-            [ +35.0, 0.00, 0.00],
-            [ +32.5, 1.30, 1.25],
-            [ +27.0, 2.85, 2.75],
-            [ +18.0, 3.05, 3.05],
-            [  +5.0, 3.20, 3.15],
-            [ -10.0, 3.15, 3.10],
-            [ -24.0, 2.80, 2.75],
-            [ -32.0, 1.60, 1.55],
-            [ -35.0, 0.35, 0.35],
-        ];
-        const stations = defs.map(([bx, rx, ry]) => ({
-            bx, ring: _ovalRing(rx, ry, N),
-        }));
-        const pairs = [];
-        for (let i = 1; i < stations.length; i++) {
-            pairs.push({ geom: _fuseSegment(stations[i - 1], stations[i]) });
-        }
-        pairs.push({ geom: _fuseCap(stations[1], stations[0].bx, +1) });
-        pairs.push({
-            geom: _fuseCap(stations[stations.length - 2],
-                           stations[stations.length - 1].bx, -1),
-        });
-        const fuse = new THREE.Mesh(_mergeGeoms(pairs), _stdMat(B747_COLORS.fuselage));
-        fuse.name = "fuselage_main";
-        group.add(fuse);
-        for (const { geom } of pairs) geom.dispose();
-
-        // Dark cockpit windscreen band on the upper nose.
-        const windscreen = new THREE.Mesh(
-            new THREE.BoxGeometry(4.6, 0.08, 1.15),
-            _stdMat(B747_COLORS.canopy, {
-                metalness: 0.7, roughness: 0.08, transparent: true, opacity: 0.82,
-            }),
-        );
-        windscreen.position.set(27.5, 2.35, 0);
-        group.add(windscreen);
-
-        // Passenger-window strip as two dark rows.
-        const rowGeom = new THREE.BoxGeometry(38.0, 0.04, 0.16);
-        const rowMat = _stdMat(0x17283a, { metalness: 0.4, roughness: 0.2 });
-        for (const side of [-1, +1]) {
-            const row = new THREE.Mesh(rowGeom, rowMat);
-            row.position.set(3.0, 1.28, side * 3.05);
-            group.add(row);
-        }
-        return group;
-    }
-
-    function _b747VtailMesh() {
-        const verts = new Float32Array([
-            ...bodyToThree(-25.0, 0.0, -2.2),
-            ...bodyToThree(-33.0, 0.0, -2.2),
-            ...bodyToThree(-31.5, 0.0, -12.5),
-            ...bodyToThree(-25.0, 0.0, -2.2),
-            ...bodyToThree(-31.5, 0.0, -12.5),
-            ...bodyToThree(-22.5, 0.0, -3.0),
-        ]);
-        const geom = new THREE.BufferGeometry();
-        geom.setAttribute("position", new THREE.BufferAttribute(verts, 3));
-        geom.computeVertexNormals();
-        const mesh = new THREE.Mesh(geom, _stdMat(B747_COLORS.tail));
-        mesh.name = "vtail";
-        return mesh;
-    }
-
-    function _b747Tailplane(side) {
-        const sign = side === "right" ? +1 : -1;
-        const group = new THREE.Group();
-        group.name = side === "right" ? "stab_right" : "stab_left";
-        const hinge = bodyToThree(-27.0, sign * 1.4, -1.0);
-        group.position.set(hinge[0], hinge[1], hinge[2]);
-        const rel = [
-            [  0.0, 0.0],
-            [ -4.0, sign * 7.5],
-            [-11.5, sign * 7.5],
-            [ -7.5, 0.0],
-        ];
-        const verts = new Float32Array([
-            ...bodyToThree(rel[0][0], rel[0][1], -0.08),
-            ...bodyToThree(rel[1][0], rel[1][1], -0.08),
-            ...bodyToThree(rel[2][0], rel[2][1], -0.08),
-            ...bodyToThree(rel[0][0], rel[0][1], -0.08),
-            ...bodyToThree(rel[2][0], rel[2][1], -0.08),
-            ...bodyToThree(rel[3][0], rel[3][1], -0.08),
-        ]);
-        const geom = new THREE.BufferGeometry();
-        geom.setAttribute("position", new THREE.BufferAttribute(verts, 3));
-        geom.computeVertexNormals();
-        group.add(new THREE.Mesh(geom, _stdMat(B747_COLORS.tail, { unique: true })));
-        return group;
-    }
-
-    function _b747Aileron(side) {
-        const sign = side === "right" ? +1 : -1;
-        const group = new THREE.Group();
-        group.name = side === "right" ? "aileron_right" : "aileron_left";
-        const hinge = bodyToThree(-13.5, sign * 20.5, -0.05);
-        group.position.set(hinge[0], hinge[1], hinge[2]);
-        const rel = [
-            [ 0.0, 0.0],
-            [-2.0, sign * 6.8],
-            [-3.2, sign * 6.8],
-            [-1.0, 0.0],
-        ];
-        const verts = new Float32Array([
-            ...bodyToThree(rel[0][0], rel[0][1], -0.10),
-            ...bodyToThree(rel[1][0], rel[1][1], -0.10),
-            ...bodyToThree(rel[2][0], rel[2][1], -0.10),
-            ...bodyToThree(rel[0][0], rel[0][1], -0.10),
-            ...bodyToThree(rel[2][0], rel[2][1], -0.10),
-            ...bodyToThree(rel[3][0], rel[3][1], -0.10),
-        ]);
-        const geom = new THREE.BufferGeometry();
-        geom.setAttribute("position", new THREE.BufferAttribute(verts, 3));
-        geom.computeVertexNormals();
-        group.add(new THREE.Mesh(geom, _stdMat(0x8f98a4, { unique: true })));
-        return group;
-    }
-
-    function _b747Rudder() {
-        const group = new THREE.Group();
-        group.name = "rudder";
-        const hinge = bodyToThree(-29.0, 0.0, -3.0);
-        group.position.set(hinge[0], hinge[1], hinge[2]);
-        const verts = new Float32Array([
-            ...bodyToThree(0.0, 0.0, 0.0),
-            ...bodyToThree(-3.0, 0.0, -8.8),
-            ...bodyToThree(-4.5, 0.0, 0.0),
-        ]);
-        const geom = new THREE.BufferGeometry();
-        geom.setAttribute("position", new THREE.BufferAttribute(verts, 3));
-        geom.computeVertexNormals();
-        group.add(new THREE.Mesh(geom, _stdMat(0x8994a0, { unique: true })));
-        return group;
-    }
 
     // Procedural soft-disk texture used by the per-engine smoke sprite.
     // Generated once and shared. Cached on first call.
@@ -1449,40 +1284,9 @@
         return tex;
     }
 
-    function _b747Engine(id, bx, by) {
-        const group = new THREE.Group();
-        group.name = "engine_" + id;
-        const p = bodyToThree(bx, by, +2.4);
-        group.position.set(p[0], p[1], p[2]);
-
-        const nacelle = new THREE.Mesh(
-            new THREE.CylinderGeometry(1.15, 1.05, 3.2, 24, 1, true),
-            _stdMat(B747_COLORS.engine, { metalness: 0.68, roughness: 0.30, unique: true }),
-        );
-        nacelle.rotation.z = Math.PI / 2;
-        group.add(nacelle);
-
-        const fan = new THREE.Mesh(
-            new THREE.CircleGeometry(0.95, 24),
-            _stdMat(B747_COLORS.fan, { metalness: 0.35, roughness: 0.55 }),
-        );
-        fan.rotation.y = Math.PI / 2;
-        fan.position.set(1.65, 0, 0);
-        group.add(fan);
-
-        const plume = new THREE.Mesh(
-            new THREE.ConeGeometry(0.55, 4.0, 16, 1, true),
-            new THREE.MeshBasicMaterial({
-                color: 0xff8844, transparent: true, opacity: 0.35,
-            }),
-        );
-        plume.name = "engine_" + id + "_exhaust";
-        plume.rotation.z = Math.PI / 2;
-        plume.position.set(-3.2, 0, 0);
-        group.add(plume);
-
-        // Smoke trail — visible only when this engine is failing/failed.
-        // applyDamageState() drives `visible` and `scale` from engines_mu.
+    // Helper: a small smoke sprite anchored to an engine. Pops on engine
+    // failure (driven by applyDamageState via engines_mu).
+    function _b747SmokeSprite() {
         const smoke = new THREE.Sprite(new THREE.SpriteMaterial({
             map: _b747SmokeTexture(),
             color: 0x404040,
@@ -1490,258 +1294,242 @@
             opacity: 0.0,
             depthWrite: false,
         }));
-        smoke.name = "engine_" + id + "_smoke";
-        smoke.position.set(-7.0, 0, 0);
         smoke.scale.set(8.0, 8.0, 1.0);
         smoke.visible = false;
-        group.add(smoke);
-
-        return group;
+        return smoke;
     }
 
-    // ---- New OBJ-aligned movable surfaces ----
-    // The static B-747 silhouette is provided by the embedded OBJ. The only
-    // procedural pieces that remain in the OBJ build path are small slabs
-    // hinged on the OBJ trailing edges (so the existing per-frame rotation
-    // hooks — by group name — keep animating them) plus invisible smoke
-    // anchors at the OBJ's engine nacelles.
+    // ---- B-747 GLB loader + animation hooks ----
     //
-    // bodyToThree(bx, by, bz) = [bx, -bz, by]  — so:
-    //   three.z axis ≡ body.y axis (span-wise, lateral). Rotating .rotation.z
-    //                              tilts a span-wise slab in pitch — used for
-    //                              ailerons and elevator.
-    //   three.y axis ≡ body.-z axis (vertical). Rotating .rotation.y is yaw
-    //                              — used for the rudder.
+    // The B-747 silhouette comes from a binary glTF (b747.glb) embedded in
+    // the HTML as base64. The model has nine named nodes that we wire up
+    // for animation:
+    //
+    //   aileron_L, aileron_R              — wing trailing-edge slabs
+    //   elevator_L, elevator_R            — horizontal-stab trailing slabs
+    //   rudder                             — vertical-stab trailing slab
+    //   Engine 1, Engine 2, Engine 3, Engine 4
+    //
+    // The remaining ~3829 anonymous nodes are static fuselage / wing
+    // geometry. The GLB axis convention (Blender export, glTF v2):
+    //   +x = wingspan toward port (left); -x = starboard (right)
+    //   +y = up
+    //   +z = forward (toward tail); -z = forward toward nose
+    // (Verified empirically: rudder bbox z∈[-36, -29] sits at the tail.)
+    //
+    // Three viewer convention (see bodyToThree at line ~250):
+    //   local +x = body forward (nose direction)
+    //   local +y = up
+    //   local +z = right wing
+    //
+    // To map GLB → viewer: rotate -90° around three.y so GLB-(-z)→three(+x)
+    // and GLB(-x)→three(+z). Concretely, GLB_to_three(gx, gy, gz) =
+    // (-gz, gy, -gx). That's `aircraft.add(root)` with
+    // `root.rotation.y = -Math.PI/2` and `root.scale.set(1, 1, -1)` — but
+    // mirror-scaling flips winding and breaks lighting. Instead we apply
+    // an Euler rotation: rot.y = +Math.PI/2 maps (gx, gy, gz) →
+    // (gz, gy, -gx); then rot.x = 0 keeps y as up. We want (-gz, gy, -gx),
+    // so rot.y = -Math.PI/2 maps (gx, gy, gz) → (-gz, gy, gx); then we
+    // additionally need to flip the +x→-x sign. Easiest fix: combine
+    // rot.y = -Math.PI/2 with rot.z = Math.PI to flip lateral axis. We
+    // verify visually below (nose at +x, right wing at +z).
+    //
+    // Scale: bbox length is ~70.7 m and span is ~65.3 m at unit scale,
+    // matching the B-747 in metres — no further scale needed.
 
-    function _b747AileronSurface(side) {
-        // Outboard wing trailing edge. Hinge sits at the inboard end of the
-        // slab so the leading-edge spans outboard along body.y.
-        // OBJ wingspan extends to body.y ≈ ±31 m at scale 5; ailerons live
-        // outboard between body.y ≈ 17..27 m (aft of wing trailing edge ≈
-        // body.x ≈ -10 m near the tip).
-        const sign = side === "left" ? -1.0 : +1.0;
-        const hinge = new THREE.Group();
-        hinge.name = side === "left" ? "aileron_left" : "aileron_right";
-        const h = bodyToThree(-9.5, sign * 17.0, -0.30);
-        hinge.position.set(h[0], h[1], h[2]);
-
-        const span_m = 9.0;
-        const chord_m = 1.6;
-        const thick_m = 0.12;
-        const geom = new THREE.BoxGeometry(chord_m, thick_m, span_m);
-        const mat = new THREE.MeshStandardMaterial({
-            color: 0x9aa0a8, metalness: 0.45, roughness: 0.55,
-        });
-        const mesh = new THREE.Mesh(geom, mat);
-        // Shift the slab so its leading edge (forward face) lies on the
-        // hinge axis, and its inboard end sits at the hinge group origin.
-        mesh.position.set(-chord_m / 2, 0, sign * span_m / 2);
-        hinge.add(mesh);
-        return hinge;
-    }
-
-    function _b747ElevatorSurface(side) {
-        // Tailplane trailing edge. OBJ tailplane spans roughly body.y ∈
-        // ±8 m at body.x ≈ -28 m. Elevator is the rear strip.
-        const sign = side === "left" ? -1.0 : +1.0;
-        const hinge = new THREE.Group();
-        hinge.name = side === "left" ? "stab_left" : "stab_right";
-        const h = bodyToThree(-29.5, sign * 1.5, -1.4);
-        hinge.position.set(h[0], h[1], h[2]);
-
-        const span_m = 6.5;
-        const chord_m = 1.4;
-        const thick_m = 0.10;
-        const geom = new THREE.BoxGeometry(chord_m, thick_m, span_m);
-        const mat = new THREE.MeshStandardMaterial({
-            color: 0x9aa0a8, metalness: 0.45, roughness: 0.55,
-        });
-        const mesh = new THREE.Mesh(geom, mat);
-        mesh.position.set(-chord_m / 2, 0, sign * span_m / 2);
-        hinge.add(mesh);
-        return hinge;
-    }
-
-    function _b747RudderSurface() {
-        // Vertical-tail trailing edge. OBJ V-tail top is around body.z ≈
-        // -12 m (12 m above CG), root at body.z ≈ -2 m. Hinge at the root
-        // trailing edge; the slab extends upward along body.-z (= three.y).
-        const hinge = new THREE.Group();
-        hinge.name = "rudder";
-        const h = bodyToThree(-30.0, 0.0, -3.5);
-        hinge.position.set(h[0], h[1], h[2]);
-
-        const height_m = 8.0;
-        const chord_m = 1.3;
-        const thick_m = 0.10;
-        // Box: chord along three.x, height along three.y (vertical),
-        // thickness along three.z (lateral).
-        const geom = new THREE.BoxGeometry(chord_m, height_m, thick_m);
-        const mat = new THREE.MeshStandardMaterial({
-            color: 0x8d949e, metalness: 0.45, roughness: 0.55,
-        });
-        const mesh = new THREE.Mesh(geom, mat);
-        // Leading edge of the slab on the hinge axis; slab extends upward.
-        mesh.position.set(-chord_m / 2, height_m / 2, 0);
-        hinge.add(mesh);
-        return hinge;
-    }
-
-    function _b747EngineSmokeAnchor(id, bx, by) {
-        // Invisible group at the OBJ engine nacelle. Holds:
-        //   - a tiny invisible cylinder so existing per-frame code that
-        //     looks up the engine by name (e.g. for HUD or sectionMaterials)
-        //     still finds an addressable object;
-        //   - a Sprite (`engine_<id>_smoke`) hidden by default that the
-        //     damage driver scales / fades up when engines_mu[id] drops.
-        const group = new THREE.Group();
-        group.name = "engine_" + id;
-        const p = bodyToThree(bx, by, +2.4);
-        group.position.set(p[0], p[1], p[2]);
-
-        // Tiny invisible placeholder mesh (so sectionMaterials.set("engine_<id>")
-        // still finds something — preserves the F-16 damage-pipeline shape).
-        const placeholder = new THREE.Mesh(
-            new THREE.BoxGeometry(0.01, 0.01, 0.01),
-            new THREE.MeshBasicMaterial({
-                color: 0x000000, transparent: true, opacity: 0.0,
-                depthWrite: false, visible: false,
-            }),
-        );
-        placeholder.visible = false;
-        group.add(placeholder);
-
-        const smoke = new THREE.Sprite(new THREE.SpriteMaterial({
-            map: _b747SmokeTexture(),
-            color: 0x404040,
-            transparent: true,
-            opacity: 0.0,
-            depthWrite: false,
-        }));
-        smoke.name = "engine_" + id + "_smoke";
-        // Drift the smoke aft of the nacelle (body x is forward, so aft is -x).
-        smoke.position.set(-7.0, 0, 0);
-        smoke.scale.set(8.0, 8.0, 1.0);
-        smoke.visible = false;
-        group.add(smoke);
-
-        return group;
-    }
-
-    // ---- Inline OBJ parser (UMD-friendly; no ESM loader required) ----
-    // Handles the v / vn / vt / f / o subset emitted by Blender. Materials
-    // are intentionally ignored — the loaded OBJ has no MTL and we apply a
-    // single uniform aluminium-grey material below. Returns a THREE.Group
-    // with one mesh per `o` block (so we can later toggle individual blocks
-    // if needed). Triangulates polygonal faces by fan-fill from vertex 0.
-    function _parseOBJ(text, vertTransform) {
-        // vertTransform: optional ([x,y,z]) → [x',y',z'] mapping baked into
-        // the geometry buffers. Used to centre + mirror the OBJ once at
-        // parse time, so child position/scale/rotation can stay identity.
-        const xform = vertTransform || ((x, y, z) => [x, y, z]);
-        const positions = [];   // 1-indexed → element 0 unused
-        const normals = [];     // 1-indexed
-        positions.push(null); normals.push(null);
-        const groups = [];      // [{ name, faces: [[ {p,n}, ... ], ...] }]
-        let current = { name: "default", faces: [] };
-        groups.push(current);
-        const lines = text.split("\n");
-        for (let i = 0; i < lines.length; i++) {
-            const line = lines[i].trim();
-            if (!line || line[0] === "#") continue;
-            const sp = line.indexOf(" ");
-            if (sp < 0) continue;
-            const tag = line.substring(0, sp);
-            const rest = line.substring(sp + 1);
-            if (tag === "v") {
-                const a = rest.split(/\s+/);
-                const tv = xform(+a[0], +a[1], +a[2]);
-                positions.push(tv);
-            } else if (tag === "vn") {
-                // Skip normals from the file: the vertex transform may
-                // mirror an axis, which inverts face winding. We let
-                // computeVertexNormals() rebuild them from triangulated
-                // geometry below for correctness.
-                normals.push(null);
-            } else if (tag === "f") {
-                const verts = rest.split(/\s+/).map((tok) => {
-                    // tok is "p", "p/t", "p/t/n", or "p//n"
-                    const parts = tok.split("/");
-                    return {
-                        p: parseInt(parts[0], 10),
-                        n: parts.length >= 3 ? parseInt(parts[2], 10) : 0,
-                    };
-                });
-                if (verts.length >= 3) current.faces.push(verts);
-            } else if (tag === "o" || tag === "g") {
-                current = { name: rest, faces: [] };
-                groups.push(current);
-            }
-            // Ignore vt / mtllib / usemtl / s.
+    function _loadB747GlbInto(aircraft, hingeRefs, smokeRefs) {
+        const b64 = (typeof window !== "undefined") ? window.B747_GLB_B64 : "";
+        if (!b64) {
+            console.warn("B-747 GLB missing; the named-node animation hooks will no-op.");
+            return;
         }
-        // Build a THREE.Group with one mesh per non-empty `o` block.
-        const root = new THREE.Group();
-        const sharedMat = new THREE.MeshStandardMaterial({
-            color: 0xc8cbcd, metalness: 0.45, roughness: 0.55,
-            polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 1,
-        });
-        for (const g of groups) {
-            if (!g.faces.length) continue;
-            // Triangulate (fan from vertex 0). Build the position buffer;
-            // normals are recomputed below.
-            const pos = [];
-            for (const face of g.faces) {
-                for (let j = 1; j < face.length - 1; j++) {
-                    const a = face[0], b = face[j], c = face[j + 1];
-                    for (const v of [a, b, c]) {
-                        const p = positions[v.p];
-                        if (!p) continue;
-                        pos.push(p[0], p[1], p[2]);
-                    }
-                }
-            }
-            if (!pos.length) continue;
-            const geom = new THREE.BufferGeometry();
-            geom.setAttribute("position",
-                new THREE.BufferAttribute(new Float32Array(pos), 3));
-            geom.computeVertexNormals();
-            const mesh = new THREE.Mesh(geom, sharedMat);
-            mesh.name = "_static_decor_obj_" + g.name.replace(/\s+/g, "_");
-            mesh.castShadow = false;
-            mesh.receiveShadow = false;
-            root.add(mesh);
+        if (typeof THREE.GLTFLoader !== "function") {
+            console.error("THREE.GLTFLoader is not loaded; B-747 GLB cannot be parsed.");
+            return;
         }
-        return root;
-    }
-
-    function _decodeBase64ToString(b64) {
-        // atob(b64) returns a binary string (one byte per char). Convert to
-        // a UTF-8 JS string. The OBJ is plain ASCII so binary≡UTF-8 here.
+        // Decode base64 → Uint8Array → Blob URL (avoids string-vs-binary
+        // pitfalls; the GLB is binary).
         const bin = atob(b64);
-        // Fast path: ASCII OBJ data — return directly.
-        return bin;
+        const bytes = new Uint8Array(bin.length);
+        for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+        const blob = new Blob([bytes.buffer], { type: "model/gltf-binary" });
+        const url = URL.createObjectURL(blob);
+        const loader = new THREE.GLTFLoader();
+        loader.load(
+            url,
+            (gltf) => {
+                URL.revokeObjectURL(url);
+                _onB747GlbLoaded(gltf, aircraft, hingeRefs, smokeRefs);
+            },
+            undefined,
+            (err) => {
+                URL.revokeObjectURL(url);
+                console.error("B-747 GLTFLoader failed:", err);
+            },
+        );
     }
 
-    function _loadB747ObjMesh(scale) {
-        const b64 = (typeof window !== "undefined") ? window.B747_OBJ_B64 : "";
-        if (!b64) return null;
-        try {
-            const text = _decodeBase64ToString(b64);
-            // OBJ frame → Three frame transform, baked into vertex data:
-            //   1. Translate so the OBJ visual centre is at the origin
-            //      (fuselage axial centre x=3.71, mid-cabin y=-4.40,
-            //       lateral centerline z=12.97).
-            //   2. Mirror the y axis (OBJ "down" → Three "up").
-            //   3. Uniform scale so the model reads at body-frame metres.
-            const xform = (x, y, z) => [
-                (x - 3.71) * scale,
-                -(y + 4.40) * scale,
-                (z - 12.97) * scale,
-            ];
-            return _parseOBJ(text, xform);
-        } catch (err) {
-            console.warn("B-747 OBJ parse failed; falling back to procedural:", err);
-            return null;
+    function _onB747GlbLoaded(gltf, aircraft, hingeRefs, smokeRefs) {
+        const root = gltf.scene;
+        // GLB → viewer body frame. Verified empirically from the model's
+        // bboxes:
+        //   GLB +x = starboard (right wing); GLB +y = up; GLB +z = forward
+        //   (nose direction).
+        // Viewer:
+        //   +x = forward (nose); +y = up; +z = right wing.
+        // Mapping: viewer = (GLB.z, GLB.y, GLB.x) — i.e. swap x and z.
+        // Swapping two basis vectors is a reflection (det = -1), which
+        // flips face winding. We compensate by enabling DoubleSide on
+        // every loaded mesh's material, so lighting still works.
+        const m = new THREE.Matrix4().set(
+            0, 0, 1, 0,
+            0, 1, 0, 0,
+            1, 0, 0, 0,
+            0, 0, 0, 1,
+        );
+        root.matrix.copy(m);
+        root.matrixAutoUpdate = false;
+        root.name = "_static_decor_b747_glb";
+        aircraft.add(root);
+        // DoubleSide so the swapped-axis (winding-flipped) GLB renders
+        // correctly. Also clone the shared GLB material so per-engine
+        // damage tints don't leak across the model.
+        root.traverse((obj) => {
+            if (obj.isMesh && obj.material) {
+                obj.material.side = THREE.DoubleSide;
+            }
+        });
+        // The root has matrixAutoUpdate=false; descendants update normally.
+        // We need worldMatrix to be current before searching for nodes.
+        aircraft.updateMatrixWorld(true);
+
+        // Find named nodes and wire them up.
+        const NAMES = [
+            "aileron_L", "aileron_R",
+            "elevator_L", "elevator_R",
+            "rudder",
+            "Engine 1", "Engine 2", "Engine 3", "Engine 4",
+        ];
+        const found = {};
+        root.traverse((obj) => {
+            if (obj.name && NAMES.indexOf(obj.name) >= 0) {
+                found[obj.name] = obj;
+            }
+        });
+        const missing = NAMES.filter((n) => !(n in found));
+        if (missing.length) {
+            console.warn("B-747 GLB: missing named nodes:", missing);
+        }
+
+        // Wire control-surface hinges. Each named mesh becomes the *child*
+        // of an existing placeholder hinge group (aileron_left etc.).
+        // Re-parent + adjust pivot.
+        const surfaceMap = [
+            { glb: "aileron_L",  hinge: "aileron_left"  },
+            { glb: "aileron_R",  hinge: "aileron_right" },
+            { glb: "elevator_L", hinge: "stab_left"     },
+            { glb: "elevator_R", hinge: "stab_right"    },
+            { glb: "rudder",     hinge: "rudder"        },
+        ];
+        for (const { glb, hinge } of surfaceMap) {
+            const meshNode = found[glb];
+            const hingeGroup = hingeRefs[hinge];
+            if (!meshNode || !hingeGroup) continue;
+            // Compute world-space bbox of this mesh in aircraft-local
+            // coords, find the hinge pivot, then reparent the mesh to a
+            // new sub-group whose origin sits on the pivot.
+            meshNode.geometry.computeBoundingBox();
+            meshNode.updateWorldMatrix(true, false);
+            aircraft.updateWorldMatrix(true, false);
+            const invAir = new THREE.Matrix4()
+                .copy(aircraft.matrixWorld).invert();
+            const meshToAircraft = new THREE.Matrix4()
+                .multiplyMatrices(invAir, meshNode.matrixWorld);
+            const localBox = new THREE.Box3()
+                .copy(meshNode.geometry.boundingBox)
+                .applyMatrix4(meshToAircraft);
+            // Determine pivot in aircraft-local frame.
+            const c = new THREE.Vector3();
+            localBox.getCenter(c);
+            const pivot = c.clone();
+            if (glb === "aileron_L" || glb === "aileron_R") {
+                pivot.x = localBox.max.x;  // forward edge
+                pivot.z = (Math.abs(localBox.min.z) < Math.abs(localBox.max.z))
+                    ? localBox.min.z : localBox.max.z;  // inboard
+            } else if (glb === "elevator_L" || glb === "elevator_R") {
+                pivot.x = localBox.max.x;  // forward edge
+                pivot.z = (Math.abs(localBox.min.z) < Math.abs(localBox.max.z))
+                    ? localBox.min.z : localBox.max.z;  // inboard
+            } else if (glb === "rudder") {
+                pivot.x = localBox.max.x;  // forward edge
+                pivot.y = localBox.min.y;  // bottom
+                pivot.z = 0.5 * (localBox.min.z + localBox.max.z);
+            }
+            // Place the hinge group at the pivot in aircraft-local space.
+            hingeGroup.position.copy(pivot);
+            hingeGroup.updateMatrix();
+            // Re-parent the mesh under the hinge group, preserving its
+            // world transform (so the geometry stays put visually).
+            hingeGroup.attach(meshNode);
+            meshNode.updateMatrix();
+        }
+
+        // Wire engine groups: re-parent each Engine N node to the matching
+        // engine_<id> placeholder, preserving world transform. Also drop a
+        // smoke sprite anchored to the engine's aft point.
+        const engineMap = [
+            ["Engine 1", "engine_1"],
+            ["Engine 2", "engine_2"],
+            ["Engine 3", "engine_3"],
+            ["Engine 4", "engine_4"],
+        ];
+        for (const [glb, anchor] of engineMap) {
+            const meshNode = found[glb];
+            const anchorGroup = hingeRefs[anchor];
+            if (!meshNode || !anchorGroup) continue;
+            // Move anchor group to the engine's aircraft-local centroid
+            // (so the smoke sprite emits aft of the nacelle).
+            meshNode.geometry.computeBoundingBox();
+            meshNode.updateWorldMatrix(true, false);
+            aircraft.updateWorldMatrix(true, false);
+            const invAir = new THREE.Matrix4()
+                .copy(aircraft.matrixWorld).invert();
+            const meshToAircraft = new THREE.Matrix4()
+                .multiplyMatrices(invAir, meshNode.matrixWorld);
+            const localBox = new THREE.Box3()
+                .copy(meshNode.geometry.boundingBox)
+                .applyMatrix4(meshToAircraft);
+            const c = new THREE.Vector3();
+            localBox.getCenter(c);
+            anchorGroup.position.copy(c);
+            anchorGroup.updateMatrix();
+            anchorGroup.attach(meshNode);
+            meshNode.updateMatrix();
+            // Smoke sprite — sits aft of the engine in aircraft-local
+            // frame (aft = -x); keep the same convention as the F-16.
+            const smoke = smokeRefs[anchor];
+            if (smoke) {
+                smoke.position.set(-7.0, 0, 0);
+                smoke.updateMatrix();
+            }
+        }
+
+        // Mark inert GLB descendants matrixAutoUpdate=false to avoid
+        // recomputing thousands of static local matrices each frame.
+        // We only freeze the static GLB silhouette (the
+        // `_static_decor_b747_glb` subtree) — leaving hinge and engine
+        // subtrees with their default matrixAutoUpdate=true so per-tick
+        // .rotation / .position / .scale updates propagate.
+        root.traverse((obj) => {
+            obj.matrixAutoUpdate = false;
+            obj.updateMatrix();
+        });
+
+        // Late-registration: the sectionMaterials cache was populated
+        // synchronously during scene init — but the engine_<id> groups
+        // were empty at that time, so they have no entry. Add them now.
+        if (typeof _registerB747EngineMaterials === "function") {
+            _registerB747EngineMaterials();
         }
     }
 
@@ -1749,64 +1537,45 @@
         const aircraft = new THREE.Group();
         aircraft.name = "aircraft";
 
-        // ---- 1. Static OBJ silhouette (fuselage / wings / tailplane / V-tail
-        //         / engine nacelles). When loaded, this is the SOLE static
-        //         visual representation — no procedural composite is added on
-        //         top, so we don't end up rendering a chimera. ----
-        // OBJ frame (Blender export, B-747-400F mesh, anonymous objects):
-        //   x = body forward axis; nose at +x≈11, tail at +x≈-3.
-        //   y = world-down (Blender Z-up exported as -Y); cabin floor near
-        //       y≈-4.4, top of the hump near y≈-1.75.
-        //   z = lateral (wingspan); model is offset, fuselage centerline at
-        //       z≈12.97 — NOT at zero. Wing spans z∈[6.78, 19.16].
-        // Three frame here: x=fwd, y=up, z=right (see bodyToThree).
-        // Map: three.x = obj.x;  three.y = -obj.y;  three.z = obj.z - 12.97.
-        // Scale: real B-747 fuselage length ≈ 70.7 m; OBJ x-span ≈ 14.17.
-        // Scale factor → 70.7/14.17 ≈ 5.0. (Matches wingspan: real ≈64.4 m,
-        // OBJ z-span ≈12.4 → 5.2. Use 5.0 as a balanced compromise.)
-        const OBJ_SCALE = 5.0;
-        const objMesh = _loadB747ObjMesh(OBJ_SCALE);
-        if (objMesh) {
-            objMesh.name = "_static_decor_b747_obj";
-            aircraft.add(objMesh);
-        } else {
-            // ---- Fallback: OBJ embed missing — render the legacy
-            //      procedural composite so the viewer still works. ----
-            aircraft.add(_b747FuselageGroup());
-            aircraft.add(_b747VtailMesh());
-            aircraft.add(_b747Tailplane("right"));
-            aircraft.add(_b747Tailplane("left"));
-            aircraft.add(_b747Rudder());
-            aircraft.add(_b747Aileron("right"));
-            aircraft.add(_b747Aileron("left"));
-            aircraft.add(_b747Engine(1, -1.0, -23.0));
-            aircraft.add(_b747Engine(2, +0.5, -13.5));
-            aircraft.add(_b747Engine(3, +0.5, +13.5));
-            aircraft.add(_b747Engine(4, -1.0, +23.0));
-            return aircraft;
+        // ---- Hinge / engine placeholders ----
+        // The viewer's per-tick animation looks up these groups by name and
+        // sets .rotation.<axis> = deflection. The async GLB loader will
+        // re-parent the matching GLB nodes into these groups (preserving
+        // world transform) and bake the hinge pivot into geometry. Until
+        // the GLB load finishes, these groups are empty and the animation
+        // hooks no-op visually.
+        function _hinge(name) {
+            const g = new THREE.Group();
+            g.name = name;
+            return g;
+        }
+        const hingeRefs = {};
+        const surfaceNames = [
+            "aileron_left", "aileron_right",
+            "stab_left", "stab_right", "rudder",
+            "engine_1", "engine_2", "engine_3", "engine_4",
+        ];
+        for (const n of surfaceNames) {
+            const g = _hinge(n);
+            hingeRefs[n] = g;
+            aircraft.add(g);
         }
 
-        // ---- 2. Movable surfaces — small slabs hinged at the OBJ trailing
-        //         edges. Group names match the per-frame animation hooks
-        //         ("stab_left", "stab_right", "aileron_left", "aileron_right",
-        //         "rudder"). ----
-        aircraft.add(_b747AileronSurface("left"));
-        aircraft.add(_b747AileronSurface("right"));
-        aircraft.add(_b747ElevatorSurface("left"));
-        aircraft.add(_b747ElevatorSurface("right"));
-        aircraft.add(_b747RudderSurface());
+        // Engine smoke sprites — pre-created and attached to each engine
+        // anchor so applyDamageState can find them by `engine_<id>_smoke`.
+        const smokeRefs = {};
+        for (let i = 1; i <= 4; i++) {
+            const anchor = hingeRefs["engine_" + i];
+            const sprite = _b747SmokeSprite();
+            sprite.name = "engine_" + i + "_smoke";
+            anchor.add(sprite);
+            smokeRefs["engine_" + i] = sprite;
+        }
 
-        // ---- 3. Engine smoke anchors — invisible by default; the damage
-        //         driver pops their `engine_<id>_smoke` sprite when
-        //         engines_mu[id] drops below 1.0. NO visible nacelle: the
-        //         OBJ already provides the four nacelles. ----
-        // Engine body coords (B-747 layout): outer pair at body.y ≈ ±21 m,
-        // inner pair at body.y ≈ ±10 m; both pairs forward of CG and slung
-        // below the wing (body.z = +2.4, since +z is down).
-        aircraft.add(_b747EngineSmokeAnchor(1, -2.0, -22.0));
-        aircraft.add(_b747EngineSmokeAnchor(2, +1.0, -12.0));
-        aircraft.add(_b747EngineSmokeAnchor(3, +1.0, +12.0));
-        aircraft.add(_b747EngineSmokeAnchor(4, -2.0, +22.0));
+        // Kick off async GLB load. When done, _onB747GlbLoaded reparents
+        // the named GLB nodes into hingeRefs and adds the static silhouette
+        // under aircraft as `_static_decor_b747_glb`.
+        _loadB747GlbInto(aircraft, hingeRefs, smokeRefs);
 
         return aircraft;
     }
@@ -1925,6 +1694,10 @@
     const _MOVING_NAMES = new Set([
         "stab_left", "stab_right", "aileron_left", "aileron_right",
         "rudder", "exhaust",
+        // B-747: engine_<id> placeholders are repositioned once after the
+        // async GLB load, and the per-engine smoke Sprite under each
+        // group is scaled / faded by applyDamageState().
+        "engine_1", "engine_2", "engine_3", "engine_4",
     ]);
     aircraft.traverse((obj) => {
         if (obj === aircraft) return;
@@ -2160,6 +1933,35 @@
             mesh: meshNode,   // the actual mesh (may be a child of obj)
         });
     });
+
+    // Late-registration hook for B-747 engines. The async GLB loader
+    // re-parents the GLB Engine N nodes into the empty engine_<id>
+    // placeholder groups; once that finishes, this function walks each
+    // engine subtree, clones the mesh material(s), and registers them
+    // in sectionMaterials so applyDamageState() can tint them per
+    // engines_mu.
+    function _registerB747EngineMaterials() {
+        for (let eid = 1; eid <= 4; eid++) {
+            const name = "engine_" + eid;
+            if (sectionMaterials.has(name)) continue;
+            const grp = aircraft.getObjectByName(name);
+            if (!grp) continue;
+            let meshNode = null;
+            grp.traverse((c) => {
+                if (!meshNode && c.isMesh && c.material && !c.isSprite) {
+                    meshNode = c;
+                }
+            });
+            if (!meshNode) continue;
+            meshNode.material = meshNode.material.clone();
+            meshNode.material.transparent = true;
+            sectionMaterials.set(name, {
+                color: meshNode.material.color.clone(),
+                opacity: 1.0,
+                mesh: meshNode,
+            });
+        }
+    }
 
     const HEALTHY_COLOR = new THREE.Color(0xffffff);  // not used directly;
                                                        // we lerp from base

@@ -36,7 +36,7 @@ def _read_vendor(filename: str) -> str:
 def _read_model_b64(filename: str) -> str:
     """Return the contents of a static/models/<filename> file as base64.
 
-    The B-747 viewer embeds the OBJ silhouette directly in the HTML so the
+    The B-747 viewer embeds the GLB binary directly in the HTML so the
     output stays self-contained (no fetch() at runtime). Returns "" if the
     model file is missing rather than failing the build, since the F-16 path
     has no mesh dependency on the B-747 model.
@@ -68,9 +68,10 @@ def build_html(flight_log: dict[str, Any], *, title: str | None = None) -> str:
         flight_log_json=json.dumps(flight_log),
         three_js=_read_vendor("three.min.js"),
         orbit_controls_js=_read_vendor("OrbitControls.js"),
+        gltf_loader_js=_read_vendor("GLTFLoader.js"),
         viewer_js=_read_static("viewer.js"),
         css=_read_static("viewer.css"),
-        b747_obj_b64=_read_model_b64("boeing-747-400f.obj"),
+        b747_glb_b64=_read_model_b64("b747.glb"),
     )
 
 

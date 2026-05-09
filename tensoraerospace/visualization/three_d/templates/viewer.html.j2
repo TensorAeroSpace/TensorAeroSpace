@@ -190,13 +190,16 @@
 
 <script>
 window.FLIGHT_LOG = {{ flight_log_json|safe }};
-window.B747_OBJ_B64 = "{{ b747_obj_b64 }}";
+window.B747_GLB_B64 = "{{ b747_glb_b64 }}";
 </script>
 <script>
 {{ three_js }}
 </script>
 <script>
 {{ orbit_controls_js }}
+</script>
+<script>
+{{ gltf_loader_js }}
 </script>
 <script>
 {{ viewer_js }}
