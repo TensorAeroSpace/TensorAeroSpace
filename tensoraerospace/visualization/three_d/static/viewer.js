@@ -2179,25 +2179,26 @@
     // Decimate the path so the tube doesn't blow up to ~6000 spline
     // points on long episodes; one point every TRAIL_SAMPLE_STRIDE
     // frames (plus the latest frame, always) keeps the curve smooth.
-    const TRAIL_SAMPLE_STRIDE = 5;
+    // Smooth, continuous trail. Sample density and tube smoothness are
+    // tuned for "piecewise-free" appearance: every other frame is a
+    // control point, the spline interpolates with ~4 segments between,
+    // and the cross-section is round (12 radial segments). The leading
+    // edge always includes the current frame so the trail doesn't lag.
+    const TRAIL_SAMPLE_STRIDE = 2;
     const TRAIL_RADIUS = IS_B747 ? 6.0 : 0.6;
-    const TRAIL_RADIAL_SEGMENTS = 6;
+    const TRAIL_RADIAL_SEGMENTS = 12;
+    const TRAIL_INTERP_PER_SEGMENT = 4;
     const trailMat = new THREE.MeshBasicMaterial({
         color: 0x4a90e2, transparent: true, opacity: 0.65,
     });
     let trailMesh = null;
 
-    // Cache the path-point three.Vector3s so we don't reallocate each
-    // frame; they're populated lazily on first reference.
     const trailPathCache = traj.position.map(p => new THREE.Vector3(p[0], -p[2], p[1]));
 
-    // Track which frame the trail was last rebuilt at so we don't pay
-    // the geometry cost every single tick at high FPS.
     let trailLastBuiltAt = -1;
-    const TRAIL_REBUILD_EVERY = 5;  // frames
+    const TRAIL_REBUILD_EVERY = 1;  // every frame — smooth leading edge
 
     function updateTrail(idx) {
-        // Only rebuild when the trail has grown enough OR we rewound.
         if (idx === trailLastBuiltAt) return;
         if (idx > trailLastBuiltAt
             && idx - trailLastBuiltAt < TRAIL_REBUILD_EVERY
@@ -2206,8 +2207,6 @@
         }
         trailLastBuiltAt = idx;
 
-        // Build sampled point list: every TRAIL_SAMPLE_STRIDE-th from
-        // the start up to idx, plus idx itself.
         const points = [];
         for (let k = 0; k <= idx; k += TRAIL_SAMPLE_STRIDE) {
             points.push(trailPathCache[k]);
@@ -2215,10 +2214,10 @@
         if (points.length < 2 || points[points.length - 1] !== trailPathCache[idx]) {
             points.push(trailPathCache[idx]);
         }
-        if (points.length < 2) return;  // nothing to render yet
+        if (points.length < 2) return;
 
-        const curve = new THREE.CatmullRomCurve3(points);
-        const tubeSegments = Math.max(8, points.length - 1);
+        const curve = new THREE.CatmullRomCurve3(points, false, "centripetal", 0.5);
+        const tubeSegments = Math.max(8, points.length * TRAIL_INTERP_PER_SEGMENT);
         const tubeGeom = new THREE.TubeGeometry(
             curve, tubeSegments, TRAIL_RADIUS, TRAIL_RADIAL_SEGMENTS, false,
         );
