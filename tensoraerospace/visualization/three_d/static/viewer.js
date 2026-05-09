@@ -1502,18 +1502,24 @@
             anchorGroup.updateWorldMatrix(false, false);
             anchorGroup.attach(meshNode);
             meshNode.updateMatrix();
-            // Move the smoke sprite OUT of the anchor chain and attach it
-            // directly under aircraft at the engine's aircraft-local pos.
-            const smoke = smokeRefs[anchor];
-            if (smoke) {
-                if (smoke.parent && smoke.parent !== aircraft) {
-                    smoke.parent.remove(smoke);
-                }
-                aircraft.add(smoke);
-                smoke.position.copy(localCen);
-                smoke.updateMatrix();
-                smoke.updateMatrixWorld(true);
-            }
+            // Failure marker — exact same pattern as the debug cubes
+            // that proved out the coordinate system: fresh Mesh, plain
+            // BoxGeometry, MeshBasicMaterial, added directly to aircraft.
+            // Hidden by default, shown by applyDamageState when
+            // engines_mu[id] < 0.98.
+            const marker = new THREE.Mesh(
+                new THREE.BoxGeometry(3, 3, 3),
+                new THREE.MeshBasicMaterial({
+                    color: 0xff0000,
+                    depthTest: false,
+                }),
+            );
+            marker.renderOrder = 999;
+            marker.position.copy(localCen);
+            marker.name = "engine_" + anchor.split("_")[1] + "_smoke";
+            marker.visible = false;
+            aircraft.add(marker);
+            smokeRefs[anchor] = marker;
         }
 
         // Mark inert GLB descendants matrixAutoUpdate=false to avoid
@@ -1563,16 +1569,11 @@
             aircraft.add(g);
         }
 
-        // Engine smoke sprites — pre-created and attached to each engine
-        // anchor so applyDamageState can find them by `engine_<id>_smoke`.
+        // Engine failure markers are created later in _onB747GlbLoaded
+        // (directly attached to aircraft at hard-coded engine positions —
+        // identical to the debug-cube approach that proved out the
+        // coordinate system).
         const smokeRefs = {};
-        for (let i = 1; i <= 4; i++) {
-            const anchor = hingeRefs["engine_" + i];
-            const sprite = _b747SmokeSprite();
-            sprite.name = "engine_" + i + "_smoke";
-            anchor.add(sprite);
-            smokeRefs["engine_" + i] = sprite;
-        }
 
         // Kick off async GLB load. When done, _onB747GlbLoaded reparents
         // the named GLB nodes into hingeRefs and adds the static silhouette
@@ -2089,7 +2090,6 @@
                 const smoke = aircraft.getObjectByName("engine_" + eid + "_smoke");
                 if (smoke) {
                     smoke.visible = false;
-                    smoke.material.opacity = 0.0;
                 }
             }
             return;
@@ -2158,13 +2158,10 @@
                     plume.material.opacity = 0.10 + 0.35 * mu;
                     plume.scale.set(Math.max(0.15, mu), 1, 1);
                 }
-                // Failure marker — small black sphere at the failed engine.
-                // mu=1.0  → hidden; mu<0.98 → solid black, fixed size.
+                // Failure marker — small red cube at the failed engine.
                 const smoke = aircraft.getObjectByName("engine_" + eid + "_smoke");
                 if (smoke) {
-                    const dmg = 1.0 - mu;
-                    smoke.visible = dmg > 0.02;
-                    smoke.material.opacity = smoke.visible ? 1.0 : 0.0;
+                    smoke.visible = (1.0 - mu) > 0.02;
                 }
             }
         }
