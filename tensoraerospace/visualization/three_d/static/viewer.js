@@ -1285,17 +1285,21 @@
     // engine failure (driven by applyDamageState via engines_mu).
     // Implemented as a small Mesh (sphere) rather than a Sprite, because
     // Sprite world placement was unreliable when the parent's transform
-    // changed mid-load.
+    // changed mid-load. depthTest=false + renderOrder=999 forces the
+    // marker to render on top of the engine nacelle geometry — without
+    // this the sphere lives inside the (~2 m radius) opaque pod and
+    // is invisible.
     function _b747SmokeSprite() {
         const smoke = new THREE.Mesh(
-            new THREE.SphereGeometry(1.5, 16, 12),
+            new THREE.SphereGeometry(2.5, 24, 16),
             new THREE.MeshBasicMaterial({
                 color: 0x000000,
-                transparent: true,
-                opacity: 0.0,
-                depthTest: true,
+                transparent: false,
+                opacity: 1.0,
+                depthTest: false,
             }),
         );
+        smoke.renderOrder = 999;
         smoke.visible = false;
         return smoke;
     }
