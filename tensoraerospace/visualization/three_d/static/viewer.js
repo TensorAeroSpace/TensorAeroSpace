@@ -1382,7 +1382,9 @@
         // workaround required. The B-747 silhouette is left/right
         // symmetric, so any residual mirror in the lateral mapping is
         // visually undetectable; engine numbering is just programmatic.
-        root.rotation.y = -Math.PI / 2;
+        // NB: +π/2 (not −π/2) — earlier sign produced GLB +z → viewer −x
+        // i.e. the plane flew tail-first.
+        root.rotation.y = Math.PI / 2;
         root.scale.set(1, 1, 1);
         root.name = "_static_decor_b747_glb";
         aircraft.add(root);
