@@ -1262,8 +1262,8 @@
         engine_failed:  0x404040,
     };
 
-    // Procedural soft-disk texture used by the per-engine smoke sprite.
-    // Generated once and shared. Cached on first call.
+    // Procedural disk texture used by the per-engine failure marker.
+    // A small, hard-edged solid black dot. Generated once and shared.
     let _b747SmokeTex = null;
     function _b747SmokeTexture() {
         if (_b747SmokeTex) return _b747SmokeTex;
@@ -1271,30 +1271,27 @@
         const cv = document.createElement("canvas");
         cv.width = cv.height = size;
         const ctx = cv.getContext("2d");
-        const grad = ctx.createRadialGradient(
-            size / 2, size / 2, 0, size / 2, size / 2, size / 2,
-        );
-        grad.addColorStop(0.0, "rgba(60,60,60,0.95)");
-        grad.addColorStop(0.4, "rgba(70,70,70,0.55)");
-        grad.addColorStop(1.0, "rgba(80,80,80,0.0)");
-        ctx.fillStyle = grad;
-        ctx.fillRect(0, 0, size, size);
+        ctx.clearRect(0, 0, size, size);
+        ctx.beginPath();
+        ctx.arc(size / 2, size / 2, size / 2 - 2, 0, 2 * Math.PI);
+        ctx.fillStyle = "#000000";
+        ctx.fill();
         const tex = new THREE.CanvasTexture(cv);
         _b747SmokeTex = tex;
         return tex;
     }
 
-    // Helper: a small smoke sprite anchored to an engine. Pops on engine
-    // failure (driven by applyDamageState via engines_mu).
+    // Helper: a small black-dot marker anchored to an engine. Pops on
+    // engine failure (driven by applyDamageState via engines_mu).
     function _b747SmokeSprite() {
         const smoke = new THREE.Sprite(new THREE.SpriteMaterial({
             map: _b747SmokeTexture(),
-            color: 0x404040,
+            color: 0x000000,
             transparent: true,
             opacity: 0.0,
             depthWrite: false,
         }));
-        smoke.scale.set(8.0, 8.0, 1.0);
+        smoke.scale.set(2.5, 2.5, 1.0);
         smoke.visible = false;
         return smoke;
     }
@@ -1493,11 +1490,10 @@
             anchorGroup.updateMatrix();
             anchorGroup.attach(meshNode);
             meshNode.updateMatrix();
-            // Smoke sprite — sits aft of the engine in aircraft-local
-            // frame (aft = -x); keep the same convention as the F-16.
+            // Failure marker — black dot, centred on the engine nacelle.
             const smoke = smokeRefs[anchor];
             if (smoke) {
-                smoke.position.set(-7.0, 0, 0);
+                smoke.position.set(0, 0, 0);
                 smoke.updateMatrix();
             }
         }
@@ -1512,23 +1508,6 @@
             obj.matrixAutoUpdate = false;
             obj.updateMatrix();
         });
-
-        // ── DIAGNOSTIC (temporary) ─────────────────────────────────────
-        // Visual verification of body-frame axes. Red (+x) should point
-        // out the nose, green (+y) should point up, blue (+z) should
-        // point along the right wing. Remove in a follow-up commit once
-        // orientation is confirmed correct.
-        const axesHelper = new THREE.AxesHelper(15);
-        axesHelper.name = "_diag_b747_axes";
-        aircraft.add(axesHelper);
-        const fwdArrow = new THREE.ArrowHelper(
-            new THREE.Vector3(1, 0, 0),
-            new THREE.Vector3(0, 0, 0),
-            25, 0xff0000, 5, 3,
-        );
-        fwdArrow.name = "_diag_b747_fwd";
-        aircraft.add(fwdArrow);
-        // ───────────────────────────────────────────────────────────────
 
         // Late-registration: the sectionMaterials cache was populated
         // synchronously during scene init — but the engine_<id> groups
@@ -2161,16 +2140,15 @@
                     plume.material.opacity = 0.10 + 0.35 * mu;
                     plume.scale.set(Math.max(0.15, mu), 1, 1);
                 }
-                // Smoke trail — opacity / size grow as the engine fails.
-                // mu=1.0  → no smoke; mu=0.0 → full plume of grey smoke.
+                // Failure marker — small black dot at the failed engine.
+                // mu=1.0  → hidden; mu<0.98 → solid black dot, fixed size.
                 const smoke = aircraft.getObjectByName("engine_" + eid + "_smoke");
                 if (smoke) {
                     const dmg = 1.0 - mu;
                     if (dmg > 0.02) {
                         smoke.visible = true;
-                        smoke.material.opacity = 0.85 * dmg;
-                        const s = 4.0 + 8.0 * dmg;
-                        smoke.scale.set(s, s, 1.0);
+                        smoke.material.opacity = 1.0;
+                        smoke.scale.set(2.5, 2.5, 1.0);
                     } else {
                         smoke.visible = false;
                         smoke.material.opacity = 0.0;
