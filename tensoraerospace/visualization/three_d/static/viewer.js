@@ -2559,7 +2559,7 @@
     const dt = log.metadata.dt;
     let frame = 0;
     let playing = true;
-    let speed = IS_B747 ? 8.0 : 1.0;
+    let speed = 1.0;   // real-time playback by default (sim time = wall time)
     let lastTickMs = performance.now();
 
     function setFrame(idx) {
