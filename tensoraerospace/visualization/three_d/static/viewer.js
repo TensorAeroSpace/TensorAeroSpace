@@ -1470,39 +1470,42 @@
             ["Engine 3", "engine_3"],
             ["Engine 4", "engine_4"],
         ];
+        // Compute engine WORLD bbox via setFromObject (canonical Three.js
+        // way; traverses children and applies all hierarchy matrices).
+        // Then convert centroid to aircraft-local via worldToLocal and
+        // place the smoke sprite there directly under aircraft — bypass
+        // the anchorGroup-chained smoke setup which can be subtly broken
+        // by stale world matrices on async-load.
+        aircraft.updateWorldMatrix(true, true);
         for (const [glb, anchor] of engineMap) {
             const meshNode = found[glb];
             const anchorGroup = hingeRefs[anchor];
             if (!meshNode || !anchorGroup) continue;
-            // Move anchor group to the engine's aircraft-local centroid
-            // (so the smoke sprite emits aft of the nacelle).
-            meshNode.geometry.computeBoundingBox();
-            meshNode.updateWorldMatrix(true, false);
-            aircraft.updateWorldMatrix(true, false);
-            const invAir = new THREE.Matrix4()
-                .copy(aircraft.matrixWorld).invert();
-            const meshToAircraft = new THREE.Matrix4()
-                .multiplyMatrices(invAir, meshNode.matrixWorld);
-            const localBox = new THREE.Box3()
-                .copy(meshNode.geometry.boundingBox)
-                .applyMatrix4(meshToAircraft);
-            const c = new THREE.Vector3();
-            localBox.getCenter(c);
-            anchorGroup.position.copy(c);
+            // World bbox of the engine geometry
+            const wbb = new THREE.Box3().setFromObject(meshNode);
+            const wcen = new THREE.Vector3();
+            wbb.getCenter(wcen);
+            // Aircraft-local centroid (clone before mutating)
+            const localCen = wcen.clone();
+            aircraft.worldToLocal(localCen);
+            // Re-parent meshNode into anchorGroup (preserve world tx)
+            anchorGroup.position.copy(localCen);
             anchorGroup.updateMatrix();
-            // CRITICAL: refresh anchorGroup.matrixWorld before attach,
-            // otherwise attach uses the stale (pre-position) world
-            // transform → meshNode lands at 2x the offset and the smoke
-            // sprite still renders at the aircraft origin instead of
-            // the engine nacelle.
             anchorGroup.updateWorldMatrix(false, false);
             anchorGroup.attach(meshNode);
             meshNode.updateMatrix();
-            // Failure marker — black dot, centred on the engine nacelle.
+            // Move the smoke sprite OUT of the anchor chain and attach it
+            // directly under aircraft at the engine's aircraft-local pos.
+            // This avoids any stale-world-matrix issues at async load.
             const smoke = smokeRefs[anchor];
             if (smoke) {
-                smoke.position.set(0, 0, 0);
+                if (smoke.parent && smoke.parent !== aircraft) {
+                    smoke.parent.remove(smoke);
+                }
+                aircraft.add(smoke);
+                smoke.position.copy(localCen);
                 smoke.updateMatrix();
+                smoke.updateMatrixWorld(true);
             }
         }
 
