@@ -145,16 +145,20 @@ class DamageManager:
                 t_start = float(ev.trigger_time)
                 duration = ev.duration if ev.duration is not None else 0.0
                 t_end = t_start + float(duration)
-                if "thrust_scale_start" in ev.payload \
-                        or "thrust_scale_end" in ev.payload:
+                if (
+                    "thrust_scale_start" in ev.payload
+                    or "thrust_scale_end" in ev.payload
+                ):
                     v_start = float(ev.payload.get("thrust_scale_start", 1.0))
                     v_end = float(ev.payload.get("thrust_scale_end", 0.0))
                     self.state.engine.thrust_scale = v_start
                     self._active_ramps.append(
                         (t_start, t_end, v_start, v_end, "thrust_scale")
                     )
-                elif "thrust_factor_start" in ev.payload \
-                        or "thrust_factor_end" in ev.payload:
+                elif (
+                    "thrust_factor_start" in ev.payload
+                    or "thrust_factor_end" in ev.payload
+                ):
                     v_start = float(ev.payload.get("thrust_factor_start", 1.0))
                     v_end = float(ev.payload.get("thrust_factor_end", 0.0))
                     self.state.engine.thrust_factor = v_start
@@ -162,22 +166,14 @@ class DamageManager:
                         (t_start, t_end, v_start, v_end, "thrust_factor")
                     )
                 if "hard_failure" in ev.payload:
-                    self.state.engine.hard_failure = bool(
-                        ev.payload["hard_failure"]
-                    )
+                    self.state.engine.hard_failure = bool(ev.payload["hard_failure"])
             else:
                 if "thrust_factor" in ev.payload:
-                    self.state.engine.thrust_factor = float(
-                        ev.payload["thrust_factor"]
-                    )
+                    self.state.engine.thrust_factor = float(ev.payload["thrust_factor"])
                 if "thrust_scale" in ev.payload:
-                    self.state.engine.thrust_scale = float(
-                        ev.payload["thrust_scale"]
-                    )
+                    self.state.engine.thrust_scale = float(ev.payload["thrust_scale"])
                 if "hard_failure" in ev.payload:
-                    self.state.engine.hard_failure = bool(
-                        ev.payload["hard_failure"]
-                    )
+                    self.state.engine.hard_failure = bool(ev.payload["hard_failure"])
         elif ev.event_type == "structural_change":
             if "mass_delta_kg" in ev.payload:
                 self.state.structural.extra_mass_delta_kg += float(

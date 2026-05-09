@@ -86,8 +86,10 @@ def test_b747_html_contains_b747_mesh_builder():
     # The hinge placeholder names that the per-tick animation looks up
     # are still emitted.
     for hinge_name in (
-        "aileron_left", "aileron_right",
-        "stab_left", "stab_right",
+        "aileron_left",
+        "aileron_right",
+        "stab_left",
+        "stab_right",
         "rudder",
     ):
         assert f'"{hinge_name}"' in html

@@ -1,4 +1,5 @@
 """FDD primitives for UFTC."""
+
 from __future__ import annotations
 
 from .change_point import ChangePointDetector, ChangePointState

@@ -1,4 +1,5 @@
 """Composite Lyapunov monitor — Variant B (advisory + macro-actions)."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -73,35 +74,49 @@ class CompositeLyapunovMonitor:
         self._alarm = AlarmStateMachine(cooldown_steps=cfg.cooldown_steps)
 
     def step(self, vstate: VState) -> MonitorOutput:
-        v_vec = np.array([vstate.V_hj, vstate.V_indi, vstate.V_iadp,
-                          vstate.V_dsac, vstate.V_fdd], dtype=np.float64)
+        v_vec = np.array(
+            [vstate.V_hj, vstate.V_indi, vstate.V_iadp, vstate.V_dsac, vstate.V_fdd],
+            dtype=np.float64,
+        )
         V_total = float(self._c @ v_vec)
         level = self._alarm.update(
-            V_total=V_total, mu_uub=self.mu_uub_pred,
+            V_total=V_total,
+            mu_uub=self.mu_uub_pred,
             warn_frac=self.cfg.alarm_warn_frac,
             crit_frac=self.cfg.alarm_critical_frac,
         )
         margin = float(self.mu_uub_pred - V_total)
         interventions = self._build_interventions(level, V_total)
         return MonitorOutput(
-            V_total=V_total, components=vstate, alarm=level,
-            mu_uub_pred=self.mu_uub_pred, margin=margin,
+            V_total=V_total,
+            components=vstate,
+            alarm=level,
+            mu_uub_pred=self.mu_uub_pred,
+            margin=margin,
             interventions=interventions,
         )
 
     def _build_interventions(self, level: AlarmLevel, V_total: float):
         from .intervention import MacroAction
+
         actions: list = []
         if level == "WARN":
-            actions.append(MacroAction(
-                kind="freeze_l4_learning",
-                payload={"duration": int(self.cfg.cooldown_steps)}))
+            actions.append(
+                MacroAction(
+                    kind="freeze_l4_learning",
+                    payload={"duration": int(self.cfg.cooldown_steps)},
+                )
+            )
         elif level == "CRITICAL":
-            actions.append(MacroAction(kind="force_rls_reset",
-                                       payload={"severity": 1.0}))
-            actions.append(MacroAction(
-                kind="freeze_l4_learning",
-                payload={"duration": int(2 * self.cfg.cooldown_steps)}))
+            actions.append(
+                MacroAction(kind="force_rls_reset", payload={"severity": 1.0})
+            )
+            actions.append(
+                MacroAction(
+                    kind="freeze_l4_learning",
+                    payload={"duration": int(2 * self.cfg.cooldown_steps)},
+                )
+            )
             actions.append(MacroAction(kind="degrade_reference_to_hold"))
             if V_total > self.mu_uub_pred * self.cfg.burst_factor:
                 actions.append(MacroAction(kind="request_actuator_hold"))

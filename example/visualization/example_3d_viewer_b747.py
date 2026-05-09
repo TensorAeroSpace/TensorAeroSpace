@@ -20,7 +20,6 @@ from tensoraerospace.aerospacemodel.b747.nonlinear.damage import (
 from tensoraerospace.envs.b747_nonlinear import NonlinearB747Env
 from tensoraerospace.visualization.three_d import render
 
-
 DT = 0.05
 TOTAL_TIME = 80.0
 DAMAGE_TIME = 20.0
@@ -69,8 +68,8 @@ def main() -> None:
     n_pub = int(env.number_time_steps) + 10
     env.reference_signal = np.array(
         [
-            np.full(n_pub, ALTITUDE_FT * 0.3048),     # h target (m)
-            np.full(n_pub, AIRSPEED_FT_S * 0.3048),    # V target (m/s)
+            np.full(n_pub, ALTITUDE_FT * 0.3048),  # h target (m)
+            np.full(n_pub, AIRSPEED_FT_S * 0.3048),  # V target (m/s)
         ],
         dtype=np.float64,
     )

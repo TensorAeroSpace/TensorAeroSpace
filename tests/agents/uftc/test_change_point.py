@@ -1,4 +1,5 @@
 """Tests for CUSUM change-point detector used by UFTC FDD."""
+
 from __future__ import annotations
 
 import numpy as np
@@ -13,8 +14,7 @@ from tensoraerospace.agent.uftc.fdd.change_point import (
 def test_chi_square_nominal_does_not_alarm() -> None:
     rng = np.random.default_rng(0)
     n = 4
-    cpd = ChangePointDetector(n_dim=n, h_alarm=20.0, h_clear=5.0,
-                              cooldown_steps=200)
+    cpd = ChangePointDetector(n_dim=n, h_alarm=20.0, h_clear=5.0, cooldown_steps=200)
     fired = False
     for _ in range(2000):
         d = float((rng.standard_normal(n) ** 2).sum())  # ~chi^2_n
@@ -26,8 +26,7 @@ def test_chi_square_nominal_does_not_alarm() -> None:
 def test_step_shift_triggers_alarm_within_latency() -> None:
     rng = np.random.default_rng(1)
     n = 4
-    cpd = ChangePointDetector(n_dim=n, h_alarm=20.0, h_clear=5.0,
-                              cooldown_steps=200)
+    cpd = ChangePointDetector(n_dim=n, h_alarm=20.0, h_clear=5.0, cooldown_steps=200)
     for _ in range(500):
         d = float((rng.standard_normal(n) ** 2).sum())
         cpd.update(d)
@@ -53,8 +52,9 @@ def test_returns_change_point_state_dataclass() -> None:
 
 
 def test_hysteresis_prevents_chattering_at_threshold() -> None:
-    cpd = ChangePointDetector(n_dim=2, drift=2.0, h_alarm=10.0,
-                              h_clear=2.0, cooldown_steps=10)
+    cpd = ChangePointDetector(
+        n_dim=2, drift=2.0, h_alarm=10.0, h_clear=2.0, cooldown_steps=10
+    )
     # Push above alarm.
     for _ in range(20):
         cpd.update(15.0)

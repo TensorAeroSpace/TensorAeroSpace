@@ -1,4 +1,5 @@
 """Unified Fault-Tolerant Control (UFTC) — Phase 1 MVP orchestrator."""
+
 from __future__ import annotations
 
 from .controller import UFTCConfig, UFTCController

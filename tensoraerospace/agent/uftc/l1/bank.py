@@ -1,4 +1,5 @@
 """Per-mode value-function bank with worst-case open-world fallback."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -20,8 +21,11 @@ class ValueBankConfig:
 class ValueBank:
     """Picks a per-mode V_theta^(h) based on FDDOutput."""
 
-    def __init__(self, value_fns: Mapping[str, HJValueFunction],
-                 cfg: ValueBankConfig | None = None) -> None:
+    def __init__(
+        self,
+        value_fns: Mapping[str, HJValueFunction],
+        cfg: ValueBankConfig | None = None,
+    ) -> None:
         if "nominal" not in value_fns:
             raise ValueError("bank must contain a 'nominal' entry")
         self._vs = dict(value_fns)

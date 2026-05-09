@@ -1,4 +1,5 @@
 """Tests for WrappedAAINDI bounded trust-region wrapper."""
+
 from __future__ import annotations
 
 import numpy as np
@@ -22,10 +23,14 @@ def _make_wrapped(n_state=3, n_control=3, dt=0.01):
     base = AAINDIAgent(n_state=n_state, n_control=n_control, config=cfg)
     sm = SuperTwistingObserver(n_axes=n_state, dt=dt)
     sw = ModeSwitcher()
-    return WrappedAAINDI(base=base, sm_obs=sm, mode_switch=sw,
-                         trust_radius_nominal=0.05,
-                         trust_radius_fault=0.5,
-                         dt=dt)
+    return WrappedAAINDI(
+        base=base,
+        sm_obs=sm,
+        mode_switch=sw,
+        trust_radius_nominal=0.05,
+        trust_radius_fault=0.5,
+        dt=dt,
+    )
 
 
 def test_predict_returns_correct_shape() -> None:
@@ -77,9 +82,12 @@ def test_predict_then_learn_round_trip() -> None:
         omega = rng.normal(scale=0.1, size=3)
         ref = rng.normal(scale=0.1, size=3)
         u = w.predict(
-            omega_ref=ref, omega_meas=omega, alpha=0.0,
+            omega_ref=ref,
+            omega_meas=omega,
+            alpha=0.0,
             u_blend_target=u_blend_target,
-            fault_severity=0.0, time_step=k,
+            fault_severity=0.0,
+            time_step=k,
         )
         u_blend_target = u
         next_omega = omega + 0.01 * rng.normal(size=3)
@@ -90,9 +98,14 @@ def test_reset_clears_substate() -> None:
     w = _make_wrapped()
     rng = np.random.default_rng(1)
     for k in range(10):
-        w.predict(omega_ref=rng.normal(size=3), omega_meas=rng.normal(size=3),
-                  alpha=0.0, u_blend_target=np.zeros(3),
-                  fault_severity=0.0, time_step=k)
+        w.predict(
+            omega_ref=rng.normal(size=3),
+            omega_meas=rng.normal(size=3),
+            alpha=0.0,
+            u_blend_target=np.zeros(3),
+            fault_severity=0.0,
+            time_step=k,
+        )
     w.reset()
     # After reset the SM observer state should be zero.
     assert np.allclose(w.sm_obs._s, 0.0)

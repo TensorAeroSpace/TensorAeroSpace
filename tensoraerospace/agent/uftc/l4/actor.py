@@ -1,4 +1,5 @@
 """Squashed-Gaussian actor with reparameterisation (Haarnoja 2018 SAC style)."""
+
 from __future__ import annotations
 
 import math
@@ -36,8 +37,7 @@ class GaussianActor(nn.Module):
     def forward(self, s: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
         h = self.body(s)
         mean = self.head_mean(h)
-        log_std = self.head_log_std(h).clamp(self.cfg.log_std_min,
-                                              self.cfg.log_std_max)
+        log_std = self.head_log_std(h).clamp(self.cfg.log_std_min, self.cfg.log_std_max)
         return mean, log_std
 
     def rsample(self, s: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
@@ -48,9 +48,7 @@ class GaussianActor(nn.Module):
         a = torch.tanh(z)
 
         log_prob_z = (
-            -0.5 * ((z - mean) / std) ** 2
-            - log_std
-            - 0.5 * math.log(2.0 * math.pi)
+            -0.5 * ((z - mean) / std) ** 2 - log_std - 0.5 * math.log(2.0 * math.pi)
         ).sum(dim=-1)
         log_prob = log_prob_z - torch.log(1.0 - a.pow(2) + 1e-6).sum(dim=-1)
         return a, log_prob

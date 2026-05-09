@@ -1,4 +1,5 @@
 """Variant-B macro-actions and dispatcher."""
+
 from __future__ import annotations
 
 import logging
@@ -35,7 +36,9 @@ class MacroActionDispatcher:
         for a in actions:
             try:
                 if a.kind == "force_rls_reset" and self.l3 is not None:
-                    self.l3.force_reset(severity_hint=float(a.payload.get("severity", 1.0)))
+                    self.l3.force_reset(
+                        severity_hint=float(a.payload.get("severity", 1.0))
+                    )
                     diag["force_rls_reset"] = int(current_step)
                 elif a.kind == "freeze_l4_learning" and self.l4 is not None:
                     until = int(current_step) + int(a.payload["duration"])

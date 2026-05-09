@@ -1,4 +1,5 @@
 """3-level alarm state machine with hysteresis and cooldown."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -12,8 +13,9 @@ class AlarmStateMachine:
     level: AlarmLevel = "OK"
     _steps_in_level: int = 0
 
-    def update(self, *, V_total: float, mu_uub: float,
-               warn_frac: float, crit_frac: float) -> AlarmLevel:
+    def update(
+        self, *, V_total: float, mu_uub: float, warn_frac: float, crit_frac: float
+    ) -> AlarmLevel:
         warn = warn_frac * mu_uub
         crit = crit_frac * mu_uub
         clear_warn = 0.5 * warn
@@ -21,10 +23,13 @@ class AlarmStateMachine:
 
         new = self.level
         if self.level == "OK":
-            if V_total > crit: new = "CRITICAL"
-            elif V_total > warn: new = "WARN"
+            if V_total > crit:
+                new = "CRITICAL"
+            elif V_total > warn:
+                new = "WARN"
         elif self.level == "WARN":
-            if V_total > crit: new = "CRITICAL"
+            if V_total > crit:
+                new = "CRITICAL"
             elif V_total < clear_warn and self._steps_in_level >= self.cooldown_steps:
                 new = "OK"
         elif self.level == "CRITICAL":

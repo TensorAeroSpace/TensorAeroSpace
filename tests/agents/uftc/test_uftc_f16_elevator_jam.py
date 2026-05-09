@@ -18,6 +18,7 @@ The h_alarm=15.0 threshold is high enough to survive the one-step transient
 when FDD first activates (step 400), but low enough that the post-fault
 innovations build up to an alarm before the 1500-step budget is exhausted.
 """
+
 from __future__ import annotations
 
 import os
@@ -34,7 +35,6 @@ from tensoraerospace.agent import UFTCConfig, UFTCController
 from tensoraerospace.agent.aa_indi.model import AAINDIConfig
 from tensoraerospace.agent.uftc import FDDConfig
 from tensoraerospace.envs.f16.nonlinear_angular import NonlinearAngularF16
-
 
 _LINEAR_DATA_DIR = os.path.join(
     os.path.dirname(__file__),
@@ -53,9 +53,7 @@ def _f16_nominal_matrices(dt: float = 0.01):
     idx = [7, 8, 9]  # alpha, beta, p
     A_sub = A_cont[np.ix_(idx, idx)]
     B_sub = B_cont[idx, :]
-    Ad, Bd, _, _, _ = cont2discrete(
-        (A_sub, B_sub, np.eye(3), np.zeros((3, 4))), dt=dt
-    )
+    Ad, Bd, _, _, _ = cont2discrete((A_sub, B_sub, np.eye(3), np.zeros((3, 4))), dt=dt)
     return Ad, Bd
 
 
@@ -76,16 +74,19 @@ def test_uftc_detects_elevator_jam_and_stays_bounded() -> None:
     # covariance so that the Kalman innovation is sensitive enough to flag the
     # stab jam despite the small aerodynamic signature near neutral.
     ctl = UFTCController(
-        n_state=3, n_control=4,
+        n_state=3,
+        n_control=4,
         nominal_F=Ad - np.eye(3),  # incremental form: F = Ad - I
         nominal_G=Bd,
         config=UFTCConfig(
-            dt=0.01, fdd_warmup_steps=400,
+            dt=0.01,
+            fdd_warmup_steps=400,
             omega_indices=[0, 1, 2],
             middle_lookahead_dt=0.05,
             inner_cfg=AAINDIConfig(seed=0),
             fdd_cfg=FDDConfig(
-                adapt_Q=False, adapt_R=False,
+                adapt_Q=False,
+                adapt_R=False,
                 process_noise=1e-6,
                 measurement_noise=1e-5,
                 h_alarm=15.0,

@@ -3,6 +3,7 @@
 References:
     Dabney et al. (2018) Distributional RL with Quantile Regression, AAAI.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -40,16 +41,17 @@ class QRDistCritic(nn.Module):
         return self.net(sa)
 
 
-def qr_huber_loss(z_pred: torch.Tensor, z_target: torch.Tensor,
-                  kappa: float) -> torch.Tensor:
+def qr_huber_loss(
+    z_pred: torch.Tensor, z_target: torch.Tensor, kappa: float
+) -> torch.Tensor:
     """Asymmetric Huber-quantile loss (Dabney 2018, eq. 10)."""
     n = int(z_pred.shape[-1])
     tau = (torch.arange(n, device=z_pred.device).float() + 0.5) / n  # (N,)
-    delta = z_target.detach().unsqueeze(1) - z_pred.unsqueeze(2)      # (B, N_pred, N_tgt)
+    delta = z_target.detach().unsqueeze(1) - z_pred.unsqueeze(2)  # (B, N_pred, N_tgt)
     abs_delta = delta.abs()
-    huber = torch.where(abs_delta <= kappa,
-                        0.5 * delta ** 2,
-                        kappa * (abs_delta - 0.5 * kappa))
+    huber = torch.where(
+        abs_delta <= kappa, 0.5 * delta**2, kappa * (abs_delta - 0.5 * kappa)
+    )
     rho = (tau.view(1, n, 1) - (delta < 0).float()).abs() * huber / kappa
     return rho.mean(dim=2).sum(dim=1).mean()
 

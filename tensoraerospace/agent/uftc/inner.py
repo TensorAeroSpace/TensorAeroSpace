@@ -3,6 +3,7 @@ trust-region wrapper around aa_indi.AAINDIAgent.
 
 Phase 1 MVP — see docs/superpowers/specs/2026-05-07-uftc-phase1-mvp-design.md.
 """
+
 from __future__ import annotations
 
 from typing import Literal
@@ -60,9 +61,7 @@ class SuperTwistingObserver:
                 f"omega_dot_meas must have length {self.n_axes}, got {wd.size}"
             )
         if nd.size != self.n_axes:
-            raise ValueError(
-                f"nu_des must have length {self.n_axes}, got {nd.size}"
-            )
+            raise ValueError(f"nu_des must have length {self.n_axes}, got {nd.size}")
 
         # Discrete-time Euler integration of the super-twisting law.
         # The sliding variable σ = s − e drives s toward e = ω̇_meas − ν_des.
@@ -151,9 +150,7 @@ class WrappedAAINDI:
         if trust_radius_nominal <= 0.0 or trust_radius_fault <= 0.0:
             raise ValueError("trust radii must be positive")
         if trust_radius_fault < trust_radius_nominal:
-            raise ValueError(
-                "trust_radius_fault must be ≥ trust_radius_nominal"
-            )
+            raise ValueError("trust_radius_fault must be ≥ trust_radius_nominal")
         self.base = base
         self.sm_obs = sm_obs
         self.mode_switch = mode_switch
@@ -209,13 +206,16 @@ class WrappedAAINDI:
         # SM disturbance compensation in measurement space.
         omega_corrected = omega_meas_v - delta_hat * self.dt
 
-        u_indi_raw = self.base.predict(omega_corrected, omega_ref_v,
-                                       time_step=time_step)
+        u_indi_raw = self.base.predict(
+            omega_corrected, omega_ref_v, time_step=time_step
+        )
 
         # Trust-region clip targeting L3 absolute control.
         sev = float(np.clip(fault_severity, 0.0, 1.0))
-        radius = (self.trust_radius_nominal +
-                  (self.trust_radius_fault - self.trust_radius_nominal) * sev)
+        radius = (
+            self.trust_radius_nominal
+            + (self.trust_radius_fault - self.trust_radius_nominal) * sev
+        )
         diff = u_indi_raw - u_target
         norm = float(np.linalg.norm(diff))
         if norm > radius and norm > 0.0:
@@ -224,9 +224,9 @@ class WrappedAAINDI:
             u_indi = u_indi_raw
 
         # Re-clip against AAINDI magnitude limit (u_target may already exceed it).
-        u_indi = np.clip(u_indi,
-                         -self.base.cfg.u_magnitude_limit,
-                         self.base.cfg.u_magnitude_limit)
+        u_indi = np.clip(
+            u_indi, -self.base.cfg.u_magnitude_limit, self.base.cfg.u_magnitude_limit
+        )
         return u_indi
 
     def learn(

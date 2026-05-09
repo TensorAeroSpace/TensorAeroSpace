@@ -4,6 +4,7 @@ A value function ``V(x)`` is *non-positive inside* the safe set, *zero on the
 boundary*, and *positive outside*. The shield uses ``V`` and ``∇V`` to enforce
 forward-invariance of the safe set under a CBF-style QP.
 """
+
 from __future__ import annotations
 
 import json
@@ -88,9 +89,11 @@ class DeepReachValueFn:
 
         rng = np.random.default_rng(0)
         n = int(self.cfg.n_state)
-        bounds = (np.asarray(self.cfg.state_bounds, dtype=np.float64)
-                  if self.cfg.state_bounds is not None
-                  else np.repeat([[-1.0, 1.0]], n, axis=0))
+        bounds = (
+            np.asarray(self.cfg.state_bounds, dtype=np.float64)
+            if self.cfg.state_bounds is not None
+            else np.repeat([[-1.0, 1.0]], n, axis=0)
+        )
 
         def sample() -> np.ndarray:
             return rng.uniform(bounds[:, 0], bounds[:, 1])
@@ -106,8 +109,10 @@ class DeepReachValueFn:
                 return model(torch.cat([x, t], dim=-1)).squeeze(-1)
 
         return power_iteration_lipschitz(
-            _StateOnly().eval(), sample,
-            n_iter=cfg.lipschitz_n_iter, n_starts=cfg.lipschitz_n_starts,
+            _StateOnly().eval(),
+            sample,
+            n_iter=cfg.lipschitz_n_iter,
+            n_starts=cfg.lipschitz_n_starts,
             dtype=torch.float64,
         )
 

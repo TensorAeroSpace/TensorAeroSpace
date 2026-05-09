@@ -13,6 +13,7 @@ Both ``F`` and ``G`` may be warm-started by ``UFTCController`` once the
 incremental RLS inside :class:`IADPAgent` has converged on nominal
 flight.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -25,9 +26,9 @@ class KalmanStep:
     """One-step output of :class:`NominalKalman`."""
 
     x_hat: np.ndarray  # posterior state estimate (n_state,)
-    nu: np.ndarray     # innovation y - H·x_hat_prior (n_state,)
-    S: np.ndarray      # innovation covariance (n_state, n_state)
-    K: np.ndarray      # Kalman gain (n_state, n_state)
+    nu: np.ndarray  # innovation y - H·x_hat_prior (n_state,)
+    S: np.ndarray  # innovation covariance (n_state, n_state)
+    K: np.ndarray  # Kalman gain (n_state, n_state)
 
 
 class NominalKalman:
@@ -179,8 +180,7 @@ class NominalKalman:
         # during warm-up (same transient issue as R).
         if self.adapt_Q:
             dx = K @ nu
-            Q_target = (np.outer(dx, dx) + P_post
-                        - F_jac @ self.P @ F_jac.T)
+            Q_target = np.outer(dx, dx) + P_post - F_jac @ self.P @ F_jac.T
             self.Q = self.alpha_Q * self.Q + (1.0 - self.alpha_Q) * Q_target
             self.Q = 0.5 * (self.Q + self.Q.T)
             self.Q = self._psd_project(self.Q, floor=self._Q_eig_floor)
@@ -189,6 +189,4 @@ class NominalKalman:
         self.x_hat = x_post
         self.P = 0.5 * (P_post + P_post.T)
 
-        return KalmanStep(
-            x_hat=self.x_hat.copy(), nu=nu.copy(), S=S.copy(), K=K.copy()
-        )
+        return KalmanStep(x_hat=self.x_hat.copy(), nu=nu.copy(), S=S.copy(), K=K.copy())

@@ -1,4 +1,5 @@
 """L3 middle for UFTC: IADPAgent + innovation-driven RLS reset."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -15,9 +16,9 @@ from .fdd.detector import FDDOutput
 class RLSResetPolicy:
     """How L3 reacts to an FDD rising edge."""
 
-    cov_inflation: float = 100.0           # Φ ← Φ + κ·I
-    forgetting_drop: float = 0.9           # γ_RLS ← drop on rising edge
-    forgetting_recover_steps: int = 500    # linear ramp back to nominal
+    cov_inflation: float = 100.0  # Φ ← Φ + κ·I
+    forgetting_drop: float = 0.9  # γ_RLS ← drop on rising edge
+    forgetting_recover_steps: int = 500  # linear ramp back to nominal
 
 
 class IADPMiddle:
@@ -85,11 +86,14 @@ class IADPMiddle:
         # Linear γ_RLS recovery (skip the step where we just triggered reset).
         if self._recover_countdown > 0 and not rising:
             self._recover_countdown -= 1
-            frac = 1.0 - (self._recover_countdown
-                          / max(1, self.reset_policy.forgetting_recover_steps))
-            self._gamma_active = (self.reset_policy.forgetting_drop
-                                  + (self._gamma_nominal
-                                     - self.reset_policy.forgetting_drop) * frac)
+            frac = 1.0 - (
+                self._recover_countdown
+                / max(1, self.reset_policy.forgetting_recover_steps)
+            )
+            self._gamma_active = (
+                self.reset_policy.forgetting_drop
+                + (self._gamma_nominal - self.reset_policy.forgetting_drop) * frac
+            )
             self.base.rls.gamma_rls = float(self._gamma_active)
 
         return self.base.learn(next_x_obs, reference, time_step=time_step)
@@ -105,9 +109,10 @@ class IADPMiddle:
 
     def _trigger_reset(self) -> None:
         n = self.base.rls.n_regressor
-        self.base.rls.Phi = (self.base.rls.Phi
-                             + self.reset_policy.cov_inflation
-                             * np.eye(n, dtype=np.float64))
+        self.base.rls.Phi = (
+            self.base.rls.Phi
+            + self.reset_policy.cov_inflation * np.eye(n, dtype=np.float64)
+        )
         self.base.rls.gamma_rls = float(self.reset_policy.forgetting_drop)
         self._gamma_active = float(self.reset_policy.forgetting_drop)
         self._recover_countdown = int(self.reset_policy.forgetting_recover_steps)

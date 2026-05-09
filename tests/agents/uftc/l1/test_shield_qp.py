@@ -1,4 +1,5 @@
 """HJReachabilityShield QP behaviour and bounds enforcement."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -37,29 +38,42 @@ class _Linear:
 
 def _clean_fdd() -> FDDOutput:
     return FDDOutput(
-        fault_present=False, severity=0.0, confidence=0.0,
-        innovation_norm=0.0, time_since_event=0.0,
-        fault_kind="none", severity_abrupt=0.0, severity_gradual=0.0,
+        fault_present=False,
+        severity=0.0,
+        confidence=0.0,
+        innovation_norm=0.0,
+        time_since_event=0.0,
+        fault_kind="none",
+        severity_abrupt=0.0,
+        severity_gradual=0.0,
     )
 
 
 def _affine_dynamics(F: np.ndarray, G: np.ndarray):
     def f(x: np.ndarray, u: np.ndarray) -> np.ndarray:
         return F @ x + G @ u
+
     return f
 
 
 def test_passthrough_when_deep_inside_safe_set() -> None:
-    F = np.zeros((2, 2)); G = np.eye(2)
+    F = np.zeros((2, 2))
+    G = np.eye(2)
     vfn = _Linear(np.array([1.0, 0.0]), b=10.0)  # V(x) very positive
-    cm = ConformalMargin(ConformalMarginConfig(eps_0=0.05),
-                         lipschitz_const=vfn.lipschitz_const())
+    cm = ConformalMargin(
+        ConformalMarginConfig(eps_0=0.05), lipschitz_const=vfn.lipschitz_const()
+    )
     shield = HJReachabilityShield(
-        n_state=2, n_control=2,
+        n_state=2,
+        n_control=2,
         value_fn=vfn,
         dynamics_fn=_affine_dynamics(F, G),
-        cfg=HJShieldConfig(h_clear=0.5, u_min=np.array([-1.0, -1.0]),
-                           u_max=np.array([1.0, 1.0]), conformal=cm.cfg),
+        cfg=HJShieldConfig(
+            h_clear=0.5,
+            u_min=np.array([-1.0, -1.0]),
+            u_max=np.array([1.0, 1.0]),
+            conformal=cm.cfg,
+        ),
         conformal_margin=cm,
     )
     x = np.array([0.0, 0.0])
@@ -71,39 +85,46 @@ def test_passthrough_when_deep_inside_safe_set() -> None:
 
 
 def test_qp_enforces_u_bounds() -> None:
-    F = np.zeros((2, 2)); G = np.eye(2)
+    F = np.zeros((2, 2))
+    G = np.eye(2)
     vfn = _Linear(np.array([1.0, 0.0]), b=0.0)  # V at boundary
-    cm = ConformalMargin(ConformalMarginConfig(eps_0=0.05),
-                         lipschitz_const=1.0)
+    cm = ConformalMargin(ConformalMarginConfig(eps_0=0.05), lipschitz_const=1.0)
     shield = HJReachabilityShield(
-        n_state=2, n_control=2,
+        n_state=2,
+        n_control=2,
         value_fn=vfn,
         dynamics_fn=_affine_dynamics(F, G),
-        cfg=HJShieldConfig(h_clear=1.0,    # force shield active
-                           u_min=np.array([-0.5, -0.5]),
-                           u_max=np.array([0.5, 0.5]),
-                           conformal=cm.cfg),
+        cfg=HJShieldConfig(
+            h_clear=1.0,  # force shield active
+            u_min=np.array([-0.5, -0.5]),
+            u_max=np.array([0.5, 0.5]),
+            conformal=cm.cfg,
+        ),
         conformal_margin=cm,
     )
-    out = shield.filter(np.array([0.0, 0.0]),
-                        np.array([2.0, -2.0]),  # outside bounds
-                        _clean_fdd())
+    out = shield.filter(
+        np.array([0.0, 0.0]), np.array([2.0, -2.0]), _clean_fdd()  # outside bounds
+    )
     assert (out.u_safe >= -0.5 - 1e-6).all()
     assert (out.u_safe <= 0.5 + 1e-6).all()
 
 
 def test_solver_failure_falls_back_to_nominal(monkeypatch) -> None:
-    F = np.zeros((2, 2)); G = np.eye(2)
+    F = np.zeros((2, 2))
+    G = np.eye(2)
     vfn = _Linear(np.array([1.0, 0.0]), b=0.0)
-    cm = ConformalMargin(ConformalMarginConfig(eps_0=0.05),
-                         lipschitz_const=1.0)
+    cm = ConformalMargin(ConformalMarginConfig(eps_0=0.05), lipschitz_const=1.0)
     shield = HJReachabilityShield(
-        n_state=2, n_control=2, value_fn=vfn,
+        n_state=2,
+        n_control=2,
+        value_fn=vfn,
         dynamics_fn=_affine_dynamics(F, G),
-        cfg=HJShieldConfig(h_clear=1.0,
-                           u_min=np.array([-1.0, -1.0]),
-                           u_max=np.array([1.0, 1.0]),
-                           conformal=cm.cfg),
+        cfg=HJShieldConfig(
+            h_clear=1.0,
+            u_min=np.array([-1.0, -1.0]),
+            u_max=np.array([1.0, 1.0]),
+            conformal=cm.cfg,
+        ),
         conformal_margin=cm,
     )
 
@@ -111,8 +132,6 @@ def test_solver_failure_falls_back_to_nominal(monkeypatch) -> None:
         raise RuntimeError("solver crashed")
 
     monkeypatch.setattr(shield, "_solve_qp", boom)
-    out = shield.filter(np.array([0.0, 0.0]),
-                        np.array([0.4, -0.2]),
-                        _clean_fdd())
+    out = shield.filter(np.array([0.0, 0.0]), np.array([0.4, -0.2]), _clean_fdd())
     assert out.active is False
     assert np.allclose(out.u_safe, [0.4, -0.2])

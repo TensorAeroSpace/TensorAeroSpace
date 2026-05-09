@@ -1,4 +1,5 @@
 """UFTCController integration smoke: L1 + GLR flags toggle correctly."""
+
 from __future__ import annotations
 
 import numpy as np

@@ -1,4 +1,5 @@
 """UFTCController predict/learn/reset/diagnostics — core unit tests."""
+
 from __future__ import annotations
 
 import numpy as np
@@ -6,13 +7,13 @@ import numpy as np
 from tensoraerospace.agent.uftc.controller import UFTCConfig, UFTCController
 
 
-def _make_controller(n_state=3, n_control=3, dt=0.01,
-                     warmup_steps=10, **overrides):
+def _make_controller(n_state=3, n_control=3, dt=0.01, warmup_steps=10, **overrides):
     cfg_kwargs = dict(dt=dt, fdd_warmup_steps=warmup_steps)
     cfg_kwargs.update(overrides)
     cfg = UFTCConfig(**cfg_kwargs)
     return UFTCController(
-        n_state=n_state, n_control=n_control,
+        n_state=n_state,
+        n_control=n_control,
         nominal_F=np.zeros((n_state, n_state)),
         nominal_G=np.eye(n_state, n_control) * 0.1,
         config=cfg,
@@ -41,8 +42,7 @@ def test_diagnostics_keys_present() -> None:
     ctl.predict(np.zeros(3), np.zeros(3), time_step=0)
     ctl.learn(np.zeros(3), np.zeros(3), time_step=0)
     diag = ctl.diagnostics()
-    for key in ("fault_present", "severity", "confidence",
-                "rls_gamma", "mode", "step"):
+    for key in ("fault_present", "severity", "confidence", "rls_gamma", "mode", "step"):
         assert key in diag
 
 

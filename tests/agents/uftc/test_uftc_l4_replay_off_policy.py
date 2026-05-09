@@ -1,4 +1,5 @@
 """With L1 active, replay must record u_safe (post-shield), not u_indi."""
+
 from __future__ import annotations
 
 import numpy as np
@@ -22,10 +23,15 @@ def test_replay_records_post_shield_action() -> None:
     the controller is what lands in the replay's ``a_actual``.
     """
     cfg = UFTCConfig(
-        dt=0.01, fdd_warmup_steps=10,
-        enable_l1_shield=True, enable_glr=False,
-        enable_l4_outer=True, l4_n_ref_dim=3, l4_action_scale=0.05,
-        l1_u_min=[-0.1, -0.1], l1_u_max=[0.1, 0.1],
+        dt=0.01,
+        fdd_warmup_steps=10,
+        enable_l1_shield=True,
+        enable_glr=False,
+        enable_l4_outer=True,
+        l4_n_ref_dim=3,
+        l4_action_scale=0.05,
+        l1_u_min=[-0.1, -0.1],
+        l1_u_max=[0.1, 0.1],
         l1_h_clear=2.0,
     )
     ctl = UFTCController(n_state=3, n_control=2, config=cfg)

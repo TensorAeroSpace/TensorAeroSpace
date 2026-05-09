@@ -2,6 +2,7 @@
 
 Phase 1 MVP — see docs/superpowers/specs/2026-05-07-uftc-phase1-mvp-design.md.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -76,7 +77,7 @@ class UFTCConfig:
 
     # Phase 3 — L4 D-SAC outer
     enable_l4_outer: bool = False
-    l4_n_ref_dim: int = 0          # if 0 and enable_l4_outer, defaults to n_state
+    l4_n_ref_dim: int = 0  # if 0 and enable_l4_outer, defaults to n_state
     l4_action_scale: float = 0.1
     l4_actor_hidden: tuple = (64, 64)
     l4_critic_hidden: tuple = (64, 64)
@@ -87,7 +88,7 @@ class UFTCConfig:
     l4_replay_capacity: int = 10_000
     l4_batch_size: int = 64
     l4_seed: int = 0
-    l4_trim_free: Optional[dict] = None    # {V_idx, gamma_idx, alpha_idx, q_idx}
+    l4_trim_free: Optional[dict] = None  # {V_idx, gamma_idx, alpha_idx, q_idx}
 
     # Phase 4 — composite Lyapunov monitor
     enable_monitor: bool = False
@@ -152,8 +153,9 @@ class UFTCController(BaseRLModel):
             if inner_g0_arr.shape == (self.n_state, self.n_control):
                 inner_dict["G_init"] = inner_g0_arr[self._omega_indices].copy()
         self.cfg.inner_cfg = AAINDIConfig(**inner_dict)
-        middle_dict = {k: v for k, v in self.cfg.middle_cfg.__dict__.items()
-                       if k != "history"}
+        middle_dict = {
+            k: v for k, v in self.cfg.middle_cfg.__dict__.items() if k != "history"
+        }
         middle_dict["dt"] = self.cfg.dt
         self.cfg.middle_cfg = IADPConfig(**middle_dict)
 
@@ -164,15 +166,19 @@ class UFTCController(BaseRLModel):
             config=self.cfg.inner_cfg,
         )
         sm_obs = SuperTwistingObserver(
-            n_axes=self.n_inner_state, k1=self.cfg.sm_obs_k1,
-            k2=self.cfg.sm_obs_k2, dt=self.cfg.dt,
+            n_axes=self.n_inner_state,
+            k1=self.cfg.sm_obs_k1,
+            k2=self.cfg.sm_obs_k2,
+            dt=self.cfg.dt,
         )
         mode_sw = ModeSwitcher(
             alpha_threshold_deg=self.cfg.alpha_threshold_deg,
             hysteresis_deg=self.cfg.alpha_hysteresis_deg,
         )
         self.inner = WrappedAAINDI(
-            base=inner_base, sm_obs=sm_obs, mode_switch=mode_sw,
+            base=inner_base,
+            sm_obs=sm_obs,
+            mode_switch=mode_sw,
             trust_radius_nominal=self.cfg.trust_radius_nominal,
             trust_radius_fault=self.cfg.trust_radius_fault,
             dt=self.cfg.dt,
@@ -180,24 +186,35 @@ class UFTCController(BaseRLModel):
 
         # L3 middle.
         middle_base = IADPAgent(
-            n_state=n_state, n_control=n_control, config=self.cfg.middle_cfg,
+            n_state=n_state,
+            n_control=n_control,
+            config=self.cfg.middle_cfg,
         )
         self.middle = IADPMiddle(
-            base=middle_base, reset_policy=self.cfg.rls_reset_policy,
+            base=middle_base,
+            reset_policy=self.cfg.rls_reset_policy,
             omega_indices=self.cfg.omega_indices,
             lookahead_dt=self.cfg.middle_lookahead_dt,
         )
 
         # FDD.
-        F_init = (np.array(nominal_F, dtype=np.float64)
-                  if nominal_F is not None
-                  else np.zeros((n_state, n_state), dtype=np.float64))
-        G_init = (np.array(nominal_G, dtype=np.float64)
-                  if nominal_G is not None
-                  else np.zeros((n_state, n_control), dtype=np.float64))
+        F_init = (
+            np.array(nominal_F, dtype=np.float64)
+            if nominal_F is not None
+            else np.zeros((n_state, n_state), dtype=np.float64)
+        )
+        G_init = (
+            np.array(nominal_G, dtype=np.float64)
+            if nominal_G is not None
+            else np.zeros((n_state, n_control), dtype=np.float64)
+        )
         self.fdd = FDDDetector.from_config(
-            n_state=n_state, n_control=n_control, dt=self.cfg.dt,
-            config=self.cfg.fdd_cfg, F_nominal=F_init, G_nominal=G_init,
+            n_state=n_state,
+            n_control=n_control,
+            dt=self.cfg.dt,
+            config=self.cfg.fdd_cfg,
+            F_nominal=F_init,
+            G_nominal=G_init,
         )
         # _fdd_ready: nominal matrices are loaded (can run fdd.step).
         # _fdd_active: warmup has elapsed AND matrices are ready.
@@ -207,6 +224,7 @@ class UFTCController(BaseRLModel):
         # Phase 2 — GLR slow-drift detector wired into the existing FDD.
         if self.cfg.enable_glr:
             from .fdd.glr import GLRConfig, GLRDetector
+
             self.fdd.glr = GLRDetector(
                 n_dim=self.n_state,
                 cfg=GLRConfig(
@@ -228,6 +246,7 @@ class UFTCController(BaseRLModel):
                 HJShieldConfig,
             )
             from .l1.shield import _Identity
+
             if self.cfg.l1_value_fn_path is None:
                 # No saved network — use the placeholder constant V_θ that
                 # always reports "deep inside safe set". The shield then
@@ -240,16 +259,23 @@ class UFTCController(BaseRLModel):
                 lipschitz_const=value_fn.lipschitz_const(),
             )
             self.l1 = HJReachabilityShield(
-                n_state=self.n_state, n_control=self.n_control,
+                n_state=self.n_state,
+                n_control=self.n_control,
                 value_fn=value_fn,
-                dynamics_fn=None,                # uses RLS-borrow path
+                dynamics_fn=None,  # uses RLS-borrow path
                 cfg=HJShieldConfig(
                     h_clear=self.cfg.l1_h_clear,
                     cbf_lambda=self.cfg.l1_cbf_lambda,
-                    u_min=(np.asarray(self.cfg.l1_u_min, dtype=np.float64)
-                           if self.cfg.l1_u_min is not None else None),
-                    u_max=(np.asarray(self.cfg.l1_u_max, dtype=np.float64)
-                           if self.cfg.l1_u_max is not None else None),
+                    u_min=(
+                        np.asarray(self.cfg.l1_u_min, dtype=np.float64)
+                        if self.cfg.l1_u_min is not None
+                        else None
+                    ),
+                    u_max=(
+                        np.asarray(self.cfg.l1_u_max, dtype=np.float64)
+                        if self.cfg.l1_u_max is not None
+                        else None
+                    ),
                 ),
                 conformal_margin=cm,
             )
@@ -267,13 +293,16 @@ class UFTCController(BaseRLModel):
                 LongitudinalTrimFreeConfig,
                 LongitudinalTrimFreeWrapper,
             )
+
             n_ref = self.cfg.l4_n_ref_dim or self.n_state
             # ``n_action`` matches the actor's output (= reference-perturbation
             # space). The replay's ``a_actual`` is ``u_safe`` re-projected into
             # this space (right-pad with zeros / left-truncate to ``n_action``)
             # so the critic input ``(s, a_actual)`` has consistent shape.
             dsac_cfg = DSACConfig(
-                n_state=self.n_state, n_ref_dim=n_ref, n_action=n_ref,
+                n_state=self.n_state,
+                n_ref_dim=n_ref,
+                n_action=n_ref,
                 cvar_alpha=self.cfg.l4_cvar_alpha,
                 n_quantiles=self.cfg.l4_n_quantiles,
                 actor_hidden=tuple(self.cfg.l4_actor_hidden),
@@ -288,7 +317,8 @@ class UFTCController(BaseRLModel):
             self.l4 = DSACOuter(dsac_cfg)
             if self.cfg.l4_trim_free:
                 tf_cfg = LongitudinalTrimFreeConfig(
-                    enabled=True, **self.cfg.l4_trim_free)
+                    enabled=True, **self.cfg.l4_trim_free
+                )
                 self.l4_trim_free = LongitudinalTrimFreeWrapper(tf_cfg)
 
         # Rolling state.
@@ -311,6 +341,7 @@ class UFTCController(BaseRLModel):
                 MonitorConfig,
                 MonitorOutput,
             )
+
             mcfg = MonitorConfig(
                 c_weights=tuple(self.cfg.monitor_c_weights),
                 a_diag=tuple(self.cfg.monitor_a_diag),
@@ -322,7 +353,9 @@ class UFTCController(BaseRLModel):
             )
             self.monitor = CompositeLyapunovMonitor(mcfg)
             self.dispatcher = MacroActionDispatcher(
-                l3=self.middle, l4=self.l4, l1=self.l1,
+                l3=self.middle,
+                l4=self.l4,
+                l1=self.l1,
             )
             self._monitor_out = MonitorOutput.zero()
 
@@ -334,14 +367,20 @@ class UFTCController(BaseRLModel):
     ) -> np.ndarray:
         # Phase 3 — L4 outer planner perturbs/replaces the reference fed to L3.
         if self.l4 is not None:
-            fdd_for_l4 = (self._last_fdd if self._last_fdd is not None
-                          else _zero_fdd_output(self.n_state))
+            fdd_for_l4 = (
+                self._last_fdd
+                if self._last_fdd is not None
+                else _zero_fdd_output(self.n_state)
+            )
             r_eff, beta_t, reset_hint = self.l4.predict(
-                x_obs, reference, fdd_for_l4, monitor_alarm="OK")
+                x_obs, reference, fdd_for_l4, monitor_alarm="OK"
+            )
             if self.l4_trim_free is not None:
                 r_eff = self.l4_trim_free.apply(
                     r_eff[: self.l4.cfg.n_ref_dim],
-                    x_obs=x_obs, base_reference=reference)
+                    x_obs=x_obs,
+                    base_reference=reference,
+                )
             self._last_r_eff = np.asarray(r_eff, dtype=np.float64).copy()
             self._last_beta = float(beta_t)
             self._last_reset_hint = bool(reset_hint)
@@ -373,8 +412,11 @@ class UFTCController(BaseRLModel):
             F_full = self.middle.base.F[: self.n_state, : self.n_state]
             G_full = self.middle.base.G[: self.n_state, : self.n_control]
             self.l1.set_dynamics_jacobian(F_full, G_full)
-            fdd = self._last_fdd if self._last_fdd is not None \
+            fdd = (
+                self._last_fdd
+                if self._last_fdd is not None
                 else _zero_fdd_output(self.n_state)
+            )
             x_obs_arr = np.asarray(x_obs, dtype=np.float64).reshape(-1)[: self.n_state]
             out = self.l1.filter(x_obs_arr, u_indi, fdd, monitor_alarm="OK")
             u_out = np.asarray(out.u_safe, dtype=np.float64).reshape(-1)
@@ -393,33 +435,42 @@ class UFTCController(BaseRLModel):
         time_step: int = 0,
     ) -> dict:
         next_omega = self._extract_omega(next_x_obs)
-        inner_diag = self.inner.learn(next_omega, self._last_omega_ref,
-                                      time_step=time_step)
+        inner_diag = self.inner.learn(
+            next_omega, self._last_omega_ref, time_step=time_step
+        )
 
         # FDD warm-up trigger: once warmup_steps have elapsed, activate FDD.
         if not self._fdd_active and self._step + 1 >= self.cfg.fdd_warmup_steps:
             if not self._fdd_ready:
                 # Nominal matrices not supplied at init — derive from IADP.
-                F_warm = self.middle.base.F[:self.n_state, :self.n_state].copy()
-                G_warm = self.middle.base.G[:self.n_state, :self.n_control].copy()
+                F_warm = self.middle.base.F[: self.n_state, : self.n_state].copy()
+                G_warm = self.middle.base.G[: self.n_state, : self.n_control].copy()
                 self.fdd.warm_start(F_nominal=F_warm, G_nominal=G_warm)
                 self._fdd_ready = True
             self._fdd_active = True
 
         if self._fdd_active and self._step % self.cfg.fdd_update_every == 0:
-            u_for_fdd = (self._last_u_safe
-                         if self._last_u_safe is not None
-                         else self._last_u_indi)
+            u_for_fdd = (
+                self._last_u_safe
+                if self._last_u_safe is not None
+                else self._last_u_indi
+            )
             self._last_fdd = self.fdd.step(next_x_obs, u_for_fdd)
 
         middle_diag = self.middle.learn(
-            next_x_obs, reference, time_step=time_step, fdd=self._last_fdd,
+            next_x_obs,
+            reference,
+            time_step=time_step,
+            fdd=self._last_fdd,
         )
 
-        if (self.l4 is not None
-                and self._last_u_safe is not None
-                and self._last_r_eff is not None):
+        if (
+            self.l4 is not None
+            and self._last_u_safe is not None
+            and self._last_r_eff is not None
+        ):
             from tensoraerospace.agent.uftc.l4 import Transition
+
             r_eff_vec = np.asarray(self._last_r_eff, dtype=np.float64).copy()
             n_ref = int(self.l4.cfg.n_ref_dim)
             n_action = int(self.l4.cfg.n_action)
@@ -431,16 +482,22 @@ class UFTCController(BaseRLModel):
             u_raw = np.asarray(self._last_u_safe, dtype=np.float64).reshape(-1)
             a_actual = np.zeros(n_action, dtype=np.float64)
             a_actual[: min(n_action, u_raw.size)] = u_raw[: min(n_action, u_raw.size)]
-            self.l4.learn(Transition(
-                s=np.asarray(next_x_obs, dtype=np.float64).reshape(-1)[:self.n_state].copy(),
-                a_actual=a_actual,
-                r_used=r_eff_vec,
-                reward=float(-(np.linalg.norm(x_for_err - r_for_err) ** 2)),
-                s_next=np.asarray(next_x_obs, dtype=np.float64).reshape(-1)[:self.n_state].copy(),
-                done=False,
-                fdd=self._last_fdd,
-                alarm="OK",
-            ))
+            self.l4.learn(
+                Transition(
+                    s=np.asarray(next_x_obs, dtype=np.float64)
+                    .reshape(-1)[: self.n_state]
+                    .copy(),
+                    a_actual=a_actual,
+                    r_used=r_eff_vec,
+                    reward=float(-(np.linalg.norm(x_for_err - r_for_err) ** 2)),
+                    s_next=np.asarray(next_x_obs, dtype=np.float64)
+                    .reshape(-1)[: self.n_state]
+                    .copy(),
+                    done=False,
+                    fdd=self._last_fdd,
+                    alarm="OK",
+                )
+            )
 
         # Phase 4 — composite Lyapunov monitor (passive: collect VState, step,
         # dispatch macro-actions). Runs after middle.learn so RLS state is
@@ -450,12 +507,14 @@ class UFTCController(BaseRLModel):
         if self.monitor is not None:
             try:
                 from tensoraerospace.agent.uftc.monitor import collect_vstate
+
                 vstate = collect_vstate(self)
                 self._monitor_out = self.monitor.step(vstate)
                 self._monitor_alarm = self._monitor_out.alarm
                 if self.dispatcher is not None:
                     dispatch_diag = self.dispatcher.dispatch(
-                        self._monitor_out.interventions, self._step,
+                        self._monitor_out.interventions,
+                        self._step,
                     )
                 self._last_dispatch_diag = dispatch_diag
                 monitor_block = {
@@ -464,7 +523,7 @@ class UFTCController(BaseRLModel):
                     "mu_uub_pred": float(self._monitor_out.mu_uub_pred),
                     "margin": float(self._monitor_out.margin),
                 }
-            except Exception:                          # pragma: no cover
+            except Exception:  # pragma: no cover
                 monitor_block = None
 
         self._step += 1
@@ -520,10 +579,10 @@ class UFTCController(BaseRLModel):
             diag["l1"] = {
                 "enabled": True,
                 "severity": float(self._last_fdd.severity),
-                "hjb_value": (float(last.hjb_value)
-                              if last is not None else 0.0),
-                "intervention_norm": (float(last.intervention_norm)
-                                      if last is not None else 0.0),
+                "hjb_value": (float(last.hjb_value) if last is not None else 0.0),
+                "intervention_norm": (
+                    float(last.intervention_norm) if last is not None else 0.0
+                ),
                 "active": (bool(last.active) if last is not None else False),
             }
         if self.l4 is not None:
@@ -567,6 +626,7 @@ class UFTCController(BaseRLModel):
         if self.monitor is not None:
             self.monitor.reset()
             from tensoraerospace.agent.uftc.monitor import MonitorOutput
+
             self._monitor_out = MonitorOutput.zero()
             self._monitor_alarm = "OK"
             self._last_dispatch_diag = {}
@@ -622,9 +682,11 @@ def _to_jsonable(obj):
     if isinstance(obj, np.ndarray):
         return obj.tolist()
     if _dataclasses.is_dataclass(obj):
-        return {k: _to_jsonable(v)
-                for k, v in _dataclasses.asdict(obj).items()
-                if k != "history"}
+        return {
+            k: _to_jsonable(v)
+            for k, v in _dataclasses.asdict(obj).items()
+            if k != "history"
+        }
     if isinstance(obj, dict):
         return {k: _to_jsonable(v) for k, v in obj.items()}
     if isinstance(obj, (list, tuple)):
@@ -651,8 +713,7 @@ def _uftc_save(self, path: _Union[str, _Path, None] = None) -> str:
 
     cfg_payload = {
         "policy": {
-            "name": (f"{self.__class__.__module__}."
-                     f"{self.__class__.__name__}"),
+            "name": (f"{self.__class__.__module__}." f"{self.__class__.__name__}"),
             "params": {
                 "n_state": self.n_state,
                 "n_control": self.n_control,
@@ -669,9 +730,12 @@ def _uftc_save(self, path: _Union[str, _Path, None] = None) -> str:
     fdd_dir.mkdir(parents=True, exist_ok=True)
     np.savez(
         fdd_dir / "kalman.npz",
-        F=self.fdd.kalman.F, G=self.fdd.kalman.G,
-        Q=self.fdd.kalman.Q, R=self.fdd.kalman.R,
-        x_hat=self.fdd.kalman.x_hat, P=self.fdd.kalman.P,
+        F=self.fdd.kalman.F,
+        G=self.fdd.kalman.G,
+        Q=self.fdd.kalman.Q,
+        R=self.fdd.kalman.R,
+        x_hat=self.fdd.kalman.x_hat,
+        P=self.fdd.kalman.P,
     )
     np.savez(
         fdd_dir / "cpd.npz",
@@ -692,8 +756,11 @@ def _uftc_save(self, path: _Union[str, _Path, None] = None) -> str:
         sm_s=self.inner.sm_obs._s,
         sm_z=self.inner.sm_obs._z,
         mode=np.asarray(self.inner.mode),
-        prev_omega=(prev_omega if prev_omega is not None
-                    else np.zeros(self.n_inner_state, dtype=np.float64)),
+        prev_omega=(
+            prev_omega
+            if prev_omega is not None
+            else np.zeros(self.n_inner_state, dtype=np.float64)
+        ),
         has_prev_omega=np.asarray(prev_omega is not None),
         fdd_fault_present=np.asarray(self._last_fdd.fault_present),
         fdd_severity=np.asarray(self._last_fdd.severity),
@@ -702,22 +769,28 @@ def _uftc_save(self, path: _Union[str, _Path, None] = None) -> str:
         fdd_time_since_event=np.asarray(self._last_fdd.time_since_event),
     )
 
-    (run_dir / "manifest.json").write_text(_json.dumps({
-        "inner_subdir": _Path(inner_dir).name,
-        "middle_subdir": _Path(middle_dir).name,
-    }, indent=2))
+    (run_dir / "manifest.json").write_text(
+        _json.dumps(
+            {
+                "inner_subdir": _Path(inner_dir).name,
+                "middle_subdir": _Path(middle_dir).name,
+            },
+            indent=2,
+        )
+    )
     return str(run_dir)
 
 
 @classmethod
-def _uftc_from_pretrained(cls, repo_name: str,
-                          access_token=None, version=None):
+def _uftc_from_pretrained(cls, repo_name: str, access_token=None, version=None):
     p = _Path(str(repo_name)).expanduser()
     if p.is_dir():
         return cls._load_from_dir(p)
     from huggingface_hub import snapshot_download
-    folder = snapshot_download(repo_id=str(repo_name),
-                               token=access_token, revision=version)
+
+    folder = snapshot_download(
+        repo_id=str(repo_name), token=access_token, revision=version
+    )
     return cls._load_from_dir(_Path(folder))
 
 
@@ -728,16 +801,20 @@ def _uftc_load_from_dir(cls, folder: _Path):
     cfg_dict = cfg_payload["policy"]["config"]
 
     inner_cfg = AAINDIConfig(**cfg_dict["inner_cfg"])
-    middle_cfg = IADPConfig(**_from_jsonable_for_iadpconfig(
-        cfg_dict["middle_cfg"]))
+    middle_cfg = IADPConfig(**_from_jsonable_for_iadpconfig(cfg_dict["middle_cfg"]))
     fdd_cfg = FDDConfig(**cfg_dict["fdd_cfg"])
     rls_pol = RLSResetPolicy(**cfg_dict["rls_reset_policy"])
 
     cfg = UFTCConfig(
-        **{k: v for k, v in cfg_dict.items() if k not in (
-            "inner_cfg", "middle_cfg", "fdd_cfg", "rls_reset_policy")},
-        inner_cfg=inner_cfg, middle_cfg=middle_cfg,
-        fdd_cfg=fdd_cfg, rls_reset_policy=rls_pol,
+        **{
+            k: v
+            for k, v in cfg_dict.items()
+            if k not in ("inner_cfg", "middle_cfg", "fdd_cfg", "rls_reset_policy")
+        },
+        inner_cfg=inner_cfg,
+        middle_cfg=middle_cfg,
+        fdd_cfg=fdd_cfg,
+        rls_reset_policy=rls_pol,
     )
 
     ctl = cls(
@@ -750,9 +827,11 @@ def _uftc_load_from_dir(cls, folder: _Path):
 
     manifest = _json.loads((folder / "manifest.json").read_text())
     ctl.inner.base = AAINDIAgent._load_from_dir(
-        folder / "inner" / manifest["inner_subdir"])
+        folder / "inner" / manifest["inner_subdir"]
+    )
     ctl.middle.base = IADPAgent._load_from_dir(
-        folder / "middle" / manifest["middle_subdir"])
+        folder / "middle" / manifest["middle_subdir"]
+    )
     ctl.middle._gamma_nominal = ctl.middle.base.rls.gamma_rls
 
     with np.load(folder / "fdd" / "kalman.npz") as npz:

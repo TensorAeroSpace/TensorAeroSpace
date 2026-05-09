@@ -1,11 +1,12 @@
 """IADPMiddle.force_reset inflates RLS regardless of FDD."""
+
 from __future__ import annotations
 
 import numpy as np
 
-from tensoraerospace.agent.uftc.middle import IADPMiddle, RLSResetPolicy
 # (IADPAgent factory import depends on existing IADP API)
 from tensoraerospace.agent.iadp.model import IADPAgent
+from tensoraerospace.agent.uftc.middle import IADPMiddle, RLSResetPolicy
 
 
 def _build_middle() -> IADPMiddle:

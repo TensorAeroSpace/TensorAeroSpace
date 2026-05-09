@@ -8,6 +8,7 @@ enforces a CBF-style condition::
 while minimising ``‖u − u_nominal‖²`` subject to ``u_min ≤ u ≤ u_max``.
 The solver is OSQP via cvxpy; failures degrade to the nominal control.
 """
+
 from __future__ import annotations
 
 import logging
@@ -34,7 +35,7 @@ class _Identity:
     until a real :class:`DeepReachValueFn` is wired in.
     """
 
-    def value(self, x: np.ndarray) -> float:                  # noqa: D401
+    def value(self, x: np.ndarray) -> float:  # noqa: D401
         return 1.0
 
     def gradient(self, x: np.ndarray) -> np.ndarray:
@@ -82,7 +83,8 @@ class HJReachabilityShield:
         self.cfg = cfg
         if conformal_margin is None:
             conformal_margin = ConformalMargin(
-                cfg.conformal, lipschitz_const=value_fn.lipschitz_const(),
+                cfg.conformal,
+                lipschitz_const=value_fn.lipschitz_const(),
             )
         self.conformal = conformal_margin
         self._hold_one_tick = False
@@ -98,8 +100,10 @@ class HJReachabilityShield:
 
     def set_dynamics_jacobian(self, F: np.ndarray, G: np.ndarray) -> None:
         """UFTCController calls this once per tick with current F̃, G̃ from RLS."""
-        self._cached_FG = (np.asarray(F, dtype=np.float64),
-                           np.asarray(G, dtype=np.float64))
+        self._cached_FG = (
+            np.asarray(F, dtype=np.float64),
+            np.asarray(G, dtype=np.float64),
+        )
 
     def filter(
         self,
@@ -133,7 +137,7 @@ class HJReachabilityShield:
         grad_v = self.value_fn.gradient(x)
         try:
             u_safe = self._solve_qp(x, u_nominal, grad_v, v_x, eps_t)
-        except Exception as e:                      # pragma: no cover - logged
+        except Exception as e:  # pragma: no cover - logged
             LOG.warning("HJ-shield QP failed (%s); falling back to nominal", e)
             self._last_u_safe = u_nominal.copy()
             return ShieldOutput(u_nominal.copy(), 0.0, v_x, active=False)
@@ -154,7 +158,9 @@ class HJReachabilityShield:
         self._last_eps = None
 
     # ----- internal -----
-    def _affine_FG(self, x: np.ndarray, u_nominal: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+    def _affine_FG(
+        self, x: np.ndarray, u_nominal: np.ndarray
+    ) -> tuple[np.ndarray, np.ndarray]:
         if self._cached_FG is not None:
             return self._cached_FG
         if self.dynamics_fn is None:
@@ -164,11 +170,13 @@ class HJReachabilityShield:
         f0 = self.dynamics_fn(x, u_nominal)
         F = np.zeros((self.n_state, self.n_state))
         for i in range(self.n_state):
-            x_p = x.copy(); x_p[i] += h
+            x_p = x.copy()
+            x_p[i] += h
             F[:, i] = (self.dynamics_fn(x_p, u_nominal) - f0) / h
         G = np.zeros((self.n_state, self.n_control))
         for i in range(self.n_control):
-            u_p = u_nominal.copy(); u_p[i] += h
+            u_p = u_nominal.copy()
+            u_p[i] += h
             G[:, i] = (self.dynamics_fn(x, u_p) - f0) / h
         return F, G
 

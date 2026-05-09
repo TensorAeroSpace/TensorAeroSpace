@@ -20,17 +20,24 @@ from tensoraerospace.agent.uftc.l1.value_fn import DeepReachConfig
 
 def main(out_dir: str = "artifacts/v_hj/double_integrator") -> None:
     cfg_v = DeepReachConfig(
-        n_state=2, hidden_sizes=(32, 32),
+        n_state=2,
+        hidden_sizes=(32, 32),
         state_bounds=[[-2.0, 2.0], [-2.0, 2.0]],
         time_horizon=1.0,
     )
     train_cfg = TrainingConfig(
-        epochs=50, batch_size=512, lr=1e-3, n_state=2, n_control=1,
-        u_low=np.array([-1.0]), u_high=np.array([1.0]),
+        epochs=50,
+        batch_size=512,
+        lr=1e-3,
+        n_state=2,
+        n_control=1,
+        u_low=np.array([-1.0]),
+        u_high=np.array([1.0]),
         seed=0,
     )
     fn, history = train_value_fn(
-        cfg_v, train_cfg,
+        cfg_v,
+        train_cfg,
         dynamics=lambda x, u: np.array([x[1], u[0]]),
         safe_set=lambda x: 1.0 - max(abs(x[0]), abs(x[1])),
     )

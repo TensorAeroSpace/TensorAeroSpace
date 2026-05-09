@@ -1,4 +1,5 @@
 """End-to-end FDD detector tests: nominal silence + step-fault detection."""
+
 from __future__ import annotations
 
 import numpy as np
@@ -15,14 +16,22 @@ from tensoraerospace.agent.uftc.fdd.kalman_3step import NominalKalman
 def _make_detector(n_state=2, n_control=2, dt=0.01, h_alarm=20.0):
     F = np.zeros((n_state, n_state))
     G = np.eye(n_state, n_control) * 0.1
-    kf = NominalKalman(F_nominal=F, G_nominal=G,
-                       Q=np.eye(n_state) * 1e-3,
-                       R=np.eye(n_state) * 1e-2,
-                       adapt_Q=False, adapt_R=False)
-    cpd = ChangePointDetector(n_dim=n_state, h_alarm=h_alarm,
-                              h_clear=5.0, cooldown_steps=200)
-    return FDDDetector(n_state=n_state, n_control=n_control,
-                       kalman=kf, cpd=cpd, dt=dt), F, G
+    kf = NominalKalman(
+        F_nominal=F,
+        G_nominal=G,
+        Q=np.eye(n_state) * 1e-3,
+        R=np.eye(n_state) * 1e-2,
+        adapt_Q=False,
+        adapt_R=False,
+    )
+    cpd = ChangePointDetector(
+        n_dim=n_state, h_alarm=h_alarm, h_clear=5.0, cooldown_steps=200
+    )
+    return (
+        FDDDetector(n_state=n_state, n_control=n_control, kalman=kf, cpd=cpd, dt=dt),
+        F,
+        G,
+    )
 
 
 def test_fdd_output_shape() -> None:
@@ -92,9 +101,12 @@ def test_reset_clears_state() -> None:
 
 def test_factory_method_builds_default_components() -> None:
     fdd = FDDDetector.from_config(
-        n_state=3, n_control=2, dt=0.01,
+        n_state=3,
+        n_control=2,
+        dt=0.01,
         config=FDDConfig(h_alarm=25.0),
-        F_nominal=np.zeros((3, 3)), G_nominal=np.zeros((3, 2)),
+        F_nominal=np.zeros((3, 3)),
+        G_nominal=np.zeros((3, 2)),
     )
     assert fdd.kalman.n_state == 3
     assert fdd.cpd.h_alarm == 25.0

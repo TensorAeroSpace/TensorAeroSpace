@@ -1,4 +1,5 @@
 """Tests for the adaptive 3-step Kalman filter used by UFTC FDD."""
+
 from __future__ import annotations
 
 import numpy as np
@@ -17,8 +18,7 @@ def _step_plant(x, u, F, G, sigma=0.0, rng=None):
 def test_kalman_returns_kalman_step_namedtuple_like() -> None:
     F = np.zeros((2, 2))
     G = np.eye(2)
-    kf = NominalKalman(F_nominal=F, G_nominal=G,
-                       Q=np.eye(2) * 1e-3, R=np.eye(2) * 1e-2)
+    kf = NominalKalman(F_nominal=F, G_nominal=G, Q=np.eye(2) * 1e-3, R=np.eye(2) * 1e-2)
     out = kf.step(np.zeros(2), np.zeros(2))
     assert isinstance(out, KalmanStep)
     assert out.x_hat.shape == (2,)
@@ -31,8 +31,7 @@ def test_kalman_tracks_linear_plant_within_tolerance() -> None:
     rng = np.random.default_rng(0)
     F = np.array([[0.05, 0.0], [0.0, -0.03]])
     G = np.array([[0.1, 0.0], [0.0, 0.2]])
-    kf = NominalKalman(F_nominal=F, G_nominal=G,
-                       Q=np.eye(2) * 1e-4, R=np.eye(2) * 1e-2)
+    kf = NominalKalman(F_nominal=F, G_nominal=G, Q=np.eye(2) * 1e-4, R=np.eye(2) * 1e-2)
     x = np.zeros(2)
     errs = []
     for _ in range(500):
@@ -48,8 +47,7 @@ def test_kalman_innovation_zero_mean_under_nominal() -> None:
     rng = np.random.default_rng(1)
     F = np.zeros((2, 2))
     G = np.eye(2)
-    kf = NominalKalman(F_nominal=F, G_nominal=G,
-                       Q=np.eye(2) * 1e-3, R=np.eye(2) * 1e-2)
+    kf = NominalKalman(F_nominal=F, G_nominal=G, Q=np.eye(2) * 1e-3, R=np.eye(2) * 1e-2)
     x = np.zeros(2)
     nus = []
     for _ in range(1000):
@@ -83,8 +81,12 @@ def test_kalman_warm_start_replaces_F_G() -> None:
 
 
 def test_kalman_reset_returns_state_to_initial() -> None:
-    kf = NominalKalman(F_nominal=np.zeros((2, 2)), G_nominal=np.eye(2),
-                       Q=np.eye(2) * 1e-3, R=np.eye(2) * 1e-2)
+    kf = NominalKalman(
+        F_nominal=np.zeros((2, 2)),
+        G_nominal=np.eye(2),
+        Q=np.eye(2) * 1e-3,
+        R=np.eye(2) * 1e-2,
+    )
     rng = np.random.default_rng(2)
     for _ in range(50):
         kf.step(rng.normal(size=2), rng.normal(size=2))
@@ -97,24 +99,27 @@ def test_kalman_validates_alpha_range() -> None:
     F = np.zeros((2, 2))
     G = np.eye(2)
     with pytest.raises(ValueError):
-        NominalKalman(F_nominal=F, G_nominal=G, Q=np.eye(2), R=np.eye(2),
-                      alpha_Q=-0.1)
+        NominalKalman(F_nominal=F, G_nominal=G, Q=np.eye(2), R=np.eye(2), alpha_Q=-0.1)
     with pytest.raises(ValueError):
-        NominalKalman(F_nominal=F, G_nominal=G, Q=np.eye(2), R=np.eye(2),
-                      alpha_R=1.5)
+        NominalKalman(F_nominal=F, G_nominal=G, Q=np.eye(2), R=np.eye(2), alpha_R=1.5)
     with pytest.raises(ValueError):
-        NominalKalman(F_nominal=F, G_nominal=G, Q=np.eye(2), R=np.eye(2),
-                      alpha_Q=0.0)
+        NominalKalman(F_nominal=F, G_nominal=G, Q=np.eye(2), R=np.eye(2), alpha_Q=0.0)
 
 
 def test_kalman_adaptation_changes_Q_and_R() -> None:
     rng = np.random.default_rng(3)
     F = np.zeros((2, 2))
     G = np.eye(2)
-    kf = NominalKalman(F_nominal=F, G_nominal=G,
-                       Q=np.eye(2) * 1e-3, R=np.eye(2) * 1e-2,
-                       alpha_Q=0.95, alpha_R=0.95,
-                       adapt_Q=True, adapt_R=True)
+    kf = NominalKalman(
+        F_nominal=F,
+        G_nominal=G,
+        Q=np.eye(2) * 1e-3,
+        R=np.eye(2) * 1e-2,
+        alpha_Q=0.95,
+        alpha_R=0.95,
+        adapt_Q=True,
+        adapt_R=True,
+    )
     Q0 = kf.Q.copy()
     R0 = kf.R.copy()
     x = np.zeros(2)

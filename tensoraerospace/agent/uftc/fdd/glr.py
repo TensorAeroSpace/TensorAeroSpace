@@ -15,6 +15,7 @@ References:
     Basseville & Nikiforov (1993) Detection of Abrupt Changes, ch. 7.
     Willsky (1976) Survey of failure detection methods.
 """
+
 from __future__ import annotations
 
 from collections import deque
@@ -36,7 +37,7 @@ class GLRConfig:
 class GLRState:
     statistic: float
     alarm: bool
-    severity: float            # statistic / h_alarm, clipped to [0, 10]
+    severity: float  # statistic / h_alarm, clipped to [0, 10]
     drift_estimate: np.ndarray
     time_since_alarm: int
 
@@ -94,8 +95,10 @@ class GLRDetector:
         elif self._in_alarm:
             self._steps_in_alarm += 1
             self._steps_since_alarm += 1
-            if (T_max < self.cfg.h_clear
-                    and self._steps_since_alarm > self.cfg.cooldown_steps):
+            if (
+                T_max < self.cfg.h_clear
+                and self._steps_since_alarm > self.cfg.cooldown_steps
+            ):
                 self._in_alarm = False
         else:
             self._steps_since_alarm = min(self._steps_since_alarm + 1, 10**9)

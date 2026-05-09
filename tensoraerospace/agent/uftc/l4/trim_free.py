@@ -1,4 +1,5 @@
 """Trim-free longitudinal reference wrapper for L4 D-SAC."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -24,8 +25,13 @@ class LongitudinalTrimFreeWrapper:
     def __init__(self, cfg: LongitudinalTrimFreeConfig) -> None:
         self.cfg = cfg
 
-    def apply(self, r_tilde_actor: np.ndarray, *, x_obs: np.ndarray,
-              base_reference: np.ndarray) -> np.ndarray:
+    def apply(
+        self,
+        r_tilde_actor: np.ndarray,
+        *,
+        x_obs: np.ndarray,
+        base_reference: np.ndarray,
+    ) -> np.ndarray:
         if not self.cfg.enabled:
             return np.asarray(base_reference, dtype=np.float64).copy()
         out = np.asarray(base_reference, dtype=np.float64).copy()

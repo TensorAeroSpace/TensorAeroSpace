@@ -4,6 +4,7 @@ Drives the binary `fault_present` flag and the soft `severity` signal
 that the rest of the controller uses to scale RLS reset and trust-region
 expansion.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -15,8 +16,8 @@ class ChangePointState:
 
     cusum: float
     alarm: bool
-    severity: float          # cusum / h_alarm, clipped to [0, 10]
-    time_since_alarm: int    # steps since last rising edge (0 if never fired)
+    severity: float  # cusum / h_alarm, clipped to [0, 10]
+    time_since_alarm: int  # steps since last rising edge (0 if never fired)
 
 
 class ChangePointDetector:

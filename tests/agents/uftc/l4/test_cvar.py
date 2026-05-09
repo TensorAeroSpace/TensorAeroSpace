@@ -1,4 +1,5 @@
 """cvar_alpha_fn: tail-mean correctness; risk_gate: monotonicity."""
+
 from __future__ import annotations
 
 import numpy as np
@@ -31,7 +32,7 @@ def test_cvar_grad_flows_back() -> None:
 
 def test_risk_gate_monotone_in_each_input() -> None:
     z_low = torch.randn(2, 16) * 0.1
-    z_hi = torch.randn(2, 16) * 5.0   # high variance
+    z_hi = torch.randn(2, 16) * 5.0  # high variance
     g_low = risk_gate(z_low, fdd_severity=0.0, monitor_alarm="OK")
     g_hi = risk_gate(z_hi, fdd_severity=0.0, monitor_alarm="OK")
     assert g_hi >= g_low

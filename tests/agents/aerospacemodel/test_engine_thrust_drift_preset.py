@@ -12,6 +12,7 @@ same one called from ``NonlinearAngularF16``. The plan's aspirational
 broader API refactor; the behavioural assertion (``thrust_scale`` ≈ 0.95
 after 5 s at 1 %/s drift) is preserved verbatim.
 """
+
 from __future__ import annotations
 
 from tensoraerospace.aerospacemodel.f16.nonlinear.angular.params import (
@@ -35,8 +36,9 @@ def test_thrust_loss_linear_with_time() -> None:
     """At default 1 %/s loss, after 5 s thrust scale ≈ 0.95."""
     geo = load_f16_geometry()
     params = F16AngularParameters()
-    mgr = DamageManager(geometry=geo, params=params,
-                        profile=presets.ENGINE_THRUST_DRIFT)
+    mgr = DamageManager(
+        geometry=geo, params=params, profile=presets.ENGINE_THRUST_DRIFT
+    )
     dt = 0.01
     n = int(5.0 / dt)
     t_prev = 0.0
@@ -45,6 +47,6 @@ def test_thrust_loss_linear_with_time() -> None:
         mgr.update(t_current=t_now, t_previous=t_prev)
         t_prev = t_now
     state = mgr.state
-    assert 0.93 <= state.engine.thrust_scale <= 0.97, (
-        f"thrust_scale={state.engine.thrust_scale} not in [0.93, 0.97]"
-    )
+    assert (
+        0.93 <= state.engine.thrust_scale <= 0.97
+    ), f"thrust_scale={state.engine.thrust_scale} not in [0.93, 0.97]"

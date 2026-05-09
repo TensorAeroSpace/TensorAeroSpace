@@ -7,6 +7,7 @@ level. Phase 1 ``FDDOutput`` exposes only ``severity`` (used as
 ``severity_abrupt`` here); ``severity_gradual`` defaults to 0.0 until
 Task 6 enriches the dataclass.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass

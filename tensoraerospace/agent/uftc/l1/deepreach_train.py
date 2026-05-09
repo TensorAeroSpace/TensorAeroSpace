@@ -7,6 +7,7 @@ for Phase 2 to land. The CLI script wraps this function with argparse.
 
 References: Bansal & Tomlin (2021), DeepReach.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -14,7 +15,7 @@ from typing import Callable, Optional
 
 import numpy as np
 
-from .value_fn import DeepReachConfig, DeepReachValueFn, _MLP
+from .value_fn import _MLP, DeepReachConfig, DeepReachValueFn
 
 
 @dataclass
@@ -47,16 +48,22 @@ def train_value_fn(
     model.train()
     opt = torch.optim.Adam(model.parameters(), lr=train_cfg.lr)
 
-    bounds = (np.asarray(value_cfg.state_bounds, dtype=np.float64)
-              if value_cfg.state_bounds is not None
-              else np.repeat([[-1.0, 1.0]], value_cfg.n_state, axis=0))
+    bounds = (
+        np.asarray(value_cfg.state_bounds, dtype=np.float64)
+        if value_cfg.state_bounds is not None
+        else np.repeat([[-1.0, 1.0]], value_cfg.n_state, axis=0)
+    )
 
     history: dict[str, list[float]] = {"loss": []}
     for epoch in range(int(train_cfg.epochs)):
-        x = rng.uniform(bounds[:, 0], bounds[:, 1],
-                        size=(int(train_cfg.batch_size), value_cfg.n_state))
-        t = rng.uniform(0.0, value_cfg.time_horizon,
-                        size=(int(train_cfg.batch_size), 1))
+        x = rng.uniform(
+            bounds[:, 0],
+            bounds[:, 1],
+            size=(int(train_cfg.batch_size), value_cfg.n_state),
+        )
+        t = rng.uniform(
+            0.0, value_cfg.time_horizon, size=(int(train_cfg.batch_size), 1)
+        )
         x_t = torch.tensor(x, dtype=torch.float64, requires_grad=True)
         t_t = torch.tensor(t, dtype=torch.float64, requires_grad=True)
         inp = torch.cat([x_t, t_t], dim=-1)
@@ -68,12 +75,20 @@ def train_value_fn(
         # Min-max over u (control) and d (disturbance) computed analytically
         # for affine-in-u dynamics is hard for arbitrary callables; sample
         # finitely-many candidates and take the worst.
-        u_samples = _sample_box(train_cfg.u_low, train_cfg.u_high,
-                                n=8, n_state=int(value_cfg.n_state),
-                                rng=rng)
-        d_samples = _sample_box(train_cfg.disturbance_low, train_cfg.disturbance_high,
-                                n=4, n_state=int(value_cfg.n_state),
-                                rng=rng)
+        u_samples = _sample_box(
+            train_cfg.u_low,
+            train_cfg.u_high,
+            n=8,
+            n_state=int(value_cfg.n_state),
+            rng=rng,
+        )
+        d_samples = _sample_box(
+            train_cfg.disturbance_low,
+            train_cfg.disturbance_high,
+            n=4,
+            n_state=int(value_cfg.n_state),
+            rng=rng,
+        )
         worst = None
         for u_s in u_samples:
             for d_s in d_samples:
@@ -84,14 +99,16 @@ def train_value_fn(
                     worst = hji
                 else:
                     worst = torch.minimum(worst, hji)
-        loss_hji = (worst ** 2).mean()
+        loss_hji = (worst**2).mean()
 
         # Boundary condition at t = T.
-        x_b = rng.uniform(bounds[:, 0], bounds[:, 1],
-                          size=(int(train_cfg.batch_size), value_cfg.n_state))
+        x_b = rng.uniform(
+            bounds[:, 0],
+            bounds[:, 1],
+            size=(int(train_cfg.batch_size), value_cfg.n_state),
+        )
         t_b = np.full((int(train_cfg.batch_size), 1), value_cfg.time_horizon)
-        inp_b = torch.tensor(np.concatenate([x_b, t_b], axis=-1),
-                             dtype=torch.float64)
+        inp_b = torch.tensor(np.concatenate([x_b, t_b], axis=-1), dtype=torch.float64)
         v_b = model(inp_b).squeeze(-1)
         l_b = torch.tensor([safe_set(xi) for xi in x_b], dtype=torch.float64)
         loss_bdy = ((v_b - l_b) ** 2).mean()
@@ -106,8 +123,14 @@ def train_value_fn(
     return DeepReachValueFn(value_cfg, model), history
 
 
-def _sample_box(low: Optional[np.ndarray], high: Optional[np.ndarray],
-                *, n: int, n_state: int, rng: np.random.Generator) -> list[np.ndarray]:
+def _sample_box(
+    low: Optional[np.ndarray],
+    high: Optional[np.ndarray],
+    *,
+    n: int,
+    n_state: int,
+    rng: np.random.Generator,
+) -> list[np.ndarray]:
     if low is None or high is None:
         return [np.zeros(n_state)]
     low = np.asarray(low, dtype=np.float64).reshape(-1)

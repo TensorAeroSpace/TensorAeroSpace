@@ -1,4 +1,5 @@
 """save/load round-trip preserves UFTCController behaviour."""
+
 from __future__ import annotations
 
 import json
@@ -24,8 +25,10 @@ def _drive(ctl: UFTCController, n: int, seed: int = 0) -> np.ndarray:
 
 def test_save_creates_expected_files(tmp_path: Path) -> None:
     ctl = UFTCController(
-        n_state=3, n_control=3,
-        nominal_F=np.zeros((3, 3)), nominal_G=np.eye(3) * 0.1,
+        n_state=3,
+        n_control=3,
+        nominal_F=np.zeros((3, 3)),
+        nominal_G=np.eye(3) * 0.1,
         config=UFTCConfig(fdd_warmup_steps=10),
     )
     _drive(ctl, 30)
@@ -43,8 +46,10 @@ def test_save_creates_expected_files(tmp_path: Path) -> None:
 
 def test_round_trip_predict_matches(tmp_path: Path) -> None:
     ctl = UFTCController(
-        n_state=3, n_control=3,
-        nominal_F=np.zeros((3, 3)), nominal_G=np.eye(3) * 0.1,
+        n_state=3,
+        n_control=3,
+        nominal_F=np.zeros((3, 3)),
+        nominal_G=np.eye(3) * 0.1,
         config=UFTCConfig(fdd_warmup_steps=10),
     )
     _drive(ctl, 50, seed=42)
@@ -61,8 +66,10 @@ def test_round_trip_predict_matches(tmp_path: Path) -> None:
 
 def test_config_json_human_readable(tmp_path: Path) -> None:
     ctl = UFTCController(
-        n_state=2, n_control=2,
-        nominal_F=np.zeros((2, 2)), nominal_G=np.eye(2),
+        n_state=2,
+        n_control=2,
+        nominal_F=np.zeros((2, 2)),
+        nominal_G=np.eye(2),
         config=UFTCConfig(fdd_warmup_steps=5),
     )
     folder = ctl.save(tmp_path)

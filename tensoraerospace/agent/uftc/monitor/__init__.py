@@ -1,4 +1,5 @@
 """UFTC Phase 4 — composite Lyapunov runtime monitor + UUB certificate."""
+
 from __future__ import annotations
 
 from .alarm import AlarmStateMachine

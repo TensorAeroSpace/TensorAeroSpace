@@ -22,6 +22,4 @@ def effective_thrust(base_thrust: float, state: DamageState) -> float:
     """
     if state.engine.hard_failure:
         return 0.0
-    return float(
-        base_thrust * state.engine.thrust_factor * state.engine.thrust_scale
-    )
+    return float(base_thrust * state.engine.thrust_factor * state.engine.thrust_scale)

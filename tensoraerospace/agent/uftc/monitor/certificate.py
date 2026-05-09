@@ -7,6 +7,7 @@ Standalone callable suitable for an offline CLI:
         --rollouts artifacts/uftc/cert_rollouts.npz \
         --report artifacts/uftc/uub_certificate.json
 """
+
 from __future__ import annotations
 
 import json
@@ -30,9 +31,13 @@ class CertificateReport:
         return json.dumps(asdict(self), indent=2)
 
 
-def run_certificate(cfg: dict, *, rollouts: dict[str, np.ndarray] | None = None,
-                    transient_steps: int = 200,
-                    pass_rate_target: float = 0.99) -> CertificateReport:
+def run_certificate(
+    cfg: dict,
+    *,
+    rollouts: dict[str, np.ndarray] | None = None,
+    transient_steps: int = 200,
+    pass_rate_target: float = 0.99,
+) -> CertificateReport:
     eps = np.asarray(cfg["eps_matrix"], dtype=np.float64)
     a = np.asarray(cfg["a_diag"], dtype=np.float64)
     d = np.asarray(cfg["d_disturbance"], dtype=np.float64)
@@ -67,20 +72,27 @@ def run_certificate(cfg: dict, *, rollouts: dict[str, np.ndarray] | None = None,
                 "max_v_total": float(arr.max()),
             }
         worst = min((r["pass_rate"] for r in rollouts_out.values()), default=1.0)
-        verdict = "pass" if (metzler == "pass" and hurwitz == "pass"
-                             and worst >= pass_rate_target) else "fail"
+        verdict = (
+            "pass"
+            if (metzler == "pass" and hurwitz == "pass" and worst >= pass_rate_target)
+            else "fail"
+        )
     else:
         verdict = "pass" if (metzler == "pass" and hurwitz == "pass") else "fail"
 
     return CertificateReport(
-        metzler_check=metzler, hurwitz_check=hurwitz,
-        lambda_min=lambda_min, mu_uub_pred=mu,
-        rollouts=rollouts_out, verdict=verdict,
+        metzler_check=metzler,
+        hurwitz_check=hurwitz,
+        lambda_min=lambda_min,
+        mu_uub_pred=mu,
+        rollouts=rollouts_out,
+        verdict=verdict,
     )
 
 
-def _cli() -> None:                            # pragma: no cover - CLI plumbing
+def _cli() -> None:  # pragma: no cover - CLI plumbing
     import argparse
+
     parser = argparse.ArgumentParser()
     parser.add_argument("--config", type=str, required=True)
     parser.add_argument("--rollouts", type=str, default=None)
@@ -96,5 +108,5 @@ def _cli() -> None:                            # pragma: no cover - CLI plumbing
     raise SystemExit(0 if rep.verdict == "pass" else 1)
 
 
-if __name__ == "__main__":                     # pragma: no cover
+if __name__ == "__main__":  # pragma: no cover
     _cli()

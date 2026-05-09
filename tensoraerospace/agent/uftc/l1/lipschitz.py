@@ -6,6 +6,7 @@ the Jacobian-vector product. Returns the maximum spectral norm seen.
 This is an upper bound only when the maximiser falls inside the
 sampled distribution; we mitigate with multiple restarts.
 """
+
 from __future__ import annotations
 
 from typing import Callable
@@ -44,8 +45,11 @@ def power_iteration_lipschitz(
             y = model(x)
             u_var = u.detach().clone().requires_grad_(True)
             (jt_u,) = torch.autograd.grad(
-                y, x, grad_outputs=u_var,
-                retain_graph=True, create_graph=True,
+                y,
+                x,
+                grad_outputs=u_var,
+                retain_graph=True,
+                create_graph=True,
             )
             # ``jt_u`` is linear in ``u_var``; differentiating
             # ``<jt_u, w>`` w.r.t. ``u_var`` yields ``J w`` for any w.
@@ -56,8 +60,11 @@ def power_iteration_lipschitz(
                 break
             w = w / w_norm
             (j_w,) = torch.autograd.grad(
-                jt_u, u_var, grad_outputs=w,
-                retain_graph=False, create_graph=False,
+                jt_u,
+                u_var,
+                grad_outputs=w,
+                retain_graph=False,
+                create_graph=False,
             )
             u_new = j_w.detach()
             norm = float(u_new.norm())

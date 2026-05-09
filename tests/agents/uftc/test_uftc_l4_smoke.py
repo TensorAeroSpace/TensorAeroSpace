@@ -1,4 +1,5 @@
 """enable_l4_outer wiring smoke test."""
+
 from __future__ import annotations
 
 import numpy as np
@@ -16,7 +17,7 @@ def test_l4_returns_modified_reference_on_demand() -> None:
         fdd_warmup_steps=20,
         enable_l4_outer=True,
         l4_n_ref_dim=3,
-        l4_action_scale=0.0,   # zero scale → r̃ == base_reference
+        l4_action_scale=0.0,  # zero scale → r̃ == base_reference
     )
     ctl = UFTCController(n_state=3, n_control=2, config=cfg)
     rng = np.random.default_rng(0)
@@ -37,12 +38,17 @@ def test_l4_off_invariance_with_phase1_only() -> None:
     def rollout(enable_l4: bool) -> tuple[np.ndarray, np.ndarray]:
         rng = np.random.default_rng(rng_seed)
         ctl = UFTCController(
-            n_state=4, n_control=2,
-            config=UFTCConfig(dt=0.01, fdd_warmup_steps=20,
-                              enable_l1_shield=False, enable_glr=False,
-                              enable_l4_outer=enable_l4,
-                              l4_n_ref_dim=4,
-                              inner_cfg=AAINDIConfig(seed=0)),
+            n_state=4,
+            n_control=2,
+            config=UFTCConfig(
+                dt=0.01,
+                fdd_warmup_steps=20,
+                enable_l1_shield=False,
+                enable_glr=False,
+                enable_l4_outer=enable_l4,
+                l4_n_ref_dim=4,
+                inner_cfg=AAINDIConfig(seed=0),
+            ),
         )
         xs, us = [], []
         x = rng.standard_normal(4) * 0.1
@@ -50,7 +56,8 @@ def test_l4_off_invariance_with_phase1_only() -> None:
             u = ctl.predict(x, np.zeros(4), time_step=k)
             x = x + 0.01 * (rng.standard_normal(4) * 0.05 - 0.1 * x)
             ctl.learn(x, np.zeros(4), time_step=k)
-            xs.append(x.copy()); us.append(np.asarray(u, dtype=np.float64).copy())
+            xs.append(x.copy())
+            us.append(np.asarray(u, dtype=np.float64).copy())
         return np.stack(xs), np.stack(us)
 
     x_off, u_off = rollout(enable_l4=False)

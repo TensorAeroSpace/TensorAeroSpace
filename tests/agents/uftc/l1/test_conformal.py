@@ -1,4 +1,5 @@
 """ConformalMargin growth law and monotonicity properties."""
+
 from __future__ import annotations
 
 from tensoraerospace.agent.uftc.fdd.detector import FDDOutput
@@ -30,9 +31,13 @@ def test_eps_grows_with_severity_and_alarm() -> None:
     cm = ConformalMargin(cfg, lipschitz_const=1.0)
     base = cm.compute(_zero_output(), monitor_alarm="OK")
 
-    sev = FDDOutput(fault_present=True, severity=2.0,
-                    confidence=0.8, innovation_norm=1.5,
-                    time_since_event=0.0)
+    sev = FDDOutput(
+        fault_present=True,
+        severity=2.0,
+        confidence=0.8,
+        innovation_norm=1.5,
+        time_since_event=0.0,
+    )
     e_sev = cm.compute(sev, monitor_alarm="OK")
     assert e_sev > base
 

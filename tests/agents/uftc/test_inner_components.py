@@ -1,4 +1,5 @@
 """Tests for the L2-inner sub-components: SM observer + mode switch."""
+
 from __future__ import annotations
 
 import numpy as np
@@ -51,7 +52,7 @@ def test_mode_switcher_switches_to_angle_above_threshold() -> None:
 
 def test_mode_switcher_hysteresis_holds() -> None:
     sw = ModeSwitcher(alpha_threshold_deg=25.0, hysteresis_deg=5.0)
-    sw.select(np.deg2rad(30.0))   # → angle
+    sw.select(np.deg2rad(30.0))  # → angle
     # Just below threshold — but inside hysteresis band — stays angle.
     assert sw.select(np.deg2rad(22.0)) == "angle"
     # Below clear-band — back to rate.

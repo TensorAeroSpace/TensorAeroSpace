@@ -9,6 +9,7 @@ the aircraft. The Kalman filter trained with the linear F-16 nominal
 matrices sees its prediction error grow as airspeed bleeds off — this
 is exactly the kind of slow innovation walk GLR is designed to catch.
 """
+
 from __future__ import annotations
 
 import os
@@ -23,7 +24,6 @@ from tensoraerospace.agent import UFTCConfig, UFTCController
 from tensoraerospace.agent.uftc.fdd.detector import FDDConfig
 from tensoraerospace.envs.f16.nonlinear_angular import NonlinearAngularF16
 
-
 _LINEAR_DATA_DIR = os.path.join(
     os.path.dirname(__file__),
     "../../../tensoraerospace/aerospacemodel/f16/linear/data",
@@ -37,9 +37,7 @@ def _f16_nominal_matrices(dt: float = 0.01):
     idx = [7, 8, 9]
     A_sub = A_cont[np.ix_(idx, idx)]
     B_sub = B_cont[idx, :]
-    Ad, Bd, _, _, _ = cont2discrete(
-        (A_sub, B_sub, np.eye(3), np.zeros((3, 4))), dt=dt
-    )
+    Ad, Bd, _, _, _ = cont2discrete((A_sub, B_sub, np.eye(3), np.zeros((3, 4))), dt=dt)
     return Ad, Bd
 
 
@@ -63,9 +61,13 @@ def _make_env(n_steps: int) -> NonlinearAngularF16:
     )
 
 
-def _make_controller(*, enable_l1_shield: bool, enable_glr: bool,
-                     glr_h_alarm: float = 12.0,
-                     fdd_warmup_steps: int = 200) -> UFTCController:
+def _make_controller(
+    *,
+    enable_l1_shield: bool,
+    enable_glr: bool,
+    glr_h_alarm: float = 12.0,
+    fdd_warmup_steps: int = 200,
+) -> UFTCController:
     """Build a UFTCController for the [alpha, beta, p] slice.
 
     The GLR alarm threshold is lowered (default 30) because the
@@ -76,7 +78,8 @@ def _make_controller(*, enable_l1_shield: bool, enable_glr: bool,
     """
     Ad, Bd = _f16_nominal_matrices(dt=0.01)
     return UFTCController(
-        n_state=3, n_control=4,
+        n_state=3,
+        n_control=4,
         nominal_F=Ad - np.eye(3),
         nominal_G=Bd,
         config=UFTCConfig(
@@ -91,7 +94,8 @@ def _make_controller(*, enable_l1_shield: bool, enable_glr: bool,
             fdd_cfg=FDDConfig(
                 process_noise=1e-6,
                 measurement_noise=1e-5,
-                adapt_Q=False, adapt_R=False,
+                adapt_Q=False,
+                adapt_R=False,
                 h_alarm=15.0,
             ),
         ),
@@ -167,11 +171,9 @@ def test_l1_shield_does_not_block_tracking() -> None:
         if terminated or truncated:
             break
 
-    assert np.all(np.isfinite(obs)), (
-        f"State went non-finite under L1+GLR with thrust drift: {obs}"
-    )
+    assert np.all(
+        np.isfinite(obs)
+    ), f"State went non-finite under L1+GLR with thrust drift: {obs}"
     # Generous bound: even a 1 %/s drift over 10 s should not cause the
     # angular state to jump arbitrarily between consecutive steps.
-    assert max_step_change < 1e3, (
-        f"Step-to-step change exploded: {max_step_change:.2e}"
-    )
+    assert max_step_change < 1e3, f"Step-to-step change exploded: {max_step_change:.2e}"

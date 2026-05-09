@@ -1,4 +1,5 @@
 """With all Phase 2 flags off, UFTCController must match Phase 1 byte-for-byte."""
+
 from __future__ import annotations
 
 import numpy as np
@@ -13,9 +14,13 @@ def _seeded_rollout(*, enable_l1: bool, enable_glr: bool, n: int = 1000):
     # draw when ``seed=None`` — without pinning it the two rollouts in
     # ``test_phase2_flags_off_matches_phase1_exactly`` would differ on tick 0
     # for reasons orthogonal to the Phase 2 invariance we want to lock down.
-    cfg = UFTCConfig(dt=0.01, fdd_warmup_steps=50,
-                     enable_l1_shield=enable_l1, enable_glr=enable_glr,
-                     inner_cfg=AAINDIConfig(seed=0))
+    cfg = UFTCConfig(
+        dt=0.01,
+        fdd_warmup_steps=50,
+        enable_l1_shield=enable_l1,
+        enable_glr=enable_glr,
+        inner_cfg=AAINDIConfig(seed=0),
+    )
     ctl = UFTCController(n_state=4, n_control=2, config=cfg)
     xs, us = [], []
     x = rng.standard_normal(4) * 0.1
@@ -24,7 +29,8 @@ def _seeded_rollout(*, enable_l1: bool, enable_glr: bool, n: int = 1000):
         u = ctl.predict(x, r, time_step=k)
         x = x + 0.01 * (rng.standard_normal(4) * 0.05 + 0.1 * (r - x))
         ctl.learn(x, r, time_step=k)
-        xs.append(x.copy()); us.append(np.asarray(u, dtype=np.float64).copy())
+        xs.append(x.copy())
+        us.append(np.asarray(u, dtype=np.float64).copy())
     return np.stack(xs), np.stack(us)
 
 
@@ -51,10 +57,15 @@ def test_phase3_flag_off_keeps_phase12_invariance() -> None:
 
     def rollout(enable_l4: bool):
         rng = np.random.default_rng(rng_seed)
-        cfg = UFTCConfig(dt=0.01, fdd_warmup_steps=50,
-                         enable_l1_shield=False, enable_glr=False,
-                         enable_l4_outer=enable_l4, l4_n_ref_dim=4,
-                         inner_cfg=AAINDIConfig(seed=0))
+        cfg = UFTCConfig(
+            dt=0.01,
+            fdd_warmup_steps=50,
+            enable_l1_shield=False,
+            enable_glr=False,
+            enable_l4_outer=enable_l4,
+            l4_n_ref_dim=4,
+            inner_cfg=AAINDIConfig(seed=0),
+        )
         ctl = UFTCController(n_state=4, n_control=2, config=cfg)
         xs, us = [], []
         x = rng.standard_normal(4) * 0.1
@@ -62,7 +73,8 @@ def test_phase3_flag_off_keeps_phase12_invariance() -> None:
             u = ctl.predict(x, np.zeros(4), time_step=k)
             x = x + 0.01 * (rng.standard_normal(4) * 0.05 - 0.1 * x)
             ctl.learn(x, np.zeros(4), time_step=k)
-            xs.append(x.copy()); us.append(np.asarray(u, dtype=np.float64).copy())
+            xs.append(x.copy())
+            us.append(np.asarray(u, dtype=np.float64).copy())
         return np.stack(xs), np.stack(us)
 
     x_off, u_off = rollout(enable_l4=False)
@@ -76,11 +88,15 @@ def test_phase4_flag_off_keeps_phase123_invariance() -> None:
 
     def rollout(enable_monitor: bool):
         rng = np.random.default_rng(seed)
-        cfg = UFTCConfig(dt=0.01, fdd_warmup_steps=50,
-                         enable_l1_shield=False, enable_glr=False,
-                         enable_l4_outer=False,
-                         enable_monitor=enable_monitor,
-                         inner_cfg=AAINDIConfig(seed=0))
+        cfg = UFTCConfig(
+            dt=0.01,
+            fdd_warmup_steps=50,
+            enable_l1_shield=False,
+            enable_glr=False,
+            enable_l4_outer=False,
+            enable_monitor=enable_monitor,
+            inner_cfg=AAINDIConfig(seed=0),
+        )
         ctl = UFTCController(n_state=4, n_control=2, config=cfg)
         xs, us = [], []
         x = rng.standard_normal(4) * 0.1
@@ -88,7 +104,8 @@ def test_phase4_flag_off_keeps_phase123_invariance() -> None:
             u = ctl.predict(x, np.zeros(4), time_step=k)
             x = x + 0.01 * (rng.standard_normal(4) * 0.05 - 0.1 * x)
             ctl.learn(x, np.zeros(4), time_step=k)
-            xs.append(x.copy()); us.append(np.asarray(u, dtype=np.float64).copy())
+            xs.append(x.copy())
+            us.append(np.asarray(u, dtype=np.float64).copy())
         return np.stack(xs), np.stack(us)
 
     x_off, u_off = rollout(enable_monitor=False)

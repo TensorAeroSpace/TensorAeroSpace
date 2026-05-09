@@ -1,4 +1,5 @@
 """PrioritizedReplay storage and weight semantics."""
+
 from __future__ import annotations
 
 import numpy as np
@@ -12,11 +13,22 @@ from tensoraerospace.agent.uftc.l4.replay import (
 
 def _t(reward: float = 0.0) -> Transition:
     return Transition(
-        s=np.zeros(3), a_actual=np.zeros(2), r_used=np.zeros(3),
-        reward=reward, s_next=np.zeros(3), done=False,
-        fdd=FDDOutput(False, 0.0, 0.0, 0.0, 0.0,
-                      fault_kind="none",
-                      severity_abrupt=0.0, severity_gradual=0.0),
+        s=np.zeros(3),
+        a_actual=np.zeros(2),
+        r_used=np.zeros(3),
+        reward=reward,
+        s_next=np.zeros(3),
+        done=False,
+        fdd=FDDOutput(
+            False,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            fault_kind="none",
+            severity_abrupt=0.0,
+            severity_gradual=0.0,
+        ),
         alarm="OK",
     )
 

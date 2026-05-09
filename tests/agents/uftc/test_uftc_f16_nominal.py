@@ -1,4 +1,5 @@
 """F-16 nonlinear angular flight: UFTC on nominal — regression guard."""
+
 from __future__ import annotations
 
 import os
@@ -31,9 +32,7 @@ def _f16_nominal_matrices(dt: float = 0.01):
     idx = [7, 8, 9]  # alpha(7), beta(8), p/wx(9)
     A_sub = A_cont[np.ix_(idx, idx)]
     B_sub = B_cont[idx, :]  # (3, 4)
-    Ad, Bd, _, _, _ = cont2discrete(
-        (A_sub, B_sub, np.eye(3), np.zeros((3, 4))), dt=dt
-    )
+    Ad, Bd, _, _, _ = cont2discrete((A_sub, B_sub, np.eye(3), np.zeros((3, 4))), dt=dt)
     return Ad, Bd
 
 
@@ -56,12 +55,14 @@ def test_uftc_holds_attitude_under_nominal_f16() -> None:
     nominal_F, nominal_G = _f16_nominal_matrices(dt=0.01)
 
     ctl = UFTCController(
-        n_state=3, n_control=4,
+        n_state=3,
+        n_control=4,
         nominal_F=nominal_F,
         nominal_G=nominal_G,
         config=UFTCConfig(
-            dt=0.01, fdd_warmup_steps=400,
-            omega_indices=[0, 1, 2],   # alpha, beta, wx indices in obs[:3]
+            dt=0.01,
+            fdd_warmup_steps=400,
+            omega_indices=[0, 1, 2],  # alpha, beta, wx indices in obs[:3]
             # lookahead_dt=0.05 works well with the F-16 plant at dt=0.01
             middle_lookahead_dt=0.05,
         ),

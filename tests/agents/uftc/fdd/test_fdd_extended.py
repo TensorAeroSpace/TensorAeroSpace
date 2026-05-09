@@ -1,4 +1,5 @@
 """FDDDetector composition with optional GLR; FDDOutput extension."""
+
 from __future__ import annotations
 
 import numpy as np
@@ -15,17 +16,20 @@ from tensoraerospace.agent.uftc.fdd.kalman_3step import NominalKalman
 
 def _build_detector(*, with_glr: bool) -> FDDDetector:
     n = 2
-    F = np.eye(n) * 0.0           # incremental form
+    F = np.eye(n) * 0.0  # incremental form
     G = np.zeros((n, 1))
     Q = np.eye(n) * 1e-3
     R = np.eye(n) * 1e-2
     kalman = NominalKalman(F_nominal=F, G_nominal=G, Q=Q, R=R)
-    cpd = ChangePointDetector(n_dim=n, h_alarm=20.0, h_clear=5.0,
-                              cooldown_steps=200)
-    glr = GLRDetector(n_dim=n, cfg=GLRConfig(window=100, h_alarm=30.0,
-                                             cooldown_steps=200)) if with_glr else None
-    return FDDDetector(n_state=n, n_control=1, kalman=kalman, cpd=cpd,
-                       glr=glr, dt=0.01)
+    cpd = ChangePointDetector(n_dim=n, h_alarm=20.0, h_clear=5.0, cooldown_steps=200)
+    glr = (
+        GLRDetector(
+            n_dim=n, cfg=GLRConfig(window=100, h_alarm=30.0, cooldown_steps=200)
+        )
+        if with_glr
+        else None
+    )
+    return FDDDetector(n_state=n, n_control=1, kalman=kalman, cpd=cpd, glr=glr, dt=0.01)
 
 
 def test_extended_fields_default_for_clean_input() -> None:
@@ -63,5 +67,7 @@ def test_compound_when_both_channels_alarm() -> None:
         x = rng.standard_normal(2) * 0.05 + np.array([4.0, 0.0])
         out = det.step(x, np.zeros(1))
         seen_kinds.add(out.fault_kind)
-    assert "compound" in seen_kinds or "abrupt" in seen_kinds  # at least abrupt; compound when GLR catches up
+    assert (
+        "compound" in seen_kinds or "abrupt" in seen_kinds
+    )  # at least abrupt; compound when GLR catches up
     assert "compound" in seen_kinds  # both must fire eventually under sustained step

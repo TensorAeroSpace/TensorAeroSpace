@@ -1,4 +1,5 @@
 """Trim-free wrapper enabled: alpha/q indices in r_eff come from actor."""
+
 from __future__ import annotations
 
 import numpy as np
@@ -11,8 +12,11 @@ from tensoraerospace.agent.uftc.controller import UFTCConfig, UFTCController
 
 def test_trim_free_overwrites_alpha_q_indices_in_r_eff() -> None:
     cfg = UFTCConfig(
-        dt=0.01, fdd_warmup_steps=10,
-        enable_l4_outer=True, l4_n_ref_dim=4, l4_action_scale=0.0,
+        dt=0.01,
+        fdd_warmup_steps=10,
+        enable_l4_outer=True,
+        l4_n_ref_dim=4,
+        l4_action_scale=0.0,
         l4_trim_free={"V_idx": 0, "gamma_idx": 1, "alpha_idx": 2, "q_idx": 3},
     )
     ctl = UFTCController(n_state=4, n_control=2, config=cfg)

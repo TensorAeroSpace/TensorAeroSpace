@@ -4,6 +4,7 @@ Stores ``a_actual`` (the action that actually entered the env, i.e.
 ``u_safe`` after L1) so the off-policy correction is consistent with
 the cascade described in the master spec.
 """
+
 from __future__ import annotations
 
 from collections import deque
@@ -30,8 +31,13 @@ class Transition:
 class PrioritizedReplay:
     """Proportional-priority replay (Schaul et al. 2015) with a deque backbone."""
 
-    def __init__(self, capacity: int, alpha: float = 0.6,
-                 beta_init: float = 0.4, eps: float = 1e-3) -> None:
+    def __init__(
+        self,
+        capacity: int,
+        alpha: float = 0.6,
+        beta_init: float = 0.4,
+        eps: float = 1e-3,
+    ) -> None:
         if capacity <= 0:
             raise ValueError("capacity must be positive")
         self.capacity = int(capacity)
@@ -54,13 +60,14 @@ class PrioritizedReplay:
     def snapshot(self) -> Sequence[Transition]:
         return list(self._buf)
 
-    def sample(self, batch_size: int,
-               rng: np.random.Generator | None = None) -> tuple[list[Transition], np.ndarray, np.ndarray]:
+    def sample(
+        self, batch_size: int, rng: np.random.Generator | None = None
+    ) -> tuple[list[Transition], np.ndarray, np.ndarray]:
         if len(self._buf) < batch_size:
             raise ValueError("buffer not full enough to sample")
         rng = rng if rng is not None else np.random.default_rng()
         priorities = np.array(self._pri, dtype=np.float64) + self.eps
-        probs = priorities ** self.alpha
+        probs = priorities**self.alpha
         probs /= probs.sum()
         idx = rng.choice(len(self._buf), size=batch_size, replace=False, p=probs)
         weights = (len(self._buf) * probs[idx]) ** (-self.beta)
@@ -68,7 +75,9 @@ class PrioritizedReplay:
         transitions = [self._buf[int(i)] for i in idx]
         return transitions, idx, weights.astype(np.float32)
 
-    def update_priorities(self, indices: Sequence[int], td_errors: Sequence[float]) -> None:
+    def update_priorities(
+        self, indices: Sequence[int], td_errors: Sequence[float]
+    ) -> None:
         for i, e in zip(indices, td_errors):
             p = float(abs(e)) + self.eps
             self._pri[int(i)] = p

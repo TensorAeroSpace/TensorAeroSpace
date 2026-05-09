@@ -1,4 +1,5 @@
 """GLR detector: nominal ARL₀, ramp-drift detection latency, hysteresis."""
+
 from __future__ import annotations
 
 import numpy as np
@@ -37,8 +38,9 @@ def test_nominal_innovations_below_threshold() -> None:
 def test_ramp_drift_triggers_alarm() -> None:
     rng = np.random.default_rng(1)
     n = 3
-    glr = GLRDetector(n_dim=n, cfg=GLRConfig(window=200, h_alarm=30.0,
-                                             cooldown_steps=200))
+    glr = GLRDetector(
+        n_dim=n, cfg=GLRConfig(window=200, h_alarm=30.0, cooldown_steps=200)
+    )
     S = np.eye(n)
     # Burn-in nominal noise.
     for _ in range(300):
@@ -60,8 +62,9 @@ def test_ramp_drift_triggers_alarm() -> None:
 def test_hysteresis_clears_after_cooldown_under_clean_innovations() -> None:
     rng = np.random.default_rng(2)
     n = 2
-    glr = GLRDetector(n_dim=n, cfg=GLRConfig(window=100, h_alarm=20.0,
-                                             h_clear=5.0, cooldown_steps=50))
+    glr = GLRDetector(
+        n_dim=n, cfg=GLRConfig(window=100, h_alarm=20.0, h_clear=5.0, cooldown_steps=50)
+    )
     S = np.eye(n)
     # Force statistic high.
     for _ in range(200):

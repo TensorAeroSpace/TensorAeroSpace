@@ -1,4 +1,5 @@
 """Composite FDD detector: NominalKalman + CUSUM + optional GLR."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -90,18 +91,29 @@ class FDDDetector:
         Q = np.eye(n_state) * config.process_noise
         R = np.eye(n_state) * config.measurement_noise
         kf = NominalKalman(
-            F_nominal=F_nominal, G_nominal=G_nominal, Q=Q, R=R,
-            alpha_Q=config.alpha_Q, alpha_R=config.alpha_R,
-            adapt_Q=config.adapt_Q, adapt_R=config.adapt_R,
+            F_nominal=F_nominal,
+            G_nominal=G_nominal,
+            Q=Q,
+            R=R,
+            alpha_Q=config.alpha_Q,
+            alpha_R=config.alpha_R,
+            adapt_Q=config.adapt_Q,
+            adapt_R=config.adapt_R,
         )
         cpd = ChangePointDetector(
-            n_dim=n_state, drift=config.drift,
-            h_alarm=config.h_alarm, h_clear=config.h_clear,
+            n_dim=n_state,
+            drift=config.drift,
+            h_alarm=config.h_alarm,
+            h_clear=config.h_clear,
             cooldown_steps=config.cooldown_steps,
         )
         return cls(
-            n_state=n_state, n_control=n_control,
-            kalman=kf, cpd=cpd, dt=dt, glr=glr,
+            n_state=n_state,
+            n_control=n_control,
+            kalman=kf,
+            cpd=cpd,
+            dt=dt,
+            glr=glr,
             innovation_sigma_gate=config.innovation_sigma_gate,
         )
 
@@ -126,10 +138,9 @@ class FDDDetector:
         abrupt = bool(cp.alarm)
         gradual = bool(gl.alarm) if gl is not None else False
         kind: FaultKind = (
-            "compound" if abrupt and gradual
-            else "abrupt" if abrupt
-            else "gradual" if gradual
-            else "none"
+            "compound"
+            if abrupt and gradual
+            else "abrupt" if abrupt else "gradual" if gradual else "none"
         )
         sev_a = float(cp.severity)
         sev_g = float(gl.severity) if gl is not None else 0.0
@@ -144,8 +155,9 @@ class FDDDetector:
             fault_kind=kind,
             severity_abrupt=sev_a,
             severity_gradual=sev_g,
-            glr_drift_estimate=(gl.drift_estimate if gl is not None and gl.alarm
-                                else None),
+            glr_drift_estimate=(
+                gl.drift_estimate if gl is not None and gl.alarm else None
+            ),
         )
 
     def reset(self) -> None:

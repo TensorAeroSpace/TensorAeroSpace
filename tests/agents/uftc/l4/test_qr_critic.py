@@ -1,4 +1,5 @@
 """QR critic forward pass shape + soft-target update behaviour."""
+
 from __future__ import annotations
 
 import numpy as np
@@ -35,7 +36,9 @@ def test_qr_huber_loss_decreases_under_supervised_descent() -> None:
     for _ in range(50):
         z = q(s, a)
         loss = qr_huber_loss(z, target.detach(), cfg.huber_kappa)
-        opt.zero_grad(); loss.backward(); opt.step()
+        opt.zero_grad()
+        loss.backward()
+        opt.step()
         losses.append(float(loss.item()))
     assert losses[-1] < losses[0]
 
@@ -52,5 +55,7 @@ def test_soft_update_moves_target_toward_source() -> None:
     src_params = list(src.parameters())
     tgt_params = list(tgt.parameters())
     # After tau=0.5, target = 0.5*src_old + 0.5*tgt_old; abs differences shrink.
-    diff = sum(float((p_s - p_t).abs().sum()) for p_s, p_t in zip(src_params, tgt_params))
+    diff = sum(
+        float((p_s - p_t).abs().sum()) for p_s, p_t in zip(src_params, tgt_params)
+    )
     assert diff > 0.0  # not yet identical
