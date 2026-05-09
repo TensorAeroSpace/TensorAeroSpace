@@ -1281,27 +1281,34 @@
         return tex;
     }
 
-    // Helper: a small black-dot marker anchored to an engine. Pops on
-    // engine failure (driven by applyDamageState via engines_mu).
-    // Implemented as a small Mesh (sphere) rather than a Sprite, because
-    // Sprite world placement was unreliable when the parent's transform
-    // changed mid-load. depthTest=false + renderOrder=999 forces the
-    // marker to render on top of the engine nacelle geometry — without
-    // this the sphere lives inside the (~2 m radius) opaque pod and
-    // is invisible.
-    function _b747SmokeSprite() {
-        const smoke = new THREE.Mesh(
-            new THREE.SphereGeometry(2.5, 24, 16),
-            new THREE.MeshBasicMaterial({
-                color: 0x000000,
-                transparent: false,
-                opacity: 1.0,
-                depthTest: false,
-            }),
-        );
-        smoke.renderOrder = 999;
-        smoke.visible = false;
-        return smoke;
+    // Helper: smoke plume trailing aft of a failed engine. Stack of
+    // translucent dark spheres with progressive growth and fade. The
+    // group's local frame: aft = -x, up = +y, lateral = +z. Per-frame
+    // wobble is applied in the animate() loop via _b747AnimateSmoke.
+    function _b747SmokePlume() {
+        const grp = new THREE.Group();
+        const N = 16;
+        for (let i = 0; i < N; i++) {
+            const t = i / (N - 1);            // 0..1 (front to tail)
+            const radius = 0.8 + t * 3.4;
+            const sphere = new THREE.Mesh(
+                new THREE.SphereGeometry(radius, 12, 8),
+                new THREE.MeshBasicMaterial({
+                    color: new THREE.Color(0x222222).lerp(new THREE.Color(0x666666), t),
+                    transparent: true,
+                    opacity: 0.75 * (1 - t * 0.85),
+                    depthWrite: false,
+                }),
+            );
+            // Initial rest position (aft + slight rise). Per-frame wobble
+            // adds small offsets on top of these.
+            sphere.userData.t = t;
+            sphere.userData.basePos = new THREE.Vector3(-t * 30.0, t * 1.8, 0);
+            sphere.userData.phase = Math.random() * Math.PI * 2;
+            sphere.position.copy(sphere.userData.basePos);
+            grp.add(sphere);
+        }
+        return grp;
     }
 
     // ---- B-747 GLB loader + animation hooks ----
@@ -1503,25 +1510,20 @@
             anchorGroup.attach(meshNode);
             meshNode.updateMatrix();
         }
-        // Second pass — UNCONDITIONALLY create the failure markers using
-        // the same recipe as the debug cubes. Independent of engineMap
-        // success so we always have markers even if a GLB node isn't
-        // found by name.
+        // Second pass — UNCONDITIONALLY create the failure smoke plumes.
+        // Each plume is a Group of layered translucent dark spheres
+        // trailing aft of the engine, with progressive size growth and
+        // alpha fade. Animated per-frame in animate() for wobble. Group
+        // is named "engine_<id>_smoke" so applyDamageState can toggle
+        // its visibility.
         for (const [anchor, pos] of Object.entries(ENGINE_LOCAL)) {
             const eid = anchor.split("_")[1];
-            const marker = new THREE.Mesh(
-                new THREE.BoxGeometry(3, 3, 3),
-                new THREE.MeshBasicMaterial({
-                    color: 0xff0000,
-                    depthTest: false,
-                }),
-            );
-            marker.renderOrder = 999;
-            marker.position.copy(pos);
-            marker.name = "engine_" + eid + "_smoke";
-            marker.visible = false;
-            aircraft.add(marker);
-            smokeRefs[anchor] = marker;
+            const plume = _b747SmokePlume();
+            plume.position.copy(pos);
+            plume.name = "engine_" + eid + "_smoke";
+            plume.visible = false;
+            aircraft.add(plume);
+            smokeRefs[anchor] = plume;
         }
 
         // Mark inert GLB descendants matrixAutoUpdate=false to avoid
@@ -2903,6 +2905,29 @@
         lastTickMs = performance.now();
     });
 
+    // Animate the smoke plumes — small swaying wobble + slow rise of the
+    // tail spheres, which gives the trail a wispy, living look without
+    // requiring a particle shader.
+    function _b747AnimateSmoke() {
+        if (!IS_B747) return;
+        const t_wall = performance.now() * 0.001;
+        for (let eid = 1; eid <= 4; eid++) {
+            const grp = aircraft.getObjectByName("engine_" + eid + "_smoke");
+            if (!grp || !grp.visible) continue;
+            for (const s of grp.children) {
+                const ud = s.userData;
+                if (!ud || !ud.basePos) continue;
+                const swayY = Math.sin(t_wall * 1.6 + ud.phase) * 0.6 * ud.t;
+                const swayZ = Math.cos(t_wall * 1.2 + ud.phase * 1.3) * 0.5 * ud.t;
+                s.position.set(
+                    ud.basePos.x,
+                    ud.basePos.y + swayY,
+                    ud.basePos.z + swayZ,
+                );
+            }
+        }
+    }
+
     // ---- Animation loop ----
     function animate() {
         requestAnimationFrame(animate);
@@ -2920,6 +2945,7 @@
             }
             lastTickMs = now;
         }
+        _b747AnimateSmoke();
         controls.update();
         renderer.render(scene, camera);
     }
