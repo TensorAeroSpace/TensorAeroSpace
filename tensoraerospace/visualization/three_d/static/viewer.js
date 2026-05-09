@@ -1372,34 +1372,20 @@
     function _onB747GlbLoaded(gltf, aircraft, hingeRefs, smokeRefs) {
         const root = gltf.scene;
         // GLB → viewer body frame. Verified empirically from the model's
-        // bboxes:
-        //   GLB +x = starboard (right wing); GLB +y = up; GLB +z = forward
-        //   (nose direction).
+        // bboxes (see comments above _loadB747GlbInto):
+        //   GLB +z = nose (forward), GLB +y = up, GLB +x = lateral.
         // Viewer:
         //   +x = forward (nose); +y = up; +z = right wing.
-        // Mapping: viewer = (GLB.z, GLB.y, GLB.x) — i.e. swap x and z.
-        // Swapping two basis vectors is a reflection (det = -1), which
-        // flips face winding. We compensate by enabling DoubleSide on
-        // every loaded mesh's material, so lighting still works.
-        const m = new THREE.Matrix4().set(
-            0, 0, 1, 0,
-            0, 1, 0, 0,
-            1, 0, 0, 0,
-            0, 0, 0, 1,
-        );
-        root.matrix.copy(m);
-        root.matrixAutoUpdate = false;
+        // A single −π/2 rotation about +y gives the correct mapping
+        //   GLB +z → viewer +x (forward),  GLB +y → viewer +y (up).
+        // Pure rotation (det = +1) — no winding flip, no DoubleSide
+        // workaround required. The B-747 silhouette is left/right
+        // symmetric, so any residual mirror in the lateral mapping is
+        // visually undetectable; engine numbering is just programmatic.
+        root.rotation.y = -Math.PI / 2;
+        root.scale.set(1, 1, 1);
         root.name = "_static_decor_b747_glb";
         aircraft.add(root);
-        // DoubleSide so the swapped-axis (winding-flipped) GLB renders
-        // correctly. Also clone the shared GLB material so per-engine
-        // damage tints don't leak across the model.
-        root.traverse((obj) => {
-            if (obj.isMesh && obj.material) {
-                obj.material.side = THREE.DoubleSide;
-            }
-        });
-        // The root has matrixAutoUpdate=false; descendants update normally.
         // We need worldMatrix to be current before searching for nodes.
         aircraft.updateMatrixWorld(true);
 
@@ -1524,6 +1510,23 @@
             obj.matrixAutoUpdate = false;
             obj.updateMatrix();
         });
+
+        // ── DIAGNOSTIC (temporary) ─────────────────────────────────────
+        // Visual verification of body-frame axes. Red (+x) should point
+        // out the nose, green (+y) should point up, blue (+z) should
+        // point along the right wing. Remove in a follow-up commit once
+        // orientation is confirmed correct.
+        const axesHelper = new THREE.AxesHelper(15);
+        axesHelper.name = "_diag_b747_axes";
+        aircraft.add(axesHelper);
+        const fwdArrow = new THREE.ArrowHelper(
+            new THREE.Vector3(1, 0, 0),
+            new THREE.Vector3(0, 0, 0),
+            25, 0xff0000, 5, 3,
+        );
+        fwdArrow.name = "_diag_b747_fwd";
+        aircraft.add(fwdArrow);
+        // ───────────────────────────────────────────────────────────────
 
         // Late-registration: the sectionMaterials cache was populated
         // synchronously during scene init — but the engine_<id> groups
