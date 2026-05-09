@@ -1453,6 +1453,8 @@
             // Place the hinge group at the pivot in aircraft-local space.
             hingeGroup.position.copy(pivot);
             hingeGroup.updateMatrix();
+            // Refresh world matrix before attach (see engine loop below).
+            hingeGroup.updateWorldMatrix(false, false);
             // Re-parent the mesh under the hinge group, preserving its
             // world transform (so the geometry stays put visually).
             hingeGroup.attach(meshNode);
@@ -1488,6 +1490,12 @@
             localBox.getCenter(c);
             anchorGroup.position.copy(c);
             anchorGroup.updateMatrix();
+            // CRITICAL: refresh anchorGroup.matrixWorld before attach,
+            // otherwise attach uses the stale (pre-position) world
+            // transform → meshNode lands at 2x the offset and the smoke
+            // sprite still renders at the aircraft origin instead of
+            // the engine nacelle.
+            anchorGroup.updateWorldMatrix(false, false);
             anchorGroup.attach(meshNode);
             meshNode.updateMatrix();
             // Failure marker — black dot, centred on the engine nacelle.
