@@ -83,16 +83,25 @@ def f16_ode_6dof(
         V_state = p.V
         q_now = p.q
 
+    # The aerodynamic coefficient tables are normalized to the intact F-16
+    # reference geometry. Damage recomputes effective S/span/MAC for mass and
+    # diagnostics, but forces/moments must keep the same reference geometry as
+    # the coefficient deltas to avoid applying wing-area loss twice.
+    aero_ref_damaged = p.damage_state is not None and p.damage_geometry is not None
+    S_aero = float(getattr(p, "S_ref", p.S)) if aero_ref_damaged else p.S
+    l_aero = float(getattr(p, "l_ref", p.l)) if aero_ref_damaged else p.l
+    bA_aero = float(getattr(p, "bA_ref", p.bA)) if aero_ref_damaged else p.bA
+
     # ----------------------------------------------------------------
     # Aerodynamic coefficients
     # (argument order mirrors matlab: GetCx/Cy/Mz use stab as fi)
     # ----------------------------------------------------------------
-    cx = get_cx(alpha, beta, stab, p.lef, wz, V_state, p.bA, p.sb)
-    cy = get_cy(alpha, beta, stab, p.lef, wz, V_state, p.bA, p.sb)
-    cz = get_cz(alpha, beta, direc, ail, p.lef, wx, wy, V_state, p.l)
-    mx_ = get_mx(alpha, beta, stab, direc, ail, p.lef, wx, wy, V_state, p.l)
-    my_ = get_my(alpha, beta, stab, direc, ail, p.lef, wx, wy, V_state, p.l)
-    mz_ = get_mz(alpha, beta, stab, p.lef, wz, V_state, p.bA, p.sb)
+    cx = get_cx(alpha, beta, stab, p.lef, wz, V_state, bA_aero, p.sb)
+    cy = get_cy(alpha, beta, stab, p.lef, wz, V_state, bA_aero, p.sb)
+    cz = get_cz(alpha, beta, direc, ail, p.lef, wx, wy, V_state, l_aero)
+    mx_ = get_mx(alpha, beta, stab, direc, ail, p.lef, wx, wy, V_state, l_aero)
+    my_ = get_my(alpha, beta, stab, direc, ail, p.lef, wx, wy, V_state, l_aero)
+    mz_ = get_mz(alpha, beta, stab, p.lef, wz, V_state, bA_aero, p.sb)
 
     # ----------------------------------------------------------------
     # Apply damage corrections (no-op if damage_state is None)
@@ -112,9 +121,9 @@ def f16_ode_6dof(
     # ----------------------------------------------------------------
     # Aerodynamic forces (body frame)
     # ----------------------------------------------------------------
-    X = -q_now * p.S * cx
-    Y = q_now * p.S * cy
-    Z = q_now * p.S * cz
+    X = -q_now * S_aero * cx
+    Y = q_now * S_aero * cy
+    Z = q_now * S_aero * cz
 
     # ----------------------------------------------------------------
     # Aerodynamic moments (body frame)
@@ -125,11 +134,11 @@ def f16_ode_6dof(
     # for symmetric/legacy operation (delta_stab == 0.0 → exact same Mx).
     delta_stab = float(p.delta_stab_cmd)
     if delta_stab != 0.0:
-        Mx = q_now * p.S * p.l * (mx_ - p.delta_stab_roll_gain * delta_stab)
+        Mx = q_now * S_aero * l_aero * (mx_ - p.delta_stab_roll_gain * delta_stab)
     else:
-        Mx = q_now * p.S * p.l * mx_
-    My = q_now * p.S * p.l * my_
-    Mz = q_now * p.S * p.bA * mz_
+        Mx = q_now * S_aero * l_aero * mx_
+    My = q_now * S_aero * l_aero * my_
+    Mz = q_now * S_aero * bA_aero * mz_
 
     # ----------------------------------------------------------------
     # Resultant forces and moments (shifted to actual CG)
@@ -239,7 +248,7 @@ def f16_ode_6dof(
         sin_gamma_path = max(-1.0, min(1.0, sin_gamma_path))
 
         # Drag magnitude (D = q·S·Cx; X = -D in body x convention).
-        drag = q_now * p.S * cx
+        drag = q_now * S_aero * cx
 
         # Thrust: from runtime override if set, otherwise from constant.
         thrust = p.T_active

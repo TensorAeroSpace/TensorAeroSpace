@@ -54,6 +54,37 @@ def test_damage_state_attribute_used_in_ode():
     assert diff.sum() > 1e-6, "Damage application had no effect on trajectory"
 
 
+def test_healthy_damage_state_keeps_trim_reference_geometry():
+    """Healthy DamageState recomputes geometry bookkeeping, but the ODE must
+    still use the intact aero reference area/span used by the F-16 tables."""
+    from tensoraerospace.aerospacemodel.f16.nonlinear.angular.dynamics import (
+        f16_ode_6dof,
+    )
+    from tensoraerospace.aerospacemodel.f16.nonlinear.angular.params import (
+        default_parameters,
+    )
+    from tensoraerospace.aerospacemodel.f16.nonlinear.angular.trim import find_trim
+    from tensoraerospace.aerospacemodel.f16.nonlinear.damage.recompute import (
+        apply_to_params,
+    )
+
+    geo = load_f16_geometry()
+    state = DamageState.healthy(geo)
+    trim = find_trim(V_target=200.0, h_target=3000.0)
+
+    p = default_parameters()
+    apply_to_params(p, geo, state)
+    p.damage_state = state
+    p.damage_geometry = geo
+    p.T_thrust = float(trim.T_thrust)
+    p.T_active = float(trim.T_thrust)
+
+    dx = f16_ode_6dof(trim.x0, np.array([trim.stab_rad, 0.0, 0.0]), 0.0, p)
+    assert abs(dx[14]) < 1e-9  # altitude derivative at level trim
+    assert abs(dx[15]) < 1e-9  # no artificial drag/thrust mismatch
+    assert np.linalg.norm(dx[[0, 1, 2, 3, 4]]) < 2e-4
+
+
 def test_jammed_stab_left_in_split_mode_overrides_command():
     """Jam on stab_left in split-stab mode must override the user command,
     causing the actuator to track the jam position rather than the command."""

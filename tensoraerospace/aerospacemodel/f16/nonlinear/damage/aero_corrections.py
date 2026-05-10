@@ -9,18 +9,37 @@ Per-section contributions follow the convention established in Phase 1:
     aircraft-level lift-curve slope (aggregate Σ cl_α·area/S_total ≈ 4.5)
   - cd0_contribution is the section's additive contribution to Cx0 (sums
     directly to the aircraft-level Cx0)
+
+The deltas are expressed in the intact-aircraft coefficient frame. The ODE
+therefore scales them with the intact reference geometry even when
+``DamageState`` has reduced effective wing area/span. This avoids counting a
+lost wing section once through smaller ``S`` and again through these deltas.
 """
 
 from __future__ import annotations
 
-from .geometry import BaseGeometry
+from .geometry import AeroSection, BaseGeometry
 from .state import DamageState
 
-_JAGGED_DRAG_COEF = 0.05  # peaks at f=0.5; calibrated heuristically
+_LOST_PARASITE_DRAG_FRACTION = 0.25
+_EXPOSED_EDGE_DRAG_COEF = 0.04
 
 
 def _base_wing_area(geo: BaseGeometry) -> float:
     return geo.total_wing_area()
+
+
+def _local_drag_delta(
+    section: AeroSection, loss_fraction: float, S_base: float
+) -> float:
+    f = float(loss_fraction)
+    if f <= 0.0:
+        return 0.0
+    delta = -_LOST_PARASITE_DRAG_FRACTION * section.cd0_contribution * f
+    if section.type == "wing":
+        exposed_shape = f * (2.0 - f)
+        delta += _EXPOSED_EDGE_DRAG_COEF * exposed_shape * (section.area / S_base)
+    return float(delta)
 
 
 def delta_cy(alpha: float, beta: float, geo: BaseGeometry, state: DamageState) -> float:
@@ -41,11 +60,13 @@ def delta_cy(alpha: float, beta: float, geo: BaseGeometry, state: DamageState) -
 
 
 def delta_cx(alpha: float, beta: float, geo: BaseGeometry, state: DamageState) -> float:
-    """Drag delta: lost cd0 contribution + jagged-edge drag from partial damage.
+    """Drag delta from damaged or missing sections.
 
-    A fully-lost wing section removes its cd0 contribution from the aircraft
-    drag. A partially-damaged section also adds extra "jagged-edge" drag that
-    peaks at f=0.5 (full-cut surface gives maximum exposed cross-section).
+    A missing section removes some parasite drag from its wetted area, but an
+    abrupt wing-loss event also creates exposed structure and separated flow.
+    The exposed-edge term is intentionally nonzero for both partial and full
+    losses; otherwise a fully torn-off wing tip could reduce total drag, which
+    is too optimistic for the failure-control demos.
     """
     S_base = _base_wing_area(geo)
     if S_base <= 0.0:
@@ -55,10 +76,7 @@ def delta_cx(alpha: float, beta: float, geo: BaseGeometry, state: DamageState) -
         f = state.section_loss.get(s.name, 0.0)
         if f <= 0.0:
             continue
-        delta -= s.cd0_contribution * f
-        if s.type == "wing":
-            # Jagged-edge drag: peaks at f=0.5
-            delta += _JAGGED_DRAG_COEF * f * (1.0 - f) * (s.area / S_base)
+        delta += _local_drag_delta(s, f, S_base)
     return float(delta)
 
 
@@ -124,9 +142,7 @@ def delta_mz(alpha: float, beta: float, geo: BaseGeometry, state: DamageState) -
         f = state.section_loss.get(s.name, 0.0)
         if f <= 0.0:
             continue
-        local_dcx = -s.cd0_contribution * f
-        if s.type == "wing":
-            local_dcx += _JAGGED_DRAG_COEF * f * (1.0 - f) * (s.area / S_base)
+        local_dcx = _local_drag_delta(s, f, S_base)
         out += local_dcx * (s.span_position / b_base)
     return float(out)
 

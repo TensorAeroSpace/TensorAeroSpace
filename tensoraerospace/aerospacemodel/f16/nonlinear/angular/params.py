@@ -31,6 +31,12 @@ class F16AngularParameters:
     l: float = 9.144  # noqa: E741 - legacy MATLAB notation used by callers
     S: float = 27.87
     bA: float = 3.45
+    # Aerodynamic reference geometry used by the coefficient tables. Damage
+    # may change the effective geometry above, but the F-16 aero tables and
+    # damage coefficient deltas are normalized to the intact aircraft.
+    S_ref: float = field(init=False)
+    l_ref: float = field(init=False)
+    bA_ref: float = field(init=False)
     Jx: float = 12874.8
     Jy: float = 85552.1
     Jz: float = 75673.6
@@ -90,6 +96,9 @@ class F16AngularParameters:
     q: float = field(init=False)
 
     def __post_init__(self) -> None:
+        self.S_ref = float(self.S)
+        self.l_ref = float(self.l)
+        self.bA_ref = float(self.bA)
         self.rcgx = -0.05 * self.bA
         self.q = _isa_dynamic_pressure(self.Oy, self.V, self.g)
 

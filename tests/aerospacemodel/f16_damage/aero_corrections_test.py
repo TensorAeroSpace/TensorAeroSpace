@@ -64,19 +64,20 @@ def test_partial_loss_scales_linearly(geo, healthy):
     assert half == pytest.approx(full * 0.5, rel=0.001)
 
 
-def test_partial_loss_adds_drag(geo, healthy):
+def test_wing_loss_adds_exposed_edge_drag(geo, healthy):
     from tensoraerospace.aerospacemodel.f16.nonlinear.damage import (
         aero_corrections,
     )
 
-    healthy.set_section_loss("left_tip", 1.0)  # totally lost: no jagged-edge drag
+    healthy.set_section_loss("left_tip", 1.0)
     dcx_full = aero_corrections.delta_cx(0.0, 0.0, geo, healthy)
-    healthy.set_section_loss("left_tip", 0.5)  # half lost: max jagged-edge drag
+    healthy.set_section_loss("left_tip", 0.5)
     dcx_half = aero_corrections.delta_cx(0.0, 0.0, geo, healthy)
-    # Half-loss should give NET higher drag than full loss (full removes both
-    # baseline cd0 and jagged-edge contributions; half loses less cd0 but adds
-    # the maximum jagged-edge drag).
-    assert dcx_half > dcx_full
+    # Abrupt wing loss should not become a free drag reduction in the failure
+    # demo: both partial and full losses leave exposed/separated structure.
+    assert dcx_full > 0.0
+    assert dcx_half > 0.0
+    assert dcx_full > dcx_half
 
 
 def test_left_tip_loss_creates_positive_roll_moment(geo, healthy):
