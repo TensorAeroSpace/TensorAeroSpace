@@ -215,7 +215,7 @@ When you want to **modify the library**, run the test suite, or build the docume
     cd TensorAeroSpace
 
     poetry install --with dev   # main + dev dependencies (pytest, mkdocs, etc.)
-    poetry shell                 # activate venv
+    eval $(poetry env activate)  # activate venv
 
     # Run tests
     poetry run pytest tests/aerospacemodel/ tests/envs/ -q
@@ -334,7 +334,7 @@ poetry run python example/aircraft/example_b747_nonlinear.py
     pip show tensoraerospace
     ```
 
-    Both should point to the same environment. If they don't, activate the right venv (`source .venv/bin/activate` or `poetry shell` or `conda activate tas`).
+    Both should point to the same environment. If they don't, activate the right venv (`source .venv/bin/activate` or `poetry env activate` or `conda activate tas`).
 
 ??? question "PyTorch version conflicts (`undefined symbol`, `RuntimeError: CUDA error`)"
     Likely your installed PyTorch CUDA version doesn't match the system driver, or a stale wheel cache is in use.

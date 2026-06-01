@@ -50,7 +50,7 @@ poetry install --with dev,test
 
 2. Activate the virtualenv:
 ```bash
-poetry shell
+eval $(poetry env activate)
 ```
 
 ## 🧪 Verify the setup

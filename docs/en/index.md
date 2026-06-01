@@ -8,10 +8,10 @@ hide:
   <h1>TensorAeroSpace</h1>
   <p class="tagline">Open-source aerospace simulation + adaptive control toolkit. Trim, fly, fail, recover — all in pure NumPy.</p>
   <p>
-    <a href="guide/installation.md" class="md-button md-button--primary">Install</a>
-    <a href="cookbook/01_hello.md" class="md-button">Quickstart</a>
-    <a href="model/b747_nonlinear.md" class="md-button">Models</a>
-    <a href="agent/ihdp.md" class="md-button">Algorithms</a>
+    <a href="guide/installation/" class="md-button md-button--primary">Install</a>
+    <a href="cookbook/01_hello/" class="md-button">Quickstart</a>
+    <a href="model/b747_nonlinear/" class="md-button">Models</a>
+    <a href="agent/ihdp/" class="md-button">Algorithms</a>
   </p>
   <p>
     <a href="https://github.com/TensorAeroSpace/TensorAeroSpace"><img alt="GitHub" src="https://img.shields.io/badge/GitHub-TensorAeroSpace-000?logo=github"></a>
@@ -456,8 +456,8 @@ For the underlying aerodynamic data sources — NASA CR-2144 (B-747), NASA TM X-
 ---
 
 <div style="text-align:center; margin: 1.6rem 0 0.5rem;">
-  <a href="guide/installation.md" class="md-button md-button--primary">Get started</a>
-  <a href="cookbook/01_hello.md" class="md-button">Open the cookbook</a>
+  <a href="guide/installation/" class="md-button md-button--primary">Get started</a>
+  <a href="cookbook/01_hello/" class="md-button">Open the cookbook</a>
   <a href="https://github.com/TensorAeroSpace/TensorAeroSpace" class="md-button">Star on GitHub</a>
 </div>
 
