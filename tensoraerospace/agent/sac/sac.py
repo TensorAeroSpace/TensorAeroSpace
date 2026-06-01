@@ -905,11 +905,33 @@ class SAC(BaseRLModel):
             ):
                 new_agent.device = torch.device("cpu")
 
-        # Load network weights from state_dict files. Networks were already
-        # constructed with the correct architecture in cls(env, **params).
-        policy_state = torch.load(policy_path, map_location="cpu")
-        critic_state = torch.load(critic_path, map_location="cpu")
-        critic_target_state = torch.load(critic_target_path, map_location="cpu")
+        # Load network weights. Networks were already constructed with the
+        # correct architecture in cls(env, **params).
+        # weights_only=False keeps compatibility with published checkpoints
+        # (e.g. sac-b747) that pickled the whole module instead of a state_dict.
+        policy_obj = torch.load(policy_path, map_location="cpu", weights_only=False)
+        critic_obj = torch.load(critic_path, map_location="cpu", weights_only=False)
+        critic_target_obj = torch.load(
+            critic_target_path, map_location="cpu", weights_only=False
+        )
+
+        # Accept both formats: a pickled nn.Module (old checkpoints) or a
+        # plain state_dict (current save()).
+        policy_state = (
+            policy_obj.state_dict()
+            if isinstance(policy_obj, torch.nn.Module)
+            else policy_obj
+        )
+        critic_state = (
+            critic_obj.state_dict()
+            if isinstance(critic_obj, torch.nn.Module)
+            else critic_obj
+        )
+        critic_target_state = (
+            critic_target_obj.state_dict()
+            if isinstance(critic_target_obj, torch.nn.Module)
+            else critic_target_obj
+        )
 
         new_agent.policy.load_state_dict(policy_state)
         new_agent.critic.load_state_dict(critic_state)

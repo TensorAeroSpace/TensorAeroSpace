@@ -121,7 +121,7 @@ poetry --version
 git clone https://github.com/tensoraerospace/tensoraerospace.git
 cd tensoraerospace
 poetry install
-poetry shell        # активация виртуального окружения
+eval $(poetry env activate)  # активация виртуального окружения
 poetry run pytest   # быстрая проверка
 ```
 

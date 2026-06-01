@@ -112,7 +112,7 @@ Each area has working examples and documentation (see [📚 Examples & guides](#
 git clone https://github.com/tensoraerospace/tensoraerospace.git
 cd tensoraerospace
 poetry install
-poetry shell        # activate the venv
+eval $(poetry env activate)  # activate the venv
 poetry run pytest   # quick smoke test
 ```
 

@@ -161,6 +161,7 @@ class GAIL:
         wandb_run_name: Optional[str] = None,
         wandb_tags: Optional[Sequence[str]] = None,
         wandb_config: Optional[Mapping[str, Any]] = None,
+        device: Optional[Union[str, torch.device]] = None,
     ):
         """Initialize the GAIL algorithm.
 
@@ -175,6 +176,8 @@ class GAIL:
                 ``MetricWriter`` is created and canonical metrics are
                 emitted during :meth:`learn`. When ``None`` (default),
                 no logging is performed.
+            device: Torch device for the networks. Defaults to ``"cuda"``
+                when available, otherwise ``"cpu"``.
         """
         self.env = env
         self.lr = learning_rate
@@ -182,6 +185,10 @@ class GAIL:
         self.mini_batch_size = mini_batch_size
         self.epochs = epochs
         self.data = data
+
+        if device is None:
+            device = "cuda" if torch.cuda.is_available() else "cpu"
+        self.device = torch.device(device)
 
         observation_shape = env.observation_space.shape
         action_shape = env.action_space.shape
@@ -191,9 +198,9 @@ class GAIL:
         self.num_inputs = int(observation_shape[0])
         self.num_outputs = int(action_shape[0])
 
-        self.model = ActorCritic(self.num_inputs, self.num_outputs, 256).to(device)
+        self.model = ActorCritic(self.num_inputs, self.num_outputs, 256).to(self.device)
         self.discriminator = Discriminator(self.num_inputs + self.num_outputs, 128).to(
-            device
+            self.device
         )
 
         self.discrim_criterion = nn.BCELoss()
@@ -231,7 +238,7 @@ class GAIL:
         """Compute imitation reward using the discriminator."""
         state_np = state.cpu().numpy()
         state_action = torch.FloatTensor(np.concatenate([state_np, action], 1)).to(
-            device
+            self.device
         )
         return np.asarray(-np.log(self.discriminator(state_action).cpu().data.numpy()))
 
@@ -241,7 +248,7 @@ class GAIL:
         done = False
         total_reward = 0.0
         for _ in range(self.max_steps):
-            state_tensor = torch.FloatTensor(state).unsqueeze(0).to(device)
+            state_tensor = torch.FloatTensor(state).unsqueeze(0).to(self.device)
             dist, _ = self.model(state_tensor)
             next_state, reward, terminated, truncated, info = self.env.step(
                 dist.sample().cpu().numpy()[0]
@@ -404,10 +411,10 @@ class GAIL:
             actions: list[torch.Tensor] = []
             rewards: list[torch.Tensor] = []
             masks: list[torch.Tensor] = []
-            entropy = torch.tensor(0.0, device=device)
+            entropy = torch.tensor(0.0, device=self.device)
 
             for _ in range(self.max_steps):
-                state = torch.FloatTensor(state).to(device)
+                state = torch.FloatTensor(state).to(self.device)
                 with torch.no_grad():
                     dist, value = self.model(state)
 
@@ -429,8 +436,8 @@ class GAIL:
 
                 log_probs.append(log_prob.detach())
                 values.append(value.detach())
-                rewards.append(torch.FloatTensor(reward).to(device))
-                masks.append(torch.FloatTensor([1 - done]).unsqueeze(1).to(device))
+                rewards.append(torch.FloatTensor(reward).to(self.device))
+                masks.append(torch.FloatTensor([1 - done]).unsqueeze(1).to(self.device))
 
                 states.append(state.detach())
                 actions.append(action.detach())
@@ -460,7 +467,7 @@ class GAIL:
                     if test_reward > max_reward:
                         early_stop = True
 
-            next_state = torch.FloatTensor(np.asarray(next_state)).to(device)
+            next_state = torch.FloatTensor(np.asarray(next_state)).to(self.device)
             with torch.no_grad():
                 _, next_value = self.model(next_state)
             returns = compute_gae(next_value, rewards, masks, values)
@@ -489,7 +496,7 @@ class GAIL:
             ]
             expert_state_action_tensor = torch.FloatTensor(
                 expert_state_action_sample
-            ).to(device)
+            ).to(self.device)
             state_action = torch.cat([states_tensor, actions_tensor], 1)
             fake = self.discriminator(state_action)
             real = self.discriminator(expert_state_action_tensor)
@@ -502,10 +509,10 @@ class GAIL:
             # policy behaves like the expert. Flipping the labels without also
             # updating `expert_reward` would break training.
             discrim_loss = self.discrim_criterion(
-                fake, torch.ones((states_tensor.shape[0], 1)).to(device)
+                fake, torch.ones((states_tensor.shape[0], 1)).to(self.device)
             ) + self.discrim_criterion(
                 real,
-                torch.zeros((expert_state_action_tensor.size(0), 1)).to(device),
+                torch.zeros((expert_state_action_tensor.size(0), 1)).to(self.device),
             )
             discrim_loss.backward()
             self.optimizer_discrim.step()
@@ -671,7 +678,7 @@ class GAIL:
         )
 
         # Restore network weights
-        map_loc = device
+        map_loc = new_agent.device
         new_agent.model.load_state_dict(
             torch.load(model_path, map_location=map_loc, weights_only=False)
         )

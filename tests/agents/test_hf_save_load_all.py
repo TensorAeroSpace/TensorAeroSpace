@@ -201,7 +201,7 @@ def test_gail_save_load_roundtrip(tmp_path):
     obs, _ = env.reset()
     obs_t = torch.FloatTensor(obs).unsqueeze(0).unsqueeze(0)
     with torch.no_grad():
-        dist1, val1 = agent.model(obs_t)
+        dist1, val1 = agent.model(obs_t.to(agent.device))
         action1 = dist1.mean.cpu().numpy()
 
     save_dir = str(tmp_path / "gail_test")
@@ -209,7 +209,7 @@ def test_gail_save_load_roundtrip(tmp_path):
 
     loaded = GAIL.from_pretrained(str(run_dir), env=env, data=expert_data)
     with torch.no_grad():
-        dist2, val2 = loaded.model(obs_t)
+        dist2, val2 = loaded.model(obs_t.to(loaded.device))
         action2 = dist2.mean.cpu().numpy()
 
     np.testing.assert_array_almost_equal(action1, action2, decimal=5)
