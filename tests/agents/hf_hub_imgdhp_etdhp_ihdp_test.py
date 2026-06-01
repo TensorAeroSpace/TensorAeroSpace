@@ -141,10 +141,14 @@ def test_imgdhp_publish_to_hub_uploads_folder(tmp_path, monkeypatch):
     assert Path(called["folder_path"]) == Path(run_dir)
 
 
-def test_imgdhp_device_fallback_on_load(tmp_path):
+def test_imgdhp_device_fallback_on_load(tmp_path, monkeypatch):
     # Forge a checkpoint that claims it was trained on cuda → loading on
     # a CPU host must silently downgrade to cpu.
     import json
+
+    # Pretend no GPU is present so the cuda→cpu fallback is exercised even on
+    # a CUDA-equipped host.
+    monkeypatch.setattr(torch.cuda, "is_available", lambda: False)
 
     agent = _mk_imgdhp()
     run_dir = Path(agent.save(path=tmp_path))
