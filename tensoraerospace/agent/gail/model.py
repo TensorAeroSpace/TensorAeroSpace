@@ -199,9 +199,9 @@ class GAIL:
         self.num_outputs = int(action_shape[0])
 
         self.model = ActorCritic(self.num_inputs, self.num_outputs, 256).to(self.device)
-        self.discriminator = Discriminator(
-            self.num_inputs + self.num_outputs, 128
-        ).to(self.device)
+        self.discriminator = Discriminator(self.num_inputs + self.num_outputs, 128).to(
+            self.device
+        )
 
         self.discrim_criterion = nn.BCELoss()
         self.optimizer = optim.Adam(self.model.parameters(), lr=self.lr)
@@ -437,9 +437,7 @@ class GAIL:
                 log_probs.append(log_prob.detach())
                 values.append(value.detach())
                 rewards.append(torch.FloatTensor(reward).to(self.device))
-                masks.append(
-                    torch.FloatTensor([1 - done]).unsqueeze(1).to(self.device)
-                )
+                masks.append(torch.FloatTensor([1 - done]).unsqueeze(1).to(self.device))
 
                 states.append(state.detach())
                 actions.append(action.detach())

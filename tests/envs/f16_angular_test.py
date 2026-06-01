@@ -120,7 +120,9 @@ def test_render_rgb_array_returns_ndarray(env_factory):
         # themselves. On machines without Chrome the render raises a RuntimeError
         # mentioning Chrome / plotly_get_chrome — skip rather than fail.
         msg = str(exc)
-        if any(token in msg for token in ("Chrome", "plotly_get_chrome", "ChromeNotFound")):
+        if any(
+            token in msg for token in ("Chrome", "plotly_get_chrome", "ChromeNotFound")
+        ):
             pytest.skip(
                 "rgb_array требует системный Google Chrome для kaleido>=1: "
                 "poetry run plotly_get_chrome"
