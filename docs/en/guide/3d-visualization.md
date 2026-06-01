@@ -39,7 +39,7 @@ plane.
 |---|---|
 | `None` (default) | `render()` returns `None`. Position, attitude, and chart histories are still tracked, so you can render later by setting `env.unwrapped.render_mode` and calling `render()`. |
 | `"human"` | `render()` returns a `plotly.graph_objects.Figure`. Call `.show()` to open in browser / inline in Jupyter. |
-| `"rgb_array"` | `render()` returns a `numpy` array of shape `(H, W, 3)` (PNG decoded with PIL). Requires `kaleido` (already in deps) and `Pillow`. |
+| `"rgb_array"` | `render()` returns a `numpy` array of shape `(H, W, 3)` (PNG decoded with PIL). Requires `kaleido` (already in deps) and `Pillow`. With `kaleido>=1` the PNG is rendered through a **system Google Chrome that you must install yourself** (it is not packaged with TensorAeroSpace). If Chrome is missing, `render()` raises a clear `RuntimeError`; install it once with `poetry run plotly_get_chrome`. |
 | `"live"` | `render()` returns a `plotly.graph_objects.FigureWidget` that updates per call. Display once via `from IPython.display import display; display(env.render())`, then call `env.render()` after each `env.step()` to extend the trail and chart traces in place. Notebook-only (requires `anywidget`, included in deps). |
 
 ## Configuration kwargs
