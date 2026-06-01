@@ -1059,18 +1059,24 @@ class DSAC(BaseRLModel):
         )
         if isinstance(critic_state, dict):
             if "Z1" in critic_state:
-                new_agent.Z1.load_state_dict(critic_state["Z1"])
+                # strict=False tolerates non-persistent service buffers
+                # (e.g. iqn.const_pi_vec) missing in older checkpoints.
+                new_agent.Z1.load_state_dict(critic_state["Z1"], strict=False)
             if "Z2" in critic_state:
-                new_agent.Z2.load_state_dict(critic_state["Z2"])
+                new_agent.Z2.load_state_dict(critic_state["Z2"], strict=False)
 
         critic_target_state = torch.load(
             critic_target_path, map_location=new_agent.device, weights_only=False
         )
         if isinstance(critic_target_state, dict):
             if "Z1_target" in critic_target_state:
-                new_agent.Z1_target.load_state_dict(critic_target_state["Z1_target"])
+                new_agent.Z1_target.load_state_dict(
+                    critic_target_state["Z1_target"], strict=False
+                )
             if "Z2_target" in critic_target_state:
-                new_agent.Z2_target.load_state_dict(critic_target_state["Z2_target"])
+                new_agent.Z2_target.load_state_dict(
+                    critic_target_state["Z2_target"], strict=False
+                )
 
         new_agent.policy = new_agent.policy.to(new_agent.device)
         new_agent.Z1 = new_agent.Z1.to(new_agent.device)

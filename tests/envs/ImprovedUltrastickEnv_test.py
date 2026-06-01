@@ -189,6 +189,42 @@ def test_improved_ultrastick_termination_on_pitch_limit(monkeypatch, ultra_env_d
     assert terminated is True
 
 
+def test_improved_ultrastick_get_init_args(ultra_env_default):
+    env = ultra_env_default
+    init_args = env.get_init_args()
+
+    # Check that the method returns a dictionary
+    assert isinstance(init_args, dict)
+
+    # Check that expected keys are present
+    assert "initial_state" in init_args
+    assert "reference_signal" in init_args
+    assert "number_time_steps" in init_args
+    assert "dt" in init_args
+    assert "initial_elevator_deg" in init_args
+    assert "initial_throttle" in init_args
+    assert "use_initial_action_on_first_step" in init_args
+
+    # Check that internal keys are removed
+    assert "self" not in init_args
+    assert "__class__" not in init_args
+
+    # Verify values match fixture configuration
+    assert init_args["number_time_steps"] == 20
+    assert init_args["dt"] == 0.01
+    assert init_args["initial_elevator_deg"] == 0.0
+    assert init_args["initial_throttle"] == 0.2
+    assert init_args["use_initial_action_on_first_step"] is False
+
+    # The environment must be reconstructible from get_init_args()
+    rebuilt = ImprovedUltrastickEnv(**init_args)
+    assert isinstance(rebuilt, ImprovedUltrastickEnv)
+    assert rebuilt.number_time_steps == env.number_time_steps
+    assert rebuilt.dt == env.dt
+    assert rebuilt.action_space.shape == env.action_space.shape
+    assert rebuilt.observation_space.shape == env.observation_space.shape
+
+
 def test_linear_ultrastick_render_raises(monkeypatch):
     # Cover LinearLongitudinalUltrastick.render NotImplementedError without real model.
     import tensoraerospace.envs.ultrastick as ultramod
