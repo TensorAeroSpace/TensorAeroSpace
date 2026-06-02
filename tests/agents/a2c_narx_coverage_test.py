@@ -196,6 +196,9 @@ def test_from_pretrained_missing_local_path_raises(tmp_path):
 
 
 def test_load_cuda_device_fallback_when_unavailable(tmp_path, learner, monkeypatch):
+    # Force CUDA to look unavailable so the cuda->cpu fallback is exercised
+    # deterministically, independent of the host (e.g. a CUDA-equipped machine).
+    monkeypatch.setattr(torch.cuda, "is_available", lambda: False)
     # Save with device=cuda recorded, then ensure _load falls back to cpu.
     save_dir = learner.save(tmp_path)
     config_path = save_dir / "config.json"
@@ -206,7 +209,11 @@ def test_load_cuda_device_fallback_when_unavailable(tmp_path, learner, monkeypat
     assert str(next(restored.actor.parameters()).device) == "cpu"
 
 
-def test_load_mps_device_fallback_when_unavailable(tmp_path, learner):
+def test_load_mps_device_fallback_when_unavailable(tmp_path, learner, monkeypatch):
+    # Force MPS to look unavailable so the mps->cpu fallback is exercised
+    # deterministically, independent of the host backend availability.
+    if hasattr(torch.backends, "mps"):
+        monkeypatch.setattr(torch.backends.mps, "is_available", lambda: False)
     save_dir = learner.save(tmp_path)
     config_path = save_dir / "config.json"
     cfg = json.loads(config_path.read_text())

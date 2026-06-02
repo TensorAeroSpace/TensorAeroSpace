@@ -113,7 +113,21 @@ def test_render_rgb_array_returns_ndarray(env_factory):
     env.reset()
     for _ in range(3):
         env.step(np.zeros(3))
-    arr = env.render()
+    try:
+        arr = env.render()
+    except RuntimeError as exc:
+        # kaleido>=1 renders via a system Google Chrome the user must install
+        # themselves. On machines without Chrome the render raises a RuntimeError
+        # mentioning Chrome / plotly_get_chrome — skip rather than fail.
+        msg = str(exc)
+        if any(
+            token in msg for token in ("Chrome", "plotly_get_chrome", "ChromeNotFound")
+        ):
+            pytest.skip(
+                "rgb_array требует системный Google Chrome для kaleido>=1: "
+                "poetry run plotly_get_chrome"
+            )
+        raise
     assert isinstance(arr, np.ndarray)
     assert arr.ndim == 3 and arr.shape[-1] in (3, 4)
 

@@ -40,7 +40,7 @@ fig.show()
 |---|---|
 | `None` (по умолчанию) | `render()` возвращает `None`. История позиции, ориентации и графиков всё равно накапливается, поэтому можно отрендерить позже, установив `env.unwrapped.render_mode` и вызвав `render()`. |
 | `"human"` | `render()` возвращает `plotly.graph_objects.Figure`. Вызовите `.show()`, чтобы открыть в браузере или встроить в Jupyter. |
-| `"rgb_array"` | `render()` возвращает массив `numpy` формы `(H, W, 3)` (PNG, декодированный через PIL). Требует `kaleido` (уже в зависимостях) и `Pillow`. |
+| `"rgb_array"` | `render()` возвращает массив `numpy` формы `(H, W, 3)` (PNG, декодированный через PIL). Требует `kaleido` (уже в зависимостях) и `Pillow`. При `kaleido>=1` PNG рендерится через **системный Google Chrome, который вы устанавливаете сами** (он не входит в поставку TensorAeroSpace). Если Chrome отсутствует, `render()` бросает понятный `RuntimeError`; установите Chrome один раз командой `poetry run plotly_get_chrome`. |
 | `"live"` | `render()` возвращает `plotly.graph_objects.FigureWidget`, обновляющийся при каждом вызове. Отобразите его один раз через `from IPython.display import display; display(env.render())`, затем вызывайте `env.render()` после каждого `env.step()`, чтобы продлевать след и трассы графиков на месте. Только для ноутбука (требует `anywidget`, входит в зависимости). |
 
 ## Параметры конфигурации

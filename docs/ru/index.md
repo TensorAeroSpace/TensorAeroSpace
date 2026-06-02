@@ -8,10 +8,10 @@ hide:
   <h1>TensorAeroSpace</h1>
   <p class="tagline">Open-source аэрокосмический симулятор + библиотека адаптивного управления. Trim, fly, fail, recover — всё в чистом NumPy.</p>
   <p>
-    <a href="guide/installation.md" class="md-button md-button--primary">Установить</a>
-    <a href="cookbook/01_hello.md" class="md-button">Quickstart</a>
-    <a href="model/b747_nonlinear.md" class="md-button">Модели</a>
-    <a href="agent/ihdp.md" class="md-button">Алгоритмы</a>
+    <a href="guide/installation/" class="md-button md-button--primary">Установить</a>
+    <a href="cookbook/01_hello/" class="md-button">Quickstart</a>
+    <a href="model/b747_nonlinear/" class="md-button">Модели</a>
+    <a href="agent/ihdp/" class="md-button">Алгоритмы</a>
   </p>
   <p>
     <a href="https://github.com/TensorAeroSpace/TensorAeroSpace"><img alt="GitHub" src="https://img.shields.io/badge/GitHub-TensorAeroSpace-000?logo=github"></a>
@@ -456,8 +456,8 @@ Python 3.10–3.12, MATLAB не требуется, нет проприетар�
 ---
 
 <div style="text-align:center; margin: 1.6rem 0 0.5rem;">
-  <a href="guide/installation.md" class="md-button md-button--primary">Начать</a>
-  <a href="cookbook/01_hello.md" class="md-button">Открыть cookbook</a>
+  <a href="guide/installation/" class="md-button md-button--primary">Начать</a>
+  <a href="cookbook/01_hello/" class="md-button">Открыть cookbook</a>
   <a href="https://github.com/TensorAeroSpace/TensorAeroSpace" class="md-button">Star на GitHub</a>
 </div>
 

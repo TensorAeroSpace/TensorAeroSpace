@@ -410,7 +410,21 @@ class NonlinearAngularF16(gym.Env):
                 "Install with `pip install Pillow`."
             ) from e
         fig = self._build_figure()
-        png_bytes = fig.to_image(format="png")  # requires kaleido
+        try:
+            png_bytes = fig.to_image(format="png")  # requires kaleido
+        except RuntimeError as exc:
+            # kaleido>=1 renders through a system Google Chrome that the user
+            # must install themselves (env-side dependency, not packaged here).
+            msg = str(exc)
+            if any(
+                token in msg
+                for token in ("Chrome", "plotly_get_chrome", "ChromeNotFound")
+            ):
+                raise RuntimeError(
+                    "Для render(mode='rgb_array') требуется системный Google Chrome "
+                    "(kaleido>=1). Установите его: poetry run plotly_get_chrome"
+                ) from exc
+            raise
         return np.array(Image.open(BytesIO(png_bytes)).convert("RGB"))
 
     def _render_live(self):

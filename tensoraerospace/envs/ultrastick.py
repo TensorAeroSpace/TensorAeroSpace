@@ -265,6 +265,19 @@ class ImprovedUltrastickEnv(gym.Env):
         self.pre_prev_elev_norm = float(self.prev_elev_norm)
         self.pre_prev_thr_norm = float(self.prev_thr_norm)
 
+        # Store initialization arguments for serialization (only public
+        # __init__ parameters — avoid capturing locals() which includes
+        # derived variables)
+        self.init_args = {
+            "initial_state": initial_state,
+            "reference_signal": reference_signal,
+            "number_time_steps": number_time_steps,
+            "dt": dt,
+            "initial_elevator_deg": initial_elevator_deg,
+            "initial_throttle": initial_throttle,
+            "use_initial_action_on_first_step": use_initial_action_on_first_step,
+        }
+
         # Reward weights
         self.reward_scale = 0.08
         self.w_theta = 8.0
@@ -381,6 +394,20 @@ class ImprovedUltrastickEnv(gym.Env):
             ],
             dtype=np.float32,
         )
+
+    def get_init_args(self):
+        """Get initialization arguments as a dictionary.
+
+        Returns:
+            dict: Dictionary of initialization arguments, excluding 'self'
+                and '__class__'.
+        """
+        init_args = self.init_args.copy()
+        # Remove reference to current object from arguments dict
+        init_args.pop("self", None)
+        # Remove reference to class from arguments dict
+        init_args.pop("__class__", None)
+        return init_args
 
     def reset(self, seed: Optional[int] = None, options: Optional[dict] = None):
         """Reset environment state and action history."""

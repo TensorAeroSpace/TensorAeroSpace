@@ -85,6 +85,11 @@ black = "^24.10.0"
 isort = ">=6.0.1,<9"
 flake8 = "^7.3.0"
 safety = "^3.0.0"
+# Keep marshmallow on 3.x: marshmallow 4 pulls backports-datetime-fromisoformat,
+# whose backports/__init__.py conflicts with backports.tarfile and corrupts the
+# `backports` namespace, breaking `from backports import zstd` (urllib3 >= 2.7) on
+# Python < 3.11. safety only requires marshmallow >= 3.15.0, so 3.x is sufficient.
+marshmallow = "<4"
 bandit = "^1.7.5"
 mkdocs = "^1.6.1"
 mkdocs-material = "^9.6.22"

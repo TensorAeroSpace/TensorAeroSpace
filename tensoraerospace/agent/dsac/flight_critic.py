@@ -81,6 +81,7 @@ class IQN(nn.Module):
         self.register_buffer(
             "const_pi_vec",
             torch.arange(start=1, end=self.C + 1) * torch.pi,
+            persistent=False,
         )
         self.embedding_layer = nn.Sequential(
             nn.Linear(self.C, self.H),
