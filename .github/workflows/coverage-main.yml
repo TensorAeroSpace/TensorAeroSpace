@@ -31,7 +31,7 @@ jobs:
           sudo apt-get clean
 
       - name: 📥 Checkout code
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
         with:
           # Full history is useful for Coveralls to attribute lines to commits.
           fetch-depth: 0
