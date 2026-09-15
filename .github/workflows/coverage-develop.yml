@@ -31,18 +31,18 @@ jobs:
           sudo apt-get clean
 
       - name: 📥 Checkout code
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
         with:
           # Full history helps Coveralls attribute lines to commits.
           fetch-depth: 0
 
       - name: 🐍 Set up Python 3.10
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@v7
         with:
           python-version: '3.10'
 
       - name: 📦 Cache Poetry dependencies
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: |
             ~/.cache/pypoetry
