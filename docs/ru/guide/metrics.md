@@ -128,6 +128,7 @@ loss-ов смешивались между `Loss/`, `loss/` и `losses/`. Ос�
 
 | Константа | Тег | Краткое описание |
 |---|---|---|
+| `PPO.LOSS_AUXILIARY` | `loss/auxiliary` | MSE предсказания непосредственной награды без коэффициента, когда задача включена. |
 | `PPO.APPROX_KL` | `diagnostics/approx_kl` | Эмпирический KL между старой и новой политикой. |
 | `PPO.CLIP_FRACTION` | `diagnostics/clip_fraction` | Доля сэмплов, попадающих в границу clip. |
 | `PPO.EXPLAINED_VARIANCE` | `diagnostics/explained_variance` | 1 − Var(returns − V) / Var(returns). |

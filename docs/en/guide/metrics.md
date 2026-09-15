@@ -124,6 +124,7 @@ the shared group prefixes, so TensorBoard groups stay coherent across runs.
 
 | Constant | Tag | One-liner |
 |---|---|---|
+| `PPO.LOSS_AUXILIARY` | `loss/auxiliary` | Unweighted immediate-reward prediction MSE, when enabled. |
 | `PPO.APPROX_KL` | `diagnostics/approx_kl` | Empirical KL between old and new policy. |
 | `PPO.CLIP_FRACTION` | `diagnostics/clip_fraction` | Fraction of samples hitting the clip bound. |
 | `PPO.EXPLAINED_VARIANCE` | `diagnostics/explained_variance` | 1 − Var(returns − V) / Var(returns). |

@@ -48,12 +48,12 @@ $$
 
 ### Implementation details
 
-- Policy: `Actor.forward(..., continous_actions=True)` outputs `mu = tanh(Wx)` and `log_std = tanh(Wx)` stretched to `[log_std_min, log_std_max]`; \(\sigma = e^{\log \sigma}\). Actions are sampled from `Normal(mu, sigma)`.
+- Policy: `Actor.forward(...)` outputs `mu = tanh(Wx)` and `log_std = tanh(Wx)` stretched to `[log_std_min, log_std_max]`; \(\sigma = e^{\log \sigma}\). Actions are sampled from `Normal(mu, sigma)`.
 - Probability ratios: computed as `torch.exp(new_probs - old_probs)` for stability versus dividing densities.
 - Entropy: `actor_loss` uses `-new_distr.entropy().mean()` and later adds `+ entropy_coef * entropy`, effectively subtracting entropy with a coefficient to encourage stochastic policies.
 - GAE & bootstrap: `preprocess1` appends `next_value` to `values`, then iterates backward computing \(\delta\) and accumulating \(g\) with \(\lambda=0.8\); final `returns = V + g`, `advantages = returns - V`.
 - Mini-batches: `ppo_iter` samples `mini_batch_size` indices repeatedly each epoch.
-- Auxiliary head: actor also predicts rewards (`self.r`) for an optional `auxillary_task` (reward MSE); not included in the default loss.
+- Auxiliary head: with `auxiliary_coef > 0`, `actor.predict_reward(states)` predicts immediate rewards through `self.r`; its MSE is added to the actor objective automatically.
 
 ### Training pseudocode
 
@@ -124,22 +124,61 @@ agent = PPO.load('./runs')
 
 ## Auxiliary Tasks {#auxiliary-tasks}
 
-The PPO implementation includes an optional **auxiliary task** mechanism for reward prediction. This auxiliary head helps the agent learn better state representations by predicting expected rewards alongside the main policy optimization.
+Set `auxiliary_coef > 0` when creating `PPO` to enable immediate-reward prediction.
+An optional linear head `actor.r` shares the actor's two hidden layers and predicts
+one reward per observation. Both the head and those shared layers receive
+gradients from the auxiliary loss:
 
-### How it works
+```text
+auxiliary_loss = mean((predicted_reward - immediate_reward) ** 2)
+actor_objective = actor_loss + auxiliary_coef * auxiliary_loss
+```
 
-- The `Actor` network includes an additional output layer `self.r` that predicts the reward
-- The auxiliary loss is computed as MSE between predicted and actual rewards
-- This loss can be added to the main PPO loss via the `auxillary_task` method in the `Agent` class
+`learn()` adds this term automatically, including when called by `train()` with
+a single or batched environment. Targets are the immediate rewards stored in
+the rollout, not discounted returns; `normalize_reward` only normalizes returns.
+The default `auxiliary_coef=0.0` creates no reward-head parameters and keeps
+existing checkpoints loadable. The coefficient and reward-head weights are
+saved and restored by `save()`, best checkpoints, and `from_pretrained()`.
+`save()` and asynchronous best checkpoints also preserve optimizer state.
 
 ### Usage
 
 ```python
-# Auxiliary task is computed separately from main training
-aux_loss = agent.auxillary_task(states, rewards)
+agent = PPO(env=env, auxiliary_coef=0.1)
+agent.train(num_episodes=2, max_steps=128)
 ```
 
-The auxiliary task encourages the network to encode reward-relevant features in its hidden representations, potentially improving sample efficiency and generalization.
+The unweighted MSE is returned as `metrics["auxiliary_loss"]` by `learn()` and
+logged as `loss/auxiliary` in TensorBoard/WandB. `actor_loss` continues to report
+the policy objective without the auxiliary term.
+
+For a custom training loop, `agent.auxiliary_task(states, rewards)` returns a
+differentiable, unweighted scalar loss without stepping the optimizer.
+`states` must be a non-empty `(batch_size, obs_dim)` tensor with the same
+preprocessing as the policy inputs; `rewards` must be `(batch_size,)` or
+`(batch_size, 1)`. Targets are detached, and both tensors are moved to the
+agent's device. The previously documented spelling `auxillary_task` is an
+alias. Calling either method on an agent created with `auxiliary_coef=0` raises
+a clear error.
+
+`Actor.forward(states)` still returns exactly `(action, distribution)`.
+Use `actor.predict_reward(states)` for reward predictions on the actor's device;
+it does not sample actions.
+
+### F-16 example
+
+Run the short example from the repository root:
+
+```bash
+poetry run python example/reinforcement_learning/deep_rl/example_ppo_auxiliary_tasks.py \
+  --episodes 2 --steps 128 --log-dir runs/ppo_auxiliary_f16
+```
+
+The script trains on the linear F-16, prints the reward-head weight change and
+saves a checkpoint. This is a demonstration that the task trains, not a claim
+that two rollouts produce a converged controller. The appropriate coefficient
+depends on the reward scale; reward prediction does not guarantee better control.
 
 ## Unified training interface
 
