@@ -179,7 +179,7 @@ class LongitudinalX15(ModelBase):
         self.time_step = 0
 
         # Discretise the system according to the discretisation time
-        (self.filt_A, self.filt_B, self.filt_C, self.filt_D, _) = cont2discrete(
+        self.filt_A, self.filt_B, self.filt_C, self.filt_D, _ = cont2discrete(
             (self.A, self.B, self.C, self.D), self.discretisation_time
         )
 
