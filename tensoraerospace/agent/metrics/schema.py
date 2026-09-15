@@ -70,6 +70,7 @@ EVAL_EPISODE_LENGTH = "eval/episode_length"
 
 
 class PPO:
+    LOSS_AUXILIARY = "loss/auxiliary"
     APPROX_KL = "diagnostics/approx_kl"
     CLIP_FRACTION = "diagnostics/clip_fraction"
     EXPLAINED_VARIANCE = "diagnostics/explained_variance"

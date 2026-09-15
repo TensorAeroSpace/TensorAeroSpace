@@ -9,6 +9,7 @@ import copy
 import datetime
 import inspect
 import json
+import math
 import os
 import queue
 import threading
@@ -373,6 +374,7 @@ class Actor(nn.Module):
         d2: Second hidden layer.
         mu: Mean output layer for action distribution.
         delta: Log standard deviation output layer.
+        r: Optional reward prediction head sharing the policy's hidden layers.
         log_std_min: Minimum allowed log std value.
         log_std_max: Maximum allowed log std value.
     """
@@ -385,6 +387,7 @@ class Actor(nn.Module):
         *,
         log_std_min: float = -20.0,
         log_std_max: float = 0.0,
+        reward_prediction: bool = False,
     ):
         """Initialize actor network.
 
@@ -392,6 +395,7 @@ class Actor(nn.Module):
             input_dim: Dimension of input observations.
             out_dim: Dimension of action space.
             hidden_dim: Number of units in hidden layers. Defaults to 256.
+            reward_prediction: Whether to create a scalar reward prediction head.
         """
         super(Actor, self).__init__()
         self.d1 = nn.Linear(input_dim, hidden_dim)
@@ -409,6 +413,26 @@ class Actor(nn.Module):
         # backwards compatibility but allow PPO to override them.
         self.log_std_min = float(log_std_min)
         self.log_std_max = float(log_std_max)
+        # Keep the default parameter layout compatible with existing checkpoints.
+        self.r = nn.Linear(hidden_dim, 1) if reward_prediction else None
+
+    def predict_reward(self, input_data: torch.Tensor) -> torch.Tensor:
+        """Predict immediate rewards from policy inputs without sampling actions.
+
+        Args:
+            input_data: Policy inputs of shape ``(batch_size, input_dim)``.
+
+        Returns:
+            Reward predictions of shape ``(batch_size, 1)``.
+
+        Raises:
+            RuntimeError: If the reward prediction head was not enabled.
+        """
+        if self.r is None:
+            raise RuntimeError("Reward prediction requires reward_prediction=True.")
+        x = F.relu(self.d1(input_data))
+        x = F.relu(self.d2(x))
+        return cast(torch.Tensor, self.r(x))
 
     def forward(
         self,
@@ -526,6 +550,7 @@ class PPO(BaseRLModel):
         target_kl: Target KL divergence for early stopping.
         normalize_obs: Whether to normalize observations.
         normalize_reward: Whether to normalize rewards.
+        auxiliary_coef: Weight of the optional immediate-reward prediction loss.
         obs_rms: Running statistics for observation normalization.
         ret_rms: Running statistics for return normalization.
         writer: TensorBoard summary writer.
@@ -564,6 +589,7 @@ class PPO(BaseRLModel):
         wandb_run_name: Optional[str] = None,
         wandb_tags: Optional[Sequence[str]] = None,
         wandb_config: Optional[Mapping[str, Any]] = None,
+        auxiliary_coef: float = 0.0,
     ) -> None:
         """Initialize agent with given environment and discount coefficient.
 
@@ -594,7 +620,13 @@ class PPO(BaseRLModel):
                 If None, defaults to "{cwd}/best_model_PPO/".
             save_best_async: If True, save best checkpoint in a background thread
                 (recommended to avoid slowing training).
+            auxiliary_coef: Non-negative, finite weight of the reward prediction
+                MSE added to the actor objective. Zero disables the reward head
+                and preserves the parameter layout of existing checkpoints.
         """
+        self.auxiliary_coef = float(auxiliary_coef)
+        if not math.isfinite(self.auxiliary_coef) or self.auxiliary_coef < 0:
+            raise ValueError("auxiliary_coef must be finite and non-negative.")
         self.gamma = gamma
         self.env = env
         self.device = (
@@ -612,6 +644,7 @@ class PPO(BaseRLModel):
             hidden_dim=actor_hidden_dim,
             log_std_min=actor_log_std_min,
             log_std_max=actor_log_std_max,
+            reward_prediction=self.auxiliary_coef > 0,
         ).to(self.device)
         self.critic = Critic(
             env.observation_space.shape[0], hidden_dim=critic_hidden_dim
@@ -1013,6 +1046,7 @@ class PPO(BaseRLModel):
             # Train epochs
             all_aloss = []
             all_closs = []
+            all_auxiliary_losses = []
             all_entropies = []
             all_approx_kl = []
             all_clip_fractions = []
@@ -1048,6 +1082,8 @@ class PPO(BaseRLModel):
                     )
                     all_aloss.append(metrics["actor_loss"])
                     all_closs.append(metrics["critic_loss"])
+                    if self.auxiliary_coef > 0:
+                        all_auxiliary_losses.append(metrics["auxiliary_loss"])
                     all_entropies.append(metrics["entropy"])
                     all_approx_kl.append(metrics["approx_kl"])
                     all_clip_fractions.append(metrics["clip_fraction"])
@@ -1115,6 +1151,12 @@ class PPO(BaseRLModel):
             self.writer.add_scalar(
                 schema.LOSS_CRITIC, float(avg_closs), env_step=env_step
             )
+            if all_auxiliary_losses:
+                self.writer.add_scalar(
+                    schema.PPO.LOSS_AUXILIARY,
+                    float(np.mean(all_auxiliary_losses)),
+                    env_step=env_step,
+                )
             self.writer.add_scalar(
                 schema.POLICY_ENTROPY, float(avg_entropy), env_step=env_step
             )
@@ -1308,6 +1350,49 @@ class PPO(BaseRLModel):
             self._best_saver.close(timeout=5.0)
             self._best_saver = None
 
+    def auxiliary_task(
+        self, states: torch.Tensor, rewards: torch.Tensor
+    ) -> torch.Tensor:
+        """Compute differentiable immediate-reward prediction MSE.
+
+        Args:
+            states: Batched policy inputs ``(batch_size, obs_dim)``. Apply the
+                same observation preprocessing as the policy; rollout batches
+                passed to :meth:`learn` already have that representation.
+            rewards: Immediate rewards, shaped ``(batch_size,)`` or
+                ``(batch_size, 1)``. These are not discounted returns. Targets
+                are detached so gradients only train the actor and reward head.
+
+        Returns:
+            Scalar, unweighted loss. This method does not step the optimizer.
+
+        Raises:
+            RuntimeError: If ``auxiliary_coef`` was zero at construction.
+            ValueError: If the batch dimensions do not match.
+        """
+        if self.actor.r is None:
+            raise RuntimeError(
+                "Create PPO with auxiliary_coef > 0 to enable this task."
+            )
+        states = self._to_tensor(states)
+        rewards = self._to_tensor(rewards).detach()
+        if states.ndim != 2 or states.shape[0] == 0:
+            raise ValueError("states must be a non-empty (batch_size, obs_dim) batch.")
+        predictions = self.actor.predict_reward(states)
+        if rewards.shape == predictions.shape[:-1]:
+            rewards = rewards.unsqueeze(-1)
+        if rewards.shape != predictions.shape:
+            raise ValueError(
+                "rewards must have shape (batch_size,) or (batch_size, 1)."
+            )
+        return F.mse_loss(predictions, rewards)
+
+    def auxillary_task(
+        self, states: torch.Tensor, rewards: torch.Tensor
+    ) -> torch.Tensor:
+        """Compatibility spelling for :meth:`auxiliary_task`."""
+        return self.auxiliary_task(states, rewards)
+
     def learn(
         self,
         states: torch.Tensor,
@@ -1326,11 +1411,12 @@ class PPO(BaseRLModel):
             adv: Advantages.
             old_probs: Log probabilities of previous actions.
             discnt_rewards: Discounted rewards.
-            rewards: Actual received rewards.
+            rewards: Immediate rewards used as auxiliary prediction targets.
             old_values: Previous value function estimates.
 
         Returns:
-            dict: Dictionary with training metrics.
+            dict: Training metrics; ``auxiliary_loss`` is the unweighted reward
+                MSE when enabled. ``actor_loss`` remains the PPO policy loss.
         """
         # Tests may pass CPU tensors even if agent is on CUDA.
         # Always move the full mini-batch to the agent device.
@@ -1374,9 +1460,15 @@ class PPO(BaseRLModel):
 
         # Actor loss
         a_loss = self.actor_loss(new_probs, entropy, actions, adv.detach(), old_probs)
+        auxiliary_loss = (
+            self.auxiliary_task(states, rewards) if self.auxiliary_coef > 0 else None
+        )
+        actor_objective = a_loss
+        if auxiliary_loss is not None:
+            actor_objective = a_loss + self.auxiliary_coef * auxiliary_loss
 
         # Backward passes
-        a_loss.backward()
+        actor_objective.backward()
         c_loss.backward()
 
         # Gradient clipping for stability
@@ -1387,13 +1479,16 @@ class PPO(BaseRLModel):
         self.a_opt.step()
         self.c_opt.step()
 
-        return {
+        metrics = {
             "actor_loss": a_loss.item(),
             "critic_loss": c_loss.item(),
             "entropy": float(entropy.detach().cpu().item()),
             "approx_kl": float(approx_kl.cpu().item()),
             "clip_fraction": float(clip_fraction.cpu().item()),
         }
+        if auxiliary_loss is not None:
+            metrics["auxiliary_loss"] = auxiliary_loss.item()
+        return metrics
 
     def test_reward(self) -> float:
         """Test model by executing one episode with deterministic actions.
@@ -1566,6 +1661,7 @@ class PPO(BaseRLModel):
                 all_entropies = []
                 episode_lengths = []
                 all_closs = []
+                all_auxiliary_losses = []
                 rewards = []
                 states = []
                 actions = []
@@ -1756,6 +1852,8 @@ class PPO(BaseRLModel):
                         )
                         all_aloss.append(metrics["actor_loss"])
                         all_closs.append(metrics["critic_loss"])
+                        if self.auxiliary_coef > 0:
+                            all_auxiliary_losses.append(metrics["auxiliary_loss"])
                         all_entropies.append(metrics["entropy"])
                         all_approx_kl.append(metrics["approx_kl"])
                         all_clip_fractions.append(metrics["clip_fraction"])
@@ -1799,6 +1897,12 @@ class PPO(BaseRLModel):
                 self.writer.add_scalar(
                     schema.LOSS_CRITIC, float(avg_closs), env_step=env_step
                 )
+                if all_auxiliary_losses:
+                    self.writer.add_scalar(
+                        schema.PPO.LOSS_AUXILIARY,
+                        float(np.mean(all_auxiliary_losses)),
+                        env_step=env_step,
+                    )
                 self.writer.add_scalar(
                     schema.POLICY_ENTROPY, float(avg_entropy), env_step=env_step
                 )
@@ -1917,6 +2021,7 @@ class PPO(BaseRLModel):
             "num_epochs": self.num_epochs,
             "batch_size": self.batch_size,
             "entropy_coef": self.entropy_coef,
+            "auxiliary_coef": self.auxiliary_coef,
             "actor_lr": self.actor_lr,
             "critic_lr": self.critic_lr,
             "gae_lambda": self.gae_lambda,
