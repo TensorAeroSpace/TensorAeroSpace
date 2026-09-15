@@ -763,12 +763,15 @@ class Actor:
                         count, gradient, self.model_q, self.learning_rate_cascaded
                     )
 
+                # Include the inner network's conversion to control units when
+                # propagating the critic gradient into the outer controller.
                 for count in range(len(self.dq_ref_dWb)):
                     if self.activations[-1] == "sigmoid":
                         gradient = (
                             -2
                             * self.maximum_q_rate
                             * chain_rule
+                            * self._scaled_output_gradient_gain()
                             * self.dut_dq_ref
                             * self.dq_ref_dWb[count]
                         )
@@ -776,6 +779,7 @@ class Actor:
                         gradient = (
                             -self.maximum_q_rate
                             * chain_rule
+                            * self._scaled_output_gradient_gain()
                             * self.dut_dq_ref
                             * self.dq_ref_dWb[count]
                         )
@@ -843,12 +847,15 @@ class Actor:
                             params_q[count].zero_()
 
                 params = _get_trainable_parameters(self.model)
+                # Include the inner network's conversion to control units when
+                # propagating the critic gradient into the outer controller.
                 for count in range(len(self.dq_ref_dWb)):
                     if self.activations[-1] == "sigmoid":
                         gradient = (
                             -2
                             * self.maximum_q_rate
                             * chain_rule
+                            * self._scaled_output_gradient_gain()
                             * self.dut_dq_ref
                             * self.dq_ref_dWb[count]
                         )
@@ -856,6 +863,7 @@ class Actor:
                         gradient = (
                             -self.maximum_q_rate
                             * chain_rule
+                            * self._scaled_output_gradient_gain()
                             * self.dut_dq_ref
                             * self.dq_ref_dWb[count]
                         )

@@ -181,7 +181,7 @@ class AngularF16(ModelBase):
         self.time_step = 0
 
         # Дискретизировать систему в соответствии со временем дискретизации
-        (self.filt_A, self.filt_B, self.filt_C, self.filt_D, _) = cont2discrete(
+        self.filt_A, self.filt_B, self.filt_C, self.filt_D, _ = cont2discrete(
             (self.filt_A, self.filt_B, self.filt_C, self.filt_D),
             self.discretisation_time,
         )

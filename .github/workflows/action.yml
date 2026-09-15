@@ -124,6 +124,7 @@ jobs:
           set -o pipefail
           poetry run pytest --maxfail=1 --disable-warnings \
             --cov=tensoraerospace \
+            --cov-fail-under=92 \
             --cov-report=xml:coverage.xml \
             --cov-report=term-missing:skip-covered \
             --ignore=tests/agents/a2c_narx_learner_test.py \
