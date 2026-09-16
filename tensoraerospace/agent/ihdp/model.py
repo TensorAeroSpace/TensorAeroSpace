@@ -231,6 +231,10 @@ class IHDPAgent(object):
             )
 
         G = self.incremental_model.identify_incremental_model_LS(xt, ut)
+        # Apply the same magnitude/rate-limited command that the identifier
+        # uses, including any integral correction composed above.
+        ut = self.incremental_model.ut.copy()
+        self.actor.ut = ut.copy()
         xt1_est = self.incremental_model.evaluate_incremental_model()
 
         # Проверка для следующего временного шага

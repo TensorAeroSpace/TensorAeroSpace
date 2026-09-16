@@ -485,8 +485,9 @@ class IADPAgent:
             if ready and (self._step + 1) % every == 0:
                 self._policy_evaluation()
 
-        # Roll state.
-        self._X_prev = X_next.copy()
+        # Keep X_t as the previous state for predict(X_{t+1}). Storing
+        # X_{t+1} here would make every subsequent state increment zero.
+        self._X_prev = self._last_X.copy() if self._last_X is not None else None
         if self._last_delta is not None:
             self._delta_prev = self._last_delta.copy()
         self._step += 1

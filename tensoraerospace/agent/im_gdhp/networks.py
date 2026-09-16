@@ -70,10 +70,10 @@ class GDHPActor(nn.Module):
 class GDHPCritic(nn.Module):
     """Dual-head critic for Global Dual Heuristic Programming.
 
-    Outputs both the scalar cost-to-go ``J(o)`` and its vector derivative
-    ``λ(o) = ∂J/∂y`` (same dimensionality as the observed state ``y``).
-    The two heads share a common backbone so that the J-regression and
-    the λ-regression reinforce each other during training.
+    Outputs the scalar cost-to-go ``J(o)`` and a separately fitted
+    costate estimate ``λ(o)`` with the same dimensionality as ``y``.
+    The two losses train a common backbone, but the independent output
+    heads do not enforce ``λ(o) = ∂J/∂y``.
 
     Args:
         in_features: Size of the augmented observation vector ``o``

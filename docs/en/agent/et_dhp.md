@@ -201,3 +201,11 @@ for k in range(number_time_steps - 2):
 - Sun, B., Liu, C., Dally, K., van Kampen, E.-J. (2022). *Intelligent Aircraft Stabilization Control with Event-Triggered Scheme*. CEAS EuroGNC 2022.
 - Abu-Khalaf, M., Lewis, F. L. (2005). *Nearly optimal control laws for nonlinear systems with saturating actuators using a neural network HJB approach*. Automatica, 41(5), 779–791.
 - Modares, H., Lewis, F. L. (2014). *Optimal tracking control of nonlinear partially-unknown constrained-input systems using integral reinforcement learning*. Automatica, 50(7), 1780–1792.
+
+## Model updates and training continuation
+
+With `online_model_fit=True`, each event runs one model-training step on the latest actual transition: current observation, applied command and next observation. Between events, model weights and the held command remain unchanged. Use `predict → env.step → learn` on every step.
+
+`save(path, save_gradients=True)` saves optimizers, trigger state, held control, a pending transition, simulation time and metric counters. Resume with `ETDHPAgent.from_pretrained(path, load_gradients=True)` and restore the environment state and step index. Call `agent.reset()` for a new episode.
+
+The `state_transform` and `exploration_fn` callables are not written to JSON. Pass them again through the corresponding `from_pretrained()` arguments if they were used. Legacy checkpoints without `control_state.json` load with the trigger re-armed for a new episode.

@@ -1,6 +1,6 @@
 """Incremental Model-based Global Dual Heuristic Programming agent.
 
-Implements the control scheme from Sun & van Kampen (2021),
+Implements an incremental adaptive-critic variant inspired by Sun & van Kampen (2021),
 *"Intelligent adaptive optimal control using incremental model-based
 global dual heuristic programming subject to partial observability"*,
 Applied Soft Computing 103, 107153, with the system identification
@@ -18,21 +18,21 @@ High-level algorithm::
          e_t = y_t[tracking] − r_t.
       2. Actor produces u_t = π_θ(o_t).
       3. Execute u_t in the environment, observe y_{t+1}.
-      4. Compute the one-step cost c_t = e_tᵀ Q e_t + ρ ‖u_t − u_{t-1}‖².
-      5. If t ≥ 2, update the incremental model via one RLS step using
-         (y_{t-2}, y_{t-1}, y_t, u_{t-2}, u_{t-1}) — this gives us
+      4. Compute the tracking cost c_t = e_tᵀ Q e_t in scaled coordinates.
+      5. If t ≥ 1, update the incremental model via one RLS step using
+         (y_{t-1}, y_t, y_{t+1}, u_{t-1}, u_t) in physical units — this gives us
          current estimates of A_t and B_t.
-      6. Compute λ(t+1) and J(t+1) by passing the predicted observation
-         ŷ_{t+1} (from the incremental model) through the target /
-         online critic.
+      6. Compute λ(t+1) and J(t+1) by passing the measured observation
+         y_{t+1} through the target / online critic.
       7. Critic loss:
             L_J  = (J(o_t) − (c_t + γ J(o_{t+1})))²
             L_λ  = ‖λ(o_t) − (∂c_t/∂y + γ A_tᵀ λ(o_{t+1}))‖²
             L    = L_J + β L_λ
-      8. Actor loss: minimise ``c_t + γ J(ô_{t+1})`` where ``ô_{t+1}``
-         is built from the predicted ``ŷ_{t+1}`` obtained via the
-         incremental model. The autograd graph carries the gradient
-         through ``B_t`` back to the actor weights.
+      8. Actor loss: minimise predicted next-step tracking cost plus
+         ``γ J(ô_{t+1}) + ρ ‖u_t − u_{t-1}‖²``. The autograd graph
+         differentiates the scalar J head through ``B_t`` back to the
+         actor. The separately fitted λ head shares the critic backbone;
+         it is not constrained to equal the exact derivative of J.
 
 The resulting agent has three differentiable blocks — actor, critic,
 and the RLS-identified linear increment model — and does not require
@@ -70,7 +70,7 @@ class IMGDHPConfig:
         track_Q: Diagonal weights of the quadratic tracking cost over
             the tracked output channels. Length must equal ``n_track``.
         action_rate_penalty: ρ coefficient penalising ‖Δu‖² in the
-            one-step cost.
+            actor objective; excluded from the critic's immediate cost.
         forgetting: RLS forgetting factor for the incremental model.
         cov_init: Initial scale of the RLS covariance matrix.
         warmup_steps: Number of initial steps during which only the
@@ -177,7 +177,7 @@ class IMGDHPAgent:
 
         if self.cfg.seed is not None:
             torch.manual_seed(int(self.cfg.seed))
-            np.random.seed(int(self.cfg.seed))
+        self._rng = np.random.default_rng(self.cfg.seed)
 
         if len(self.cfg.track_Q) != len(self.tracking_indices):
             raise ValueError(
@@ -259,6 +259,20 @@ class IMGDHPAgent:
                 self.n_obs, dtype=torch.float32, device=self.device
             )
 
+        # Each reference channel has the units of its tracked observation.
+        # A shared scalar reference retains the first channel's feature scale;
+        # tracking errors below are scaled separately for every output.
+        self._ref_scale_np = np.full(
+            self.reference_size, self._obs_scale_np[self.tracking_indices[0]]
+        )
+        n_ref_tracks = min(self.reference_size, len(self.tracking_indices))
+        self._ref_scale_np[:n_ref_tracks] = self._obs_scale_np[
+            self.tracking_indices[:n_ref_tracks]
+        ]
+        self._ref_scale_t = torch.as_tensor(
+            self._ref_scale_np, dtype=torch.float32, device=self.device
+        )
+
         # Rolling buffers: one step of history suffices because learn()
         # already has access to (y_{t-1}, y_t, y_{t+1}) and (u_{t-1}, u_t)
         # once called after env.step().
@@ -266,6 +280,7 @@ class IMGDHPAgent:
         self._u_tm1: np.ndarray | None = None
         self._last_action: np.ndarray | None = None
         self._last_augmented: np.ndarray | None = None
+        self._last_obs: np.ndarray | None = None
         self._total_steps = 0
 
         # Metric log populated by :meth:`train`.
@@ -296,34 +311,30 @@ class IMGDHPAgent:
         actor/critic that prefer O(1) inputs without hand-tuning the
         network initialisation.
         """
-        y_v = np.asarray(y, dtype=np.float64).reshape(-1) * self._obs_scale_np
+        y_v = np.asarray(y, dtype=np.float64).reshape(-1)
         ref_v = np.asarray(ref, dtype=np.float64).reshape(-1)
         if ref_v.size < self.reference_size:
             ref_v = np.concatenate([ref_v, np.zeros(self.reference_size - ref_v.size)])
         elif ref_v.size > self.reference_size:
             ref_v = ref_v[: self.reference_size]
-        # Reference is measured in the same physical unit as the tracked
-        # observation component; scale it accordingly.
-        ref_scale = self._obs_scale_np[self.tracking_indices[0]]
-        ref_v = ref_v * ref_scale
         track = y_v[self.tracking_indices]
-        if ref_v.size == 1 and len(self.tracking_indices) > 1:
-            err = track - ref_v[0]
-        else:
-            err = track - ref_v[: len(self.tracking_indices)]
-        return np.concatenate([y_v, ref_v, err])
+        ref_track = ref_v[0] if ref_v.size == 1 else ref_v[: len(self.tracking_indices)]
+        err = (track - ref_track) * self._obs_scale_np[self.tracking_indices]
+        return np.concatenate(
+            [y_v * self._obs_scale_np, ref_v * self._ref_scale_np, err]
+        )
 
     def _augment_torch(self, y: torch.Tensor, ref: torch.Tensor) -> torch.Tensor:
         """Torch-compatible counterpart of :meth:`_augment`."""
-        y_s = y * self._obs_scale_t
-        ref_scale = float(self._obs_scale_t[self.tracking_indices[0]])
-        ref_s = ref * ref_scale
-        track = y_s[self.tracking_indices]
-        if ref_s.numel() == 1 and len(self.tracking_indices) > 1:
-            err = track - ref_s.expand(len(self.tracking_indices))
+        ref = ref.reshape(-1)
+        if ref.numel() < self.reference_size:
+            ref = torch.cat([ref, ref.new_zeros(self.reference_size - ref.numel())])
         else:
-            err = track - ref_s[: len(self.tracking_indices)]
-        return torch.cat([y_s, ref_s, err])
+            ref = ref[: self.reference_size]
+        track = y[self.tracking_indices]
+        ref_track = ref[0] if ref.numel() == 1 else ref[: len(self.tracking_indices)]
+        err = (track - ref_track) * self._obs_scale_t[self.tracking_indices]
+        return torch.cat([y * self._obs_scale_t, ref * self._ref_scale_t, err])
 
     # ------------------------------------------------------------------
     # Interaction
@@ -339,6 +350,7 @@ class IMGDHPAgent:
         self._u_tm1 = None
         self._last_action = None
         self._last_augmented = None
+        self._last_obs = None
         self.incremental_model.reset()
 
     def predict(
@@ -380,10 +392,11 @@ class IMGDHPAgent:
 
         self._last_action = u.copy()
         self._last_augmented = aug.copy()
+        self._last_obs = y.copy()
         return np.asarray(u)
 
     def _rng_normal(self, n: int) -> np.ndarray:
-        return np.random.normal(size=(n,))
+        return self._rng.normal(size=(n,))
 
     def learn(
         self,
@@ -402,12 +415,17 @@ class IMGDHPAgent:
             Dict with latest scalar training metrics (``critic_loss``,
             ``actor_loss``, ``rls_pred_error_norm``).
         """
-        if self._last_action is None or self._last_augmented is None:
+        if (
+            self._last_action is None
+            or self._last_augmented is None
+            or self._last_obs is None
+        ):
             raise RuntimeError("learn() called before predict()")
 
         y_next = np.asarray(next_obs, dtype=np.float64).reshape(-1)
         u_t = self._last_action.copy()
-        y_t_np = np.asarray(self._last_augmented[: self.n_obs]).copy()
+        # Identification and model prediction operate in physical coordinates.
+        y_t_np = self._last_obs.copy()
 
         # --- 1. RLS update of the incremental model ---------------------
         rls_err_norm = float("nan")
@@ -427,25 +445,13 @@ class IMGDHPAgent:
         # Standard DHP convention: c_t depends on the state AT time t,
         # not the predicted next one. The tracking error at y_t vs the
         # reference at time t drives both the Bellman target for J and
-        # the costate target for λ (through ∂c_t/∂y_t = 2 Q e_t).
-        # The cost is evaluated in the *scaled* observation space so
-        # that track_Q is interpreted consistently when obs_scale is
-        # set — otherwise a scaling change would silently retune the
-        # cost function.
+        # the costate target for λ. Costs use scaled errors; derivatives
+        # with respect to physical observations also include the scale.
+        # Changing obs_scale therefore changes the physical cost weights.
         ref_now = self._reference_at(reference_signal, time_step)
         ref_next = self._reference_at(reference_signal, time_step + 1)
 
-        ref_unit_scale = float(self._obs_scale_np[self.tracking_indices[0]])
-        track_now_scaled = (
-            y_t_np[self.tracking_indices] * self._obs_scale_np[self.tracking_indices]
-        )
-        if ref_now.size == 1 and len(self.tracking_indices) > 1:
-            err_now = track_now_scaled - ref_now[0] * ref_unit_scale
-        else:
-            err_now = (
-                track_now_scaled
-                - ref_now[: len(self.tracking_indices)] * ref_unit_scale
-            )
+        err_now = self._augment(y_t_np, ref_now)[-len(self.tracking_indices) :]
 
         Q_np = np.asarray(self.cfg.track_Q, dtype=np.float64)
         c_now_value = float(np.sum(Q_np * err_now**2))
@@ -516,9 +522,10 @@ class IMGDHPAgent:
 
         ``J`` target: Bellman-style ``c_t + γ J(o_{t+1})``.
         ``λ`` target: ``∂c_t/∂y_t + γ Aᵀ λ(o_{t+1})`` where
-        ``c_t = (y_t − r_t)ᵀ Q (y_t − r_t)`` depends on the state AT
-        time ``t`` and therefore has a non-zero gradient only along the
-        tracked components.
+        ``c_t = (S(y_t − r_t))ᵀ Q (S(y_t − r_t))`` depends on the state
+        at time ``t``, where ``S`` is the configured observation scale.
+        Lambda and the identified A matrix use physical coordinates, so
+        the cost derivative includes both factors of S.
 
         When ``target_update_tau > 0`` the Bellman bootstrap uses the
         slow-moving target critic, which dampens the positive-feedback
@@ -538,7 +545,8 @@ class IMGDHPAgent:
         dc_dy = torch.zeros(self.n_obs, dtype=torch.float32, device=self.device)
         Q_np = np.asarray(self.cfg.track_Q, dtype=np.float64)
         for i, idx in enumerate(self.tracking_indices):
-            dc_dy[idx] = float(2.0 * Q_np[i] * err_now_np[i])
+            # lambda is dJ/dy in physical units, while err_now is scaled.
+            dc_dy[idx] = float(2.0 * Q_np[i] * err_now_np[i] * self._obs_scale_np[idx])
 
         A_mat = torch.as_tensor(
             self.incremental_model.A, dtype=torch.float32, device=self.device
@@ -576,12 +584,10 @@ class IMGDHPAgent:
         where ``ŷ_{t+1}`` is built from the current incremental-model
         estimates: ``ŷ_{t+1} = y_t + A · (y_t − y_{t-1}) + B · (u −
         u_{t-1})``. The autograd graph flows through ``B · u`` back to
-        the actor weights, which gives the correct policy gradient
-        ``(2 Q e_{t+1} + λ(o_{t+1}))ᵀ · B · ∂u/∂W_a`` without manual
-        Jacobian work. Keeping the direct one-step cost in the actor
-        objective (ADP "action dependent" convention) gives the policy
-        an immediate teaching signal even while the critic is still
-        bootstrapping.
+        the actor weights. It differentiates the scaled tracking cost
+        and scalar J head, plus the action-rate regularizer; the separate
+        lambda head is not used as dJ/dy. The predicted tracking cost
+        supplies a learning signal while the critic is still bootstrapping.
         """
         y_t = torch.as_tensor(y_t_np, dtype=torch.float32, device=self.device)
         y_prev = torch.as_tensor(y_prev_np, dtype=torch.float32, device=self.device)
@@ -602,14 +608,10 @@ class IMGDHPAgent:
 
         y_next_pred = y_t + A_mat @ (y_t - y_prev) + B_mat @ du
 
-        track = y_next_pred[self.tracking_indices]
-        if ref_next.numel() == 1 and len(self.tracking_indices) > 1:
-            err = track - ref_next.expand(len(self.tracking_indices))
-        else:
-            err = track - ref_next[: len(self.tracking_indices)]
+        aug_next_pred = self._augment_torch(y_next_pred, ref_next)
+        err = aug_next_pred[-len(self.tracking_indices) :]
         c_pred = torch.sum(self._Q * err.pow(2))
 
-        aug_next_pred = self._augment_torch(y_next_pred, ref_next)
         J_next, _ = self.critic(aug_next_pred)
 
         loss = (
@@ -741,13 +743,16 @@ class IMGDHPAgent:
               PyTorch state dicts for the three networks.
             * ``incremental_model.npz`` — RLS ``theta`` and ``P``
               matrices plus scalar hyper-parameters.
+            * ``training_state.json`` — transition history, learning
+              counter and agent-local exploration RNG state.
             * ``actor_optim.pth`` / ``critic_optim.pth`` — optimiser
               state dicts (only when ``save_gradients=True``).
 
         Args:
             path: Base directory. If ``None``, uses CWD.
-            save_gradients: Persist optimiser states so training can
-                resume bitwise-identically from the checkpoint.
+            save_gradients: Persist optimiser states for continuation
+                with the saved transition history and exploration stream.
+                Reset the agent before starting a new environment episode.
 
         Returns:
             Absolute path to the created run directory.
@@ -776,6 +781,22 @@ class IMGDHPAgent:
             cov_init=np.asarray(rls.cov_init),
             num_updates=np.asarray(rls.num_updates),
         )
+
+        state: dict[str, Any] = {
+            "total_steps": self._total_steps,
+            "rng_state": self._rng.bit_generator.state,
+        }
+        for name in (
+            "_y_tm1",
+            "_u_tm1",
+            "_last_action",
+            "_last_augmented",
+            "_last_obs",
+        ):
+            value = getattr(self, name)
+            state[name] = value.tolist() if value is not None else None
+        with open(run_dir / "training_state.json", "w", encoding="utf-8") as f:
+            json.dump(state, f, indent=2)
 
         if save_gradients:
             torch.save(self.actor_opt.state_dict(), run_dir / "actor_optim.pth")
@@ -855,6 +876,8 @@ class IMGDHPAgent:
                 agent.incremental_model.cov_init = float(npz["cov_init"])
                 agent.incremental_model.num_updates = int(npz["num_updates"])
 
+        agent._restore_training_state(folder_p)
+
         # Optimiser states
         if load_gradients:
             actor_opt = folder_p / "actor_optim.pth"
@@ -871,6 +894,29 @@ class IMGDHPAgent:
                 )
 
         return agent
+
+    def _restore_training_state(self, folder: Path) -> None:
+        """Restore transition history and exploration; accept legacy checkpoints."""
+        state_path = folder / "training_state.json"
+        if not state_path.exists():
+            return
+        with open(state_path, "r", encoding="utf-8") as f:
+            state = json.load(f)
+        self._total_steps = int(state["total_steps"])
+        self._rng.bit_generator.state = state["rng_state"]
+        for name in (
+            "_y_tm1",
+            "_u_tm1",
+            "_last_action",
+            "_last_augmented",
+            "_last_obs",
+        ):
+            value = state[name]
+            setattr(
+                self,
+                name,
+                np.asarray(value, dtype=np.float64) if value is not None else None,
+            )
 
     @classmethod
     def from_pretrained(

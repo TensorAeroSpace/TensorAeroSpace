@@ -1,23 +1,25 @@
 # Incremental Model-based Global Dual Heuristic Programming (IMGDHP)
 
-IMGDHP is an incremental model-based variant of Global Dual Heuristic Programming from the Adaptive Critic Designs (ACD) family. It is designed for online adaptive control of nonlinear systems under partial observability. The agent combines recursive least squares (RLS) system identification with a dual-head critic that estimates both the cost-to-go \(J\) and the costate vector \(\lambda = \partial J / \partial y\), enabling richer gradient information for the actor. See also the nonlinear F-16 model: [NonlinearLongitudinalF16](../model/f16_nonlinear_longitudinal.md).
+IMGDHP is an incremental model-based variant of Global Dual Heuristic Programming from the Adaptive Critic Designs (ACD) family. It is designed for online adaptive control of nonlinear systems under partial observability. The agent combines recursive least squares (RLS) system identification with a dual-head critic that estimates the cost-to-go \(J\) and a separate approximation to its derivative, the costate vector \(\lambda\). The actor obtains its gradient through the scalar \(J\) output; the architecture does not enforce \(\lambda = \partial J / \partial y\). See also the nonlinear F-16 model: [NonlinearLongitudinalF16](../model/f16_nonlinear_longitudinal.md).
 
 ## Key ideas
 
 - **Incremental model**: online identification of local linearization \(\Delta y_{t+1} = A \Delta y_t + B \Delta u_t\) via RLS — lightweight, interpretable, and does not require a neural network for system ID
-- **GDHP dual critic**: the critic outputs both \(J(o)\) (scalar cost-to-go) and \(\lambda(o)\) (costate vector), providing a richer gradient signal to the actor compared to standard HDP/DHP
-- **Model-predictive actor update**: the actor gradient flows through the identified model matrices \(A\), \(B\), enabling one-step lookahead optimization
+- **GDHP dual critic**: the critic outputs both \(J(o)\) (scalar cost-to-go) and \(\lambda(o)\) (costate vector), training the shared hidden layers with two losses
+- **Model-predictive actor update**: prediction uses the identified matrices \(A\), \(B\); the action gradient flows through \(B\)
 - **Partial observability**: the augmented observation \(o = [y; r; e]\) allows the agent to operate when the environment observation is not the full state
 
 ## Key differences from related agents
 
+This compares implementations in this repository; HDP refers to `ADP(design="hdp")`.
+
 | Aspect | HDP | IHDP | **IMGDHP** |
 | --- | --- | --- | --- |
-| System ID | Fixed/known model | Online NN | Online RLS (incremental linear) |
+| System ID | Known linear model | Least squares over an increment window | Online RLS (incremental linear) |
 | Critic output | \(J(o)\) only | \(J(o)\) only | \(J(o)\) + \(\lambda(o)\) (dual) |
-| Actor update | Direct gradient | Model-based | Model-predictive via \(A\), \(B\) |
-| Partial observability | No | Limited | Core design feature |
-| Framework | NumPy | NumPy | PyTorch |
+| Actor update | Through the known model | Through the identified model | Model prediction, action gradient through \(B\) |
+| Input | State and pitch reference | Selected states and reference | Observations, reference and tracking error |
+| Networks / identification | PyTorch / known matrices | PyTorch / NumPy | PyTorch / NumPy |
 
 ## IMGDHP components
 
@@ -32,11 +34,11 @@ IMGDHP is an incremental model-based variant of Global Dual Heuristic Programmin
 
 At each time step \(t\), given observation \(y_t\) and reference \(r_t\):
 
-1. **Augment observation**: \(o_t = [y_t;\; r_t;\; e_t]\), where \(e_t = y_t[\text{tracking}] - r_t\)
+1. **Augment observation**: \(o_t = [y_t;\; r_t;\; e_t]\), where \(e_t = y_t[\text{tracking}] - r_t\) for unit `obs_scale`; otherwise observations, references and errors use their channel scales
 2. **Actor produces action**: \(u_t = \pi_\theta(o_t)\)
 3. **Execute** \(u_t\) in the environment, observe \(y_{t+1}\)
-4. **Compute one-step cost**: \(c_t = e_t^\top Q e_t + \rho \| u_t - u_{t-1} \|^2\)
-5. **RLS update** (if \(t \geq 2\)): update incremental model using \((y_{t-2}, y_{t-1}, y_t, u_{t-2}, u_{t-1})\) to obtain \(A_t\), \(B_t\)
+4. **Compute one-step cost**: \(c_t = e_t^\top Q e_t\)
+5. **RLS update** (if \(t \geq 1\)): update incremental model using \((y_{t-1}, y_t, y_{t+1}, u_{t-1}, u_t)\) to obtain \(A_t\), \(B_t\)
 6. **Critic update** (GDHP dual loss):
 
 \[
@@ -46,8 +48,13 @@ L = \underbrace{\left( J(o_t) - (c_t + \gamma J(o_{t+1})) \right)^2}_{L_J} + \be
 7. **Actor update** (model-predictive):
 
 \[
-\min_\theta \; c_t + \gamma \, J\!\left(\hat{o}_{t+1}\right), \quad \text{gradient flows through } B_t
+\min_\theta \; c(\hat{y}_{t+1}, r_{t+1}) + \gamma \, J\!\left(\hat{o}_{t+1}\right) + \rho \|u_t-u_{t-1}\|^2, \quad \text{gradient flows through } B_t
 \]
+
+!!! note "Coordinates and critic heads"
+    RLS and model prediction use physical observations. `obs_scale` scales network inputs and tracking errors once, with a separate scale for each tracked channel. Both actor and critic use the scaled tracking cost; the costate target includes the scale factors required by the chain rule.
+
+    `J` and `lambda` are independent heads with a shared backbone. The actor differentiates the scalar `J` head. The implementation does not enforce `lambda == dJ/dy`; the action-rate penalty is an actor regularizer and is not part of the critic's immediate cost.
 
 ## Quick start
 
@@ -180,3 +187,9 @@ for t in range(number_time_steps - 1):
 
 - Sun, Z. & van Kampen, E.-J. (2021). *Intelligent adaptive optimal control using incremental model-based global dual heuristic programming subject to partial observability*. Applied Soft Computing, 103, 107153.
 - Zhou, Y., van Kampen, E.-J., & Chu, Q. P. (2020). *Incremental model based online dual heuristic programming for nonlinear adaptive control*. Control Engineering Practice, 95, 104242.
+
+## Resuming training
+
+`save(path, save_gradients=True)` saves networks, optimizers, RLS, the warmup counter, current transition history and the exploration RNG state. Load with `IMGDHPAgent.from_pretrained(path, load_gradients=True)` to continue training. Reproducing a trajectory also requires restoring the environment state, reference and step index. Call `agent.reset()` when starting a new episode; learned weights, RLS and the total training counter are retained.
+
+Legacy checkpoints without `training_state.json` load with empty history and a zero warmup counter. Exploration uses an agent-local generator and is unaffected by unrelated `np.random` calls.
