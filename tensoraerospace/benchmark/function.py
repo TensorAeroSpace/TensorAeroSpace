@@ -80,7 +80,9 @@ def find_step_function(
             "Arrays control_signal and system_signal must have the same length."
         )
 
-    indices = np.where(control_signal > signal_val)[0]
+    falling = len(control_signal) > 0 and control_signal[-1] < control_signal[0]
+    crossed = control_signal < signal_val if falling else control_signal > signal_val
+    indices = np.where(crossed)[0]
     if len(indices) == 0:
         # If there are no values greater than signal_val, return original arrays
         return control_signal, system_signal
@@ -108,12 +110,12 @@ def overshoot(control_signal: np.ndarray, system_signal: np.ndarray) -> float:
     y_final = np.mean(system_signal[int(0.9 * len(system_signal)) :])
 
     # Maximum value of system response function
-    M = np.max(system_signal)
+    M = np.max(np.sign(y_final) * system_signal)
 
     # Overshoot calculation
     if y_final == 0:
         return 0.0
-    output = (M - y_final) / y_final * 100
+    output = max(0.0, (M - abs(y_final)) / abs(y_final) * 100)
 
     return float(output)
 
@@ -141,8 +143,8 @@ def settling_time(
     y_final = np.mean(system_signal[int(0.9 * len(system_signal)) :])
 
     # Define range boundaries within steady-state value
-    lower_bound = y_final * (1 - threshold)
-    upper_bound = y_final * (1 + threshold)
+    lower_bound = y_final - abs(y_final) * threshold
+    upper_bound = y_final + abs(y_final) * threshold
 
     # Find indices where signal is OUTSIDE the ±threshold band
     out_of_range = np.where(
@@ -155,7 +157,8 @@ def settling_time(
 
     # Settling time is the moment immediately after the signal last exited
     # the band (after which it stays inside forever).
-    return int(out_of_range[-1]) + 1
+    index = int(out_of_range[-1]) + 1
+    return index if index < len(system_signal) else None
 
 
 def damping_degree(system_signal: np.ndarray) -> float:
@@ -232,8 +235,9 @@ def get_lower_upper_bound(
         Tuple[numpy.ndarray, numpy.ndarray]: Tuple of two arrays: lower and upper bounds for control signal.
     """
     final_value = control_signal[-1]
-    upper = np.full_like(control_signal, final_value + final_value * epsilon)
-    lower = np.full_like(control_signal, final_value - final_value * epsilon)
+    band = abs(final_value) * epsilon
+    upper = np.full_like(control_signal, final_value + band, dtype=float)
+    lower = np.full_like(control_signal, final_value - band, dtype=float)
     return lower, upper
 
 
@@ -267,8 +271,9 @@ def rise_time(
     high_val = y_final * high_threshold
 
     # Находим индексы пересечения порогов
-    low_idx = np.where(system_signal >= low_val)[0]
-    high_idx = np.where(system_signal >= high_val)[0]
+    direction = -1 if y_final < 0 else 1
+    low_idx = np.where(direction * system_signal >= direction * low_val)[0]
+    high_idx = np.where(direction * system_signal >= direction * high_val)[0]
 
     if len(low_idx) == 0 or len(high_idx) == 0:
         return None
@@ -310,35 +315,37 @@ def maximum_deviation(control_signal: np.ndarray, system_signal: np.ndarray) -> 
 
 
 def integral_absolute_error(
-    control_signal: np.ndarray, system_signal: np.ndarray
+    control_signal: np.ndarray, system_signal: np.ndarray, dt: float = 1.0
 ) -> float:
     """Compute the Integral Absolute Error (IAE).
 
     Args:
         control_signal: Reference/command signal.
         system_signal: System response signal.
+        dt: Sampling interval in seconds. Defaults to 1.0 for compatibility.
 
     Returns:
-        float: IAE value, computed as sum(abs(r - y)).
+        float: IAE value, computed as dt * sum(abs(r - y)) (rectangle rule).
     """
     error = control_signal - system_signal
-    return float(np.sum(np.abs(error)))
+    return float(np.sum(np.abs(error)) * dt)
 
 
 def integral_squared_error(
-    control_signal: np.ndarray, system_signal: np.ndarray
+    control_signal: np.ndarray, system_signal: np.ndarray, dt: float = 1.0
 ) -> float:
     """Compute the Integral Squared Error (ISE).
 
     Args:
         control_signal: Reference/command signal.
         system_signal: System response signal.
+        dt: Sampling interval in seconds. Defaults to 1.0 for compatibility.
 
     Returns:
-        float: ISE value, computed as sum((r - y)**2).
+        float: ISE value, computed as dt * sum((r - y)**2) (rectangle rule).
     """
     error = control_signal - system_signal
-    return float(np.sum(error**2))
+    return float(np.sum(error**2) * dt)
 
 
 def integral_time_absolute_error(
@@ -352,11 +359,11 @@ def integral_time_absolute_error(
         dt: Time step used to weight the error by time. Defaults to ``1.0``.
 
     Returns:
-        float: ITAE value, computed as sum(t * abs(r - y)).
+        float: ITAE value, computed as dt * sum(t * abs(r - y)) (rectangle rule).
     """
     error = np.abs(control_signal - system_signal)
     time_weights = np.arange(len(error)) * dt
-    return float(np.sum(time_weights * error))
+    return float(np.sum(time_weights * error) * dt)
 
 
 def oscillation_count(system_signal: np.ndarray, threshold: float = 0.01) -> int:
@@ -415,7 +422,7 @@ def performance_index(
         float: Composite quality index (lower is better).
     """
     # Комбинируем различные критерии качества
-    ise = integral_squared_error(control_signal, system_signal)
+    ise = integral_squared_error(control_signal, system_signal, dt)
     itae = integral_time_absolute_error(control_signal, system_signal, dt)
     overshoot_val = overshoot(control_signal, system_signal)
 

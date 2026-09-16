@@ -1,5 +1,8 @@
 # Benchmark Metrics
 
+!!! note "Sampling and settling"
+    Integral criteria use the rectangle rule with the sampling interval `dt`: `IAE=dt*sum(abs(error))`, `ISE=dt*sum(error**2)`, `ITAE=dt*sum(time*abs(error))`. Standalone functions default to `dt=1`; `ControlBenchmark` passes the actual interval. `settling_time()` returns `None` when the final sample remains outside the band, and `0` for immediate settling. Overshoot and rise time assume a step from zero and support either sign; remove a nonzero initial offset before analysis.
+
 The `tensoraerospace.benchmark.function` module provides **17 functions** for evaluating control-system quality. These cover classical time-domain characteristics (overshoot, settling time, rise time, peak time), steady-state accuracy, damping and oscillation analysis, integral error criteria, and a composite performance index. Every metric operates on two NumPy arrays: a **control (reference) signal** and a **system (response) signal** of equal length.
 
 All functions are importable from `tensoraerospace.benchmark.function`.
@@ -77,7 +80,8 @@ ctrl_step, sys_step = find_step_function(control_signal, system_signal, signal_v
 
 # --- Compute ALL metrics ---
 print(f"Overshoot:           {overshoot(ctrl_step, sys_step):.2f} %")
-print(f"Settling time:       {settling_time(ctrl_step, sys_step)  * dt:.2f} s")
+settling_index = settling_time(ctrl_step, sys_step)
+print("Settling time:", settling_index * dt if settling_index is not None else "N/A")
 print(f"Rise time:           {rise_time(ctrl_step, sys_step) * dt:.3f} s")
 print(f"Peak time:           {peak_time(sys_step) * dt:.3f} s")
 print(f"Maximum deviation:   {maximum_deviation(ctrl_step, sys_step):.4f}")
@@ -85,8 +89,8 @@ print(f"Static error:        {static_error(ctrl_step, sys_step):.6f}")
 print(f"Steady-state value:  {steady_state_value(ctrl_step):.4f}")
 print(f"Damping degree:      {damping_degree(sys_step):.4f}")
 print(f"Oscillation count:   {oscillation_count(sys_step)}")
-print(f"IAE:                 {integral_absolute_error(ctrl_step, sys_step):.2f}")
-print(f"ISE:                 {integral_squared_error(ctrl_step, sys_step):.2f}")
+print(f"IAE:                 {integral_absolute_error(ctrl_step, sys_step, dt):.2f}")
+print(f"ISE:                 {integral_squared_error(ctrl_step, sys_step, dt):.2f}")
 print(f"ITAE:                {integral_time_absolute_error(ctrl_step, sys_step, dt):.2f}")
 print(f"Performance index:   {performance_index(ctrl_step, sys_step, dt):.3f}")
 ```
@@ -444,7 +448,7 @@ Integral criteria accumulate the tracking error over the entire simulation. They
 Penalizes all errors equally regardless of sign.
 
 $$
-\text{IAE} = \sum_{k=0}^{N-1} \lvert r[k] - y[k] \rvert
+\text{IAE} = \Delta t \sum_{k=0}^{N-1} \lvert r[k] - y[k] \rvert
 $$
 
 **When to use:** General-purpose comparison where you want a single number representing total tracking accuracy. Equally weights early and late errors.
@@ -455,6 +459,7 @@ $$
 def integral_absolute_error(
     control_signal: np.ndarray,
     system_signal: np.ndarray,
+    dt: float = 1.0,
 ) -> float
 ```
 
@@ -469,7 +474,7 @@ def integral_absolute_error(
 ```python
 from tensoraerospace.benchmark.function import integral_absolute_error
 
-iae = integral_absolute_error(control_signal, system_signal)
+iae = integral_absolute_error(control_signal, system_signal, dt)
 print(f"IAE: {iae:.2f}")
 ```
 
@@ -480,7 +485,7 @@ print(f"IAE: {iae:.2f}")
 Penalizes large errors disproportionately more than small ones.
 
 $$
-\text{ISE} = \sum_{k=0}^{N-1} \bigl( r[k] - y[k] \bigr)^2
+\text{ISE} = \Delta t \sum_{k=0}^{N-1} \bigl( r[k] - y[k] \bigr)^2
 $$
 
 **When to use:** When large deviations are unacceptable (e.g., safety-critical systems). ISE will strongly penalize spikes and overshoot.
@@ -491,6 +496,7 @@ $$
 def integral_squared_error(
     control_signal: np.ndarray,
     system_signal: np.ndarray,
+    dt: float = 1.0,
 ) -> float
 ```
 
@@ -505,7 +511,7 @@ def integral_squared_error(
 ```python
 from tensoraerospace.benchmark.function import integral_squared_error
 
-ise = integral_squared_error(control_signal, system_signal)
+ise = integral_squared_error(control_signal, system_signal, dt)
 print(f"ISE: {ise:.2f}")
 ```
 
@@ -516,7 +522,7 @@ print(f"ISE: {ise:.2f}")
 Weights the absolute error by time, so that **late errors are penalized more heavily** than early ones. This encourages fast settling.
 
 $$
-\text{ITAE} = \sum_{k=0}^{N-1} k \cdot \Delta t \cdot \lvert r[k] - y[k] \rvert
+\text{ITAE} = \Delta t \sum_{k=0}^{N-1} k \cdot \Delta t \cdot \lvert r[k] - y[k] \rvert
 $$
 
 **When to use:** When you need the controller to settle quickly and want persistent steady-state drift to dominate the score.

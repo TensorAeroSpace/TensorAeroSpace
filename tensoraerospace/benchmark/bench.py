@@ -103,8 +103,8 @@ class ControlBenchmark:
         rise_t = rise_time(control_signal, system_signal)
         peak_t = peak_time(system_signal)
         max_dev = maximum_deviation(control_signal, system_signal)
-        iae = integral_absolute_error(control_signal, system_signal)
-        ise = integral_squared_error(control_signal, system_signal)
+        iae = integral_absolute_error(control_signal, system_signal, dt)
+        ise = integral_squared_error(control_signal, system_signal, dt)
         itae = integral_time_absolute_error(control_signal, system_signal, dt)
         osc_count = oscillation_count(system_signal)
         steady_val = steady_state_value(control_signal)
@@ -294,17 +294,25 @@ class ControlBenchmark:
                 "Время установления",
                 (
                     f'{metrics["settling_time"]:.3f}с'
-                    if metrics["settling_time"]
+                    if metrics["settling_time"] is not None
                     else "N/A"
                 ),
             ],
             [
                 "Время нарастания",
-                f'{metrics["rise_time"]:.3f}с' if metrics["rise_time"] else "N/A",
+                (
+                    f'{metrics["rise_time"]:.3f}с'
+                    if metrics["rise_time"] is not None
+                    else "N/A"
+                ),
             ],
             [
                 "Время пика",
-                f'{metrics["peak_time"]:.3f}с' if metrics["peak_time"] else "N/A",
+                (
+                    f'{metrics["peak_time"]:.3f}с'
+                    if metrics["peak_time"] is not None
+                    else "N/A"
+                ),
             ],
             ["Степень затухания", f'{metrics["damping_degree"]:.3f}'],
             ["Статическая ошибка", f'{metrics["static_error"]:.4f}'],
@@ -571,10 +579,14 @@ class ControlBenchmark:
                 f'{metrics["overshoot"]:.1f}',
                 (
                     f'{metrics["settling_time"]:.2f}'
-                    if metrics["settling_time"]
+                    if metrics["settling_time"] is not None
                     else "N/A"
                 ),
-                f'{metrics["rise_time"]:.2f}' if metrics["rise_time"] else "N/A",
+                (
+                    f'{metrics["rise_time"]:.2f}'
+                    if metrics["rise_time"] is not None
+                    else "N/A"
+                ),
                 f'{metrics["oscillation_count"]}',
                 f'{metrics["iae"]:.1f}',
                 f'{metrics["performance_index"]:.2f}',
@@ -756,10 +768,10 @@ class ControlBenchmark:
         )
         settling_rating = (
             "Быстро"
-            if metrics["settling_time"] and metrics["settling_time"] < 2
+            if metrics["settling_time"] is not None and metrics["settling_time"] < 2
             else (
                 "Средне"
-                if metrics["settling_time"] and metrics["settling_time"] < 5
+                if metrics["settling_time"] is not None and metrics["settling_time"] < 5
                 else "Медленно"
             )
         )

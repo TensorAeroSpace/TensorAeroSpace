@@ -1,5 +1,8 @@
 # Метрики качества управления
 
+!!! note "Шаг времени и установление"
+    Интегральные критерии используют метод прямоугольников и шаг `dt`: `IAE=dt*sum(abs(error))`, `ISE=dt*sum(error**2)`, `ITAE=dt*sum(time*abs(error))`. Отдельные функции по умолчанию используют `dt=1`; `ControlBenchmark` передаёт реальный шаг. `settling_time()` возвращает `None`, если последняя точка вне полосы, и `0` при немедленном установлении. Перерегулирование и время нарастания рассчитаны для ступени из нуля любого знака; ненулевой начальный уровень нужно вычесть перед анализом.
+
 Модуль `tensoraerospace.benchmark.function` содержит **17 функций** для расчёта показателей качества переходных процессов в системах автоматического управления. Метрики охватывают все классические аспекты анализа: временные характеристики, установившийся режим, затухание колебаний и интегральные критерии качества.
 
 ```python
@@ -112,8 +115,8 @@ print(f"Статическая ошибка:               {static_error(control
 print(f"Установившееся значение (выход):  {steady_state_value(system_signal):.6f}")
 print(f"Степень затухания:                {damping_degree(system_signal):.4f}")
 print(f"Число колебаний:                  {oscillation_count(system_signal)}")
-print(f"IAE:                              {integral_absolute_error(control_signal, system_signal):.4f}")
-print(f"ISE:                              {integral_squared_error(control_signal, system_signal):.4f}")
+print(f"IAE:                              {integral_absolute_error(control_signal, system_signal, dt):.4f}")
+print(f"ISE:                              {integral_squared_error(control_signal, system_signal, dt):.4f}")
 print(f"ITAE:                             {integral_time_absolute_error(control_signal, system_signal, dt=dt):.4f}")
 print(f"Комплексный индекс качества:      {performance_index(control_signal, system_signal, dt=dt):.4f}")
 ```
@@ -500,7 +503,7 @@ print(f"Число крупных колебаний: {n_osc_large}")
 **Формула:**
 
 $$
-\text{IAE} = \sum_{t=0}^{N} \left| r(t) - y(t) \right|
+\text{IAE} = \Delta t \sum_{t=0}^{N} \left| r(t) - y(t) \right|
 $$
 
 **Свойства:**
@@ -513,7 +516,8 @@ $$
 ```python
 def integral_absolute_error(
     control_signal: np.ndarray,
-    system_signal: np.ndarray
+    system_signal: np.ndarray,
+    dt: float = 1.0
 ) -> float
 ```
 
@@ -528,7 +532,7 @@ def integral_absolute_error(
 ```python
 from tensoraerospace.benchmark.function import integral_absolute_error
 
-iae = integral_absolute_error(control_signal, system_signal)
+iae = integral_absolute_error(control_signal, system_signal, dt)
 print(f"IAE: {iae:.4f}")
 ```
 
@@ -541,7 +545,7 @@ print(f"IAE: {iae:.4f}")
 **Формула:**
 
 $$
-\text{ISE} = \sum_{t=0}^{N} \left( r(t) - y(t) \right)^2
+\text{ISE} = \Delta t \sum_{t=0}^{N} \left( r(t) - y(t) \right)^2
 $$
 
 **Свойства:**
@@ -555,7 +559,8 @@ $$
 ```python
 def integral_squared_error(
     control_signal: np.ndarray,
-    system_signal: np.ndarray
+    system_signal: np.ndarray,
+    dt: float = 1.0
 ) -> float
 ```
 
@@ -570,7 +575,7 @@ def integral_squared_error(
 ```python
 from tensoraerospace.benchmark.function import integral_squared_error
 
-ise = integral_squared_error(control_signal, system_signal)
+ise = integral_squared_error(control_signal, system_signal, dt)
 print(f"ISE: {ise:.4f}")
 ```
 
@@ -583,7 +588,7 @@ print(f"ISE: {ise:.4f}")
 **Формула:**
 
 $$
-\text{ITAE} = \sum_{t=0}^{N} t \cdot \left| r(t) - y(t) \right|
+\text{ITAE} = \Delta t \sum_{t=0}^{N} t \cdot \left| r(t) - y(t) \right|
 $$
 
 **Свойства:**
