@@ -106,6 +106,43 @@ def _atomic_np_savez(path: Path, **kwargs: Any) -> None:
     os.replace(tmp_path, path)
 
 
+def _write_best_checkpoint(job: Mapping[str, Any]) -> None:
+    """Persist a complete best checkpoint for either saving mode."""
+    model_dir = Path(job["model_dir"])
+    model_dir.mkdir(parents=True, exist_ok=True)
+
+    _atomic_write_json(model_dir / "config.json", job["config"])
+    _atomic_torch_save(model_dir / "actor.pth", job["actor_state"])
+    _atomic_torch_save(model_dir / "critic.pth", job["critic_state"])
+    if job.get("actor_opt_state") is not None:
+        _atomic_torch_save(model_dir / "actor_opt.pth", job["actor_opt_state"])
+    if job.get("critic_opt_state") is not None:
+        _atomic_torch_save(model_dir / "critic_opt.pth", job["critic_opt_state"])
+    if job.get("train_state") is not None:
+        _atomic_write_json(model_dir / "train_state.json", job["train_state"])
+
+    if job.get("obs_rms") is not None:
+        d = job["obs_rms"]
+        _atomic_np_savez(
+            model_dir / "obs_rms.npz",
+            mean=d["mean"],
+            var=d["var"],
+            count=d["count"],
+        )
+    if job.get("ret_rms") is not None:
+        d = job["ret_rms"]
+        _atomic_np_savez(
+            model_dir / "ret_rms.npz",
+            mean=d["mean"],
+            var=d["var"],
+            count=d["count"],
+        )
+
+    # Extra metadata (optional)
+    if job.get("meta") is not None:
+        _atomic_write_json(model_dir / "best_meta.json", job["meta"])
+
+
 class _AsyncBestCheckpointSaver:
     """Background writer for best-model checkpoints (non-blocking training).
 
@@ -184,45 +221,7 @@ class _AsyncBestCheckpointSaver:
                 if job is None:
                     break
 
-                model_dir = Path(job["model_dir"])
-                model_dir.mkdir(parents=True, exist_ok=True)
-
-                _atomic_write_json(model_dir / "config.json", job["config"])
-                _atomic_torch_save(model_dir / "actor.pth", job["actor_state"])
-                _atomic_torch_save(model_dir / "critic.pth", job["critic_state"])
-                if job.get("actor_opt_state") is not None:
-                    _atomic_torch_save(
-                        model_dir / "actor_opt.pth", job["actor_opt_state"]
-                    )
-                if job.get("critic_opt_state") is not None:
-                    _atomic_torch_save(
-                        model_dir / "critic_opt.pth", job["critic_opt_state"]
-                    )
-                if job.get("train_state") is not None:
-                    _atomic_write_json(
-                        model_dir / "train_state.json", job["train_state"]
-                    )
-
-                if job.get("obs_rms") is not None:
-                    d = job["obs_rms"]
-                    _atomic_np_savez(
-                        model_dir / "obs_rms.npz",
-                        mean=d["mean"],
-                        var=d["var"],
-                        count=d["count"],
-                    )
-                if job.get("ret_rms") is not None:
-                    d = job["ret_rms"]
-                    _atomic_np_savez(
-                        model_dir / "ret_rms.npz",
-                        mean=d["mean"],
-                        var=d["var"],
-                        count=d["count"],
-                    )
-
-                # Extra metadata (optional)
-                if job.get("meta") is not None:
-                    _atomic_write_json(model_dir / "best_meta.json", job["meta"])
+                _write_best_checkpoint(job)
             except Exception as exc:
                 # Never crash training due to background saving, but do not
                 # hide a broken checkpoint path or serialization issue.
@@ -638,6 +637,8 @@ class PPO(BaseRLModel):
             if device is None
             else torch.device(device)
         )
+        # Seed before creating either network so initial weights are reproducible.
+        torch.manual_seed(seed)
         self.actor = Actor(
             env.observation_space.shape[0],
             env.action_space.shape[0],
@@ -661,7 +662,6 @@ class PPO(BaseRLModel):
         self.normalize_obs = normalize_obs
         self.normalize_reward = normalize_reward
         self.eval_freq = eval_freq
-        torch.manual_seed(seed)
         self.rollout_len = rollout_len
         self.max_episodes = max_episodes
         self.num_epochs = num_epochs
@@ -1312,25 +1312,8 @@ class PPO(BaseRLModel):
             self._best_saver.submit(job)
             return
 
-        # Synchronous fallback (still atomic, but will block).
-        _atomic_write_json(model_dir / "config.json", config)
-        _atomic_torch_save(model_dir / "actor.pth", actor_state)
-        _atomic_torch_save(model_dir / "critic.pth", critic_state)
-        if obs_rms is not None:
-            _atomic_np_savez(
-                model_dir / "obs_rms.npz",
-                mean=obs_rms["mean"],
-                var=obs_rms["var"],
-                count=obs_rms["count"],
-            )
-        if ret_rms is not None:
-            _atomic_np_savez(
-                model_dir / "ret_rms.npz",
-                mean=ret_rms["mean"],
-                var=ret_rms["var"],
-                count=ret_rms["count"],
-            )
-        _atomic_write_json(model_dir / "best_meta.json", meta)
+        # Use the same checkpoint contents as the background worker.
+        _write_best_checkpoint(job)
 
     def eval(self) -> "PPO":
         """Switch actor and critic networks to evaluation mode.
@@ -1343,12 +1326,17 @@ class PPO(BaseRLModel):
         return self
 
     def close(self) -> None:
-        """Flush and stop background saver (safe to call multiple times)."""
-        if self._best_saver is not None:
-            # Ensure the last best checkpoint is fully written.
-            self._best_saver.flush(timeout=30.0)
-            self._best_saver.close(timeout=5.0)
-            self._best_saver = None
+        """Finish checkpoint writes and metrics (safe to call multiple times)."""
+        try:
+            if self._best_saver is not None:
+                try:
+                    # Ensure the last best checkpoint is fully written.
+                    self._best_saver.flush(timeout=30.0)
+                finally:
+                    self._best_saver.close(timeout=5.0)
+                    self._best_saver = None
+        finally:
+            self.writer.close()
 
     def auxiliary_task(
         self, states: torch.Tensor, rewards: torch.Tensor
