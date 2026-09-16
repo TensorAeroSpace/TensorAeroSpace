@@ -783,9 +783,13 @@ class ImprovedB747VecEnvTorch:
                 truncated & (~terminated)
             ).to(torch.float32)
 
-        if self.auto_reset and torch.any(done):
-            self._reset_done(done)
-
         obs = self._get_obs()
         info: dict[str, Any] = {}
+        if self.auto_reset and torch.any(done):
+            # Preserve the physical transition before replacing done rows
+            # with initial observations from newly sampled episodes.
+            info["final_observation"] = obs.clone()
+            info["_final_observation"] = done.clone()
+            self._reset_done(done)
+            obs = self._get_obs()
         return obs, reward, terminated, truncated, info

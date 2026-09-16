@@ -1,5 +1,8 @@
 # Soft Actor‑Critic (SAC)
 
+!!! note "Vector transitions"
+    `train_vector()` samples warmup actions within the environment's action bounds. With auto-reset, `info["final_observation"]` and its optional mask `info["_final_observation"]` preserve the last observation for replay; only true termination removes bootstrapping. Older environments without that metadata retain the conservative terminal mask. `ImprovedB747VecEnvTorch` supplies both fields.
+
 SAC is an off-policy actor-critic with entropy maximization: it learns a stochastic policy while increasing expected reward and entropy (exploration). Our implementation employs twin Q-networks, a target critic, Gaussian/deterministic policy options, a replay buffer, soft updates, and optional automatic entropy tuning.
 
 ![SAC Diagram](../agent/img/sac/sac.png){ width=800 }

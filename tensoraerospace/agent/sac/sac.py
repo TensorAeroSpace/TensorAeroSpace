@@ -498,6 +498,33 @@ class SAC(BaseRLModel):
             "updates": int(updates),
         }
 
+    @staticmethod
+    def _vector_replay_targets(next_obs, terminated, truncated, info, auto_reset):
+        """Recover final observations when a vector env resets in step()."""
+        next_states = next_obs.detach().cpu().numpy().copy()
+        terminals = terminated.detach().cpu().numpy().reshape(-1).astype(bool)
+        done = terminals | truncated.detach().cpu().numpy().reshape(-1).astype(bool)
+        if not auto_reset:
+            return next_states, terminals.astype(np.float32)
+
+        # Older custom envs do not expose final observations. Keep their
+        # conservative terminal mask instead of bootstrapping across episodes.
+        masks = done.astype(np.float32)
+        final = info.get("final_observation")
+        if final is None:
+            return next_states, masks
+        valid = info.get("_final_observation", done)
+        if torch.is_tensor(final):
+            final = final.detach().cpu().numpy()
+        if torch.is_tensor(valid):
+            valid = valid.detach().cpu().numpy()
+        valid = np.asarray(valid, dtype=bool).reshape(-1)
+        for i in np.flatnonzero(done & valid):
+            if final[i] is not None:
+                next_states[i] = final[i]
+                masks[i] = float(terminals[i])
+        return next_states, masks
+
     def train_vector(
         self,
         *,
@@ -552,13 +579,17 @@ class SAC(BaseRLModel):
         total_env_steps = 0
         best_mean_return = float("-inf")
         auto_reset = bool(getattr(self.env, "auto_reset", False))
+        action_low = torch.as_tensor(self.env.action_space.low, device=self.device)
+        action_high = torch.as_tensor(self.env.action_space.high, device=self.device)
 
         pbar = tqdm(range(total_steps), desc="SAC train_vector", unit="step")
         for step in pbar:
             # Action selection
             if step < warmup_steps:
                 actions_t = (
-                    2.0 * torch.rand((num_envs, act_dim), device=self.device) - 1.0
+                    action_low
+                    + (action_high - action_low)
+                    * torch.rand((num_envs, act_dim), device=self.device)
                 ).to(dtype=torch.float32)
             else:
                 actions_t = cast(
@@ -566,31 +597,24 @@ class SAC(BaseRLModel):
                     self.select_action_batch(obs, evaluate=False, return_tensor=True),
                 )
 
-            next_obs, reward, terminated, truncated, _info = self.env.step(actions_t)
+            # An env may reuse its observation tensor in step().
+            obs_np = obs.detach().cpu().numpy().copy()
+            next_obs, reward, terminated, truncated, info = self.env.step(actions_t)
+            total_env_steps += num_envs
             if not (torch.is_tensor(next_obs) and torch.is_tensor(reward)):
                 raise TypeError(
                     "train_vector expects env.step() to return torch tensors"
                 )
 
             # Convert tensors to numpy once per step for replay + metrics
-            obs_np = obs.detach().cpu().numpy()
-            next_obs_np = next_obs.detach().cpu().numpy()
+            next_obs_np, done_bootstrap_np = self._vector_replay_targets(
+                next_obs, terminated, truncated, info, auto_reset
+            )
             actions_np = actions_t.detach().cpu().numpy()
             reward_np = reward.detach().cpu().numpy().reshape(-1)
             terminated_np = terminated.detach().cpu().numpy().reshape(-1).astype(bool)
             truncated_np = truncated.detach().cpu().numpy().reshape(-1).astype(bool)
             done_np = np.logical_or(terminated_np, truncated_np)
-            # IMPORTANT:
-            # - For plain (non-auto-reset) envs, time-limit bootstrapping is valid:
-            #   use terminated only.
-            # - For auto-reset vector envs, next_obs for done envs is already reset,
-            #   so bootstrapping would mix episodes. Treat all done as terminal.
-            done_bootstrap_np = (
-                done_np.astype(np.float32)
-                if auto_reset
-                else terminated_np.astype(np.float32)
-            )
-
             # Store transitions
             for i in range(num_envs):
                 self.memory.push(
@@ -661,7 +685,6 @@ class SAC(BaseRLModel):
                     self.save(path=save_path, save_gradients=save_best_with_gradients)
 
             obs = next_obs
-            total_env_steps += num_envs
 
         self.writer.flush()
         self.writer.assert_contract_satisfied()
