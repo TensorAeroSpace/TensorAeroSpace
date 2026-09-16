@@ -79,7 +79,9 @@ class ComSat(ModelBase):
         ]
         self.control_list = self.selected_input
 
-        self._initialize_selected_state_index(self.selected_states, self.list_state)
+        self._initialize_selected_state_index(
+            self.selected_state_output, self.list_state
+        )
 
         self.state_space = self.selected_states
         self.action_space = self.selected_input

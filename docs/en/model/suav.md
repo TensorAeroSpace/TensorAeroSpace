@@ -51,7 +51,7 @@ where:
 - **q**: pitch rate, rad/s
 - **h**: altitude, m
 - **η**: stabilizer deflection, rad
-- **δ_t**: throttle deflection, rad
+- **δ_t**: dimensionless throttle command (inactive in this reduction)
 
 !!! note "Units"
     Angles and angular rates are in radians. API methods can expose values in degrees.
@@ -62,7 +62,14 @@ $$
 \dot{x} = A x + B u, \qquad y = C x + D u
 $$
 
-Numerical matrices (example linearization):
+States are perturbations around trimmed flight. The source uses `-h`; here altitude is positive upward, so both the last row and last column of `A` change sign.
+
+The output order is `[Va, alpha, theta, q, h]`, with `Va = 0.9985*u + 0.05399*w` and `alpha = -0.003176*u + 0.05874*w`.
+
+!!! note "Throttle limitation"
+    The published reduction has a zero throttle column. The API accepts and records this input, but it has no effect on the trajectory. Propulsion dynamics require a separate model.
+
+Numerical matrices:
 
 \[
 \begin{bmatrix}
@@ -74,11 +81,11 @@ Numerical matrices (example linearization):
 \end{bmatrix}
 =
 \begin{bmatrix}
--0.5944 & 0.8008 & -9.791 & -0.8747 & 5.077\times 10^{-5} \\
--0.744 & -7.56 & -0.5294 & 15.72 & -0.000939 \\
+-0.5944 & 0.8008 & -9.791 & -0.8747 & -5.077\times 10^{-5} \\
+-0.744 & -7.56 & -0.5294 & 15.72 & 0.000939 \\
 0 & 0 & 0 & 1 & 0 \\
-1.041 & -7.406 & 0 & -15.81 & -7.284\times 10^{-18} \\
--0.05399 & 0.9985 & -17 & 0 & 0
+1.041 & -7.406 & 0 & -15.81 & 7.284\times 10^{-18} \\
+0.05399 & -0.9985 & 17 & 0 & 0
 \end{bmatrix}
 \begin{bmatrix}
 u \\
@@ -109,7 +116,7 @@ q \\
 
 ## Sources
 
-1. Ahmed EA, Hafez A, Ouda AN, Ahmed HEH, Abd‑Elkader HM. Modelling of a Small Unmanned Aerial Vehicle. Adv Robot Autom 4:126, 2015.
+1. Ahmed EA, Hafez A, Ouda AN, Ahmed HEH, Abd‑Elkader HM. [Modelling of a Small Unmanned Aerial Vehicle](https://www.hilarispublisher.com/open-access/modelling-of-a-small-unmanned-aerial-vehicle-2168-9695-1000126.pdf). Adv Robot Autom 4:126, 2015, p. 6, DOI: 10.4172/2168-9695.1000126.
 
 ## Reward
 

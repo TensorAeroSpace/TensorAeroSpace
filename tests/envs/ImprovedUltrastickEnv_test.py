@@ -26,6 +26,10 @@ class _StubUltrastickModel:
     def initialise_system(self, x0, number_time_steps):  # noqa: ARG002
         self._state = np.array(x0, dtype=float).reshape(-1)
 
+    @property
+    def xt(self):
+        return self._state
+
     def run_step(self, action):
         # action = [elev_rad, throttle]
         a = np.array(action, dtype=float).reshape(-1)

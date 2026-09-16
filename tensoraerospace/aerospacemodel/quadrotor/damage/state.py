@@ -22,7 +22,7 @@ class RotorDamageState:
       :math:`\\dot\\mu_i = -(1/\\tau_i)(\\mu_i - \\mu_i^{\\text{floor}})`,
       where ``mu_floor[i]`` is the asymptotic effectiveness (0 = full
       eventual loss; positive = partial wear). The env applies one
-      explicit-Euler step per integrator tick.
+      exact exponential update per integrator tick.
     """
 
     mu: np.ndarray = field(default_factory=lambda: np.ones(4, dtype=np.float64))
@@ -53,7 +53,7 @@ class RotorDamageState:
         return cls()
 
     def step_decay(self, dt: float) -> None:
-        """Advance time-varying decay one tick (explicit Euler).
+        """Advance time-varying decay one tick with the exact exponential solution.
 
         Active only on rotors with ``tau[i] > 0``. After this call,
         ``mu[i]`` is closer to ``mu_floor[i]``.
@@ -61,9 +61,9 @@ class RotorDamageState:
         active = self.tau > 0
         if not np.any(active):
             return
-        self.mu[active] += (
-            -(1.0 / self.tau[active]) * (self.mu[active] - self.mu_floor[active]) * dt
-        )
+        self.mu[active] = self.mu_floor[active] + (
+            self.mu[active] - self.mu_floor[active]
+        ) * np.exp(-dt / self.tau[active])
         self.mu = np.clip(self.mu, 0.0, 1.0)
 
     def snapshot(self) -> dict:

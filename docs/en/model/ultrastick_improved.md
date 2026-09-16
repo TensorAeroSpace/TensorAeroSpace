@@ -4,6 +4,12 @@ This page documents the `ImprovedUltrastickEnv` environment used for training an
 
 The reference implementation lives in `tensoraerospace/envs/ultrastick.py` (class `ImprovedUltrastickEnv`).
 
+!!! note "Model states and observations"
+    Internal state order is `[u, w, theta, q, h]`; output order is `[Va, alpha, theta, q, h]`. `run_step()` returns outputs after the transition, while `store_outputs` retains samples before the transition. Output names `u`/`w` remain as legacy aliases for `Va`/`alpha`. `LinearLongitudinalUltrastick` selects physical states; `ImprovedUltrastickEnv` normalizes observations of the current step.
+
+!!! note "Throttle limitation"
+    The current plant uses the published reduction with a zero throttle column. The second action is accepted and contributes to the reward penalties, but does not affect the trajectory. See the [model equations](suav.md#mathematical-model).
+
 ## Summary
 
 - Observation space: 5D, normalized to [-1, 1]
@@ -134,7 +140,7 @@ reference_signal = np.reshape(
     (1, -1),
 )
 
-# Initial state: [u, w, q, theta, h] -- Ultrastick full state
+# Initial state: [u, w, theta, q, h] -- Ultrastick full state
 initial_state = np.array([0, 0, 0, 0, 0], dtype=np.float32)
 
 env = ImprovedUltrastickEnv(

@@ -5,12 +5,12 @@ from tensoraerospace.envs.ultrastick import LinearLongitudinalUltrastick
 
 
 class _StubModel:
-    _FULL_STATE_ORDER = ["u", "w", "q", "theta", "h"]
+    _FULL_STATE_ORDER = ["u", "w", "theta", "q", "h"]
     _TWO_STATE_ORDER = ["theta", "q"]
 
     def __init__(self, initial_state, number_time_steps, selected_state_output, t0):
         # Simulate ModelBase behavior: when selected_state_output is None,
-        # use all states. Ultrastick has 5 states: ["u", "w", "q", "theta", "h"]
+        # use all states. Ultrastick has 5 states: ["u", "w", "theta", "q", "h"]
         # But in the test we use 2 states: ["theta", "q"]
         # So we need to match the actual state space length
         self.selected_states = self._infer_state_names(
@@ -27,6 +27,10 @@ class _StubModel:
             or self.selected_state_index is None
         ):
             self.selected_state_index = list(range(len(x0)))
+
+    @property
+    def xt(self):
+        return self._state
 
     def run_step(self, action):
         # simple deterministic next state

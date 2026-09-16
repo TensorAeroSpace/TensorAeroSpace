@@ -108,8 +108,9 @@ def test_get_control_aliases_and_conversions(angular_env):
         m.get_control("ele", to_deg=True),
         np.rad2deg(m.get_control("ele")),
     )
-    # to_rad path goes through store_states (quirk of current impl) — just exercise it.
-    _ = m.get_control("ele", to_rad=True)
+    np.testing.assert_allclose(
+        m.get_control("ele", to_rad=True), np.deg2rad(m.get_control("ele"))
+    )
 
 
 def test_get_control_unknown_raises(angular_env):

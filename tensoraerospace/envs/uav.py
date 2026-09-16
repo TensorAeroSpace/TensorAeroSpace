@@ -163,8 +163,9 @@ class LinearLongitudinalUAV(gym.Env):
         self.model.initialise_system(
             x0=self.initial_state, number_time_steps=self.number_time_steps
         )
-        info = self._get_info()
         self.current_step = 0
+        self.done = False
+        info = self._get_info()
         observation = np.array(self.initial_state, dtype=np.float32)[
             self.model.selected_state_index
         ].reshape(-1)

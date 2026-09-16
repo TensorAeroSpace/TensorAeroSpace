@@ -283,3 +283,25 @@ def test_env_invalid_action_space_mode_raises():
             number_time_steps=10,
             action_space="thrust_only",  # type: ignore[arg-type]
         )
+
+
+@pytest.mark.parametrize("duration", [0.01, 0.1, 1.0])
+def test_decay_matches_exponential_even_when_step_exceeds_time_constant(duration):
+    state = RotorDamageState(
+        tau=np.array([0.05, 0.0, 0.0, 0.0]), mu_floor=np.array([0.3, 0.0, 0.0, 0.0])
+    )
+    state.step_decay(duration)
+    assert state.mu[0] == pytest.approx(0.3 + 0.7 * np.exp(-duration / 0.05))
+
+
+@pytest.mark.parametrize("injected", [False, True])
+def test_damage_at_zero_fires_once_and_replays_after_reset(injected):
+    event = RotorLossEvent(trigger_time=0.0, rotor_id=0)
+    manager = RotorDamageManager(DamageProfile(events=[] if injected else [event]))
+    if injected:
+        manager.inject_event(event)
+    assert manager.update(0.1, 0.0, 0.1) == [event]
+    assert manager.state.mu[0] == 0
+    assert manager.update(0.2, 0.1, 0.1) == []
+    manager.reset()
+    assert manager.update(0.1, 0.0, 0.1) == ([] if injected else [event])

@@ -64,7 +64,7 @@ class LinearLongitudinalUltrastick(gym.Env):
             t0=0,
         )
         # Map state_space to model's full state indices
-        # Model's selected_states: ["u", "w", "q", "theta", "h"]
+        # Model's selected_states: ["u", "w", "theta", "q", "h"]
         model_state_names = self.model.selected_states
         self.state_space_indices = [
             model_state_names.index(state_name) for state_name in self.state_space
@@ -143,8 +143,9 @@ class LinearLongitudinalUltrastick(gym.Env):
         model_action = np.array([ele_rad, 0.0], dtype=np.float32)
 
         self.current_step += 1
-        next_state_full = self.model.run_step(model_action)
-        # Map full model state to state_space
+        self.model.run_step(model_action)
+        # run_step returns transformed outputs; this environment selects states.
+        next_state_full = np.asarray(self.model.xt).reshape(-1)
         next_state = next_state_full[self.state_space_indices]
         reward = self.reward_func(
             next_state[self.indices_tracking_states],

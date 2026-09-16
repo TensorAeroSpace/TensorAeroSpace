@@ -1,5 +1,8 @@
 # Quadrotor / multirotor UAV — Nonlinear 6-DoF dynamics
 
+!!! note "Rotor limits and damage"
+    Commands are limited to the motor speed range before effectiveness `mu` is applied. A failed rotor therefore stays at zero thrust even with a positive minimum commanded speed. Events at `t=0` fire on the first step. Gradual degradation uses `mu_next = mu_floor + (mu - mu_floor)*exp(-dt/tau)`, avoiding overshoot below the asymptote on large steps. Model state accessors return independent snapshots.
+
 Rigid-body quadrotor model in the full 6-DoF formulation: 12 states
 (position, velocity, attitude, angular rates), 4 control inputs
 (collective thrust + three body-frame torques). Implemented in pure

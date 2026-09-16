@@ -58,13 +58,12 @@ class NonlinearQuadrotor(ModelBase):
         dt: float = 0.01,
         integrator: Literal["euler", "rk4"] = "rk4",
     ) -> None:
-        x0_arr = np.asarray(x0, dtype=np.float64).reshape(-1)
+        x0_arr = np.array(x0, dtype=np.float64, copy=True).reshape(-1)
         if x0_arr.size != 12:
             raise ValueError(
                 f"x0 must have 12 elements (see module docstring); got {x0_arr.size}"
             )
         super().__init__(x0_arr, selected_state_output, t0, dt)
-        # Carry the local list before letting ModelBase reset it.
         self.action_space_length = len(_CONTROL_LIST)
         self.param: QuadrotorParameters = default_parameters()
         # Damage hooks (kept for API parity with F-16 — actual damage
@@ -94,8 +93,8 @@ class NonlinearQuadrotor(ModelBase):
 
     @property
     def current_state(self) -> np.ndarray:
-        """Most recent state as a flat 1-D ndarray (12 elements)."""
-        return np.asarray(self.x_history[-1], dtype=np.float64).reshape(-1)
+        """Independent snapshot of the most recent state as a flat 1-D ndarray (12 elements)."""
+        return np.array(self.x_history[-1], dtype=np.float64, copy=True).reshape(-1)
 
     @property
     def hover_thrust(self) -> float:
@@ -112,16 +111,16 @@ class NonlinearQuadrotor(ModelBase):
                 f" Текущее значение {u_arr.size}, не соответствует {self.action_space_length}"
             )
         x_prev = np.asarray(self.x_history[-1], dtype=np.float64).reshape(-1)
-        t_now = self.t0 + self.dt * self.time_step
+        t_now = self.t0 + self.dt * (self.time_step - 1)
         x_next = self._step_fn(
             quadrotor_ode_6dof, x_prev, u_arr, t_now, self.dt, self.param
         )
 
         x_next_col = x_next.reshape(12, 1)
         self.x_history.append(x_next_col)
-        self.u_history.append(u_arr.reshape(-1, 1))
+        self.u_history.append(u_arr.reshape(-1, 1).copy())
         self.time_step += 1
 
         if self.selected_state_output:
             return x_next_col[self.selected_state_index]
-        return x_next_col
+        return x_next_col.copy()

@@ -26,6 +26,8 @@ from __future__ import annotations
 
 import numpy as np
 
+from tensoraerospace.aerospacemodel.utils.kinematics import body_rates_to_euler_rates
+
 from .params import QuadrotorParameters
 
 
@@ -112,17 +114,7 @@ def quadrotor_ode_6dof(
     v_b_dot = (F_grav_b + F_thrust_b - F_drag_b - coriolis_b) / m
 
     # 3. Euler-angle kinematics  (ZYX 321: phi=roll, theta=pitch, psi=yaw)
-    cth = np.cos(theta)
-    if abs(cth) < 1e-9:
-        # Gimbal lock — clamp to avoid 1/0 blow-up; trajectory is
-        # already invalid at this attitude with Euler angles.
-        cth = np.copysign(1e-9, cth)
-    tth = np.tan(theta)
-    sphi, cphi = np.sin(phi), np.cos(phi)
-
-    phi_dot = p + sphi * tth * q + cphi * tth * r
-    theta_dot = cphi * q - sphi * r
-    psi_dot = (sphi / cth) * q + (cphi / cth) * r
+    phi_dot, theta_dot, psi_dot = body_rates_to_euler_rates(phi, theta, p, q, r)
 
     # 4. Angular-rate dynamics (Newton-Euler, diagonal inertia tensor)
     p_dot = (tau_x + (Jy - Jz) * q * r) / Jx

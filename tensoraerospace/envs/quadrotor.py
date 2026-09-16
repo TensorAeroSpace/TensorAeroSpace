@@ -205,6 +205,13 @@ class NonlinearQuadrotorEnv(gym.Env):
         else:  # virtual
             omega2_cmd = self.allocator.unmix(action)
 
+        # Limit motor commands before applying the surviving effectiveness.
+        # Clipping effective thrust afterwards can resurrect a stopped rotor
+        # at omega_min or hide partial damage under an excessive command.
+        omega2_cmd = self.allocator.saturate(
+            omega2_cmd, omega_min=self.omega_min, omega_max=self.omega_max
+        )
+
         # Apply damage at rotor level (if active)
         if self.damage_manager is not None:
             mu = self.damage_manager.state.mu
@@ -217,12 +224,6 @@ class NonlinearQuadrotorEnv(gym.Env):
             )
         else:
             omega2_eff = omega2_cmd
-
-        # Saturate to physical bounds (also handles negative ω² from
-        # non-realisable virtual commands)
-        omega2_eff = self.allocator.saturate(
-            omega2_eff, omega_min=self.omega_min, omega_max=self.omega_max
-        )
 
         # Mix back to virtual; this is what the ODE consumes
         u_virtual_eff = self.allocator.mix(omega2_eff)

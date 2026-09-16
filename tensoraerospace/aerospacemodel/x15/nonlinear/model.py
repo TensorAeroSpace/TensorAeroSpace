@@ -61,7 +61,7 @@ class NonlinearX15(ModelBase):
         integrator: Literal["euler", "rk4"] = "rk4",
         config: X15Configuration = X15Configuration.BASIC,
     ) -> None:
-        x0_arr = np.asarray(x0, dtype=np.float64).reshape(-1)
+        x0_arr = np.array(x0, dtype=np.float64, copy=True).reshape(-1)
         if x0_arr.size != 13:
             raise ValueError(
                 f"x0 must have 13 elements (see initial.STATE_LIST); "
@@ -95,8 +95,8 @@ class NonlinearX15(ModelBase):
 
     @property
     def current_state(self) -> np.ndarray:
-        """Most recent state as a flat 1-D ndarray (length 13)."""
-        return np.asarray(self.x_history[-1], dtype=np.float64).reshape(-1)
+        """Independent snapshot of the most recent state as a flat 1-D ndarray (length 13)."""
+        return np.array(self.x_history[-1], dtype=np.float64, copy=True).reshape(-1)
 
     @property
     def altitude_ft(self) -> float:
@@ -137,7 +137,7 @@ class NonlinearX15(ModelBase):
         self.param.damage_geometry = self.damage_geometry
 
         x_prev = np.asarray(self.x_history[-1], dtype=np.float64).reshape(-1)
-        t_now = self.t0 + self.dt * self.time_step
+        t_now = self.t0 + self.dt * (self.time_step - 1)
         x_next = self._step_fn(x15_ode_6dof, x_prev, u_arr, t_now, self.dt, self.param)
 
         # Clamp propellant to non-negative (engine flames out below 0)
@@ -146,9 +146,9 @@ class NonlinearX15(ModelBase):
 
         x_next_col = x_next.reshape(13, 1)
         self.x_history.append(x_next_col)
-        self.u_history.append(u_arr.reshape(-1, 1))
+        self.u_history.append(u_arr.reshape(-1, 1).copy())
         self.time_step += 1
 
         if self.selected_state_output:
             return x_next_col[self.selected_state_index]
-        return x_next_col
+        return x_next_col.copy()

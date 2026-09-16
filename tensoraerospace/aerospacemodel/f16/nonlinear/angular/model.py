@@ -40,7 +40,7 @@ class AngularF16(ModelBase):
         track_altitude: bool = False,
         thrust_mode: Literal["constant", "control"] = "constant",
     ) -> None:
-        x0_arr = np.asarray(x0, dtype=np.float64).reshape(-1)
+        x0_arr = np.array(x0, dtype=np.float64, copy=True).reshape(-1)
         n_state = 16 if track_altitude else 14
         if x0_arr.size == 14 and track_altitude:
             # Auto-pad with trim altitude and trim airspeed from params.
@@ -88,9 +88,6 @@ class AngularF16(ModelBase):
 
         self.n_state = n_state
         self.x_history = [x0_arr.reshape(n_state, 1)]
-        # NOTE: _initialize_selected_state_index resets self.list_state and
-        # self.control_list to [] as a side effect (ModelBase behaviour).
-        # We must therefore reassign them AFTER the call.
         self._initialize_selected_state_index(self.selected_state_output, _list_state)
         self.list_state = _list_state
         self.control_list = _control_list
@@ -111,8 +108,8 @@ class AngularF16(ModelBase):
 
     @property
     def current_state(self) -> np.ndarray:
-        """Most recent state as a flat 1-D ndarray."""
-        return np.asarray(self.x_history[-1], dtype=np.float64).reshape(-1)
+        """Independent snapshot of the most recent state as a flat 1-D ndarray."""
+        return np.array(self.x_history[-1], dtype=np.float64, copy=True).reshape(-1)
 
     def run_step(self, u: ArrayLike) -> np.ndarray:
         u_arr = np.asarray(u, dtype=np.float64).reshape(-1)
@@ -167,16 +164,16 @@ class AngularF16(ModelBase):
             self.param.damage_geometry = None
 
         x_prev = np.asarray(self.x_history[-1], dtype=np.float64).reshape(-1)
-        t_now = self.t0 + self.dt * self.time_step
+        t_now = self.t0 + self.dt * (self.time_step - 1)
         x_next = self._step_fn(
             f16_ode_6dof, x_prev, u_legacy, t_now, self.dt, self.param
         )
 
         x_next_col = x_next.reshape(self.n_state, 1)
         self.x_history.append(x_next_col)
-        self.u_history.append(u_arr.reshape(-1, 1))
+        self.u_history.append(u_arr.reshape(-1, 1).copy())
         self.time_step += 1
 
         if self.selected_state_output:
             return x_next_col[self.selected_state_index]
-        return x_next_col
+        return x_next_col.copy()

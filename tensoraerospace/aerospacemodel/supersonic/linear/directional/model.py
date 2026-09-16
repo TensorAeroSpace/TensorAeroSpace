@@ -49,9 +49,6 @@ class DirectionalSuperSonic(ModelBase):
         self._initialize_selected_state_index(
             self.selected_state_output, self.selected_states
         )
-        # Restore lists that ModelBase resets during initialization.
-        self.list_state = self.selected_output
-        self.control_list = self.selected_input
 
         self.state_space = self.selected_states
         self.action_space = self.selected_input

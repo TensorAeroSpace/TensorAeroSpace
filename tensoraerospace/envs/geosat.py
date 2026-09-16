@@ -166,8 +166,9 @@ class GeoSatEnv(gym.Env):
             t0=0,
         )
         self.ref_signal = self.reference_signal
-        info = self._get_info()
         self.current_step = 0
+        self.done = False
+        info = self._get_info()
         observation = np.array(self.initial_state, dtype=np.float32)[
             self.model.selected_state_index
         ].reshape(-1)
