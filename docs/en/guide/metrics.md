@@ -445,7 +445,7 @@ All five runs appear under one group in the wandb UI; the group view aggregates 
 
 - **`wandb.errors.UsageError: api_key not configured`** — your `wandb login` ran for a different machine/user. Run `wandb login --relogin` or set `WANDB_API_KEY`.
 - **Run hangs at "Waiting for wandb.init()"** — usually a network or firewall issue. Try `export WANDB_MODE=offline` to verify training itself works, then sync later.
-- **Multiple agents in one Python process write to each other's runs** — should NOT happen. Each `_WandbSink` writes through its own captured run object (`self._run.log(...)`), not through wandb's module-level `wandb.log(...)` global state. If you observe this, file an issue.
+- **Multiple agents in one Python process** — each writer creates an independent W&B run with `reinit="create_new"` and logs through that run. Creating or closing one writer leaves the others active. This requires W&B 0.19.10 or newer; see [multiple runs per process](https://docs.wandb.ai/models/runs/initialize-run). Close each writer when its experiment finishes.
 - **A3C workers do not appear in wandb** — by design (see the A3C limitation section below). Workers (forked) skip wandb-init even with `WANDB_API_KEY` set. To get per-worker wandb runs, launch one process per worker externally and rely on `WANDB_RUN_GROUP` to keep them together in the UI.
 
 ### A3C limitation

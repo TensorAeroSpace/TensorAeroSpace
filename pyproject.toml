@@ -57,7 +57,8 @@ requests = ">=2.33.0"
 numpy = ">=1.24.0"
 # Pillow is pulled by matplotlib/imageio; 12.3.0 includes image parser security fixes.
 pillow = ">=12.3.0"
-wandb = ">=0.18,<1.0"
+# Concurrent metric writers require reinit="create_new" (W&B 0.19.10+).
+wandb = ">=0.19.10,<1.0"
 # anywidget is the FigureWidget backend for plotly's "live" render mode
 # (per-step in-Jupyter updates). Without it, importing FigureWidget raises
 # at runtime (ipywidgets alone is not enough on plotly 6.x).

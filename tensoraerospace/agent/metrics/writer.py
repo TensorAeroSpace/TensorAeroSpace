@@ -100,8 +100,8 @@ class _WandbSink:
             name=run_name,
             tags=list(tags) if tags else None,
             config=dict(config) if config else None,
-            reinit=True,
-            settings=wandb.Settings(start_method="thread"),
+            # Each agent owns an independent run; starting one must not finish another.
+            reinit="create_new",
         )
 
     def add_scalar(self, tag: str, value: float, env_step: int) -> None:
