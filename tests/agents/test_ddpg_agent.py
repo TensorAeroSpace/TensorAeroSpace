@@ -291,10 +291,8 @@ class TestDDPGLearn:
 
         env = _FakeEnv()
         agent = DDPG(env=env, value_lr=1e-3, policy_lr=1e-3, replay_buffer_size=100)
-        # Inject a writer with no mandatory-metric contract: this test only
-        # collects warmup transitions, so train/updates and train/lr will never
-        # be written and the default contract check would fail.
-        agent.writer = MetricWriter(required=())
+        # Warmup-only runs must also satisfy the normal metrics contract.
+        agent.writer = MetricWriter()
 
         initial_weight = agent.value_net.linear1.weight.data.clone()
 
@@ -359,9 +357,7 @@ class TestDDPGLearn:
         max_frames = 30
         agent.learn(max_frames=max_frames, max_steps=10, batch_size=8, warmup_frames=5)
 
-        # Should stop at or slightly after max_frames
-        assert agent.frame_idx >= max_frames
-        assert agent.frame_idx < max_frames + 20  # Allow small overshoot
+        assert agent.frame_idx == max_frames
 
 
 class TestDDPGCollectGrads:

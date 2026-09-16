@@ -931,6 +931,8 @@ class DDPG:
             target_value_clip: Tuple of (min, max) for Q-value clipping. Helps prevent
                 overestimation. Set to None to disable clipping. Default is (-10.0, 10.0).
         """
+        if max_frames < 1 or max_steps < 1:
+            raise ValueError("max_frames and max_steps must be positive.")
         self.max_frames = max_frames
         self.max_steps = max_steps
         self.frame_idx = 0
@@ -953,6 +955,15 @@ class DDPG:
                 )
             except Exception:
                 self.writer = None
+
+        if self.writer is not None:
+            # No optimizer update is required to report the warmup run's status.
+            self.writer.add_scalar(schema.TRAIN_UPDATES, self.update_count, env_step=0)
+            self.writer.add_scalar(
+                schema.TRAIN_LR,
+                float(self.policy_optimizer.param_groups[0]["lr"]),
+                env_step=0,
+            )
 
         with tqdm(total=max_frames, desc="DDPG Training") as pbar:
             while self.frame_idx < max_frames:
@@ -983,14 +994,15 @@ class DDPG:
                     done = terminated or truncated
                     reward_float = float(reward)
 
-                    # Store normalized states in replay buffer
+                    # Time limits end the episode but still allow bootstrapping.
+                    # Store normalized states and the true terminal flag.
                     norm_next = self._normalize_observation(next_state)
                     self.replay_buffer.push(
                         normalized_state,
                         action,
                         reward_float,
                         norm_next,
-                        done,
+                        bool(terminated),
                     )
                     # Warmup: collect transitions without updates
                     if (
@@ -1022,9 +1034,12 @@ class DDPG:
                         ep_reward=float(episode_reward),
                     )
 
-                    if done:
+                    if done or self.frame_idx >= max_frames:
                         break
 
+                # A trainer-imposed limit ends collection, not the MDP. Replay
+                # keeps the environment's terminal flag so targets bootstrap.
+                truncated = bool(truncated or not done)
                 self.rewards.append(episode_reward)
 
                 # Update observation normalization statistics with episode data

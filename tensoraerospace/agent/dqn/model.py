@@ -400,7 +400,7 @@ class DQNAgent:
 
         # replay buffer params [(s, a, r, ns, done), ...]
         self.b_obs = np.empty((self.batch_size,) + self.env.observation_space.shape)
-        self.b_actions = np.empty(self.batch_size, dtype=np.int8)
+        self.b_actions = np.empty(self.batch_size, dtype=np.int64)
         self.b_rewards = np.empty(self.batch_size, dtype=np.float32)
         self.b_next_states = np.empty(
             (self.batch_size,) + self.env.observation_space.shape
@@ -460,10 +460,17 @@ class DQNAgent:
         elif max_steps is not None:
             # Allow overriding the step cap without touching num_episodes.
             self.train_nums = int(max_steps)
+        if self.train_nums < 1:
+            raise ValueError("The training step budget must be positive.")
+        # Warmup-only runs still have a valid update count and learning rate.
+        self.writer.add_scalar(schema.TRAIN_UPDATES, self.global_step, env_step=0)
+        self.writer.add_scalar(
+            schema.TRAIN_LR, float(self.optimizer.param_groups[0]["lr"]), env_step=0
+        )
         obs, _info = self.env.reset()
         episode_reward = 0.0
         episode_length = 0
-        pbar = tqdm(range(1, self.train_nums), desc="DQNAgent Train", unit="step")
+        pbar = tqdm(range(1, self.train_nums + 1), desc="DQNAgent Train", unit="step")
         recent_loss = None
         for t in pbar:
             self.global_env_step = t
@@ -472,6 +479,8 @@ class DQNAgent:
             # input the obs to the network model
             action = self.get_action(best_action)  # get the real action
             next_obs, reward, terminated, truncated, info = self.env.step(action)
+            # The final collected transition can end an unfinished episode.
+            truncated = bool(truncated or (t == self.train_nums and not terminated))
             done = bool(terminated or truncated)
             episode_reward += float(reward)
             episode_length += 1
@@ -479,9 +488,8 @@ class DQNAgent:
                 p = self.p1
             else:
                 p = np.max(self.replay_buffer.tree[-self.replay_buffer.capacity :])
-            self.store_transition(
-                p, obs, action, reward, next_obs, done
-            )  # store that transition into replay butter
+            # Time limits end the episode but still allow bootstrapping.
+            self.store_transition(p, obs, action, reward, next_obs, bool(terminated))
             self.num_in_buffer = min(self.num_in_buffer + 1, self.buffer_size)
 
             if t > self.buffer_size:
@@ -515,9 +523,6 @@ class DQNAgent:
             else:
                 obs = next_obs
         self.writer.flush()
-        # Note: don't assert_contract_satisfied() if max_steps is so small that the
-        # warmup never ends and no train_step() ever runs. The smoke test uses a
-        # small-but-sufficient budget that does cross the warmup threshold.
         self.writer.assert_contract_satisfied()
         return {"episodes": int(self.episode_idx)}
 
@@ -1124,7 +1129,7 @@ class PERNARXAgent:
 
         # replay buffer params [(s, a, r, ns, done), ...]
         self.b_obs = np.empty((self.batch_size,) + self.env.observation_space.shape)
-        self.b_actions = np.empty(self.batch_size, dtype=np.int8)
+        self.b_actions = np.empty(self.batch_size, dtype=np.int64)
         self.b_rewards = np.empty(self.batch_size, dtype=np.float32)
         self.b_next_states = np.empty((self.batch_size,) + env.observation_space.shape)
         self.b_dones = np.empty(self.batch_size, dtype=np.bool_)
@@ -1166,11 +1171,20 @@ class PERNARXAgent:
             self.train_nums = int(num_episodes) * int(max_steps)
         elif max_steps is not None:
             self.train_nums = int(max_steps)
+        if self.train_nums < 1:
+            raise ValueError("The training step budget must be positive.")
+        # Warmup-only runs still have a valid update count and learning rate.
+        self.writer.add_scalar(schema.TRAIN_UPDATES, self.global_step, env_step=0)
+        self.writer.add_scalar(
+            schema.TRAIN_LR, float(self.optimizer.param_groups[0]["lr"]), env_step=0
+        )
         obs, _info = self.env.reset()
         prev_action = [0]
         episode_reward = 0.0
         episode_length = 0
-        pbar = tqdm(range(1, self.train_nums), desc="PERNARXAgent Train", unit="step")
+        pbar = tqdm(
+            range(1, self.train_nums + 1), desc="PERNARXAgent Train", unit="step"
+        )
         recent_loss = None
         for t in pbar:
             self.global_env_step = t
@@ -1179,6 +1193,8 @@ class PERNARXAgent:
 
             action = self.get_action(best_action)  # get the real action
             next_obs, reward, terminated, truncated, _info = self.env.step(action)
+            # The final collected transition can end an unfinished episode.
+            truncated = bool(truncated or (t == self.train_nums and not terminated))
             done = bool(terminated or truncated)
             episode_reward += float(reward)
             episode_length += 1
@@ -1186,9 +1202,8 @@ class PERNARXAgent:
                 p = self.p1
             else:
                 p = np.max(self.replay_buffer.tree[-self.replay_buffer.capacity :])
-            self.store_transition(
-                p, obs, action, reward, next_obs, done
-            )  # store that transition into replay butter
+            # Time limits end the episode but still allow bootstrapping.
+            self.store_transition(p, obs, action, reward, next_obs, bool(terminated))
             self.num_in_buffer = min(self.num_in_buffer + 1, self.buffer_size)
             prev_action = best_action
             if t > self.buffer_size:
@@ -1222,8 +1237,6 @@ class PERNARXAgent:
             else:
                 obs = next_obs
         self.writer.flush()
-        # Note: don't assert_contract_satisfied() if max_steps is so small that the
-        # warmup never ends and no train_step() ever runs.
         self.writer.assert_contract_satisfied()
         return {"episodes": int(self.episode_idx)}
 
