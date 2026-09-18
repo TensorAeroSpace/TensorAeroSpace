@@ -1,0 +1,926 @@
+{
+  "baseline_commit": "90ecfae",
+  "previous_commit": "3f87ee6",
+  "current": "working tree after 3f87ee6",
+  "seeds": [
+    11,
+    29,
+    47
+  ],
+  "policies": {
+    "ppo": {
+      "original": {
+        "mean_rmse_deg": 2.94658475482855,
+        "runs": [
+          {
+            "seed": 11,
+            "rmse_deg": 2.752010165352466,
+            "untrained_rmse_deg": 2.862635422626443,
+            "failures": 0,
+            "evaluation_episodes": 24,
+            "environment_steps": 163840,
+            "parameters_finite": true
+          },
+          {
+            "seed": 29,
+            "rmse_deg": 3.2015397360149205,
+            "untrained_rmse_deg": 2.8589910357170223,
+            "failures": 0,
+            "evaluation_episodes": 24,
+            "environment_steps": 163840,
+            "parameters_finite": true
+          },
+          {
+            "seed": 47,
+            "rmse_deg": 2.8862043631182637,
+            "untrained_rmse_deg": 2.831765837698285,
+            "failures": 0,
+            "evaluation_episodes": 24,
+            "environment_steps": 163840,
+            "parameters_finite": true
+          }
+        ]
+      },
+      "previous": {
+        "mean_rmse_deg": 2.94658475482855,
+        "runs": [
+          {
+            "seed": 11,
+            "rmse_deg": 2.752010165352466,
+            "untrained_rmse_deg": 2.862635422626443,
+            "failures": 0,
+            "evaluation_episodes": 24,
+            "environment_steps": 163840,
+            "parameters_finite": true
+          },
+          {
+            "seed": 29,
+            "rmse_deg": 3.2015397360149205,
+            "untrained_rmse_deg": 2.8589910357170223,
+            "failures": 0,
+            "evaluation_episodes": 24,
+            "environment_steps": 163840,
+            "parameters_finite": true
+          },
+          {
+            "seed": 47,
+            "rmse_deg": 2.8862043631182637,
+            "untrained_rmse_deg": 2.831765837698285,
+            "failures": 0,
+            "evaluation_episodes": 24,
+            "environment_steps": 163840,
+            "parameters_finite": true
+          }
+        ]
+      },
+      "current": {
+        "mean_rmse_deg": 0.9672625894096704,
+        "runs": [
+          {
+            "seed": 11,
+            "rmse_deg": 0.9774612648042244,
+            "untrained_rmse_deg": 2.862635422626443,
+            "failures": 0,
+            "evaluation_episodes": 24,
+            "environment_steps": 163840,
+            "parameters_finite": true
+          },
+          {
+            "seed": 29,
+            "rmse_deg": 0.9268474519747221,
+            "untrained_rmse_deg": 2.8589910357170223,
+            "failures": 0,
+            "evaluation_episodes": 24,
+            "environment_steps": 163840,
+            "parameters_finite": true
+          },
+          {
+            "seed": 47,
+            "rmse_deg": 0.9974790514500645,
+            "untrained_rmse_deg": 2.831765837698285,
+            "failures": 0,
+            "evaluation_episodes": 24,
+            "environment_steps": 163840,
+            "parameters_finite": true
+          }
+        ]
+      }
+    },
+    "sac": {
+      "original": {
+        "mean_rmse_deg": 1.8041285186808858,
+        "runs": [
+          {
+            "seed": 11,
+            "rmse_deg": 1.1029603812428472,
+            "untrained_rmse_deg": 2.652564054618638,
+            "failures": 0,
+            "evaluation_episodes": 24,
+            "environment_steps": 96000,
+            "parameters_finite": true
+          },
+          {
+            "seed": 29,
+            "rmse_deg": 2.444894275209443,
+            "untrained_rmse_deg": 4.477276280021235,
+            "failures": 0,
+            "evaluation_episodes": 24,
+            "environment_steps": 96000,
+            "parameters_finite": true
+          },
+          {
+            "seed": 47,
+            "rmse_deg": 1.8645308995903669,
+            "untrained_rmse_deg": 7.458113807506692,
+            "failures": 0,
+            "evaluation_episodes": 24,
+            "environment_steps": 96000,
+            "parameters_finite": true
+          }
+        ]
+      },
+      "previous": {
+        "mean_rmse_deg": 1.5281304785153218,
+        "runs": [
+          {
+            "seed": 11,
+            "rmse_deg": 1.3416946642385408,
+            "untrained_rmse_deg": 2.652564054618638,
+            "failures": 0,
+            "evaluation_episodes": 24,
+            "environment_steps": 96000,
+            "parameters_finite": true
+          },
+          {
+            "seed": 29,
+            "rmse_deg": 1.5397611545893017,
+            "untrained_rmse_deg": 4.477276280021235,
+            "failures": 0,
+            "evaluation_episodes": 24,
+            "environment_steps": 96000,
+            "parameters_finite": true
+          },
+          {
+            "seed": 47,
+            "rmse_deg": 1.702935616718123,
+            "untrained_rmse_deg": 7.458113807506692,
+            "failures": 0,
+            "evaluation_episodes": 24,
+            "environment_steps": 96000,
+            "parameters_finite": true
+          }
+        ]
+      },
+      "current": {
+        "mean_rmse_deg": 1.5281304785153218,
+        "runs": [
+          {
+            "seed": 11,
+            "rmse_deg": 1.3416946642385408,
+            "untrained_rmse_deg": 2.652564054618638,
+            "failures": 0,
+            "evaluation_episodes": 24,
+            "environment_steps": 96000,
+            "parameters_finite": true
+          },
+          {
+            "seed": 29,
+            "rmse_deg": 1.5397611545893017,
+            "untrained_rmse_deg": 4.477276280021235,
+            "failures": 0,
+            "evaluation_episodes": 24,
+            "environment_steps": 96000,
+            "parameters_finite": true
+          },
+          {
+            "seed": 47,
+            "rmse_deg": 1.702935616718123,
+            "untrained_rmse_deg": 7.458113807506692,
+            "failures": 0,
+            "evaluation_episodes": 24,
+            "environment_steps": 96000,
+            "parameters_finite": true
+          }
+        ]
+      }
+    },
+    "imgdhp": {
+      "original": {
+        "mean_rmse_deg": 1.3028883692009718,
+        "runs": [
+          {
+            "seed": 11,
+            "rmse_deg": 1.324535724573884,
+            "untrained_rmse_deg": 1.4266361698382513,
+            "failures": 0,
+            "evaluation_episodes": 4,
+            "environment_steps": 3980,
+            "parameters_finite": true
+          },
+          {
+            "seed": 29,
+            "rmse_deg": 1.237865161840396,
+            "untrained_rmse_deg": 1.4267461925098694,
+            "failures": 0,
+            "evaluation_episodes": 4,
+            "environment_steps": 3980,
+            "parameters_finite": true
+          },
+          {
+            "seed": 47,
+            "rmse_deg": 1.3462642211886358,
+            "untrained_rmse_deg": 1.4267657542083345,
+            "failures": 0,
+            "evaluation_episodes": 4,
+            "environment_steps": 3980,
+            "parameters_finite": true
+          }
+        ]
+      },
+      "previous": {
+        "mean_rmse_deg": 2.8978190347388946,
+        "runs": [
+          {
+            "seed": 11,
+            "rmse_deg": 2.8716311959051097,
+            "untrained_rmse_deg": 1.4266361698382513,
+            "failures": 0,
+            "evaluation_episodes": 4,
+            "environment_steps": 3980,
+            "parameters_finite": true
+          },
+          {
+            "seed": 29,
+            "rmse_deg": 2.9087469540552413,
+            "untrained_rmse_deg": 1.4267461925098694,
+            "failures": 0,
+            "evaluation_episodes": 4,
+            "environment_steps": 3980,
+            "parameters_finite": true
+          },
+          {
+            "seed": 47,
+            "rmse_deg": 2.913078954256333,
+            "untrained_rmse_deg": 1.4267657542083345,
+            "failures": 0,
+            "evaluation_episodes": 4,
+            "environment_steps": 3980,
+            "parameters_finite": true
+          }
+        ]
+      },
+      "current": {
+        "mean_rmse_deg": 1.1766896737428387,
+        "runs": [
+          {
+            "seed": 11,
+            "rmse_deg": 1.339850459874941,
+            "untrained_rmse_deg": 1.4266361698382513,
+            "failures": 0,
+            "evaluation_episodes": 4,
+            "environment_steps": 3980,
+            "parameters_finite": true
+          },
+          {
+            "seed": 29,
+            "rmse_deg": 1.1417186196437634,
+            "untrained_rmse_deg": 1.4267461925098694,
+            "failures": 0,
+            "evaluation_episodes": 4,
+            "environment_steps": 3980,
+            "parameters_finite": true
+          },
+          {
+            "seed": 47,
+            "rmse_deg": 1.048499941709812,
+            "untrained_rmse_deg": 1.4267657542083345,
+            "failures": 0,
+            "evaluation_episodes": 4,
+            "environment_steps": 3980,
+            "parameters_finite": true
+          }
+        ]
+      }
+    }
+  },
+  "physics": {
+    "original": {
+      "quadrotor": {
+        "energy_balance_max_error_W": 1.7763568394002505e-15,
+        "hover_derivative_max": 0.0,
+        "rk4_dt": [
+          0.08,
+          0.04,
+          0.02
+        ],
+        "rk4_max_error": [
+          4.399908691832266e-07,
+          2.7405251068479686e-08,
+          1.7098127358394777e-09
+        ]
+      },
+      "aircraft": [
+        {
+          "model": "b747",
+          "speed": 712.5,
+          "altitude": 30000.0,
+          "units": "ft, ft/s",
+          "trim_converged": true,
+          "trim_residual": 1.1203667522000311e-11,
+          "throttle": 0.9716453150367796,
+          "max_velocity_drift": 5.6843418860808015e-11,
+          "max_attitude_drift_rad": 2.7033930649622562e-14,
+          "altitude_drift": 0.0
+        },
+        {
+          "model": "b747",
+          "speed": 750.0,
+          "altitude": 30000.0,
+          "units": "ft, ft/s",
+          "trim_converged": false,
+          "trim_residual": 0.05468113366911683,
+          "throttle": 1.0,
+          "max_velocity_drift": 5.832501116738815,
+          "max_attitude_drift_rad": 0.022345767555567983,
+          "altitude_drift": 21.455839717091294
+        },
+        {
+          "model": "b747",
+          "speed": 787.5,
+          "altitude": 30000.0,
+          "units": "ft, ft/s",
+          "trim_converged": false,
+          "trim_residual": 0.23826540959549058,
+          "throttle": 1.0,
+          "max_velocity_drift": 13.776997767807531,
+          "max_attitude_drift_rad": 0.05162908477607574,
+          "altitude_drift": 53.2125104961051
+        },
+        {
+          "model": "b737",
+          "speed": 701.1,
+          "altitude": 25000.0,
+          "units": "ft, ft/s",
+          "trim_converged": true,
+          "trim_residual": 4.832213216889635e-14,
+          "throttle": 0.8472174302029589,
+          "max_velocity_drift": 0.0,
+          "max_attitude_drift_rad": 0.0,
+          "altitude_drift": 0.0
+        },
+        {
+          "model": "b737",
+          "speed": 738.0,
+          "altitude": 25000.0,
+          "units": "ft, ft/s",
+          "trim_converged": true,
+          "trim_residual": 4.802007209407446e-13,
+          "throttle": 0.9151279049614695,
+          "max_velocity_drift": 0.0,
+          "max_attitude_drift_rad": 0.0,
+          "altitude_drift": 0.0
+        },
+        {
+          "model": "b737",
+          "speed": 774.9,
+          "altitude": 25000.0,
+          "units": "ft, ft/s",
+          "trim_converged": true,
+          "trim_residual": 2.7755575615628914e-16,
+          "throttle": 0.9904183674849102,
+          "max_velocity_drift": 0.0,
+          "max_attitude_drift_rad": 0.0,
+          "altitude_drift": 0.0
+        },
+        {
+          "model": "skywalker_x8",
+          "speed": 17.099999999999998,
+          "altitude": 178.0,
+          "units": "m, m/s",
+          "trim_converged": true,
+          "trim_residual": 1.1893637378040016e-13,
+          "throttle": 0.6005773860693536,
+          "max_velocity_drift": 1.141014092891768,
+          "max_attitude_drift_rad": 0.7697148218469562,
+          "altitude_drift": 2.0059806878250868
+        },
+        {
+          "model": "skywalker_x8",
+          "speed": 18.0,
+          "altitude": 178.0,
+          "units": "m, m/s",
+          "trim_converged": true,
+          "trim_residual": 1.5104053730039897e-13,
+          "throttle": 0.6407716635522891,
+          "max_velocity_drift": 1.1728791852358467,
+          "max_attitude_drift_rad": 0.7773714418064837,
+          "altitude_drift": 2.388930360761208
+        },
+        {
+          "model": "skywalker_x8",
+          "speed": 18.900000000000002,
+          "altitude": 178.0,
+          "units": "m, m/s",
+          "trim_converged": true,
+          "trim_residual": 4.2920685828853376e-13,
+          "throttle": 0.6856793511092325,
+          "max_velocity_drift": 1.2048083448112845,
+          "max_attitude_drift_rad": 0.7850631580145485,
+          "altitude_drift": 2.8160981290126017
+        },
+        {
+          "model": "aai_shadow",
+          "speed": 34.199999999999996,
+          "altitude": 1000.0,
+          "units": "m, m/s",
+          "trim_converged": true,
+          "trim_residual": 1.8248291885333193e-15,
+          "throttle": 0.8838853277517111,
+          "max_velocity_drift": 0.0,
+          "max_attitude_drift_rad": 0.0,
+          "altitude_drift": 0.0
+        },
+        {
+          "model": "aai_shadow",
+          "speed": 36.0,
+          "altitude": 1000.0,
+          "units": "m, m/s",
+          "trim_converged": true,
+          "trim_residual": 0.0,
+          "throttle": 0.9295123318525119,
+          "max_velocity_drift": 0.0,
+          "max_attitude_drift_rad": 0.0,
+          "altitude_drift": 0.0
+        },
+        {
+          "model": "aai_shadow",
+          "speed": 37.800000000000004,
+          "altitude": 1000.0,
+          "units": "m, m/s",
+          "trim_converged": false,
+          "trim_residual": 0.02977177896195158,
+          "throttle": 1.139263529108628,
+          "max_velocity_drift": 0.08457838568157428,
+          "max_attitude_drift_rad": 0.002299257614522557,
+          "altitude_drift": 0.17780235103248287
+        }
+      ],
+      "f16": [
+        {
+          "speed_m_s": 100.0,
+          "altitude_m": 1000.0,
+          "converged": true,
+          "thrust_N": 8000.0,
+          "residuals": [
+            -9.070728892650444e-12,
+            -3.695177978066501e-11,
+            1.3740071119232382
+          ],
+          "speed_drift_m_s": 6.486180577534526,
+          "altitude_drift_m": 3.752889039028787,
+          "pitch_drift_deg": 0.7607693524641214
+        },
+        {
+          "speed_m_s": 120.0,
+          "altitude_m": 3000.0,
+          "converged": true,
+          "thrust_N": 8000.0,
+          "residuals": [
+            2.8615753830932666e-10,
+            -3.1995270663829833e-10,
+            1.1847984765220354
+          ],
+          "speed_drift_m_s": 5.661058452264214,
+          "altitude_drift_m": 2.8106895765067748,
+          "pitch_drift_deg": 0.5430132605502161
+        },
+        {
+          "speed_m_s": 160.0,
+          "altitude_m": 5000.0,
+          "converged": true,
+          "thrust_N": 8000.0,
+          "residuals": [
+            -9.412555517318876e-11,
+            -1.6040842868396092e-09,
+            0.7026469947221402
+          ],
+          "speed_drift_m_s": 3.376123346503533,
+          "altitude_drift_m": 1.2721299702170654,
+          "pitch_drift_deg": 0.2066531640714385
+        }
+      ]
+    },
+    "previous": {
+      "quadrotor": {
+        "energy_balance_max_error_W": 1.7763568394002505e-15,
+        "hover_derivative_max": 0.0,
+        "rk4_dt": [
+          0.08,
+          0.04,
+          0.02
+        ],
+        "rk4_max_error": [
+          4.3999087162571726e-07,
+          2.7405253288925735e-08,
+          1.7098151783301319e-09
+        ]
+      },
+      "aircraft": [
+        {
+          "model": "b747",
+          "speed": 712.5,
+          "altitude": 30000.0,
+          "units": "ft, ft/s",
+          "trim_converged": true,
+          "trim_residual": 1.1203667522000311e-11,
+          "throttle": 0.9716453150367796,
+          "max_velocity_drift": 5.6843418860808015e-11,
+          "max_attitude_drift_rad": 2.7033930649622562e-14,
+          "altitude_drift": 0.0
+        },
+        {
+          "model": "b747",
+          "speed": 750.0,
+          "altitude": 30000.0,
+          "units": "ft, ft/s",
+          "trim_converged": false,
+          "trim_residual": 0.05468113366911683,
+          "throttle": 1.0,
+          "max_velocity_drift": 5.832501116738815,
+          "max_attitude_drift_rad": 0.022345767555567983,
+          "altitude_drift": 21.455839717091294
+        },
+        {
+          "model": "b747",
+          "speed": 787.5,
+          "altitude": 30000.0,
+          "units": "ft, ft/s",
+          "trim_converged": false,
+          "trim_residual": 0.23826540959549058,
+          "throttle": 1.0,
+          "max_velocity_drift": 13.776997767807531,
+          "max_attitude_drift_rad": 0.05162908477607574,
+          "altitude_drift": 53.2125104961051
+        },
+        {
+          "model": "b737",
+          "speed": 701.1,
+          "altitude": 25000.0,
+          "units": "ft, ft/s",
+          "trim_converged": true,
+          "trim_residual": 4.832213216889635e-14,
+          "throttle": 0.8472174302029589,
+          "max_velocity_drift": 0.0,
+          "max_attitude_drift_rad": 0.0,
+          "altitude_drift": 0.0
+        },
+        {
+          "model": "b737",
+          "speed": 738.0,
+          "altitude": 25000.0,
+          "units": "ft, ft/s",
+          "trim_converged": true,
+          "trim_residual": 4.802007209407446e-13,
+          "throttle": 0.9151279049614695,
+          "max_velocity_drift": 0.0,
+          "max_attitude_drift_rad": 0.0,
+          "altitude_drift": 0.0
+        },
+        {
+          "model": "b737",
+          "speed": 774.9,
+          "altitude": 25000.0,
+          "units": "ft, ft/s",
+          "trim_converged": true,
+          "trim_residual": 2.7755575615628914e-16,
+          "throttle": 0.9904183674849102,
+          "max_velocity_drift": 0.0,
+          "max_attitude_drift_rad": 0.0,
+          "altitude_drift": 0.0
+        },
+        {
+          "model": "skywalker_x8",
+          "speed": 17.099999999999998,
+          "altitude": 178.0,
+          "units": "m, m/s",
+          "trim_converged": true,
+          "trim_residual": 1.1893637378040016e-13,
+          "throttle": 0.6005773860693536,
+          "max_velocity_drift": 1.1410140928917683,
+          "max_attitude_drift_rad": 0.7697148218469562,
+          "altitude_drift": 2.0059806878250868
+        },
+        {
+          "model": "skywalker_x8",
+          "speed": 18.0,
+          "altitude": 178.0,
+          "units": "m, m/s",
+          "trim_converged": true,
+          "trim_residual": 1.5104053730039897e-13,
+          "throttle": 0.6407716635522891,
+          "max_velocity_drift": 1.1728791852358467,
+          "max_attitude_drift_rad": 0.7773714418064837,
+          "altitude_drift": 2.388930360761208
+        },
+        {
+          "model": "skywalker_x8",
+          "speed": 18.900000000000002,
+          "altitude": 178.0,
+          "units": "m, m/s",
+          "trim_converged": true,
+          "trim_residual": 4.2920685828853376e-13,
+          "throttle": 0.6856793511092325,
+          "max_velocity_drift": 1.2048083448112845,
+          "max_attitude_drift_rad": 0.7850631580145485,
+          "altitude_drift": 2.8160981290126017
+        },
+        {
+          "model": "aai_shadow",
+          "speed": 34.199999999999996,
+          "altitude": 1000.0,
+          "units": "m, m/s",
+          "trim_converged": true,
+          "trim_residual": 1.8248291885333193e-15,
+          "throttle": 0.8838853277517111,
+          "max_velocity_drift": 0.0,
+          "max_attitude_drift_rad": 0.0,
+          "altitude_drift": 0.0
+        },
+        {
+          "model": "aai_shadow",
+          "speed": 36.0,
+          "altitude": 1000.0,
+          "units": "m, m/s",
+          "trim_converged": true,
+          "trim_residual": 0.0,
+          "throttle": 0.9295123318525119,
+          "max_velocity_drift": 0.0,
+          "max_attitude_drift_rad": 0.0,
+          "altitude_drift": 0.0
+        },
+        {
+          "model": "aai_shadow",
+          "speed": 37.800000000000004,
+          "altitude": 1000.0,
+          "units": "m, m/s",
+          "trim_converged": false,
+          "trim_residual": 0.02977177896195158,
+          "throttle": 1.139263529108628,
+          "max_velocity_drift": 0.08457838568157428,
+          "max_attitude_drift_rad": 0.002299257614522557,
+          "altitude_drift": 0.17780235103248287
+        }
+      ],
+      "f16": [
+        {
+          "speed_m_s": 100.0,
+          "altitude_m": 1000.0,
+          "converged": true,
+          "thrust_N": 8000.0,
+          "residuals": [
+            -9.070728892650444e-12,
+            -3.695177978066501e-11,
+            1.3740071119232382
+          ],
+          "speed_drift_m_s": 6.486180577534526,
+          "altitude_drift_m": 3.752889039028787,
+          "pitch_drift_deg": 0.7607693524641214
+        },
+        {
+          "speed_m_s": 120.0,
+          "altitude_m": 3000.0,
+          "converged": true,
+          "thrust_N": 8000.0,
+          "residuals": [
+            2.8615753830932666e-10,
+            -3.1995270663829833e-10,
+            1.1847984765220354
+          ],
+          "speed_drift_m_s": 5.661058452264214,
+          "altitude_drift_m": 2.8106895765067748,
+          "pitch_drift_deg": 0.5430132605502161
+        },
+        {
+          "speed_m_s": 160.0,
+          "altitude_m": 5000.0,
+          "converged": true,
+          "thrust_N": 8000.0,
+          "residuals": [
+            -9.412555517318876e-11,
+            -1.6040842868396092e-09,
+            0.7026469947221402
+          ],
+          "speed_drift_m_s": 3.376123346503533,
+          "altitude_drift_m": 1.2721299702170654,
+          "pitch_drift_deg": 0.2066531640714385
+        }
+      ]
+    },
+    "current": {
+      "quadrotor": {
+        "energy_balance_max_error_W": 1.7763568394002505e-15,
+        "hover_derivative_max": 0.0,
+        "rk4_dt": [
+          0.08,
+          0.04,
+          0.02
+        ],
+        "rk4_max_error": [
+          4.3999087162571726e-07,
+          2.7405253288925735e-08,
+          1.7098151783301319e-09
+        ]
+      },
+      "aircraft": [
+        {
+          "model": "b747",
+          "speed": 712.5,
+          "altitude": 30000.0,
+          "units": "ft, ft/s",
+          "trim_converged": true,
+          "trim_residual": 1.1203667522000311e-11,
+          "throttle": 0.9716453150367796,
+          "max_velocity_drift": 5.6843418860808015e-11,
+          "max_attitude_drift_rad": 2.7033930649622562e-14,
+          "altitude_drift": 0.0
+        },
+        {
+          "model": "b747",
+          "speed": 750.0,
+          "altitude": 30000.0,
+          "units": "ft, ft/s",
+          "trim_converged": false,
+          "trim_residual": 0.05468113366911683,
+          "throttle": 1.0,
+          "max_velocity_drift": 5.832501116738815,
+          "max_attitude_drift_rad": 0.022345767555567983,
+          "altitude_drift": 21.455839717091294
+        },
+        {
+          "model": "b747",
+          "speed": 787.5,
+          "altitude": 30000.0,
+          "units": "ft, ft/s",
+          "trim_converged": false,
+          "trim_residual": 0.23826540959549058,
+          "throttle": 1.0,
+          "max_velocity_drift": 13.776997767807531,
+          "max_attitude_drift_rad": 0.05162908477607574,
+          "altitude_drift": 53.2125104961051
+        },
+        {
+          "model": "b737",
+          "speed": 701.1,
+          "altitude": 25000.0,
+          "units": "ft, ft/s",
+          "trim_converged": true,
+          "trim_residual": 4.832213216889635e-14,
+          "throttle": 0.8472174302029589,
+          "max_velocity_drift": 0.0,
+          "max_attitude_drift_rad": 0.0,
+          "altitude_drift": 0.0
+        },
+        {
+          "model": "b737",
+          "speed": 738.0,
+          "altitude": 25000.0,
+          "units": "ft, ft/s",
+          "trim_converged": true,
+          "trim_residual": 4.802007209407446e-13,
+          "throttle": 0.9151279049614695,
+          "max_velocity_drift": 0.0,
+          "max_attitude_drift_rad": 0.0,
+          "altitude_drift": 0.0
+        },
+        {
+          "model": "b737",
+          "speed": 774.9,
+          "altitude": 25000.0,
+          "units": "ft, ft/s",
+          "trim_converged": true,
+          "trim_residual": 2.7755575615628914e-16,
+          "throttle": 0.9904183674849102,
+          "max_velocity_drift": 0.0,
+          "max_attitude_drift_rad": 0.0,
+          "altitude_drift": 0.0
+        },
+        {
+          "model": "skywalker_x8",
+          "speed": 17.099999999999998,
+          "altitude": 178.0,
+          "units": "m, m/s",
+          "trim_converged": true,
+          "trim_residual": 1.1893637378040016e-13,
+          "throttle": 0.6005773860693536,
+          "max_velocity_drift": 1.1410140928917683,
+          "max_attitude_drift_rad": 0.7697148218469562,
+          "altitude_drift": 2.0059806878250868
+        },
+        {
+          "model": "skywalker_x8",
+          "speed": 18.0,
+          "altitude": 178.0,
+          "units": "m, m/s",
+          "trim_converged": true,
+          "trim_residual": 1.5104053730039897e-13,
+          "throttle": 0.6407716635522891,
+          "max_velocity_drift": 1.1728791852358467,
+          "max_attitude_drift_rad": 0.7773714418064837,
+          "altitude_drift": 2.388930360761208
+        },
+        {
+          "model": "skywalker_x8",
+          "speed": 18.900000000000002,
+          "altitude": 178.0,
+          "units": "m, m/s",
+          "trim_converged": true,
+          "trim_residual": 4.2920685828853376e-13,
+          "throttle": 0.6856793511092325,
+          "max_velocity_drift": 1.2048083448112845,
+          "max_attitude_drift_rad": 0.7850631580145485,
+          "altitude_drift": 2.8160981290126017
+        },
+        {
+          "model": "aai_shadow",
+          "speed": 34.199999999999996,
+          "altitude": 1000.0,
+          "units": "m, m/s",
+          "trim_converged": true,
+          "trim_residual": 1.8248291885333193e-15,
+          "throttle": 0.8838853277517111,
+          "max_velocity_drift": 0.0,
+          "max_attitude_drift_rad": 0.0,
+          "altitude_drift": 0.0
+        },
+        {
+          "model": "aai_shadow",
+          "speed": 36.0,
+          "altitude": 1000.0,
+          "units": "m, m/s",
+          "trim_converged": true,
+          "trim_residual": 0.0,
+          "throttle": 0.9295123318525119,
+          "max_velocity_drift": 0.0,
+          "max_attitude_drift_rad": 0.0,
+          "altitude_drift": 0.0
+        },
+        {
+          "model": "aai_shadow",
+          "speed": 37.800000000000004,
+          "altitude": 1000.0,
+          "units": "m, m/s",
+          "trim_converged": false,
+          "trim_residual": 0.02977177896195158,
+          "throttle": 1.139263529108628,
+          "max_velocity_drift": 0.08457838568157428,
+          "max_attitude_drift_rad": 0.002299257614522557,
+          "altitude_drift": 0.17780235103248287
+        }
+      ],
+      "f16": [
+        {
+          "speed_m_s": 100.0,
+          "altitude_m": 1000.0,
+          "converged": true,
+          "thrust_N": 9017.727312428186,
+          "residuals": [
+            1.829793160804685e-10,
+            -4.207660627978443e-09,
+            -3.047206859595772e-08
+          ],
+          "speed_drift_m_s": 1.0588931331767526e-07,
+          "altitude_drift_m": -1.749570856190985e-06,
+          "pitch_drift_deg": -6.264274847108905e-07
+        },
+        {
+          "speed_m_s": 120.0,
+          "altitude_m": 3000.0,
+          "converged": true,
+          "thrust_N": 8789.991809930176,
+          "residuals": [
+            5.601361149658037e-12,
+            -8.613723777252054e-10,
+            -3.321655965887444e-10
+          ],
+          "speed_drift_m_s": 8.557937292152928e-08,
+          "altitude_drift_m": -6.693353498121724e-07,
+          "pitch_drift_deg": -1.9620865207025343e-07
+        },
+        {
+          "speed_m_s": 160.0,
+          "altitude_m": 5000.0,
+          "converged": true,
+          "thrust_N": 9899.03334338753,
+          "residuals": [
+            8.45873201889025e-13,
+            -3.8891470107531085e-11,
+            3.855638619179147e-10
+          ],
+          "speed_drift_m_s": 1.7233355720236432e-07,
+          "altitude_drift_m": -2.2572157831746154e-06,
+          "pitch_drift_deg": -4.518651192785284e-07
+        }
+      ]
+    }
+  }
+}
