@@ -30,9 +30,9 @@ High-level algorithm::
             L    = L_J + β L_λ
       8. Actor loss: minimise predicted next-step tracking cost plus
          ``γ J(ô_{t+1}) + ρ ‖u_t − u_{t-1}‖²``. The autograd graph
-         differentiates the scalar J head through ``B_t`` back to the
-         actor. The separately fitted λ head shares the critic backbone;
-         it is not constrained to equal the exact derivative of J.
+         uses the fitted costate for the future-cost action gradient
+         ``γ B_t.T λ_next``. The independent scalar J head supplies the
+         reported objective value, not a replacement for that costate.
 
 The resulting agent has three differentiable blocks — actor, critic,
 and the RLS-identified linear increment model — and does not require
@@ -585,8 +585,8 @@ class IMGDHPAgent:
         estimates: ``ŷ_{t+1} = y_t + A · (y_t − y_{t-1}) + B · (u −
         u_{t-1})``. The autograd graph flows through ``B · u`` back to
         the actor weights. It differentiates the scaled tracking cost
-        and scalar J head, plus the action-rate regularizer; the separate
-        lambda head is not used as dJ/dy. The predicted tracking cost
+        and action-rate regularizer, and uses the fitted physical costate
+        for the future-cost gradient gamma * B.T @ lambda. The predicted tracking cost
         supplies a learning signal while the critic is still bootstrapping.
         """
         y_t = torch.as_tensor(y_t_np, dtype=torch.float32, device=self.device)
@@ -612,11 +612,19 @@ class IMGDHPAgent:
         err = aug_next_pred[-len(self.tracking_indices) :]
         c_pred = torch.sum(self._Q * err.pow(2))
 
-        J_next, _ = self.critic(aug_next_pred)
+        # The critic fits lambda to the Bellman costate equation. Its J
+        # head is independent, so differentiating J does not recover that
+        # learned costate. Use lambda as the physical-state gradient and
+        # keep the scalar J only as the reported objective value.
+        with torch.no_grad():
+            J_next, lambda_next = self.critic(aug_next_pred.detach())
+        future_cost = J_next.squeeze() + torch.sum(
+            lambda_next.detach() * (y_next_pred - y_next_pred.detach())
+        )
 
         loss = (
             c_pred
-            + self.cfg.gamma * J_next.squeeze()
+            + self.cfg.gamma * future_cost
             + self.cfg.action_rate_penalty * du.pow(2).sum()
         )
 

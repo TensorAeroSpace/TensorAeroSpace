@@ -7,13 +7,12 @@ is a sizeable project and hardware-specific to boot; for the initial library
 release we provide a minimal two-block stand-in that already makes INDI
 practical:
 
-1. :class:`LowPassDerivative` — second-order Butterworth-style low-pass
-   differentiator that converts noisy ω readings into ω̇ with bounded
-   high-frequency noise. Acts as the HOSM surrogate.
-2. :class:`BiasEstimator` — a scalar exponential-forgetting mean of the
-   residual between the raw and differentiated-then-reintegrated signals.
-   Provides a coarse IMU bias estimate that the AA-INDI agent can subtract
-   from the measured state, emulating the OTSEKF fault-state branch.
+1. :class:`LowPassDerivative` — first-order low-pass filtering of a
+   backward difference. Its coefficient is clipped to [0, 1].
+2. :class:`BiasEstimator` — an exponential mean of an innovation supplied
+   by the caller. The agent's reintegration residual is a heuristic: a
+   constant additive sensor bias cancels in consecutive differences and
+   cannot be identified without an independent measurement or model.
 
 The real HOSM / two-stage EKF can be dropped in later as a child class —
 these primitives keep the agent's I/O contract small and unit-testable.
@@ -81,11 +80,10 @@ class LowPassDerivative:
 class BiasEstimator:
     """Exponential-forgetting mean of an innovation signal.
 
-    Used by :mod:`aa_indi` to produce a scalar IMU bias estimate ``b̂``
-    from the residual between the raw measurement and the
-    reintegrated-from-derivative one. When an actual bias appears, the
-    residual has a non-zero mean and ``b̂`` tracks it with a time
-    constant of roughly ``dt / (1 − lambda)``.
+    This class averages the supplied innovation; it does not make sensor
+    bias observable. In particular, differentiating and reintegrating the
+    same sensor does not identify its constant additive bias. The smoothing
+    time constant is approximately ``dt / (1 - lambda)``.
 
     Args:
         n: Dimension of the innovation.

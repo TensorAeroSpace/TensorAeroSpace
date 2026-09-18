@@ -1,24 +1,24 @@
 # Active-Adaptive Incremental Nonlinear Dynamic Inversion (AA-INDI)
 
-AA-INDI is a **fault-tolerant flight controller** built on top of Incremental Nonlinear Dynamic Inversion (INDI). It combines a classical INDI control law with online **Variable-Forgetting-Factor RLS** identification of the control-effectiveness matrix so that the controller adapts quickly to actuator faults, and a lightweight sensor-filter surrogate that mimics the OTSEKF-HOSM branch of the reference paper. See also the nonlinear F-16 model: [NonlinearLongitudinalF16](../model/f16_nonlinear_longitudinal.md).
+AA-INDI combines incremental dynamic inversion with online identification of control effectiveness. This implementation uses VFF-RLS and a first-order filtered differentiator. Its residual smoother is a heuristic, not the paper's OTSEKF-HOSM sensor-fault estimator. Tracking and fault recovery depend on excitation, tuning, actuator dynamics and the initial estimate of effectiveness. See [NonlinearLongitudinalF16](../model/f16_nonlinear_longitudinal.md).
 
-**Reference**: Sun et al., *"Active Incremental Nonlinear Dynamic Inversion for Sensor and Actuator Fault Diagnosis and Fault-Tolerant Flight Control"*, TU Delft Aerospace, [research.tudelft.nl](https://research.tudelft.nl/en/publications/active-incremental-nonlinear-dynamic-inversion-for-sensor-and-act/).
+**Reference**: Atmaca, de Visser, van Kampen (2026), *"Active Incremental Nonlinear Dynamic Inversion for Sensor and Actuator Fault-Tolerant Control"*, TU Delft Aerospace, [research.tudelft.nl](https://research.tudelft.nl/en/publications/active-incremental-nonlinear-dynamic-inversion-for-sensor-and-act/).
 
 ## Key ideas
 
-- **INDI control law**: the applied control increment \(\Delta u = G^+ \cdot (\nu_{\text{des}} - \dot{\omega}_{\text{meas}})\) requires only the control-effectiveness matrix \(G\), not the full nonlinear dynamics \(f\). This eliminates model-uncertainty sensitivity.
+- **INDI control law**: the applied control increment \(\Delta u = G^+ \cdot (\nu_{\text{des}} - \dot{\omega}_{\text{meas}})\) requires only the control-effectiveness matrix \(G\), not the full nonlinear dynamics \(f\). This reduces dependence on the full model; effectiveness errors and delays still affect tracking.
 - **Reference model**: a second-order filter shapes the commanded angular rate into a smooth desired rate and its derivative \(\nu_{\text{des}} = \dot{\omega}_{\text{ref}}\).
 - **VFF-RLS**: the forgetting factor \(\lambda_k\) contracts toward a lower bound when the prediction residual grows (fast adaptation during faults/manoeuvres) and relaxes toward the upper bound in quiet operation (noise rejection).
-- **Sensor-filter surrogate**: a low-pass differentiator produces \(\dot{\omega}\) from raw \(\omega\), and a residual-based bias estimator yields a coarse IMU bias that the agent subtracts from measurements — a minimal stand-in for the paper's OTSEKF-HOSM stack.
+- **Sensor-filter surrogate**: a low-pass differentiator produces \(\dot{\omega}\) from raw \(\omega\), and a residual smoother supplies an optional heuristic correction. Constant sensor bias is not observable from this reintegration residual alone.
 
 ## Differences from related methods
 
 | Aspect | INDI | Adaptive INDI | **AA-INDI** |
 | --- | --- | --- | --- |
 | Control-effectiveness \(G\) | Offline / fixed | Online (basic RLS) | Online VFF-RLS |
-| Sensor fault handling | None | None | Bias estimator (OTSEKF-HOSM surrogate) |
-| Reaction to abrupt faults | Poor | Moderate | Fast (λ contracts under large residuals) |
-| Noise rejection in nominal flight | Good | Moderate | Good (λ relaxes to max) |
+| Sensor fault handling | None | None | Residual heuristic; constant bias is unobservable without an independent reference |
+| Adaptation after faults | Fixed effectiveness | RLS updates | Variable forgetting; recovery must be measured |
+| Noise handling | Measurement filtering | Filtering and RLS tuning | Matched input/output filters and VFF tuning |
 
 ## AA-INDI components
 
@@ -26,7 +26,7 @@ AA-INDI is a **fault-tolerant flight controller** built on top of Incremental No
 | --- | --- | --- |
 | VFFRLSEstimator | Online identification of \(G = \partial \dot{\omega}/\partial u\) with variable forgetting | `tensoraerospace.agent.aa_indi.VFFRLSEstimator` |
 | LowPassDerivative | Causal differentiator (HOSM surrogate) | `tensoraerospace.agent.aa_indi.LowPassDerivative` |
-| BiasEstimator | Exponential-forgetting IMU-bias estimator | `tensoraerospace.agent.aa_indi.BiasEstimator` |
+| BiasEstimator | Exponential mean of a supplied innovation | `tensoraerospace.agent.aa_indi.BiasEstimator` |
 | Reference model | 2nd-order filter for \(\nu_{\text{des}}\) | Inline in `AAINDIAgent` |
 | AAINDIAgent | Orchestrates INDI law, estimators, filter | `tensoraerospace.agent.aa_indi.AAINDIAgent` |
 
@@ -45,19 +45,59 @@ On each control tick \(k\), given the measurement \(\omega_k\) and command \(r_k
 
 \[
 \Delta u = G^{+} \cdot (\nu_{\text{des}} - \dot{\omega}^{\text{meas}}), \qquad
-u = \mathrm{clip}(u_{\text{prev}} + \Delta u,\ \pm u_{\max}),
+u = \mathrm{clip}(u_{\text{filtered}} + \Delta u,\ \pm u_{\max}),
 \]
 
-   with \(\Delta u\) first rate-limited to \(\pm\dot{u}_{\max} \cdot dt\).
+   Here the baseline is filtered actuator feedback. Rate limiting is applied to the candidate command relative to the previous actual input, with a limit of \(\dot{u}_{\max} dt\).
 4. **VFF-RLS update.** From \((\Delta u_k, \Delta \dot{\omega}_k)\):
 
 \[
 \varepsilon = \Delta \dot{\omega} - \theta^{\top} \Delta u,\qquad
-\lambda_k = \mathrm{clip}\bigl(e^{-\|\varepsilon\|^2/\sigma_\varepsilon^2},\ \lambda_{\min},\ \lambda_{\max}\bigr),
+\varphi_k = \Delta u_k,\qquad K_k = \frac{P_k\varphi_k}{1+\varphi_k^T P_k\varphi_k},\qquad
+\lambda_k = \mathrm{clip}\left(1-\frac{\|\varepsilon\|^2}{\sigma_\varepsilon^2(1+\varphi_k^T P_k\varphi_k)},\lambda_{\min},\lambda_{\max}\right),
 \]
 
    followed by the usual RLS gain / covariance recursion with forgetting factor \(\lambda_k\).
 5. **Bias update.** Exponential moving average of the residual between \(\omega\) and its reintegration from \(\dot{\omega}\).
+
+## Relation to the original paper
+
+The VFF gain and forgetting rule follow Eqs. (54)–(57) of
+[Atmaca et al., AIAA 2026-1743](https://repository.tudelft.nl/file/File_ee9931f5-cf45-45a5-b5a3-0225b0f35da2).
+`vff_eps_sensitivity**2` corresponds to Σ₀. The upper limit
+`vff_forgetting_max < 1` is a library extension; set it to 1 to allow the
+paper's maximum. Covariance uses an algebraically equivalent Joseph update
+to avoid cancellation. The previous exponential rule was not Eq. (55).
+Existing checkpoints load, but their adaptation tuning should be revalidated.
+
+This agent uses filtered increments of acceleration and actuator position.
+The paper instead reconstructs aerodynamic moments and fits surface derivatives;
+it also includes OTSEKF-HOSM. These subsystems are not reproduced here.
+An experiment on this class therefore does not establish the performance of
+the complete published AA-INDI architecture.
+
+Nonfinite samples and numerical overflow are rejected before changing RLS
+parameters. Unexcited directions still follow the configured forgetting law:
+this numerical guard does not solve covariance windup or guarantee stability.
+
+## Measurement and actuator timing
+
+Call `predict(measurement, reference, k)`, step the plant, then call
+`learn(next_measurement, reference, k, applied_action=actual_input)` once.
+The next measurement must also be the next call's current measurement.
+Both commands and feedback use the same control units; remove the same trim
+bias from both. Omitting `applied_action` assumes exact command tracking.
+
+`LinearLongitudinalB747` and `LinearLongitudinalLAPAN` expose the actual,
+rate-limited elevator in **degrees** through `info["applied_action"]`.
+For a continuous servo, use measured surface motion over the transition;
+the requested command is not the surface position.
+
+The first prediction primes the differentiator with the initial measurement.
+The actuator feedback uses the same low-pass filter as the acceleration;
+RLS operates on their filtered increments. New checkpoints preserve both
+filters, previous measurements and a pending command. Older checkpoints load,
+but their missing filter/history state requires identification warm-up.
 
 ## Quick start
 
@@ -106,7 +146,7 @@ for k in range(500):
 | Parameter | Default | Description |
 | --- | --- | --- |
 | `ref_wn` | 10.0 | Natural frequency of the reference filter (rad/s). Higher → faster tracking, larger Δu. |
-| `ref_zeta` | 0.7 | Damping ratio. 0.7 gives a critically-damped-ish response. |
+| `ref_zeta` | 0.7 | Damping ratio. 0.7 is underdamped; 1 is critically damped. |
 
 ### Actuator bounds
 
@@ -124,7 +164,7 @@ for k in range(500):
 | --- | --- | --- |
 | `vff_forgetting_min` | 0.7 | Lower bound on λ — fast-adaptation regime |
 | `vff_forgetting_max` | 0.999 | Upper bound on λ — noise-rejection regime |
-| `vff_eps_sensitivity` | 1.0 | Residual norm at which λ drops ~1/e |
+| `vff_eps_sensitivity` | 1.0 | Square root of Σ₀ in Eq. (55) |
 | `vff_cov_init` | 1e2 | Initial covariance scale |
 
 ### Sensor filter
@@ -171,6 +211,6 @@ Saved artefacts:
 
 ## Sources
 
-- Sun et al. *"Active Incremental Nonlinear Dynamic Inversion for Sensor and Actuator Fault Diagnosis and Fault-Tolerant Flight Control"*, TU Delft Aerospace, [research.tudelft.nl](https://research.tudelft.nl/en/publications/active-incremental-nonlinear-dynamic-inversion-for-sensor-and-act/).
+- Atmaca, de Visser, van Kampen (2026). *"Active Incremental Nonlinear Dynamic Inversion for Sensor and Actuator Fault-Tolerant Control"*, TU Delft Aerospace, [research.tudelft.nl](https://research.tudelft.nl/en/publications/active-incremental-nonlinear-dynamic-inversion-for-sensor-and-act/).
 - Smeur, Chu, de Croon. *"Adaptive Incremental Nonlinear Dynamic Inversion for Attitude Control of Micro Air Vehicles"*, J. Guid. Control Dyn., 2016.
 - Fortescue, Kershenbaum, Ydstie. *"Implementation of Self-Tuning Regulators with Variable Forgetting Factors"*, Automatica, 1981.

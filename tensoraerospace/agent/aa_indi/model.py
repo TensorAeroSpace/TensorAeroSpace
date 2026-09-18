@@ -2,8 +2,8 @@
 
 Based on the TU Delft line of work on fault-tolerant INDI, in particular
 
-    Sun et al., *"Active Incremental Nonlinear Dynamic Inversion for Sensor
-    and Actuator Fault Diagnosis and Fault-Tolerant Flight Control"*,
+    Atmaca, de Visser & van Kampen (2026), *"Active Incremental Nonlinear
+    Dynamic Inversion for Sensor and Actuator Fault-Tolerant Control"*,
     TU Delft Aerospace, https://research.tudelft.nl/en/publications/
     active-incremental-nonlinear-dynamic-inversion-for-sensor-and-act/
 
@@ -22,8 +22,8 @@ The method combines three blocks:
 
 3. **Sensor-filter stand-in.** A low-pass differentiator
    (:class:`LowPassDerivative`) produces ω̇ from the measured ω, and a
-   residual-based :class:`BiasEstimator` yields a coarse IMU bias that
-   the agent subtracts from its measurements. This stands in for the
+   residual-based :class:`BiasEstimator` provides a heuristic correction.
+   It cannot identify constant sensor bias from that sensor alone. This stands in for the
    paper's OTSEKF-HOSM stack; the interface is deliberately narrow so a
    full OTSEKF can be swapped in later without touching the agent.
 
@@ -58,20 +58,18 @@ class AAINDIConfig:
             track aggressive reference changes faster at the cost of
             larger control increments.
         ref_zeta: Reference-model damping ratio. Default ``0.7`` gives
-            the critically-damped-ish response used throughout the
-            paper.
+            an underdamped reference response; critical damping is 1.
         u_magnitude_limit: Hard magnitude clamp on the control output
             (per-channel). Matches the actuator envelope of the plant.
-        u_rate_limit: Maximum Δu per step (per-channel). Limits how far
-            the incremental law can move the actuator in one control
-            tick.
+        u_rate_limit: Maximum control change per second (per-channel).
+            Each control tick limits the change to u_rate_limit * dt.
         vff_forgetting_min: Lower bound on the VFF-RLS forgetting
             factor. Smaller values react to faults sooner.
         vff_forgetting_max: Upper bound on the VFF-RLS forgetting
             factor. Larger values tune how aggressively old data is
             kept for noise rejection.
-        vff_eps_sensitivity: Residual norm at which the forgetting
-            factor has dropped to ``1/e`` of its peak.
+        vff_eps_sensitivity: Square root of Sigma_0 in the paper's
+            forgetting equation (55); larger values slow adaptation.
         vff_cov_init: Initial covariance scale for the RLS.
         sensor_cutoff_hz: Cut-off of the low-pass differentiator used
             to produce ω̇_meas from raw ω.
@@ -195,6 +193,8 @@ class AAINDIAgent:
 
         # --- rolling state ---
         self._u_prev = np.zeros(self.n_control, dtype=np.float64)
+        self._u_filtered = np.zeros(self.n_control, dtype=np.float64)
+        self._last_u_cmd: Optional[np.ndarray] = None
         self._omega_prev: np.ndarray | None = None
         self._omega_dot_prev: np.ndarray | None = None
         self._omega_dot_cached: np.ndarray = np.zeros(self.n_state, dtype=np.float64)
@@ -209,6 +209,8 @@ class AAINDIAgent:
     def reset(self) -> None:
         """Clear the per-episode rolling state (keeps learned G estimate)."""
         self._u_prev = np.zeros(self.n_control, dtype=np.float64)
+        self._u_filtered = np.zeros(self.n_control, dtype=np.float64)
+        self._last_u_cmd = None
         self._omega_prev = None
         self._omega_dot_prev = None
         self._omega_dot_cached = np.zeros(self.n_state, dtype=np.float64)
@@ -298,7 +300,11 @@ class AAINDIAgent:
         # ``learn()`` when a new measurement arrives. Feeding it here too
         # would push the same sample through twice and zero the output;
         # instead we read the cached result from the previous ``learn``.
-        _ = self._corrected_omega(omega_v)  # kept so bias path is exercised
+        corrected = self._corrected_omega(omega_v)
+        # Prime the differentiator with x_0, without inventing a derivative.
+        # Subsequent calls are advanced only by learn(x_{t+1}).
+        if self.deriv._prev_x is None:
+            self.deriv.step(corrected)
         omega_dot_meas = self._omega_dot_cached.copy()
 
         # Reference-model output.
@@ -314,7 +320,7 @@ class AAINDIAgent:
         k_p = float(self.cfg.ref_error_kp)
         k_i = float(self.cfg.ref_error_ki)
         if k_p != 0.0 or k_i != 0.0:
-            err = self._ref_rate - omega_v
+            err = self._ref_rate - corrected
             if k_i != 0.0:
                 self._int_err = self._int_err + err * self.cfg.dt
             nu_des = nu_des + k_p * err + k_i * self._int_err
@@ -325,7 +331,10 @@ class AAINDIAgent:
             G_pinv = np.linalg.pinv(G, rcond=self.cfg.pinv_rcond)
         except np.linalg.LinAlgError:
             G_pinv = np.zeros((self.n_control, self.n_state), dtype=np.float64)
-        du = G_pinv @ (nu_des - omega_dot_meas)
+        # Acceleration and baseline actuator position must have the same
+        # filtering delay. Rate limiting remains relative to the actual input.
+        candidate = self._u_filtered + G_pinv @ (nu_des - omega_dot_meas)
+        du = candidate - self._u_prev
 
         # Rate limit the increment, then apply and clamp magnitude.
         du_max = self.cfg.u_rate_limit * self.cfg.dt
@@ -347,6 +356,8 @@ class AAINDIAgent:
         next_omega: np.ndarray,
         reference: np.ndarray,
         time_step: int = 0,
+        *,
+        applied_action: Optional[np.ndarray] = None,
     ) -> dict[str, float]:
         """Update the online estimators from the newly observed state.
 
@@ -358,6 +369,9 @@ class AAINDIAgent:
             reference: Commanded reference (unused at learn time —
                 accepted only for API parity with other agents).
             time_step: Same index passed to :meth:`predict`.
+            applied_action: Actual actuator input over this transition, in the
+                same units as predict(). None assumes exact command tracking.
+                For biased commands, remove the same trim bias from feedback.
 
         Returns:
             Dict of scalar metrics: prediction residual norm, current
@@ -371,6 +385,17 @@ class AAINDIAgent:
                 f"next_omega must have length {self.n_state}, got {next_v.size}"
             )
 
+        if self._last_u_cmd is None:
+            raise RuntimeError("learn() must follow predict()")
+        applied = np.asarray(
+            self._last_u_cmd if applied_action is None else applied_action,
+            dtype=np.float64,
+        ).reshape(-1)
+        if applied.size != self.n_control or not np.all(np.isfinite(applied)):
+            raise ValueError("applied_action must contain n_control finite values")
+        if not np.all(np.isfinite(next_v)):
+            raise ValueError("next_omega must be finite")
+
         # Differentiate the measured next-step state — this is the
         # single authoritative call to ``self.deriv``. Predict reads the
         # cached result on the following tick.
@@ -378,23 +403,27 @@ class AAINDIAgent:
         omega_dot_next = self.deriv.step(next_corrected)
         self._omega_dot_cached = omega_dot_next.copy()
 
-        # VFF-RLS update using (Δu_t, Δω̇).
+        # Apply exactly the derivative filter's low-pass to actuator feedback.
+        # Otherwise RLS learns filter attenuation as reduced plant authority.
+        filtered = self._u_filtered + self.deriv._alpha * (applied - self._u_filtered)
         if self._omega_dot_prev is not None:
-            du = self._last_u_cmd - self._u_prev
+            du = filtered - self._u_filtered
             dy = omega_dot_next - self._omega_dot_prev
             eps = self.rls.update(du, dy)
         else:
             eps = np.zeros(self.n_state, dtype=np.float64)
 
         # Update the bias estimator from the reintegration residual.
-        # innovation = measured ω − (prev ω + dt · ω̇_meas) ≈ bias·dt over long averages.
+        # This is a transient residual, not an observable constant IMU bias:
+        # a constant additive offset cancels between consecutive measurements.
         if self._omega_prev is not None:
             predicted = self._omega_prev + self.cfg.dt * omega_dot_next
             innovation = next_v - predicted
             self.bias_est.update(innovation)
 
         # Roll state.
-        self._u_prev = self._last_u_cmd.copy()
+        self._u_prev = applied.copy()
+        self._u_filtered = filtered.copy()
         self._omega_prev = next_v.copy()
         self._omega_dot_prev = omega_dot_next.copy()
         self._step += 1
@@ -483,6 +512,18 @@ class AAINDIAgent:
             ref_rate_dot=self._ref_rate_dot,
             int_err=self._int_err,
             u_prev=self._u_prev,
+            u_filtered=self._u_filtered,
+            omega_prev=(
+                self._omega_prev if self._omega_prev is not None else np.array([])
+            ),
+            omega_dot_prev=(
+                self._omega_dot_prev
+                if self._omega_dot_prev is not None
+                else np.array([])
+            ),
+            last_u_cmd=(
+                self._last_u_cmd if self._last_u_cmd is not None else np.array([])
+            ),
             omega_dot_cached=self._omega_dot_cached,
             step=np.asarray(self._step),
         )
@@ -547,6 +588,15 @@ class AAINDIAgent:
                 agent._u_prev = npz["u_prev"]
                 agent._omega_dot_cached = npz["omega_dot_cached"]
                 agent._step = int(npz["step"])
+                if "u_filtered" in npz:
+                    agent._u_filtered = npz["u_filtered"]
+                    for name in ("omega_prev", "omega_dot_prev", "last_u_cmd"):
+                        value = npz[name]
+                        setattr(agent, "_" + name, value if value.size else None)
+                else:
+                    # Old files lack synchronized actuator and transition
+                    # history. Preserve weights; warm up identification again.
+                    agent._u_filtered = agent._u_prev.copy()
 
         return agent
 

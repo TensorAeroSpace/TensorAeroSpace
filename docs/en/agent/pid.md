@@ -33,7 +33,7 @@ $$
 
 ### Anti-Windup
 
-When the control output saturates (hits actuator limits), the integral term can "wind up" causing large overshoot. Our implementation includes **conditional integration anti-windup**: the integral is frozen when output is saturated.
+When the control output saturates (hits actuator limits), the integral term can "wind up" causing large overshoot. Our implementation includes **conditional integration anti-windup**: integration is blocked only when its contribution would push the output further past a limit. Integration that brings the output back into range remains enabled, including with negative `ki` and asymmetric action bounds.
 
 ## Quick Start
 

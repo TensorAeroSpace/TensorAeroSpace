@@ -1,6 +1,6 @@
 # Incremental Model-based Global Dual Heuristic Programming (IMGDHP)
 
-IMGDHP is an incremental model-based variant of Global Dual Heuristic Programming from the Adaptive Critic Designs (ACD) family. It is designed for online adaptive control of nonlinear systems under partial observability. The agent combines recursive least squares (RLS) system identification with a dual-head critic that estimates the cost-to-go \(J\) and a separate approximation to its derivative, the costate vector \(\lambda\). The actor obtains its gradient through the scalar \(J\) output; the architecture does not enforce \(\lambda = \partial J / \partial y\). See also the nonlinear F-16 model: [NonlinearLongitudinalF16](../model/f16_nonlinear_longitudinal.md).
+IMGDHP is an incremental model-based variant of Global Dual Heuristic Programming from the Adaptive Critic Designs (ACD) family. It is designed for online adaptive control of nonlinear systems under partial observability. The agent combines recursive least squares (RLS) system identification with a dual-head critic that estimates the cost-to-go \(J\) and a separate approximation to its derivative, the costate vector \(\lambda\). The actor uses the fitted costate \(\lambda\) for the future-cost gradient; the independent scalar \(J\) head supplies the reported cost value. See also the nonlinear F-16 model: [NonlinearLongitudinalF16](../model/f16_nonlinear_longitudinal.md).
 
 ## Key ideas
 
@@ -54,7 +54,7 @@ L = \underbrace{\left( J(o_t) - (c_t + \gamma J(o_{t+1})) \right)^2}_{L_J} + \be
 !!! note "Coordinates and critic heads"
     RLS and model prediction use physical observations. `obs_scale` scales network inputs and tracking errors once, with a separate scale for each tracked channel. Both actor and critic use the scaled tracking cost; the costate target includes the scale factors required by the chain rule.
 
-    `J` and `lambda` are independent heads with a shared backbone. The actor differentiates the scalar `J` head. The implementation does not enforce `lambda == dJ/dy`; the action-rate penalty is an actor regularizer and is not part of the critic's immediate cost.
+    `J` and `lambda` are independent heads with a shared backbone. The future-cost contribution to the action gradient is `gamma * B.T @ lambda_next`, in physical coordinates. The implementation does not enforce `lambda == dJ/dy`, so the actor does not substitute the independent `J` gradient for the fitted costate; the action-rate penalty is an actor regularizer and is not part of the critic's immediate cost.
 
 ## Quick start
 

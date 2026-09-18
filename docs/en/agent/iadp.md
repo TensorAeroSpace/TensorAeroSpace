@@ -6,7 +6,7 @@ iADP is an **online adaptive reinforcement-learning flight-control law** built o
 - an **approximate quadratic cost-to-go** \(V_\pi(X_t) = X_t^T \tilde{P} X_t\) fitted by batch least-squares to Bellman residuals, and
 - a **closed-form policy improvement** derived from Bellman's optimality principle.
 
-Because the model is identified online, the controller is **model-free** at deployment and tolerates vehicle configuration changes, actuator degradation, and unmodelled aerodynamics. Flight-tested on the Cessna Citation II (PH-LAB) at TU Delft / DLR; see the F-16 nonlinear model: [NonlinearLongitudinalF16](../model/f16_nonlinear_longitudinal.md).
+The controller updates an incremental model online. A useful warm start and sufficiently informative data remain necessary; adaptation does not guarantee stability after arbitrary vehicle or actuator changes. The cited paper reports flight tests of its own implementation, not of this library. See [NonlinearLongitudinalF16](../model/f16_nonlinear_longitudinal.md).
 
 **Reference**: Konatala, Milz, Weiser, Looye, van Kampen, *"Flight Testing Reinforcement Learning based Online Adaptive Flight Control Laws on CS-25 Class Aircraft"*, AIAA SCITECH 2024, [DOI 10.2514/6.2024-2402](https://doi.org/10.2514/6.2024-2402).
 
@@ -75,6 +75,44 @@ b_i = c_i + \gamma X_{i+1}^T \tilde{P}^j X_{i+1}.
 \]
 Symmetrise and optionally project to PSD.
 
+## Relation to the original paper
+
+Eq. (10) and Fig. 2 bootstrap the value function from the incremental model:
+`Xnext = X + F @ dX + G @ du`. Measured next states train RLS; the critic stores
+the corresponding model prediction. The first transition after reset retains
+its measured target because no previous state increment exists yet.
+
+The batch solve uses SVD directly, avoiding the squared condition number of
+normal equations. The zero-centered ridge objective is unchanged; ridge,
+PSD projection and blending are library extensions to the paper's pseudoinverse.
+An uninformative window does not identify all coefficients of P. Preserving
+an incumbent P in unobserved directions would require a different objective.
+
+The paper uses persistent excitation and separate model/policy update rates.
+`policy_eval_every=50` with `dt=0.01` gives **2 Hz**, not 20 Hz. Window length,
+forgetting and discount factors are defined per sample and need reconsideration
+when dt changes. Numerical overflow in RLS raises before storing invalid
+parameters; this does not guarantee bounded covariance without excitation.
+
+## Applied control and initialization
+
+Use `learn(next_state, reference, k, applied_action=actual_input)` when the
+actuator clips, lags or otherwise changes the requested command. Feedback must
+use the same units and trim offset as `predict()`; omission assumes exact
+command tracking. Identification, input cost and the next increment all use
+this actual input. The native linear B747/LAPAN environments return it in
+`info["applied_action"]` in degrees.
+
+After reset, the first transition is retained for value-function learning,
+but incremental RLS waits for two consecutive transitions. An unknown previous
+state increment is not replaced with zero. Initial excitation obeys the same
+magnitude and per-second rate limits as the learned policy.
+
+During `model_learning_only_steps`, only the model learns: the critic matrix
+and its buffer stay unchanged. The buffer starts filling with subsequent
+closed-loop transitions. RLS continues adapting afterward; this option alone
+does not implement the paper's complete sequential mode with a frozen model.
+
 ## Quick start
 
 ```python
@@ -92,7 +130,7 @@ cfg = IADPConfig(
     gamma=0.8,                                  # Bellman discount
     gamma_rls=0.995,                            # RLS forgetting factor
     policy_eval_window=200,
-    policy_eval_every=50,                       # ≈ 20 Hz at dt = 0.01 s
+    policy_eval_every=50,                       # 2 Hz at dt = 0.01 s; use 5 for 20 Hz
     policy_eval_warmup_updates=30,
     F_init=F_init, G_init=G_init,
     u_magnitude_limit=15.0,
@@ -114,7 +152,7 @@ for k in range(2000):
     Policy eq. (11) needs a reasonable \(\tilde{G}\) on the first few ticks, otherwise \((R + \gamma \tilde{G}^T \tilde{P} \tilde{G}) \approx R\) gives only the control-regularisation response. Seed `G_init` from a linearised onboard model; the RLS will refine it online.
 
 !!! tip "Warm-start `P_init` from the DARE for faster convergence"
-    The online batch-LS fits \(\tilde{P}\) from transition windows, but its finite-window bias can leave the policy a few percent below optimal. Seed `P_init` from the analytical LQT DARE computed off the warm-start model:
+    The online batch-LS fits \(\tilde{P}\) from transition windows, but finite windows, feature scaling and regularization can substantially degrade the estimate; there is no general bound of a few percent on the performance loss. Seed `P_init` from the analytical LQT DARE computed off the warm-start model:
 
     ```python
     from scipy.linalg import solve_discrete_are
@@ -157,7 +195,7 @@ for k in range(2000):
 | `policy_eval_window` | 200 | Sliding-window size of transitions used by batch LS |
 | `policy_eval_every` | 50 | Stride between LS updates, in `learn()` ticks |
 | `policy_eval_iterations` | 1 | Inner fixed-point sweeps per LS update |
-| `policy_eval_regularization` | 1e-4 | Ridge term added to the normal equations |
+| `policy_eval_regularization` | 1e-4 | Zero-centered ridge penalty; solved by SVD |
 | `policy_eval_warmup_updates` | 20 | Number of RLS updates to wait before the first LS |
 | `enforce_psd` | True | Clip eigenvalues of \(\tilde{P}\) to stay positive-definite |
 | `psd_floor` | 1e-6 | Lower bound used by the eigen-clip |
@@ -215,3 +253,22 @@ Saved artefacts:
 - Konatala, Milz, Weiser, Looye, van Kampen. *"Flight Testing Reinforcement Learning based Online Adaptive Flight Control Laws on CS-25 Class Aircraft"*, AIAA SCITECH 2024, [DOI 10.2514/6.2024-2402](https://doi.org/10.2514/6.2024-2402).
 - Sieberling, Chu, Mulder. *"Robust Flight Control Using Incremental Nonlinear Dynamic Inversion and Angular Acceleration Prediction"*, J. Guid. Control Dyn., 2010.
 - Lewis, Vrabie, Syrmos. *"Optimal Control"*, Wiley, 2012 — LQT theory underpinning the quadratic cost-to-go.
+
+## Cost assumptions and learning validation
+
+Equations (3) and (5) of the original paper require `0 < gamma < 1` and finite symmetric positive-semidefinite `Q` and `R`. The constructor rejects violations; zero weights on selected states remain valid.
+
+`policy_eval_blend=0` skips the least-squares solve entirely, preserving the critic while model identification continues. This is a library diagnostic mode.
+
+Window length alone does not establish identifiability: quadratic features duplicate cross products. For `d` active variables, at most `d*(d+1)/2` features are independent. Rank 15 is normal for five active variables; feature scaling and data informativeness require separate checks.
+
+Zero-centered ridge depends on state units and scale. It changes the paper's objective and need not preserve a good initial policy. `scripts/validate_iadp_lapan_critic.py` compares one policy-evaluation step against Riccati and Lyapunov solutions on samples from a known controller. This checks the algebra, not convergence of flight training.
+
+
+### Waiting for critic data after reset
+
+`policy_eval_warmup_updates` uses the identifier's lifetime update count, which survives episode resets. The critic window is cleared by `reset()`. Set `policy_eval_min_samples=policy_eval_window` to require a new complete window before fitting. `None` preserves the historical `max(n_aug**2, 4)` threshold, including for old checkpoints. The setting is checkpointed and does not change the learning equations.
+
+Konatala et al. describe a collected 20-second window for their sequential flight-test trial (Section IV, p. 11). The sample count and phases still need to be chosen for the simulation. Waiting for a window does not guarantee convergence or informative data.
+
+The validator `scripts/validate_adaptive_tracking.py` supports `--reference-mode oscillator --full-state`, exposing four states of the two-sine generator while only the desired q enters the cost. This provides additional reference information; it does not reproduce an unknown pilot command. A sine's current value alone does not determine its future without phase information. This mode separates incomplete reference representation from implementation errors.

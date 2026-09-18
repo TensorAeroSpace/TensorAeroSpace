@@ -427,12 +427,13 @@ class MPC:
             u = torch.clamp(u, min=self._u_min, max=self._u_max)
 
         # Rate bounds (sequentially)
-        if (
-            self._du_min is not None or self._du_max is not None
-        ) and u_prev is not None:
-            prev = u_prev.reshape(-1)
-            seq: list[torch.Tensor] = []
-            for t in range(self.horizon):
+        if self._du_min is not None or self._du_max is not None:
+            # Without u_prev, only the first command has no rate constraint.
+            # Consecutive predicted commands still share the same actuator.
+            prev = u[0] if u_prev is None else u_prev.reshape(-1)
+            seq: list[torch.Tensor] = [u[0]] if u_prev is None else []
+            start = 1 if u_prev is None else 0
+            for t in range(start, self.horizon):
                 ut = u[t]
                 du = torch.clamp(ut - prev, min=self._du_min, max=self._du_max)
                 ut_proj = prev + du
@@ -529,9 +530,9 @@ class MPC:
                 Expected shape is (horizon+1, state_dim) or
                 (horizon, state_dim).
                 If provided as (horizon, state_dim), it is interpreted
-                as targets for x_{t+1} and a terminal target is appended by
-                repeating the last row.
+                as targets for x_1 through x_N. An unused x_0 target is prepended.
             u_prev: Optional previous control input, shape (action_dim,).
+                If omitted, rate bounds apply from u_1 - u_0 onwards.
 
         Returns:
             MPCSolveResult: contains the first control input and the
@@ -564,7 +565,7 @@ class MPC:
                     f"got {tuple(xr.shape)}"
                 )
             if xr.shape[0] == self.horizon:
-                xr = torch.cat([xr, xr[-1:].clone()], dim=0)
+                xr = torch.cat([x0_t.detach(), xr], dim=0)
             if xr.shape[0] != self.horizon + 1:
                 raise ValueError(
                     f"x_ref must have length horizon+1={self.horizon+1} "
@@ -604,6 +605,17 @@ class MPC:
             cost_t = self._compute_cost(
                 x_seq=x_seq, u_seq=u_proj, x_ref=x_ref_t, u_prev=u_prev_t
             )
+            if not torch.isfinite(cost_t).all():
+                raise RuntimeError("MPC objective must be finite")
+
+            # Snapshot BEFORE opt.step(): unconstrained u_proj aliases u_param.
+            if self.track_best and (
+                i % self.best_check_every == 0 or i == self.iters - 1
+            ):
+                cost_val = float(cost_t.detach().item())
+                if cost_val < best_cost:
+                    best_cost = cost_val
+                    best_u = u_proj.detach().clone()
 
             # IMPORTANT: we only need gradients w.r.t. u_param
             # (control sequence),
@@ -615,29 +627,26 @@ class MPC:
                 retain_graph=False,
                 create_graph=False,
             )[0]
+            if not torch.isfinite(grad_u).all():
+                raise RuntimeError("MPC control gradient must be finite")
             u_param.grad = grad_u
             opt.step()
 
-            if self.track_best and (
-                i % self.best_check_every == 0 or i == self.iters - 1
-            ):
-                with torch.no_grad():
-                    cost_val = float(cost_t.detach().item())
-                    if cost_val < best_cost:
-                        best_cost = cost_val
-                        best_u = u_proj.detach().clone()
-
-        if best_u is None:
-            # Track-best disabled (or nothing checked): use final iterate.
-            with torch.no_grad():
-                best_u = self._project_u(u_param, u_prev_t).detach().clone()
-                best_cost_t = self._compute_cost(
-                    x_seq=self._rollout(x0_t, best_u),
-                    u_seq=best_u,
-                    x_ref=x_ref_t,
-                    u_prev=u_prev_t,
-                )
-                best_cost = float(best_cost_t.detach().item())
+        # Include the last optimizer update, which the loop has not evaluated.
+        with torch.no_grad():
+            final_u = self._project_u(u_param, u_prev_t).detach().clone()
+            final_cost_t = self._compute_cost(
+                x_seq=self._rollout(x0_t, final_u),
+                u_seq=final_u,
+                x_ref=x_ref_t,
+                u_prev=u_prev_t,
+            )
+            if not torch.isfinite(final_cost_t).all():
+                raise RuntimeError("MPC final objective must be finite")
+            final_cost = float(final_cost_t.item())
+            if best_u is None or final_cost < best_cost:
+                best_u = final_u
+                best_cost = final_cost
 
         with torch.no_grad():
             best_x = self._rollout(x0_t, best_u).detach().clone()

@@ -160,8 +160,12 @@ class PID(BaseRLModel):
                 low = float(np.asarray(action_space.low).reshape(-1)[0])
                 high = float(np.asarray(action_space.high).reshape(-1)[0])
                 output = float(np.clip(output, low, high))
-                if output != output_unsat:
-                    # Saturated: do not integrate further (anti-windup)
+                integral_increment = float(self.ki) * (
+                    integral_candidate - float(self.integral)
+                )
+                if (output_unsat - output) * integral_increment > 0.0:
+                    # Block only integration further into saturation. Let the
+                    # integral unwind, including for negative controller gains.
                     integral_candidate = float(self.integral)
                     output_unsat = (
                         float(self.kp) * error

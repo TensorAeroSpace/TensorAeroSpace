@@ -1,6 +1,6 @@
 """Active-Adaptive Incremental Nonlinear Dynamic Inversion (AA-INDI).
 
-Fault-tolerant flight-control agent that combines
+Simplified adaptive flight-control agent that combines
 
 * an **INDI control law** (incremental nonlinear dynamic inversion with a
   reference model) for the nominal tracking loop,
@@ -12,9 +12,9 @@ Fault-tolerant flight-control agent that combines
   the TU Delft AA-INDI publication.
 
 Reference:
-    Sun et al., *"Active Incremental Nonlinear Dynamic Inversion for
-    Sensor and Actuator Fault Diagnosis and Fault-Tolerant Flight
-    Control"*, TU Delft,
+    Atmaca, de Visser & van Kampen (2026), *"Active Incremental Nonlinear
+    Dynamic Inversion for Sensor and Actuator Fault-Tolerant Control"*,
+    AIAA 2026-1743, TU Delft,
     https://research.tudelft.nl/en/publications/
     active-incremental-nonlinear-dynamic-inversion-for-sensor-and-act/
 """

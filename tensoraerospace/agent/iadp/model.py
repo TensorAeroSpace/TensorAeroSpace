@@ -7,8 +7,8 @@ Based on the TU Delft / DLR flight-test paper
     Control Laws on CS-25 Class Aircraft"*, AIAA SCITECH 2024,
     DOI: 10.2514/6.2024-2402.
 
-The controller combines three blocks, exactly mirroring Fig. 2 of the
-paper:
+The controller combines the three main blocks in Fig. 2 of the paper,
+with configurable ridge regularization, PSD projection and update blending:
 
 1. **Incremental model identification.** An online fixed-forgetting RLS
    tracks the parameter matrix ``Θ̃ = [F̃; G̃]^T`` of the locally
@@ -39,9 +39,10 @@ agents of ``tensoraerospace``.
 The agent operates in the paper's **Continuous Learning Approach** by
 default — model learning, controller training and controller assessment
 run concurrently from the first step. Provide
-``model_learning_only_steps > 0`` with ``excitation_signal`` to recover
-the **Sequential Learning Approach** in which the first ``N`` ticks are
-an open-loop identification window.
+``model_learning_only_steps > 0`` with ``excitation_signal`` for an
+initial open-loop identification phase with a frozen critic. RLS continues
+adapting afterward; the complete Sequential Learning Approach in the paper
+also freezes model learning and is not selected by this option alone.
 """
 
 from __future__ import annotations
@@ -66,6 +67,7 @@ class IADPConfig:
     Args:
         dt: Control step [s].
         Q: Tracking-error weight matrix of shape ``(n_state, n_state)``.
+            Must be finite, symmetric and positive semidefinite.
             Defaults to the identity.
         R: Control weight matrix of shape ``(n_control, n_control)``.
             Defaults to the identity.
@@ -77,17 +79,24 @@ class IADPConfig:
             model. See :class:`IncrementalRLS`.
         phi_init: Initial RLS covariance scale.
         policy_eval_window: Number of recent transitions used to fit
-            ``P̃`` at each policy-evaluation tick. Must be larger than
-            ``n_aug^2`` for the LS to be well-posed.
+            ``P̃`` at each policy-evaluation tick. Must be at least
+            ``max(n_aug**2, 4)`` for the update schedule. Sample count alone does not
+            imply identifiability; symmetric cross-products are duplicates.
+        policy_eval_min_samples: Minimum samples in the current critic window
+            before fitting, including after reset. None keeps the historical
+            max(n_aug**2, 4) threshold. Set equal to policy_eval_window to wait
+            for a complete window; this scheduling option is separate from
+            the identifier's lifetime policy_eval_warmup_updates counter.
         policy_eval_every: Stride in ``learn()`` ticks between
             policy-evaluation updates. The paper reports a 20 Hz
             controller-training loop against a 1 kHz model-learning
-            loop — ``policy_eval_every ≈ 50`` at a ``dt = 0.01`` sim
-            replicates that.
+            loop — ``policy_eval_every = 50`` at ``dt = 0.001``.
+            At ``dt = 0.01``, use 5 ticks for a 20 Hz evaluation rate.
         policy_eval_iterations: Inner fixed-point sweeps per
             policy-evaluation tick. One sweep is usually enough.
-        policy_eval_regularization: Ridge term added to the LS normal
-            equations for numerical stability.
+        policy_eval_regularization: Zero-centered ridge penalty in
+            the LS objective, solved directly with SVD. This is a library
+            extension to the paper's pseudoinverse; 0 disables the penalty.
         policy_eval_warmup_updates: Skip policy evaluation until the RLS
             identifier has seen at least this many updates. Gives the
             incremental model a chance to settle before the LS sees
@@ -108,8 +117,8 @@ class IADPConfig:
             a small step change in the policy every
             ``policy_eval_every`` ticks — visible as a sawtooth on the
             control trace. Values around ``0.2–0.4`` smooth the control
-            output without measurably degrading tracking, and are
-            analogous to soft-target updates used elsewhere in RL.
+            output, but tracking quality must be checked for each setup.
+            Setting 0 freezes the critic and skips the LS solve.
         model_learning_only_steps: Number of initial steps during which
             the agent ignores the policy and outputs
             ``excitation_signal`` (or zero if it is ``None``). Replicates
@@ -117,7 +126,8 @@ class IADPConfig:
         excitation_signal: Optional ``(T, n_control)`` schedule of
             absolute control values used during
             ``model_learning_only_steps``. When ``None`` the agent
-            outputs zero during the open-loop window.
+            outputs zero during the open-loop window. Critic training and
+            its transition buffer start only after this phase.
         F_init: Optional warm-start for ``F̃``, shape
             ``(n_aug, n_aug)``.
         G_init: Optional warm-start for ``G̃``, shape
@@ -160,6 +170,7 @@ class IADPConfig:
     pinv_rcond: float = 1e-8
     seed: Optional[int] = None
     history: dict = field(default_factory=dict)
+    policy_eval_min_samples: Optional[int] = None
 
 
 def _as_array(value: Any) -> Optional[np.ndarray]:
@@ -168,6 +179,19 @@ def _as_array(value: Any) -> Optional[np.ndarray]:
         return None
     arr = np.asarray(value, dtype=np.float64)
     return arr.copy()
+
+
+def _validate_cost_weight(weight: np.ndarray, name: str) -> np.ndarray:
+    """Equation (5) requires finite, symmetric positive-semidefinite weights."""
+    if not np.all(np.isfinite(weight)) or not np.allclose(
+        weight, weight.T, rtol=1e-12, atol=0.0
+    ):
+        raise ValueError(f"{name} must be finite and symmetric")
+    symmetric = 0.5 * weight + 0.5 * weight.T
+    tolerance = 8 * np.finfo(float).eps * len(weight) * np.max(np.abs(weight))
+    if np.linalg.eigvalsh(symmetric).min() < -tolerance:
+        raise ValueError(f"{name} must be positive semidefinite")
+    return symmetric
 
 
 class IADPAgent:
@@ -196,6 +220,8 @@ class IADPAgent:
         self.n_control = int(n_control)
         self.n_aug = 2 * self.n_state
         self.cfg = config if config is not None else IADPConfig()
+        if not 0.0 < self.cfg.gamma < 1.0:
+            raise ValueError("gamma must lie in (0, 1)")
 
         if self.cfg.seed is not None:
             np.random.seed(int(self.cfg.seed))
@@ -216,8 +242,8 @@ class IADPAgent:
                 f"R must have shape ({self.n_control}, {self.n_control}),"
                 f" got {R.shape}"
             )
-        self.Q = Q
-        self.R = R
+        self.Q = _validate_cost_weight(Q, "Q")
+        self.R = _validate_cost_weight(R, "R")
 
         # --- incremental model identifier ---
         self.rls = IncrementalRLS(
@@ -253,6 +279,8 @@ class IADPAgent:
                 f" got {P_init.shape}"
             )
         self.P = 0.5 * (P_init + P_init.T)
+
+        self._validate_policy_sample_threshold()
 
         # --- rolling state ---
         self._X_prev: Optional[np.ndarray] = None
@@ -402,10 +430,10 @@ class IADPAgent:
             d_delta = delta_cmd - self._delta_prev
         else:
             d_delta = self._compute_policy_increment(X_t, dX_t)
-            du_max = float(self.cfg.u_rate_limit) * float(self.cfg.dt)
-            d_delta = np.clip(d_delta, -du_max, du_max)
-            delta_cmd = self._delta_prev + d_delta
-
+        # Excitation and policy commands share the same actuator envelope.
+        du_max = float(self.cfg.u_rate_limit) * float(self.cfg.dt)
+        d_delta = np.clip(d_delta, -du_max, du_max)
+        delta_cmd = self._delta_prev + d_delta
         delta_cmd = np.clip(
             delta_cmd,
             -float(self.cfg.u_magnitude_limit),
@@ -426,6 +454,8 @@ class IADPAgent:
         next_x_obs: np.ndarray,
         reference: np.ndarray,
         time_step: int = 0,
+        *,
+        applied_action: Optional[np.ndarray] = None,
     ) -> dict:
         """Update the online estimators from the newly observed state.
 
@@ -437,6 +467,9 @@ class IADPAgent:
             reference: Reference signal (same shape conventions as in
                 :meth:`predict`).
             time_step: Same index passed to :meth:`predict`.
+            applied_action: Actual actuator input for this transition in the
+                same units as predict(). Pass feedback if the plant clips or
+                lags the command. None assumes the command was applied exactly.
 
         Returns:
             Scalar diagnostics: RLS residual norm, ``F̃``/``G̃``/``P̃``
@@ -449,16 +482,28 @@ class IADPAgent:
             )
         ref_next = self._slice_reference(reference, time_step + 1)
         X_next = self._augment(x_next, ref_next)
+        applied = np.asarray(
+            self._last_delta if applied_action is None else applied_action,
+            dtype=np.float64,
+        ).reshape(-1)
+        if applied.size != self.n_control or not np.all(np.isfinite(applied)):
+            raise ValueError("applied_action must contain n_control finite values")
+        if not np.all(np.isfinite(X_next)):
+            raise ValueError("next state and reference must be finite")
+        self._last_delta = applied.copy()
+        self._last_d_delta = applied - self._delta_prev
 
         eps_norm = 0.0
         cost_t = 0.0
         if self._last_X is not None:
-            # Target: ΔX̂_t = X̂_t − X̂_{t-1}. On the first call after
-            # predict() this is the same as ``X_next − last_X``.
-            dX_target = X_next - self._last_X
-            W = np.concatenate([self._last_dX, self._last_d_delta])
-            eps = self.rls.update(W, dX_target)
-            eps_norm = float(np.linalg.norm(eps))
+            # Incremental identification needs two consecutive transitions.
+            # After reset there is no measured X_{t-1}; assuming dX_t=0
+            # attributes the initial free response to control effectiveness.
+            if self._X_prev is not None:
+                dX_target = X_next - self._last_X
+                W = np.concatenate([self._last_dX, self._last_d_delta])
+                eps = self.rls.update(W, dX_target)
+                eps_norm = float(np.linalg.norm(eps))
 
             # Cost evaluated at time ``t`` using the action δ_t that was
             # applied to get from X̂_t to X̂_{t+1}.
@@ -469,21 +514,14 @@ class IADPAgent:
                 err @ self.Q @ err + self._last_delta @ self.R @ self._last_delta
             )
 
-            self._window.append(
-                {
-                    "X": self._last_X.copy(),
-                    "Xnext": X_next.copy(),
-                    "cost": cost_t,
-                }
-            )
-
-            # Policy evaluation on the controller-training cadence.
-            ready = self.rls.num_updates >= int(
-                self.cfg.policy_eval_warmup_updates
-            ) and len(self._window) >= max(self.n_aug**2, 4)
-            every = max(1, int(self.cfg.policy_eval_every))
-            if ready and (self._step + 1) % every == 0:
-                self._policy_evaluation()
+            # Fig. 2 / Eq. 10 bootstrap from the incremental model, not the
+            # noisy next measurement used to identify that model. The first
+            # transition has no previous state increment, so retain its
+            # measured target while the incremental history warms up.
+            value_next = X_next
+            if self._X_prev is not None:
+                value_next = self._last_X + self.rls.predict(W)
+            self._learn_value_transition(self._last_X, value_next, cost_t)
 
         # Keep X_t as the previous state for predict(X_{t+1}). Storing
         # X_{t+1} here would make every subsequent state increment zero.
@@ -503,8 +541,43 @@ class IADPAgent:
     # ------------------------------------------------------------------
     # Policy evaluation — batch LS fit of the kernel matrix P̃.
     # ------------------------------------------------------------------
+    def _validate_policy_sample_threshold(self) -> None:
+        """Reject an explicit data threshold that cannot fit in the window."""
+        count = self.cfg.policy_eval_min_samples
+        if count is not None and (
+            not np.isfinite(count)
+            or int(count) != count
+            or count < max(self.n_aug**2, 4)
+            or count > self.cfg.policy_eval_window
+        ):
+            raise ValueError(
+                "policy_eval_min_samples must be an integer between "
+                "max(n_aug**2, 4) and policy_eval_window"
+            )
+
+    def _learn_value_transition(
+        self, state: np.ndarray, next_state: np.ndarray, cost: float
+    ) -> None:
+        """Train the critic only after the model-only identification phase."""
+        if self._step < int(self.cfg.model_learning_only_steps):
+            return
+        self._window.append(
+            {"X": state.copy(), "Xnext": next_state.copy(), "cost": cost}
+        )
+        ready = self.rls.num_updates >= int(
+            self.cfg.policy_eval_warmup_updates
+        ) and len(self._window) >= max(
+            self.n_aug**2, 4, self.cfg.policy_eval_min_samples or 0
+        )
+        every = max(1, int(self.cfg.policy_eval_every))
+        if ready and (self._step + 1) % every == 0:
+            self._policy_evaluation()
+
     def _policy_evaluation(self) -> None:
         """Fit ``P̃`` to the Bellman residuals over the current window."""
+        blend = float(np.clip(self.cfg.policy_eval_blend, 0.0, 1.0))
+        if blend == 0.0:
+            return
         n_aug = self.n_aug
         N = len(self._window)
         if N < 2:
@@ -518,7 +591,13 @@ class IADPAgent:
 
         P_j = self.P.copy()
         lam = float(self.cfg.policy_eval_regularization)
-        AtA = A.T @ A + lam * np.eye(n_aug * n_aug, dtype=np.float64)
+        if not np.isfinite(lam) or lam < 0.0:
+            raise ValueError(
+                "policy_eval_regularization must be finite and nonnegative"
+            )
+        # Solve the same ridge objective in feature space. Forming A.T @ A
+        # squares the condition number and loses small, identifiable features.
+        design = np.vstack([A, np.sqrt(lam) * np.eye(n_aug * n_aug)])
         # Right-hand side depends on P through the discounted next-step
         # value; recompute per inner sweep.
         for _ in range(max(1, int(self.cfg.policy_eval_iterations))):
@@ -526,10 +605,8 @@ class IADPAgent:
             for i, s in enumerate(self._window):
                 Xn = s["Xnext"]
                 b[i] = s["cost"] + float(self.cfg.gamma) * float(Xn @ P_j @ Xn)
-            try:
-                p = np.linalg.solve(AtA, A.T @ b)
-            except np.linalg.LinAlgError:
-                p = np.linalg.pinv(AtA) @ (A.T @ b)
+            target = np.concatenate([b, np.zeros(n_aug * n_aug)])
+            p = np.linalg.lstsq(design, target, rcond=None)[0]
             P_new = p.reshape(n_aug, n_aug)
             P_new = 0.5 * (P_new + P_new.T)
             if bool(self.cfg.enforce_psd):
@@ -540,7 +617,6 @@ class IADPAgent:
 
         # Exponential-moving-average blend with the incumbent ``P̃`` to
         # smooth the step-change in the policy at every evaluation tick.
-        blend = float(np.clip(self.cfg.policy_eval_blend, 0.0, 1.0))
         if blend < 1.0:
             self.P = blend * P_j + (1.0 - blend) * self.P
         else:

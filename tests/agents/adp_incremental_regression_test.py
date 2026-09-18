@@ -153,3 +153,28 @@ def test_imgdhp_each_tracking_channel_uses_its_own_units(reference):
         torch.as_tensor(reference, dtype=torch.float32),
     )
     np.testing.assert_allclose(augmented_t.numpy(), augmented, rtol=1e-6)
+
+
+@pytest.mark.parametrize("scale", [0.1, 1.0, 10.0])
+def test_imgdhp_actor_follows_learned_costate_in_physical_coordinates(scale):
+    """Independent J and lambda heads can disagree; lambda defines the update."""
+    agent = make_imgdhp(scale, gamma=0.5, track_Q=(0.0,))
+    agent.incremental_model.theta[:] = [[0.0], [1.0]]
+
+    class ConflictingCritic(torch.nn.Module):
+        def forward(self, augmented):
+            # Deliberately opposite to the fitted costate; the action update
+            # must use dJ/dy=-2, without an extra observation-scale factor.
+            return 10.0 * augmented[:1], torch.full_like(augmented[:1], -2.0)
+
+    agent.critic = ConflictingCritic()
+    agent.actor_opt = torch.optim.SGD(agent.actor.parameters(), lr=0.1)
+    agent._actor_update(
+        y_t_np=np.zeros(1),
+        ref_now_np=np.zeros(1),
+        ref_next_np=np.zeros(1),
+        u_prev_np=np.zeros(1),
+        y_prev_np=np.zeros(1),
+    )
+    # dL/du = gamma * B^T * lambda = -1; du/dbias=1 at zero.
+    assert agent.actor.head.bias.item() == pytest.approx(0.1, abs=1e-7)
