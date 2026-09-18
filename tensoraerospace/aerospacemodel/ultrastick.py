@@ -20,7 +20,9 @@ class Ultrastick(ModelBase):
         number_time_steps: Number of time steps.
         selected_state_output (optional): Selected returned outputs. Defaults to None.
         t0 (int, optional): Initial time. Defaults to 0.
-        dt (float, optional): Discretization frequency. Defaults to 0.01.
+        dt (float, optional): Simulation time step in seconds. Defaults to 0.01.
+        initial_control: Initial [elevator (rad), throttle] actuator position.
+            Defaults to zero; the first command obeys rate limits from here.
 
     Action space:
         ele: Elevator [rad]
@@ -55,6 +57,7 @@ class Ultrastick(ModelBase):
         selected_state_output: list[str] | None = None,
         t0: float = 0,
         dt: float = 0.01,
+        initial_control: np.ndarray | list[float] | None = None,
     ) -> None:
         super().__init__(x0, selected_state_output, t0, dt)
 
@@ -81,6 +84,13 @@ class Ultrastick(ModelBase):
         # ele (radians), delta_t (dimensionless)
         self.input_magnitude_limits = [np.deg2rad(30), 1]
         self.input_rate_limits = [np.deg2rad(300), 10000]
+        control = np.asarray(
+            [0.0, 0.0] if initial_control is None else initial_control, dtype=float
+        ).reshape(-1)
+        if control.size != 2 or not np.all(np.isfinite(control)):
+            raise ValueError("initial_control must contain two finite values")
+        limits = np.asarray(self.input_magnitude_limits)
+        self.initial_control = np.clip(control, -limits, limits)
 
         # Store the number of inputs, states and outputs
         self.number_inputs = len(self.selected_input)
@@ -151,6 +161,15 @@ class Ultrastick(ModelBase):
             number_time_steps: Number of simulation steps.
         """
 
+        initial = np.asarray(x0, dtype=float).reshape(-1)
+        if initial.size != 5 or not np.all(np.isfinite(initial)):
+            raise ValueError("x0 must contain five finite state values")
+        if not np.isfinite(self.dt) or self.dt <= 0:
+            raise ValueError("dt must be positive and finite")
+        if int(number_time_steps) != number_time_steps or number_time_steps < 1:
+            raise ValueError("number_time_steps must be a positive integer")
+        number_time_steps = int(number_time_steps)
+
         # Import the stored system
         self.import_linear_system()
 
@@ -167,8 +186,8 @@ class Ultrastick(ModelBase):
         self.store_input = np.zeros((self.number_inputs, self.number_time_steps))
         self.store_outputs = np.zeros((self.number_outputs, self.number_time_steps))
 
-        self.x0 = x0
-        self.xt = x0
+        self.x0 = initial.copy()
+        self.xt = initial.copy()
         self.store_states[:, self.time_step] = np.reshape(
             self.xt,
             [
@@ -187,12 +206,18 @@ class Ultrastick(ModelBase):
         """
         # Ensure 1D float control vector
         ut_0 = np.asarray(ut_0, dtype=float).reshape(-1)
+        if ut_0.size != self.number_inputs or not np.all(np.isfinite(ut_0)):
+            raise ValueError("control must contain two finite values")
+        if self.time_step >= self.number_time_steps:
+            raise RuntimeError(
+                "Simulation is complete; initialise_system before stepping"
+            )
         if self.time_step != 0:
             ut_1 = np.asarray(
                 self.store_input[:, self.time_step - 1], dtype=float
             ).reshape(-1)
         else:
-            ut_1 = ut_0.copy()
+            ut_1 = self.initial_control
 
         # Rate and magnitude limiting (scalar clipping)
         ut = ut_0.copy()

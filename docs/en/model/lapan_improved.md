@@ -139,3 +139,18 @@ while not done:
 
 - `tensoraerospace/envs/lapan.py` -- full environment implementation
 - LAPAN LSU-05 NG dynamics model: `tensoraerospace/aerospacemodel/lapan.py`
+
+## Applied elevator and saved policies
+
+The previous-action observation and the input/smoothness/jerk penalties now use
+the elevator **actually applied after actuator limiting**, not just the requested
+command. `info['elevator_deg']` exposes this position. `initial_elevator_deg` is
+clipped to ±25° and initializes both physical actuator state and action history;
+reset restores both. The optional first-command override retains its meaning.
+Malformed or nonfinite commands are rejected before the model advances.
+
+The 5°/s pitch-rate scale normalizes observations and reward; it is not an extra
+termination threshold. Safety termination still uses the configured 20° pitch
+bound. `_last_reward` now includes the terminal penalty when it applies.
+Reevaluate saved policies because the first transition and the meaning of the
+previous-action input have changed. Finite weights alone do not ensure tracking.

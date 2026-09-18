@@ -56,7 +56,7 @@ def test_f4c_pitch_env_normalized_action_clamping(f4c_env_default):
     env = f4c_env_default
     env.reset()
     env.step(np.array([2.0], dtype=np.float32))  # clamp to 1.0
-    assert env.previous_action == pytest.approx(1.0, abs=1e-6)
+    assert env.previous_action == pytest.approx(0.6 / 20.0, abs=1e-6)
 
 
 def test_f4c_pitch_env_normalized_truncation_flag():

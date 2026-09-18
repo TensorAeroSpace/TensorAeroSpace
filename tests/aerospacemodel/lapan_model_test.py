@@ -17,7 +17,7 @@ def test_lapan_initialization_run_and_histories():
 
     assert model.get_state("theta").shape[0] == steps
     assert model.get_control("ele").shape[0] == steps
-    assert model.get_output("q").shape[0] == model.time_step - 1
+    assert model.get_output("q").shape[0] == model.time_step
 
     # Plotting is guarded by a strict name check; skip to avoid false failures
 

@@ -16,7 +16,7 @@ def test_f4c_initialization_and_run_step():
 
     assert model.get_state("theta").shape[0] == steps
     assert model.get_control("ele").shape[0] == steps
-    assert model.get_output("q").shape[0] == model.time_step - 1
+    assert model.get_output("q").shape[0] == model.time_step
 
 
 def test_f4c_multiple_steps():

@@ -39,45 +39,71 @@ class LinearLongitudinalUAV(gym.Env):
         control_space: list[str] | None = None,
         output_space: list[str] | None = None,
         reward_func: Callable | None = None,
+        dt: float = 0.01,
     ) -> None:
         """Initialize UAV longitudinal environment."""
         super().__init__()
-        self.initial_state = initial_state
-        self.number_time_steps = number_time_steps
+        self.initial_state = np.array(initial_state, dtype=float, copy=True).reshape(-1)
+        self.dt = float(dt)
+        if int(number_time_steps) != number_time_steps or number_time_steps < 2:
+            raise ValueError("number_time_steps must be an integer >= 2")
+        self.number_time_steps = number_time_steps = int(number_time_steps)
         self.tracking_states = (
             tracking_states if tracking_states is not None else ["theta", "q"]
         )
         self.state_space = state_space if state_space is not None else ["theta", "q"]
         self.control_space = control_space if control_space is not None else ["ele"]
-        self.output_space = output_space if output_space is not None else ["theta", "q"]
+        self.output_space = (
+            output_space if output_space is not None else list(self.state_space)
+        )
         self.selected_state_output = self.output_space
-        self.reference_signal = reference_signal
+        if not self.output_space or not self.tracking_states:
+            raise ValueError("output_space and tracking_states must be nonempty")
+        if len(self.control_space) != 1:
+            raise ValueError("UAV supports one elevator input")
+        if callable(reference_signal):
+            reference_signal = np.array(
+                [
+                    np.atleast_1d(reference_signal(i * self.dt))
+                    for i in range(number_time_steps)
+                ]
+            ).T
+        self.reference_signal = np.array(reference_signal, dtype=float, copy=True)
+        if (
+            self.reference_signal.ndim != 2
+            or self.reference_signal.shape[1] < 1
+            or not np.all(np.isfinite(self.reference_signal))
+        ):
+            raise ValueError(
+                "reference_signal must be finite with shape (channels, T), T >= 1"
+            )
+        if self.reference_signal.shape[0] not in (1, len(self.tracking_states)):
+            raise ValueError("reference channels must be one or match tracking_states")
         if reward_func:
             self.reward_func = reward_func
         else:
             self.reward_func = self.reward
 
         self.model = LongitudinalUAV(
-            initial_state,
+            self.initial_state,
             number_time_steps=number_time_steps,
             selected_state_output=self.output_space,
             t0=0,
+            dt=self.dt,
         )
         self.indices_tracking_states = [
-            self.state_space.index(self.tracking_states[i])
+            self.model.list_state.index(self.tracking_states[i])
             for i in range(len(self.tracking_states))
         ]
 
-        self.ref_signal = reference_signal
-        self.model.initialise_system(
-            x0=initial_state, number_time_steps=number_time_steps
-        )
-        self.number_time_steps = number_time_steps
+        self.ref_signal = self.reference_signal
         self.action_space = spaces.Box(
-            low=-60, high=60, shape=(len(self.control_space),), dtype=np.float32
+            low=-np.array(self.model.input_magnitude_limits, dtype=np.float32),
+            high=np.array(self.model.input_magnitude_limits, dtype=np.float32),
+            dtype=np.float32,
         )
         self.observation_space = spaces.Box(
-            low=-np.inf, high=np.inf, shape=(len(self.state_space),), dtype=np.float32
+            low=-np.inf, high=np.inf, shape=(len(self.output_space),), dtype=np.float32
         )
 
         self.current_step = 0
@@ -100,7 +126,11 @@ class LinearLongitudinalUAV(gym.Env):
             float: Control evaluation reward.
         """
         ts_safe = int(np.clip(ts, 0, ref_signal.shape[1] - 1))
-        return -float(np.abs(state[0] - ref_signal[:, ts_safe]).item())
+        reference = ref_signal[:, ts_safe]
+        tracked = np.asarray(state).reshape(-1)
+        # A single reference retains the first-tracked-state objective.
+        error = tracked[:1] - reference if reference.size == 1 else tracked - reference
+        return -float(np.mean(np.abs(error)))
 
     def step(
         self, action: np.ndarray
@@ -118,11 +148,11 @@ class LinearLongitudinalUAV(gym.Env):
                 - truncated (bool): Whether episode was truncated.
                 - info (dict): Additional information.
         """
-        self.current_step += 1
         action = np.asarray(action).reshape(-1)
         next_state = self.model.run_step(action)
+        self.current_step += 1
         reward = self.reward_func(
-            next_state[self.indices_tracking_states],
+            np.asarray(self.model.xt).reshape(-1, 1)[self.indices_tracking_states],
             self.reference_signal,
             self.current_step,
         )
@@ -132,8 +162,8 @@ class LinearLongitudinalUAV(gym.Env):
         return (
             np.asarray(next_state).reshape(-1).astype(np.float32),
             float(reward),
-            self.done,
             False,
+            self.done,
             info,
         )
 
@@ -158,11 +188,9 @@ class LinearLongitudinalUAV(gym.Env):
             number_time_steps=self.number_time_steps,
             selected_state_output=self.output_space,
             t0=0,
+            dt=self.dt,
         )
         self.ref_signal = self.reference_signal
-        self.model.initialise_system(
-            x0=self.initial_state, number_time_steps=self.number_time_steps
-        )
         self.current_step = 0
         self.done = False
         info = self._get_info()

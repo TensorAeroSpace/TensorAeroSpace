@@ -222,3 +222,29 @@ Higher reward (closer to 0) indicates better tracking performance. A custom rewa
 === "Gymnasium environment"
 
     ::: tensoraerospace.envs.uav.LinearLongitudinalUAV
+## Runtime units and environment contract
+
+`LongitudinalUAV` accepts elevator **radians**. The bounds are ±25° in radians,
+with a 60°/s rate limit starting from `initial_control` (default zero), including
+the first step. The actuator uses discrete sample-and-hold commands. States are
+perturbations `[u, w, q, theta]`, with velocities in m/s and angles/rates in rad
+and rad/s. `dt` is the time step in seconds and is shared by model and environment.
+
+Python returns these physical states (`C=I`). The MATLAB fixture instead maps
+its first two output channels to airspeed and angle of attack; compare physical
+states when checking the two implementations. `get_output()` contains every
+recorded pre-transition sample, including the last one; `run_step()` returns
+the next state.
+
+`LinearLongitudinalUAV.action_space` now describes the actual radian bounds,
+replacing the inconsistent ±60 declaration. Policies that normalize actions
+using these bounds require renewed evaluation when loaded. `output_space`
+selects observations; by default it follows `state_space`. Rewards use
+`tracking_states` from the full physical state, independently of observation
+order. One reference channel tracks the first selected state; multiple channels
+use mean absolute error over corresponding states. A callable reference receives
+time in seconds. Time horizons truncate episodes and preserve bootstrapping.
+
+The four-state plant omits height and engine coupling from the source model.
+It is not a nonlinear flight simulator or an independent validation of all
+flight regimes.

@@ -7,7 +7,7 @@ angle of attack and flight speed.
 """
 
 import os
-from typing import Any, Callable, Optional, Union
+from typing import Any, Callable
 
 import gymnasium as gym
 import numpy as np
@@ -32,111 +32,136 @@ class LinearLongitudinalF4C(gym.Env):
 
     def __init__(
         self,
-        initial_state: Union[np.ndarray, list[float]],
-        reference_signal: Union[np.ndarray, Callable],
+        initial_state: np.ndarray | list[float],
+        reference_signal: np.ndarray | Callable,
         number_time_steps: int,
-        tracking_states: Optional[list[str]] = None,
-        state_space: Optional[list[str]] = None,
-        control_space: Optional[list[str]] = None,
-        output_space: Optional[list[str]] = None,
-        reward_func: Optional[Callable] = None,
+        tracking_states: list[str] | None = None,
+        state_space: list[str] | None = None,
+        control_space: list[str] | None = None,
+        output_space: list[str] | None = None,
+        reward_func: Callable | None = None,
+        dt: float = 0.01,
     ) -> None:
-        """Initialize F-4C longitudinal environment."""
+        """Initialize F4C longitudinal environment."""
         super().__init__()
-        self.initial_state = initial_state
-        self.number_time_steps = number_time_steps
+        self.initial_state = np.array(initial_state, dtype=float, copy=True).reshape(-1)
+        self.dt = float(dt)
+        if int(number_time_steps) != number_time_steps or number_time_steps < 2:
+            raise ValueError("number_time_steps must be an integer >= 2")
+        self.number_time_steps = number_time_steps = int(number_time_steps)
         self.tracking_states = (
             tracking_states if tracking_states is not None else ["theta", "q"]
         )
         self.state_space = (
-            state_space if state_space is not None else ["theta", "q", "alpha", "V"]
+            state_space if state_space is not None else ["u", "w", "q", "theta"]
         )
         self.control_space = control_space if control_space is not None else ["ele"]
         self.output_space = (
-            output_space if output_space is not None else ["theta", "q", "alpha", "V"]
+            output_space if output_space is not None else list(self.state_space)
         )
         self.selected_state_output = self.output_space
-        self.reference_signal = reference_signal
+        if not self.output_space or not self.tracking_states:
+            raise ValueError("output_space and tracking_states must be nonempty")
+        if len(self.control_space) != 1:
+            raise ValueError("F4C supports one elevator input")
+        if callable(reference_signal):
+            reference_signal = np.array(
+                [
+                    np.atleast_1d(reference_signal(i * self.dt))
+                    for i in range(number_time_steps)
+                ]
+            ).T
+        self.reference_signal = np.array(reference_signal, dtype=float, copy=True)
+        if (
+            self.reference_signal.ndim != 2
+            or self.reference_signal.shape[1] < 1
+            or not np.all(np.isfinite(self.reference_signal))
+        ):
+            raise ValueError(
+                "reference_signal must be finite with shape (channels, T), T >= 1"
+            )
+        if self.reference_signal.shape[0] not in (1, len(self.tracking_states)):
+            raise ValueError("reference channels must be one or match tracking_states")
         if reward_func:
             self.reward_func = reward_func
         else:
             self.reward_func = self.reward
 
-        # Constructor already invokes initialise_system internally.
         self.model = LongitudinalF4C(
-            initial_state,
+            self.initial_state,
             number_time_steps=number_time_steps,
-            selected_state_output=None,
+            selected_state_output=self.output_space,
             t0=0,
+            dt=self.dt,
         )
         self.indices_tracking_states = [
-            self.state_space.index(self.tracking_states[i])
+            self.model.list_state.index(self.tracking_states[i])
             for i in range(len(self.tracking_states))
         ]
 
-        self.ref_signal = reference_signal
-        self.number_time_steps = number_time_steps
-        # Action space in degrees for compatibility; clamped to ±20 deg
+        self.ref_signal = self.reference_signal
+        # Preserve the public action contract in degrees; the plant uses radians.
         self.max_elevator_angle_deg = 20.0
         self.action_space = spaces.Box(
             low=-self.max_elevator_angle_deg,
             high=self.max_elevator_angle_deg,
-            shape=(len(self.control_space),),
+            shape=(1,),
             dtype=np.float32,
         )
-        # Устанавливаем разумные границы для observation_space
-        # чтобы избежать предупреждений
         self.observation_space = spaces.Box(
-            low=-1000.0,
-            high=1000.0,
-            shape=(len(self.state_space),),
-            dtype=np.float32,
+            low=-np.inf, high=np.inf, shape=(len(self.output_space),), dtype=np.float32
         )
 
         self.current_step = 0
         self.done = False
 
-    def _get_info(self):
+    def _get_info(self) -> dict[str, float]:
         """Return auxiliary info for Gym API (currently empty)."""
         return {}
 
     @staticmethod
-    def reward(state, ref_signal, ts):
+    def reward(state: np.ndarray, ref_signal: np.ndarray, ts: int) -> float:
         """Evaluate control performance.
 
         Args:
-            state (_type_): Current state.
-            ref_signal (_type_): Reference state.
-            ts (_type_): Time step.
+            state (np.ndarray): Current state.
+            ref_signal (np.ndarray): Reference signal.
+            ts (int): Time step.
 
         Returns:
-            reward (float): Control performance evaluation.
+            float: Control evaluation reward.
         """
         ts_safe = int(np.clip(ts, 0, ref_signal.shape[1] - 1))
-        return -float(np.abs(state[0] - ref_signal[:, ts_safe]).item())
+        reference = ref_signal[:, ts_safe]
+        tracked = np.asarray(state).reshape(-1)
+        # A single reference retains the first-tracked-state objective.
+        error = tracked[:1] - reference if reference.size == 1 else tracked - reference
+        return -float(np.mean(np.abs(error)))
 
-    def step(self, action: np.ndarray):
-        """Execute a simulation step.
+    def step(
+        self, action: np.ndarray
+    ) -> tuple[np.ndarray, float, bool, bool, dict[str, float]]:
+        """Execute one simulation step.
 
         Args:
-            action (np.ndarray): Array of control signals for selected control surfaces.
+            action (np.ndarray): Control signal array for selected actuators.
 
         Returns:
-            next_state (np.ndarray): Next state of the control object.
-            reward (np.ndarray): Evaluation of control algorithm actions.
-            done (bool): Simulation status, whether completed or not.
-            logging (any): Additional information (not used).
+            tuple: Tuple containing:
+                - next_state (np.ndarray): Next state of the control object.
+                - reward (np.ndarray): Evaluation of control algorithm actions.
+                - done (bool): Simulation status, whether completed or not.
+                - truncated (bool): Whether episode was truncated.
+                - info (dict): Additional information.
         """
-        self.current_step += 1
-        # Clamp incoming action(s) in degrees and convert to radians for the model
-        action = np.asarray(action, dtype=np.float32).reshape(-1)
-        action_deg = np.clip(
-            action, -self.max_elevator_angle_deg, self.max_elevator_angle_deg
-        )
-        action_rad = np.deg2rad(action_deg)
+        action = np.asarray(action).reshape(-1)
+        if action.size != 1 or not np.all(np.isfinite(action)):
+            raise ValueError("action must contain one finite elevator command")
+        action_rad = np.deg2rad(np.clip(action, -20.0, 20.0))
         next_state = self.model.run_step(action_rad)
+        self.current_step += 1
         reward = self.reward_func(
-            next_state[self.indices_tracking_states],
+            np.asarray(self.model.xt).reshape(-1, 1)[self.indices_tracking_states],
             self.reference_signal,
             self.current_step,
         )
@@ -145,27 +170,34 @@ class LinearLongitudinalF4C(gym.Env):
 
         return (
             np.asarray(next_state).reshape(-1).astype(np.float32),
-            reward,
-            self.done,
+            float(reward),
             False,
+            self.done,
             info,
         )
 
-    def reset(self, seed=None, options=None):
+    def reset(
+        self, seed: int | None = None, options: dict | None = None
+    ) -> tuple[np.ndarray, dict[str, float]]:
         """Reset simulation environment to initial conditions.
 
         Args:
-            seed (int, optional): Seed for random number generator.
-            options (dict, optional): Additional options for initialization.
+            seed (int, optional): Random seed. Defaults to None.
+            options (dict, optional): Additional initialization options. Defaults to None.
+
+        Returns:
+            tuple: Tuple containing:
+                - observation (np.ndarray): Initial observation.
+                - info (dict): Additional information.
         """
         super().reset(seed=seed)
 
-        # Constructor already invokes initialise_system internally.
         self.model = LongitudinalF4C(
             self.initial_state,
             number_time_steps=self.number_time_steps,
-            selected_state_output=None,
+            selected_state_output=self.output_space,
             t0=0,
+            dt=self.dt,
         )
         self.ref_signal = self.reference_signal
         self.current_step = 0
@@ -176,11 +208,11 @@ class LinearLongitudinalF4C(gym.Env):
         ].reshape(-1)
         return observation, info
 
-    def render(self):
-        """Visual display of actions in the environment. Status: WIP.
+    def render(self) -> None:
+        """Visual rendering of actions in the environment. Work in progress.
 
         Raises:
-            NotImplementedError: Rendering is not implemented for this environment.
+            NotImplementedError: Rendering is not yet implemented.
         """
         raise NotImplementedError("Rendering is not implemented for F4CEnv.")
 
@@ -222,7 +254,7 @@ class F4CPitchEnvNormalized(gym.Env):
 
         Args:
             initial_state (np.ndarray): Initial state vector [u, w, q, theta]
-                in SI units (ft/s, ft/s, rad, rad).
+                in SI units (m/s, m/s, rad/s, rad); perturbations about trim.
             reference_signal (np.ndarray): Reference pitch angle
                 trajectory in radians. Shape: (1, number_time_steps).
             number_time_steps (int): Total number of simulation time
@@ -255,13 +287,26 @@ class F4CPitchEnvNormalized(gym.Env):
         self.dt = dt
         self.initial_state = np.array(initial_state, dtype=float).reshape(-1)
         self.reference_signal = np.array(reference_signal, dtype=float)
+        if int(number_time_steps) != number_time_steps or number_time_steps < 2:
+            raise ValueError("number_time_steps must be an integer >= 2")
         self.number_time_steps = int(number_time_steps)
+        if (
+            self.reference_signal.ndim != 2
+            or self.reference_signal.shape[0] != 1
+            or self.reference_signal.shape[1] < 1
+            or not np.all(np.isfinite(self.reference_signal))
+        ):
+            raise ValueError(
+                "reference_signal must be finite with shape (1, T), T >= 1"
+            )
         self.current_step = 0
         self.state = np.array(self.initial_state, dtype=float).reshape(
             -1
         )  # Full state vector [u, w, q, theta] in SI units
         # Initial elevator value, degrees -> normalized value
-        self.initial_elevator_deg = float(initial_elevator_deg)
+        if not np.isfinite(initial_elevator_deg):
+            raise ValueError("initial_elevator_deg must be finite")
+        self.initial_elevator_deg = float(np.clip(initial_elevator_deg, -20.0, 20.0))
         self.initial_action_norm = float(
             np.clip(
                 self.initial_elevator_deg / self.max_elevator_angle_deg,
@@ -307,6 +352,7 @@ class F4CPitchEnvNormalized(gym.Env):
             selected_state_output=None,
             t0=0,
             dt=self.dt,
+            initial_control=self.initial_elevator_rad,
         )
 
         # Visualization parameters (lazy pygame initialization)
@@ -422,6 +468,8 @@ class F4CPitchEnvNormalized(gym.Env):
         """
         # Convert action to shape (1,) and clip to [-1, 1]
         action = np.asarray(action, dtype=np.float32).reshape(-1)
+        if action.size != 1 or not np.all(np.isfinite(action)):
+            raise ValueError("action must contain one finite elevator command")
         action = np.clip(action, -1.0, 1.0)
 
         # Scale from [-1, 1] -> radians directly. On first step, can apply
@@ -462,7 +510,8 @@ class F4CPitchEnvNormalized(gym.Env):
         e_q_rel = float((q - ref_theta_dot) / self.max_pitch_rate_rad_s)
         # Normalized actually applied action
         u_applied_norm = float(
-            np.asarray(scaled_action_rad).reshape(-1)[0] / self.max_elevator_angle_rad
+            self.model.store_input[0, self.model.time_step - 1]
+            / self.max_elevator_angle_rad
         )
         u = u_applied_norm
         du = u_applied_norm - float(self.previous_action)
@@ -486,14 +535,13 @@ class F4CPitchEnvNormalized(gym.Env):
 
         self.pre_previous_action = float(self.previous_action)
         self.previous_action = float(u_applied_norm)
-        self._last_reward = float(reward)
-
         # Termination conditions
         terminated = False
-        if abs(theta) > self.max_pitch_rad:
+        if abs(theta) > self.max_pitch_rad or abs(q) > self.max_pitch_rate_rad_s:
             reward = -100.0
             terminated = True
 
+        self._last_reward = float(reward)
         truncated = self.current_step >= self.number_time_steps - 1
 
         return (
@@ -501,7 +549,7 @@ class F4CPitchEnvNormalized(gym.Env):
             float(reward),
             bool(terminated),
             bool(truncated),
-            {},
+            {"elevator_deg": float(u_applied_norm * self.max_elevator_angle_deg)},
         )
 
     def _push_history(

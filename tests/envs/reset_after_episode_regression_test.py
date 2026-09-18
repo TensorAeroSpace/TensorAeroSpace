@@ -24,7 +24,12 @@ def test_reset_after_completed_episode_replays_the_same_trajectory(env_cls, n_st
     try:
         initial, _ = env.reset(seed=17)
         first_episode = [env.step(action) for _ in range(3)]
-        assert first_episode[-1][2] is True
+        expected_boundary = (
+            (False, True)
+            if env_cls in (GeoSatEnv, LinearLongitudinalUAV, LinearLongitudinalF4C)
+            else (True, False)
+        )
+        assert first_episode[-1][2:4] == expected_boundary
         assert env.done is True
         restored, _ = env.reset(seed=17)
         assert env.done is False

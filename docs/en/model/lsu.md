@@ -108,9 +108,9 @@ where
 
 - \(u\) — longitudinal speed [m/s]
 - \(w\) — normal speed [m/s]
-- \(q\) — pitch rate [deg/s]
-- \(\theta\) — pitch angle [deg]
-- \(\eta\) — stabilizer deflection angle [deg]
+- \(q\) — pitch rate [rad/s]
+- \(\theta\) — pitch angle [rad]
+- \(\eta\) — stabilizer deflection angle [rad]
 - \(x_u\) — partial derivative of longitudinal force with respect to longitudinal speed
 - \(x_w\) — partial derivative of longitudinal force with respect to normal speed
 - \(x_q\) — partial derivative of longitudinal force with respect to pitch rate
@@ -166,6 +166,7 @@ for _ in range(200):
     state, reward, terminated, truncated, info = env.step(action)
     if terminated or truncated:
         break
+```
 
 ## Python API
 
@@ -177,3 +178,27 @@ for _ in range(200):
 
     ::: tensoraerospace.envs.lapan.LinearLongitudinalLAPAN
 
+
+## Units, actuator and environment contract
+
+The model state `[u, w, q, theta]` contains perturbations about the reference
+flight condition, in m/s, m/s, rad/s and rad. `LAPAN.run_step` takes elevator
+**radians**. The A/B coefficients match page 86 of
+[Septiyana et al. (2020)](https://ejournal.brin.go.id/ijoa/article/download/12529/9853).
+This linear model is not a validation against flight measurements.
+
+The plant retains its configured ±40° magnitude and 300°/s rate limits, including
+the first command. `initial_control` sets the starting elevator position in
+radians (default zero); `initialise_system` restores it. Invalid states, commands,
+clocks and horizons are rejected. All recorded pre-transition outputs are
+available through `get_output`; plotting velocity preserves m/s and stored data.
+
+`LinearLongitudinalLAPAN` takes elevator commands in **degrees**, bounded by ±25°,
+and converts them to radians for the model. Previously the declared ±25 range
+was passed directly as radians. Existing controllers relying on that behavior
+need their command scaling checked. Observations and reference angles are radians.
+The default output is `[theta, q]`. `output_space` determines its order and shape,
+while `tracking_states` independently selects the full model state for reward.
+A single reference channel tracks the first selected state; multiple channels
+use mean absolute error. Reference callables receive `i*dt` seconds; the time
+horizon returns `truncated=True`. Initial arrays are copied for reproducible reset.

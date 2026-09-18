@@ -175,3 +175,22 @@ while not done:
 
 - `tensoraerospace/envs/ultrastick.py` -- full environment implementation
 - Ultrastick-25e dynamics model: `tensoraerospace/aerospacemodel/ultrastick.py`
+
+## Clock and actuator initialization
+
+`dt` is the time step in seconds for both the environment and its plant.
+`Ultrastick(initial_control=[elevator_rad, throttle])` sets the initial actuator
+position; its default is zero. The first command observes the same rate bounds
+as subsequent commands. These are discrete sample-and-hold bounds, not a
+continuous servo model.
+
+The improved environment clips the initial elevator to ±15° and throttle to
+[0, 1], and initializes the plant consistently. Its action history, reward and
+`info` use the applied command after plant limits. `use_initial_action_on_first_step`
+still holds that initial position on the first step. Invalid nonfinite controls
+are rejected before advancing the plant.
+
+The legacy `LinearLongitudinalUltrastick` takes one elevator command in degrees.
+Its time horizon returns `terminated=False, truncated=True`, preserving value
+bootstrapping. The improved environment also truncates at its time horizon;
+exceeding its pitch bound terminates the episode.
