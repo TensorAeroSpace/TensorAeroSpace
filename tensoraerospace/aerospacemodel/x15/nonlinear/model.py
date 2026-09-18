@@ -28,6 +28,7 @@ from tensoraerospace.aerospacemodel.base import ModelBase
 
 from ._integrators import euler, rk4
 from .dynamics import x15_ode_6dof
+from .engine import xlr99_thrust
 from .initial import STATE_LIST
 from .params import X15Configuration, X15Parameters, default_parameters
 
@@ -67,6 +68,10 @@ class NonlinearX15(ModelBase):
                 f"x0 must have 13 elements (see initial.STATE_LIST); "
                 f"got {x0_arr.size}"
             )
+        if not np.all(np.isfinite(x0_arr)) or x0_arr[12] < 0:
+            raise ValueError("x0 must be finite with nonnegative propellant")
+        if not np.isfinite(dt) or dt <= 0 or not np.isfinite(t0):
+            raise ValueError("dt must be finite and positive, and t0 finite")
         super().__init__(x0_arr, selected_state_output, t0, dt)
         self.action_space_length = len(_CONTROL_LIST)
         self.param: X15Parameters = default_parameters(config)
@@ -132,17 +137,16 @@ class NonlinearX15(ModelBase):
                 f"expected {self.action_space_length} ([δ_e, δ_a, δ_r, δ_T])"
             )
 
+        if not np.all(np.isfinite(u_arr)):
+            raise ValueError("control must contain only finite values")
+
         # Propagate damage hooks (parity with B-747)
         self.param.damage_state = self.damage_state
         self.param.damage_geometry = self.damage_geometry
 
         x_prev = np.asarray(self.x_history[-1], dtype=np.float64).reshape(-1)
         t_now = self.t0 + self.dt * (self.time_step - 1)
-        x_next = self._step_fn(x15_ode_6dof, x_prev, u_arr, t_now, self.dt, self.param)
-
-        # Clamp propellant to non-negative (engine flames out below 0)
-        if x_next[12] < 0.0:
-            x_next[12] = 0.0
+        x_next = self._integrate_with_burnout(x_prev, u_arr, t_now)
 
         x_next_col = x_next.reshape(13, 1)
         self.x_history.append(x_next_col)
@@ -152,3 +156,39 @@ class NonlinearX15(ModelBase):
         if self.selected_state_output:
             return x_next_col[self.selected_state_index]
         return x_next_col.copy()
+
+    def _integrate_with_burnout(
+        self, state: np.ndarray, control: np.ndarray, time: float
+    ) -> np.ndarray:
+        """Split a step at fuel exhaustion, using the powered left limit there."""
+        _, flow = xlr99_thrust(float(control[3]), float(state[12]), self.param)
+        burn_time = float(state[12]) / flow if flow > 0 else np.inf
+        if burn_time > self.dt:
+            return self._step_fn(
+                x15_ode_6dof, state, control, time, self.dt, self.param
+            )
+
+        def powered_rhs(x, u, t, params):
+            # RK4 samples the endpoint of the powered interval. Evaluate its
+            # left limit so that the last stage does not prematurely lose thrust.
+            x = x.copy()
+            x[12] = max(float(x[12]), np.finfo(np.float64).tiny)
+            return x15_ode_6dof(x, u, t, params)
+
+        at_burnout = self._step_fn(
+            powered_rhs, state, control, time, burn_time, self.param
+        )
+        at_burnout[12] = 0.0
+        remaining = self.dt - burn_time
+        if remaining <= 0:
+            return at_burnout
+        coast_control = control.copy()
+        coast_control[3] = 0.0
+        return self._step_fn(
+            x15_ode_6dof,
+            at_burnout,
+            coast_control,
+            time + burn_time,
+            remaining,
+            self.param,
+        )

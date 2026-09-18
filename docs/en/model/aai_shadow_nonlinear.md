@@ -122,28 +122,36 @@ points:
 | Static, full throttle | 380 N |
 | 36 m/s, 70 % throttle | ~ 75 N |
 
-The 70 % cruise throttle is consistent with published RQ-7 endurance
-numbers (6-9 h at typical cruise weight).
+These are values of the simplified propulsion model; endurance or flight-test
+agreement cannot be inferred from this thrust curve alone.
 
 ## Trim finder
 
-`tensoraerospace.aerospacemodel.aai_shadow.nonlinear.trim(h, V)`
-solves $\dot u = \dot w = \dot q = 0$ via Newton-Raphson:
+`tensoraerospace.aerospacemodel.aai_shadow.nonlinear.trim(h, V)` solves
+$\dot u = \dot w = \dot q = 0$ using bounded nonlinear least squares.
+Throttle stays in `[0, 1]`, elevator within `±params.elevator_max_rad`, and
+angle of attack within `(-π/2, π/2)`. Convergence requires a successful solve
+and a residual norm no larger than `tol`; a result at full throttle with
+nonzero acceleration is not accepted as steady flight.
 
-| Condition | h, m | V, m/s | α | δ_e | δ_T |
-|---|---:|---:|---:|---:|---:|
-| Typical loiter | 1000 | 36 | 3.10° | -3.87° | 0.93 |
+At 1000 m and 36 m/s, trim throttle is about 0.930; at 37.8 m/s it is about
+0.982. The latter condition previously stalled when unconstrained Newton
+steps entered the engine's saturated region. At both points, velocity,
+attitude and altitude drift stay below `1e-6` over a 5 s RK4 rollout with
+`dt=0.01`. Aerodynamic coefficients and the engine model are unchanged.
 
-Residual norm reaches **machine precision** ($10^{-15}$). Holding
-the trimmed controls keeps the aircraft within ±0.000 m/s, ±0.000 m
-altitude, ±0.000° pitch over 5 seconds.
-
-The high trim throttle (0.93) reflects the small AR-741 engine's
-limited margin at 170 kg gross weight — close to the published
-service ceiling of ~ 4 600 m the trim solver fails (the engine cannot
-sustain level flight there with this payload), which matches reality.
+These checks establish consistency within this model. A failed trim is not
+by itself evidence of the real aircraft's service ceiling or flight envelope.
+Actuators remain ideal; rate limits and V-tail surface mixing require a
+separate actuator model.
 
 ## Gymnasium env
+
+Actions are clipped to the declared normalized or physical bounds before
+integration. Nonfinite actions and invalid time settings raise `ValueError`.
+The environment copies `initial_state`. Damage dynamics are not implemented:
+nonempty `damage_profile` or `damage_event_callback` raises `NotImplementedError`
+instead of silently ignoring the requested damage.
 
 Registered as `"NonlinearAAIShadow-v0"`:
 

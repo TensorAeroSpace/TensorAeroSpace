@@ -23,13 +23,12 @@ Control (4-dim, all in radians except throttle):
     u[2] = δ_r    rudder, rad
     u[3] = δ_T    XLR99 throttle [0, 1] (0 = off below 30 % cutoff)
 
-Variable-mass effect: the rocket equation form ``m·v̇ = ΣF + (v_e -
-v) ṁ_e`` reduces to the ordinary ``m·v̇ = ΣF + T_x x̂`` because the
-exhaust thrust ``T = ṁ_e v_e`` is already accounted for in the
-thrust force, and the *velocity-of-mass-loss* term vanishes for an
-on-axis exhaust (a standard simplification used by every textbook
-rocket-aircraft model). Mass and inertias are then updated each
-step from the propellant decrement.
+Variable mass: thrust already represents the axial exhaust momentum flux.
+The translational equations therefore use force divided by the current mass,
+without an additional mass-loss force. Mass and interpolated inertias are
+recomputed at every RHS evaluation. Rotational dynamics use an instantaneous
+rigid-body approximation; tank geometry, slosh and exhaust angular-momentum
+flux are not modeled explicitly.
 """
 
 from __future__ import annotations

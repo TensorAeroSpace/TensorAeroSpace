@@ -21,8 +21,8 @@ class RotorDamageState:
     - If ``tau[i] > 0``, ``mu[i]`` evolves over time as
       :math:`\\dot\\mu_i = -(1/\\tau_i)(\\mu_i - \\mu_i^{\\text{floor}})`,
       where ``mu_floor[i]`` is the asymptotic effectiveness (0 = full
-      eventual loss; positive = partial wear). The env applies one
-      exact exponential update per integrator tick.
+      eventual loss; positive = partial wear). The env evaluates this
+      exponential at integrator stages and records its value at the sample end.
     """
 
     mu: np.ndarray = field(default_factory=lambda: np.ones(4, dtype=np.float64))
@@ -30,14 +30,16 @@ class RotorDamageState:
     mu_floor: np.ndarray = field(default_factory=lambda: np.zeros(4, dtype=np.float64))
 
     def __post_init__(self) -> None:
-        self.mu = np.asarray(self.mu, dtype=np.float64).reshape(-1)
-        self.tau = np.asarray(self.tau, dtype=np.float64).reshape(-1)
-        self.mu_floor = np.asarray(self.mu_floor, dtype=np.float64).reshape(-1)
+        self.mu = np.array(self.mu, dtype=np.float64, copy=True).reshape(-1)
+        self.tau = np.array(self.tau, dtype=np.float64, copy=True).reshape(-1)
+        self.mu_floor = np.array(self.mu_floor, dtype=np.float64, copy=True).reshape(-1)
         for name, arr in (
             ("mu", self.mu),
             ("tau", self.tau),
             ("mu_floor", self.mu_floor),
         ):
+            if not np.all(np.isfinite(arr)):
+                raise ValueError(f"{name} must contain only finite values")
             if arr.size != 4:
                 raise ValueError(f"{name} must have 4 elements; got {arr.size}")
         if np.any(self.mu < 0) or np.any(self.mu > 1):
@@ -52,19 +54,20 @@ class RotorDamageState:
         """Fresh state with all rotors at full effectiveness."""
         return cls()
 
-    def step_decay(self, dt: float) -> None:
-        """Advance time-varying decay one tick with the exact exponential solution.
-
-        Active only on rotors with ``tau[i] > 0``. After this call,
-        ``mu[i]`` is closer to ``mu_floor[i]``.
-        """
+    def effectiveness_after(self, dt: float) -> np.ndarray:
+        """Predict effectiveness without mutating this interval's initial state."""
+        if not np.isfinite(dt) or dt < 0:
+            raise ValueError("decay dt must be finite and nonnegative")
+        result = self.mu.copy()
         active = self.tau > 0
-        if not np.any(active):
-            return
-        self.mu[active] = self.mu_floor[active] + (
+        result[active] = self.mu_floor[active] + (
             self.mu[active] - self.mu_floor[active]
         ) * np.exp(-dt / self.tau[active])
-        self.mu = np.clip(self.mu, 0.0, 1.0)
+        return np.clip(result, 0.0, 1.0)
+
+    def step_decay(self, dt: float) -> None:
+        """Advance decay by its exact exponential solution."""
+        self.mu = self.effectiveness_after(dt)
 
     def snapshot(self) -> dict:
         """Return a JSON-friendly view of the current state."""

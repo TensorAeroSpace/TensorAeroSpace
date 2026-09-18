@@ -151,19 +151,30 @@ motor + cubic-CT(J) model from the paper (Tables 6, 7) is exposed via
 
 ## Trim finder
 
-`tensoraerospace.aerospacemodel.skywalker_x8.nonlinear.trim(h, V)`
-solves $\dot u = \dot w = \dot q = 0$ via Newton-Raphson:
+`trim(h, V)` balances all six body accelerations at zero angular rates.
+It solves for angle of attack, sideslip, bank, elevator, aileron and throttle;
+pitch follows from zero vertical velocity. `converged` also checks throttle
+and the travel limits of both individual elevons.
 
-| Condition | h, m | V, m/s | α | δ_e | δ_T |
-|---|---:|---:|---:|---:|---:|
-| Paper Eq. 38 (6-DoF coupled) | 178 | 17.9 | 7.9° | -2.35° | 0.44 |
-| Our pure-longitudinal trim   | 178 | 18.0 | 7.6° | -2.0° | 0.64 |
+At 178 m and 18 m/s the still-air solution is approximately α=7.62°,
+β=0.59°, bank=−0.63°, δ_e=−1.96°, δ_a=−3.31°, δ_T=0.641.
+This is an equilibrium of the implemented model. It is not an exact reproduction
+of the paper's flight point: that point includes wind, and this package uses a
+simplified propulsion model. See [the source paper, Eqs. 36–38](https://link.springer.com/article/10.1007/s13272-025-00816-3).
 
-The slight differences come from the paper's trim being a 6-DoF
-coupled solution with non-zero $\beta = 1.2°$ and $\delta_a = -2.16°$,
-while our trimmer solves the simpler pure-longitudinal case with
-$\beta = 0$ and $\delta_a = 0$. Residual norms reach machine precision
-($10^{-13}$) in both cases.
+Use both the returned state and **all three** trim controls:
+
+```python
+from tensoraerospace.aerospacemodel.skywalker_x8.nonlinear import trim
+
+result = trim(178.0, 18.0)
+assert result.converged
+x0 = result.to_state()
+u0 = result.to_control()  # [elevator, aileron, throttle]
+```
+
+Setting the aileron to zero discards lateral balance. The optional
+`initial_guess=(alpha, elevator, throttle)` retains its previous format.
 
 ## Gymnasium env
 
@@ -188,6 +199,8 @@ env = gym.make("NonlinearSkywalkerX8-v0",
 Action space:
 * **3-channel** ``[δ_e, δ_a, δ_T]`` (no rudder!)
 * `"virtual"` (rad / [0, 1]) or `"normalized"` (`[-1, +1]^3`)
+* Commands are clipped to the action space, then mixed and limited to ±20°
+  for each physical elevon. Nonfinite actions are rejected.
 
 ## Scope and limitations
 
@@ -200,9 +213,9 @@ Action space:
   thrust model. The full motor + cubic-CT(J) electrical model from
   the paper (Sec. 2.3) gives transient inductance / current behaviour
   during throttle steps but is not used by default.
-* **Icing**: The paper's primary motivation is icing research; an
-  ice-accretion damage subsystem can be plugged into the
-  ``damage_state`` hook (parity with the B-747 module).
+* **Damage and icing**: Aerodynamic damage is not implemented for this model.
+  Passing `damage_profile` or `damage_event_callback` to the environment raises
+  `NotImplementedError`; the environment cannot simulate these effects yet.
 * **Rudder**: There is none. Yaw control is purely differential
   aileron + dihedral effect of bank.
 

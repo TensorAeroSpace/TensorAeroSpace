@@ -18,6 +18,8 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Optional
 
+import numpy as np
+
 from .state import RotorDamageState
 
 
@@ -30,7 +32,7 @@ class DamageEvent:
     label: Optional[str] = None
 
     def __post_init__(self) -> None:
-        if self.trigger_time < 0:
+        if not np.isfinite(self.trigger_time) or self.trigger_time < 0:
             raise ValueError(f"trigger_time must be >= 0; got {self.trigger_time}")
         if not 0 <= self.rotor_id <= 3:
             raise ValueError(f"rotor_id must be in {{0, 1, 2, 3}}; got {self.rotor_id}")
@@ -89,7 +91,7 @@ class MotorEfficiencyDecay(DamageEvent):
 
     def __post_init__(self) -> None:
         super().__post_init__()
-        if self.tau <= 0:
+        if not np.isfinite(self.tau) or self.tau <= 0:
             raise ValueError(f"tau must be positive; got {self.tau}")
         if not 0.0 <= self.mu_floor <= 1.0:
             raise ValueError(f"mu_floor must be in [0, 1]; got {self.mu_floor}")

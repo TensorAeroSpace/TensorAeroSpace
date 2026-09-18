@@ -221,9 +221,8 @@ def test_ode_throttle_increases_x_acceleration():
 def test_trim_converges_at_paper_reference_point():
     """Paper Eq. 38: V=17.9 m/s, h=178 m, α=7.9°, δe=-2.35°, δt=0.44.
 
-    The pure-longitudinal trim solved here finds slightly different
-    values because the published trim is 6-DoF coupled with non-zero
-    β=1.2° and δa=-2.16°. We expect α within 0.5°, δe within 0.5°.
+    The still-air equilibrium differs from the wind-disturbed flight point
+    and uses the package's simplified engine. Check its cruise envelope.
     """
     r = trim(altitude_m=178.0, V_m_s=18.0)
     assert r.converged
@@ -303,15 +302,15 @@ def test_env_rejects_multiple_initialisers():
 
 
 def test_env_holds_trim_briefly():
-    """After 1 s of held trim, V drift should be small (X8 has fast modes)."""
+    """A full equilibrium must remain stationary with held trim commands."""
     r = trim(altitude_m=178.0, V_m_s=18.0)
     env = NonlinearSkywalkerX8Env(
         initial_state=r.to_state(), number_time_steps=200, dt=0.01
     )
     obs, _ = env.reset()
-    u_trim = np.array([float(r.elevator_rad), 0.0, float(r.throttle)])
+    u_trim = r.to_control()
     for _ in range(100):  # 1 s
         obs, _, _, _, _ = env.step(u_trim)
     V = float(np.sqrt(obs[0] ** 2 + obs[1] ** 2 + obs[2] ** 2))
-    # X8 has small inertias → trim drift over 1 s is tolerable
-    assert abs(V - r.V_m_s) < 1.0
+    assert abs(V - r.V_m_s) < 1e-7
+    assert abs(obs[11] + r.altitude_m) < 1e-7

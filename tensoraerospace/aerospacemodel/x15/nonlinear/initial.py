@@ -42,10 +42,10 @@ STATE_LIST = [
 STATE_DIM = len(STATE_LIST)
 
 
-def default_state() -> np.ndarray:
-    """Zero state vector with full propellant (13 elements)."""
+def default_state(*, config: X15Configuration = X15Configuration.BASIC) -> np.ndarray:
+    """Zero state vector with the selected configuration's full propellant."""
     x = np.zeros(STATE_DIM, dtype=np.float64)
-    x[12] = 13_000.0  # default to BASIC config full load
+    x[12] = default_parameters(config).propellant_full_lb
     return x
 
 

@@ -1,33 +1,17 @@
 """XLR99 rocket engine model for the X-15.
 
-The Reaction Motors XLR99 is the production rocket engine of the
-X-15. Key facts (Thompson 2000 / NASA SP-2000-4222):
+The model uses constant maximum thrust (57,000 lbf) and specific impulse
+(254 s), with throttle from 0.30 to 1.0. Below the cutoff or with no
+remaining propellant it returns zero thrust and zero mass flow.
 
-* Single-chamber, throttleable from 30 % to 100 % thrust.
-* Propellant: anhydrous ammonia (fuel) + LOX (oxidizer).
-* Sea-level rated thrust ``T_SLS = 57 000 lbf``.
-* Specific impulse ``Isp ≈ 254 s`` (sea level), rising slightly to
-  ~ 290 s in vacuum due to nozzle expansion. We use the constant
-  ``Isp = 254 s`` value for the powered envelope; the X-15 never
-  reached pressures low enough for the vacuum correction to dominate.
-* Burn time at full throttle: ~ 80 s for the basic X-15 (13 000 lb
-  propellant), ~ 140 s for X-15A-2 (18 000 lb).
+The propellant state is in pounds, so its positive depletion rate is
+``T_lbf / Isp_s`` in lb/s. The equivalent mass rate in slug/s is
+``T_lbf / (Isp_s * g0_ft_s2)``. At full throttle the configured BASIC
+load of 17,900 lb lasts about 79.8 s; the A2 load of 30,900 lb lasts
+about 137.7 s.
 
-Unlike an air-breathing engine, **the rocket thrust is essentially
-independent of Mach and altitude** — there is no inlet recovery, no
-ram effect. The only altitude effect is the small back-pressure
-correction $T(h) = T_{SLS} + p_{0} A_e - p(h) A_e$, which we ignore
-in the initial release (it is ≤ 5 % below 100 kft).
-
-Mass flow at any throttle setting:
-
-.. math::
-   \\dot m = -\\frac{T(\\delta_T)}{I_{sp}\\, g_0}, \\qquad
-   T(\\delta_T) = T_{SLS} \\cdot \\delta_T
-
-where ``δ_T ∈ [0.30, 1.0]`` (the XLR99 cannot run below 30 %
-throttle). Below 30 % the engine is treated as off (zero thrust,
-zero mass flow), matching the real lockout behaviour.
+No nozzle back-pressure correction is modeled. Constant thrust and Isp
+are approximations, not an altitude-calibrated engine performance map.
 """
 
 from __future__ import annotations
