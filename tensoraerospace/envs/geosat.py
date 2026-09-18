@@ -38,10 +38,14 @@ class GeoSatEnv(gym.Env):
         control_space: list[str] | None = None,
         output_space: list[str] | None = None,
         reward_func: Callable | None = None,
+        dt: float = 0.01,
     ) -> None:
         """Initialize geosationary satellite environment."""
         super().__init__()
-        self.initial_state = initial_state
+        self.initial_state = np.array(
+            initial_state, dtype=np.float64, copy=True
+        ).reshape(-1)
+        self.dt = dt
         self.number_time_steps = number_time_steps
         self.tracking_states = (
             tracking_states if tracking_states is not None else ["theta", "omega"]
@@ -51,10 +55,29 @@ class GeoSatEnv(gym.Env):
         )
         self.control_space = control_space if control_space is not None else ["thrust"]
         self.output_space = (
-            output_space if output_space is not None else ["rho", "theta", "omega"]
+            output_space if output_space is not None else list(self.state_space)
         )
         self.selected_state_output = self.output_space
-        self.reference_signal = reference_signal
+        if callable(reference_signal):
+            reference_signal = np.array(
+                [
+                    np.atleast_1d(reference_signal(i * dt))
+                    for i in range(number_time_steps)
+                ]
+            ).T
+        self.reference_signal = np.array(reference_signal, dtype=np.float64, copy=True)
+        if (
+            self.reference_signal.ndim != 2
+            or self.reference_signal.shape[1] < 1
+            or not np.all(np.isfinite(self.reference_signal))
+        ):
+            raise ValueError(
+                "reference_signal must be finite with shape (channels, T), T >= 1"
+            )
+        if self.reference_signal.shape[0] not in (1, len(self.tracking_states)):
+            raise ValueError("reference channels must be one or match tracking_states")
+        if len(self.control_space) != 1:
+            raise ValueError("GeoSat supports one tangential thrust input")
         if reward_func:
             self.reward_func = reward_func
         else:
@@ -62,26 +85,29 @@ class GeoSatEnv(gym.Env):
 
         # Constructor already invokes initialise_system internally.
         self.model = GeoSat(
-            initial_state,
+            self.initial_state,
             number_time_steps=number_time_steps,
             selected_state_output=self.output_space,
             t0=0,
+            dt=self.dt,
         )
         self.indices_tracking_states = [
-            self.state_space.index(self.tracking_states[i])
+            self.model.list_state.index(self.tracking_states[i])
             for i in range(len(self.tracking_states))
         ]
 
-        self.ref_signal = reference_signal
+        self.ref_signal = self.reference_signal
         self.number_time_steps = number_time_steps
 
         self.action_space = spaces.Box(
-            low=-60, high=60, shape=(len(self.control_space),), dtype=np.float32
+            low=-np.array(self.model.input_magnitude_limits, dtype=np.float32),
+            high=np.array(self.model.input_magnitude_limits, dtype=np.float32),
+            dtype=np.float32,
         )
         self.observation_space = spaces.Box(
-            low=-1000.0,
-            high=1000.0,
-            shape=(len(self.state_space),),
+            low=-np.inf,
+            high=np.inf,
+            shape=(len(self.output_space),),
             dtype=np.float32,
         )
 
@@ -105,7 +131,11 @@ class GeoSatEnv(gym.Env):
             float: Control evaluation reward (negative absolute error).
         """
         ts_safe = int(np.clip(ts, 0, ref_signal.shape[1] - 1))
-        return -float(np.abs(state[0] - ref_signal[:, ts_safe]).item())
+        reference = ref_signal[:, ts_safe]
+        tracked = np.asarray(state).reshape(-1)
+        # One reference channel keeps the legacy first-tracked-state objective.
+        error = tracked[:1] - reference if reference.size == 1 else tracked - reference
+        return -float(np.mean(np.abs(error)))
 
     def step(
         self, action: np.ndarray
@@ -123,11 +153,11 @@ class GeoSatEnv(gym.Env):
                 - truncated (bool): Whether episode was truncated.
                 - info (dict): Additional information.
         """
-        self.current_step += 1
         action = np.asarray(action).reshape(-1)
         next_state = self.model.run_step(action)
+        self.current_step += 1
         reward = self.reward_func(
-            next_state[self.indices_tracking_states],
+            np.asarray(self.model.xt).reshape(-1, 1)[self.indices_tracking_states],
             self.reference_signal,
             self.current_step,
         )
@@ -137,8 +167,8 @@ class GeoSatEnv(gym.Env):
         return (
             np.asarray(next_state).astype(np.float32).reshape(-1),
             float(reward),
-            self.done,
             False,
+            self.done,
             info,
         )
 
@@ -164,6 +194,7 @@ class GeoSatEnv(gym.Env):
             number_time_steps=self.number_time_steps,
             selected_state_output=self.output_space,
             t0=0,
+            dt=self.dt,
         )
         self.ref_signal = self.reference_signal
         self.current_step = 0

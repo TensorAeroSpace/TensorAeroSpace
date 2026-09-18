@@ -1,238 +1,84 @@
-# Спутник связи (ComSat) — продольная динамика
+# Спутник связи (ComSat)
 
-Искусственный спутник связи — аппарат на орбите для ретрансляции и обработки радиосигналов. Страница оформлена по аналогии с ELV: быстрый старт, математика, таблицы производных и API.
-
-<div class="grid cards" markdown>
-
--   :material-rocket-launch-outline: **Быстрый старт**
-
-    Запустите среду или модель за минуты.
-
-    [:octicons-arrow-right-24: К примеру](#быстрый-старт)
-
--   :material-cog-outline: **API модели**
-
-    Документация Python‑класса ComSat.
-
-    [:octicons-arrow-right-24: К API](#python-api)
-
--   :material-gamepad-variant-outline: **Среда Gymnasium**
-
-    Готовая среда для RL‑агентов.
-
-    [:octicons-arrow-right-24: К среде](#python-api)
-
--   :material-book-open-variant: **Теория**
-
-    Уравнения состояния и численные параметры.
-
-    [:octicons-arrow-right-24: К модели](#математическая-модель)
-
-</div>
-
-## Как устроен объект управления
-
-Модель задана в пространстве состояний:
-
-\[\dot{x} = A x + B u, \quad y = C x + D u\]
-
-Где:
-
-\[
- x = \begin{bmatrix} x_1 \\ x_3 \\ x_4 \end{bmatrix} = \begin{bmatrix} \rho \\ \dot{\rho} \\ \dot{\theta} \end{bmatrix}, \quad
- u = u_2
-\]
-
-Линеаризованная система:
-
-\[
-\begin{bmatrix}
-\dot{x}_1 \\
-\dot{x}_3 \\
-\dot{x}_4
-\end{bmatrix}
-=
-\begin{bmatrix}
-0 & 1 & 0 \\
-0.01036 & 0 & 0.7753 \\
-0 & -0.01775 & 0
-\end{bmatrix}
-\begin{bmatrix} x_1 \\ x_3 \\ x_4 \end{bmatrix}
- +
-\begin{bmatrix} 0 \\ 0 \\ 0.1513 \end{bmatrix} u_2
-\]
-
-=== "Переменные состояния"
-
-    - **x₁ = ρ**: радиальная позиция — расстояние от центра Земли, км
-    - **x₃ = ρ̇**: радиальная скорость, м/с
-    - **x₄ = θ̇**: угловая скорость, рад/с
-
-=== "Управляющее воздействие"
-
-    - **u₂**: тангенциальная тяга, Н
-        - u₂ > 0 — тяга по направлению движения (ускорение спутника)
-        - u₂ < 0 — тяга против направления движения (торможение)
-        - u₂ = 0 — тяга отсутствует
-
-=== "Коэффициенты системы"
-
-    - **a₁₃ = 1.0** — радиальная позиция изменяется согласно радиальной скорости
-    - **a₃₁ = 0.01036** — компонента радиального ускорения от позиции
-    - **a₃₄ = 0.7753** — компонента радиального ускорения от угловой скорости
-    - **a₄₃ = -0.01775** — компонента углового ускорения от радиальной скорости
-    - **b₄ = 0.1513** — влияние тангенциальной тяги на угловое ускорение
-
-!!! note "О единицах измерения"
-    Угловые скорости — в радианах. Позиция в км, скорость в м/с. Методы API поддерживают преобразование единиц.
+ComSat — **линейная модель безразмерных отклонений от круговой орбиты** для локальных экспериментов с управлением. Состояния, время моделирования и вход безразмерны: их нельзя интерпретировать как километры, метры в секунду, секунды или ньютоны.
 
 ## Математическая модель {#математическая-модель}
 
-$$
-\dot{x} = A x + B u, \qquad y = C x + D u
-$$
-
-Численные матрицы (линеаризованная система):
+Используется сокращённая линеаризация из [Choudhary (2015), *Design and Analysis of an Optimal Orbit Control for a Communication Satellite*](https://www.naun.org/main/NAUN/communications/2015/a102006-085.pdf), уравнения (14)–(19):
 
 \[
-\begin{bmatrix}
-\dot{x}_1 \\
-\dot{x}_3 \\
-\dot{x}_4
-\end{bmatrix}
-=
-\begin{bmatrix}
-0 & 1 & 0 \\
-0.01036 & 0 & 0.7753 \\
-0 & -0.01775 & 0 
-\end{bmatrix}
-\begin{bmatrix}
-x_1 \\
-x_3 \\
-x_4 
-\end{bmatrix}
- +
-\begin{bmatrix}
-0 \\
-0 \\
-0.1513
-\end{bmatrix}
-u_2
+\tau = t/\sqrt{R/g},\qquad \rho = r/R,\qquad u_2 = F_2/(M g).
 \]
 
-Развёрнутая форма:
+Здесь \(R\) — опорный радиус, \(g\) — опорное ускорение свободного падения, \(M\) — масса спутника. Штрих означает производную по \(\tau\). В статье приведена рабочая точка приблизительно \(\rho_0=6.6108\), \(\theta'_0=0.0587\).
+
 \[
-\begin{aligned}
-\dot{x}_1 &= x_3 \\
-\dot{x}_3 &= 0.01036 \cdot x_1 + 0.7753 \cdot x_4 \\
-\dot{x}_4 &= -0.01775 \cdot x_3 + 0.1513 \cdot u_2
-\end{aligned}
+x=\begin{bmatrix}\delta\rho\\\delta\rho'\\\delta\theta'\end{bmatrix},\qquad
+x'=Ax+Bu_2,
 \]
 
-### Производные (численные значения)
+\[
+A=\begin{bmatrix}
+0&1&0\\
+0.01036&0&0.7757\\
+0&-0.01775&0
+\end{bmatrix},\qquad
+B=\begin{bmatrix}0\\0\\0.1513\end{bmatrix},\qquad C=I,\quad D=0.
+\]
 
-- **Матрица A (производные по состояниям):**
+Коэффициенты округлены и приближённо соответствуют якобиану безразмерных орбитальных уравнений. Это локальная линейная модель. При нулевом входе сохраняется линейный инвариант \(\delta\theta'+0.01775\delta\rho\).
 
-  | Коэффициент | Значение | Физический смысл |
-  |-------------|----------|------------------|
-  | a₁₃ (∂ẋ₁/∂x₃) | 1.0 | Скорость изменения радиальной позиции = радиальная скорость |
-  | a₃₁ (∂ẋ₃/∂x₁) | 0.01036 | Влияние позиции на радиальное ускорение |
-  | a₃₄ (∂ẋ₃/∂x₄) | 0.7753 | Влияние угловой скорости на радиальное ускорение |
-  | a₄₃ (∂ẋ₄/∂x₃) | -0.01775 | Влияние радиальной скорости на угловое ускорение |
+| Состояние API | Значение |
+|---|---|
+| `rho` | Безразмерное радиальное отклонение от рабочей орбиты |
+| `rho_dot` | Производная этого отклонения по безразмерному времени |
+| `theta_dot` | Отклонение угловой скорости по безразмерному времени |
 
-- **Матрица B (управляющее воздействие):**
+Физическая интерпретация применима к малым отклонениям. API не переводит состояния и силы из СИ в эти координаты. Для такого перевода необходимо явно выбрать \(R\), \(g\), \(M\) и рабочую орбиту.
 
-  | Коэффициент | Значение | Физический смысл |
-  |-------------|----------|------------------|
-  | b₄ (∂ẋ₄/∂u₂) | 0.1513 | Влияние тангенциальной тяги на угловое ускорение |
+## Ограничения входа и интегрирование
 
-!!! tip "Ограничения привода"
-    По умолчанию применяются предельные значения управления (внутри модели нормализованы):
+`ComSat.run_step()` удерживает приложенный вход постоянным в течение `dt` и использует дискретизацию линейной системы с фиксатором нулевого порядка. `dt` задаёт приращение \(\tau\).
 
-    - Максимальная величина: \(\pm 25^\circ\)
-    - Максимальная скорость изменения: \(60^\circ/\text{s}\)
+Сохранены ограничения симуляции \(|u_2|\le25\) и \(|\Delta u_2|\le60\,dt\). Это **численные настройки, а не измеренные характеристики двигателей**. Команды полного диапазона могут выводить модель за область физической применимости линеаризации. Ограничение скорости изменения действует с первого шага относительно `initial_control` (по умолчанию ноль). NaN, бесконечность и команды из нескольких элементов отклоняются.
 
-    Внутренние вычисления — в радианах; ограничения переводятся эквивалентно.
+## Координаты сред и награда
 
-## Источники
+- `ComSatEnv` использует непосредственно три отклонения и принимает безразмерную тягу в `[-25, 25]`. Награда штрафует абсолютную ошибку слежения. Ограничение времени возвращает `truncated=True`.
+- `ImprovedComSatEnv` хранит `state` в виде `[nominal_rho + delta_rho, delta_rho_prime, delta_theta_prime]`. Перед подачей в линейную модель смещение вычитается. Для работы непосредственно с отклонениями задавайте `nominal_rho=0`. Старое значение по умолчанию `6371.0` сохранено только как смещение внешней координаты: это не радиус Земли в километрах.
+- Наблюдение улучшенной среды содержит масштабированные ошибку угловой скорости, радиальное отклонение, радиальную скорость и предыдущее приложенное действие. Действия `[-1, 1]` запрашивают тягу `[-25, 25]`. Награда включает квадратичные штрафы за ошибку и состояния, приложенный вход и его плавность, а также бонус продолжения эпизода. История действий и награда используют фактический вход после ограничения скорости изменения.
+- При `use_initial_action_on_first_step=True` первый шаг использует `initial_thrust`. Установите `False`, если первую команду должен выбирать контроллер.
 
-1. Santosh Kumar Choudhary (2015). Design and Analysis of an Optimal Orbit Control for a Communication Satellite. INTERNATIONAL JOURNAL OF COMMUNICATIONS. Volume 9, 2015
-
-## Награда
-
-Функция награды по умолчанию возвращает отрицательную абсолютную ошибку отслеживания радиальной скорости:
-
-$$r_t = -|\dot{\rho}(t) - \dot{\rho}_{\text{ref}}(t)|$$
-
-Чем выше награда (ближе к 0), тем лучше качество отслеживания. Пользовательская функция награды может быть передана через параметр `reward_func`.
+Масштабы наблюдений и пороги завершения — численные настройки. Они не гарантируют нахождение траектории в области физической достоверности линейной модели.
 
 ## Быстрый старт {#быстрый-старт}
 
-=== "Gymnasium"
+```python
+import numpy as np
+from tensoraerospace.aerospacemodel.comsat import ComSat
+from tensoraerospace.envs.comsat import ImprovedComSatEnv
 
-    ```python
-    import gymnasium as gym
-    import numpy as np
+# Малое безразмерное отклонение; dt — безразмерное время.
+x0 = np.array([0.01, 0.0, 0.001])
+model = ComSat(x0, number_time_steps=100, dt=0.1)
+trajectory = [model.run_step([0.0]).reshape(-1) for _ in range(100)]
 
-    from tensoraerospace.envs import ComSatEnv
-    from tensoraerospace.utils import generate_time_period
-    from tensoraerospace.signals.standard import unit_step
-
-    dt = 0.01
-    tp = generate_time_period(tn=20, dt=dt)
-    number_time_steps = len(tp)
-    # Опорный сигнал для управления угловой скоростью
-    reference_signals = unit_step(degree=0.1, tp=tp, time_step=10, output_rad=True).reshape(1, -1)
-
-    env = gym.make(
-        'ComSatEnv-v0',
-        number_time_steps=number_time_steps,
-        initial_state=[[6371.0], [0.0], [0.001]],  # [rho (км), rho_dot (м/с), theta_dot (рад/с)]
-        reference_signal=reference_signals,
-    )
-    state, info = env.reset()
-    for _ in range(200):
-        action = np.array([[0.1]])  # Тангенциальная тяга u2
-        state, reward, terminated, truncated, info = env.step(action)
-        if terminated or truncated:
-            break
-    ```
-
-=== "Только модель"
-
-    ```python
-    import numpy as np
-    from tensoraerospace.aerospacemodel import ComSat
-
-    dt = 0.01
-    number_time_steps = 200
-
-    # Начальное состояние: [rho (км), rho_dot (м/с), theta_dot (рад/с)]
-    x0 = np.array([6371.0, 0.0, 0.001])
-
-    model = ComSat(
-        x0=x0,
-        number_time_steps=number_time_steps,
-        selected_state_output=["rho", "rho_dot", "theta_dot"],
-        dt=dt,
-    )
-
-    for t in range(number_time_steps - 1):
-        u = np.array([[0.05]])  # Тангенциальная тяга u2
-        x_next = model.run_step(u)
-    
-    # Получение истории состояний
-    rho_history = model.get_state('rho')
-    rho_dot_history = model.get_state('rho_dot')
-    theta_dot_history = model.get_state('theta_dot')
-    ```
+env = ImprovedComSatEnv(
+    initial_state=x0,
+    reference_signal=np.zeros((1, 101)),
+    number_time_steps=101,
+    dt=0.1,
+    nominal_rho=0.0,
+    use_initial_action_on_first_step=False,
+)
+observation, info = env.reset(seed=11)
+observation, reward, terminated, truncated, info = env.step(np.zeros(1))
+```
 
 ## Python API
 
-=== "Модель"
+::: tensoraerospace.aerospacemodel.comsat.ComSat
 
-    ::: tensoraerospace.aerospacemodel.comsat.ComSat
+::: tensoraerospace.envs.comsat.ComSatEnv
 
-=== "Среда Gymnasium"
-
-    ::: tensoraerospace.envs.comsat.ComSatEnv
+::: tensoraerospace.envs.comsat.ImprovedComSatEnv

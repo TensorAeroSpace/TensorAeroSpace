@@ -17,7 +17,7 @@ from tensoraerospace.envs._rendering import telemetry_render, validate_render_mo
 
 
 class ComSatEnv(gym.Env):
-    """Gymnasium environment for a communication satellite longitudinal model.
+    """Gymnasium environment for normalized ComSat state deviations.
 
     Args:
         initial_state: Initial state.
@@ -86,7 +86,10 @@ class ComSatEnv(gym.Env):
         self.number_time_steps = number_time_steps
 
         self.action_space = spaces.Box(
-            low=-60, high=60, shape=(len(self.control_space),), dtype=np.float32
+            low=-self.max_action_value,
+            high=self.max_action_value,
+            shape=(len(self.control_space),),
+            dtype=np.float32,
         )
         self.observation_space = spaces.Box(
             low=-np.inf,
@@ -113,9 +116,9 @@ class ComSatEnv(gym.Env):
 
     def step(self, action: np.ndarray):
         """Run one environment step (Gymnasium API)."""
-        self.current_step += 1
         action = np.asarray(action).reshape(-1)
         next_state = self.model.run_step(action)
+        self.current_step += 1
         reward = self.reward_func(
             next_state[self.indices_tracking_states],
             self.reference_signal,
@@ -125,14 +128,16 @@ class ComSatEnv(gym.Env):
         info = self._get_info()
         observation = np.asarray(next_state).reshape(-1).astype(np.float32)
         self._last_observation = observation
-        self._last_action = action.astype(np.float32)
+        self._last_action = self.model.store_input[:, self.model.time_step - 1].astype(
+            np.float32
+        )
         self._last_reward = float(reward)
 
         return (
             observation,
             reward,
-            self.done,
             False,
+            self.done,
             info,
         )
 
@@ -195,8 +200,8 @@ class ImprovedComSatEnv(gym.Env):
     Attributes:
         action_space (spaces.Box): Normalized action space [-1, 1].
         observation_space (spaces.Box): Normalized observation space.
-        max_angular_velocity (float): Maximum angular velocity in rad/s.
-        max_radial_position_deviation (float): Maximum radial deviation in km.
+        max_angular_velocity (float): Angular-rate normalization scale per tau.
+        max_radial_position_deviation (float): Normalized radial-deviation scale.
         max_thrust (float): Maximum tangential thrust magnitude.
     """
 
@@ -217,16 +222,18 @@ class ImprovedComSatEnv(gym.Env):
 
         Args:
             initial_state (np.ndarray): Initial state [rho, rho_dot, theta_dot]
-                in SI units (km, m/s, rad/s).
+                as [nominal_rho + delta_rho, delta_rho_prime, delta_theta_prime].
+                Dynamics use dimensionless perturbations, not SI units.
             reference_signal (np.ndarray): Reference angular velocity
-                trajectory in rad/s. Shape: (1, number_time_steps).
+                deviation trajectory per normalized time tau. Shape: (1, number_time_steps).
             number_time_steps (int): Total number of simulation steps.
-            dt (float): Simulation time step in seconds. Defaults to 0.01.
+            dt (float): Step in normalized time tau. Defaults to 0.01.
             initial_thrust (float): Initial thrust value. Defaults to 0.0.
             use_initial_action_on_first_step (bool): If True, applies
                 initial_thrust on first step. Defaults to True.
-            nominal_rho (float): Nominal orbital radius in km.
-                Defaults to 6371.0 (Earth radius).
+            nominal_rho (float): External coordinate offset subtracted before
+                linear dynamics. The legacy default 6371.0 is retained as an
+                offset only; it is not an Earth radius in km. Use 0 for deviations.
             render_mode (str | None): ``None``, ``"human"`` or ``"ansi"``.
         """
         validate_render_mode(render_mode, self.metadata["render_modes"])
@@ -235,11 +242,13 @@ class ImprovedComSatEnv(gym.Env):
 
         # Normalization parameters and physical constraints
         # Increased to match actual dynamics range
-        self.max_angular_velocity = 0.1  # rad/s (increased for stability)
-        self.max_radial_velocity = 200.0  # m/s (increased)
-        self.max_radial_position_deviation = 100.0  # km from nominal
-        self.max_thrust = 25.0  # Maximum tangential thrust
+        self.max_angular_velocity = 0.1  # normalized angular rate
+        self.max_radial_velocity = 200.0  # normalized radial velocity
+        self.max_radial_position_deviation = 100.0  # normalized radial displacement
+        self.max_thrust = 25.0  # normalized input limit (legacy simulation setting)
         self.nominal_rho = float(nominal_rho)
+        if not np.isfinite(self.nominal_rho):
+            raise ValueError("nominal_rho must be finite")
 
         # Gymnasium spaces
         self.action_space = spaces.Box(low=-1.0, high=1.0, shape=(1,), dtype=np.float32)
@@ -252,10 +261,21 @@ class ImprovedComSatEnv(gym.Env):
         # Simulation parameters
         self.dt = dt
         self.initial_state = np.array(initial_state, dtype=float).reshape(-1)
+        if self.initial_state.size != 3 or not np.all(np.isfinite(self.initial_state)):
+            raise ValueError("initial_state must contain three finite values")
         self.reference_signal = np.array(reference_signal, dtype=float)
+        if (
+            self.reference_signal.ndim != 2
+            or self.reference_signal.shape[0] != 1
+            or self.reference_signal.shape[1] == 0
+            or not np.all(np.isfinite(self.reference_signal))
+        ):
+            raise ValueError(
+                "reference_signal must be finite with shape (1, T), T >= 1"
+            )
         self.number_time_steps = int(number_time_steps)
         self.current_step = 0
-        # Full state: [rho (km), rho_dot (m/s), theta_dot (rad/s)]
+        # External state: [nominal_rho + delta_rho, delta_rho_prime, delta_theta_prime]
         self.state = np.array(self.initial_state, dtype=float).reshape(-1)
 
         # Initial thrust (normalized)
@@ -282,14 +302,16 @@ class ImprovedComSatEnv(gym.Env):
         # Store initialization arguments
         self.init_args = locals()
 
-        # Model
-        # Constructor already invokes initialise_system internally.
+        # Only deviations enter the linearization. nominal_rho is an external
+        # coordinate offset, never a force-producing model state.
+        self._state_offset = np.array([self.nominal_rho, 0.0, 0.0])
         self.model = ComSat(
-            self.initial_state,
+            self.initial_state - self._state_offset,
             number_time_steps=self.number_time_steps,
             selected_state_output=None,
             t0=0,
             dt=self.dt,
+            initial_control=self.initial_thrust,
         )
 
     # State indices
@@ -369,7 +391,9 @@ class ImprovedComSatEnv(gym.Env):
             tuple: Initial observation and empty info dict.
         """
         super().reset(seed=seed)
-        self.model.initialise_system(self.initial_state, self.number_time_steps)
+        self.model.initialise_system(
+            self.initial_state - self._state_offset, self.number_time_steps
+        )
         self.state = np.array(self.initial_state, dtype=float).reshape(-1)
         self.current_step = 0
         self.previous_action = float(self.initial_action_norm)
@@ -390,6 +414,8 @@ class ImprovedComSatEnv(gym.Env):
         """
         # Convert and clip action
         action = np.asarray(action, dtype=np.float32).reshape(-1)
+        if action.size != 1 or not np.all(np.isfinite(action)):
+            raise ValueError("action must contain one finite value")
         action = np.clip(action, -1.0, 1.0)
 
         # Scale from [-1, 1] to thrust range
@@ -399,7 +425,7 @@ class ImprovedComSatEnv(gym.Env):
             scaled_thrust = action * self.max_thrust
 
         # Simulation step
-        self.state = self.model.run_step(scaled_thrust).reshape(-1)
+        self.state = self.model.run_step(scaled_thrust).reshape(-1) + self._state_offset
         self.current_step += 1
 
         # Get current state values
@@ -423,7 +449,7 @@ class ImprovedComSatEnv(gym.Env):
 
         # Normalized applied action
         u_applied_norm = float(
-            np.asarray(scaled_thrust).reshape(-1)[0] / self.max_thrust
+            self.model.store_input[0, self.model.time_step - 1] / self.max_thrust
         )
         u = u_applied_norm
         du = u_applied_norm - float(self.previous_action)
@@ -452,26 +478,25 @@ class ImprovedComSatEnv(gym.Env):
         # Update action history
         self.pre_previous_action = float(self.previous_action)
         self.previous_action = float(u_applied_norm)
-        self._last_reward = float(reward)
-
         # Termination conditions with scaled penalties
         terminated = False
-        # Excessive angular velocity (very lenient for unstable dynamics)
-        if abs(theta_dot) > 50.0 * self.max_angular_velocity:  # 0.5 rad/s
+        # Numerical bounds in normalized perturbation coordinates
+        if abs(theta_dot) > 50.0 * self.max_angular_velocity:
             reward = -10.0  # Reduced penalty (was -100)
             terminated = True
-        # Excessive radial deviation (orbit instability)
+        # Radial displacement bound
         if (
             abs(rho - self.nominal_rho) > 5.0 * self.max_radial_position_deviation
-        ):  # 2500 km
+        ):  # normalized radial displacement
             reward = -10.0  # Reduced penalty
             terminated = True
         # Excessive radial velocity
-        if abs(rho_dot) > 10.0 * self.max_radial_velocity:  # 1000 m/s
+        if abs(rho_dot) > 10.0 * self.max_radial_velocity:
             reward = -10.0  # Reduced penalty
             terminated = True
 
         truncated = self.current_step >= self.number_time_steps - 1
+        self._last_reward = float(reward)
 
         return (
             self._get_obs(),

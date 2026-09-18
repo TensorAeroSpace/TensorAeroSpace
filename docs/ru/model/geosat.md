@@ -1,207 +1,73 @@
-# Геостационарный спутник (GeoSat) — продольная динамика
+# Геостационарный спутник (GeoSat)
 
-Геостационарные спутники — ИСЗ на геостационарной орбите, неподвижные относительно поверхности Земли. Страница оформлена по аналогии с ELV: быстрый старт, математика, таблицы производных и API.
-
-<div class="grid cards" markdown>
-
--   :material-rocket-launch-outline: **Быстрый старт**
-
-    Запустите среду или модель за минуты.
-
-    [:octicons-arrow-right-24: К примеру](#быстрый-старт)
-
--   :material-cog-outline: **API модели**
-
-    Документация Python‑класса GeoSat.
-
-    [:octicons-arrow-right-24: К API](#python-api)
-
--   :material-gamepad-variant-outline: **Среда Gymnasium**
-
-    Готовая среда для RL‑агентов.
-
-    [:octicons-arrow-right-24: К среде](#python-api)
-
--   :material-book-open-variant: **Теория**
-
-    Уравнения состояния и численные параметры.
-
-    [:octicons-arrow-right-24: К модели](#математическая-модель)
-
-</div>
-
-## Как устроен объект управления
-
-Модель задана в пространстве состояний:
-
-\[\dot{x} = A x + B u, \quad y = C x + D u\]
-
-Где:
-
-\[
- x = \begin{bmatrix} \rho & \theta & \omega \end{bmatrix}^{\top}, \quad
- u_{in} = \eta
-\]
-
-Типовая структура матриц:
-
-\[
-\begin{bmatrix}
-\dot{\rho} \\
-\dot{\theta} \\
-\dot{\omega}
-\end{bmatrix}
-=
-\begin{bmatrix}
-0 & 1 & 0 \\
- f_1(\rho, \omega) & 0 & f_2(\rho, \omega) \\
-0 & f_3(\omega, r) & 0
-\end{bmatrix}
-\begin{bmatrix} \rho \\ \theta \\ \omega \end{bmatrix}
- +
-\begin{bmatrix} 0 \\ 0 \\ g(r) \end{bmatrix} \eta
-\]
-
-=== "Переменные"
-
-    - **ρ**: отношение высоты полёта к радиусу Земли, [-]
-    - **θ**: позиция спутника относительно земной СК, рад
-    - **ω**: угловая скорость вращения, рад/с
-    - **η**: управляющее воздействие (тяга)
-
-=== "Коэффициенты"
-
-    - **f1(ρ, ω) ≈ 0.01036** — производная по ρ
-    - **f2(ρ, ω) ≈ 0.7757** — производная по ω в уравнении θ̇
-    - **f3(ω, r) ≈ -0.1775** — производная по θ в уравнении ω̇
-    - **g(r) ≈ 0.1513** — влияние тяги на ω̇
-
-!!! note "О единицах измерения"
-    Углы и угловые скорости — в радианах. Методы API поддерживают выдачу в градусах.
+GeoSat — **линейная модель безразмерных орбитальных отклонений** с тремя состояниями. Состояния, вход и время безразмерны. Физическая интерпретация применима к малым возмущениям около рабочей орбиты.
 
 ## Математическая модель {#математическая-модель}
 
-$$
-\dot{x} = A x + B u, \qquad y = C x + D u
-$$
-
-Численные матрицы (пример линеаризации):
+Использованы сокращённые уравнения (61), (66), (70) из [Hla et al. (2012), *Implementation of a Communication Satellite Orbit Controller Design Using State Space Techniques*](https://ajstd.ubd.edu.bn/journal/vol29/iss1/2/).
 
 \[
-\begin{bmatrix}
-\dot{\rho} \\
-\dot{\theta} \\
-\dot{\omega}
-\end{bmatrix}
-=
-\begin{bmatrix}
-0 & 1 & 0 \\
-0.01036 & 0 & 0.7757 \\
-0 & -0.1775 & 0 
-\end{bmatrix}
-\begin{bmatrix}
-\rho \\
-\theta \\
-\omega 
-\end{bmatrix}
- +
-\begin{bmatrix}
-0 \\
-0 \\
-0.1513
-\end{bmatrix}
-\eta
+\tau=t/\sqrt{R/g},\quad \rho=r/R,\quad u_2=F_2/(M g),\qquad
+x=[\delta\rho,\delta\rho',\delta\theta']^{\mathsf T}.
 \]
 
-### Производные (численные значения)
+Штрих означает производную по безразмерному времени \(\tau\). Для перевода в СИ необходимо отдельно задать опорные \(R\), \(g\), \(M\).
 
-- **Матрица A (производные):**
+\[
+x'=Ax+Bu_2,\qquad
+A=\begin{bmatrix}0&1&0\\0.01036&0&0.7753\\0&-0.01774&0\end{bmatrix},\quad
+B=\begin{bmatrix}0\\0\\0.1512\end{bmatrix},\quad C=I,\quad D=0.
+\]
 
-  | Коэффициент | Значение |
-  |-------------|----------|
-  | a_ρθ (∂ρ̇/∂θ) | 1.0 |
-  | a_θρ (∂θ̇/∂ρ) | 0.01036 |
-  | a_θω (∂θ̇/∂ω) | 0.7757 |
-  | a_ωθ (∂ω̇/∂θ) | -0.1775 |
+Прежний коэффициент Python/MATLAB `-0.1774` не соответствовал сокращённым уравнениям. Исправленное значение `-0.01774` также приближённо согласуется с элементом орбитального якобиана `-2*omega0/rho0`. В ранней четырёхмерной записи статьи есть численные противоречия; здесь используются её сокращённые трёхмерные уравнения.
 
-- **Вход η (столбец B):**
+### Имена состояний, сохранённые для совместимости
 
-  | Коэффициент | Значение |
-  |-------------|----------|
-  | b_η→ω (∂ω̇/∂η) | 0.1513 |
+| Имя API | Физический смысл в этой модели |
+|---|---|
+| `rho` | Безразмерное радиальное отклонение от рабочей орбиты |
+| `theta` | **Отклонение радиальной скорости**, производная `rho` по `tau` |
+| `omega` | Отклонение угловой скорости по безразмерному времени |
 
-## Источники
+`theta` — историческое имя радиальной скорости. Состояния углового положения в этой модели нет. Аналогично, управляющий ключ `ele` означает безразмерную тангенциальную тягу. Старые функции перевода в градусы не выполняют физического пересчёта тяги или скорости в СИ.
 
-1. Tun, Hla & Mon, Lae & Lwin, Kyaw & Naing, Zaw. (2012). Implementation of Communication Satellite Orbit Controller Design Using State Space Techniques. ASEAN Journal on Science and Technology for Development. 29. 29‑49. 10.29037/ajstd.48.
+Матрицы приближённо описывают локальный орбитальный якобиан с округлёнными коэффициентами. При нулевом входе сохраняется линейный инвариант `omega + 0.01774*rho`. Для больших отклонений нужна нелинейная модель орбиты.
 
-## Награда
+## Вход и интегрирование
 
-Функция награды по умолчанию возвращает отрицательную абсолютную ошибку отслеживания угловой позиции:
+`run_step()` использует точную дискретизацию линейной системы при постоянном входе на шаге. `dt` — приращение безразмерного времени. Сохранены численные пределы `abs(u2) <= pi*25/180` и `abs(delta_u2) <= (pi*60/180)*dt`. Их происхождение из пересчёта градусов не делает их ограничениями углового привода: это некалиброванные настройки симуляции.
 
-$$r_t = -|\theta(t) - \theta_{\text{ref}}(t)|$$
+Ограничение изменения тяги действует с первого шага относительно `initial_control` (по умолчанию ноль). NaN, бесконечность и команды неверного размера отклоняются до изменения состояния.
 
-Чем выше награда (ближе к 0), тем лучше качество отслеживания. Пользовательская функция награды может быть передана через параметр `reward_func`.
+## Среда Gymnasium и награда
+
+- `GeoSatEnv` принимает одну непрерывную команду тяги в пределах модели. Аргумент `dt` по умолчанию равен `0.01`.
+- `output_space` выбирает компоненты и порядок наблюдения. Если он не указан, используется `state_space`. Размер Box соответствует выбранным компонентам.
+- Слежение использует полное состояние модели: отслеживаемую компоненту можно не включать в наблюдение.
+- Один канал задания соответствует первому элементу `tracking_states`, сохраняя прежнюю задачу. Несколько каналов должны соответствовать всему `tracking_states`; награда по умолчанию равна отрицательной средней абсолютной ошибке.
+- `reference_signal` принимает массив `(channels, T)` или функцию, вычисляемую в моменты `i*dt`. Для короткого непустого массива удерживается последнее значение.
+- Ограничение времени возвращает `truncated=True`, `terminated=False`. Агент может учитывать продолжение целевой ценности после тайм-аута.
 
 ## Быстрый старт {#быстрый-старт}
 
-=== "Gymnasium"
+```python
+import numpy as np
+from tensoraerospace.envs.geosat import GeoSatEnv
 
-    ```python
-    import gymnasium as gym 
-    import numpy as np
-
-    from tensoraerospace.envs import GeoSatEnv
-    from tensoraerospace.utils import generate_time_period
-    from tensoraerospace.signals.standard import unit_step
-
-    dt = 0.01
-    tp = generate_time_period(tn=20, dt=dt)
-    number_time_steps = len(tp)
-    reference_signals = unit_step(degree=5, tp=tp, time_step=10, output_rad=True).reshape(1, -1)
-
-    env = gym.make(
-        'GeoSat-v0',
-        number_time_steps=number_time_steps, 
-        initial_state=[[0],[0],[0]],
-        reference_signal=reference_signals,
-    )
-    state, info = env.reset()
-    for _ in range(200):
-        action = np.array([[0.1]])
-        state, reward, terminated, truncated, info = env.step(action)
-        if terminated or truncated:
-            break
-    ```
-
-=== "Только модель"
-
-    ```python
-    import numpy as np
-    from tensoraerospace.aerospacemodel import GeoSat
-
-    dt = 0.01
-    number_time_steps = 200
-
-    x0 = np.array([0.0, 0.0, 0.0])  # [rho, theta, omega]
-
-    model = GeoSat(
-        x0=x0,
-        number_time_steps=number_time_steps,
-        selected_state_output=["rho", "theta", "omega"],
-        dt=dt,
-    )
-
-    for t in range(number_time_steps - 1):
-        u = np.array([[0.05]])
-        x_next = model.run_step(u)
-    ```
+env = GeoSatEnv(
+    initial_state=[0.01, 0.0, 0.001],
+    reference_signal=np.zeros((1, 101)),
+    number_time_steps=101,
+    dt=0.1,
+    tracking_states=["omega"],
+    output_space=["rho", "theta", "omega"],
+)
+observation, info = env.reset(seed=11)
+observation, reward, terminated, truncated, info = env.step(np.zeros(1))
+```
 
 ## Python API
 
-=== "Модель"
+::: tensoraerospace.aerospacemodel.geosat.GeoSat
 
-    ::: tensoraerospace.aerospacemodel.geosat.GeoSat
-
-=== "Среда Gymnasium"
-
-    ::: tensoraerospace.envs.geosat.GeoSatEnv
+::: tensoraerospace.envs.geosat.GeoSatEnv
