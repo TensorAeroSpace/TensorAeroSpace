@@ -608,9 +608,9 @@ def test_linear_b747_multiple_steps_to_done():
 
     for _ in range(20):
         action = np.array([5.0], dtype=np.float32)
-        _, _, done, _, _ = env.step(action)
+        _, _, terminated, truncated, _ = env.step(action)
 
-        if done:
+        if terminated or truncated:
             break
 
     # Should have reached done

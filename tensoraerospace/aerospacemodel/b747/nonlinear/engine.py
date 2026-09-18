@@ -1,32 +1,14 @@
-"""Engine model for the B-747 nonlinear simulation.
+"""Simplified JT9D-7 cluster thrust for the nonlinear B747 model.
 
-Implements a Pratt & Whitney JT9D-7 cluster (4 engines) with thrust as
-a function of (Mach, altitude, throttle) using the canonical bypass
-turbofan installed-thrust model:
+Installed thrust is ``T_SLS * density_lapse * ram(M) * PLA_eff``.
+The density lapse is sigma**0.7 below 36089 ft. Above that altitude,
+it follows density relative to the boundary, anchored to the value
+of the lower branch. This avoids a spurious thrust step at the tropopause.
 
-    T_inst(M, h, PLA)  =  T_SLS · σ(h) · η(M, h) · PLA_eff
-
-where:
-
-    σ(h)         = density ratio ρ(h)/ρ_SL
-    η(M, h)      = Mach derate (cruise lapse + ram-recovery factor)
-    T_SLS        = sea-level static thrust per engine, lb
-                   (JT9D-7: 47,100 lb take-off rating)
-    PLA_eff      = idle_frac + (1 − idle_frac) · throttle
-
-The η(M, h) lapse follows Mattingly *Aircraft Engine Design* (2002)
-§ 8.6.4 — for high-bypass turbofans at subsonic cruise:
-
-    η(M, h)  ≈  (1 − 0.49·√M) · σ(h)^0.7  for h < tropopause
-    η(M, h)  ≈  (1 − 0.49·√M) · σ(h)^1.0  for h ≥ tropopause
-
-The 4-engine cluster is modelled as a single thrust vector along body
-+x; engine-out asymmetric scenarios should be handled at the env
-level by tagging individual engines through the damage subsystem.
-
-Reference values verified against:
-* Boeing 747-100 type certificate data sheet (FAA TCDS A20WE).
-* P&W JT9D-7 published cruise SFC envelope at M=0.85, h=35 kft.
+The Mach correction and sea-level rating are retained from the original
+model. Continuity is an internal consistency condition; this curve is not
+a validation against a measured JT9D engine deck. Engine spool dynamics
+remain unimplemented.
 """
 
 from __future__ import annotations
@@ -73,12 +55,22 @@ class JT9DEngine:
         if not self.use_ram_recovery:
             return float(self.total_sls_thrust_lb * sigma * pla_eff)
         m = max(0.0, float(mach))
-        # Mattingly high-bypass turbofan derate
+        # Existing empirical Mach correction
         ram = 1.0 - 0.49 * math.sqrt(m)
         ram = max(ram, 0.05)
-        # Stratospheric branch (h ≥ 36089 ft) decays faster
-        sigma_pow = 0.7 if altitude_ft < 36089.0 else 1.0
-        eta = ram * (sigma**sigma_pow)
+        # Match the two density exponents at the layer boundary
+        if altitude_ft < 36_089.0:
+            density_lapse = sigma**0.7
+        else:
+            # Match the left branch at the tropopause. Merely switching
+            # sigma**0.7 to sigma creates an artificial ~30% thrust drop.
+            # Separate one-sided ISA references account for rounded constants.
+            rho_left = isa_density_slug_ft3(math.nextafter(36_089.0, -math.inf))
+            rho_right = isa_density_slug_ft3(36_089.0)
+            density_lapse = (rho_left / _RHO0_SLUG_FT3) ** 0.7 * (
+                sigma * _RHO0_SLUG_FT3 / rho_right
+            )
+        eta = ram * density_lapse
         return float(self.total_sls_thrust_lb * eta * pla_eff)
 
 

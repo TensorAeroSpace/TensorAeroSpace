@@ -35,6 +35,11 @@ class LinearLongitudinalB747(gym.Env):
         - Action units expected by the environment are degrees (deg).
         - Actions are converted to radians (rad) before being passed to
           the underlying model.
+        - Angular observations use degrees; initial states, references and
+          reward callback states use SI units (rad, rad/s, m/s).
+        - Rewards select ``tracking_states`` from the full physical state.
+          A single reference channel tracks the first requested state.
+        - The time limit sets ``truncated``, keeping value bootstrapping valid.
     """
 
     metadata = {"render_modes": ["human", "ansi"]}
@@ -76,9 +81,15 @@ class LinearLongitudinalB747(gym.Env):
         super().__init__()
         self.render_mode = render_mode
         self.max_action_value = 25.0
-        self.dt = dt
-        self.initial_state = initial_state
-        self.number_time_steps = number_time_steps
+        self.dt = float(dt)
+        self.initial_state = np.array(initial_state, dtype=float, copy=True).reshape(-1)
+        if (
+            not np.isfinite(number_time_steps)
+            or int(number_time_steps) != number_time_steps
+            or number_time_steps < 2
+        ):
+            raise ValueError("number_time_steps must be an integer >= 2")
+        self.number_time_steps = number_time_steps = int(number_time_steps)
         self.selected_state_output = (
             output_space
             if output_space is not None
@@ -117,22 +128,38 @@ class LinearLongitudinalB747(gym.Env):
                 "q",
             ]
         )
+        if not self.output_space or not self.tracking_states:
+            raise ValueError("output_space and tracking_states must be nonempty")
+        if len(self.control_space) != 1:
+            raise ValueError("B747 supports one elevator input")
         self.use_reward = use_reward
-        self.reference_signal = reference_signal
+        self.reference_signal = np.array(reference_signal, dtype=float, copy=True)
+        # A 1-D vector denotes a constant target per tracked channel.
+        if self.reference_signal.ndim == 1:
+            self.reference_signal = self.reference_signal[:, None]
+        if (
+            self.reference_signal.ndim != 2
+            or self.reference_signal.shape[1] < 1
+            or self.reference_signal.shape[0] not in (1, len(self.tracking_states))
+            or not np.all(np.isfinite(self.reference_signal))
+        ):
+            raise ValueError(
+                "reference_signal must be finite with one channel or match tracking_states"
+            )
         if reward_func:
             self.reward_func = reward_func
         else:
             self.reward_func = self.reward
 
         self.model = LongitudinalB747(
-            initial_state,
+            self.initial_state,
             number_time_steps=number_time_steps,
             selected_state_output=self.output_space,
             t0=0,
             dt=self.dt,
         )
         self.indices_tracking_states = [
-            self.state_space.index(self.tracking_states[i])
+            self.model.list_state.index(self.tracking_states[i])
             for i in range(len(self.tracking_states))
         ]
 
@@ -145,14 +172,11 @@ class LinearLongitudinalB747(gym.Env):
         self.observation_space = spaces.Box(
             low=-1000.0,
             high=1000.0,
-            shape=(len(self.state_space),),
+            shape=(len(self.output_space),),
             dtype=np.float32,
         )
 
-        self.ref_signal = reference_signal
-        self.model.initialise_system(
-            x0=initial_state, number_time_steps=number_time_steps
-        )
+        self.ref_signal = self.reference_signal
         self.number_time_steps = number_time_steps
         self.current_step = 0
         self.done = False
@@ -179,11 +203,14 @@ class LinearLongitudinalB747(gym.Env):
         """
         # Negative mean squared error across all tracked states
         # (higher is better)
-        if ref_signal.ndim == 2 and ref_signal.shape[1] > ts:
-            ref_at_ts = ref_signal[:, ts].flatten()
+        if ref_signal.ndim == 2:
+            ref_at_ts = ref_signal[:, int(np.clip(ts, 0, ref_signal.shape[1] - 1))]
         else:
             ref_at_ts = ref_signal.flatten()
-        error = np.mean((state.flatten() - ref_at_ts) ** 2)
+        tracked = np.asarray(state).reshape(-1)
+        if ref_at_ts.size == 1:
+            tracked = tracked[:1]
+        error = np.mean((tracked - ref_at_ts) ** 2)
         return float(-error)
 
     def _get_info(self):
@@ -193,6 +220,14 @@ class LinearLongitudinalB747(gym.Env):
             dict: Empty dictionary with additional information.
         """
         return {}
+
+    def _observation(self, selected_state: np.ndarray) -> np.ndarray:
+        """Convert selected SI states to the public observation units."""
+        observation = np.array(selected_state, dtype=float, copy=True).reshape(-1)
+        for index, name in enumerate(self.output_space):
+            if name in ("q", "theta"):
+                observation[index] = np.rad2deg(observation[index])
+        return observation.astype(np.float32)
 
     def step(self, action: np.ndarray):
         """Execute simulation step.
@@ -209,41 +244,32 @@ class LinearLongitudinalB747(gym.Env):
         """
         # Ensure action is a 1D numpy array
         action = np.asarray(action, dtype=np.float32).reshape(-1)
+        if action.size != 1 or not np.all(np.isfinite(action)):
+            raise ValueError("action must contain one finite elevator command")
         # Clamp all control inputs to [-25, 25]
         action = np.clip(action, -self.max_action_value, self.max_action_value)
         # Convert degrees to radians for the model
         action_rad = np.deg2rad(action)
-        self.current_step += 1
         # Get next state from the model (SI units: u,w in m/s; q,theta in rad)
         raw_next_state = np.array(self.model.run_step(action_rad)).reshape(-1)
-        # Convert only angular states to degrees for observations (leave linear
-        # states in SI)
-        next_state = raw_next_state.copy()
-        try:
-            if "q" in self.output_space:
-                qi = self.output_space.index("q")
-                next_state[qi] = np.rad2deg(next_state[qi])
-            if "theta" in self.output_space:
-                ti = self.output_space.index("theta")
-                next_state[ti] = np.rad2deg(next_state[ti])
-        except (ValueError, IndexError):
-            # Fallback: assume [u, w, q, theta] order
-            if next_state.shape[0] >= 3:
-                next_state[2] = np.rad2deg(next_state[2])
-            if next_state.shape[0] >= 4:
-                next_state[3] = np.rad2deg(next_state[3])
+        self.current_step += 1
+        # Reference and reward use SI units, independently of display observations.
+        tracked_state = np.asarray(self.model.xt).reshape(-1)[
+            self.indices_tracking_states
+        ]
+        next_state = self._observation(raw_next_state)
         reward = 1
         if self.use_reward:
             try:
                 reward = self.reward_func(
-                    next_state,
+                    tracked_state,
                     self.reference_signal,
                     self.current_step,
                     action=np.array(action),
                 )
             except TypeError:
                 reward = self.reward_func(
-                    next_state,
+                    tracked_state,
                     self.reference_signal,
                     self.current_step,
                 )
@@ -255,11 +281,14 @@ class LinearLongitudinalB747(gym.Env):
         return (
             np.array(next_state, dtype=np.float32).reshape(-1),
             reward,
-            self.done,
             False,
+            self.done,
             {
                 "action": action,
                 "action_rad": action_rad,
+                "applied_action": np.rad2deg(
+                    self.model.store_input[:, self.model.time_step - 1]
+                ).astype(np.float32),
             },
         )
 
@@ -285,25 +314,9 @@ class LinearLongitudinalB747(gym.Env):
             dt=self.dt,
         )
         self.ref_signal = self.reference_signal
-        self.model.initialise_system(
-            x0=self.initial_state, number_time_steps=self.number_time_steps
-        )
         # Build initial observation with angular components in degrees
         init_state = np.array(self.initial_state, dtype=np.float32).reshape(-1)
-        next_state = init_state[self.model.selected_state_index].astype(float)
-        try:
-            if "q" in self.output_space:
-                qi = self.output_space.index("q")
-                next_state[qi] = np.rad2deg(next_state[qi])
-            if "theta" in self.output_space:
-                ti = self.output_space.index("theta")
-                next_state[ti] = np.rad2deg(next_state[ti])
-        except (ValueError, IndexError):
-            if next_state.shape[0] >= 3:
-                next_state[2] = np.rad2deg(next_state[2])
-            if next_state.shape[0] >= 4:
-                next_state[3] = np.rad2deg(next_state[3])
-        observation = next_state.astype(np.float32).reshape(-1)
+        observation = self._observation(init_state[self.model.selected_state_index])
         self._last_observation = observation
         self._last_action = None
         self._last_reward = None

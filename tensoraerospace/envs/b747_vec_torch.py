@@ -177,7 +177,7 @@ class ImprovedB747VecEnvTorch:
 
         # Input constraints (mirror LongitudinalB747 behavior)
         self.input_magnitude_limit_rad = float(np.deg2rad(25.0))
-        self.input_rate_limit = 60.0  # model uses it in same units as u (legacy)
+        self.input_rate_limit = float(np.deg2rad(60.0))  # rad/s
         self._rate_step = float(self.input_rate_limit * self.dt)
 
         # Reward parameters (reuse tuned defaults from ImprovedB747Env)

@@ -9,15 +9,11 @@ Two engine variants are supported through the configuration enum:
   SLS per engine (737-NG). Mach-derate matches the JT9D-7 model
   used in the B-747 module.
 
-Following the B-747 model, installed thrust uses Mattingly's
-high-bypass turbofan derate:
-
-.. math::
-   T_{inst}(M, h, \\delta_T) = T_{SLS} \\cdot \\sigma(h)^{n_h} \\cdot
-                               \\eta_{ram}(M) \\cdot \\delta_{T,eff}
-
-with $\\sigma(h) = \\rho(h) / \\rho_0$ and $\\eta_{ram}$ either the
-JT8D or CFM56 form depending on the engine selection.
+Installed thrust uses the same simplified density/Mach lapse as the B747.
+The density exponent is 0.7 below 36089 ft and 1 above, with the upper
+branch anchored to the lower value at the boundary. This preserves thrust
+continuity; it does not establish agreement with a measured engine deck.
+Spool dynamics remain unimplemented.
 
 Engine spanwise positions on the 737 (under-wing nacelles):
 
@@ -70,18 +66,21 @@ class B737Engine:
             return float(self.total_sls_thrust_lb * sigma * pla_eff)
 
         m = max(0.0, float(mach))
-        # Mattingly §8.6.4 high-bypass turbofan ram-recovery factor.
-        # For JT8D (BPR ≈ 1) Mattingly's correlation suggests ~ 0.55,
-        # but installed-thrust data from FAA TCDS A16WE for the 737-100
-        # at typical cruise (M = 0.78 / FL280) is matched with the
-        # standard 0.49 used for the rest of the high-bypass family.
-        # We therefore use 0.49 for both JT8D and CFM56 — the
-        # bypass-ratio field stays for downstream studies that want a
-        # different correlation.
+        # Retain the existing empirical Mach correction for both variants.
         ram = 1.0 - 0.49 * math.sqrt(m)
         ram = max(ram, 0.05)
-        sigma_pow = 0.7 if altitude_ft < 36_089.0 else 1.0
-        eta = ram * (sigma**sigma_pow)
+        if altitude_ft < 36_089.0:
+            density_lapse = sigma**0.7
+        else:
+            # Match the left branch at the tropopause. Merely switching
+            # sigma**0.7 to sigma creates an artificial ~30% thrust drop.
+            # Separate one-sided ISA references account for rounded constants.
+            rho_left = isa_density_slug_ft3(math.nextafter(36_089.0, -math.inf))
+            rho_right = isa_density_slug_ft3(36_089.0)
+            density_lapse = (rho_left / _RHO0_SLUG_FT3) ** 0.7 * (
+                sigma * _RHO0_SLUG_FT3 / rho_right
+            )
+        eta = ram * density_lapse
         return float(self.total_sls_thrust_lb * eta * pla_eff)
 
 
