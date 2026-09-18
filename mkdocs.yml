@@ -134,8 +134,10 @@ plugins:
               - IMGDHP (Nonlinear F16): example/agent/imgdhp/example_imgdhp_nonlinear.md
               - ET-DHP (Nonlinear F16): example/agent/et_dhp/example_etdhp_nonlinear.md
               - ET-DHP B747 (engine-out yaw hold): example/agent/et_dhp/example_etdhp_b747_engine_failure.md
+              - ET-DHP vs PID (nonlinear B747): example/agent/et_dhp/example_etdhp_vs_pid_b747.md
               - AA-INDI (Nonlinear F16): example/agent/aa_indi/example_aaindi_nonlinear.md
               - iADP (Nonlinear F16): example/agent/iadp/example_iadp_nonlinear.md
+              - iADP (F16, small actuator fault): example/agent/iadp/example_iadp_small_fault_f16.md
               - SAC F16: example/agent/sac/example-sac-f16.md
               - SAC B747: example/agent/sac/example-sac-b747.md
               - DSAC B747:
@@ -293,8 +295,10 @@ plugins:
               - IMGDHP (Нелинейная F16): example/agent/imgdhp/example_imgdhp_nonlinear.md
               - ET-DHP (Нелинейная F16): example/agent/et_dhp/example_etdhp_nonlinear.md
               - ET-DHP B747 (отказ двигателя, удержание ψ): example/agent/et_dhp/example_etdhp_b747_engine_failure.md
+              - ET-DHP vs PID (нелинейный B747): example/agent/et_dhp/example_etdhp_vs_pid_b747.md
               - AA-INDI (Нелинейная F16): example/agent/aa_indi/example_aaindi_nonlinear.md
               - iADP (Нелинейная F16): example/agent/iadp/example_iadp_nonlinear.md
+              - iADP (F16, небольшой отказ): example/agent/iadp/example_iadp_small_fault_f16.md
               - SAC F16: example/agent/sac/example-sac-f16.md
               - SAC B747: example/agent/sac/example-sac-b747.md
               - DSAC B747:
