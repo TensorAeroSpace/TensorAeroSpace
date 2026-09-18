@@ -40,7 +40,8 @@ class SAC(BaseRLModel):
         updates_per_step (int): Updates per interaction step.
         batch_size (int): Mini-batch size.
         memory_capacity (int): Replay buffer capacity.
-        lr (float): Learning rate.
+        lr (float): Critic and entropy-optimizer learning rate.
+        policy_lr (float): Policy learning rate (Gaussian or deterministic).
         gamma (float): Discount coefficient.
         tau (float): Soft update coefficient for target network.
         alpha (float): Entropy coefficient (for policy).
@@ -58,6 +59,8 @@ class SAC(BaseRLModel):
         critic_target: Target critic network.
         policy: Agent policy.
         policy_optim: Optimizer for updating policy weights.
+        total_env_steps: Transitions collected by train()/train_vector().
+        total_updates: Gradient updates performed by those training methods.
 
     """
 
@@ -124,6 +127,8 @@ class SAC(BaseRLModel):
         # Cumulative env step at the time update_parameters() is invoked.
         # Updated by train()/train_vector() before each call.
         self._last_env_step = 0
+        self.total_env_steps = 0
+        self.total_updates = 0
         self.log_every_updates = int(log_every_updates)
         if self.log_every_updates < 1:
             raise ValueError("log_every_updates must be >= 1")
@@ -170,7 +175,7 @@ class SAC(BaseRLModel):
             self.policy = DeterministicPolicy(
                 num_inputs, action_space.shape[0], hidden_size, action_space
             ).to(self.device)
-            self.policy_optim = Adam(self.policy.parameters(), lr=lr)
+            self.policy_optim = Adam(self.policy.parameters(), lr=policy_lr)
 
     def select_action(self, state: np.ndarray, evaluate: bool = False) -> np.ndarray:
         """Select action based on current state.
@@ -188,10 +193,11 @@ class SAC(BaseRLModel):
             .flatten()
             .unsqueeze(0)
         )
-        if evaluate is False:
-            action_t, _, _ = self.policy.sample(state_t)
-        else:
-            _, _, action_t = self.policy.sample(state_t)
+        with torch.no_grad():
+            if evaluate:
+                action_t = self.policy.deterministic(state_t)
+            else:
+                action_t, _, _ = self.policy.sample(state_t)
         action_np = cast(np.ndarray, action_t.detach().cpu().numpy()[0])
         return action_np
 
@@ -225,7 +231,7 @@ class SAC(BaseRLModel):
 
         with torch.no_grad():
             if evaluate:
-                _, _, action_t = self.policy.sample(state_t)
+                action_t = self.policy.deterministic(state_t)
             else:
                 action_t, _, _ = self.policy.sample(state_t)
 
@@ -419,7 +425,8 @@ class SAC(BaseRLModel):
 
         Returns:
             dict: Training metrics with keys ``episode_rewards``,
-            ``best_reward`` and ``updates``.
+            ``best_reward`` and ``updates`` for this call. Cumulative counters
+            and the target-network update schedule continue across calls.
         """
         # Backward-compat: legacy call style passed num_episodes as the
         # first positional arg via *args, or via a ``num_episodes`` kwarg.
@@ -427,8 +434,17 @@ class SAC(BaseRLModel):
         save_best = bool(save_best)
         save_best_with_gradients = bool(kwargs.get("save_best_with_gradients", False))
         # Training Loop
-        updates = 0
-        total_env_steps = 0
+        starting_updates = self.total_updates
+        # Short episodes may finish before replay warmup permits any update.
+        # The metrics contract still requires an explicit zero update count.
+        self.writer.add_scalar(
+            schema.TRAIN_UPDATES, self.total_updates, env_step=self.total_env_steps
+        )
+        self.writer.add_scalar(
+            schema.TRAIN_LR,
+            float(self.policy_optim.param_groups[0]["lr"]),
+            env_step=self.total_env_steps,
+        )
         best_reward = float("-inf")
         episode_rewards: list = []
         ep_iter = range(num_episodes)
@@ -449,14 +465,25 @@ class SAC(BaseRLModel):
                         # current cumulative env-step so that update_parameters
                         # can label its scalars with env_step (not the gradient
                         # update counter).
-                        self._last_env_step = int(total_env_steps)
+                        self._last_env_step = int(self.total_env_steps)
                         _c1, _c2, _pi, _ent, _a = self.update_parameters(
-                            self.memory, self.batch_size, updates
+                            self.memory, self.batch_size, self.total_updates
                         )
-                        updates += 1
+                        self.total_updates += 1
 
-                next_state, reward, terminated, truncated, _ = self.env.step(action)
-                total_env_steps += 1
+                # Snapshot before step: some environments mutate their returned
+                # observation buffer in place. ReplayMemory.push is too late.
+                state_snapshot = np.array(state, copy=True)
+                next_state, reward, terminated, truncated, info = self.env.step(action)
+                final_state = info.get("final_observation")
+                if final_state is None:
+                    final_state = info.get("terminal_observation")
+                replay_next = (
+                    final_state
+                    if (terminated or truncated) and final_state is not None
+                    else next_state
+                )
+                self.total_env_steps += 1
                 last_terminated = bool(terminated)
                 last_truncated = bool(truncated)
                 # Important: separate loop termination logic from bootstrap logic
@@ -467,27 +494,29 @@ class SAC(BaseRLModel):
                 episode_steps += 1
                 episode_reward += reward
                 self.memory.push(
-                    state, action, reward, next_state, done_bootstrap
+                    state_snapshot, action, reward, replay_next, done_bootstrap
                 )  # Append transition to memory
-                state = next_state
+                state = np.array(next_state, copy=True)
                 done = done_env
                 # Optional user-provided step cap (unified interface).
                 if max_steps is not None and episode_steps >= int(max_steps):
                     done = True
+                    last_truncated = last_truncated or not last_terminated
             episode_rewards.append(float(episode_reward))
             self.writer.log_episode(
                 reward=float(episode_reward),
                 length=int(episode_steps),
-                env_step=int(total_env_steps),
+                env_step=int(self.total_env_steps),
                 terminated=last_terminated,
                 truncated=last_truncated,
             )
-            if save_best and episode_reward > best_reward:
-                best_reward = episode_reward
-                self.save(
-                    path=save_path,
-                    save_gradients=save_best_with_gradients,
-                )
+            if episode_reward > best_reward:
+                best_reward = float(episode_reward)
+                if save_best:
+                    self.save(
+                        path=save_path,
+                        save_gradients=save_best_with_gradients,
+                    )
 
         self.writer.flush()
         self.writer.assert_contract_satisfied()
@@ -495,7 +524,7 @@ class SAC(BaseRLModel):
         return {
             "episode_rewards": episode_rewards,
             "best_reward": float(best_reward) if episode_rewards else float("-inf"),
-            "updates": int(updates),
+            "updates": int(self.total_updates - starting_updates),
         }
 
     @staticmethod
@@ -546,6 +575,8 @@ class SAC(BaseRLModel):
             - If env has auto_reset=True, it may reset done envs internally.
               We still use terminated/truncated from the current step for episode accounting.
             - For replay bootstrap we use terminated only (not truncated), consistent with train().
+            - Update counters and the target schedule persist across calls. Each
+              call resets the environment and applies its own warmup_steps budget.
         """
         total_steps = int(total_steps)
         warmup_steps = int(warmup_steps)
@@ -575,8 +606,6 @@ class SAC(BaseRLModel):
         returns_window: Deque[float] = deque(maxlen=max(1, reward_window))
         episodes_done = 0
 
-        updates = 0
-        total_env_steps = 0
         best_mean_return = float("-inf")
         auto_reset = bool(getattr(self.env, "auto_reset", False))
         action_low = torch.as_tensor(self.env.action_space.low, device=self.device)
@@ -600,7 +629,7 @@ class SAC(BaseRLModel):
             # An env may reuse its observation tensor in step().
             obs_np = obs.detach().cpu().numpy().copy()
             next_obs, reward, terminated, truncated, info = self.env.step(actions_t)
-            total_env_steps += num_envs
+            self.total_env_steps += num_envs
             if not (torch.is_tensor(next_obs) and torch.is_tensor(reward)):
                 raise TypeError(
                     "train_vector expects env.step() to return torch tensors"
@@ -630,9 +659,11 @@ class SAC(BaseRLModel):
                 for _ in range(int(self.updates_per_step)):
                     # Stash cumulative env step so update_parameters labels its
                     # scalars with env_step rather than the gradient counter.
-                    self._last_env_step = int(total_env_steps)
-                    self.update_parameters(self.memory, self.batch_size, updates)
-                    updates += 1
+                    self._last_env_step = int(self.total_env_steps)
+                    self.update_parameters(
+                        self.memory, self.batch_size, self.total_updates
+                    )
+                    self.total_updates += 1
 
             # Episode bookkeeping (based on current step's done flags)
             ep_returns += reward_np
@@ -645,7 +676,7 @@ class SAC(BaseRLModel):
                     self.writer.log_episode(
                         reward=r,
                         length=length,
-                        env_step=int(total_env_steps),
+                        env_step=int(self.total_env_steps),
                         terminated=bool(terminated_np[i]),
                         truncated=bool(truncated_np[i]),
                     )
@@ -659,23 +690,23 @@ class SAC(BaseRLModel):
                 self.writer.add_scalar(
                     schema.TRAIN_REPLAY_SIZE,
                     len(self.memory),
-                    env_step=total_env_steps,
+                    env_step=self.total_env_steps,
                 )
                 self.writer.add_scalar(
                     schema.TRAIN_UPDATES,
-                    updates,
-                    env_step=total_env_steps,
+                    self.total_updates,
+                    env_step=self.total_env_steps,
                 )
                 self.writer.add_scalar(
                     schema.TRAIN_LR,
                     float(self.policy_optim.param_groups[0]["lr"]),
-                    env_step=total_env_steps,
+                    env_step=self.total_env_steps,
                 )
                 pbar.set_postfix(
                     {
                         "mean_R": f"{mean_r:.3f}",
                         "episodes": episodes_done,
-                        "updates": updates,
+                        "updates": self.total_updates,
                         "replay": len(self.memory),
                     }
                 )
@@ -752,7 +783,9 @@ class SAC(BaseRLModel):
             "batch_size": self.batch_size,
             "automatic_entropy_tuning": self.automatic_entropy_tuning,
             "device": self.device.type,
-            "lr": self.critic_optim.defaults["lr"],
+            "lr": self.critic_optim.param_groups[0]["lr"],
+            "policy_lr": self.policy_optim.param_groups[0]["lr"],
+            "log_every_updates": self.log_every_updates,
             "hidden_size": self.hidden_size,
         }
 
@@ -766,7 +799,10 @@ class SAC(BaseRLModel):
         path: Union[str, Path, None] = None,
         save_gradients: bool = False,
     ) -> None:
-        """Save PyTorch model to the specified directory.
+        """Save weights, configuration, and cumulative training counters.
+
+        Replay contents, environment state and RNG states are not saved; loading
+        preserves the target-update phase, not an exact training continuation.
 
         Args:
             path (str | Path | None): Save path. If None, creates
@@ -799,6 +835,10 @@ class SAC(BaseRLModel):
         policy_path.parent.mkdir(parents=True, exist_ok=True)
         # Save model
         config = self.get_param_env()
+        config["training"] = {
+            "total_env_steps": self.total_env_steps,
+            "total_updates": self.total_updates,
+        }
         with open(config_path, "w", encoding="utf-8") as outfile:
             json.dump(config, outfile)
         # Save state_dicts only, not pickled module objects, to avoid
@@ -918,6 +958,10 @@ class SAC(BaseRLModel):
                 policy_params["device"] = "cpu"
 
         new_agent = cls(env=env, **policy_params)
+        training = config.get("training", {})
+        new_agent.total_env_steps = int(training.get("total_env_steps", 0))
+        new_agent.total_updates = int(training.get("total_updates", 0))
+        new_agent._last_env_step = new_agent.total_env_steps
 
         # Keep as a second-chance safety net in case device was not in params.
         if new_agent.device.type == "cuda" and not torch.cuda.is_available():

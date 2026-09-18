@@ -90,6 +90,59 @@ DDPG-specific keyword arguments (passed via `**kwargs`):
 The legacy `agent.learn(max_frames=..., max_steps=..., batch_size=...)`
 call continues to work unchanged.
 
+## Observation and checkpoint contract
+
+DDPG stores independent copies of **raw observations** in replay. Both sides
+of a sampled transition use the current running mean and variance. Statistics
+are updated from snapshots collected before `env.step()`, so environments that
+reuse an observation array cannot rewrite past states. When filling replay
+manually, pass unnormalized observations.
+
+A time limit permits bootstrapping; a true terminal state does not. For an
+auto-reset environment, `final_observation` (or `terminal_observation`) supplies
+the final state instead of the next episode's initial observation.
+
+File checkpoints mark raw replay as `replay_observation_format="raw_v1"`.
+Loading restores the checkpoint's normalization setting and statistics. Older
+normalized replay cannot be converted reliably because each transition may have
+used different statistics; it is skipped with a warning and training starts with
+empty replay. Network weights remain loadable. Legacy replay collected with
+normalization disabled can be restored. `load_replay=False` explicitly skips
+replay loading.
+
+These changes correct transition semantics; they do not guarantee policy
+convergence or preserve the learning curve under unchanged hyperparameters.
+
+When `min_sigma < max_sigma`, OU noise decays by the global step count within
+`learn()`, without restarting the schedule at episode boundaries. The scale
+for a step is applied before drawing its noise sample.
+
+## Applying a trained policy
+
+Use `agent.predict(observation)` with raw observations. It applies the saved
+normalization and returns deterministic actions for one observation or a batch.
+It does not update running statistics or add exploration noise. Direct
+`policy_net.get_action()` calls expect network inputs and bypass normalization;
+passing raw observations there can change the deployed policy.
+
+## Validated B747 tracking experiment
+
+For the linear B747 tracking scenario in `scripts/validate_ddpg.py`, reducing
+critic LR to `1e-4` and decaying OU sigma from `0.3` to `0.05` over 15,000 steps
+improved the mean final RMSE at 60,000 steps from 5.13° to 1.14° across seeds
+11, 29 and 47. Actor LR remained `1e-4`; observation normalization was enabled.
+There were no final pitch-bound violations. A PD reference achieved 0.954°;
+this experiment does not establish superiority to a tuned classical controller
+or convergence on other tasks. Shorter runs and intermediate evaluations remain
+variable. Removing observation normalization alone did not resolve the issue.
+
+```bash
+.venv/bin/python scripts/validate_ddpg.py --repo . --env-source tensoraerospace/envs/b747_vec_torch.py --seed 11 --frames 60000 --value-lr 0.0001 --noise-min-sigma 0.05 --noise-decay-period 15000 --output /tmp/ddpg-b747-11.json
+```
+
+Repeat for seeds 29 and 47. The script records all final results and learning
+curves, without selecting the best checkpoint.
+
 ## API reference
 
 ::: tensoraerospace.agent.ddpg.model.DDPG

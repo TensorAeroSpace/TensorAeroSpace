@@ -73,6 +73,10 @@ def test_dqn_time_limit_preserves_future_return(
         batch_size=2,
         train_nums=2,
     )
+    # Fresh agents synchronize the target. Explicitly construct a lagged target
+    # here so the Bellman check retains distinct online and target values.
+    with torch.no_grad():
+        agent.target_model.weight.copy_(torch.tensor([[0.0], [2.0]]))
     try:
         agent.train()
         assert env.resets == 3

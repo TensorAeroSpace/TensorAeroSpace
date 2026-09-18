@@ -3,6 +3,7 @@
 This module defines policy and Q-network architectures used by the SAC agent.
 """
 
+import math
 from typing import Tuple, cast
 
 import gymnasium as gym
@@ -13,7 +14,6 @@ from torch.distributions import Normal
 
 LOG_SIG_MAX = 2
 LOG_SIG_MIN = -20
-epsilon = 1e-6
 
 
 # Initialize Policy weights
@@ -196,6 +196,14 @@ class GaussianPolicy(nn.Module):
             )
             action_scale = (action_high - action_low) / 2.0
             action_bias = (action_high + action_low) / 2.0
+        if (
+            not torch.isfinite(action_scale).all()
+            or not torch.isfinite(action_bias).all()
+            or not (action_scale > 0).all()
+        ):
+            raise ValueError(
+                "GaussianPolicy requires finite action bounds with positive widths"
+            )
         self.register_buffer("action_scale", action_scale)
         self.register_buffer("action_bias", action_bias)
 
@@ -207,6 +215,13 @@ class GaussianPolicy(nn.Module):
         log_std = self.log_std_linear(x)
         log_std = torch.clamp(log_std, min=LOG_SIG_MIN, max=LOG_SIG_MAX)
         return mean, log_std
+
+    def deterministic(self, state: torch.Tensor) -> torch.Tensor:
+        """Return the mean action without advancing any RNG state."""
+        mean, _ = self.forward(state)
+        return torch.tanh(mean) * cast(torch.Tensor, self.action_scale) + cast(
+            torch.Tensor, self.action_bias
+        )
 
     def sample(
         self, state: torch.Tensor
@@ -225,8 +240,11 @@ class GaussianPolicy(nn.Module):
         action_bias = cast(torch.Tensor, self.action_bias)
         action = y_t * action_scale + action_bias
         log_prob = normal.log_prob(x_t)
-        #  Применение ограничения на действия
-        log_prob -= torch.log(action_scale * (1 - y_t.pow(2)) + epsilon)
+        # Evaluate the tanh Jacobian from the pre-squash sample. Computing
+        # 1 - tanh(x)**2 loses both precision and the entropy gradient near
+        # saturation; adding epsilon also biases densities in physical units.
+        log_jacobian = 2.0 * (math.log(2.0) - x_t - F.softplus(-2.0 * x_t))
+        log_prob = log_prob - log_jacobian - torch.log(action_scale)
         log_prob = log_prob.sum(1, keepdim=True)
         mean = torch.tanh(mean) * action_scale + action_bias
         return action, log_prob, mean
@@ -278,6 +296,7 @@ class DeterministicPolicy(nn.Module):
         if action_space is None:
             action_scale = torch.tensor(1.0)
             action_bias = torch.tensor(0.0)
+            action_low, action_high = torch.tensor(-1.0), torch.tensor(1.0)
         else:
             action_high = torch.as_tensor(
                 getattr(action_space, "high"), dtype=torch.float32
@@ -289,6 +308,9 @@ class DeterministicPolicy(nn.Module):
             action_bias = (action_high + action_low) / 2.0
         self.register_buffer("action_scale", action_scale)
         self.register_buffer("action_bias", action_bias)
+        # Exact bounds avoid round-off from reconstructing bias ± scale.
+        self.register_buffer("action_low", action_low, persistent=False)
+        self.register_buffer("action_high", action_high, persistent=False)
 
     def forward(self, state: torch.Tensor) -> torch.Tensor:
         """Compute the deterministic action mean for a batch of states."""
@@ -297,18 +319,28 @@ class DeterministicPolicy(nn.Module):
         action_scale = cast(torch.Tensor, self.action_scale)
         action_bias = cast(torch.Tensor, self.action_bias)
         mean = torch.tanh(self.mean(x)) * action_scale + action_bias
-        return mean
+        return mean.clamp(
+            cast(torch.Tensor, self.action_low), cast(torch.Tensor, self.action_high)
+        )
+
+    def deterministic(self, state: torch.Tensor) -> torch.Tensor:
+        """Evaluate without modifying exploration noise or RNG state."""
+        return self.forward(state)
 
     def sample(
         self, state: torch.Tensor
     ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
-        """Sample an action by adding bounded Gaussian noise to the mean.
+        """Add independent Gaussian noise in normalized action units, then clip.
 
         Returns:
             Tuple[torch.Tensor, torch.Tensor, torch.Tensor]: ``(action, log_prob, mean)``.
         """
         mean = self.forward(state)
-        noise = cast(torch.Tensor, self.noise).normal_(0.0, std=0.1)
-        noise = noise.clamp(-0.25, 0.25)
-        action = mean + noise
-        return action, torch.zeros(1, device=mean.device), mean
+        # Keep the legacy noise buffer in state_dict for checkpoint compatibility.
+        # Every batch row needs its own noise, scaled to each actuator's units.
+        noise = (torch.randn_like(mean) * 0.1).clamp(-0.25, 0.25)
+        scale = cast(torch.Tensor, self.action_scale)
+        action = (mean + noise * scale).clamp(
+            cast(torch.Tensor, self.action_low), cast(torch.Tensor, self.action_high)
+        )
+        return action, mean.new_zeros(1), mean

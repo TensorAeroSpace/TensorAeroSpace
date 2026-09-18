@@ -210,6 +210,16 @@ Algorithm-specific options accepted via `**kwargs`:
 Returns a metrics dictionary with `episode_rewards`, `best_reward`,
 `updates` and `total_steps`.
 
+## Rollouts, evaluation and continued training
+
+DSAC expects actions normalized to `[-1, 1]`. Wrap environments with physical action units before training.
+
+- Replay stores snapshots of observations before each step, including environments that reuse observation buffers.
+- A true termination stops bootstrapping. A time limit preserves it when the final observation is available. For vector environments with automatic resets, DSAC reads `final_observation` and its optional validity mask. If a final observation is missing, it conservatively stops bootstrapping across the reset.
+- `select_action(..., evaluate=True)` and its batch equivalent use the mean action without sampling exploration noise or consuming the Torch random stream.
+- Repeated scalar `train()` calls preserve cumulative `total_env_steps` and `total_updates`: warmup and target updates continue across calls. Returned `total_steps` and `updates` describe only the current call. Vector logs count individual transitions; `train_vector(warmup_steps=...)` remains an explicit warmup at the start of each call.
+- Checkpoints store these two counters. Older checkpoints default to zero. Replay contents, environment state and random-generator state are not saved, so loading a checkpoint is not an exact continuation of a previous random trajectory. Optimizer state requires `save_gradients=True` and `load_gradients=True`.
+
 ## API Reference
 
 ::: tensoraerospace.agent.dsac.dsac.DSAC

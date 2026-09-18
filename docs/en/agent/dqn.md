@@ -165,6 +165,16 @@ agent.train(num_episodes=100, max_steps=200)
 When `num_episodes` and `max_steps` are both omitted, the agent uses
 the `train_nums` step budget set at construction time.
 
+## Initialization, replay and continuation
+
+DQN and PER-NARX initialize the target from an independent copy of online weights, including lazy input layers. Saved lagged targets remain intact when loading a DQN checkpoint.
+
+Replay owns observation snapshots. Collection records the pre-step state and uses `final_observation` or `terminal_observation` when supplied at a reset boundary. True termination stops bootstrapping; a time limit retains it.
+
+Repeated `train()` calls preserve environment/update counters, replay warmup and the target-update phase. Each call still resets the environment and uses a frame budget; splitting a live episode is not equivalent to uninterrupted collection. DQN checkpoints save the counters and episode count. Old checkpoints default to zero. Replay, environment and RNG state are not saved, so checkpoint loading does not guarantee an exact stochastic continuation.
+
+**Exploration remains explicit:** `train()` keeps `epsilon` unchanged. Call `e_decay()` at the schedule you choose; it respects `min_epsilon` and preserves an explicitly disabled `epsilon=0`. Automatically applying decay changes the data distribution and can harm policy quality. `verbose=False` suppresses progress output.
+
 ## API reference
 
 ::: tensoraerospace.agent.dqn.model.Model

@@ -10,6 +10,7 @@ import datetime
 import json
 import os
 import random
+import warnings
 from pathlib import Path
 from typing import (
     TYPE_CHECKING,
@@ -232,13 +233,19 @@ class ReplayBuffer:
         """Store a transition in the buffer.
 
         Args:
-            state: Current state observation.
+            state: Raw, unnormalized current state observation.
             action: Action taken.
             reward: Reward received.
-            next_state: Next state observation.
+            next_state: Raw, unnormalized next state observation.
             done: Whether the episode terminated.
         """
-        transition: Transition = (state, action, reward, next_state, done)
+        transition: Transition = (
+            np.array(state, copy=True),
+            np.array(action, copy=True),
+            float(reward),
+            np.array(next_state, copy=True),
+            bool(done),
+        )
         if len(self.buffer) < self.capacity:
             self.buffer.append(transition)
         else:
@@ -375,11 +382,11 @@ class OUNoise(object):
         Returns:
             Action with added noise, clipped to [low, high].
         """
-        ou_state = self.evolve_state()
-        # Linearly decay sigma from max_sigma to min_sigma
+        # Apply the scale for this step before drawing its noise sample.
         self.sigma = self.max_sigma - (
             (self.max_sigma - self.min_sigma) * min(1.0, t / self.decay_period)
         )
+        ou_state = self.evolve_state()
         return np.asarray(np.clip(action + ou_state, self.low, self.high))
 
     def state_dict(self) -> Dict[str, Any]:
@@ -723,6 +730,20 @@ class DDPG:
             return self.obs_rms.normalize(obs)
         return obs
 
+    def predict(self, state: np.ndarray) -> np.ndarray:
+        """Return deterministic actions from raw observations using saved statistics.
+
+        Accepts one observation or a batch with shape ``(batch, state_dim)``.
+        Unlike calling ``policy_net`` directly, this applies the same observation
+        normalization as training. No noise is added and statistics stay fixed.
+        """
+        observation = np.asarray(state)
+        if observation.ndim not in (1, 2) or observation.shape[-1] != self.state_dim:
+            raise ValueError("state must have shape (state_dim,) or (batch, state_dim)")
+        if not np.all(np.isfinite(observation)):
+            raise ValueError("state must contain only finite values")
+        return self.policy_net.get_action(self._normalize_observation(observation))
+
     def ddpg_update(
         self,
         batch_size: int,
@@ -751,8 +772,16 @@ class DDPG:
         batch = self.replay_buffer.sample(batch_size)
         state, action, reward, next_state, done = batch
 
-        state_tensor = torch.FloatTensor(state).to(self.device)
-        next_state_tensor = torch.FloatTensor(next_state).to(self.device)
+        # Replay stores physical observations. Apply one current normalizer
+        # to both sides of every sampled transition, regardless of its age.
+        state_tensor = torch.as_tensor(
+            self._normalize_observation(state), dtype=torch.float32, device=self.device
+        )
+        next_state_tensor = torch.as_tensor(
+            self._normalize_observation(next_state),
+            dtype=torch.float32,
+            device=self.device,
+        )
         action_tensor = torch.FloatTensor(action).to(self.device)
         reward_tensor = torch.FloatTensor(reward).unsqueeze(1).to(self.device)
         done_tensor = torch.FloatTensor(np.float32(done)).unsqueeze(1).to(self.device)
@@ -978,30 +1007,37 @@ class DDPG:
 
                 for step in range(max_steps):
                     # Store raw state for normalization update
-                    episode_states.append(state)
+                    state_snapshot = np.array(state, copy=True)
+                    episode_states.append(state_snapshot)
 
-                    # Normalize state before passing to policy
-                    normalized_state = self._normalize_observation(state)
+                    # Normalize only the policy input during collection.
+                    normalized_state = self._normalize_observation(state_snapshot)
                     action = self.policy_net.get_action(normalized_state)
-                    action = self.ou_noise.get_action(action, step)
+                    action = self.ou_noise.get_action(action, self.frame_idx)
                     (
                         next_state,
                         reward,
                         terminated,
                         truncated,
-                        _,
+                        info,
                     ) = self.env.step(action)
                     done = terminated or truncated
                     reward_float = float(reward)
 
                     # Time limits end the episode but still allow bootstrapping.
-                    # Store normalized states and the true terminal flag.
-                    norm_next = self._normalize_observation(next_state)
+                    # Store raw observations and the actual final state when
+                    # a wrapper has already reset the environment.
+                    final_state = info.get("final_observation")
+                    if final_state is None:
+                        final_state = info.get("terminal_observation")
+                    replay_next = (
+                        final_state if done and final_state is not None else next_state
+                    )
                     self.replay_buffer.push(
-                        normalized_state,
+                        state_snapshot,
                         action,
                         reward_float,
-                        norm_next,
+                        replay_next,
                         bool(terminated),
                     )
                     # Warmup: collect transitions without updates
@@ -1024,7 +1060,7 @@ class DDPG:
                                 soft_tau=soft_tau,
                             )
 
-                    state = next_state
+                    state = np.array(next_state, copy=True)
                     episode_reward += reward_float
                     episode_length += 1
                     self.frame_idx += 1
@@ -1156,6 +1192,7 @@ class DDPG:
             "value_optimizer": self.value_optimizer.state_dict(),
             "policy_optimizer": self.policy_optimizer.state_dict(),
             "replay_buffer": self.replay_buffer.state_dict(),
+            "replay_observation_format": "raw_v1",
             "ou_noise": self.ou_noise.state_dict(),
             "normalize_observations": self.normalize_observations,
             "frame_idx": getattr(self, "frame_idx", 0),
@@ -1230,11 +1267,18 @@ class DDPG:
             self.policy_optimizer.load_state_dict(ckpt["policy_optimizer"])
 
         if load_replay and "replay_buffer" in ckpt:
-            self.replay_buffer.load_state_dict(ckpt["replay_buffer"])
+            self._restore_replay(ckpt)
         if load_noise and "ou_noise" in ckpt:
             self.ou_noise.load_state_dict(ckpt["ou_noise"])
 
-        # Restore observation normalizer if it exists
+        self.normalize_observations = bool(
+            ckpt.get("normalize_observations", self.normalize_observations)
+        )
+        self.obs_rms = (
+            RunningMeanStd(shape=(self.state_dim,))
+            if self.normalize_observations
+            else None
+        )
         if "obs_rms" in ckpt and self.obs_rms is not None:
             self.obs_rms.load_state_dict(ckpt["obs_rms"])
 
@@ -1265,6 +1309,25 @@ class DDPG:
                         param.grad = None
                     else:
                         param.grad = grad.to(param.device).clone()
+
+    def _restore_replay(self, checkpoint: Dict[str, Any]) -> None:
+        """Restore raw replay; historical mixed normalization cannot be undone."""
+        replay = checkpoint["replay_buffer"]
+        version = checkpoint.get("replay_observation_format")
+        raw = version == "raw_v1" or (
+            version is None and not checkpoint.get("normalize_observations", True)
+        )
+        if raw or not replay.get("buffer"):
+            self.replay_buffer.load_state_dict(replay)
+            return
+        warnings.warn(
+            "Skipping incompatible DDPG replay: this checkpoint contains legacy "
+            "normalized observations or an unknown replay format. Network weights "
+            "and observation statistics are restored; replay starts empty.",
+            UserWarning,
+            stacklevel=3,
+        )
+        self.replay_buffer = ReplayBuffer(self.replay_buffer_size)
 
     # ====== HuggingFace-style API (mirror of SAC) ======
     def get_param_env(self) -> Dict[str, Dict[str, Any]]:
