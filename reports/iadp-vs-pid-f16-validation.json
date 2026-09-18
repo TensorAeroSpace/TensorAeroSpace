@@ -1,0 +1,2369 @@
+{
+  "example": "example/reinforcement_learning/incremental_adp/example_iadp_vs_pid_f16.py",
+  "example_sha256": "ecf911c2f6e95fecc7b2d99724de918795ff68854680a1cb169b396acbfaf6e7",
+  "default": {
+    "experiment": {
+      "dt": 0.02,
+      "duration": 60.0,
+      "fault_time": 20.0,
+      "loss": 0.15,
+      "phase": 0.0,
+      "integration_substeps": 1
+    },
+    "trim": {
+      "state_rad": [
+        0.08584285381698961,
+        0.0,
+        -0.07760933342131265,
+        0.0
+      ],
+      "residual": [
+        3.965907144993964e-16,
+        4.470938729748939e-15
+      ],
+      "healthy_surface_gain_rad_s2_per_deg": -0.1369104996619264,
+      "airspeed_m_s": 150.0,
+      "altitude_m": 3000.0
+    },
+    "iadp_config": {
+      "policy": {
+        "name": "tensoraerospace.agent.iadp.model.IADPAgent",
+        "params": {
+          "n_state": 1,
+          "n_control": 1
+        },
+        "config": {
+          "dt": 0.02,
+          "Q": [
+            [
+              1.0
+            ]
+          ],
+          "R": [
+            [
+              4.686121229419587e-05
+            ]
+          ],
+          "gamma": 0.99,
+          "gamma_rls": 0.9995,
+          "phi_init": 1000.0,
+          "policy_eval_window": 300,
+          "policy_eval_every": 20,
+          "policy_eval_iterations": 1,
+          "policy_eval_regularization": 1e-10,
+          "policy_eval_warmup_updates": 40,
+          "enforce_psd": true,
+          "psd_floor": 1e-06,
+          "policy_eval_blend": 0.1,
+          "model_learning_only_steps": 0,
+          "excitation_signal": null,
+          "F_init": [
+            [
+              0.9791544291256661,
+              0.0
+            ],
+            [
+              0.0,
+              1.0
+            ]
+          ],
+          "G_init": [
+            [
+              -0.002738209993238528
+            ],
+            [
+              0.0
+            ]
+          ],
+          "P_init": [
+            [
+              2.874935748578265,
+              -2.994463289094888
+            ],
+            [
+              -2.994463289094888,
+              3.384006383298189
+            ]
+          ],
+          "u_magnitude_limit": 10,
+          "u_rate_limit": 60,
+          "pinv_rcond": 1e-08,
+          "seed": null,
+          "policy_eval_min_samples": null
+        }
+      }
+    },
+    "pid_gains": [
+      -183.55882312255446,
+      -499.9999999999999,
+      -0.0013077268644681695
+    ],
+    "pid_gain_units": {
+      "kp": "deg/(rad/s)",
+      "ki": "deg/rad",
+      "kd": "deg/(rad/s^2)"
+    },
+    "pid_fixed_gains": true,
+    "metrics": {
+      "iadp_healthy": {
+        "before_fault": {
+          "start_s": 0.0,
+          "stop_s": 20.0,
+          "rmse_deg_s": 0.09677588471866656,
+          "peak_error_deg_s": 0.26686973762205035
+        },
+        "after_fault": {
+          "start_s": 20.0,
+          "stop_s": 60.0,
+          "rmse_deg_s": 0.12395192252426979,
+          "peak_error_deg_s": 0.34310763431822877
+        },
+        "initial_transient": {
+          "start_s": 20.0,
+          "stop_s": 25.0,
+          "rmse_deg_s": 0.05482622255485175,
+          "peak_error_deg_s": 0.12422397273646896
+        },
+        "late": {
+          "start_s": 40.0,
+          "stop_s": 60.0,
+          "rmse_deg_s": 0.14778630347292168,
+          "peak_error_deg_s": 0.34310763431822877
+        },
+        "max_abs_q_deg_s": 0.6701230996297015,
+        "max_abs_alpha_deg": 5.411888356582038,
+        "max_abs_surface_deg": 4.64500791775832,
+        "max_abs_surface_rate_deg_s": 1.3283199454541232,
+        "events": [],
+        "command_saturation_steps": 0
+      },
+      "pid_healthy": {
+        "before_fault": {
+          "start_s": 0.0,
+          "stop_s": 20.0,
+          "rmse_deg_s": 0.009514589418246098,
+          "peak_error_deg_s": 0.045044387949532985
+        },
+        "after_fault": {
+          "start_s": 20.0,
+          "stop_s": 60.0,
+          "rmse_deg_s": 0.009517318565736926,
+          "peak_error_deg_s": 0.017764091827043284
+        },
+        "initial_transient": {
+          "start_s": 20.0,
+          "stop_s": 25.0,
+          "rmse_deg_s": 0.00922866253766719,
+          "peak_error_deg_s": 0.017764091827043284
+        },
+        "late": {
+          "start_s": 40.0,
+          "stop_s": 60.0,
+          "rmse_deg_s": 0.009490895537540926,
+          "peak_error_deg_s": 0.017741778495299038
+        },
+        "max_abs_q_deg_s": 0.6462961395899894,
+        "max_abs_alpha_deg": 5.3890005990995435,
+        "max_abs_surface_deg": 4.622090241409645,
+        "max_abs_surface_rate_deg_s": 1.8264381761243895,
+        "events": [],
+        "gains_before": [
+          -183.55882312255446,
+          -499.9999999999999,
+          -0.0013077268644681695
+        ],
+        "gains_after": [
+          -183.55882312255446,
+          -499.9999999999999,
+          -0.0013077268644681695
+        ],
+        "final_integral": 0.00016690302945221864,
+        "command_saturation_steps": 0
+      },
+      "iadp_fault": {
+        "before_fault": {
+          "start_s": 0.0,
+          "stop_s": 20.0,
+          "rmse_deg_s": 0.09677588471866656,
+          "peak_error_deg_s": 0.26686973762205035
+        },
+        "after_fault": {
+          "start_s": 20.0,
+          "stop_s": 60.0,
+          "rmse_deg_s": 0.37291051527344476,
+          "peak_error_deg_s": 1.2613219938248554
+        },
+        "initial_transient": {
+          "start_s": 20.0,
+          "stop_s": 25.0,
+          "rmse_deg_s": 0.7674611608654988,
+          "peak_error_deg_s": 1.2613219938248554
+        },
+        "late": {
+          "start_s": 40.0,
+          "stop_s": 60.0,
+          "rmse_deg_s": 0.21697407285183995,
+          "peak_error_deg_s": 0.24818056271559058
+        },
+        "max_abs_q_deg_s": 1.295252282975704,
+        "max_abs_alpha_deg": 5.2726304760726626,
+        "max_abs_surface_deg": 4.575117657112584,
+        "max_abs_surface_rate_deg_s": 10.202802080285156,
+        "events": [
+          {
+            "time": 20.0,
+            "label": "collective_stabilator_command_gain_loss",
+            "event_type": "control_failure",
+            "payload": {
+              "surface": "stab_left",
+              "mode": "efficiency_loss",
+              "efficiency": 0.85
+            }
+          }
+        ],
+        "command_saturation_steps": 0
+      },
+      "pid_fault": {
+        "before_fault": {
+          "start_s": 0.0,
+          "stop_s": 20.0,
+          "rmse_deg_s": 0.009514589418246098,
+          "peak_error_deg_s": 0.045044387949532985
+        },
+        "after_fault": {
+          "start_s": 20.0,
+          "stop_s": 60.0,
+          "rmse_deg_s": 0.025176968320112365,
+          "peak_error_deg_s": 0.3585417456865385
+        },
+        "initial_transient": {
+          "start_s": 20.0,
+          "stop_s": 25.0,
+          "rmse_deg_s": 0.06470629093273456,
+          "peak_error_deg_s": 0.3585417456865385
+        },
+        "late": {
+          "start_s": 40.0,
+          "stop_s": 60.0,
+          "rmse_deg_s": 0.011155837068674863,
+          "peak_error_deg_s": 0.02086509188739799
+        },
+        "max_abs_q_deg_s": 0.6462961395899894,
+        "max_abs_alpha_deg": 5.388429780264294,
+        "max_abs_surface_deg": 4.85297230670641,
+        "max_abs_surface_rate_deg_s": 10.070650017223981,
+        "events": [
+          {
+            "time": 20.0,
+            "label": "collective_stabilator_command_gain_loss",
+            "event_type": "control_failure",
+            "payload": {
+              "surface": "stab_left",
+              "mode": "efficiency_loss",
+              "efficiency": 0.85
+            }
+          }
+        ],
+        "gains_before": [
+          -183.55882312255446,
+          -499.9999999999999,
+          -0.0013077268644681695
+        ],
+        "gains_after": [
+          -183.55882312255446,
+          -499.9999999999999,
+          -0.0013077268644681695
+        ],
+        "final_integral": 0.0017649379709200256,
+        "command_saturation_steps": 0
+      }
+    },
+    "trace_columns": [
+      "time_s",
+      "reference_deg_s",
+      "q_deg_s",
+      "alpha_deg",
+      "surface_deg",
+      "surface_rate_deg_s",
+      "command_delta_deg",
+      "mean_surface_delta_deg"
+    ],
+    "controller_limits": {
+      "magnitude_deg": 10.0,
+      "increment_rate_deg_s": 60.0,
+      "increment_baseline": "previous mean measured surface minus trim"
+    },
+    "fault_semantics": "(1-loss) * total servo command, including trim",
+    "prefault_match_with_healthy_for_each_algorithm": true,
+    "pid_tuning": {
+      "fault_used": false,
+      "training_duration_s": 20.0,
+      "training_frequencies_hz": [
+        0.1,
+        0.23
+      ],
+      "evaluation_frequencies_hz": [
+        0.12,
+        0.31
+      ],
+      "objective": "mean(error_rad_s**2 + R * mean_surface_delta_deg**2)",
+      "R": 4.686121229419587e-05,
+      "gain_magnitude_bounds": [
+        [
+          0.5,
+          300.0
+        ],
+        [
+          0.5,
+          500.0
+        ],
+        [
+          0.001,
+          50.0
+        ]
+      ],
+      "optimizer": "bounded Nelder-Mead in log gain magnitudes",
+      "optimizer_success": true,
+      "optimizer_message": "Optimization terminated successfully.",
+      "evaluations": 60,
+      "best_healthy_cost": 6.096960233257932e-07,
+      "gains": [
+        -183.55882312255446,
+        -499.9999999999999,
+        -0.0013077268644681695
+      ],
+      "history": [
+        {
+          "gains": [
+            -30.000000000000004,
+            -30.000000000000004,
+            -1.0
+          ],
+          "healthy_cost": 2.9273308021988254e-06,
+          "healthy_rmse_deg_s": 0.09062720996606781
+        },
+        {
+          "gains": [
+            -59.999999999999986,
+            -30.000000000000004,
+            -1.0
+          ],
+          "healthy_cost": 1.7903658671127757e-06,
+          "healthy_rmse_deg_s": 0.06675037468927039
+        },
+        {
+          "gains": [
+            -30.000000000000004,
+            -59.999999999999986,
+            -1.0
+          ],
+          "healthy_cost": 1.609001741974406e-06,
+          "healthy_rmse_deg_s": 0.059715036124221944
+        },
+        {
+          "gains": [
+            -30.000000000000004,
+            -30.000000000000004,
+            -2.9999999999999996
+          ],
+          "healthy_cost": 3.0983583896639125e-06,
+          "healthy_rmse_deg_s": 0.09350896867581693
+        },
+        {
+          "gains": [
+            -47.622031559045965,
+            -47.622031559045965,
+            -0.33333333333333337
+          ],
+          "healthy_cost": 1.6026993606419622e-06,
+          "healthy_rmse_deg_s": 0.06070360131007544
+        },
+        {
+          "gains": [
+            -59.999999999999986,
+            -59.999999999999986,
+            -0.11111111111111113
+          ],
+          "healthy_cost": 1.2413630121303996e-06,
+          "healthy_rmse_deg_s": 0.04927847711502491
+        },
+        {
+          "gains": [
+            -75.59526299369234,
+            -75.59526299369234,
+            -0.23112042478354494
+          ],
+          "healthy_cost": 1.0060334301983543e-06,
+          "healthy_rmse_deg_s": 0.039929114244655756
+        },
+        {
+          "gains": [
+            -119.99999999999999,
+            -119.99999999999999,
+            -0.11111111111111113
+          ],
+          "healthy_cost": 7.508326106559476e-07,
+          "healthy_rmse_deg_s": 0.025849781145283378
+        },
+        {
+          "gains": [
+            -59.999999999999986,
+            -190.48812623618397,
+            -0.05341665075212626
+          ],
+          "healthy_cost": 7.110289885390386e-07,
+          "healthy_rmse_deg_s": 0.020940485288648236
+        },
+        {
+          "gains": [
+            -59.99999999999993,
+            -480.0,
+            -0.012345679012345685
+          ],
+          "healthy_cost": 6.194388749438085e-07,
+          "healthy_rmse_deg_s": 0.009450863694313753
+        },
+        {
+          "gains": [
+            -190.48812623618397,
+            -380.97625247236766,
+            -0.0028533385775746313
+          ],
+          "healthy_cost": 6.16132783102502e-07,
+          "healthy_rmse_deg_s": 0.010078395797290255
+        },
+        {
+          "gains": [
+            -299.99999999999994,
+            -499.9999999999999,
+            -0.0010000000000000002
+          ],
+          "healthy_cost": 5.748740216339805e-05,
+          "healthy_rmse_deg_s": 0.30670089422995006
+        },
+        {
+          "gains": [
+            -205.73855588473737,
+            -499.9999999999999,
+            -0.002235251333633536
+          ],
+          "healthy_cost": 6.107798428278689e-07,
+          "healthy_rmse_deg_s": 0.00818350082268287
+        },
+        {
+          "gains": [
+            -299.99999999999994,
+            -499.9999999999999,
+            -0.0010000000000000002
+          ],
+          "healthy_cost": 5.748740216339805e-05,
+          "healthy_rmse_deg_s": 0.30670089422995006
+        },
+        {
+          "gains": [
+            -147.35854300924913,
+            -499.9999999999999,
+            -0.0010000000000000002
+          ],
+          "healthy_cost": 6.106652211242655e-07,
+          "healthy_rmse_deg_s": 0.008266788931804268
+        },
+        {
+          "gains": [
+            -163.2948000209249,
+            -499.9999999999999,
+            -0.0010000000000000002
+          ],
+          "healthy_cost": 6.100641987463616e-07,
+          "healthy_rmse_deg_s": 0.008194775217920789
+        },
+        {
+          "gains": [
+            -299.99999999999994,
+            -434.4942552668532,
+            -0.0010000000000000002
+          ],
+          "healthy_cost": 5.4474826418642e-05,
+          "healthy_rmse_deg_s": 0.2962749310469525
+        },
+        {
+          "gains": [
+            -105.54434050744504,
+            -468.19517927566886,
+            -0.00478487689803917
+          ],
+          "healthy_cost": 6.150545916321152e-07,
+          "healthy_rmse_deg_s": 0.009030234686052364
+        },
+        {
+          "gains": [
+            -122.07144498768355,
+            -499.9999999999999,
+            -0.0017012890743086624
+          ],
+          "healthy_cost": 6.119678534536947e-07,
+          "healthy_rmse_deg_s": 0.008413870993236539
+        },
+        {
+          "gains": [
+            -242.7540409237416,
+            -499.9999999999999,
+            -0.0010000000000000002
+          ],
+          "healthy_cost": 1.5507658600716375e-05,
+          "healthy_rmse_deg_s": 0.13610913473245306
+        },
+        {
+          "gains": [
+            -129.97739538866452,
+            -483.83632525662495,
+            -0.0027328730870378724
+          ],
+          "healthy_cost": 6.123952275760178e-07,
+          "healthy_rmse_deg_s": 0.008600991493770593
+        },
+        {
+          "gains": [
+            -197.12131542719084,
+            -499.9999999999999,
+            -0.0010000000000000002
+          ],
+          "healthy_cost": 6.099963569608894e-07,
+          "healthy_rmse_deg_s": 0.008137489712579566
+        },
+        {
+          "gains": [
+            -242.75404092374183,
+            -499.9999999999999,
+            -0.0010000000000000002
+          ],
+          "healthy_cost": 1.550765860071639e-05,
+          "healthy_rmse_deg_s": 0.13610913473245312
+        },
+        {
+          "gains": [
+            -288.8907713887925,
+            -499.9999999999999,
+            -0.0010048613188492672
+          ],
+          "healthy_cost": 4.057243972901166e-05,
+          "healthy_rmse_deg_s": 0.24430414211479135
+        },
+        {
+          "gains": [
+            -151.40631210839126,
+            -499.9999999999999,
+            -0.001491454871271344
+          ],
+          "healthy_cost": 6.104947551192407e-07,
+          "healthy_rmse_deg_s": 0.008246950715301708
+        },
+        {
+          "gains": [
+            -139.7175397311719,
+            -499.9999999999999,
+            -0.0010000000000000002
+          ],
+          "healthy_cost": 6.110169756850842e-07,
+          "healthy_rmse_deg_s": 0.008306987142575769
+        },
+        {
+          "gains": [
+            -186.76672256863966,
+            -499.9999999999999,
+            -0.0015980788390043182
+          ],
+          "healthy_cost": 6.097073041824355e-07,
+          "healthy_rmse_deg_s": 0.008131222983976871
+        },
+        {
+          "gains": [
+            -218.37000288756016,
+            -499.9999999999999,
+            -0.0010000000000000002
+          ],
+          "healthy_cost": 6.152601350184128e-07,
+          "healthy_rmse_deg_s": 0.008494112341118049
+        },
+        {
+          "gains": [
+            -165.92286224019452,
+            -499.9999999999999,
+            -0.001320499046458107
+          ],
+          "healthy_cost": 6.099860505421562e-07,
+          "healthy_rmse_deg_s": 0.008184648994758917
+        },
+        {
+          "gains": [
+            -204.63842735250384,
+            -499.9999999999999,
+            -0.0016452208138439492
+          ],
+          "healthy_cost": 6.106351385986512e-07,
+          "healthy_rmse_deg_s": 0.008174313298567833
+        },
+        {
+          "gains": [
+            -172.77307538521316,
+            -499.9999999999999,
+            -0.0011325465169908934
+          ],
+          "healthy_cost": 6.098179981154696e-07,
+          "healthy_rmse_deg_s": 0.00816112502579244
+        },
+        {
+          "gains": [
+            -155.2581021097206,
+            -499.9999999999999,
+            -0.0017875638406074496
+          ],
+          "healthy_cost": 6.103431638617555e-07,
+          "healthy_rmse_deg_s": 0.008229013195053956
+        },
+        {
+          "gains": [
+            -185.7007935989808,
+            -499.9999999999999,
+            -0.0011562863272271417
+          ],
+          "healthy_cost": 6.097006817878578e-07,
+          "healthy_rmse_deg_s": 0.008132349334182203
+        },
+        {
+          "gains": [
+            -198.8321689313411,
+            -499.9999999999999,
+            -0.0012390105413434516
+          ],
+          "healthy_cost": 6.100978114413926e-07,
+          "healthy_rmse_deg_s": 0.008142576963958708
+        },
+        {
+          "gains": [
+            -173.6006454871115,
+            -499.9999999999999,
+            -0.0012996377549838512
+          ],
+          "healthy_cost": 6.098017649417905e-07,
+          "healthy_rmse_deg_s": 0.008158602702596017
+        },
+        {
+          "gains": [
+            -191.55801655236846,
+            -499.9999999999999,
+            -0.0015834385894637256
+          ],
+          "healthy_cost": 6.097833993090007e-07,
+          "healthy_rmse_deg_s": 0.008129738360753064
+        },
+        {
+          "gains": [
+            -203.5749751140153,
+            -499.9999999999999,
+            -0.001574058581133872
+          ],
+          "healthy_cost": 6.105091903338439e-07,
+          "healthy_rmse_deg_s": 0.00816644572939228
+        },
+        {
+          "gains": [
+            -180.6527592747273,
+            -499.9999999999999,
+            -0.0013633958329080384
+          ],
+          "healthy_cost": 6.097072912455183e-07,
+          "healthy_rmse_deg_s": 0.00814054985412837
+        },
+        {
+          "gains": [
+            -177.42095242301784,
+            -499.9999999999999,
+            -0.0011692906513897463
+          ],
+          "healthy_cost": 6.097400445549404e-07,
+          "healthy_rmse_deg_s": 0.008148005820759011
+        },
+        {
+          "gains": [
+            -180.85426817486277,
+            -499.9999999999999,
+            -0.0012613690317444023
+          ],
+          "healthy_cost": 6.09705934637546e-07,
+          "healthy_rmse_deg_s": 0.00814013985120185
+        },
+        {
+          "gains": [
+            -178.1114817662162,
+            -499.9999999999999,
+            -0.0010000000000000002
+          ],
+          "healthy_cost": 6.097314474022622e-07,
+          "healthy_rmse_deg_s": 0.008146292362357553
+        },
+        {
+          "gains": [
+            -184.56425860941016,
+            -499.9999999999999,
+            -0.0014176010293184286
+          ],
+          "healthy_cost": 6.096966464619902e-07,
+          "healthy_rmse_deg_s": 0.008133766332628913
+        },
+        {
+          "gains": [
+            -186.7879334234219,
+            -499.9999999999999,
+            -0.0011903803631196476
+          ],
+          "healthy_cost": 6.097077278966231e-07,
+          "healthy_rmse_deg_s": 0.008131231554596767
+        },
+        {
+          "gains": [
+            -182.16739745491026,
+            -499.9999999999999,
+            -0.0013179165453132112
+          ],
+          "healthy_cost": 6.09699076900385e-07,
+          "healthy_rmse_deg_s": 0.008137609159758391
+        },
+        {
+          "gains": [
+            -187.481857656746,
+            -499.9999999999999,
+            -0.001324837815641253
+          ],
+          "healthy_cost": 6.097139626354363e-07,
+          "healthy_rmse_deg_s": 0.008130648463902596
+        },
+        {
+          "gains": [
+            -182.48887083869423,
+            -499.9999999999999,
+            -0.0012769453242404624
+          ],
+          "healthy_cost": 6.096979884290662e-07,
+          "healthy_rmse_deg_s": 0.00813703639686846
+        },
+        {
+          "gains": [
+            -180.4773340549754,
+            -499.9999999999999,
+            -0.001544107140395767
+          ],
+          "healthy_cost": 6.097085144057793e-07,
+          "healthy_rmse_deg_s": 0.008140908143800897
+        },
+        {
+          "gains": [
+            -184.38092379286314,
+            -499.9999999999999,
+            -0.001242992191812041
+          ],
+          "healthy_cost": 6.096964158289263e-07,
+          "healthy_rmse_deg_s": 0.00813403181967871
+        },
+        {
+          "gains": [
+            -185.46529794238046,
+            -499.9999999999999,
+            -0.0013028924622422227
+          ],
+          "healthy_cost": 6.096995087323703e-07,
+          "healthy_rmse_deg_s": 0.008132615111122022
+        },
+        {
+          "gains": [
+            -182.98633369768254,
+            -499.9999999999999,
+            -0.0013141443601129123
+          ],
+          "healthy_cost": 6.09696734941531e-07,
+          "healthy_rmse_deg_s": 0.00813618090691958
+        },
+        {
+          "gains": [
+            -185.474885885806,
+            -499.9999999999999,
+            -0.0013706861623713968
+          ],
+          "healthy_cost": 6.096995134004177e-07,
+          "healthy_rmse_deg_s": 0.008132599492206292
+        },
+        {
+          "gains": [
+            -183.23083727255207,
+            -499.9999999999999,
+            -0.0012997616948191215
+          ],
+          "healthy_cost": 6.096963371469775e-07,
+          "healthy_rmse_deg_s": 0.008135778263107888
+        },
+        {
+          "gains": [
+            -185.13539102734603,
+            -499.9999999999999,
+            -0.0013221509068916037
+          ],
+          "healthy_cost": 6.0969822154444e-07,
+          "healthy_rmse_deg_s": 0.008133019089206266
+        },
+        {
+          "gains": [
+            -183.5212479261947,
+            -499.9999999999999,
+            -0.001316141439808799
+          ],
+          "healthy_cost": 6.096960422889857e-07,
+          "healthy_rmse_deg_s": 0.00813531251382965
+        },
+        {
+          "gains": [
+            -182.86040127313007,
+            -499.9999999999999,
+            -0.0011664580159185132
+          ],
+          "healthy_cost": 6.096970461871784e-07,
+          "healthy_rmse_deg_s": 0.008136399555362894
+        },
+        {
+          "gains": [
+            -184.13681162927637,
+            -499.9999999999999,
+            -0.0013501524004613087
+          ],
+          "healthy_cost": 6.096960847491591e-07,
+          "healthy_rmse_deg_s": 0.008134376320643698
+        },
+        {
+          "gains": [
+            -182.88062866687994,
+            -499.9999999999999,
+            -0.001405716231502955
+          ],
+          "healthy_cost": 6.096969198425076e-07,
+          "healthy_rmse_deg_s": 0.008136354761276582
+        },
+        {
+          "gains": [
+            -184.00470006719894,
+            -499.9999999999999,
+            -0.0012818160797042734
+          ],
+          "healthy_cost": 6.096960275494161e-07,
+          "healthy_rmse_deg_s": 0.008134575224395259
+        },
+        {
+          "gains": [
+            -184.54630747461266,
+            -499.9999999999999,
+            -0.0013319164435758796
+          ],
+          "healthy_cost": 6.096966495956625e-07,
+          "healthy_rmse_deg_s": 0.008133795795394173
+        },
+        {
+          "gains": [
+            -183.55882312255446,
+            -499.9999999999999,
+            -0.0013077268644681695
+          ],
+          "healthy_cost": 6.096960233257932e-07,
+          "healthy_rmse_deg_s": 0.008135253468892139
+        }
+      ]
+    }
+  },
+  "variants": {
+    "zero_loss": {
+      "experiment": {
+        "dt": 0.02,
+        "duration": 60.0,
+        "fault_time": 20.0,
+        "loss": 0.0,
+        "phase": 0.0,
+        "integration_substeps": 1
+      },
+      "trim": {
+        "state_rad": [
+          0.08584285381698961,
+          0.0,
+          -0.07760933342131265,
+          0.0
+        ],
+        "residual": [
+          3.965907144993964e-16,
+          4.470938729748939e-15
+        ],
+        "healthy_surface_gain_rad_s2_per_deg": -0.1369104996619264,
+        "airspeed_m_s": 150.0,
+        "altitude_m": 3000.0
+      },
+      "iadp_config": {
+        "policy": {
+          "name": "tensoraerospace.agent.iadp.model.IADPAgent",
+          "params": {
+            "n_state": 1,
+            "n_control": 1
+          },
+          "config": {
+            "dt": 0.02,
+            "Q": [
+              [
+                1.0
+              ]
+            ],
+            "R": [
+              [
+                4.686121229419587e-05
+              ]
+            ],
+            "gamma": 0.99,
+            "gamma_rls": 0.9995,
+            "phi_init": 1000.0,
+            "policy_eval_window": 300,
+            "policy_eval_every": 20,
+            "policy_eval_iterations": 1,
+            "policy_eval_regularization": 1e-10,
+            "policy_eval_warmup_updates": 40,
+            "enforce_psd": true,
+            "psd_floor": 1e-06,
+            "policy_eval_blend": 0.1,
+            "model_learning_only_steps": 0,
+            "excitation_signal": null,
+            "F_init": [
+              [
+                0.9791544291256661,
+                0.0
+              ],
+              [
+                0.0,
+                1.0
+              ]
+            ],
+            "G_init": [
+              [
+                -0.002738209993238528
+              ],
+              [
+                0.0
+              ]
+            ],
+            "P_init": [
+              [
+                2.874935748578265,
+                -2.994463289094888
+              ],
+              [
+                -2.994463289094888,
+                3.384006383298189
+              ]
+            ],
+            "u_magnitude_limit": 10,
+            "u_rate_limit": 60,
+            "pinv_rcond": 1e-08,
+            "seed": null,
+            "policy_eval_min_samples": null
+          }
+        }
+      },
+      "pid_gains": [
+        -183.55882312255446,
+        -499.9999999999999,
+        -0.0013077268644681695
+      ],
+      "pid_gain_units": {
+        "kp": "deg/(rad/s)",
+        "ki": "deg/rad",
+        "kd": "deg/(rad/s^2)"
+      },
+      "pid_fixed_gains": true,
+      "metrics": {
+        "iadp_healthy": {
+          "before_fault": {
+            "start_s": 0.0,
+            "stop_s": 20.0,
+            "rmse_deg_s": 0.09677588471866656,
+            "peak_error_deg_s": 0.26686973762205035
+          },
+          "after_fault": {
+            "start_s": 20.0,
+            "stop_s": 60.0,
+            "rmse_deg_s": 0.12395192252426979,
+            "peak_error_deg_s": 0.34310763431822877
+          },
+          "initial_transient": {
+            "start_s": 20.0,
+            "stop_s": 25.0,
+            "rmse_deg_s": 0.05482622255485175,
+            "peak_error_deg_s": 0.12422397273646896
+          },
+          "late": {
+            "start_s": 40.0,
+            "stop_s": 60.0,
+            "rmse_deg_s": 0.14778630347292168,
+            "peak_error_deg_s": 0.34310763431822877
+          },
+          "max_abs_q_deg_s": 0.6701230996297015,
+          "max_abs_alpha_deg": 5.411888356582038,
+          "max_abs_surface_deg": 4.64500791775832,
+          "max_abs_surface_rate_deg_s": 1.3283199454541232,
+          "events": [],
+          "command_saturation_steps": 0
+        },
+        "pid_healthy": {
+          "before_fault": {
+            "start_s": 0.0,
+            "stop_s": 20.0,
+            "rmse_deg_s": 0.009514589418246098,
+            "peak_error_deg_s": 0.045044387949532985
+          },
+          "after_fault": {
+            "start_s": 20.0,
+            "stop_s": 60.0,
+            "rmse_deg_s": 0.009517318565736926,
+            "peak_error_deg_s": 0.017764091827043284
+          },
+          "initial_transient": {
+            "start_s": 20.0,
+            "stop_s": 25.0,
+            "rmse_deg_s": 0.00922866253766719,
+            "peak_error_deg_s": 0.017764091827043284
+          },
+          "late": {
+            "start_s": 40.0,
+            "stop_s": 60.0,
+            "rmse_deg_s": 0.009490895537540926,
+            "peak_error_deg_s": 0.017741778495299038
+          },
+          "max_abs_q_deg_s": 0.6462961395899894,
+          "max_abs_alpha_deg": 5.3890005990995435,
+          "max_abs_surface_deg": 4.622090241409645,
+          "max_abs_surface_rate_deg_s": 1.8264381761243895,
+          "events": [],
+          "gains_before": [
+            -183.55882312255446,
+            -499.9999999999999,
+            -0.0013077268644681695
+          ],
+          "gains_after": [
+            -183.55882312255446,
+            -499.9999999999999,
+            -0.0013077268644681695
+          ],
+          "final_integral": 0.00016690302945221864,
+          "command_saturation_steps": 0
+        },
+        "iadp_fault": {
+          "before_fault": {
+            "start_s": 0.0,
+            "stop_s": 20.0,
+            "rmse_deg_s": 0.09677588471866656,
+            "peak_error_deg_s": 0.26686973762205035
+          },
+          "after_fault": {
+            "start_s": 20.0,
+            "stop_s": 60.0,
+            "rmse_deg_s": 0.12395192252427115,
+            "peak_error_deg_s": 0.3431076343182297
+          },
+          "initial_transient": {
+            "start_s": 20.0,
+            "stop_s": 25.0,
+            "rmse_deg_s": 0.05482622255485173,
+            "peak_error_deg_s": 0.12422397273646896
+          },
+          "late": {
+            "start_s": 40.0,
+            "stop_s": 60.0,
+            "rmse_deg_s": 0.14778630347292399,
+            "peak_error_deg_s": 0.3431076343182297
+          },
+          "max_abs_q_deg_s": 0.6701230996296956,
+          "max_abs_alpha_deg": 5.411888356582032,
+          "max_abs_surface_deg": 4.645007917758317,
+          "max_abs_surface_rate_deg_s": 1.3283199454541232,
+          "events": [
+            {
+              "time": 20.0,
+              "label": "collective_stabilator_command_gain_loss",
+              "event_type": "control_failure",
+              "payload": {
+                "surface": "stab_left",
+                "mode": "efficiency_loss",
+                "efficiency": 1.0
+              }
+            }
+          ],
+          "command_saturation_steps": 0
+        },
+        "pid_fault": {
+          "before_fault": {
+            "start_s": 0.0,
+            "stop_s": 20.0,
+            "rmse_deg_s": 0.009514589418246098,
+            "peak_error_deg_s": 0.045044387949532985
+          },
+          "after_fault": {
+            "start_s": 20.0,
+            "stop_s": 60.0,
+            "rmse_deg_s": 0.00951731856573684,
+            "peak_error_deg_s": 0.01776409182704304
+          },
+          "initial_transient": {
+            "start_s": 20.0,
+            "stop_s": 25.0,
+            "rmse_deg_s": 0.00922866253766715,
+            "peak_error_deg_s": 0.01776409182704304
+          },
+          "late": {
+            "start_s": 40.0,
+            "stop_s": 60.0,
+            "rmse_deg_s": 0.009490895537540744,
+            "peak_error_deg_s": 0.01774177849529865
+          },
+          "max_abs_q_deg_s": 0.6462961395899894,
+          "max_abs_alpha_deg": 5.3890005990995435,
+          "max_abs_surface_deg": 4.622090241409645,
+          "max_abs_surface_rate_deg_s": 1.8264381761243895,
+          "events": [
+            {
+              "time": 20.0,
+              "label": "collective_stabilator_command_gain_loss",
+              "event_type": "control_failure",
+              "payload": {
+                "surface": "stab_left",
+                "mode": "efficiency_loss",
+                "efficiency": 1.0
+              }
+            }
+          ],
+          "gains_before": [
+            -183.55882312255446,
+            -499.9999999999999,
+            -0.0013077268644681695
+          ],
+          "gains_after": [
+            -183.55882312255446,
+            -499.9999999999999,
+            -0.0013077268644681695
+          ],
+          "final_integral": 0.00016690302945221864,
+          "command_saturation_steps": 0
+        }
+      },
+      "trace_columns": [
+        "time_s",
+        "reference_deg_s",
+        "q_deg_s",
+        "alpha_deg",
+        "surface_deg",
+        "surface_rate_deg_s",
+        "command_delta_deg",
+        "mean_surface_delta_deg"
+      ],
+      "controller_limits": {
+        "magnitude_deg": 10.0,
+        "increment_rate_deg_s": 60.0,
+        "increment_baseline": "previous mean measured surface minus trim"
+      },
+      "fault_semantics": "(1-loss) * total servo command, including trim",
+      "prefault_match_with_healthy_for_each_algorithm": true
+    },
+    "loss_10": {
+      "experiment": {
+        "dt": 0.02,
+        "duration": 60.0,
+        "fault_time": 20.0,
+        "loss": 0.1,
+        "phase": 0.0,
+        "integration_substeps": 1
+      },
+      "trim": {
+        "state_rad": [
+          0.08584285381698961,
+          0.0,
+          -0.07760933342131265,
+          0.0
+        ],
+        "residual": [
+          3.965907144993964e-16,
+          4.470938729748939e-15
+        ],
+        "healthy_surface_gain_rad_s2_per_deg": -0.1369104996619264,
+        "airspeed_m_s": 150.0,
+        "altitude_m": 3000.0
+      },
+      "iadp_config": {
+        "policy": {
+          "name": "tensoraerospace.agent.iadp.model.IADPAgent",
+          "params": {
+            "n_state": 1,
+            "n_control": 1
+          },
+          "config": {
+            "dt": 0.02,
+            "Q": [
+              [
+                1.0
+              ]
+            ],
+            "R": [
+              [
+                4.686121229419587e-05
+              ]
+            ],
+            "gamma": 0.99,
+            "gamma_rls": 0.9995,
+            "phi_init": 1000.0,
+            "policy_eval_window": 300,
+            "policy_eval_every": 20,
+            "policy_eval_iterations": 1,
+            "policy_eval_regularization": 1e-10,
+            "policy_eval_warmup_updates": 40,
+            "enforce_psd": true,
+            "psd_floor": 1e-06,
+            "policy_eval_blend": 0.1,
+            "model_learning_only_steps": 0,
+            "excitation_signal": null,
+            "F_init": [
+              [
+                0.9791544291256661,
+                0.0
+              ],
+              [
+                0.0,
+                1.0
+              ]
+            ],
+            "G_init": [
+              [
+                -0.002738209993238528
+              ],
+              [
+                0.0
+              ]
+            ],
+            "P_init": [
+              [
+                2.874935748578265,
+                -2.994463289094888
+              ],
+              [
+                -2.994463289094888,
+                3.384006383298189
+              ]
+            ],
+            "u_magnitude_limit": 10,
+            "u_rate_limit": 60,
+            "pinv_rcond": 1e-08,
+            "seed": null,
+            "policy_eval_min_samples": null
+          }
+        }
+      },
+      "pid_gains": [
+        -183.55882312255446,
+        -499.9999999999999,
+        -0.0013077268644681695
+      ],
+      "pid_gain_units": {
+        "kp": "deg/(rad/s)",
+        "ki": "deg/rad",
+        "kd": "deg/(rad/s^2)"
+      },
+      "pid_fixed_gains": true,
+      "metrics": {
+        "iadp_healthy": {
+          "before_fault": {
+            "start_s": 0.0,
+            "stop_s": 20.0,
+            "rmse_deg_s": 0.09677588471866656,
+            "peak_error_deg_s": 0.26686973762205035
+          },
+          "after_fault": {
+            "start_s": 20.0,
+            "stop_s": 60.0,
+            "rmse_deg_s": 0.12395192252426979,
+            "peak_error_deg_s": 0.34310763431822877
+          },
+          "initial_transient": {
+            "start_s": 20.0,
+            "stop_s": 25.0,
+            "rmse_deg_s": 0.05482622255485175,
+            "peak_error_deg_s": 0.12422397273646896
+          },
+          "late": {
+            "start_s": 40.0,
+            "stop_s": 60.0,
+            "rmse_deg_s": 0.14778630347292168,
+            "peak_error_deg_s": 0.34310763431822877
+          },
+          "max_abs_q_deg_s": 0.6701230996297015,
+          "max_abs_alpha_deg": 5.411888356582038,
+          "max_abs_surface_deg": 4.64500791775832,
+          "max_abs_surface_rate_deg_s": 1.3283199454541232,
+          "events": [],
+          "command_saturation_steps": 0
+        },
+        "pid_healthy": {
+          "before_fault": {
+            "start_s": 0.0,
+            "stop_s": 20.0,
+            "rmse_deg_s": 0.009514589418246098,
+            "peak_error_deg_s": 0.045044387949532985
+          },
+          "after_fault": {
+            "start_s": 20.0,
+            "stop_s": 60.0,
+            "rmse_deg_s": 0.009517318565736926,
+            "peak_error_deg_s": 0.017764091827043284
+          },
+          "initial_transient": {
+            "start_s": 20.0,
+            "stop_s": 25.0,
+            "rmse_deg_s": 0.00922866253766719,
+            "peak_error_deg_s": 0.017764091827043284
+          },
+          "late": {
+            "start_s": 40.0,
+            "stop_s": 60.0,
+            "rmse_deg_s": 0.009490895537540926,
+            "peak_error_deg_s": 0.017741778495299038
+          },
+          "max_abs_q_deg_s": 0.6462961395899894,
+          "max_abs_alpha_deg": 5.3890005990995435,
+          "max_abs_surface_deg": 4.622090241409645,
+          "max_abs_surface_rate_deg_s": 1.8264381761243895,
+          "events": [],
+          "gains_before": [
+            -183.55882312255446,
+            -499.9999999999999,
+            -0.0013077268644681695
+          ],
+          "gains_after": [
+            -183.55882312255446,
+            -499.9999999999999,
+            -0.0013077268644681695
+          ],
+          "final_integral": 0.00016690302945221864,
+          "command_saturation_steps": 0
+        },
+        "iadp_fault": {
+          "before_fault": {
+            "start_s": 0.0,
+            "stop_s": 20.0,
+            "rmse_deg_s": 0.09677588471866656,
+            "peak_error_deg_s": 0.26686973762205035
+          },
+          "after_fault": {
+            "start_s": 20.0,
+            "stop_s": 60.0,
+            "rmse_deg_s": 0.24190357562318232,
+            "peak_error_deg_s": 0.8259237380967608
+          },
+          "initial_transient": {
+            "start_s": 20.0,
+            "stop_s": 25.0,
+            "rmse_deg_s": 0.49122595381914674,
+            "peak_error_deg_s": 0.8259237380967608
+          },
+          "late": {
+            "start_s": 40.0,
+            "stop_s": 60.0,
+            "rmse_deg_s": 0.14694191218153985,
+            "peak_error_deg_s": 0.17104949930607177
+          },
+          "max_abs_q_deg_s": 1.0195409118471064,
+          "max_abs_alpha_deg": 5.2726304760726626,
+          "max_abs_surface_deg": 4.575117657112584,
+          "max_abs_surface_rate_deg_s": 6.829563813778565,
+          "events": [
+            {
+              "time": 20.0,
+              "label": "collective_stabilator_command_gain_loss",
+              "event_type": "control_failure",
+              "payload": {
+                "surface": "stab_left",
+                "mode": "efficiency_loss",
+                "efficiency": 0.9
+              }
+            }
+          ],
+          "command_saturation_steps": 0
+        },
+        "pid_fault": {
+          "before_fault": {
+            "start_s": 0.0,
+            "stop_s": 20.0,
+            "rmse_deg_s": 0.009514589418246098,
+            "peak_error_deg_s": 0.045044387949532985
+          },
+          "after_fault": {
+            "start_s": 20.0,
+            "stop_s": 60.0,
+            "rmse_deg_s": 0.01548825331133636,
+            "peak_error_deg_s": 0.2125492746302996
+          },
+          "initial_transient": {
+            "start_s": 20.0,
+            "stop_s": 25.0,
+            "rmse_deg_s": 0.03361886949364288,
+            "peak_error_deg_s": 0.2125492746302996
+          },
+          "late": {
+            "start_s": 40.0,
+            "stop_s": 60.0,
+            "rmse_deg_s": 0.010539559148039569,
+            "peak_error_deg_s": 0.01970871455264439
+          },
+          "max_abs_q_deg_s": 0.6462961395899894,
+          "max_abs_alpha_deg": 5.388643214603155,
+          "max_abs_surface_deg": 4.837610886799497,
+          "max_abs_surface_rate_deg_s": 7.370493557458811,
+          "events": [
+            {
+              "time": 20.0,
+              "label": "collective_stabilator_command_gain_loss",
+              "event_type": "control_failure",
+              "payload": {
+                "surface": "stab_left",
+                "mode": "efficiency_loss",
+                "efficiency": 0.9
+              }
+            }
+          ],
+          "gains_before": [
+            -183.55882312255446,
+            -499.9999999999999,
+            -0.0013077268644681695
+          ],
+          "gains_after": [
+            -183.55882312255446,
+            -499.9999999999999,
+            -0.0013077268644681695
+          ],
+          "final_integral": 0.001173101876909756,
+          "command_saturation_steps": 0
+        }
+      },
+      "trace_columns": [
+        "time_s",
+        "reference_deg_s",
+        "q_deg_s",
+        "alpha_deg",
+        "surface_deg",
+        "surface_rate_deg_s",
+        "command_delta_deg",
+        "mean_surface_delta_deg"
+      ],
+      "controller_limits": {
+        "magnitude_deg": 10.0,
+        "increment_rate_deg_s": 60.0,
+        "increment_baseline": "previous mean measured surface minus trim"
+      },
+      "fault_semantics": "(1-loss) * total servo command, including trim",
+      "prefault_match_with_healthy_for_each_algorithm": true
+    },
+    "loss_20": {
+      "experiment": {
+        "dt": 0.02,
+        "duration": 60.0,
+        "fault_time": 20.0,
+        "loss": 0.2,
+        "phase": 0.0,
+        "integration_substeps": 1
+      },
+      "trim": {
+        "state_rad": [
+          0.08584285381698961,
+          0.0,
+          -0.07760933342131265,
+          0.0
+        ],
+        "residual": [
+          3.965907144993964e-16,
+          4.470938729748939e-15
+        ],
+        "healthy_surface_gain_rad_s2_per_deg": -0.1369104996619264,
+        "airspeed_m_s": 150.0,
+        "altitude_m": 3000.0
+      },
+      "iadp_config": {
+        "policy": {
+          "name": "tensoraerospace.agent.iadp.model.IADPAgent",
+          "params": {
+            "n_state": 1,
+            "n_control": 1
+          },
+          "config": {
+            "dt": 0.02,
+            "Q": [
+              [
+                1.0
+              ]
+            ],
+            "R": [
+              [
+                4.686121229419587e-05
+              ]
+            ],
+            "gamma": 0.99,
+            "gamma_rls": 0.9995,
+            "phi_init": 1000.0,
+            "policy_eval_window": 300,
+            "policy_eval_every": 20,
+            "policy_eval_iterations": 1,
+            "policy_eval_regularization": 1e-10,
+            "policy_eval_warmup_updates": 40,
+            "enforce_psd": true,
+            "psd_floor": 1e-06,
+            "policy_eval_blend": 0.1,
+            "model_learning_only_steps": 0,
+            "excitation_signal": null,
+            "F_init": [
+              [
+                0.9791544291256661,
+                0.0
+              ],
+              [
+                0.0,
+                1.0
+              ]
+            ],
+            "G_init": [
+              [
+                -0.002738209993238528
+              ],
+              [
+                0.0
+              ]
+            ],
+            "P_init": [
+              [
+                2.874935748578265,
+                -2.994463289094888
+              ],
+              [
+                -2.994463289094888,
+                3.384006383298189
+              ]
+            ],
+            "u_magnitude_limit": 10,
+            "u_rate_limit": 60,
+            "pinv_rcond": 1e-08,
+            "seed": null,
+            "policy_eval_min_samples": null
+          }
+        }
+      },
+      "pid_gains": [
+        -183.55882312255446,
+        -499.9999999999999,
+        -0.0013077268644681695
+      ],
+      "pid_gain_units": {
+        "kp": "deg/(rad/s)",
+        "ki": "deg/rad",
+        "kd": "deg/(rad/s^2)"
+      },
+      "pid_fixed_gains": true,
+      "metrics": {
+        "iadp_healthy": {
+          "before_fault": {
+            "start_s": 0.0,
+            "stop_s": 20.0,
+            "rmse_deg_s": 0.09677588471866656,
+            "peak_error_deg_s": 0.26686973762205035
+          },
+          "after_fault": {
+            "start_s": 20.0,
+            "stop_s": 60.0,
+            "rmse_deg_s": 0.12395192252426979,
+            "peak_error_deg_s": 0.34310763431822877
+          },
+          "initial_transient": {
+            "start_s": 20.0,
+            "stop_s": 25.0,
+            "rmse_deg_s": 0.05482622255485175,
+            "peak_error_deg_s": 0.12422397273646896
+          },
+          "late": {
+            "start_s": 40.0,
+            "stop_s": 60.0,
+            "rmse_deg_s": 0.14778630347292168,
+            "peak_error_deg_s": 0.34310763431822877
+          },
+          "max_abs_q_deg_s": 0.6701230996297015,
+          "max_abs_alpha_deg": 5.411888356582038,
+          "max_abs_surface_deg": 4.64500791775832,
+          "max_abs_surface_rate_deg_s": 1.3283199454541232,
+          "events": [],
+          "command_saturation_steps": 0
+        },
+        "pid_healthy": {
+          "before_fault": {
+            "start_s": 0.0,
+            "stop_s": 20.0,
+            "rmse_deg_s": 0.009514589418246098,
+            "peak_error_deg_s": 0.045044387949532985
+          },
+          "after_fault": {
+            "start_s": 20.0,
+            "stop_s": 60.0,
+            "rmse_deg_s": 0.009517318565736926,
+            "peak_error_deg_s": 0.017764091827043284
+          },
+          "initial_transient": {
+            "start_s": 20.0,
+            "stop_s": 25.0,
+            "rmse_deg_s": 0.00922866253766719,
+            "peak_error_deg_s": 0.017764091827043284
+          },
+          "late": {
+            "start_s": 40.0,
+            "stop_s": 60.0,
+            "rmse_deg_s": 0.009490895537540926,
+            "peak_error_deg_s": 0.017741778495299038
+          },
+          "max_abs_q_deg_s": 0.6462961395899894,
+          "max_abs_alpha_deg": 5.3890005990995435,
+          "max_abs_surface_deg": 4.622090241409645,
+          "max_abs_surface_rate_deg_s": 1.8264381761243895,
+          "events": [],
+          "gains_before": [
+            -183.55882312255446,
+            -499.9999999999999,
+            -0.0013077268644681695
+          ],
+          "gains_after": [
+            -183.55882312255446,
+            -499.9999999999999,
+            -0.0013077268644681695
+          ],
+          "final_integral": 0.00016690302945221864,
+          "command_saturation_steps": 0
+        },
+        "iadp_fault": {
+          "before_fault": {
+            "start_s": 0.0,
+            "stop_s": 20.0,
+            "rmse_deg_s": 0.09677588471866656,
+            "peak_error_deg_s": 0.26686973762205035
+          },
+          "after_fault": {
+            "start_s": 20.0,
+            "stop_s": 60.0,
+            "rmse_deg_s": 0.5191883995878737,
+            "peak_error_deg_s": 1.7267214829275161
+          },
+          "initial_transient": {
+            "start_s": 20.0,
+            "stop_s": 25.0,
+            "rmse_deg_s": 1.067905289691218,
+            "peak_error_deg_s": 1.7267214829275161
+          },
+          "late": {
+            "start_s": 40.0,
+            "stop_s": 60.0,
+            "rmse_deg_s": 0.30249708688306753,
+            "peak_error_deg_s": 0.34437146375584454
+          },
+          "max_abs_q_deg_s": 1.6244077771576801,
+          "max_abs_alpha_deg": 5.2726304760726626,
+          "max_abs_surface_deg": 4.575117657112584,
+          "max_abs_surface_rate_deg_s": 13.567374779471875,
+          "events": [
+            {
+              "time": 20.0,
+              "label": "collective_stabilator_command_gain_loss",
+              "event_type": "control_failure",
+              "payload": {
+                "surface": "stab_left",
+                "mode": "efficiency_loss",
+                "efficiency": 0.8
+              }
+            }
+          ],
+          "command_saturation_steps": 0
+        },
+        "pid_fault": {
+          "before_fault": {
+            "start_s": 0.0,
+            "stop_s": 20.0,
+            "rmse_deg_s": 0.009514589418246098,
+            "peak_error_deg_s": 0.045044387949532985
+          },
+          "after_fault": {
+            "start_s": 20.0,
+            "stop_s": 60.0,
+            "rmse_deg_s": 0.08220878414598137,
+            "peak_error_deg_s": 0.8261176386228933
+          },
+          "initial_transient": {
+            "start_s": 20.0,
+            "stop_s": 25.0,
+            "rmse_deg_s": 0.2303624445482984,
+            "peak_error_deg_s": 0.8261176386228933
+          },
+          "late": {
+            "start_s": 40.0,
+            "stop_s": 60.0,
+            "rmse_deg_s": 0.011848628276708146,
+            "peak_error_deg_s": 0.022165403968814362
+          },
+          "max_abs_q_deg_s": 0.6462961395899894,
+          "max_abs_alpha_deg": 5.388186835021907,
+          "max_abs_surface_deg": 4.674024824374349,
+          "max_abs_surface_rate_deg_s": 13.41088705369943,
+          "events": [
+            {
+              "time": 20.0,
+              "label": "collective_stabilator_command_gain_loss",
+              "event_type": "control_failure",
+              "payload": {
+                "surface": "stab_left",
+                "mode": "efficiency_loss",
+                "efficiency": 0.8
+              }
+            }
+          ],
+          "gains_before": [
+            -183.55882312255446,
+            -499.9999999999999,
+            -0.0013077268644681695
+          ],
+          "gains_after": [
+            -183.55882312255446,
+            -499.9999999999999,
+            -0.0013077268644681695
+          ],
+          "final_integral": 0.00243071341649378,
+          "command_saturation_steps": 0
+        }
+      },
+      "trace_columns": [
+        "time_s",
+        "reference_deg_s",
+        "q_deg_s",
+        "alpha_deg",
+        "surface_deg",
+        "surface_rate_deg_s",
+        "command_delta_deg",
+        "mean_surface_delta_deg"
+      ],
+      "controller_limits": {
+        "magnitude_deg": 10.0,
+        "increment_rate_deg_s": 60.0,
+        "increment_baseline": "previous mean measured surface minus trim"
+      },
+      "fault_semantics": "(1-loss) * total servo command, including trim",
+      "prefault_match_with_healthy_for_each_algorithm": true
+    },
+    "phase_07": {
+      "experiment": {
+        "dt": 0.02,
+        "duration": 60.0,
+        "fault_time": 20.0,
+        "loss": 0.15,
+        "phase": 0.7,
+        "integration_substeps": 1
+      },
+      "trim": {
+        "state_rad": [
+          0.08584285381698961,
+          0.0,
+          -0.07760933342131265,
+          0.0
+        ],
+        "residual": [
+          3.965907144993964e-16,
+          4.470938729748939e-15
+        ],
+        "healthy_surface_gain_rad_s2_per_deg": -0.1369104996619264,
+        "airspeed_m_s": 150.0,
+        "altitude_m": 3000.0
+      },
+      "iadp_config": {
+        "policy": {
+          "name": "tensoraerospace.agent.iadp.model.IADPAgent",
+          "params": {
+            "n_state": 1,
+            "n_control": 1
+          },
+          "config": {
+            "dt": 0.02,
+            "Q": [
+              [
+                1.0
+              ]
+            ],
+            "R": [
+              [
+                4.686121229419587e-05
+              ]
+            ],
+            "gamma": 0.99,
+            "gamma_rls": 0.9995,
+            "phi_init": 1000.0,
+            "policy_eval_window": 300,
+            "policy_eval_every": 20,
+            "policy_eval_iterations": 1,
+            "policy_eval_regularization": 1e-10,
+            "policy_eval_warmup_updates": 40,
+            "enforce_psd": true,
+            "psd_floor": 1e-06,
+            "policy_eval_blend": 0.1,
+            "model_learning_only_steps": 0,
+            "excitation_signal": null,
+            "F_init": [
+              [
+                0.9791544291256661,
+                0.0
+              ],
+              [
+                0.0,
+                1.0
+              ]
+            ],
+            "G_init": [
+              [
+                -0.002738209993238528
+              ],
+              [
+                0.0
+              ]
+            ],
+            "P_init": [
+              [
+                2.874935748578265,
+                -2.994463289094888
+              ],
+              [
+                -2.994463289094888,
+                3.384006383298189
+              ]
+            ],
+            "u_magnitude_limit": 10,
+            "u_rate_limit": 60,
+            "pinv_rcond": 1e-08,
+            "seed": null,
+            "policy_eval_min_samples": null
+          }
+        }
+      },
+      "pid_gains": [
+        -183.55882312255446,
+        -499.9999999999999,
+        -0.0013077268644681695
+      ],
+      "pid_gain_units": {
+        "kp": "deg/(rad/s)",
+        "ki": "deg/rad",
+        "kd": "deg/(rad/s^2)"
+      },
+      "pid_fixed_gains": true,
+      "metrics": {
+        "iadp_healthy": {
+          "before_fault": {
+            "start_s": 0.0,
+            "stop_s": 20.0,
+            "rmse_deg_s": 0.08473652376908372,
+            "peak_error_deg_s": 0.23675486745416469
+          },
+          "after_fault": {
+            "start_s": 20.0,
+            "stop_s": 60.0,
+            "rmse_deg_s": 0.07629085890882803,
+            "peak_error_deg_s": 0.19016853817011892
+          },
+          "initial_transient": {
+            "start_s": 20.0,
+            "stop_s": 25.0,
+            "rmse_deg_s": 0.06943946807791153,
+            "peak_error_deg_s": 0.12836362462191953
+          },
+          "late": {
+            "start_s": 40.0,
+            "stop_s": 60.0,
+            "rmse_deg_s": 0.07812276889329905,
+            "peak_error_deg_s": 0.19016853817011892
+          },
+          "max_abs_q_deg_s": 0.7983072135527922,
+          "max_abs_alpha_deg": 5.491193064690776,
+          "max_abs_surface_deg": 4.684472401640178,
+          "max_abs_surface_rate_deg_s": 3.6239109674384666,
+          "events": [],
+          "command_saturation_steps": 0
+        },
+        "pid_healthy": {
+          "before_fault": {
+            "start_s": 0.0,
+            "stop_s": 20.0,
+            "rmse_deg_s": 0.01223760971305026,
+            "peak_error_deg_s": 0.10568616438339427
+          },
+          "after_fault": {
+            "start_s": 20.0,
+            "stop_s": 60.0,
+            "rmse_deg_s": 0.0094395897284149,
+            "peak_error_deg_s": 0.018179578491681198
+          },
+          "initial_transient": {
+            "start_s": 20.0,
+            "stop_s": 25.0,
+            "rmse_deg_s": 0.009342335596504563,
+            "peak_error_deg_s": 0.016667365383828212
+          },
+          "late": {
+            "start_s": 40.0,
+            "stop_s": 60.0,
+            "rmse_deg_s": 0.00937621513187671,
+            "peak_error_deg_s": 0.018179578491681198
+          },
+          "max_abs_q_deg_s": 0.6465264250445163,
+          "max_abs_alpha_deg": 5.387863609974845,
+          "max_abs_surface_deg": 4.780815699959835,
+          "max_abs_surface_rate_deg_s": 5.491366741080819,
+          "events": [],
+          "gains_before": [
+            -183.55882312255446,
+            -499.9999999999999,
+            -0.0013077268644681695
+          ],
+          "gains_after": [
+            -183.55882312255446,
+            -499.9999999999999,
+            -0.0013077268644681695
+          ],
+          "final_integral": 0.00014878449617692786,
+          "command_saturation_steps": 0
+        },
+        "iadp_fault": {
+          "before_fault": {
+            "start_s": 0.0,
+            "stop_s": 20.0,
+            "rmse_deg_s": 0.08473652376908372,
+            "peak_error_deg_s": 0.23675486745416469
+          },
+          "after_fault": {
+            "start_s": 20.0,
+            "stop_s": 60.0,
+            "rmse_deg_s": 0.38062347296541105,
+            "peak_error_deg_s": 1.2532424641414754
+          },
+          "initial_transient": {
+            "start_s": 20.0,
+            "stop_s": 25.0,
+            "rmse_deg_s": 0.802005564089113,
+            "peak_error_deg_s": 1.2532424641414754
+          },
+          "late": {
+            "start_s": 40.0,
+            "stop_s": 60.0,
+            "rmse_deg_s": 0.21698957684120823,
+            "peak_error_deg_s": 0.249647712864127
+          },
+          "max_abs_q_deg_s": 1.368245119157924,
+          "max_abs_alpha_deg": 5.360504177260947,
+          "max_abs_surface_deg": 4.684472401640178,
+          "max_abs_surface_rate_deg_s": 10.369883641879847,
+          "events": [
+            {
+              "time": 20.0,
+              "label": "collective_stabilator_command_gain_loss",
+              "event_type": "control_failure",
+              "payload": {
+                "surface": "stab_left",
+                "mode": "efficiency_loss",
+                "efficiency": 0.85
+              }
+            }
+          ],
+          "command_saturation_steps": 0
+        },
+        "pid_fault": {
+          "before_fault": {
+            "start_s": 0.0,
+            "stop_s": 20.0,
+            "rmse_deg_s": 0.01223760971305026,
+            "peak_error_deg_s": 0.10568616438339427
+          },
+          "after_fault": {
+            "start_s": 20.0,
+            "stop_s": 60.0,
+            "rmse_deg_s": 0.024639203916621492,
+            "peak_error_deg_s": 0.3521088433128371
+          },
+          "initial_transient": {
+            "start_s": 20.0,
+            "stop_s": 25.0,
+            "rmse_deg_s": 0.06318042107546008,
+            "peak_error_deg_s": 0.3521088433128371
+          },
+          "late": {
+            "start_s": 40.0,
+            "stop_s": 60.0,
+            "rmse_deg_s": 0.011020268480125994,
+            "peak_error_deg_s": 0.02137638609152767
+          },
+          "max_abs_q_deg_s": 0.645906009866784,
+          "max_abs_alpha_deg": 5.387306260275572,
+          "max_abs_surface_deg": 4.827953916496865,
+          "max_abs_surface_rate_deg_s": 10.064448737719564,
+          "events": [
+            {
+              "time": 20.0,
+              "label": "collective_stabilator_command_gain_loss",
+              "event_type": "control_failure",
+              "payload": {
+                "surface": "stab_left",
+                "mode": "efficiency_loss",
+                "efficiency": 0.85
+              }
+            }
+          ],
+          "gains_before": [
+            -183.55882312255446,
+            -499.9999999999999,
+            -0.0013077268644681695
+          ],
+          "gains_after": [
+            -183.55882312255446,
+            -499.9999999999999,
+            -0.0013077268644681695
+          ],
+          "final_integral": 0.001743298626689068,
+          "command_saturation_steps": 0
+        }
+      },
+      "trace_columns": [
+        "time_s",
+        "reference_deg_s",
+        "q_deg_s",
+        "alpha_deg",
+        "surface_deg",
+        "surface_rate_deg_s",
+        "command_delta_deg",
+        "mean_surface_delta_deg"
+      ],
+      "controller_limits": {
+        "magnitude_deg": 10.0,
+        "increment_rate_deg_s": 60.0,
+        "increment_baseline": "previous mean measured surface minus trim"
+      },
+      "fault_semantics": "(1-loss) * total servo command, including trim",
+      "prefault_match_with_healthy_for_each_algorithm": true
+    },
+    "substeps_2": {
+      "experiment": {
+        "dt": 0.02,
+        "duration": 60.0,
+        "fault_time": 20.0,
+        "loss": 0.15,
+        "phase": 0.0,
+        "integration_substeps": 2
+      },
+      "trim": {
+        "state_rad": [
+          0.08584285381698961,
+          0.0,
+          -0.07760933342131265,
+          0.0
+        ],
+        "residual": [
+          3.965907144993964e-16,
+          4.470938729748939e-15
+        ],
+        "healthy_surface_gain_rad_s2_per_deg": -0.1369104996619264,
+        "airspeed_m_s": 150.0,
+        "altitude_m": 3000.0
+      },
+      "iadp_config": {
+        "policy": {
+          "name": "tensoraerospace.agent.iadp.model.IADPAgent",
+          "params": {
+            "n_state": 1,
+            "n_control": 1
+          },
+          "config": {
+            "dt": 0.02,
+            "Q": [
+              [
+                1.0
+              ]
+            ],
+            "R": [
+              [
+                4.686121229419587e-05
+              ]
+            ],
+            "gamma": 0.99,
+            "gamma_rls": 0.9995,
+            "phi_init": 1000.0,
+            "policy_eval_window": 300,
+            "policy_eval_every": 20,
+            "policy_eval_iterations": 1,
+            "policy_eval_regularization": 1e-10,
+            "policy_eval_warmup_updates": 40,
+            "enforce_psd": true,
+            "psd_floor": 1e-06,
+            "policy_eval_blend": 0.1,
+            "model_learning_only_steps": 0,
+            "excitation_signal": null,
+            "F_init": [
+              [
+                0.9791544291256661,
+                0.0
+              ],
+              [
+                0.0,
+                1.0
+              ]
+            ],
+            "G_init": [
+              [
+                -0.002738209993238528
+              ],
+              [
+                0.0
+              ]
+            ],
+            "P_init": [
+              [
+                2.874935748578265,
+                -2.994463289094888
+              ],
+              [
+                -2.994463289094888,
+                3.384006383298189
+              ]
+            ],
+            "u_magnitude_limit": 10,
+            "u_rate_limit": 60,
+            "pinv_rcond": 1e-08,
+            "seed": null,
+            "policy_eval_min_samples": null
+          }
+        }
+      },
+      "pid_gains": [
+        -183.55882312255446,
+        -499.9999999999999,
+        -0.0013077268644681695
+      ],
+      "pid_gain_units": {
+        "kp": "deg/(rad/s)",
+        "ki": "deg/rad",
+        "kd": "deg/(rad/s^2)"
+      },
+      "pid_fixed_gains": true,
+      "metrics": {
+        "iadp_healthy": {
+          "before_fault": {
+            "start_s": 0.0,
+            "stop_s": 20.0,
+            "rmse_deg_s": 0.09698174208791392,
+            "peak_error_deg_s": 0.2670890499169685
+          },
+          "after_fault": {
+            "start_s": 20.0,
+            "stop_s": 60.0,
+            "rmse_deg_s": 0.12400681645986646,
+            "peak_error_deg_s": 0.35650804729374236
+          },
+          "initial_transient": {
+            "start_s": 20.0,
+            "stop_s": 25.0,
+            "rmse_deg_s": 0.054737216030853984,
+            "peak_error_deg_s": 0.1241480414374746
+          },
+          "late": {
+            "start_s": 40.0,
+            "stop_s": 60.0,
+            "rmse_deg_s": 0.14785866788716712,
+            "peak_error_deg_s": 0.35650804729374236
+          },
+          "max_abs_q_deg_s": 0.6648267230973193,
+          "max_abs_alpha_deg": 5.408536989013218,
+          "max_abs_surface_deg": 4.642657842729906,
+          "max_abs_surface_rate_deg_s": 1.3239841100743364,
+          "events": [],
+          "command_saturation_steps": 0
+        },
+        "pid_healthy": {
+          "before_fault": {
+            "start_s": 0.0,
+            "stop_s": 20.0,
+            "rmse_deg_s": 0.009510970637523548,
+            "peak_error_deg_s": 0.04500243357164535
+          },
+          "after_fault": {
+            "start_s": 20.0,
+            "stop_s": 60.0,
+            "rmse_deg_s": 0.009517328655231036,
+            "peak_error_deg_s": 0.01776411536406712
+          },
+          "initial_transient": {
+            "start_s": 20.0,
+            "stop_s": 25.0,
+            "rmse_deg_s": 0.009228664561509593,
+            "peak_error_deg_s": 0.01776411536406712
+          },
+          "late": {
+            "start_s": 40.0,
+            "stop_s": 60.0,
+            "rmse_deg_s": 0.009490906157040116,
+            "peak_error_deg_s": 0.01774181616998896
+          },
+          "max_abs_q_deg_s": 0.6462960329636928,
+          "max_abs_alpha_deg": 5.389000764821124,
+          "max_abs_surface_deg": 4.622090101904543,
+          "max_abs_surface_rate_deg_s": 1.8247679486999613,
+          "events": [],
+          "gains_before": [
+            -183.55882312255446,
+            -499.9999999999999,
+            -0.0013077268644681695
+          ],
+          "gains_after": [
+            -183.55882312255446,
+            -499.9999999999999,
+            -0.0013077268644681695
+          ],
+          "final_integral": 0.00016690219888328974,
+          "command_saturation_steps": 0
+        },
+        "iadp_fault": {
+          "before_fault": {
+            "start_s": 0.0,
+            "stop_s": 20.0,
+            "rmse_deg_s": 0.09698174208791392,
+            "peak_error_deg_s": 0.2670890499169685
+          },
+          "after_fault": {
+            "start_s": 20.0,
+            "stop_s": 60.0,
+            "rmse_deg_s": 0.37487945796707073,
+            "peak_error_deg_s": 1.2701779978970438
+          },
+          "initial_transient": {
+            "start_s": 20.0,
+            "stop_s": 25.0,
+            "rmse_deg_s": 0.7733359713923311,
+            "peak_error_deg_s": 1.2701779978970438
+          },
+          "late": {
+            "start_s": 40.0,
+            "stop_s": 60.0,
+            "rmse_deg_s": 0.21665036196879361,
+            "peak_error_deg_s": 0.2482822006470266
+          },
+          "max_abs_q_deg_s": 1.3003239714400774,
+          "max_abs_alpha_deg": 5.272349598027082,
+          "max_abs_surface_deg": 4.575028361732562,
+          "max_abs_surface_rate_deg_s": 10.085762039098526,
+          "events": [
+            {
+              "time": 20.0,
+              "label": "collective_stabilator_command_gain_loss",
+              "event_type": "control_failure",
+              "payload": {
+                "surface": "stab_left",
+                "mode": "efficiency_loss",
+                "efficiency": 0.85
+              }
+            }
+          ],
+          "command_saturation_steps": 0
+        },
+        "pid_fault": {
+          "before_fault": {
+            "start_s": 0.0,
+            "stop_s": 20.0,
+            "rmse_deg_s": 0.009510970637523548,
+            "peak_error_deg_s": 0.04500243357164535
+          },
+          "after_fault": {
+            "start_s": 20.0,
+            "stop_s": 60.0,
+            "rmse_deg_s": 0.02518668967800088,
+            "peak_error_deg_s": 0.3585744906252212
+          },
+          "initial_transient": {
+            "start_s": 20.0,
+            "stop_s": 25.0,
+            "rmse_deg_s": 0.06473653542425263,
+            "peak_error_deg_s": 0.3585744906252212
+          },
+          "late": {
+            "start_s": 40.0,
+            "stop_s": 60.0,
+            "rmse_deg_s": 0.011155849035259218,
+            "peak_error_deg_s": 0.020865143784978224
+          },
+          "max_abs_q_deg_s": 0.6462960329636928,
+          "max_abs_alpha_deg": 5.388429926802821,
+          "max_abs_surface_deg": 4.854130697629197,
+          "max_abs_surface_rate_deg_s": 10.055155577051444,
+          "events": [
+            {
+              "time": 20.0,
+              "label": "collective_stabilator_command_gain_loss",
+              "event_type": "control_failure",
+              "payload": {
+                "surface": "stab_left",
+                "mode": "efficiency_loss",
+                "efficiency": 0.85
+              }
+            }
+          ],
+          "gains_before": [
+            -183.55882312255446,
+            -499.9999999999999,
+            -0.0013077268644681695
+          ],
+          "gains_after": [
+            -183.55882312255446,
+            -499.9999999999999,
+            -0.0013077268644681695
+          ],
+          "final_integral": 0.001764937000234342,
+          "command_saturation_steps": 0
+        }
+      },
+      "trace_columns": [
+        "time_s",
+        "reference_deg_s",
+        "q_deg_s",
+        "alpha_deg",
+        "surface_deg",
+        "surface_rate_deg_s",
+        "command_delta_deg",
+        "mean_surface_delta_deg"
+      ],
+      "controller_limits": {
+        "magnitude_deg": 10.0,
+        "increment_rate_deg_s": 60.0,
+        "increment_baseline": "previous mean measured surface minus trim"
+      },
+      "fault_semantics": "(1-loss) * total servo command, including trim",
+      "prefault_match_with_healthy_for_each_algorithm": true
+    }
+  },
+  "validation": {
+    "nominal_tuning_evaluations": 60,
+    "evaluation_rollouts": 24,
+    "fault_used_in_pid_tuning": false
+  },
+  "notes": [
+    "The original PID fit and the reproducible --retune-pid run produced identical gains.",
+    "The bounded healthy-only fit reached the upper |Ki| bound; global optimality is not claimed.",
+    "PID gains are fixed after tuning; its integral and measurement feedback remain active.",
+    "Both controllers have identical command magnitude/increment and physical servo limits.",
+    "PID is more accurate than this iADP configuration in all tested faulty cases.",
+    "Healthy PID tuning and iADP warm-start/online learning use different training budgets."
+  ]
+}

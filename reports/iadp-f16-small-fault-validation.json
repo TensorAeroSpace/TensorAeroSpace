@@ -1,0 +1,2431 @@
+{
+  "example": "example/reinforcement_learning/incremental_adp/example_iadp_small_fault_f16.py",
+  "example_sha256": "a6170cda213abda0876882c7ca31a8f2abc622a5b28ce55cade418db479d0d7d",
+  "runtime": {
+    "python": "3.11.10",
+    "numpy": "1.26.4",
+    "scipy": "1.15.3"
+  },
+  "default": {
+    "experiment": {
+      "dt": 0.02,
+      "duration": 60.0,
+      "fault_time": 20.0,
+      "loss": 0.15,
+      "phase": 0.0,
+      "integration_substeps": 1
+    },
+    "trim": {
+      "state_rad": [
+        0.08584285381698961,
+        0.0,
+        -0.07760933342131265,
+        0.0
+      ],
+      "residual": [
+        3.965907144993964e-16,
+        4.470938729748939e-15
+      ],
+      "healthy_surface_gain_rad_s2_per_deg": -0.1369104996619264,
+      "airspeed_m_s": 150.0,
+      "altitude_m": 3000.0
+    },
+    "controller": {
+      "policy": {
+        "name": "tensoraerospace.agent.iadp.model.IADPAgent",
+        "params": {
+          "n_state": 1,
+          "n_control": 1
+        },
+        "config": {
+          "dt": 0.02,
+          "Q": [
+            [
+              1.0
+            ]
+          ],
+          "R": [
+            [
+              4.686121229419587e-05
+            ]
+          ],
+          "gamma": 0.99,
+          "gamma_rls": 0.9995,
+          "phi_init": 1000.0,
+          "policy_eval_window": 300,
+          "policy_eval_every": 20,
+          "policy_eval_iterations": 1,
+          "policy_eval_regularization": 1e-10,
+          "policy_eval_warmup_updates": 40,
+          "enforce_psd": true,
+          "psd_floor": 1e-06,
+          "policy_eval_blend": 0.1,
+          "model_learning_only_steps": 0,
+          "excitation_signal": null,
+          "F_init": [
+            [
+              0.9791544291256661,
+              0.0
+            ],
+            [
+              0.0,
+              1.0
+            ]
+          ],
+          "G_init": [
+            [
+              -0.002738209993238528
+            ],
+            [
+              0.0
+            ]
+          ],
+          "P_init": [
+            [
+              2.874935748578265,
+              -2.994463289094888
+            ],
+            [
+              -2.994463289094888,
+              3.384006383298189
+            ]
+          ],
+          "u_magnitude_limit": 10,
+          "u_rate_limit": 60,
+          "pinv_rcond": 1e-08,
+          "seed": null,
+          "policy_eval_min_samples": null
+        }
+      }
+    },
+    "metrics": {
+      "healthy_adaptive": {
+        "before_fault": {
+          "start_s": 0.0,
+          "stop_s": 20.0,
+          "rmse_deg_s": 0.09677588471866656,
+          "peak_error_deg_s": 0.26686973762205035
+        },
+        "after_fault": {
+          "start_s": 20.0,
+          "stop_s": 60.0,
+          "rmse_deg_s": 0.12395192252426979,
+          "peak_error_deg_s": 0.34310763431822877
+        },
+        "initial_transient": {
+          "start_s": 20.0,
+          "stop_s": 25.0,
+          "rmse_deg_s": 0.05482622255485175,
+          "peak_error_deg_s": 0.12422397273646896
+        },
+        "late": {
+          "start_s": 40.0,
+          "stop_s": 60.0,
+          "rmse_deg_s": 0.14778630347292168,
+          "peak_error_deg_s": 0.34310763431822877
+        },
+        "max_abs_q_deg_s": 0.6701230996297015,
+        "max_abs_alpha_deg": 5.411888356582038,
+        "max_abs_surface_deg": 4.64500791775832,
+        "max_abs_surface_rate_deg_s": 1.3283199454541232,
+        "events": [],
+        "command_saturation_steps": 0
+      },
+      "healthy_frozen": {
+        "before_fault": {
+          "start_s": 0.0,
+          "stop_s": 20.0,
+          "rmse_deg_s": 0.09677588471866656,
+          "peak_error_deg_s": 0.26686973762205035
+        },
+        "after_fault": {
+          "start_s": 20.0,
+          "stop_s": 60.0,
+          "rmse_deg_s": 0.08893034354234744,
+          "peak_error_deg_s": 0.17173134732354245
+        },
+        "initial_transient": {
+          "start_s": 20.0,
+          "stop_s": 25.0,
+          "rmse_deg_s": 0.08488048005968882,
+          "peak_error_deg_s": 0.13164754116062144
+        },
+        "late": {
+          "start_s": 40.0,
+          "stop_s": 60.0,
+          "rmse_deg_s": 0.09046364195719885,
+          "peak_error_deg_s": 0.1699031824793757
+        },
+        "max_abs_q_deg_s": 0.6252857689989573,
+        "max_abs_alpha_deg": 5.289618442815378,
+        "max_abs_surface_deg": 4.587702775811432,
+        "max_abs_surface_rate_deg_s": 1.3283199454541232,
+        "events": [],
+        "command_saturation_steps": 0
+      },
+      "fault_adaptive": {
+        "before_fault": {
+          "start_s": 0.0,
+          "stop_s": 20.0,
+          "rmse_deg_s": 0.09677588471866656,
+          "peak_error_deg_s": 0.26686973762205035
+        },
+        "after_fault": {
+          "start_s": 20.0,
+          "stop_s": 60.0,
+          "rmse_deg_s": 0.37291051527344476,
+          "peak_error_deg_s": 1.2613219938248554
+        },
+        "initial_transient": {
+          "start_s": 20.0,
+          "stop_s": 25.0,
+          "rmse_deg_s": 0.7674611608654988,
+          "peak_error_deg_s": 1.2613219938248554
+        },
+        "late": {
+          "start_s": 40.0,
+          "stop_s": 60.0,
+          "rmse_deg_s": 0.21697407285183995,
+          "peak_error_deg_s": 0.24818056271559058
+        },
+        "max_abs_q_deg_s": 1.295252282975704,
+        "max_abs_alpha_deg": 5.2726304760726626,
+        "max_abs_surface_deg": 4.575117657112584,
+        "max_abs_surface_rate_deg_s": 10.202802080285156,
+        "events": [
+          {
+            "time": 20.0,
+            "label": "collective_stabilator_command_gain_loss",
+            "event_type": "control_failure",
+            "payload": {
+              "surface": "stab_left",
+              "mode": "efficiency_loss",
+              "efficiency": 0.85
+            }
+          }
+        ],
+        "command_saturation_steps": 0
+      },
+      "fault_frozen": {
+        "before_fault": {
+          "start_s": 0.0,
+          "stop_s": 20.0,
+          "rmse_deg_s": 0.09677588471866656,
+          "peak_error_deg_s": 0.26686973762205035
+        },
+        "after_fault": {
+          "start_s": 20.0,
+          "stop_s": 60.0,
+          "rmse_deg_s": 1.204805908549893,
+          "peak_error_deg_s": 1.5331722163777624
+        },
+        "initial_transient": {
+          "start_s": 20.0,
+          "stop_s": 25.0,
+          "rmse_deg_s": 1.2045620526514724,
+          "peak_error_deg_s": 1.5331722163777624
+        },
+        "late": {
+          "start_s": 40.0,
+          "stop_s": 60.0,
+          "rmse_deg_s": 1.1993902863870458,
+          "peak_error_deg_s": 1.3780720658997554
+        },
+        "max_abs_q_deg_s": 1.730570886771444,
+        "max_abs_alpha_deg": 5.2726304760726626,
+        "max_abs_surface_deg": 4.575117657112584,
+        "max_abs_surface_rate_deg_s": 10.13431948228513,
+        "events": [
+          {
+            "time": 20.0,
+            "label": "collective_stabilator_command_gain_loss",
+            "event_type": "control_failure",
+            "payload": {
+              "surface": "stab_left",
+              "mode": "efficiency_loss",
+              "efficiency": 0.85
+            }
+          }
+        ],
+        "command_saturation_steps": 0
+      }
+    },
+    "fault_rmse_reduction_percent": {
+      "after_fault": 69.04808379282596,
+      "late": 81.90963564450429
+    },
+    "prefault_histories_match": true,
+    "prefault_max_absolute_difference": 3.2278346662195645e-13,
+    "fault_semantics": "servo_target = (1-loss) * clip(trim + command_delta); aerodynamic tables unchanged",
+    "frozen_semantics": "freeze RLS theta/covariance and critic P at event; retain measurement and actuator feedback",
+    "trace_columns": [
+      "time_s",
+      "reference_deg_s",
+      "q_deg_s",
+      "alpha_deg",
+      "surface_deg",
+      "surface_rate_deg_s",
+      "command_delta_deg",
+      "mean_surface_delta_deg",
+      "identified_F",
+      "identified_G",
+      "critic_norm",
+      "model_change_since_event",
+      "critic_change_since_event",
+      "covariance_min_eigenvalue"
+    ]
+  },
+  "supported_variants": {
+    "zero_loss": {
+      "experiment": {
+        "dt": 0.02,
+        "duration": 60.0,
+        "fault_time": 20.0,
+        "loss": 0.0,
+        "phase": 0.0
+      },
+      "trim": {
+        "state_rad": [
+          0.08584285381698961,
+          0.0,
+          -0.07760933342131265,
+          0.0
+        ],
+        "residual": [
+          3.965907144993964e-16,
+          4.470938729748939e-15
+        ],
+        "healthy_surface_gain_rad_s2_per_deg": -0.1369104996619264,
+        "airspeed_m_s": 150.0,
+        "altitude_m": 3000.0
+      },
+      "controller": {
+        "policy": {
+          "name": "tensoraerospace.agent.iadp.model.IADPAgent",
+          "params": {
+            "n_state": 1,
+            "n_control": 1
+          },
+          "config": {
+            "dt": 0.02,
+            "Q": [
+              [
+                1.0
+              ]
+            ],
+            "R": [
+              [
+                4.686121229419587e-05
+              ]
+            ],
+            "gamma": 0.99,
+            "gamma_rls": 0.9995,
+            "phi_init": 1000.0,
+            "policy_eval_window": 300,
+            "policy_eval_every": 20,
+            "policy_eval_iterations": 1,
+            "policy_eval_regularization": 1e-10,
+            "policy_eval_warmup_updates": 40,
+            "enforce_psd": true,
+            "psd_floor": 1e-06,
+            "policy_eval_blend": 0.1,
+            "model_learning_only_steps": 0,
+            "excitation_signal": null,
+            "F_init": [
+              [
+                0.9791544291256661,
+                0.0
+              ],
+              [
+                0.0,
+                1.0
+              ]
+            ],
+            "G_init": [
+              [
+                -0.002738209993238528
+              ],
+              [
+                0.0
+              ]
+            ],
+            "P_init": [
+              [
+                2.874935748578265,
+                -2.994463289094888
+              ],
+              [
+                -2.994463289094888,
+                3.384006383298189
+              ]
+            ],
+            "u_magnitude_limit": 10,
+            "u_rate_limit": 60,
+            "pinv_rcond": 1e-08,
+            "seed": null,
+            "policy_eval_min_samples": null
+          }
+        }
+      },
+      "metrics": {
+        "healthy_adaptive": {
+          "before_fault": {
+            "start_s": 0.0,
+            "stop_s": 20.0,
+            "rmse_deg_s": 0.09677588471866656,
+            "peak_error_deg_s": 0.26686973762205035
+          },
+          "after_fault": {
+            "start_s": 20.0,
+            "stop_s": 60.0,
+            "rmse_deg_s": 0.12395192252426979,
+            "peak_error_deg_s": 0.34310763431822877
+          },
+          "initial_transient": {
+            "start_s": 20.0,
+            "stop_s": 25.0,
+            "rmse_deg_s": 0.05482622255485175,
+            "peak_error_deg_s": 0.12422397273646896
+          },
+          "late": {
+            "start_s": 40.0,
+            "stop_s": 60.0,
+            "rmse_deg_s": 0.14778630347292168,
+            "peak_error_deg_s": 0.34310763431822877
+          },
+          "max_abs_q_deg_s": 0.6701230996297015,
+          "max_abs_alpha_deg": 5.411888356582038,
+          "max_abs_surface_deg": 4.64500791775832,
+          "max_abs_surface_rate_deg_s": 1.3283199454541232,
+          "events": [],
+          "command_saturation_steps": 0
+        },
+        "healthy_frozen": {
+          "before_fault": {
+            "start_s": 0.0,
+            "stop_s": 20.0,
+            "rmse_deg_s": 0.09677588471866656,
+            "peak_error_deg_s": 0.26686973762205035
+          },
+          "after_fault": {
+            "start_s": 20.0,
+            "stop_s": 60.0,
+            "rmse_deg_s": 0.08893034354234744,
+            "peak_error_deg_s": 0.17173134732354245
+          },
+          "initial_transient": {
+            "start_s": 20.0,
+            "stop_s": 25.0,
+            "rmse_deg_s": 0.08488048005968882,
+            "peak_error_deg_s": 0.13164754116062144
+          },
+          "late": {
+            "start_s": 40.0,
+            "stop_s": 60.0,
+            "rmse_deg_s": 0.09046364195719885,
+            "peak_error_deg_s": 0.1699031824793757
+          },
+          "max_abs_q_deg_s": 0.6252857689989573,
+          "max_abs_alpha_deg": 5.289618442815378,
+          "max_abs_surface_deg": 4.587702775811432,
+          "max_abs_surface_rate_deg_s": 1.3283199454541232,
+          "events": [],
+          "command_saturation_steps": 0
+        },
+        "fault_adaptive": {
+          "before_fault": {
+            "start_s": 0.0,
+            "stop_s": 20.0,
+            "rmse_deg_s": 0.09677588471866656,
+            "peak_error_deg_s": 0.26686973762205035
+          },
+          "after_fault": {
+            "start_s": 20.0,
+            "stop_s": 60.0,
+            "rmse_deg_s": 0.12395192252427115,
+            "peak_error_deg_s": 0.3431076343182297
+          },
+          "initial_transient": {
+            "start_s": 20.0,
+            "stop_s": 25.0,
+            "rmse_deg_s": 0.05482622255485173,
+            "peak_error_deg_s": 0.12422397273646896
+          },
+          "late": {
+            "start_s": 40.0,
+            "stop_s": 60.0,
+            "rmse_deg_s": 0.14778630347292399,
+            "peak_error_deg_s": 0.3431076343182297
+          },
+          "max_abs_q_deg_s": 0.6701230996296956,
+          "max_abs_alpha_deg": 5.411888356582032,
+          "max_abs_surface_deg": 4.645007917758317,
+          "max_abs_surface_rate_deg_s": 1.3283199454541232,
+          "events": [
+            {
+              "time": 20.0,
+              "label": "collective_stabilator_command_gain_loss",
+              "event_type": "control_failure",
+              "payload": {
+                "surface": "stab_left",
+                "mode": "efficiency_loss",
+                "efficiency": 1.0
+              }
+            }
+          ],
+          "command_saturation_steps": 0
+        },
+        "fault_frozen": {
+          "before_fault": {
+            "start_s": 0.0,
+            "stop_s": 20.0,
+            "rmse_deg_s": 0.09677588471866656,
+            "peak_error_deg_s": 0.26686973762205035
+          },
+          "after_fault": {
+            "start_s": 20.0,
+            "stop_s": 60.0,
+            "rmse_deg_s": 0.08893034354234743,
+            "peak_error_deg_s": 0.17173134732354217
+          },
+          "initial_transient": {
+            "start_s": 20.0,
+            "stop_s": 25.0,
+            "rmse_deg_s": 0.08488048005968865,
+            "peak_error_deg_s": 0.1316475411606214
+          },
+          "late": {
+            "start_s": 40.0,
+            "stop_s": 60.0,
+            "rmse_deg_s": 0.09046364195719889,
+            "peak_error_deg_s": 0.16990318247937575
+          },
+          "max_abs_q_deg_s": 0.6252857689989573,
+          "max_abs_alpha_deg": 5.289618442815378,
+          "max_abs_surface_deg": 4.587702775811432,
+          "max_abs_surface_rate_deg_s": 1.3283199454541232,
+          "events": [
+            {
+              "time": 20.0,
+              "label": "collective_stabilator_command_gain_loss",
+              "event_type": "control_failure",
+              "payload": {
+                "surface": "stab_left",
+                "mode": "efficiency_loss",
+                "efficiency": 1.0
+              }
+            }
+          ],
+          "command_saturation_steps": 0
+        }
+      },
+      "fault_rmse_reduction_percent": {
+        "after_fault": -39.38091048219883,
+        "late": -63.36541429853797
+      },
+      "prefault_histories_match": true,
+      "fault_semantics": "servo_target = (1-loss) * clip(trim + command_delta); aerodynamic tables unchanged",
+      "frozen_semantics": "freeze RLS theta/covariance and critic P at event; retain measurement and actuator feedback",
+      "trace_columns": [
+        "time_s",
+        "reference_deg_s",
+        "q_deg_s",
+        "alpha_deg",
+        "surface_deg",
+        "surface_rate_deg_s",
+        "command_delta_deg",
+        "mean_surface_delta_deg",
+        "identified_F",
+        "identified_G",
+        "critic_norm",
+        "model_change_since_event",
+        "critic_change_since_event",
+        "covariance_min_eigenvalue"
+      ]
+    },
+    "loss_10": {
+      "experiment": {
+        "dt": 0.02,
+        "duration": 60.0,
+        "fault_time": 20.0,
+        "loss": 0.1,
+        "phase": 0.0
+      },
+      "trim": {
+        "state_rad": [
+          0.08584285381698961,
+          0.0,
+          -0.07760933342131265,
+          0.0
+        ],
+        "residual": [
+          3.965907144993964e-16,
+          4.470938729748939e-15
+        ],
+        "healthy_surface_gain_rad_s2_per_deg": -0.1369104996619264,
+        "airspeed_m_s": 150.0,
+        "altitude_m": 3000.0
+      },
+      "controller": {
+        "policy": {
+          "name": "tensoraerospace.agent.iadp.model.IADPAgent",
+          "params": {
+            "n_state": 1,
+            "n_control": 1
+          },
+          "config": {
+            "dt": 0.02,
+            "Q": [
+              [
+                1.0
+              ]
+            ],
+            "R": [
+              [
+                4.686121229419587e-05
+              ]
+            ],
+            "gamma": 0.99,
+            "gamma_rls": 0.9995,
+            "phi_init": 1000.0,
+            "policy_eval_window": 300,
+            "policy_eval_every": 20,
+            "policy_eval_iterations": 1,
+            "policy_eval_regularization": 1e-10,
+            "policy_eval_warmup_updates": 40,
+            "enforce_psd": true,
+            "psd_floor": 1e-06,
+            "policy_eval_blend": 0.1,
+            "model_learning_only_steps": 0,
+            "excitation_signal": null,
+            "F_init": [
+              [
+                0.9791544291256661,
+                0.0
+              ],
+              [
+                0.0,
+                1.0
+              ]
+            ],
+            "G_init": [
+              [
+                -0.002738209993238528
+              ],
+              [
+                0.0
+              ]
+            ],
+            "P_init": [
+              [
+                2.874935748578265,
+                -2.994463289094888
+              ],
+              [
+                -2.994463289094888,
+                3.384006383298189
+              ]
+            ],
+            "u_magnitude_limit": 10,
+            "u_rate_limit": 60,
+            "pinv_rcond": 1e-08,
+            "seed": null,
+            "policy_eval_min_samples": null
+          }
+        }
+      },
+      "metrics": {
+        "healthy_adaptive": {
+          "before_fault": {
+            "start_s": 0.0,
+            "stop_s": 20.0,
+            "rmse_deg_s": 0.09677588471866656,
+            "peak_error_deg_s": 0.26686973762205035
+          },
+          "after_fault": {
+            "start_s": 20.0,
+            "stop_s": 60.0,
+            "rmse_deg_s": 0.12395192252426979,
+            "peak_error_deg_s": 0.34310763431822877
+          },
+          "initial_transient": {
+            "start_s": 20.0,
+            "stop_s": 25.0,
+            "rmse_deg_s": 0.05482622255485175,
+            "peak_error_deg_s": 0.12422397273646896
+          },
+          "late": {
+            "start_s": 40.0,
+            "stop_s": 60.0,
+            "rmse_deg_s": 0.14778630347292168,
+            "peak_error_deg_s": 0.34310763431822877
+          },
+          "max_abs_q_deg_s": 0.6701230996297015,
+          "max_abs_alpha_deg": 5.411888356582038,
+          "max_abs_surface_deg": 4.64500791775832,
+          "max_abs_surface_rate_deg_s": 1.3283199454541232,
+          "events": [],
+          "command_saturation_steps": 0
+        },
+        "healthy_frozen": {
+          "before_fault": {
+            "start_s": 0.0,
+            "stop_s": 20.0,
+            "rmse_deg_s": 0.09677588471866656,
+            "peak_error_deg_s": 0.26686973762205035
+          },
+          "after_fault": {
+            "start_s": 20.0,
+            "stop_s": 60.0,
+            "rmse_deg_s": 0.08893034354234744,
+            "peak_error_deg_s": 0.17173134732354245
+          },
+          "initial_transient": {
+            "start_s": 20.0,
+            "stop_s": 25.0,
+            "rmse_deg_s": 0.08488048005968882,
+            "peak_error_deg_s": 0.13164754116062144
+          },
+          "late": {
+            "start_s": 40.0,
+            "stop_s": 60.0,
+            "rmse_deg_s": 0.09046364195719885,
+            "peak_error_deg_s": 0.1699031824793757
+          },
+          "max_abs_q_deg_s": 0.6252857689989573,
+          "max_abs_alpha_deg": 5.289618442815378,
+          "max_abs_surface_deg": 4.587702775811432,
+          "max_abs_surface_rate_deg_s": 1.3283199454541232,
+          "events": [],
+          "command_saturation_steps": 0
+        },
+        "fault_adaptive": {
+          "before_fault": {
+            "start_s": 0.0,
+            "stop_s": 20.0,
+            "rmse_deg_s": 0.09677588471866656,
+            "peak_error_deg_s": 0.26686973762205035
+          },
+          "after_fault": {
+            "start_s": 20.0,
+            "stop_s": 60.0,
+            "rmse_deg_s": 0.24190357562318232,
+            "peak_error_deg_s": 0.8259237380967608
+          },
+          "initial_transient": {
+            "start_s": 20.0,
+            "stop_s": 25.0,
+            "rmse_deg_s": 0.49122595381914674,
+            "peak_error_deg_s": 0.8259237380967608
+          },
+          "late": {
+            "start_s": 40.0,
+            "stop_s": 60.0,
+            "rmse_deg_s": 0.14694191218153985,
+            "peak_error_deg_s": 0.17104949930607177
+          },
+          "max_abs_q_deg_s": 1.0195409118471064,
+          "max_abs_alpha_deg": 5.2726304760726626,
+          "max_abs_surface_deg": 4.575117657112584,
+          "max_abs_surface_rate_deg_s": 6.829563813778565,
+          "events": [
+            {
+              "time": 20.0,
+              "label": "collective_stabilator_command_gain_loss",
+              "event_type": "control_failure",
+              "payload": {
+                "surface": "stab_left",
+                "mode": "efficiency_loss",
+                "efficiency": 0.9
+              }
+            }
+          ],
+          "command_saturation_steps": 0
+        },
+        "fault_frozen": {
+          "before_fault": {
+            "start_s": 0.0,
+            "stop_s": 20.0,
+            "rmse_deg_s": 0.09677588471866656,
+            "peak_error_deg_s": 0.26686973762205035
+          },
+          "after_fault": {
+            "start_s": 20.0,
+            "stop_s": 60.0,
+            "rmse_deg_s": 0.773659971756742,
+            "peak_error_deg_s": 0.9923643641888035
+          },
+          "initial_transient": {
+            "start_s": 20.0,
+            "stop_s": 25.0,
+            "rmse_deg_s": 0.7518924546895109,
+            "peak_error_deg_s": 0.9923643641888035
+          },
+          "late": {
+            "start_s": 40.0,
+            "stop_s": 60.0,
+            "rmse_deg_s": 0.7708265917025939,
+            "peak_error_deg_s": 0.9441464584372561
+          },
+          "max_abs_q_deg_s": 1.2838945457176254,
+          "max_abs_alpha_deg": 5.2726304760726626,
+          "max_abs_surface_deg": 4.575117657112584,
+          "max_abs_surface_rate_deg_s": 6.757487692809317,
+          "events": [
+            {
+              "time": 20.0,
+              "label": "collective_stabilator_command_gain_loss",
+              "event_type": "control_failure",
+              "payload": {
+                "surface": "stab_left",
+                "mode": "efficiency_loss",
+                "efficiency": 0.9
+              }
+            }
+          ],
+          "command_saturation_steps": 0
+        }
+      },
+      "fault_rmse_reduction_percent": {
+        "after_fault": 68.73257187212435,
+        "late": 80.93709872450351
+      },
+      "prefault_histories_match": true,
+      "fault_semantics": "servo_target = (1-loss) * clip(trim + command_delta); aerodynamic tables unchanged",
+      "frozen_semantics": "freeze RLS theta/covariance and critic P at event; retain measurement and actuator feedback",
+      "trace_columns": [
+        "time_s",
+        "reference_deg_s",
+        "q_deg_s",
+        "alpha_deg",
+        "surface_deg",
+        "surface_rate_deg_s",
+        "command_delta_deg",
+        "mean_surface_delta_deg",
+        "identified_F",
+        "identified_G",
+        "critic_norm",
+        "model_change_since_event",
+        "critic_change_since_event",
+        "covariance_min_eigenvalue"
+      ]
+    },
+    "loss_20": {
+      "experiment": {
+        "dt": 0.02,
+        "duration": 60.0,
+        "fault_time": 20.0,
+        "loss": 0.2,
+        "phase": 0.0
+      },
+      "trim": {
+        "state_rad": [
+          0.08584285381698961,
+          0.0,
+          -0.07760933342131265,
+          0.0
+        ],
+        "residual": [
+          3.965907144993964e-16,
+          4.470938729748939e-15
+        ],
+        "healthy_surface_gain_rad_s2_per_deg": -0.1369104996619264,
+        "airspeed_m_s": 150.0,
+        "altitude_m": 3000.0
+      },
+      "controller": {
+        "policy": {
+          "name": "tensoraerospace.agent.iadp.model.IADPAgent",
+          "params": {
+            "n_state": 1,
+            "n_control": 1
+          },
+          "config": {
+            "dt": 0.02,
+            "Q": [
+              [
+                1.0
+              ]
+            ],
+            "R": [
+              [
+                4.686121229419587e-05
+              ]
+            ],
+            "gamma": 0.99,
+            "gamma_rls": 0.9995,
+            "phi_init": 1000.0,
+            "policy_eval_window": 300,
+            "policy_eval_every": 20,
+            "policy_eval_iterations": 1,
+            "policy_eval_regularization": 1e-10,
+            "policy_eval_warmup_updates": 40,
+            "enforce_psd": true,
+            "psd_floor": 1e-06,
+            "policy_eval_blend": 0.1,
+            "model_learning_only_steps": 0,
+            "excitation_signal": null,
+            "F_init": [
+              [
+                0.9791544291256661,
+                0.0
+              ],
+              [
+                0.0,
+                1.0
+              ]
+            ],
+            "G_init": [
+              [
+                -0.002738209993238528
+              ],
+              [
+                0.0
+              ]
+            ],
+            "P_init": [
+              [
+                2.874935748578265,
+                -2.994463289094888
+              ],
+              [
+                -2.994463289094888,
+                3.384006383298189
+              ]
+            ],
+            "u_magnitude_limit": 10,
+            "u_rate_limit": 60,
+            "pinv_rcond": 1e-08,
+            "seed": null,
+            "policy_eval_min_samples": null
+          }
+        }
+      },
+      "metrics": {
+        "healthy_adaptive": {
+          "before_fault": {
+            "start_s": 0.0,
+            "stop_s": 20.0,
+            "rmse_deg_s": 0.09677588471866656,
+            "peak_error_deg_s": 0.26686973762205035
+          },
+          "after_fault": {
+            "start_s": 20.0,
+            "stop_s": 60.0,
+            "rmse_deg_s": 0.12395192252426979,
+            "peak_error_deg_s": 0.34310763431822877
+          },
+          "initial_transient": {
+            "start_s": 20.0,
+            "stop_s": 25.0,
+            "rmse_deg_s": 0.05482622255485175,
+            "peak_error_deg_s": 0.12422397273646896
+          },
+          "late": {
+            "start_s": 40.0,
+            "stop_s": 60.0,
+            "rmse_deg_s": 0.14778630347292168,
+            "peak_error_deg_s": 0.34310763431822877
+          },
+          "max_abs_q_deg_s": 0.6701230996297015,
+          "max_abs_alpha_deg": 5.411888356582038,
+          "max_abs_surface_deg": 4.64500791775832,
+          "max_abs_surface_rate_deg_s": 1.3283199454541232,
+          "events": [],
+          "command_saturation_steps": 0
+        },
+        "healthy_frozen": {
+          "before_fault": {
+            "start_s": 0.0,
+            "stop_s": 20.0,
+            "rmse_deg_s": 0.09677588471866656,
+            "peak_error_deg_s": 0.26686973762205035
+          },
+          "after_fault": {
+            "start_s": 20.0,
+            "stop_s": 60.0,
+            "rmse_deg_s": 0.08893034354234744,
+            "peak_error_deg_s": 0.17173134732354245
+          },
+          "initial_transient": {
+            "start_s": 20.0,
+            "stop_s": 25.0,
+            "rmse_deg_s": 0.08488048005968882,
+            "peak_error_deg_s": 0.13164754116062144
+          },
+          "late": {
+            "start_s": 40.0,
+            "stop_s": 60.0,
+            "rmse_deg_s": 0.09046364195719885,
+            "peak_error_deg_s": 0.1699031824793757
+          },
+          "max_abs_q_deg_s": 0.6252857689989573,
+          "max_abs_alpha_deg": 5.289618442815378,
+          "max_abs_surface_deg": 4.587702775811432,
+          "max_abs_surface_rate_deg_s": 1.3283199454541232,
+          "events": [],
+          "command_saturation_steps": 0
+        },
+        "fault_adaptive": {
+          "before_fault": {
+            "start_s": 0.0,
+            "stop_s": 20.0,
+            "rmse_deg_s": 0.09677588471866656,
+            "peak_error_deg_s": 0.26686973762205035
+          },
+          "after_fault": {
+            "start_s": 20.0,
+            "stop_s": 60.0,
+            "rmse_deg_s": 0.5191883995878737,
+            "peak_error_deg_s": 1.7267214829275161
+          },
+          "initial_transient": {
+            "start_s": 20.0,
+            "stop_s": 25.0,
+            "rmse_deg_s": 1.067905289691218,
+            "peak_error_deg_s": 1.7267214829275161
+          },
+          "late": {
+            "start_s": 40.0,
+            "stop_s": 60.0,
+            "rmse_deg_s": 0.30249708688306753,
+            "peak_error_deg_s": 0.34437146375584454
+          },
+          "max_abs_q_deg_s": 1.6244077771576801,
+          "max_abs_alpha_deg": 5.2726304760726626,
+          "max_abs_surface_deg": 4.575117657112584,
+          "max_abs_surface_rate_deg_s": 13.567374779471875,
+          "events": [
+            {
+              "time": 20.0,
+              "label": "collective_stabilator_command_gain_loss",
+              "event_type": "control_failure",
+              "payload": {
+                "surface": "stab_left",
+                "mode": "efficiency_loss",
+                "efficiency": 0.8
+              }
+            }
+          ],
+          "command_saturation_steps": 0
+        },
+        "fault_frozen": {
+          "before_fault": {
+            "start_s": 0.0,
+            "stop_s": 20.0,
+            "rmse_deg_s": 0.09677588471866656,
+            "peak_error_deg_s": 0.26686973762205035
+          },
+          "after_fault": {
+            "start_s": 20.0,
+            "stop_s": 60.0,
+            "rmse_deg_s": 1.676475604605518,
+            "peak_error_deg_s": 2.1081439883211646
+          },
+          "initial_transient": {
+            "start_s": 20.0,
+            "stop_s": 25.0,
+            "rmse_deg_s": 1.696098660224354,
+            "peak_error_deg_s": 2.1081439883211646
+          },
+          "late": {
+            "start_s": 40.0,
+            "stop_s": 60.0,
+            "rmse_deg_s": 1.6689014590245665,
+            "peak_error_deg_s": 1.8512640698832983
+          },
+          "max_abs_q_deg_s": 2.2408941599445655,
+          "max_abs_alpha_deg": 5.2726304760726626,
+          "max_abs_surface_deg": 4.575117657112584,
+          "max_abs_surface_rate_deg_s": 13.511663566772071,
+          "events": [
+            {
+              "time": 20.0,
+              "label": "collective_stabilator_command_gain_loss",
+              "event_type": "control_failure",
+              "payload": {
+                "surface": "stab_left",
+                "mode": "efficiency_loss",
+                "efficiency": 0.8
+              }
+            }
+          ],
+          "command_saturation_steps": 0
+        }
+      },
+      "fault_rmse_reduction_percent": {
+        "after_fault": 69.03096005921059,
+        "late": 81.87447885270171
+      },
+      "prefault_histories_match": true,
+      "fault_semantics": "servo_target = (1-loss) * clip(trim + command_delta); aerodynamic tables unchanged",
+      "frozen_semantics": "freeze RLS theta/covariance and critic P at event; retain measurement and actuator feedback",
+      "trace_columns": [
+        "time_s",
+        "reference_deg_s",
+        "q_deg_s",
+        "alpha_deg",
+        "surface_deg",
+        "surface_rate_deg_s",
+        "command_delta_deg",
+        "mean_surface_delta_deg",
+        "identified_F",
+        "identified_G",
+        "critic_norm",
+        "model_change_since_event",
+        "critic_change_since_event",
+        "covariance_min_eigenvalue"
+      ]
+    },
+    "phase_07": {
+      "experiment": {
+        "dt": 0.02,
+        "duration": 60.0,
+        "fault_time": 20.0,
+        "loss": 0.15,
+        "phase": 0.7
+      },
+      "trim": {
+        "state_rad": [
+          0.08584285381698961,
+          0.0,
+          -0.07760933342131265,
+          0.0
+        ],
+        "residual": [
+          3.965907144993964e-16,
+          4.470938729748939e-15
+        ],
+        "healthy_surface_gain_rad_s2_per_deg": -0.1369104996619264,
+        "airspeed_m_s": 150.0,
+        "altitude_m": 3000.0
+      },
+      "controller": {
+        "policy": {
+          "name": "tensoraerospace.agent.iadp.model.IADPAgent",
+          "params": {
+            "n_state": 1,
+            "n_control": 1
+          },
+          "config": {
+            "dt": 0.02,
+            "Q": [
+              [
+                1.0
+              ]
+            ],
+            "R": [
+              [
+                4.686121229419587e-05
+              ]
+            ],
+            "gamma": 0.99,
+            "gamma_rls": 0.9995,
+            "phi_init": 1000.0,
+            "policy_eval_window": 300,
+            "policy_eval_every": 20,
+            "policy_eval_iterations": 1,
+            "policy_eval_regularization": 1e-10,
+            "policy_eval_warmup_updates": 40,
+            "enforce_psd": true,
+            "psd_floor": 1e-06,
+            "policy_eval_blend": 0.1,
+            "model_learning_only_steps": 0,
+            "excitation_signal": null,
+            "F_init": [
+              [
+                0.9791544291256661,
+                0.0
+              ],
+              [
+                0.0,
+                1.0
+              ]
+            ],
+            "G_init": [
+              [
+                -0.002738209993238528
+              ],
+              [
+                0.0
+              ]
+            ],
+            "P_init": [
+              [
+                2.874935748578265,
+                -2.994463289094888
+              ],
+              [
+                -2.994463289094888,
+                3.384006383298189
+              ]
+            ],
+            "u_magnitude_limit": 10,
+            "u_rate_limit": 60,
+            "pinv_rcond": 1e-08,
+            "seed": null,
+            "policy_eval_min_samples": null
+          }
+        }
+      },
+      "metrics": {
+        "healthy_adaptive": {
+          "before_fault": {
+            "start_s": 0.0,
+            "stop_s": 20.0,
+            "rmse_deg_s": 0.08473652376908372,
+            "peak_error_deg_s": 0.23675486745416469
+          },
+          "after_fault": {
+            "start_s": 20.0,
+            "stop_s": 60.0,
+            "rmse_deg_s": 0.07629085890882803,
+            "peak_error_deg_s": 0.19016853817011892
+          },
+          "initial_transient": {
+            "start_s": 20.0,
+            "stop_s": 25.0,
+            "rmse_deg_s": 0.06943946807791153,
+            "peak_error_deg_s": 0.12836362462191953
+          },
+          "late": {
+            "start_s": 40.0,
+            "stop_s": 60.0,
+            "rmse_deg_s": 0.07812276889329905,
+            "peak_error_deg_s": 0.19016853817011892
+          },
+          "max_abs_q_deg_s": 0.7983072135527922,
+          "max_abs_alpha_deg": 5.491193064690776,
+          "max_abs_surface_deg": 4.684472401640178,
+          "max_abs_surface_rate_deg_s": 3.6239109674384666,
+          "events": [],
+          "command_saturation_steps": 0
+        },
+        "healthy_frozen": {
+          "before_fault": {
+            "start_s": 0.0,
+            "stop_s": 20.0,
+            "rmse_deg_s": 0.08473652376908372,
+            "peak_error_deg_s": 0.23675486745416469
+          },
+          "after_fault": {
+            "start_s": 20.0,
+            "stop_s": 60.0,
+            "rmse_deg_s": 0.0696061869413719,
+            "peak_error_deg_s": 0.13497951124267882
+          },
+          "initial_transient": {
+            "start_s": 20.0,
+            "stop_s": 25.0,
+            "rmse_deg_s": 0.06780228663903845,
+            "peak_error_deg_s": 0.1294926028203372
+          },
+          "late": {
+            "start_s": 40.0,
+            "stop_s": 60.0,
+            "rmse_deg_s": 0.07024070557312082,
+            "peak_error_deg_s": 0.13497951124267882
+          },
+          "max_abs_q_deg_s": 0.7524062816299342,
+          "max_abs_alpha_deg": 5.452088994057863,
+          "max_abs_surface_deg": 4.684472401640178,
+          "max_abs_surface_rate_deg_s": 3.6239109674384666,
+          "events": [],
+          "command_saturation_steps": 0
+        },
+        "fault_adaptive": {
+          "before_fault": {
+            "start_s": 0.0,
+            "stop_s": 20.0,
+            "rmse_deg_s": 0.08473652376908372,
+            "peak_error_deg_s": 0.23675486745416469
+          },
+          "after_fault": {
+            "start_s": 20.0,
+            "stop_s": 60.0,
+            "rmse_deg_s": 0.38062347296541105,
+            "peak_error_deg_s": 1.2532424641414754
+          },
+          "initial_transient": {
+            "start_s": 20.0,
+            "stop_s": 25.0,
+            "rmse_deg_s": 0.802005564089113,
+            "peak_error_deg_s": 1.2532424641414754
+          },
+          "late": {
+            "start_s": 40.0,
+            "stop_s": 60.0,
+            "rmse_deg_s": 0.21698957684120823,
+            "peak_error_deg_s": 0.249647712864127
+          },
+          "max_abs_q_deg_s": 1.368245119157924,
+          "max_abs_alpha_deg": 5.360504177260947,
+          "max_abs_surface_deg": 4.684472401640178,
+          "max_abs_surface_rate_deg_s": 10.369883641879847,
+          "events": [
+            {
+              "time": 20.0,
+              "label": "collective_stabilator_command_gain_loss",
+              "event_type": "control_failure",
+              "payload": {
+                "surface": "stab_left",
+                "mode": "efficiency_loss",
+                "efficiency": 0.85
+              }
+            }
+          ],
+          "command_saturation_steps": 0
+        },
+        "fault_frozen": {
+          "before_fault": {
+            "start_s": 0.0,
+            "stop_s": 20.0,
+            "rmse_deg_s": 0.08473652376908372,
+            "peak_error_deg_s": 0.23675486745416469
+          },
+          "after_fault": {
+            "start_s": 20.0,
+            "stop_s": 60.0,
+            "rmse_deg_s": 1.167727870306609,
+            "peak_error_deg_s": 1.4562651798556363
+          },
+          "initial_transient": {
+            "start_s": 20.0,
+            "stop_s": 25.0,
+            "rmse_deg_s": 1.2422089386155906,
+            "peak_error_deg_s": 1.4562651798556363
+          },
+          "late": {
+            "start_s": 40.0,
+            "stop_s": 60.0,
+            "rmse_deg_s": 1.1569567938676568,
+            "peak_error_deg_s": 1.287971855615162
+          },
+          "max_abs_q_deg_s": 1.89219306693922,
+          "max_abs_alpha_deg": 5.360505382824739,
+          "max_abs_surface_deg": 4.684472401640178,
+          "max_abs_surface_rate_deg_s": 10.26916680992106,
+          "events": [
+            {
+              "time": 20.0,
+              "label": "collective_stabilator_command_gain_loss",
+              "event_type": "control_failure",
+              "payload": {
+                "surface": "stab_left",
+                "mode": "efficiency_loss",
+                "efficiency": 0.85
+              }
+            }
+          ],
+          "command_saturation_steps": 0
+        }
+      },
+      "fault_rmse_reduction_percent": {
+        "after_fault": 67.40477960284778,
+        "late": 81.24479859651272
+      },
+      "prefault_histories_match": true,
+      "fault_semantics": "servo_target = (1-loss) * clip(trim + command_delta); aerodynamic tables unchanged",
+      "frozen_semantics": "freeze RLS theta/covariance and critic P at event; retain measurement and actuator feedback",
+      "trace_columns": [
+        "time_s",
+        "reference_deg_s",
+        "q_deg_s",
+        "alpha_deg",
+        "surface_deg",
+        "surface_rate_deg_s",
+        "command_delta_deg",
+        "mean_surface_delta_deg",
+        "identified_F",
+        "identified_G",
+        "critic_norm",
+        "model_change_since_event",
+        "critic_change_since_event",
+        "covariance_min_eigenvalue"
+      ]
+    },
+    "duration_120": {
+      "experiment": {
+        "dt": 0.02,
+        "duration": 120.0,
+        "fault_time": 20.0,
+        "loss": 0.15,
+        "phase": 0.0
+      },
+      "trim": {
+        "state_rad": [
+          0.08584285381698961,
+          0.0,
+          -0.07760933342131265,
+          0.0
+        ],
+        "residual": [
+          3.965907144993964e-16,
+          4.470938729748939e-15
+        ],
+        "healthy_surface_gain_rad_s2_per_deg": -0.1369104996619264,
+        "airspeed_m_s": 150.0,
+        "altitude_m": 3000.0
+      },
+      "controller": {
+        "policy": {
+          "name": "tensoraerospace.agent.iadp.model.IADPAgent",
+          "params": {
+            "n_state": 1,
+            "n_control": 1
+          },
+          "config": {
+            "dt": 0.02,
+            "Q": [
+              [
+                1.0
+              ]
+            ],
+            "R": [
+              [
+                4.686121229419587e-05
+              ]
+            ],
+            "gamma": 0.99,
+            "gamma_rls": 0.9995,
+            "phi_init": 1000.0,
+            "policy_eval_window": 300,
+            "policy_eval_every": 20,
+            "policy_eval_iterations": 1,
+            "policy_eval_regularization": 1e-10,
+            "policy_eval_warmup_updates": 40,
+            "enforce_psd": true,
+            "psd_floor": 1e-06,
+            "policy_eval_blend": 0.1,
+            "model_learning_only_steps": 0,
+            "excitation_signal": null,
+            "F_init": [
+              [
+                0.9791544291256661,
+                0.0
+              ],
+              [
+                0.0,
+                1.0
+              ]
+            ],
+            "G_init": [
+              [
+                -0.002738209993238528
+              ],
+              [
+                0.0
+              ]
+            ],
+            "P_init": [
+              [
+                2.874935748578265,
+                -2.994463289094888
+              ],
+              [
+                -2.994463289094888,
+                3.384006383298189
+              ]
+            ],
+            "u_magnitude_limit": 10,
+            "u_rate_limit": 60,
+            "pinv_rcond": 1e-08,
+            "seed": null,
+            "policy_eval_min_samples": null
+          }
+        }
+      },
+      "metrics": {
+        "healthy_adaptive": {
+          "before_fault": {
+            "start_s": 0.0,
+            "stop_s": 20.0,
+            "rmse_deg_s": 0.09677588471866656,
+            "peak_error_deg_s": 0.26686973762205035
+          },
+          "after_fault": {
+            "start_s": 20.0,
+            "stop_s": 120.0,
+            "rmse_deg_s": 0.16800519104577166,
+            "peak_error_deg_s": 0.5406919068210515
+          },
+          "initial_transient": {
+            "start_s": 20.0,
+            "stop_s": 25.0,
+            "rmse_deg_s": 0.05482622255485175,
+            "peak_error_deg_s": 0.12422397273646896
+          },
+          "late": {
+            "start_s": 70.0,
+            "stop_s": 120.0,
+            "rmse_deg_s": 0.1851286267357636,
+            "peak_error_deg_s": 0.5055989995192723
+          },
+          "max_abs_q_deg_s": 0.7373133951180263,
+          "max_abs_alpha_deg": 5.411888356582038,
+          "max_abs_surface_deg": 4.64500791775832,
+          "max_abs_surface_rate_deg_s": 1.3283199454541232,
+          "events": [],
+          "command_saturation_steps": 0
+        },
+        "healthy_frozen": {
+          "before_fault": {
+            "start_s": 0.0,
+            "stop_s": 20.0,
+            "rmse_deg_s": 0.09677588471866656,
+            "peak_error_deg_s": 0.26686973762205035
+          },
+          "after_fault": {
+            "start_s": 20.0,
+            "stop_s": 120.0,
+            "rmse_deg_s": 0.09084301777232101,
+            "peak_error_deg_s": 0.17173134732354245
+          },
+          "initial_transient": {
+            "start_s": 20.0,
+            "stop_s": 25.0,
+            "rmse_deg_s": 0.08488048005968882,
+            "peak_error_deg_s": 0.13164754116062144
+          },
+          "late": {
+            "start_s": 70.0,
+            "stop_s": 120.0,
+            "rmse_deg_s": 0.09139327897765366,
+            "peak_error_deg_s": 0.17121852837929674
+          },
+          "max_abs_q_deg_s": 0.6252857689989573,
+          "max_abs_alpha_deg": 5.292217496963756,
+          "max_abs_surface_deg": 4.587702775811432,
+          "max_abs_surface_rate_deg_s": 1.3283199454541232,
+          "events": [],
+          "command_saturation_steps": 0
+        },
+        "fault_adaptive": {
+          "before_fault": {
+            "start_s": 0.0,
+            "stop_s": 20.0,
+            "rmse_deg_s": 0.09677588471866656,
+            "peak_error_deg_s": 0.26686973762205035
+          },
+          "after_fault": {
+            "start_s": 20.0,
+            "stop_s": 120.0,
+            "rmse_deg_s": 0.2721771092973618,
+            "peak_error_deg_s": 1.2613219938248554
+          },
+          "initial_transient": {
+            "start_s": 20.0,
+            "stop_s": 25.0,
+            "rmse_deg_s": 0.7674611608654988,
+            "peak_error_deg_s": 1.2613219938248554
+          },
+          "late": {
+            "start_s": 70.0,
+            "stop_s": 120.0,
+            "rmse_deg_s": 0.17184037073093636,
+            "peak_error_deg_s": 0.19964812819692196
+          },
+          "max_abs_q_deg_s": 1.295252282975704,
+          "max_abs_alpha_deg": 5.2726304760726626,
+          "max_abs_surface_deg": 4.575117657112584,
+          "max_abs_surface_rate_deg_s": 10.202802080285156,
+          "events": [
+            {
+              "time": 20.0,
+              "label": "collective_stabilator_command_gain_loss",
+              "event_type": "control_failure",
+              "payload": {
+                "surface": "stab_left",
+                "mode": "efficiency_loss",
+                "efficiency": 0.85
+              }
+            }
+          ],
+          "command_saturation_steps": 0
+        },
+        "fault_frozen": {
+          "before_fault": {
+            "start_s": 0.0,
+            "stop_s": 20.0,
+            "rmse_deg_s": 0.09677588471866656,
+            "peak_error_deg_s": 0.26686973762205035
+          },
+          "after_fault": {
+            "start_s": 20.0,
+            "stop_s": 120.0,
+            "rmse_deg_s": 1.2047027414307636,
+            "peak_error_deg_s": 1.5331722163777624
+          },
+          "initial_transient": {
+            "start_s": 20.0,
+            "stop_s": 25.0,
+            "rmse_deg_s": 1.2045620526514724,
+            "peak_error_deg_s": 1.5331722163777624
+          },
+          "late": {
+            "start_s": 70.0,
+            "stop_s": 120.0,
+            "rmse_deg_s": 1.2021406999627562,
+            "peak_error_deg_s": 1.3799144710196176
+          },
+          "max_abs_q_deg_s": 1.730570886771444,
+          "max_abs_alpha_deg": 5.2726304760726626,
+          "max_abs_surface_deg": 4.575117657112584,
+          "max_abs_surface_rate_deg_s": 10.13431948228513,
+          "events": [
+            {
+              "time": 20.0,
+              "label": "collective_stabilator_command_gain_loss",
+              "event_type": "control_failure",
+              "payload": {
+                "surface": "stab_left",
+                "mode": "efficiency_loss",
+                "efficiency": 0.85
+              }
+            }
+          ],
+          "command_saturation_steps": 0
+        }
+      },
+      "fault_rmse_reduction_percent": {
+        "after_fault": 77.40711464023806,
+        "late": 85.70546935676829
+      },
+      "prefault_histories_match": true,
+      "prefault_max_absolute_difference": 3.2278346662195645e-13,
+      "fault_semantics": "servo_target = (1-loss) * clip(trim + command_delta); aerodynamic tables unchanged",
+      "frozen_semantics": "freeze RLS theta/covariance and critic P at event; retain measurement and actuator feedback",
+      "trace_columns": [
+        "time_s",
+        "reference_deg_s",
+        "q_deg_s",
+        "alpha_deg",
+        "surface_deg",
+        "surface_rate_deg_s",
+        "command_delta_deg",
+        "mean_surface_delta_deg",
+        "identified_F",
+        "identified_G",
+        "critic_norm",
+        "model_change_since_event",
+        "critic_change_since_event",
+        "covariance_min_eigenvalue"
+      ]
+    },
+    "integration_substeps_2": {
+      "experiment": {
+        "dt": 0.02,
+        "duration": 60.0,
+        "fault_time": 20.0,
+        "loss": 0.15,
+        "phase": 0.0,
+        "integration_substeps": 2
+      },
+      "trim": {
+        "state_rad": [
+          0.08584285381698961,
+          0.0,
+          -0.07760933342131265,
+          0.0
+        ],
+        "residual": [
+          3.965907144993964e-16,
+          4.470938729748939e-15
+        ],
+        "healthy_surface_gain_rad_s2_per_deg": -0.1369104996619264,
+        "airspeed_m_s": 150.0,
+        "altitude_m": 3000.0
+      },
+      "controller": {
+        "policy": {
+          "name": "tensoraerospace.agent.iadp.model.IADPAgent",
+          "params": {
+            "n_state": 1,
+            "n_control": 1
+          },
+          "config": {
+            "dt": 0.02,
+            "Q": [
+              [
+                1.0
+              ]
+            ],
+            "R": [
+              [
+                4.686121229419587e-05
+              ]
+            ],
+            "gamma": 0.99,
+            "gamma_rls": 0.9995,
+            "phi_init": 1000.0,
+            "policy_eval_window": 300,
+            "policy_eval_every": 20,
+            "policy_eval_iterations": 1,
+            "policy_eval_regularization": 1e-10,
+            "policy_eval_warmup_updates": 40,
+            "enforce_psd": true,
+            "psd_floor": 1e-06,
+            "policy_eval_blend": 0.1,
+            "model_learning_only_steps": 0,
+            "excitation_signal": null,
+            "F_init": [
+              [
+                0.9791544291256661,
+                0.0
+              ],
+              [
+                0.0,
+                1.0
+              ]
+            ],
+            "G_init": [
+              [
+                -0.002738209993238528
+              ],
+              [
+                0.0
+              ]
+            ],
+            "P_init": [
+              [
+                2.874935748578265,
+                -2.994463289094888
+              ],
+              [
+                -2.994463289094888,
+                3.384006383298189
+              ]
+            ],
+            "u_magnitude_limit": 10,
+            "u_rate_limit": 60,
+            "pinv_rcond": 1e-08,
+            "seed": null,
+            "policy_eval_min_samples": null
+          }
+        }
+      },
+      "metrics": {
+        "healthy_adaptive": {
+          "before_fault": {
+            "start_s": 0.0,
+            "stop_s": 20.0,
+            "rmse_deg_s": 0.09698174208791392,
+            "peak_error_deg_s": 0.2670890499169685
+          },
+          "after_fault": {
+            "start_s": 20.0,
+            "stop_s": 60.0,
+            "rmse_deg_s": 0.12400681645986646,
+            "peak_error_deg_s": 0.35650804729374236
+          },
+          "initial_transient": {
+            "start_s": 20.0,
+            "stop_s": 25.0,
+            "rmse_deg_s": 0.054737216030853984,
+            "peak_error_deg_s": 0.1241480414374746
+          },
+          "late": {
+            "start_s": 40.0,
+            "stop_s": 60.0,
+            "rmse_deg_s": 0.14785866788716712,
+            "peak_error_deg_s": 0.35650804729374236
+          },
+          "max_abs_q_deg_s": 0.6648267230973193,
+          "max_abs_alpha_deg": 5.408536989013218,
+          "max_abs_surface_deg": 4.642657842729906,
+          "max_abs_surface_rate_deg_s": 1.3239841100743364,
+          "events": [],
+          "command_saturation_steps": 0
+        },
+        "healthy_frozen": {
+          "before_fault": {
+            "start_s": 0.0,
+            "stop_s": 20.0,
+            "rmse_deg_s": 0.09698174208791392,
+            "peak_error_deg_s": 0.2670890499169685
+          },
+          "after_fault": {
+            "start_s": 20.0,
+            "stop_s": 60.0,
+            "rmse_deg_s": 0.08880365998846525,
+            "peak_error_deg_s": 0.17163566599284374
+          },
+          "initial_transient": {
+            "start_s": 20.0,
+            "stop_s": 25.0,
+            "rmse_deg_s": 0.08477100727089001,
+            "peak_error_deg_s": 0.1317369771812892
+          },
+          "late": {
+            "start_s": 40.0,
+            "stop_s": 60.0,
+            "rmse_deg_s": 0.09034123563715164,
+            "peak_error_deg_s": 0.1698211111574291
+          },
+          "max_abs_q_deg_s": 0.6248308379353394,
+          "max_abs_alpha_deg": 5.289894049467179,
+          "max_abs_surface_deg": 4.587814452769012,
+          "max_abs_surface_rate_deg_s": 1.3239841100743364,
+          "events": [],
+          "command_saturation_steps": 0
+        },
+        "fault_adaptive": {
+          "before_fault": {
+            "start_s": 0.0,
+            "stop_s": 20.0,
+            "rmse_deg_s": 0.09698174208791392,
+            "peak_error_deg_s": 0.2670890499169685
+          },
+          "after_fault": {
+            "start_s": 20.0,
+            "stop_s": 60.0,
+            "rmse_deg_s": 0.37487945796707073,
+            "peak_error_deg_s": 1.2701779978970438
+          },
+          "initial_transient": {
+            "start_s": 20.0,
+            "stop_s": 25.0,
+            "rmse_deg_s": 0.7733359713923311,
+            "peak_error_deg_s": 1.2701779978970438
+          },
+          "late": {
+            "start_s": 40.0,
+            "stop_s": 60.0,
+            "rmse_deg_s": 0.21665036196879361,
+            "peak_error_deg_s": 0.2482822006470266
+          },
+          "max_abs_q_deg_s": 1.3003239714400774,
+          "max_abs_alpha_deg": 5.272349598027082,
+          "max_abs_surface_deg": 4.575028361732562,
+          "max_abs_surface_rate_deg_s": 10.085762039098526,
+          "events": [
+            {
+              "time": 20.0,
+              "label": "collective_stabilator_command_gain_loss",
+              "event_type": "control_failure",
+              "payload": {
+                "surface": "stab_left",
+                "mode": "efficiency_loss",
+                "efficiency": 0.85
+              }
+            }
+          ],
+          "command_saturation_steps": 0
+        },
+        "fault_frozen": {
+          "before_fault": {
+            "start_s": 0.0,
+            "stop_s": 20.0,
+            "rmse_deg_s": 0.09698174208791392,
+            "peak_error_deg_s": 0.2670890499169685
+          },
+          "after_fault": {
+            "start_s": 20.0,
+            "stop_s": 60.0,
+            "rmse_deg_s": 1.2072078985562362,
+            "peak_error_deg_s": 1.5362179038286659
+          },
+          "initial_transient": {
+            "start_s": 20.0,
+            "stop_s": 25.0,
+            "rmse_deg_s": 1.2073377544561184,
+            "peak_error_deg_s": 1.5362179038286659
+          },
+          "late": {
+            "start_s": 40.0,
+            "stop_s": 60.0,
+            "rmse_deg_s": 1.2017442871950572,
+            "peak_error_deg_s": 1.3802474135381875
+          },
+          "max_abs_q_deg_s": 1.73394926891231,
+          "max_abs_alpha_deg": 5.272349598027082,
+          "max_abs_surface_deg": 4.575028361732562,
+          "max_abs_surface_rate_deg_s": 10.120290712960594,
+          "events": [
+            {
+              "time": 20.0,
+              "label": "collective_stabilator_command_gain_loss",
+              "event_type": "control_failure",
+              "payload": {
+                "surface": "stab_left",
+                "mode": "efficiency_loss",
+                "efficiency": 0.85
+              }
+            }
+          ],
+          "command_saturation_steps": 0
+        }
+      },
+      "fault_rmse_reduction_percent": {
+        "after_fault": 68.94657014625162,
+        "late": 81.97200816535867
+      },
+      "prefault_histories_match": true,
+      "prefault_max_absolute_difference": 1.5060452884796405e-12,
+      "fault_semantics": "servo_target = (1-loss) * clip(trim + command_delta); aerodynamic tables unchanged",
+      "frozen_semantics": "freeze RLS theta/covariance and critic P at event; retain measurement and actuator feedback",
+      "trace_columns": [
+        "time_s",
+        "reference_deg_s",
+        "q_deg_s",
+        "alpha_deg",
+        "surface_deg",
+        "surface_rate_deg_s",
+        "command_delta_deg",
+        "mean_surface_delta_deg",
+        "identified_F",
+        "identified_G",
+        "critic_norm",
+        "model_change_since_event",
+        "critic_change_since_event",
+        "covariance_min_eigenvalue"
+      ]
+    },
+    "integration_substeps_4": {
+      "experiment": {
+        "dt": 0.02,
+        "duration": 60.0,
+        "fault_time": 20.0,
+        "loss": 0.15,
+        "phase": 0.0,
+        "integration_substeps": 4
+      },
+      "trim": {
+        "state_rad": [
+          0.08584285381698961,
+          0.0,
+          -0.07760933342131265,
+          0.0
+        ],
+        "residual": [
+          3.965907144993964e-16,
+          4.470938729748939e-15
+        ],
+        "healthy_surface_gain_rad_s2_per_deg": -0.1369104996619264,
+        "airspeed_m_s": 150.0,
+        "altitude_m": 3000.0
+      },
+      "controller": {
+        "policy": {
+          "name": "tensoraerospace.agent.iadp.model.IADPAgent",
+          "params": {
+            "n_state": 1,
+            "n_control": 1
+          },
+          "config": {
+            "dt": 0.02,
+            "Q": [
+              [
+                1.0
+              ]
+            ],
+            "R": [
+              [
+                4.686121229419587e-05
+              ]
+            ],
+            "gamma": 0.99,
+            "gamma_rls": 0.9995,
+            "phi_init": 1000.0,
+            "policy_eval_window": 300,
+            "policy_eval_every": 20,
+            "policy_eval_iterations": 1,
+            "policy_eval_regularization": 1e-10,
+            "policy_eval_warmup_updates": 40,
+            "enforce_psd": true,
+            "psd_floor": 1e-06,
+            "policy_eval_blend": 0.1,
+            "model_learning_only_steps": 0,
+            "excitation_signal": null,
+            "F_init": [
+              [
+                0.9791544291256661,
+                0.0
+              ],
+              [
+                0.0,
+                1.0
+              ]
+            ],
+            "G_init": [
+              [
+                -0.002738209993238528
+              ],
+              [
+                0.0
+              ]
+            ],
+            "P_init": [
+              [
+                2.874935748578265,
+                -2.994463289094888
+              ],
+              [
+                -2.994463289094888,
+                3.384006383298189
+              ]
+            ],
+            "u_magnitude_limit": 10,
+            "u_rate_limit": 60,
+            "pinv_rcond": 1e-08,
+            "seed": null,
+            "policy_eval_min_samples": null
+          }
+        }
+      },
+      "metrics": {
+        "healthy_adaptive": {
+          "before_fault": {
+            "start_s": 0.0,
+            "stop_s": 20.0,
+            "rmse_deg_s": 0.09703099638114446,
+            "peak_error_deg_s": 0.26713389066592186
+          },
+          "after_fault": {
+            "start_s": 20.0,
+            "stop_s": 60.0,
+            "rmse_deg_s": 0.12431993252957724,
+            "peak_error_deg_s": 0.35963045602092647
+          },
+          "initial_transient": {
+            "start_s": 20.0,
+            "stop_s": 25.0,
+            "rmse_deg_s": 0.05470800139618602,
+            "peak_error_deg_s": 0.12411113073798097
+          },
+          "late": {
+            "start_s": 40.0,
+            "stop_s": 60.0,
+            "rmse_deg_s": 0.14837771580382944,
+            "peak_error_deg_s": 0.35963045602092647
+          },
+          "max_abs_q_deg_s": 0.6622490582378592,
+          "max_abs_alpha_deg": 5.406643417815046,
+          "max_abs_surface_deg": 4.641699015546514,
+          "max_abs_surface_rate_deg_s": 1.3230385487886251,
+          "events": [],
+          "command_saturation_steps": 0
+        },
+        "healthy_frozen": {
+          "before_fault": {
+            "start_s": 0.0,
+            "stop_s": 20.0,
+            "rmse_deg_s": 0.09703099638114446,
+            "peak_error_deg_s": 0.26713389066592186
+          },
+          "after_fault": {
+            "start_s": 20.0,
+            "stop_s": 60.0,
+            "rmse_deg_s": 0.08875633364313094,
+            "peak_error_deg_s": 0.17158905395178708
+          },
+          "initial_transient": {
+            "start_s": 20.0,
+            "stop_s": 25.0,
+            "rmse_deg_s": 0.08472914275116548,
+            "peak_error_deg_s": 0.13175141722706038
+          },
+          "late": {
+            "start_s": 40.0,
+            "stop_s": 60.0,
+            "rmse_deg_s": 0.09029498111028979,
+            "peak_error_deg_s": 0.16977871953919088
+          },
+          "max_abs_q_deg_s": 0.6247193319429131,
+          "max_abs_alpha_deg": 5.289988203104289,
+          "max_abs_surface_deg": 4.58785220540196,
+          "max_abs_surface_rate_deg_s": 1.3230385487886251,
+          "events": [],
+          "command_saturation_steps": 0
+        },
+        "fault_adaptive": {
+          "before_fault": {
+            "start_s": 0.0,
+            "stop_s": 20.0,
+            "rmse_deg_s": 0.09703099638114446,
+            "peak_error_deg_s": 0.26713389066592186
+          },
+          "after_fault": {
+            "start_s": 20.0,
+            "stop_s": 60.0,
+            "rmse_deg_s": 0.37543037191407364,
+            "peak_error_deg_s": 1.272689183618392
+          },
+          "initial_transient": {
+            "start_s": 20.0,
+            "stop_s": 25.0,
+            "rmse_deg_s": 0.7749582837639274,
+            "peak_error_deg_s": 1.272689183618392
+          },
+          "late": {
+            "start_s": 40.0,
+            "stop_s": 60.0,
+            "rmse_deg_s": 0.2165740812460616,
+            "peak_error_deg_s": 0.24832223056199157
+          },
+          "max_abs_q_deg_s": 1.301718890238031,
+          "max_abs_alpha_deg": 5.272278052647615,
+          "max_abs_surface_deg": 4.575006657173048,
+          "max_abs_surface_rate_deg_s": 10.063766130254423,
+          "events": [
+            {
+              "time": 20.0,
+              "label": "collective_stabilator_command_gain_loss",
+              "event_type": "control_failure",
+              "payload": {
+                "surface": "stab_left",
+                "mode": "efficiency_loss",
+                "efficiency": 0.85
+              }
+            }
+          ],
+          "command_saturation_steps": 0
+        },
+        "fault_frozen": {
+          "before_fault": {
+            "start_s": 0.0,
+            "stop_s": 20.0,
+            "rmse_deg_s": 0.09703099638114446,
+            "peak_error_deg_s": 0.26713389066592186
+          },
+          "after_fault": {
+            "start_s": 20.0,
+            "stop_s": 60.0,
+            "rmse_deg_s": 1.2078448183769002,
+            "peak_error_deg_s": 1.5370182353400714
+          },
+          "initial_transient": {
+            "start_s": 20.0,
+            "stop_s": 25.0,
+            "rmse_deg_s": 1.2080839142393605,
+            "peak_error_deg_s": 1.5370182353400714
+          },
+          "late": {
+            "start_s": 40.0,
+            "stop_s": 60.0,
+            "rmse_deg_s": 1.2023675595047978,
+            "peak_error_deg_s": 1.3808012189802628
+          },
+          "max_abs_q_deg_s": 1.7348691862258863,
+          "max_abs_alpha_deg": 5.272278052647615,
+          "max_abs_surface_deg": 4.575006657173048,
+          "max_abs_surface_rate_deg_s": 10.119236885311137,
+          "events": [
+            {
+              "time": 20.0,
+              "label": "collective_stabilator_command_gain_loss",
+              "event_type": "control_failure",
+              "payload": {
+                "surface": "stab_left",
+                "mode": "efficiency_loss",
+                "efficiency": 0.85
+              }
+            }
+          ],
+          "command_saturation_steps": 0
+        }
+      },
+      "fault_rmse_reduction_percent": {
+        "after_fault": 68.91733389902055,
+        "late": 81.98769756103043
+      },
+      "prefault_histories_match": true,
+      "prefault_max_absolute_difference": 7.532308110569375e-13,
+      "fault_semantics": "servo_target = (1-loss) * clip(trim + command_delta); aerodynamic tables unchanged",
+      "frozen_semantics": "freeze RLS theta/covariance and critic P at event; retain measurement and actuator feedback",
+      "trace_columns": [
+        "time_s",
+        "reference_deg_s",
+        "q_deg_s",
+        "alpha_deg",
+        "surface_deg",
+        "surface_rate_deg_s",
+        "command_delta_deg",
+        "mean_surface_delta_deg",
+        "identified_F",
+        "identified_G",
+        "critic_norm",
+        "model_change_since_event",
+        "critic_change_since_event",
+        "covariance_min_eigenvalue"
+      ]
+    }
+  },
+  "exploratory_unsupported": {
+    "controller_period_10ms": {
+      "experiment": {
+        "dt": 0.01,
+        "duration": 60.0,
+        "fault_time": 20.0,
+        "loss": 0.15,
+        "phase": 0.0
+      },
+      "trim": {
+        "state_rad": [
+          0.08584285381698961,
+          0.0,
+          -0.07760933342131265,
+          0.0
+        ],
+        "residual": [
+          3.965907144993964e-16,
+          4.470938729748939e-15
+        ],
+        "healthy_surface_gain_rad_s2_per_deg": -0.1369104996619264,
+        "airspeed_m_s": 150.0,
+        "altitude_m": 3000.0
+      },
+      "controller": {
+        "policy": {
+          "name": "tensoraerospace.agent.iadp.model.IADPAgent",
+          "params": {
+            "n_state": 1,
+            "n_control": 1
+          },
+          "config": {
+            "dt": 0.01,
+            "Q": [
+              [
+                1.0
+              ]
+            ],
+            "R": [
+              [
+                4.686121229419587e-05
+              ]
+            ],
+            "gamma": 0.99,
+            "gamma_rls": 0.9995,
+            "phi_init": 1000.0,
+            "policy_eval_window": 300,
+            "policy_eval_every": 20,
+            "policy_eval_iterations": 1,
+            "policy_eval_regularization": 1e-10,
+            "policy_eval_warmup_updates": 40,
+            "enforce_psd": true,
+            "psd_floor": 1e-06,
+            "policy_eval_blend": 0.1,
+            "model_learning_only_steps": 0,
+            "excitation_signal": null,
+            "F_init": [
+              [
+                0.989577214562833,
+                0.0
+              ],
+              [
+                0.0,
+                1.0
+              ]
+            ],
+            "G_init": [
+              [
+                -0.001369104996619264
+              ],
+              [
+                0.0
+              ]
+            ],
+            "P_init": [
+              [
+                5.1410196137255895,
+                -5.37547388800354
+              ],
+              [
+                -5.37547388800354,
+                5.878822456254634
+              ]
+            ],
+            "u_magnitude_limit": 10,
+            "u_rate_limit": 60,
+            "pinv_rcond": 1e-08,
+            "seed": null,
+            "policy_eval_min_samples": null
+          }
+        }
+      },
+      "metrics": {
+        "healthy_adaptive": {
+          "before_fault": {
+            "start_s": 0.0,
+            "stop_s": 20.0,
+            "rmse_deg_s": 0.1550687516594024,
+            "peak_error_deg_s": 0.33789070748158245
+          },
+          "after_fault": {
+            "start_s": 20.0,
+            "stop_s": 60.0,
+            "rmse_deg_s": 0.18763371420750122,
+            "peak_error_deg_s": 0.4705420615234288
+          },
+          "initial_transient": {
+            "start_s": 20.0,
+            "stop_s": 25.0,
+            "rmse_deg_s": 0.07885038950310516,
+            "peak_error_deg_s": 0.16122345978077846
+          },
+          "late": {
+            "start_s": 40.0,
+            "stop_s": 60.0,
+            "rmse_deg_s": 0.21848146370248508,
+            "peak_error_deg_s": 0.4705420615234288
+          },
+          "max_abs_q_deg_s": 0.6606658375222788,
+          "max_abs_alpha_deg": 5.384560884617801,
+          "max_abs_surface_deg": 4.63875042963507,
+          "max_abs_surface_rate_deg_s": 1.2455607378349052,
+          "events": [],
+          "command_saturation_steps": 0
+        },
+        "healthy_frozen": {
+          "before_fault": {
+            "start_s": 0.0,
+            "stop_s": 20.0,
+            "rmse_deg_s": 0.1550687516594024,
+            "peak_error_deg_s": 0.33789070748158245
+          },
+          "after_fault": {
+            "start_s": 20.0,
+            "stop_s": 60.0,
+            "rmse_deg_s": 0.131749550080468,
+            "peak_error_deg_s": 0.23847637101816482
+          },
+          "initial_transient": {
+            "start_s": 20.0,
+            "stop_s": 25.0,
+            "rmse_deg_s": 0.12565961705564319,
+            "peak_error_deg_s": 0.16122345978077846
+          },
+          "late": {
+            "start_s": 40.0,
+            "stop_s": 60.0,
+            "rmse_deg_s": 0.13339159265212155,
+            "peak_error_deg_s": 0.23847637101816482
+          },
+          "max_abs_q_deg_s": 0.6606658375222788,
+          "max_abs_alpha_deg": 5.384560884617801,
+          "max_abs_surface_deg": 4.63875042963507,
+          "max_abs_surface_rate_deg_s": 1.2455607378349052,
+          "events": [],
+          "command_saturation_steps": 0
+        },
+        "fault_adaptive": {
+          "before_fault": {
+            "start_s": 0.0,
+            "stop_s": 20.0,
+            "rmse_deg_s": 0.1550687516594024,
+            "peak_error_deg_s": 0.33789070748158245
+          },
+          "after_fault": {
+            "start_s": 20.0,
+            "stop_s": 60.0,
+            "rmse_deg_s": 3.4655753258382798,
+            "peak_error_deg_s": 4.092778057726333
+          },
+          "initial_transient": {
+            "start_s": 20.0,
+            "stop_s": 25.0,
+            "rmse_deg_s": 3.3116541627782095,
+            "peak_error_deg_s": 3.918429146904964
+          },
+          "late": {
+            "start_s": 40.0,
+            "stop_s": 60.0,
+            "rmse_deg_s": 3.4734859478741362,
+            "peak_error_deg_s": 4.092778057726333
+          },
+          "max_abs_q_deg_s": 4.315750263649577,
+          "max_abs_alpha_deg": 5.384560884617801,
+          "max_abs_surface_deg": 4.63875042963507,
+          "max_abs_surface_rate_deg_s": 10.03019055169111,
+          "events": [
+            {
+              "time": 20.0,
+              "label": "collective_stabilator_command_gain_loss",
+              "event_type": "control_failure",
+              "payload": {
+                "surface": "stab_left",
+                "mode": "efficiency_loss",
+                "efficiency": 0.85
+              }
+            }
+          ],
+          "command_saturation_steps": 0
+        },
+        "fault_frozen": {
+          "before_fault": {
+            "start_s": 0.0,
+            "stop_s": 20.0,
+            "rmse_deg_s": 0.1550687516594024,
+            "peak_error_deg_s": 0.33789070748158245
+          },
+          "after_fault": {
+            "start_s": 20.0,
+            "stop_s": 60.0,
+            "rmse_deg_s": 3.466336882588366,
+            "peak_error_deg_s": 4.092778057726313
+          },
+          "initial_transient": {
+            "start_s": 20.0,
+            "stop_s": 25.0,
+            "rmse_deg_s": 3.3180717432987024,
+            "peak_error_deg_s": 3.931313034163846
+          },
+          "late": {
+            "start_s": 40.0,
+            "stop_s": 60.0,
+            "rmse_deg_s": 3.473485947835952,
+            "peak_error_deg_s": 4.092778057726313
+          },
+          "max_abs_q_deg_s": 4.321189219446707,
+          "max_abs_alpha_deg": 5.384560884617801,
+          "max_abs_surface_deg": 4.63875042963507,
+          "max_abs_surface_rate_deg_s": 10.213877921104547,
+          "events": [
+            {
+              "time": 20.0,
+              "label": "collective_stabilator_command_gain_loss",
+              "event_type": "control_failure",
+              "payload": {
+                "surface": "stab_left",
+                "mode": "efficiency_loss",
+                "efficiency": 0.85
+              }
+            }
+          ],
+          "command_saturation_steps": 0
+        }
+      },
+      "fault_rmse_reduction_percent": {
+        "after_fault": 0.021970073189125916,
+        "late": -1.099298430062845e-09
+      },
+      "prefault_histories_match": true,
+      "prefault_max_absolute_difference": 1.4988704721830004e-12,
+      "fault_semantics": "servo_target = (1-loss) * clip(trim + command_delta); aerodynamic tables unchanged",
+      "frozen_semantics": "freeze RLS theta/covariance and critic P at event; retain measurement and actuator feedback",
+      "trace_columns": [
+        "time_s",
+        "reference_deg_s",
+        "q_deg_s",
+        "alpha_deg",
+        "surface_deg",
+        "surface_rate_deg_s",
+        "command_delta_deg",
+        "mean_surface_delta_deg",
+        "identified_F",
+        "identified_G",
+        "critic_norm",
+        "model_change_since_event",
+        "critic_change_since_event",
+        "covariance_min_eigenvalue"
+      ]
+    }
+  },
+  "notes": [
+    "32 rollouts with supported settings plus four exploratory rollouts with a 10 ms controller period.",
+    "The 10 ms controller period used the same per-step learning settings and a smaller increment limit; it does not isolate integrator accuracy.",
+    "The public example fixes the controller period at 20 ms and supports independent RK4 substeps.",
+    "Parameter/history differences before the event are checked to 1e-10 to allow floating-point event splitting.",
+    "Healthy adaptive tracking is worse than healthy frozen tracking in the default run."
+  ]
+}
