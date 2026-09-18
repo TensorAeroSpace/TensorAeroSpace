@@ -11,54 +11,32 @@ A2C (Advantage Actor-Critic) uses an actor to select actions and a critic to eva
 - Experience collection: `Runner` gathers trajectories and clips actions to the `action_space`
 - Training: `A2CLearner.learn` updates actor/critic with stabilization (gradient clipping, entropy bonus)
 
-## Theory (based on the implementation)
+## Targets and history
 
-- Discounted returns:
+The critic receives `z_t = [s_t, s_(t-1)]`; the next critic state is
+`[s_(t+1), s_t]`. History persists between calls to `Runner.run` and resets
+at episode boundaries. Collection snapshots observations.
 
-$$
-G_t = \sum_{k=0}^{\infty} \gamma^k r_{t+k}, \quad G^{\text{episodic}}_t = r_t + \gamma (1-\text{done}) G_{t+1}
-$$
-
-- Advantage in the code:
+With `discount_rewards=False`, the one-step target is:
 
 $$
-A_t = \begin{cases}
-    r_t, & \text{if } discount\_rewards=True \text{ (pure returns)}\\
-    r_t + \gamma V(s_{t+1}) - V(s_t), & \text{otherwise (TD target)}
-\end{cases}
+y_t = r_t + \gamma (1-\mathrm{terminated}_t) V_\phi(z_{t+1}),
+\qquad A_t = y_t - V_\phi(z_t).
 $$
 
- and then \(A_t = \text{td\_target} - V(s_t)\).
+With `discount_rewards=True`, returns accumulate until an episode or rollout
+boundary. True termination has zero continuation; time limits and incomplete
+rollouts bootstrap from the critic at the actual final observation. Rewards
+from the next episode do not enter the return. Targets have no gradient.
+The critic minimizes MSE; the actor minimizes
+`-mean(log_prob * advantage) - entropy_beta * entropy`.
+Log probabilities are summed across components of a multidimensional action.
 
-- Losses:
-
-$$
-\mathcal{L}_\text{actor} = -\,\mathbb{E}[\log \pi_\theta(a_t|s_t)\, A_t] - \beta\,\mathbb{E}[\mathcal{H}[\pi_\theta(\cdot|s_t)]]
-$$
-
-$$
-\mathcal{L}_\text{critic} = \mathbb{E}\big[(\text{td\_target} - V_\phi(s_t))^2\big]
-$$
-
-### NARX as critic
-
-The NARX network (`tensoraerospace/agent/narx/model.py`) explicitly feeds previous outputs/states as inputs to predict the next step. In A2C the critic input is the concatenation of the current and previous states (`process_memory_narx` builds `critic_states`). This improves \(V(s)\) estimates for systems with significant dynamic memory.
-
-Identification (simplified):
-
-- Training NARX minimizes the MSE between predicted and target outputs over sequences (`NARX.train`).
-- In A2C the critic minimizes the MSE between the target (returns or TD) and the current estimate \(V(s)\).
-
-## Training loop
-
-1. `Runner.run` collects tuples \((s_t, a_t, r_t, s_{t+1}, done_t)\), clipping actions to the `action_space`.
-2. `process_memory_narx` prepares tensors: actions, rewards (optionally discounted), states, next states, termination flags, and `critic_states = [s_t, s_{t-1}]`.
-3. `A2CLearner.learn`:
-   - If `discount_rewards=True`, critic target `td_target = rewards` (returns); otherwise `r + γ V(s')`.
-   - Advantage: `advantage = td_target - V(s)`.
-   - Actor: log-probabilities from `Normal(mean, std)`, entropy; gradient-clipped updates.
-   - Critic: MSE; gradient-clipped updates.
-   - TensorBoard logging (losses, gradients/parameters, rewards).
+`Runner` returns `NARXTransition` records that still unpack as
+`(action, reward, state, next_state, done)` and carry `terminated` and
+`previous_state` metadata. Legacy five-tuples remain accepted, but their
+`done=True` is treated as true termination and their initial history is zero.
+Use `Runner` or explicit `NARXTransition` records for time-limit handling.
 
 ## Quick start
 
@@ -79,6 +57,22 @@ learner.learn(memory, steps=2048, discount_rewards=True)
 
 !!! tip
     For systems with strong inertia set `discount_rewards=False` so the critic trains on the TD target with \(V(s')\).
+
+## Main A2C agent and action history
+
+`agent.a2c.model.A2C` and `A2CWithNARXCritic` use `run_episode()` and `learn()`.
+They share the terminal/time-limit target rules above. `RolloutTransition`
+still unpacks into five values; its action is the original Gaussian sample.
+The separate `executed_action` stores the bounded command passed to the plant.
+Policy likelihoods use the sample, while the NARX critic uses executed commands.
+
+For history length `h`, `A2CWithNARXCritic` receives
+`[s_t, ..., s_(t-h+1), u_(t-1), ..., u_(t-h)]`.
+The next input advances both histories using the current observation and
+executed command. History survives rollout boundaries, resets between episodes,
+and is copied into each transition. Legacy tuples lack this history metadata;
+the first row then uses zero history. A single-transition update retains its
+advantage instead of centering it to zero or producing an undefined variance.
 
 ## API reference
 

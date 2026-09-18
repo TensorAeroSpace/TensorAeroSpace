@@ -13,7 +13,7 @@ GAIL performs imitation learning via an actor–discriminator adversarial game: 
 - Min–max objective:
 
 $$
-\min_{\pi} \max_{D} \; \mathbb{E}_{(s,a)\sim \pi_E}[\log D(s,a)] + \mathbb{E}_{(s,a)\sim \pi}[\log (1 - D(s,a))]
+\min_{\pi} \max_{D} \; \mathbb{E}_{(s,a)\sim \pi}[\log D(s,a)] + \mathbb{E}_{(s,a)\sim \pi_E}[\log (1 - D(s,a))]
 $$
 
 - Discriminator-derived pseudo reward (for the actor):
@@ -42,11 +42,23 @@ Expect `expert_data` as an array of shape `[N, obs_dim + act_dim]`: state concat
 
 ## Training loop
 
-1. Generate agent rollouts \(s_t, a_t \sim \pi\); store `log_prob`, `V(s)`
-2. Compute pseudo rewards `r_D = -log D([s,a])`, then GAE returns/advantages
-3. Update actor/critic with PPO mini-batches
-4. Train the discriminator with BCE: `D(fake)=1`, `D(real)=0`
-5. Periodically evaluate the policy and early-stop based on `max_reward`
+1. Collect policy rollouts; store sampled actions, executed commands, log probabilities and values.
+2. Fit the discriminator on those commands and expert data: `D(fake)=1`, `D(real)=0`.
+3. Recompute imitation rewards using the updated discriminator, then GAE returns/advantages.
+4. Update actor/critic with PPO mini-batches.
+5. Evaluate between rollouts and apply early stopping based on `max_reward`.
+
+`Discriminator.logits()` returns the unbounded score `z`. Training uses
+`BCEWithLogitsLoss`; rewards use `softplus(-z)`, equivalent to
+`-log(sigmoid(z))` without probability clamping. This preserves gradients for
+confidently wrong discriminator predictions. `forward()` still returns a
+probability, and saved parameter names/shapes are unchanged.
+
+Updating the discriminator before forming policy rewards follows
+[Algorithm 1 of the GAIL paper](https://arxiv.org/html/1606.03476v1).
+This implementation uses PPO for the policy step. Stable losses and the correct
+update order do not guarantee convergence; evaluate tracking and constraint
+violations across seeds and training budgets.
 
 ## Example (LinearLongitudinalF16‑v0)
 
@@ -114,3 +126,21 @@ options accepted via `**kwargs`:
 
 - Unity environment
 - LinearLongitudinalF16‑v0 (repository example)
+
+## Rollout boundaries
+
+Training snapshots observations so that environments can reuse numpy buffers.
+Time limits bootstrap from the final observation; true terminations do not.
+The training step budget is exact. Every 1,000 training steps, the current
+rollout is finalized before evaluation uses the same environment. Training
+then resets and starts a fresh episode; a partial episode is logged as truncated.
+The imitation reward remains finite when the discriminator outputs zero.
+
+Each rollout updates the policy for the configured `epochs`. Minibatches are
+shuffled without replacement and include the final partial batch. PPO uses the
+joint action likelihood ratio, normalized advantages and gradient clipping.
+The environment and discriminator receive clipped physical commands; PPO
+retains the sampled action for its Gaussian log probability.
+
+Timeout bootstrap accepts `final_observation` and `terminal_observation`.
+A missing or `None` final observation falls back to the returned observation.

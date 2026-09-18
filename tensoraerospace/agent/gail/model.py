@@ -8,7 +8,7 @@ import datetime
 import json
 import os
 from pathlib import Path
-from typing import Any, Mapping, Optional, Sequence, Union
+from typing import Any, Mapping, Optional, Sequence, Union, cast
 
 import gymnasium as gym
 import numpy as np
@@ -111,8 +111,11 @@ def compute_gae(
 def ppo_iter(mini_batch_size, states, actions, log_probs, returns, advantage):
     """Mini-batch iterator used by PPO updates."""
     batch_size = states.size(0)
-    for _ in range(batch_size // mini_batch_size):
-        rand_ids = np.random.randint(0, batch_size, mini_batch_size)
+    if mini_batch_size <= 0:
+        raise ValueError("mini_batch_size must be positive")
+    indices = torch.randperm(batch_size, device=states.device)
+    for start in range(0, batch_size, mini_batch_size):
+        rand_ids = indices[start : start + mini_batch_size]
         yield states[rand_ids, :], actions[rand_ids, :], log_probs[
             rand_ids, :
         ], returns[rand_ids, :], advantage[rand_ids, :]
@@ -136,12 +139,15 @@ class Discriminator(nn.Module):
         self.linear3.weight.data.mul_(0.1)
         self.linear3.bias.data.mul_(0.0)
 
-    def forward(self, x):
-        """Compute discriminator probability for state-action pairs."""
+    def logits(self, x):
+        """Return unbounded classification scores for stable losses."""
         x = torch.tanh(self.linear1(x))
         x = torch.tanh(self.linear2(x))
-        prob = torch.sigmoid(self.linear3(x))
-        return prob
+        return self.linear3(x)
+
+    def forward(self, x):
+        """Compute discriminator probability for state-action pairs."""
+        return torch.sigmoid(self.logits(x))
 
 
 class GAIL:
@@ -181,8 +187,12 @@ class GAIL:
         """
         self.env = env
         self.lr = learning_rate
+        if max_steps <= 0:
+            raise ValueError("max_steps must be positive")
         self.max_steps = max_steps
         self.mini_batch_size = mini_batch_size
+        if mini_batch_size <= 0 or epochs <= 0:
+            raise ValueError("mini_batch_size and epochs must be positive")
         self.epochs = epochs
         self.data = data
 
@@ -203,7 +213,7 @@ class GAIL:
             self.device
         )
 
-        self.discrim_criterion = nn.BCELoss()
+        self.discrim_criterion = nn.BCEWithLogitsLoss()
         self.optimizer = optim.Adam(self.model.parameters(), lr=self.lr)
         self.optimizer_discrim = optim.Adam(self.discriminator.parameters(), lr=self.lr)
 
@@ -240,24 +250,35 @@ class GAIL:
         state_action = torch.FloatTensor(np.concatenate([state_np, action], 1)).to(
             self.device
         )
-        return np.asarray(-np.log(self.discriminator(state_action).cpu().data.numpy()))
+        with torch.no_grad():
+            # -log(sigmoid(z)) = softplus(-z), without probability underflow.
+            reward = nn.functional.softplus(-self.discriminator.logits(state_action))
+        return np.asarray(reward.cpu().numpy())
+
+    def _env_action(self, action: np.ndarray) -> np.ndarray:
+        """Map a policy sample to the actual bounded environment command."""
+        command = np.asarray(action).reshape(
+            cast(tuple[int, ...], self.env.action_space.shape)
+        )
+        low = getattr(self.env.action_space, "low", -np.inf)
+        high = getattr(self.env.action_space, "high", np.inf)
+        return np.clip(command, low, high)
 
     def test_env(self) -> float:
         """Run one evaluation rollout and return total reward."""
         state = self.env.reset()[0].reshape(1, -1)
-        done = False
         total_reward = 0.0
         for _ in range(self.max_steps):
-            state_tensor = torch.FloatTensor(state).unsqueeze(0).to(self.device)
-            dist, _ = self.model(state_tensor)
-            next_state, reward, terminated, truncated, info = self.env.step(
-                dist.sample().cpu().numpy()[0]
+            state_tensor = torch.as_tensor(
+                state, dtype=torch.float32, device=self.device
             )
-            done = terminated or truncated
-            next_state = next_state.reshape(1, -1)
-            state = next_state
+            with torch.no_grad():
+                dist, _ = self.model(state_tensor)
+                command = self._env_action(dist.sample().cpu().numpy())
+            next_state, reward, terminated, truncated, info = self.env.step(command)
+            state = next_state.reshape(1, -1)
             total_reward += float(reward)
-            if done:
+            if terminated or truncated:
                 break
         return total_reward
 
@@ -288,13 +309,20 @@ class GAIL:
                 used as the x-axis for any TensorBoard scalars written
                 from inside this update. Defaults to 0.
         """
+        # The likelihood ratio is for the joint action, including legacy
+        # callers that supply component-wise old log probabilities.
+        log_probs = log_probs.sum(dim=-1, keepdim=True)
+        if advantages.numel() > 1:
+            advantages = (advantages - advantages.mean()) / (
+                advantages.std(unbiased=False) + 1e-8
+            )
         for _ in range(ppo_epochs):
             for state, action, old_log_probs, return_, advantage in ppo_iter(
                 mini_batch_size, states, actions, log_probs, returns, advantages
             ):
                 dist, value = self.model(state)
-                entropy = dist.entropy().mean()
-                new_log_probs = dist.log_prob(action)
+                entropy = dist.entropy().sum(dim=-1).mean()
+                new_log_probs = dist.log_prob(action).sum(dim=-1, keepdim=True)
 
                 ratio = (new_log_probs - old_log_probs).exp()
                 surr1 = ratio * advantage
@@ -309,6 +337,7 @@ class GAIL:
 
                 self.optimizer.zero_grad()
                 loss.backward()
+                nn.utils.clip_grad_norm_(self.model.parameters(), 0.5)
                 self.optimizer.step()
 
                 self.update_count += 1
@@ -388,7 +417,6 @@ class GAIL:
         test_rewards = []
         frame_idx = 0
 
-        i_update = 0
         state = self.env.reset()[0].reshape(1, -1)
         early_stop = False
 
@@ -403,36 +431,67 @@ class GAIL:
         last_truncated = False
 
         while frame_idx < max_frames and not early_stop:
-            i_update += 1
-
             log_probs: list[torch.Tensor] = []
             values: list[torch.Tensor] = []
             states: list[torch.Tensor] = []
             actions: list[torch.Tensor] = []
+            executed_actions: list[torch.Tensor] = []
             rewards: list[torch.Tensor] = []
             masks: list[torch.Tensor] = []
             entropy = torch.tensor(0.0, device=self.device)
 
-            for _ in range(self.max_steps):
-                state = torch.FloatTensor(state).to(self.device)
+            # Finish the rollout before evaluation resets the shared env.
+            rollout_steps = min(
+                self.max_steps, max_frames - frame_idx, 1000 - frame_idx % 1000
+            )
+            for _ in range(rollout_steps):
+                # Environments may reuse their numpy observation buffer.
+                state = torch.tensor(
+                    np.asarray(state), dtype=torch.float32, device=self.device
+                )
                 with torch.no_grad():
                     dist, value = self.model(state)
 
                     action = dist.sample()
-                    log_prob = dist.log_prob(action)
+                    log_prob = dist.log_prob(action).sum(dim=-1, keepdim=True)
                     entropy += dist.entropy().mean()
 
-                next_state, reward, terminated, truncated, info = self.env.step(
-                    action.cpu().numpy()
-                )
+                command = self._env_action(action.cpu().numpy())
+                next_state, reward, terminated, truncated, info = self.env.step(command)
                 self.global_env_step += 1
                 ep_reward += float(np.asarray(reward).sum())
                 ep_length += 1
                 last_terminated = bool(terminated)
                 last_truncated = bool(truncated)
                 done = terminated or truncated
-                next_state = next_state.reshape(1, -1)
-                reward = self.expert_reward(state, action.cpu().numpy())
+                next_state = np.array(next_state, copy=True).reshape(1, -1)
+                # Store only the time-limit value correction here. Imitation
+                # rewards are evaluated after fitting D on this rollout.
+                reward = np.zeros((1, 1), dtype=np.float32)
+                executed_actions.append(
+                    torch.as_tensor(
+                        command.reshape(1, -1).copy(),
+                        dtype=torch.float32,
+                        device=self.device,
+                    )
+                )
+                if truncated and not terminated:
+                    # Masks still cut GAE at the reset; only the timeout
+                    # transition receives the final-state value correction.
+                    final_state = info.get("final_observation")
+                    if final_state is None:
+                        final_state = info.get("terminal_observation")
+                    if final_state is None:
+                        final_state = next_state
+                    with torch.no_grad():
+                        _, final_value = self.model(
+                            torch.as_tensor(
+                                np.asarray(final_state).reshape(1, -1),
+                                dtype=torch.float32,
+                                device=self.device,
+                            )
+                        )
+                    reward = reward + 0.99 * final_value.cpu().numpy()
 
                 log_probs.append(log_prob.detach())
                 values.append(value.detach())
@@ -460,36 +519,9 @@ class GAIL:
                     # next env.step works on a valid initial state.
                     state = self.env.reset()[0].reshape(1, -1)
 
-                if frame_idx % 1000 == 0:
-                    test_reward = np.mean([self.test_env() for _ in range(10)])
-                    print(test_reward)
-                    test_rewards.append(test_reward)
-                    if test_reward > max_reward:
-                        early_stop = True
-
-            next_state = torch.FloatTensor(np.asarray(next_state)).to(self.device)
-            with torch.no_grad():
-                _, next_value = self.model(next_state)
-            returns = compute_gae(next_value, rewards, masks, values)
-
-            returns_tensor = torch.cat(returns).detach()
-            log_probs_tensor = torch.cat(log_probs).detach()
-            values_tensor = torch.cat(values).detach()
             states_tensor = torch.cat(states)
             actions_tensor = torch.cat(actions)
-            advantage = returns_tensor - values_tensor
-
-            if i_update % 3 == 0:
-                self.ppo_update(
-                    4,
-                    self.mini_batch_size,
-                    states_tensor,
-                    actions_tensor,
-                    log_probs_tensor,
-                    returns_tensor,
-                    advantage,
-                    env_step=self.global_env_step,
-                )
+            executed_tensor = torch.cat(executed_actions)
 
             expert_state_action_sample = self.data[
                 np.random.randint(0, self.data.shape[0], 2 * self.max_steps * 16), :
@@ -497,13 +529,12 @@ class GAIL:
             expert_state_action_tensor = torch.FloatTensor(
                 expert_state_action_sample
             ).to(self.device)
-            state_action = torch.cat([states_tensor, actions_tensor], 1)
-            fake = self.discriminator(state_action)
-            real = self.discriminator(expert_state_action_tensor)
+            state_action = torch.cat([states_tensor, executed_tensor], 1)
+            fake = self.discriminator.logits(state_action)
+            real = self.discriminator.logits(expert_state_action_tensor)
             self.optimizer_discrim.zero_grad()
-            # NOTE: Label convention here is inverted relative to the canonical
-            # GAIL paper: policy (fake) -> 1, expert (real) -> 0. This is
-            # intentional and consistent with `expert_reward`, which returns
+            # D estimates policy membership: policy -> 1, expert -> 0.
+            # This convention is consistent with `expert_reward`, which returns
             # `-log(D(s,a))`. Under this convention D ~ 0 for expert-like
             # state-action pairs, so `-log(D)` yields a HIGH reward when the
             # policy behaves like the expert. Flipping the labels without also
@@ -523,8 +554,8 @@ class GAIL:
                 #   fake (policy) -> target 1, so D(policy) > 0.5 == "correct"
                 #   real (expert) -> target 0, so D(expert) < 0.5 == "correct"
                 with torch.no_grad():
-                    policy_correct = (fake.detach() > 0.5).float().mean()
-                    expert_correct = (real.detach() < 0.5).float().mean()
+                    policy_correct = (fake.detach() > 0.0).float().mean()
+                    expert_correct = (real.detach() < 0.0).float().mean()
                 self.writer.add_scalar(
                     schema.GAIL.LOSS_DISCRIMINATOR,
                     float(discrim_loss.detach()),
@@ -540,6 +571,54 @@ class GAIL:
                     float(expert_correct),
                     env_step=self.global_env_step,
                 )
+
+            # GAIL alternates D fitting with policy optimization against
+            # the newly fitted discriminator, not the previous reward model.
+            imitation = torch.as_tensor(
+                self.expert_reward(states_tensor, executed_tensor.cpu().numpy()),
+                dtype=torch.float32,
+                device=self.device,
+            )
+            rewards = [bonus + imitation[i : i + 1] for i, bonus in enumerate(rewards)]
+            next_state = torch.as_tensor(
+                np.asarray(next_state), dtype=torch.float32, device=self.device
+            )
+            with torch.no_grad():
+                _, next_value = self.model(next_state)
+            returns = compute_gae(next_value, rewards, masks, values)
+            returns_tensor = torch.cat(returns).detach()
+            log_probs_tensor = torch.cat(log_probs).detach()
+            values_tensor = torch.cat(values).detach()
+            self.ppo_update(
+                self.epochs,
+                self.mini_batch_size,
+                states_tensor,
+                actions_tensor,
+                log_probs_tensor,
+                returns_tensor,
+                returns_tensor - values_tensor,
+                env_step=self.global_env_step,
+            )
+
+            if frame_idx % 1000 == 0:
+                # This rollout has already bootstrapped from its actual last
+                # state. Evaluation can now reuse the env without corrupting
+                # any training transition; the following rollout starts fresh.
+                if ep_length and self.writer is not None:
+                    self.writer.log_episode(
+                        reward=ep_reward,
+                        length=ep_length,
+                        env_step=self.global_env_step,
+                        terminated=False,
+                        truncated=True,
+                    )
+                test_reward = float(np.mean([self.test_env() for _ in range(10)]))
+                print(test_reward)
+                test_rewards.append(test_reward)
+                early_stop = test_reward > max_reward
+                state = self.env.reset()[0].reshape(1, -1)
+                ep_reward = 0.0
+                ep_length = 0
 
         if self.writer is not None:
             self.writer.flush()

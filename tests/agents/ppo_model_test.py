@@ -48,10 +48,10 @@ def test_actor_forward():
     assert action.shape == (4, 2), "Action shape should be (batch_size, action_dim)"
     assert isinstance(dist, torch.distributions.Normal), "Distribution should be Normal"
 
-    # Test that actions are bounded by tanh
-    assert torch.all(action >= -1.0) and torch.all(
-        action <= 1.0
-    ), "Actions should be in [-1, 1]"
+    # The Gaussian sample is intentionally unclipped for the PPO likelihood;
+    # only its mean is bounded here. The agent clips the executed action.
+    assert torch.all(dist.mean >= -1.0) and torch.all(dist.mean <= 1.0)
+    assert torch.isfinite(action).all()
 
 
 def test_critic_forward():

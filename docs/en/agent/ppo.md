@@ -230,3 +230,9 @@ untouched by the unified interface.
 ## Tested on
 
 - Unity environment
+
+## Rollout boundaries and initial exploration
+
+Time limits bootstrap from the final observation while stopping GAE recursion at the episode boundary. Auto-reset vector environments should return `final_observation` and its optional `_final_observation` mask; without them PPO cannot safely bootstrap a reset observation. Immediate rewards remain unchanged for metrics and auxiliary prediction. Observation normalization applies consistently during vector collection, updates and inference.
+
+New policies initialize log standard deviation near `-0.5` (clipped inside custom bounds), avoiding near-deterministic initialization at the midpoint of `[-20, 0]`. Existing checkpoints retain the same parameter names and forward mapping. Single-transition rollouts use population variance to avoid undefined sample standard deviation.

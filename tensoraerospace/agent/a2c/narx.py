@@ -141,6 +141,32 @@ def discounted_rewards(
     return discounted[::-1]
 
 
+class NARXTransition(tuple):
+    """Five-item transition with termination and lag metadata.
+
+    Unpacking remains ``(action, reward, state, next_state, done)``. ``done``
+    marks either episode boundary, while ``terminated`` controls bootstrapping.
+    Legacy five-tuples are accepted by the learner and treat done as terminal.
+    """
+
+    terminated: bool
+    previous_state: np.ndarray
+
+    def __new__(
+        cls, action, reward, state, next_state, done, *, terminated, previous_state
+    ):
+        obj = super().__new__(cls, (action, reward, state, next_state, done))
+        obj.terminated = bool(terminated)
+        obj.previous_state = np.array(previous_state, copy=True).reshape(-1)
+        return obj
+
+    def __getnewargs_ex__(self):
+        return tuple(self), {
+            "terminated": self.terminated,
+            "previous_state": self.previous_state,
+        }
+
+
 def process_memory_narx(
     memory: Sequence[tuple[np.ndarray, float, np.ndarray, np.ndarray, bool]],
     gamma: float = 0.99,
@@ -161,7 +187,9 @@ def process_memory_narx(
     representation.
 
     Args:
-        memory (list[tuple]): Tuples ``(action, reward, state, next_state, done)``.
+        memory (list[tuple]): ``NARXTransition`` records or legacy tuples
+            ``(action, reward, state, next_state, done)``. Records retain lagged
+            state across rollout batches; legacy tuples start with a zero lag.
         gamma (float): Discount factor. Defaults to ``0.99``.
         discount_rewards (bool): If True, uses discounted returns. Defaults to True.
 
@@ -173,29 +201,25 @@ def process_memory_narx(
     next_states: list[np.ndarray] = []
     rewards: list[float] = []
     dones: list[bool] = []
-    critic_states: list[np.ndarray] = (
-        []
-    )  # Инициализация для хранения состояний и предыдущих действий
-
-    # Используем None или 0 как заполнитель для предыдущего действия первого состояния
-    prev_state = np.zeros(memory[0][2].shape)
-    prev_next_state = np.zeros(memory[0][2].shape)
-    for action, reward, state, next_state, done in memory:
-        actions.append(action)
+    critic_states: list[np.ndarray] = []
+    if not memory:
+        raise ValueError("memory must contain at least one transition")
+    prev_state = np.zeros(np.asarray(memory[0][2]).size)
+    for transition in memory:
+        action, reward, state, next_state, done = transition
+        state = np.asarray(state).reshape(-1)
+        actions.append(np.asarray(action).reshape(-1))
         rewards.append(reward)
         states.append(state)
-        next_states.append(np.concatenate((next_state.flatten(), prev_next_state)))
+        next_states.append(np.concatenate((np.asarray(next_state).reshape(-1), state)))
         dones.append(done)
-        # Добавляем текущее состояние и предыдущее действие в hist_values
-        critic_states.append(np.concatenate((state.flatten(), prev_state)))
-        prev_state = (
-            state.flatten()
-        )  # Обновляем предыдущее действие для следующей итерации
-        prev_next_state = next_state.flatten()  #
+        lag = getattr(transition, "previous_state", prev_state)
+        critic_states.append(np.concatenate((state, lag)))
+        prev_state = np.zeros_like(state) if done else state
     if discount_rewards:
         rewards = discounted_rewards(rewards, dones, gamma)
 
-    actions_tensor = t(actions, device=device).view(-1, 1)
+    actions_tensor = t(actions, device=device).reshape(len(memory), -1)
     states_tensor = t(states, device=device)
     next_states_tensor = t(next_states, device=device)
     rewards_tensor = t(rewards, device=device).view(-1, 1)
@@ -300,20 +324,33 @@ class A2CLearner:
             dones,
             critic_states,
         ) = process_memory_narx(
-            memory, self.gamma, discount_rewards, device=self.device
+            memory, self.gamma, discount_rewards=False, device=self.device
         )
 
-        if discount_rewards:
-            td_target = rewards
-        else:
-            td_target = rewards + self.gamma * self.critic(next_states) * (1 - dones)
+        # Targets are constants for the critic update (semi-gradient TD).
+        # Stop returns at episode boundaries, but bootstrap time limits and
+        # incomplete rollouts from their actual final observation.
+        with torch.no_grad():
+            terminal = t(
+                [getattr(item, "terminated", item[4]) for item in memory],
+                device=self.device,
+            ).view(-1, 1)
+            next_values = self.critic(next_states) * (1 - terminal)
+            td_target = rewards + self.gamma * next_values
+            if discount_rewards:
+                running = next_values[-1]
+                for i in reversed(range(len(memory))):
+                    if bool(dones[i]):
+                        running = next_values[i]
+                    running = rewards[i] + self.gamma * running
+                    td_target[i] = running
         value = self.critic(critic_states)
         advantage = td_target - value
 
         # actor
         norm_dists = self.actor(states)
-        logs_probs = norm_dists.log_prob(actions)
-        entropy = norm_dists.entropy().mean()
+        logs_probs = norm_dists.log_prob(actions).sum(dim=-1, keepdim=True)
+        entropy = norm_dists.entropy().sum(dim=-1).mean()
 
         actor_loss = (
             -logs_probs * advantage.detach()
@@ -341,7 +378,7 @@ class A2CLearner:
         self.actor_optim.step()
 
         # critic
-        critic_loss = F.mse_loss(td_target, value)
+        critic_loss = F.mse_loss(value, td_target)
         self.critic_optim.zero_grad()
         critic_loss.backward()
         clip_grad_norm_(self.critic_optim, self.max_grad_norm)
@@ -647,7 +684,7 @@ class Runner:
     @staticmethod
     def _flatten_observation(observation: np.ndarray | Iterable[float]) -> np.ndarray:
         """Flatten environment observations to shape ``(n,)``."""
-        return np.asarray(observation, dtype=np.float32).reshape(-1)
+        return np.array(observation, dtype=np.float32, copy=True).reshape(-1)
 
     def reset(self) -> None:
         """Reset environment and episode state."""
@@ -656,6 +693,7 @@ class Runner:
         self.done = False
         self.state, info = self.env.reset()
         self.state = self._flatten_observation(self.state)
+        self.previous_state = np.zeros_like(self.state)
         # Reset previous action at the start of each episode
         self.prev_action = np.zeros(self.action_shape)
 
@@ -675,7 +713,7 @@ class Runner:
         Returns:
             list: Collected transitions.
         """
-        if not memory:
+        if memory is None:
             memory = []
 
         for i in range(max_steps):
@@ -696,9 +734,18 @@ class Runner:
             reward_float = float(reward)
             next_state = self._flatten_observation(next_state)
 
-            # Here, instead of just the state, we store the state concatenated with the previous action
-            memory.append((actions, reward_float, self.state, next_state, self.done))
-
+            memory.append(
+                NARXTransition(
+                    actions,
+                    reward_float,
+                    self.state.copy(),
+                    next_state.copy(),
+                    self.done,
+                    terminated=terminated,
+                    previous_state=self.previous_state,
+                )
+            )
+            self.previous_state = self.state.copy()
             self.prev_action = actions_clipped[0]  # Update the previous action
             self.state = next_state
             self.steps += 1

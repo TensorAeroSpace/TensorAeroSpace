@@ -207,6 +207,47 @@ def discounted_rewards(rewards, dones, gamma):
     return discounted[::-1]
 
 
+class RolloutTransition(tuple):
+    """Five-item transition with termination and physical history metadata.
+
+    The first item is the sampled Gaussian action. ``executed_action`` holds
+    the clipped command used by the plant and NARX input history.
+    """
+
+    terminated: bool
+    executed_action: np.ndarray
+    previous_states: tuple[np.ndarray, ...]
+    previous_actions: tuple[np.ndarray, ...]
+
+    def __new__(
+        cls,
+        action,
+        reward,
+        state,
+        next_state,
+        done,
+        *,
+        terminated,
+        executed_action,
+        previous_states=(),
+        previous_actions=(),
+    ):
+        obj = super().__new__(cls, (action, reward, state, next_state, done))
+        obj.terminated = bool(terminated)
+        obj.executed_action = np.array(executed_action, copy=True)
+        obj.previous_states = tuple(np.array(x, copy=True) for x in previous_states)
+        obj.previous_actions = tuple(np.array(x, copy=True) for x in previous_actions)
+        return obj
+
+    def __getnewargs_ex__(self):
+        return tuple(self), {
+            "terminated": self.terminated,
+            "executed_action": self.executed_action,
+            "previous_states": self.previous_states,
+            "previous_actions": self.previous_actions,
+        }
+
+
 def process_memory(memory, gamma=0.99, discount_rewards=True, device="cpu"):
     """Process experience memory for training.
 
@@ -222,6 +263,8 @@ def process_memory(memory, gamma=0.99, discount_rewards=True, device="cpu"):
     Returns:
         tuple: Tuple of tensors (actions, rewards, states, next_states, dones).
     """
+    if not memory:
+        raise ValueError("memory must contain at least one transition")
     actions, states, next_states, rewards, dones = [], [], [], [], []
 
     for action, reward, state, next_state, done in memory:
@@ -327,7 +370,7 @@ class A2C(BaseRLModel):
                 the default ``runs/`` directory of ``SummaryWriter`` is used.
         """
         self.env = env
-        self.state = None
+        self.state: Optional[np.ndarray] = None
         self.done = True
         self.steps = 0
         self.episode_reward = 0
@@ -410,6 +453,10 @@ class A2C(BaseRLModel):
         self.episode_reward = 0
         self.done = False
         self.state, _ = self.env.reset()
+        self.state = np.array(self.state, copy=True)
+        self._history_states = []
+        self._history_actions = []
+        self.episode_length = 0
 
     def predict(self, state, deterministic=True):
         """Predict action for given state.
@@ -498,14 +545,39 @@ class A2C(BaseRLModel):
                 self.env.action_space.high,
             )
 
-            next_state, reward, terminated, truncated, _ = self.env.step(
+            state_snapshot = np.array(self.state, copy=True)
+            next_state, reward, terminated, truncated, info = self.env.step(
                 actions_clipped
             )
             self.done = terminated or truncated
 
-            memory.append((actions_clipped, reward, self.state, next_state, self.done))
-
-            self.state = next_state
+            final_state = info.get(
+                "final_observation", info.get("terminal_observation")
+            )
+            target_state = (
+                final_state if self.done and final_state is not None else next_state
+            )
+            memory.append(
+                RolloutTransition(
+                    action.copy(),
+                    float(reward),
+                    state_snapshot,
+                    np.array(target_state, copy=True),
+                    self.done,
+                    terminated=terminated,
+                    executed_action=actions_clipped,
+                    previous_states=self._history_states,
+                    previous_actions=self._history_actions,
+                )
+            )
+            h = getattr(self, "history_length", 1)
+            self._history_states = (
+                (self._history_states + [state_snapshot])[-(h - 1) :] if h > 1 else []
+            )
+            self._history_actions = (self._history_actions + [actions_clipped.copy()])[
+                -h:
+            ]
+            self.state = np.array(next_state, copy=True)
             self.steps += 1
             self.episode_length += 1
             self.episode_reward += reward
@@ -524,6 +596,31 @@ class A2C(BaseRLModel):
 
         return memory
 
+    def _critic_inputs(self, memory, states, next_states):
+        """Return current/next value-network inputs for a rollout."""
+        return states, next_states
+
+    def _prepare_update(self, memory, discount_rewards):
+        actions, rewards, states, next_states, dones = process_memory(
+            memory, self.gamma, discount_rewards=False, device=self.device
+        )
+        features, next_features = self._critic_inputs(memory, states, next_states)
+        with torch.no_grad():
+            terminals = to_tensor(
+                [getattr(item, "terminated", item[4]) for item in memory],
+                device=self.device,
+            ).view(-1, 1)
+            next_values = self.critic(next_features) * (1 - terminals)
+            targets = rewards + self.gamma * next_values
+            if discount_rewards:
+                running = next_values[-1]
+                for i in reversed(range(len(memory))):
+                    if bool(dones[i]):
+                        running = next_values[i]
+                    running = rewards[i] + self.gamma * running
+                    targets[i] = running
+        return actions, states, features, targets
+
     def learn(self, memory, steps, discount_rewards=True):
         """Train the agent based on collected experience.
 
@@ -536,22 +633,12 @@ class A2C(BaseRLModel):
             discount_rewards (bool): Whether to apply reward discounting.
                                    Defaults to True.
         """
-        actions, rewards, states, next_states, dones = process_memory(
-            memory, self.gamma, discount_rewards, device=self.device
+        actions, states, features, td_target = self._prepare_update(
+            memory, discount_rewards
         )
 
-        # Calculate TD target (always detached!)
-        if discount_rewards:
-            # Monte Carlo return - must detach!
-            td_target = rewards.detach()
-        else:
-            # TD(0) bootstrap - detach to prevent gradient flow
-            with torch.no_grad():
-                next_value = self.critic(next_states)
-            td_target = rewards + self.gamma * next_value * (1 - dones)
-
         # Critic learning FIRST
-        value = self.critic(states)
+        value = self.critic(features)
         critic_loss = F.mse_loss(value, td_target)
         self.critic_optim.zero_grad()
         critic_loss.backward()
@@ -560,13 +647,15 @@ class A2C(BaseRLModel):
 
         # Recalculate value with updated critic (no grad for advantage)
         with torch.no_grad():
-            value_updated = self.critic(states)
+            value_updated = self.critic(features)
             advantage = td_target - value_updated
 
             # Normalize advantage for stable learning (critical for A2C!)
-            advantage_normalized = (advantage - advantage.mean()) / (
-                advantage.std() + 1e-8
-            )
+            advantage_normalized = advantage
+            if advantage.numel() > 1:
+                advantage_normalized = (advantage - advantage.mean()) / (
+                    advantage.std(unbiased=False) + 1e-8
+                )
 
         # Actor learning with fresh advantage estimates
         norm_dists = self.actor(states)
@@ -609,7 +698,9 @@ class A2C(BaseRLModel):
             schema.A2C.ADVANTAGE_MEAN, float(advantage.mean()), env_step=steps
         )
         self.writer.add_scalar(
-            schema.A2C.ADVANTAGE_STD, float(advantage.std()), env_step=steps
+            schema.A2C.ADVANTAGE_STD,
+            float(advantage.std(unbiased=False)),
+            env_step=steps,
         )
         self.writer.add_scalar(
             schema.A2C.ADVANTAGE_NORMALIZED_MEAN,
@@ -985,8 +1076,10 @@ class A2CWithNARXCritic(A2C):
             history_length: Number of past steps to include in critic features.
             **kwargs: Forwarded to base A2C constructor.
         """
-        super().__init__(*args, **kwargs)
+        if history_length < 1:
+            raise ValueError("history_length must be positive")
         self.history_length = history_length
+        super().__init__(*args, **kwargs)
 
     def _build_narx_batch(
         self, states: torch.Tensor, actions: torch.Tensor
@@ -1002,6 +1095,42 @@ class A2CWithNARXCritic(A2C):
         """
         return build_narx_features(states, actions, self.history_length)
 
+    def _critic_inputs(self, memory, states, next_states):
+        """Use physical input histories, resetting them at episode boundaries."""
+
+        def feature(state, past_states, past_actions):
+            state = np.asarray(state).reshape(-1)
+            action_zero = np.zeros_like(np.asarray(memory[0][0]).reshape(-1))
+            xs = [np.asarray(x).reshape(-1) for x in reversed(past_states)]
+            us = [np.asarray(u).reshape(-1) for u in reversed(past_actions)]
+            xs = (xs + [np.zeros_like(state)] * self.history_length)[
+                : self.history_length - 1
+            ]
+            us = (us + [action_zero] * self.history_length)[: self.history_length]
+            return np.concatenate([state, *xs, *us])
+
+        current, following = [], []
+        history_states: list[np.ndarray] = []
+        history_actions: list[np.ndarray] = []
+        for item in memory:
+            action, _, state, next_state, done = item
+            past_states = list(getattr(item, "previous_states", history_states))
+            past_actions = list(getattr(item, "previous_actions", history_actions))
+            executed = getattr(item, "executed_action", action)
+            current.append(feature(state, past_states, past_actions))
+            following.append(
+                feature(next_state, past_states + [state], past_actions + [executed])
+            )
+            history_states = (
+                [] if done else (past_states + [state])[-self.history_length :]
+            )
+            history_actions = (
+                [] if done else (past_actions + [executed])[-self.history_length :]
+            )
+        return to_tensor(current, device=self.device), to_tensor(
+            following, device=self.device
+        )
+
     def learn(self, memory, steps, discount_rewards=True):
         """Train actor and NARX critic on a batch of transitions.
 
@@ -1010,22 +1139,10 @@ class A2CWithNARXCritic(A2C):
             steps: Global step index for logging.
             discount_rewards: Whether to use discounted returns for TD target.
         """
-        actions, rewards, states, next_states, dones = process_memory(
-            memory, self.gamma, discount_rewards, device=self.device
+        actions, states, features, td_target = self._prepare_update(
+            memory, discount_rewards
         )
 
-        # TD target
-        if discount_rewards:
-            td_target = rewards.detach()
-        else:
-            with torch.no_grad():
-                # for TD(0) with NARX critic we need next-state features; we approximate using same feature builder
-                next_features = self._build_narx_batch(next_states, actions)
-                next_value = self.critic(next_features)
-            td_target = rewards + self.gamma * next_value * (1 - dones)
-
-        # Critic update (with NARX features)
-        features = self._build_narx_batch(states, actions)
         value = self.critic(features)
         critic_loss = F.mse_loss(value, td_target)
         self.critic_optim.zero_grad()
@@ -1037,9 +1154,11 @@ class A2CWithNARXCritic(A2C):
         with torch.no_grad():
             value_updated = self.critic(features)
             advantage = td_target - value_updated
-            advantage_normalized = (advantage - advantage.mean()) / (
-                advantage.std() + 1e-8
-            )
+            advantage_normalized = advantage
+            if advantage.numel() > 1:
+                advantage_normalized = (advantage - advantage.mean()) / (
+                    advantage.std(unbiased=False) + 1e-8
+                )
 
         # Actor update (standard A2C)
         norm_dists = self.actor(states)
