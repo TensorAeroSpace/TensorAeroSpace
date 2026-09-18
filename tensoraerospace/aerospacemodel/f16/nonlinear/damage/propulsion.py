@@ -1,9 +1,9 @@
 """Engine state effects.
 
-The angular F-16 ODE in this codebase does not currently consume thrust
-directly — airspeed is held constant. This module exposes a small utility
-so downstream consumers (gym envs, RL agents, future dynamics extensions)
-can read the effective thrust given the engine's damage state.
+The angular F-16 ODE applies this correction to thrust when altitude and
+airspeed are integrated. The resulting body-axis force contributes to speed,
+angle-of-attack and sideslip acceleration. Fixed-speed reduced models do not
+model the translational response to engine failure.
 """
 
 from __future__ import annotations

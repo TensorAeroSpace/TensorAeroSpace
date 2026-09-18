@@ -26,7 +26,11 @@ import gymnasium as gym
 import numpy as np
 from gymnasium import spaces
 
+from tensoraerospace.aerospacemodel.f16.nonlinear._actuators import surface_limits
 from tensoraerospace.aerospacemodel.f16.nonlinear.angular import AngularF16
+from tensoraerospace.aerospacemodel.f16.nonlinear.angular.params import (
+    default_parameters,
+)
 from tensoraerospace.aerospacemodel.f16.nonlinear.damage import (
     DamageManager,
     DamageProfile,
@@ -36,6 +40,8 @@ from tensoraerospace.visualization.kinematics import (
     _body_to_inertial_matrix,
     _body_velocity,
 )
+
+from ._damage import decode_profile, reset_damage, step_with_damage
 
 MODEL_STATE_ORDER = [
     "alpha",
@@ -61,7 +67,9 @@ class NonlinearAngularF16(gym.Env):
     """Gymnasium env over the pure-numpy nonlinear F-16 6-DoF angular model.
 
     Args:
-        initial_state: 14-element initial state in radians/rad-per-s.
+        initial_state: 14 angular/actuator states in radians/rad-per-s. With
+            ``track_altitude=True``, optionally append altitude (m) and airspeed
+            (m/s); otherwise the model adds its default flight condition.
         number_time_steps: Episode length cap (steps).
         dt: Discretisation step (s). Defaults to 0.01.
         integrator: ``"euler"`` or ``"rk4"`` (default).
@@ -72,9 +80,10 @@ class NonlinearAngularF16(gym.Env):
         chart_states: Names of state channels to track for the chart strip.
         trail_length: Optional trail clipping (None = full trail).
 
-    Action units: degrees, range ``[-25, 25]``, converted to radians before
-    being passed to the underlying numpy model. This matches the linear /
-    longitudinal convention so existing controllers transfer.
+    Surface actions use degrees: stabilator ±25, aileron ±21.5, rudder ±30,
+    converted to radians before being passed to the underlying numpy model. In
+    ``thrust_mode="control"``, the last action is thrust in Newtons with bounds
+    ``[0, T_max_thrust]`` from the model parameters.
     """
 
     metadata = {"render_modes": ["human", "rgb_array", "live", "3d_web"]}
@@ -98,10 +107,9 @@ class NonlinearAngularF16(gym.Env):
         thrust_mode: Literal["constant", "control"] = "constant",
     ) -> None:
         super().__init__()
-        if initial_state.shape != (14,):
-            raise ValueError(
-                f"initial_state must be 14-element; got {initial_state.shape}"
-            )
+        initial_state = self._validate_initial_state(
+            initial_state, track_altitude, dt, number_time_steps, airspeed, thrust_mode
+        )
         for name in chart_states:
             if name not in MODEL_STATE_ORDER:
                 raise ValueError(
@@ -119,22 +127,19 @@ class NonlinearAngularF16(gym.Env):
         self.split_stab = split_stab
         self.track_altitude = track_altitude
         self.thrust_mode = thrust_mode
-        self.damage_profile = damage_profile
+        self.damage_profile = decode_profile(damage_profile)
         self.damage_observable = damage_observable
         self.damage_event_callback = damage_event_callback
 
         self.max_action_value = 25.0  # deg
 
-        n_action = 4 if split_stab else 3
+        params = default_parameters()
+        high = np.rad2deg(surface_limits(params, split_stab))
+        low = -high
         if thrust_mode == "control":
-            n_action += 1
-        action_shape = (n_action,)
-        self.action_space = spaces.Box(
-            low=-self.max_action_value,
-            high=self.max_action_value,
-            shape=action_shape,
-            dtype=np.float64,
-        )
+            low = np.append(low, 0.0)
+            high = np.append(high, params.T_max_thrust)
+        self.action_space: spaces.Box = spaces.Box(low=low, high=high, dtype=np.float64)
 
         # Observation: model state size + optional damage state vector
         obs_size = 16 if track_altitude else 14
@@ -177,6 +182,58 @@ class NonlinearAngularF16(gym.Env):
         self.chart_history: dict[str, np.ndarray] = {}
         self._live_renderer: Any = None
 
+    @staticmethod
+    def _validate_initial_state(
+        initial_state, track_altitude, dt, number_time_steps, airspeed, thrust_mode
+    ):
+        """Reject invalid flight configuration before allocating an environment."""
+        initial_state = np.asarray(initial_state, dtype=np.float64)
+        allowed_shapes = ((14,), (16,)) if track_altitude else ((14,),)
+        if initial_state.shape not in allowed_shapes:
+            raise ValueError(
+                f"initial_state must have shape in {allowed_shapes}; got {initial_state.shape}"
+            )
+        if not np.all(np.isfinite(initial_state)):
+            raise ValueError("initial_state must be finite")
+        if not np.isfinite(dt) or dt <= 0:
+            raise ValueError("dt must be positive and finite")
+        if int(number_time_steps) < 1:
+            raise ValueError("number_time_steps must be >= 1")
+        if not np.isfinite(airspeed) or airspeed <= 0:
+            raise ValueError("airspeed must be positive and finite")
+        if thrust_mode not in ("constant", "control"):
+            raise ValueError("thrust_mode must be constant or control")
+        if initial_state.size == 16 and initial_state[15] <= 0:
+            raise ValueError("initial airspeed must be positive")
+        return initial_state
+
+    def get_init_args(self) -> dict:
+        """Return reconstructible environment settings for agent checkpoints."""
+        if self.damage_event_callback is not None:
+            raise ValueError(
+                "damage_event_callback cannot be serialized; remove it before saving"
+            )
+        names = (
+            "initial_state",
+            "number_time_steps",
+            "dt",
+            "integrator",
+            "airspeed",
+            "render_mode",
+            "chart_states",
+            "trail_length",
+            "damage_observable",
+            "split_stab",
+            "track_altitude",
+            "thrust_mode",
+        )
+        config = {name: getattr(self, name) for name in names}
+        config["initial_state"] = self.initial_state.copy()
+        config["damage_profile"] = (
+            self.damage_profile.to_dict() if self.damage_profile is not None else None
+        )
+        return config
+
     def reset(self, *, seed=None, options=None):
         super().reset(seed=seed)
         self.model = AngularF16(
@@ -190,34 +247,7 @@ class NonlinearAngularF16(gym.Env):
         )
         self._step_index = 0
 
-        # Damage manager
-        if self.damage_profile is not None or self.damage_observable:
-            geo = self._geo_for_obs
-            if geo is None:
-                raise RuntimeError("Damage mode requires F-16 geometry.")
-            self.damage_manager = DamageManager(
-                geometry=geo,
-                params=self.model.param,
-                profile=(self.damage_profile or DamageProfile(events=[])),
-            )
-            if options and "damage_profile" in options:
-                self.damage_manager.set_profile(options["damage_profile"])
-            self.damage_manager.reset(seed=seed)
-            setattr(self.model, "damage_state", self.damage_manager.state)
-            setattr(self.model, "damage_geometry", geo)
-        else:
-            self.damage_manager = None
-
-        # Reset accumulator buffers and snapshot initial damage state
-        self.damage_events_log = []
-        self.damage_state_log = []
-        if self.damage_manager is not None:
-            self.damage_state_log.append(
-                {
-                    "time": 0.0,
-                    "state": self.damage_manager.state.snapshot(),
-                }
-            )
+        reset_damage(self, options, seed)
 
         self.position_history = np.zeros((1, 3), dtype=np.float64)
         self.attitude_history = self._extract_attitude(self.initial_state).reshape(1, 3)
@@ -228,62 +258,15 @@ class NonlinearAngularF16(gym.Env):
         }
         self._live_renderer = None
 
-        obs = self._build_observation(self.initial_state)
+        obs = self._build_observation(self.model.current_state)
         return obs, {}
 
     def step(self, action):
-        action = np.asarray(action, dtype=np.float64).reshape(-1)
-        n_action = 4 if self.split_stab else 3
-        if self.thrust_mode == "control":
-            n_action += 1
-        expected = (n_action,)
-        if action.shape != expected:
-            raise ValueError(f"action must be {expected}; got {action.shape}")
-        if self.thrust_mode == "control":
-            # Last element is thrust in Newtons; don't deg→rad it.
-            surfaces = action[:-1]
-            thrust = action[-1:]
-            surfaces_clipped = np.clip(
-                surfaces, -self.max_action_value, self.max_action_value
-            )
-            u_rad = np.concatenate([np.deg2rad(surfaces_clipped), thrust])
-        else:
-            action_clipped = np.clip(
-                action, -self.max_action_value, self.max_action_value
-            )
-            u_rad = np.deg2rad(action_clipped)
+        if self.model is None:
+            raise RuntimeError("reset() must be called before step()")
+        u_rad = self._model_control(action)
 
-        # Time bookkeeping (BEFORE stepping the model)
-        t_prev = self._step_index * self.dt
-        t_now = (self._step_index + 1) * self.dt
-
-        # Damage events
-        triggered_labels: list[str] = []
-        if self.damage_manager is not None:
-            triggered = self.damage_manager.update(t_now, t_prev)
-            for ev in triggered:
-                if self.damage_event_callback:
-                    self.damage_event_callback(ev, self.damage_manager.state)
-                triggered_labels.append(ev.label or ev.event_type)
-                self.damage_events_log.append(
-                    {
-                        "time": float(t_now),
-                        "label": ev.label or ev.event_type,
-                        "event_type": ev.event_type,
-                        "payload": dict(ev.payload),
-                    }
-                )
-            if triggered:
-                # Snapshot the post-event damage state
-                self.damage_state_log.append(
-                    {
-                        "time": float(t_now),
-                        "state": self.damage_manager.state.snapshot(),
-                    }
-                )
-
-        assert self.model is not None
-        self.model.run_step(u_rad)
+        _, triggered_labels = step_with_damage(self, u_rad)
         next_state = self.model.current_state.copy()
 
         # Update tracking
@@ -301,6 +284,23 @@ class NonlinearAngularF16(gym.Env):
 
         obs = self._build_observation(next_state)
         return obs, reward, terminated, truncated, info
+
+    def _model_control(self, action):
+        """Convert surface degrees to radians while retaining thrust in Newtons."""
+        action = np.asarray(action, dtype=np.float64).reshape(-1)
+        n_action = 4 if self.split_stab else 3
+        if self.thrust_mode == "control":
+            n_action += 1
+        expected = (n_action,)
+        if action.shape != expected:
+            raise ValueError(f"action must be {expected}; got {action.shape}")
+        if not np.all(np.isfinite(action)):
+            raise ValueError("action must be finite")
+        action = np.clip(action, self.action_space.low, self.action_space.high)
+        if self.thrust_mode == "control":
+            # Last element is thrust in Newtons; don't deg→rad it.
+            return np.concatenate([np.deg2rad(action[:-1]), action[-1:]])
+        return np.deg2rad(action)
 
     def _build_observation(self, model_state: np.ndarray) -> np.ndarray:
         if not self.damage_observable or self.damage_manager is None:

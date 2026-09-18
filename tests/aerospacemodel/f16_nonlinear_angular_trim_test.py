@@ -13,12 +13,7 @@ def test_find_trim_returns_converged_solution():
 
     sol = find_trim(V_target=120.0, h_target=3000.0)
     assert sol.converged, f"trim search did not converge; residuals={sol.residuals}"
-    # Solver pins dα ≈ 0 and dωz ≈ 0 to machine precision; the dV
-    # residual may be a few m/s² when thrust is floored at T_THRUST_MIN
-    # to keep it physically positive.
-    assert abs(sol.residuals[0]) < 1e-3  # dalpha
-    assert abs(sol.residuals[1]) < 1e-3  # dwz
-    assert abs(sol.residuals[2]) < 5.0  # dV (allowed slack from thrust floor)
+    np.testing.assert_allclose(sol.residuals, 0.0, atol=1e-6)
 
 
 def test_find_trim_x0_is_16_elements():
@@ -49,24 +44,11 @@ def test_trim_alpha_is_positive_for_subsonic_cruise():
 
 
 def test_trim_thrust_is_in_realistic_range():
-    """The solver should find a finite, non-absurd trim thrust.
-
-    The F-16 angular ODE uses the body-axis CX coefficient directly in
-    the energy equation (dV = (T*cos_a - q*S*cx) / m).  At the trim
-    alpha (~7-8 deg) the aerodynamic CX is negative, meaning the
-    aero-force is directed forward in body axes; the equilibrium
-    therefore requires a small negative T to balance — physically
-    corresponding to very low or zero net engine thrust with the aero
-    contribution providing the forward force.  The key check is that
-    the magnitude stays inside a plausible engine-capability range and
-    the solver doesn't blow up.
-    """
+    """Level flight requires positive thrust within engine capability."""
     from tensoraerospace.aerospacemodel.f16.nonlinear.angular.trim import find_trim
 
     sol = find_trim(V_target=120.0, h_target=3000.0)
-    assert (
-        abs(sol.T_thrust) < 60000.0
-    ), f"trim thrust magnitude {sol.T_thrust} N outside plausible range"
+    assert 0.0 < sol.T_thrust < 60000.0
 
 
 def test_trim_state_is_stable_in_simulation():
@@ -98,10 +80,7 @@ def test_trim_state_is_stable_in_simulation():
     h_final = m.current_state[14]
     V_final = m.current_state[15]
 
-    # Allow modest drift because the actuator dynamics introduce a small
-    # transient and the longitudinal mode is lightly damped.
-    assert abs(alpha_final - alpha0) < math.radians(2.0)
-    # Altitude should hold within a few hundred metres
-    assert abs(h_final - h0) < 200.0
-    # V should hold within ~10 m/s
-    assert abs(V_final - V0) < 10.0
+    # A declared trim must hold altitude and speed, not merely remain finite.
+    assert abs(alpha_final - alpha0) < 1e-5
+    assert abs(h_final - h0) < 1e-3
+    assert abs(V_final - V0) < 1e-3

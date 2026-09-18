@@ -86,7 +86,8 @@ def test_step_runs_and_counts():
         assert info == {}
     # Next call should flip done True (current_step >= number_time_steps - 1).
     obs, r, done, truncated, info = env.step(np.array([0.0]))
-    assert done is True
+    assert done is False
+    assert truncated is True
 
 
 def test_default_reward_matches_manual_computation():

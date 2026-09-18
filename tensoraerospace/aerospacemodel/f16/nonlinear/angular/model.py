@@ -13,7 +13,8 @@ import numpy as np
 
 from tensoraerospace.aerospacemodel.base import ModelBase
 
-from .._integrators import euler, rk4
+from .._actuators import project_actuators, surface_limits
+from .._integrators import euler, integrate_events, rk4
 from .dynamics import f16_ode_6dof
 from .params import F16AngularParameters, default_parameters
 
@@ -40,17 +41,8 @@ class AngularF16(ModelBase):
         track_altitude: bool = False,
         thrust_mode: Literal["constant", "control"] = "constant",
     ) -> None:
-        x0_arr = np.array(x0, dtype=np.float64, copy=True).reshape(-1)
-        n_state = 16 if track_altitude else 14
-        if x0_arr.size == 14 and track_altitude:
-            # Auto-pad with trim altitude and trim airspeed from params.
-            params_default = default_parameters()
-            x0_arr = np.append(x0_arr, [params_default.Oy, params_default.V])
-        if x0_arr.size != n_state:
-            raise ValueError(
-                f"x0 must have {n_state} elements (track_altitude="
-                f"{track_altitude}); got {x0_arr.size}"
-            )
+        x0_arr = self._prepare_initial_state(x0, dt, track_altitude, thrust_mode)
+        n_state = x0_arr.size
         super().__init__(x0_arr, selected_state_output, t0, dt)
         self.split_stab = split_stab
         self.track_altitude = track_altitude
@@ -100,6 +92,30 @@ class AngularF16(ModelBase):
             raise ValueError(f"unknown integrator: {integrator!r}")
         self._integrator_name = integrator
 
+    @staticmethod
+    def _prepare_initial_state(x0, dt, track_altitude, thrust_mode):
+        """Validate physical inputs before creating histories or model parameters."""
+        if not np.isfinite(dt) or dt <= 0:
+            raise ValueError("dt must be positive and finite")
+        if thrust_mode not in ("constant", "control"):
+            raise ValueError("thrust_mode must be constant or control")
+        x0_arr = np.array(x0, dtype=np.float64, copy=True).reshape(-1)
+        if not np.all(np.isfinite(x0_arr)):
+            raise ValueError("x0 must be finite")
+        n_state = 16 if track_altitude else 14
+        if x0_arr.size == 14 and track_altitude:
+            # Auto-pad with trim altitude and trim airspeed from params.
+            params_default = default_parameters()
+            x0_arr = np.append(x0_arr, [params_default.Oy, params_default.V])
+        if x0_arr.size != n_state:
+            raise ValueError(
+                f"x0 must have {n_state} elements (track_altitude="
+                f"{track_altitude}); got {x0_arr.size}"
+            )
+        if track_altitude and x0_arr[15] <= 0:
+            raise ValueError("initial airspeed must be positive")
+        return x0_arr
+
     def get_param(self) -> F16AngularParameters:
         return self.param
 
@@ -111,7 +127,7 @@ class AngularF16(ModelBase):
         """Independent snapshot of the most recent state as a flat 1-D ndarray."""
         return np.array(self.x_history[-1], dtype=np.float64, copy=True).reshape(-1)
 
-    def run_step(self, u: ArrayLike) -> np.ndarray:
+    def run_step(self, u: ArrayLike, *, events=()) -> np.ndarray:
         u_arr = np.asarray(u, dtype=np.float64).reshape(-1)
         if u_arr.size != self.action_space_length:
             raise ValueError(
@@ -119,6 +135,38 @@ class AngularF16(ModelBase):
                 f" Текущее значение {u_arr.size}, не соответсвует {self.action_space_length}"
             )
 
+        if not np.all(np.isfinite(u_arr)):
+            raise ValueError("control input must be finite")
+
+        x_prev = np.asarray(self.x_history[-1], dtype=np.float64).reshape(-1)
+        t_now = self.t0 + self.dt * (self.time_step - 1)
+        x_next = integrate_events(
+            lambda x, t, dt: self._advance(x, u_arr, t, dt),
+            x_prev,
+            t_now,
+            self.dt,
+            events,
+        )
+
+        x_next_col = x_next.reshape(self.n_state, 1)
+        self.x_history.append(x_next_col)
+        _, recorded_control = self._prepare_control(u_arr)
+        self.u_history.append(recorded_control.reshape(-1, 1).copy())
+        self.time_step += 1
+
+        if self.selected_state_output:
+            return x_next_col[self.selected_state_index]
+        return x_next_col.copy()
+
+    def _advance(self, x, u, t, dt):
+        control, _ = self._prepare_control(u)
+        next_state = self._step_fn(f16_ode_6dof, x, control, t, dt, self.param)
+        return project_actuators(
+            next_state, self.param, ((8, "stab"), (10, "ail"), (12, "dir"))
+        )
+
+    def _prepare_control(self, u_arr):
+        """Recompute applied commands after events, before split-stab merging."""
         # Thrust input handling
         if self.thrust_mode == "control":
             thrust_cmd = float(u_arr[-1])
@@ -127,6 +175,11 @@ class AngularF16(ModelBase):
             u_arr = u_arr[:-1]  # drop thrust from u; rest is stab/ail/dir
         else:
             self.param.T_active = self.param.T_thrust
+
+        # Saturate requested travel before efficiency loss, so an oversized
+        # request cannot cancel a failure. Reapply stops after a jam command.
+        limits = surface_limits(self.param, self.split_stab)
+        u_arr = np.clip(u_arr, -limits, limits)
 
         # Apply control-surface failures BEFORE split-stab merging.
         # The failure layer mutates the raw user command (the 4-element
@@ -143,6 +196,7 @@ class AngularF16(ModelBase):
                 ANGULAR_SPLIT_STAB_INDEX if self.split_stab else ANGULAR_LEGACY_INDEX
             )
             u_arr = apply_control_failures(u_arr, self.damage_state, mapping)
+            u_arr = np.clip(u_arr, -limits, limits)
 
         if self.split_stab:
             # u = [stab_left, stab_right, ail, dir]; convert to (stab_mean, ail, dir)
@@ -163,17 +217,10 @@ class AngularF16(ModelBase):
             self.param.damage_state = None
             self.param.damage_geometry = None
 
-        x_prev = np.asarray(self.x_history[-1], dtype=np.float64).reshape(-1)
-        t_now = self.t0 + self.dt * (self.time_step - 1)
-        x_next = self._step_fn(
-            f16_ode_6dof, x_prev, u_legacy, t_now, self.dt, self.param
+        # Keep the applied thrust channel aligned with control_list.
+        recorded_control = (
+            np.append(u_arr, self.param.T_active)
+            if self.thrust_mode == "control"
+            else u_arr
         )
-
-        x_next_col = x_next.reshape(self.n_state, 1)
-        self.x_history.append(x_next_col)
-        self.u_history.append(u_arr.reshape(-1, 1).copy())
-        self.time_step += 1
-
-        if self.selected_state_output:
-            return x_next_col[self.selected_state_index]
-        return x_next_col.copy()
+        return u_legacy, recorded_control

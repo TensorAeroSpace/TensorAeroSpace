@@ -1,15 +1,13 @@
 import math
-import pathlib
 
 import numpy as np
-import pytest
+from scipy.integrate import solve_ivp
 
 from tensoraerospace.aerospacemodel.f16.nonlinear.angular import (
     AngularF16,
     initial_state,
 )
-
-SNAPSHOT = pathlib.Path(__file__).parent / "snapshots" / "angular_open_loop_1s.npz"
+from tensoraerospace.aerospacemodel.f16.nonlinear.angular.dynamics import f16_ode_6dof
 
 
 def test_zero_input_zero_state_no_nans_for_one_second():
@@ -21,28 +19,34 @@ def test_zero_input_zero_state_no_nans_for_one_second():
         assert np.all(np.isfinite(arr))
 
 
-def test_open_loop_trajectory_snapshot():
-    """Regression: a fixed sequence of stab/ail/dir commands produces an
-    exact trajectory."""
-    m = AngularF16(initial_state, dt=0.01)
-    states = []
-    for k in range(100):
-        u = [
-            [math.radians(0.5) if k < 30 else 0.0],
-            [math.radians(1.0) if 30 <= k < 60 else 0.0],
-            [math.radians(0.5) if 60 <= k else 0.0],
-        ]
-        out = m.run_step(u)
-        states.append(np.asarray(out).reshape(-1))
-    traj = np.stack(states, axis=0)
-
-    if not SNAPSHOT.exists():
-        SNAPSHOT.parent.mkdir(parents=True, exist_ok=True)
-        np.savez_compressed(SNAPSHOT, trajectory=traj)
-        pytest.skip(f"snapshot created at {SNAPSHOT}; re-run to compare")
-
-    expected = np.load(SNAPSHOT)["trajectory"]
-    np.testing.assert_allclose(traj, expected, atol=1e-9)
+def test_open_loop_trajectory_matches_independent_continuous_integration():
+    """Check the fixed-step integrator against DOP853 across command changes."""
+    model = AngularF16(initial_state, dt=0.0025, integrator="rk4")
+    expected_state = np.asarray(initial_state, dtype=float).reshape(-1)
+    actual = []
+    expected = []
+    for start, end, command in [
+        (0.0, 0.3, [math.radians(0.5), 0.0, 0.0]),
+        (0.3, 0.6, [0.0, math.radians(1.0), 0.0]),
+        (0.6, 1.0, [0.0, 0.0, math.radians(0.5)]),
+    ]:
+        count = round((end - start) / model.dt)
+        times = np.linspace(start, end, count + 1)[1:]
+        solution = solve_ivp(
+            lambda t, x: f16_ode_6dof(x, np.array(command), t, model.param),
+            (start, end),
+            expected_state,
+            t_eval=times,
+            method="DOP853",
+            rtol=1e-11,
+            atol=1e-13,
+        )
+        assert solution.success
+        expected.extend(solution.y.T)
+        expected_state = solution.y[:, -1]
+        for _ in range(count):
+            actual.append(model.run_step(command).reshape(-1))
+    np.testing.assert_allclose(actual, expected, rtol=2e-4, atol=2e-6)
 
 
 def test_actuator_position_limits_enforced_3channels():

@@ -229,13 +229,13 @@ def collect_pe_data(
             + 0.1 * rng.normal()
         )
         x_curr = state_transform(obs, ref_at_trim, 0)
-        obs_next, _, done, _, _ = env_id.step(np.array([u_t]))
+        obs_next, _, terminated, truncated, _ = env_id.step(np.array([u_t]))
         x_next = state_transform(obs_next, ref_at_trim, 0)
         states_buf.append(x_curr)
         actions_buf.append([u_t])
         next_states_buf.append(x_next)
         obs = obs_next
-        if done:
+        if terminated or truncated:
             break
     return (
         np.asarray(states_buf, dtype=np.float32),
@@ -298,7 +298,7 @@ def run_episode(
     for k in range(n_steps):
         agent.predict(obs, reference, k)
         u_cmd = agent.last_action()
-        obs_next, _, done, _, info = env.step(u_cmd)
+        obs_next, _, terminated, truncated, info = env.step(u_cmd)
 
         # Append the transition to the buffer (in agent state-transform space)
         if online_plant_refit:
@@ -365,7 +365,7 @@ def run_episode(
         wz_log.append(np.degrees(obs_arr[1]))
         u_log.append(float(u_cmd[0]))
         obs = obs_next
-        if done:
+        if terminated or truncated:
             break
     return {
         "alpha": np.asarray(alpha_log),
@@ -645,9 +645,9 @@ def main() -> None:
     for k in range(n_steps - 2):
         agent.predict(obs, reference, k)
         u_cmd = agent.last_action()
-        obs, _, done, _, _ = env_3d.step(u_cmd)
+        obs, _, terminated, truncated, _ = env_3d.step(u_cmd)
         agent.learn(obs, reference, k, dt=DT)
-        if done:
+        if terminated or truncated:
             break
 
     # In a script: opens default browser. Returns Path to the HTML file.
