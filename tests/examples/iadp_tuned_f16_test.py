@@ -18,7 +18,7 @@ def test_integral_model_matches_causal_error_update():
     assert agent.n_state == 2
     np.testing.assert_array_equal(agent.Q, np.diag([1.0, 30.0]))
     assert agent.cfg.policy_eval_min_samples == agent.cfg.policy_eval_window == 300
-    assert agent.cfg.policy_eval_blend == 0.0001
+    assert not hasattr(agent.cfg, "policy_eval_blend")
 
 
 def test_integral_feature_is_zero_for_perfect_tracking():

@@ -36,7 +36,13 @@ def test_engine_event_cannot_change_the_trajectory_before_its_boundary():
     b, *_ = faulty.step(u)
     assert not np.array_equal(a, b)
     assert faulty.damage_events_log == [
-        {"time": 0.2, "engine_id": 1, "thrust_fraction": 0.5}
+        {
+            "time": 0.2,
+            "engine_id": 1,
+            "thrust_fraction": 0.5,
+            "label": "EngineFailureEvent",
+            "kind": "EngineFailureEvent",
+        }
     ]
     assert b[5] < a[5]
     faulty.reset()

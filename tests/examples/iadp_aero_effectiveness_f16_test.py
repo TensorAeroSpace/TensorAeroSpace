@@ -169,7 +169,7 @@ def test_selected_controller_keeps_both_learning_loops_active_after_fault():
     assert np.ptp(data[data[:, 0] > 6.0, 11]) > 0
     assert diagnostics["model_change_after_event"] > 0
     assert diagnostics["critic_change_after_event"] > 0
-    assert example.selected_tuning().blend > 0
+    assert not hasattr(example.selected_tuning(), "blend")
 
 
 def test_expanded_pid_bounds_are_supported_without_changing_default_search():
