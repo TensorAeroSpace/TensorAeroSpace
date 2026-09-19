@@ -8,10 +8,7 @@ in [Damage modeling mathematics](aircraft-damage-modeling-math.md).
 ## Architecture and physical model
 
 The implementation lives at
-`tensoraerospace/aerospacemodel/f16/nonlinear/damage/`. A detailed design
-document (outside the main navigation) is at
-`docs/superpowers/specs/2026-04-28-aircraft-damage-modeling-design.md` —
-available in the repository sources.
+`tensoraerospace/aerospacemodel/f16/nonlinear/damage/`.
 
 Key points:
 
