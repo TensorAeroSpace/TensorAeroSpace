@@ -14,6 +14,7 @@ Two configurations:
 """
 
 from .aero import AeroForces, AeroState, b737_aero
+from .damage import ElevatorEffectiveness
 from .dynamics import b737_ode_6dof
 from .engine import (
     ENGINE_Y_POSITIONS_FT,
@@ -35,6 +36,7 @@ from .params import (
 from .trim import TrimResult, trim
 
 __all__ = [
+    "ElevatorEffectiveness",
     "AeroForces",
     "AeroState",
     "B737Configuration",

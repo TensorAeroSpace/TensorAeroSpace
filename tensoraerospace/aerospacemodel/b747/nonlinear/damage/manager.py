@@ -12,10 +12,10 @@ class B747DamageManager:
     """Owns :class:`B747DamageState` and replays events over the episode.
 
     Used by :class:`tensoraerospace.envs.b747_nonlinear.NonlinearB747Env`:
-    on every integrator tick the env calls :meth:`update` with the
-    current and previous timestamps; events that fall in that window
-    are applied to the state. Exponential-decay surfaces are advanced
-    one Euler step.
+    the native model splits each integrator tick at scheduled event times,
+    calls :meth:`update` at interval starts and advances surface decay after
+    each segment. Standalone callers may supply a nonzero ``dt`` to update
+    events and decay together.
     """
 
     def __init__(self, profile: Optional[DamageProfile] = None) -> None:
@@ -30,6 +30,11 @@ class B747DamageManager:
         """
         self.state = B747DamageState.healthy()
         self._injected = []
+
+    @property
+    def scheduled_events(self):
+        """Profile and injected events, used to split physical integration."""
+        return tuple(self.profile.events) + tuple(self._injected)
 
     def set_profile(self, profile: DamageProfile) -> None:
         self.profile = profile

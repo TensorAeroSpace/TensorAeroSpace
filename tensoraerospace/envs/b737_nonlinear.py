@@ -17,6 +17,7 @@ from gymnasium import spaces
 
 from tensoraerospace.aerospacemodel.b737.nonlinear import (
     B737Configuration,
+    ElevatorEffectiveness,
     NonlinearB737,
     trim,
 )
@@ -53,6 +54,8 @@ class NonlinearB737Env(gym.Env):
         integrator: Literal["euler", "rk4"] = "rk4",
         action_space: Literal["virtual", "normalized"] = "virtual",
         config: B737Configuration = B737Configuration.B737_100,
+        elevator_fault: ElevatorEffectiveness | None = None,
+        integration_substeps: int = 1,
         damage_profile: Optional[Any] = None,
         damage_event_callback: Optional[Callable[[Any, Any], None]] = None,
     ) -> None:
@@ -78,6 +81,8 @@ class NonlinearB737Env(gym.Env):
                 "B737 environment damage profiles are not implemented"
             )
         self.config = config
+        self.elevator_fault = elevator_fault
+        self.integration_substeps = integration_substeps
         self.damage_profile = damage_profile
         self.damage_event_callback = damage_event_callback
 
@@ -160,6 +165,8 @@ class NonlinearB737Env(gym.Env):
             dt=self.dt,
             integrator=self.integrator,
             config=self.config,
+            elevator_fault=self.elevator_fault,
+            integration_substeps=self.integration_substeps,
         )
         self._step_index = 0
         return self.model.current_state.copy(), {}
