@@ -14,41 +14,9 @@ AIDI — **отказоустойчивый контроллер полёта**,
 
 ## Архитектура
 
-```
-                       ┌────────────────────┐
-   C*_cmd, φ_cmd,      │  Внешний контур    │
-   β_cmd, V_cmd  ───►  │  (C*, крен, β,     │
-                       │   скорость, лин.)  │
-                       └────────┬───────────┘
-                                │ ω_des
-   PCH ◄── ω̇_meas ─┐            ▼
-                   │   ┌──────────────────┐
-                   │   │ Линейный регулятор │ ν
-                   │   └──────┬───────────┘
-                   │          ▼
-                   │   ┌──────────────────┐    G_nominal(x, u)
-                   │   │ Внутренний закон │ ◄── OnboardCEModel
-                   │   │   AIDI           │
-                   │   │ Δu = G̃⁺·(ν−ω̇)  │
-                   │   └──────┬───────────┘
-                   │          ▼ Δu
-                   │   ┌──────────────────┐
-                   │   │ Огранич. скор/амп │
-                   │   └──────┬───────────┘
-                   │          ▼ u
-                   │       env.step
-                   │          ▼ ω
-                   │   ┌──────────────────┐
-                   └─◄ │ ω̇ из НЧ-произв.  │
-                       └──────┬───────────┘
-                              ▼
-                       ┌──────────────────┐
-                       │ ScalingRLS:      │
-                       │ Θ ← Θ + ΔΘ       │
-                       │ информац. VFF    │
-                       │ проверка согл.   │
-                       └──────────────────┘
-```
+![Архитектура AIDI: контуры управления, измерения, PCH и адаптация ScalingRLS](../../assets/images/aidi_architecture.png)
+
+На схеме показана текущая реализация `AIDIAgent`: `predict` формирует команду, а `learn` обновляет фильтры и идентификацию по следующему измерению и фактическому управлению. Обратная связь PCH использует запрос ускорения с предыдущего такта. Выход `SpeedController` пока не подключён к управлению тягой.
 
 ## Компоненты
 
@@ -66,34 +34,54 @@ AIDI — **отказоустойчивый контроллер полёта**,
 ## Быстрый старт (F-16)
 
 ```python
-import math, numpy as np
+import numpy as np
 from tensoraerospace.agent.aidi import AIDIAgent, AIDIConfig, F16NonlinearOnboardCE
 from tensoraerospace.aerospacemodel.f16.nonlinear.angular.params import default_parameters
+from tensoraerospace.envs.f16.nonlinear_angular import NonlinearAngularF16
+from tensoraerospace.scripts.benchmark_aidi import _solve_trim
 
-agent = AIDIAgent(
-    n_state=3, n_control=3,
-    onboard_ce=F16NonlinearOnboardCE(default_parameters(), perturb=1e-3),
-    config=AIDIConfig(dt=0.01, seed=0),
-)
+params = default_parameters()
+alpha, stabilator = _solve_trim()
+x0 = np.zeros(14)
+x0[0] = x0[7] = alpha
+x0[8] = stabilator
+env = NonlinearAngularF16(x0, number_time_steps=1002, dt=0.01,
+                          integrator="rk4", airspeed=params.V)
+agent = AIDIAgent(3, 3, F16NonlinearOnboardCE(params), AIDIConfig(dt=0.01))
+state, _ = env.reset()
+agent.reset(initial_action=state[[8, 10, 12]])
 
-# obs['omega'] в порядке (p, q, r) — у F-16-окружения wy=r и wz=q,
-# поэтому требуется переупорядочивание: omega = (obs[2], obs[4], obs[3])
-obs = {"omega": np.zeros(3), "alpha": 0.05, "beta": 0.0,
-       "theta": 0.0, "phi": 0.0, "V": 200.0, "state": np.zeros(14)}
-ref = {"C_star": 1.0, "phi_cmd": 0.0, "beta_cmd": 0.0, "V_cmd": 200.0}
+def observe(x):
+    return {"omega": x[[2, 4, 3]] * [1, 1, -1],  # (p, q, r) = (wx, wz, -wy)
+            "alpha": x[0], "beta": x[1], "theta": x[7], "phi": x[5],
+            "V": params.V, "state": x.copy()}
 
-u_rad = agent.predict(obs, references=ref, time_step=0)
-# Шаг среды (среда ожидает градусы):
-# next_obs, reward, terminated, truncated, info = env.step(np.rad2deg(u_rad))
-next_obs = obs  # заглушка для примера; в реальном цикле — результат env.step
-metrics = agent.learn(next_obs, references=ref, time_step=0)
+ref = {"C_star": 1.0, "phi_cmd": 0.0, "beta_cmd": 0.0, "V_cmd": params.V}
+command_rad = agent.predict(observe(state), ref)
+next_state, _, terminated, truncated, _ = env.step(np.rad2deg(command_rad))
+mean_deflection = (state[[8, 10, 12]] + next_state[[8, 10, 12]]) / 2
+metrics = agent.learn(observe(next_state), ref, applied_action=mean_deflection)
 ```
 
 API сохранения/загрузки и round-trip с Hugging Face у агента такие же, как в `aa_indi`/`et_dhp`/`im_gdhp`.
 
+## Измерения и контур угловых скоростей
+
+- Для штатного состояния F-16 передавайте `(p, q, r) = (wx, wz, -wy)`. Знак рыскания согласован с `F16NonlinearOnboardCE`; уравнения объекта не меняются.
+- В начале эпизода вызовите `reset(initial_action=state[[8, 10, 12]])`, передав фактические положения приводов в радианах. Обученные `Theta` и ковариация сохраняются.
+- После `predict(obs, refs)` вызывайте ровно один `learn(next_obs, refs, applied_action=...)`. Первое наблюдение используется для инициализации измерителя ускорения.
+- `applied_action` — среднее фактическое отклонение привода за переход, в единицах команды. Для F-16 его можно приближённо получить как `(previous_positions + next_positions) / 2`; точность проверяется уменьшением шага. Без обратной связи предполагается идеальное выполнение команды.
+- Ускорение и фактическое управление проходят согласованный фильтр первого порядка. Приращение управления добавляется к фильтрованному положению. Ограничитель скорости команды работает относительно предыдущей команды; физические ограничения привода отдельно обеспечивает объект. Фильтр и задержки статьи здесь воспроизведены упрощённо.
+- Контур скоростей вычисляет `nu = rate_kp * (omega_des - omega)` в рад/с². Коэффициенты имеют единицы с⁻¹, по умолчанию `(1, 1, 1)`; нулевые коэффициенты отключают обратную связь. При достигнутой постоянной скорости ускорение должно быть нулевым. Старые настройки требуют повторной проверки.
+- `learn(..., adapt=False)` сохраняет измерительную историю, не меняя идентификатор. Это диагностический фиксированный контроллер, а не заморозка адаптации в известный момент отказа.
+
+Новые checkpoints сохраняют историю фильтров и незавершённый переход. Старые сохраняют обученные параметры, но заново инициализируют измерительную историю: точное воспроизведение старого ошибочного закона управления не поддерживается.
+
+Для длительных прогонов и многоканальной проверки используйте `scripts/validate_aidi_measurements.py`. Проверяйте завершение эпизода и углы самолёта вместе с ошибками слежения: конечные веса ещё не означают устойчивость.
+
 ## Подробный пример
 
-`example/reinforcement_learning/incremental_adp/example_aidi_damage_f16.ipynb` — полный сценарий восстановления при отказе на нелинейной модели F-16: тримминг, базовая траектория, потеря 25 % эффективности стабилизатора в момент t = 5 с, сравнение прогонов с адаптивной и замороженной (frozen-Θ) идентификацией.
+`example/reinforcement_learning/incremental_adp/example_aidi_damage_f16.ipynb` — полный сценарий восстановления при отказе на нелинейной модели F-16: тримминг, базовая траектория, потеря 25 % усиления команды стабилизатора в момент t = 8 с, сравнение прогонов с адаптивной и замороженной (frozen-Θ) идентификацией.
 
 ## CLI для бенчмарков
 
@@ -106,7 +94,7 @@ python -m tensoraerospace.scripts.benchmark_aidi \
     --out report.md --csv report.csv
 ```
 
-Формирует Markdown-таблицу и CSV с RMSE по осям — аналог Table 8 из статьи, но на F-16.
+Формирует Markdown-таблицу и CSV с RMSE угловых скоростей (рад/с), начиная с t = 2 с. Это проверка удержания скоростей, а не воспроизведение Table 8 или полная оценка ориентации. `stab_25` означает 25% оставшегося усиления команды; аэродинамические коэффициенты при этом не масштабируются. `frozen` отключает идентификацию с начала эпизода и не использует момент отказа. Повторные эпизоды имеют одинаковые детерминированные начальные условия.
 
 ## Гиперпараметры
 

@@ -9,10 +9,7 @@
 ## Архитектура и физическая модель
 
 Реализация находится в директории
-`tensoraerospace/aerospacemodel/f16/nonlinear/damage/`. Подробный проектный
-документ (вне основной навигации) лежит по пути
-`docs/superpowers/specs/2026-04-28-aircraft-damage-modeling-design.md` —
-доступен в исходниках репозитория.
+`tensoraerospace/aerospacemodel/f16/nonlinear/damage/`.
 
 Ключевые особенности:
 

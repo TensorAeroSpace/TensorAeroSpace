@@ -1,6 +1,6 @@
 # Adaptive Incremental Dynamic Inversion (AIDI)
 
-AIDI is a **fault-tolerant flight controller** built on Incremental Nonlinear Dynamic Inversion. It adapts the **control-effectiveness matrix** online via a per-row VFF-RLS that estimates a multiplicative scaling \\(\\Theta\\) over a known onboard \\(G_{\\text{nominal}}\\). The result is model-agnostic and recovers tracking quickly when a control surface loses authority. See also the nonlinear F-16 angular model: [NonlinearAngularF16](../model/f16_nonlinear_angular.md).
+AIDI is a **fault-tolerant flight controller** built on Incremental Nonlinear Dynamic Inversion. It adapts the **control-effectiveness matrix** online via a per-row VFF-RLS that estimates a multiplicative scaling \\(\\Theta\\) over a known onboard \\(G_{\\text{nominal}}\\). Recovery depends on excitation, actuator authority, flight condition and controller tuning; adaptation alone is not a stability guarantee. See also the nonlinear F-16 angular model: [NonlinearAngularF16](../model/f16_nonlinear_angular.md).
 
 **Reference**: Ul Haq, Atmaca & van Kampen, *"Adaptive Incremental Dynamic Inversion for Fault-tolerant Flight Control of a Flying Wing"*, AIAA SciTech 2026, [10.2514/6.2026-1744](https://doi.org/10.2514/6.2026-1744).
 
@@ -14,40 +14,9 @@ AIDI is a **fault-tolerant flight controller** built on Incremental Nonlinear Dy
 
 ## Architecture
 
-```
-                       ┌────────────────────┐
-   C*_cmd, φ_cmd,      │  Outer-loop blocks │
-   β_cmd, V_cmd  ───►  │  (C*, roll, β,     │
-                       │   speed, linear)   │
-                       └────────┬───────────┘
-                                │ ω_des
-   PCH ◄── ω̇_meas ─┐            ▼
-                   │   ┌──────────────────┐
-                   │   │ Linear controller │ ν
-                   │   └──────┬───────────┘
-                   │          ▼
-                   │   ┌──────────────────┐    G_nominal(x, u)
-                   │   │   Inner AIDI law │ ◄── OnboardCEModel
-                   │   │ Δu = G̃⁺·(ν−ω̇)  │
-                   │   └──────┬───────────┘
-                   │          ▼ Δu
-                   │   ┌──────────────────┐
-                   │   │ Rate / mag clamp │
-                   │   └──────┬───────────┘
-                   │          ▼ u
-                   │       env.step
-                   │          ▼ ω
-                   │   ┌──────────────────┐
-                   └─◄ │ ω̇ from LP-deriv  │
-                       └──────┬───────────┘
-                              ▼
-                       ┌──────────────────┐
-                       │ ScalingRLS:      │
-                       │ Θ ← Θ + ΔΘ       │
-                       │ info-content VFF │
-                       │ consistency-chk  │
-                       └──────────────────┘
-```
+![AIDI architecture: control loops, measurements, PCH and ScalingRLS adaptation](../../assets/images/aidi_architecture.png)
+
+This diagram shows the current `AIDIAgent`: `predict` generates the command, while `learn` updates the filters and identification from the next measurement and actual applied control. PCH uses the acceleration demand from the previous tick. The `SpeedController` output is not yet connected to thrust control.
 
 ## Components
 
@@ -65,32 +34,54 @@ AIDI is a **fault-tolerant flight controller** built on Incremental Nonlinear Dy
 ## Quick start (F-16)
 
 ```python
-import math, numpy as np
+import numpy as np
 from tensoraerospace.agent.aidi import AIDIAgent, AIDIConfig, F16NonlinearOnboardCE
 from tensoraerospace.aerospacemodel.f16.nonlinear.angular.params import default_parameters
+from tensoraerospace.envs.f16.nonlinear_angular import NonlinearAngularF16
+from tensoraerospace.scripts.benchmark_aidi import _solve_trim
 
-agent = AIDIAgent(
-    n_state=3, n_control=3,
-    onboard_ce=F16NonlinearOnboardCE(default_parameters(), perturb=1e-3),
-    config=AIDIConfig(dt=0.01, seed=0),
-)
+params = default_parameters()
+alpha, stabilator = _solve_trim()
+x0 = np.zeros(14)
+x0[0] = x0[7] = alpha
+x0[8] = stabilator
+env = NonlinearAngularF16(x0, number_time_steps=1002, dt=0.01,
+                          integrator="rk4", airspeed=params.V)
+agent = AIDIAgent(3, 3, F16NonlinearOnboardCE(params), AIDIConfig(dt=0.01))
+state, _ = env.reset()
+agent.reset(initial_action=state[[8, 10, 12]])
 
-# obs['omega'] in (p, q, r) — F-16 env stores wy=r and wz=q, so re-order:
-#     omega = (obs[2], obs[4], obs[3])
-obs = {"omega": np.zeros(3), "alpha": 0.05, "beta": 0.0,
-       "theta": 0.0, "phi": 0.0, "V": 200.0, "state": np.zeros(14)}
-ref = {"C_star": 1.0, "phi_cmd": 0.0, "beta_cmd": 0.0, "V_cmd": 200.0}
+def observe(x):
+    return {"omega": x[[2, 4, 3]] * [1, 1, -1],  # (p, q, r) = (wx, wz, -wy)
+            "alpha": x[0], "beta": x[1], "theta": x[7], "phi": x[5],
+            "V": params.V, "state": x.copy()}
 
-u_rad = agent.predict(obs, references=ref, time_step=0)
-# env.step(np.rad2deg(u_rad))  → next_obs
-metrics = agent.learn(next_obs, references=ref, time_step=0)
+ref = {"C_star": 1.0, "phi_cmd": 0.0, "beta_cmd": 0.0, "V_cmd": params.V}
+command_rad = agent.predict(observe(state), ref)
+next_state, _, terminated, truncated, _ = env.step(np.rad2deg(command_rad))
+mean_deflection = (state[[8, 10, 12]] + next_state[[8, 10, 12]]) / 2
+metrics = agent.learn(observe(next_state), ref, applied_action=mean_deflection)
 ```
 
 The agent keeps the same save/load/Hugging-Face round-trip API as `aa_indi`/`et_dhp`/`im_gdhp`.
 
+## Measurement and rate-loop contract
+
+- Use conventional body rates `(p, q, r) = (wx, wz, -wy)` with the native F-16 state. Both the yaw observation and the yaw row of `F16NonlinearOnboardCE` use this sign; native plant equations are unchanged.
+- Call `reset(initial_action=state[[8, 10, 12]])` at an episode boundary to initialize the measured trim deflection (radians). Reset retains learned `Theta` and covariance.
+- `predict(obs, refs)` primes the first rate measurement. Each command is followed by exactly one `learn(next_obs, refs, applied_action=...)`.
+- `applied_action` is the mean measured actuator deflection over that transition, in the same units as the command. With sampled F-16 servo positions, use `(previous_positions + next_positions) / 2`, a trapezoidal approximation. Smaller physics steps improve this approximation. Omitting feedback assumes ideal actuator tracking.
+- Acceleration and applied input share a first-order low-pass filter. The filtered input is the incremental baseline; successive **commands** obey the configured slew limit. The plant independently enforces physical servo limits. This simpler sensor model is not an exact implementation of the paper's second-order filter and transport delay.
+- The rate loop computes `nu = rate_kp * (omega_des - omega)` in rad/s²; gains are in s⁻¹ and default to `(1, 1, 1)`. A constant achieved rate requires zero acceleration. Zero gains disable feedback. Old gain settings must be reviewed after this correction.
+- `learn(..., adapt=False)` advances measurement history without modifying the identifier. It is intended for fixed-controller diagnostics, not fault-triggered freezing of an adaptive controller.
+
+New checkpoints preserve synchronized filter history and pending transitions. Legacy checkpoints retain learned parameters but reinitialize measurement history. They cannot exactly replay the old, incorrect rate loop or yaw convention.
+
+Reproducible multi-axis and long-horizon checks are available in `scripts/validate_aidi_measurements.py`. Inspect completion status and attitude bounds together with tracking errors; a finite identifier alone does not establish stability.
+
 ## Worked example
 
-`example/reinforcement_learning/incremental_adp/example_aidi_damage_f16.ipynb` — a full fault-recovery walkthrough on the nonlinear F-16: trim, baseline, 25 % stab efficiency loss at t = 5 s, side-by-side adaptive vs frozen-Θ runs.
+`example/reinforcement_learning/incremental_adp/example_aidi_damage_f16.ipynb` — a full fault-recovery walkthrough on the nonlinear F-16: trim, baseline, 25 % loss of stabilator command gain at t = 8 s, side-by-side adaptive vs frozen-Θ runs.
 
 ## Benchmark CLI
 
@@ -103,7 +94,7 @@ python -m tensoraerospace.scripts.benchmark_aidi \
     --out report.md --csv report.csv
 ```
 
-Produces a Markdown table + CSV of per-axis RMSE — Table 8 of the paper, but on the F-16.
+Produces a Markdown table and CSV of body-rate RMSE (rad/s), sampled from t = 2 s. This is a rate-hold diagnostic, not a reproduction of Table 8 or a full assessment of attitude tracking. `stab_25` means 25% remaining command gain. This differs from the aerodynamic-coefficient damage in the paper. `frozen` disables identification for the entire episode; it does not use fault timing. Repeated episodes use the same deterministic initial condition.
 
 ## Hyperparameters
 

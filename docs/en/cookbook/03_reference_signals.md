@@ -148,4 +148,4 @@ reference_signal = np.stack([ref_p, ref_q, ref_r], axis=0)
 ## Where to go next
 
 - **[Recipe 04 — Choosing an agent](04_choosing_agent.md)** — signal shape ↔ agent capability.
-- **[Recipe 09 — Fault-tolerance](09_fault_tolerance.md)** — commands combined with actuator faults.
+- **[Recipe 09 — Fault-tolerance](09_fault_tolerance.md)** — reference signals and physical aircraft faults.

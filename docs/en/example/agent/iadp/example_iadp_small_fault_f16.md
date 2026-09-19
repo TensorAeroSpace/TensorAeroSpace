@@ -1,215 +1,433 @@
-# F-16: iADP with a small actuator fault
+# Example: iADP on nonlinear F-16 — actuator faults and long-horizon diagnostics
 
-This example shows an **adaptive controller** responding to a **15% reduction in stabilator command gain** at 20 s. The notebook now runs for **500 s**. The original 60 s tables below are retained for comparison; the long-horizon results appear in a separate section.
+This example explains how an actuator fault enters the nonlinear longitudinal
+F-16, how to return measured servo position to iADP, and how to assess a run
+without confusing a short finite response with successful long-term adaptation.
+The controller uses the current unregularized critic and keeps learning online.
 
-- Executed notebook: `example/reinforcement_learning/incremental_adp/example_iadp_small_fault_f16.ipynb`.
-- Script: `example/reinforcement_learning/incremental_adp/example_iadp_small_fault_f16.py`.
-- Controller: [iADP](../../../agent/iadp.md); plant: [nonlinear longitudinal F-16](../../../model/f16_nonlinear_longitudinal.md).
+**Executed notebooks:**
+[command-gain loss](https://github.com/TensorAeroSpace/TensorAeroSpace/blob/develop/example/reinforcement_learning/incremental_adp/example_iadp_small_fault_f16.ipynb)
+· [aerodynamic effectiveness loss](https://github.com/TensorAeroSpace/TensorAeroSpace/blob/develop/example/reinforcement_learning/incremental_adp/example_iadp_aero_effectiveness_f16.ipynb).
 
-## Run
+The notebooks request 500 s with integral-augmented iADP. Their saved runs leave
+the demonstration envelope after **8.36 s**, before either fault. The complete
+60 s SDK example below uses the simpler scalar rate controller and reports its
+own completion status. These are different controller configurations; results
+from one must not be substituted for the other.
 
-From the repository root, with the project dependencies installed:
+## 1. Distinguish the two physical faults
 
-```bash
-python -m example.reinforcement_learning.incremental_adp.example_iadp_small_fault_f16
-```
+| Property | Servo command-gain loss | Aerodynamic effectiveness loss |
+|---|---|---|
+| Fault location | Input to the native stabilator servo | Surface-dependent force/moment terms |
+| Example severity | 15% loss at 20 s | 30% loss at 137 s |
+| Balance command affected? | Yes: gain acts on the total command, including trim | The force/moment contribution of the actual trim surface is reduced |
+| Servo equations | Native servo responds to the attenuated command | Native servo equations unchanged |
+| Encoder | Reports actual surface position | Reports actual surface position |
+| Implementation | SDK `DamageEvent` / `DamageProfile` | Experimental aerodynamic variant linked below |
 
-The default output directory is `outputs/f16-small-fault/`: PNG/SVG figures, JSON metrics and full CSV traces for all four scenarios. Add `--show` to display the figure or `--output /tmp/f16-demo` to change the directory.
-
-```bash
-python -m example.reinforcement_learning.incremental_adp.example_iadp_small_fault_f16 \
-  --loss 0.10 --substeps 2 --output /tmp/f16-demo-10
-```
-
-Options include `--loss` in [0, 0.20], `--fault-time`, `--duration`, `--phase` and `--substeps`. Event time and duration must be multiples of 0.02 s.
-
-## Fault semantics and physics
-
-The native `DamageProfile` applies a `control_failure / efficiency_loss` event:
-
-\[
-\delta_{\mathrm{target}} = \eta\,\operatorname{clip}
-  (\delta_{\mathrm{trim}} + u, -25^\circ,25^\circ),
-\qquad \eta = 1\ \text{before the event},\quad 0.85\ \text{after}.
-\]
-
-The **total command, including trim**, is attenuated. The actual surface follows the native second-order actuator, with 25° position and 60°/s rate limits. Aerodynamic tables, mass and inertia remain unchanged. This represents a simplified actuator command-gain fault, not a loss of 15% of the stabilator area.
-
-Both `stab_left` and `stab_right` address the same collective channel in the longitudinal model. One event targets `stab_left` to attenuate that channel once; this does not represent an asymmetric left-side failure. Applying both events would compound their gains.
-
-Numerical trim gives approximately 4.918° angle of attack and −4.447° stabilator position. Airspeed and altitude are fixed at 150 m/s and 3000 m. The controlled output is pitch rate, not altitude or a full spatial flight path:
+For a command-gain fault, the servo target is
 
 \[
-q_{\mathrm{cmd}}(t)=0.5\sin(2\pi\,0.12t)
-+0.15\sin(2\pi\,0.31t+\varphi)\quad [\mathrm{deg/s}].
+\delta_{\mathrm{target}}=\eta
+\left(\delta_{\mathrm{trim}}+u_{\mathrm{residual}}\right).
 \]
 
-## Paired comparison
+Scaling only the residual would preserve the trim command and define a different
+experiment. In the one-channel longitudinal F-16, `stab_left` and `stab_right`
+refer to the same collective channel. Use **one** event: applying the loss twice
+would square its gain. This reduced model cannot represent the rolling moment
+of a left-only stabilator failure.
 
-Four runs combine healthy/faulty aircraft with adaptive/frozen controllers. Their initial parameters and pre-event histories agree. At 20 s the frozen arms retain their RLS parameters, covariance and critic matrix `P`; measurement feedback, transition history and control computation remain active.
-
-The adaptive controller receives pitch-rate observations and the mean actual surface position over each transition. Composite trapezoidal averaging approximates the effective input despite actuator lag. Neither fault time nor severity is passed to the adaptive controller.
-
-The initial `F`, `G` and `P` come from a **healthy** local linearization and discounted DARE. This is online learning from an initialized policy, not learning from scratch. The incremental-model/RLS/quadratic-value approach follows [Konatala et al., 2024](https://doi.org/10.2514/6.2024-2402), Section II. The present scenario and actuator fault are our own experiment, not a reproduction of those flight tests.
-
-## Default results
-
-![Four F-16 scenarios](../../../../assets/images/iadp_small_fault_f16.svg)
-
-| Aircraft and controller | RMSE, 20–60 s, deg/s | RMSE, 40–60 s, deg/s |
-|---|---:|---:|
-| Healthy, adaptive | 0.1240 | 0.1478 |
-| Healthy, frozen | 0.0889 | 0.0905 |
-| Fault 15%, adaptive | 0.3729 | 0.2170 |
-| Fault 15%, frozen | 1.2048 | 1.1994 |
-
-Under the fault, adaptation reduces RMSE by **69.0%** over the full post-event interval and **81.9%** in the late window. Residual tracking error remains. On the healthy aircraft, continued learning is less accurate than the frozen controller; the plot includes this outcome.
-
-The lower panels show model and critic changes since the event, not an estimated percentage of damage. Identification uses actual surface feedback; aerodynamic effectiveness relative to that surface position has not changed in this fault model.
-
-## iADP versus PID tuned on the healthy aircraft
-
-The notebook also compares **two different controllers**. Run it separately with:
-
-```bash
-python -m example.reinforcement_learning.incremental_adp.example_iadp_vs_pid_f16
-# Reproduce PID fitting using ONLY the healthy F-16:
-python -m example.reinforcement_learning.incremental_adp.example_iadp_vs_pid_f16 --retune-pid
-```
-
-Outputs go to `outputs/f16-iadp-vs-pid/`. The default uses the completed healthy-only fit: **Kp = −183.558823, Ki = −500, Kd = −0.001307727**. The PID input is pitch rate in rad/s and output is command deviation from trim in degrees. Gain units are deg/(rad/s), deg/rad and deg/(rad/s²), respectively.
-
-The library `PID` uses derivative on measurement and conditional-integration anti-windup. Negative gains match the negative stabilator-to-pitch-acceleration response. The fitting manoeuvre is a separate **20 s healthy flight** at reference frequencies 0.10 and 0.23 Hz. The objective is `mean(error_rad_s² + R * applied_delta_deg²)`, using the same `R = 4.6861212294e-5` as iADP. Bounded Nelder–Mead converged after 60 evaluations; magnitude bounds are [0.5, 300], [0.5, 500] and [0.001, 50]. Ki reached its search bound; global optimality is not claimed.
-
-Evaluation uses held-out frequencies 0.12 and 0.31 Hz. The same fault occurs at 20 s. **PID gains remain fixed**, while its integral continues evolving; iADP continues updating its model and critic. Neither controller receives fault information. Initial state, reference, ±10° command limit, 60°/s increment constraint relative to previous measured input, and physical actuator are identical. This compares control performance, without equalizing prior training/tuning budgets.
-
-![iADP versus PID during the F-16 fault](../../../../assets/images/iadp_vs_pid_f16.svg)
-
-| Pitch-rate error metric | iADP | PID |
-|---|---:|---:|
-| RMSE before fault, 0–20 s, deg/s | 0.0968 | 0.0095 |
-| Transient RMSE, 20–25 s, deg/s | 0.7675 | 0.0647 |
-| Post-fault RMSE, 20–60 s, deg/s | 0.3729 | 0.0252 |
-| Late RMSE, 40–60 s, deg/s | 0.2170 | 0.0112 |
-| Peak post-fault error, deg/s | 1.2613 | 0.3585 |
-
-**The healthy-tuned PID outperforms this iADP configuration in this scenario.** Improvement over frozen iADP does not imply superiority to PID. Fixed PID gains still allow the integral term to change the command and compensate the offset.
-
-Checks also cover 10%/20% losses, another reference phase, zero loss and a 10 ms plant integration step with 20 ms control updates. The full tuning history and metrics are retained in `reports/iadp-vs-pid-f16-validation.json`.
-
-## Tuned iADP and an integral-state variant
-
-The notebook now separates parameter tuning from an explicit extension of the controller state:
-
-```bash
-python -m example.reinforcement_learning.incremental_adp.example_iadp_tuned_f16
-# Reproduce the final 27-candidate healthy-only search:
-python -m example.reinforcement_learning.incremental_adp.example_iadp_tuned_f16 --search
-```
-
-Outputs go to `outputs/f16-iadp-tuned/`. PID retains its previous healthy-only fitted gains.
-
-A 61-candidate search improves the original rate-only iADP, but leaves a persistent post-fault offset. Attenuating the total command, including trim, requires a steady compensating command. The original experiment's controller state contains only pitch rate, without accumulated error.
-
-The *Fine-Tuning Controller Performance* discussion in [Konatala et al., 2024](https://doi.org/10.2514/6.2024-2402) notes missing integral information in the base cost and discusses state/cost extensions. Our experiment uses the following **integral-state formulation** with unchanged `IADPAgent` equations and no external PID correction:
+The aerodynamic variant instead uses, for each coefficient \(C\in\{C_y,C_m\}\),
 
 \[
-z_{k+1}=z_k+\Delta t(q_k^{\mathrm{ref}}-q_k),\qquad
-x_k=[q_k,z_k]^T,\qquad x_k^{\mathrm{ref}}=[q_k^{\mathrm{ref}},0]^T.
+C_{\mathrm{fault}}(\delta)=C(0)+\eta\,[C(\delta)-C(0)].
 \]
 
-The integral update is causal and uses current measurements/reference, not future samples. Selected settings are `Q=diag(1,30)`, `R=2.3430606147e-5`, `gamma=0.99`, `gamma_rls=0.9995`, `phi_init=20000`, window/minimum samples 300, critic update every 10 ticks, and blend `0.0001`. Control runs at 20 ms.
+It preserves the zero-surface contribution and native servo dynamics. This is a
+parametric effectiveness experiment, not a calibrated structural-damage model.
+Its [source application](https://github.com/TensorAeroSpace/TensorAeroSpace/blob/develop/example/reinforcement_learning/incremental_adp/example_iadp_aero_effectiveness_f16.py)
+implements that experimental RHS; it is not a general SDK damage option. The
+runnable code below uses the native command-gain fault.
 
-All candidates are ranked using a common external rate-error/control cost, independent of their internal hyperparameters. After exploratory integral-weight trials, a final 27-candidate search uses a **60 s healthy manoeuvre** to expose degradation that short episodes missed. Post-fault errors are not part of the tuning objective. `--search` reproduces this final stage.
+## 2. Find the healthy equilibrium and initialize iADP
 
-![Tuned integral-state iADP versus PID](../../../../assets/images/iadp_tuned_f16.svg)
+Run the following Python blocks in order with this revision of `tensoraerospace`
+installed. The state is `[alpha, q, stabilator, stabilator_rate]`. Model angles
+are **radians**, while the environment's residual stabilator command is in
+**degrees**. The iADP state `q` is rad/s and its control is degrees from trim.
+Those units determine the input derivative and the cost weights.
 
-| Controller | RMSE 20–60 s, deg/s | RMSE 40–60 s, deg/s |
-|---|---:|---:|
-| Original iADP | 0.372911 | 0.216974 |
-| Rate-only iADP, tuned | 0.172925 | 0.167507 |
-| iADP + integral state | **0.023084** | **0.003771** |
-| PID | 0.025177 | 0.011156 |
-| Integral iADP, parameters frozen after 20 s | 0.022632 | 0.003499 |
+The scalar controller omits angle-of-attack and servo states; the plant still
+integrates all four states. Its nominal model and Riccati initialization use the
+healthy aircraft only, before either trajectory is simulated.
 
-For the 15% fault, integral-state iADP reduces post-event RMSE by **93.8%** versus the original configuration and **8.3%** versus PID. Late-window RMSE is about three times smaller than PID's. Entry into ±0.05 deg/s takes **0.70 s**, versus **0.74 s** for PID, requiring the band to hold to the end with at least five seconds remaining. Peak error is slightly higher: 0.368 versus 0.359 deg/s.
+```python
+import copy
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+from scipy.optimize import root
+from scipy.linalg import solve_discrete_are
 
-**The improvement comes primarily from tuning and integral-state design; it does not establish a benefit from continued adaptation.** Freezing the improved controller's parameters at the event gives a slightly better result. Its integral remains active in that ablation.
+from tensoraerospace.aerospacemodel.f16.nonlinear.damage import (
+    DamageEvent,
+    DamageProfile,
+)
+from tensoraerospace.aerospacemodel.f16.nonlinear.longitudinal.dynamics import (
+    f16_ode_long,
+)
+from tensoraerospace.aerospacemodel.f16.nonlinear.longitudinal.params import (
+    default_parameters,
+)
+from tensoraerospace.envs.f16.nonlinear_longitudinal import NonlinearLongitudinalF16
+from tensoraerospace.agent.iadp import IADPAgent, IADPConfig
+from tensoraerospace.benchmark import ControlBenchmark
 
-Integral-state iADP also wins the 10% fault comparison, but PID has lower overall transient error for the 20% fault. Long episodes, integrator refinement, losses and full search history are retained in `reports/iadp-f16-tuning-validation.json`.
+dt, duration, fault_time, loss = 0.02, 60.0, 20.0, 0.15
+steps = round(duration / dt)
+time = np.arange(steps + 1) * dt
+reference = np.deg2rad(
+    0.5 * np.sin(2 * np.pi * 0.12 * time) + 0.15 * np.sin(2 * np.pi * 0.31 * time)
+)[None, :]
+params = default_parameters()
+solution = root(
+    lambda z: f16_ode_long([z[0], 0.0, z[1], 0.0], [z[1]], 0.0, params)[:2],
+    np.deg2rad([2.0, -2.0]),
+)
+if not solution.success or np.max(np.abs(solution.fun)) > 1e-10:
+    raise RuntimeError(f"Trim did not converge: {solution.message}")
+alpha_trim, surface_trim = solution.x
+initial = np.array([alpha_trim, 0.0, surface_trim, 0.0])
 
-## Validation and limits
-
-The script rejects nonfinite states/parameters, nonpositive identifier covariance, a reversed control-gain sign, violated servo limits, early environment termination and departure from the selected pitch-rate/angle-of-attack envelope. Tests cover matched histories, frozen parameters with active feedback, event timing and zero-loss equivalence.
-
-Additional runs cover 10%/20% losses, another reference phase and a 120 s episode. Results, including an unsuccessful exploratory configuration, are retained in `reports/iadp-f16-small-fault-validation.json`.
-
-**The controller period is fixed at 20 ms.** `--substeps 2`/`4` refine plant integration to 10/5 ms without changing the controller or learning frequency. Simply halving the controller period without retuning nearly removes the adaptation benefit: it changes the learning window and command-increment constraint, among other settings. That configuration is outside the supported example settings.
-
-These results apply to the stated model, trim and tuning. There is no measurement noise, turbulence or full spatial flight dynamics, and critic convergence over arbitrary horizons has not been established.
-
-## Long-horizon validation: 500 seconds
-
-```bash
-python -m example.reinforcement_learning.incremental_adp.example_iadp_long_horizon_f16
+# Local derivatives with respect to pitch rate and physical stabilator angle.
+derivatives = []
+for index in (1, 2):
+    delta = np.eye(4)[index] * 1e-5
+    plus = f16_ode_long(initial + delta, [surface_trim], 0.0, params)[1]
+    minus = f16_ode_long(initial - delta, [surface_trim], 0.0, params)[1]
+    derivatives.append((plus - minus) / 2e-5)
+gain_per_degree = derivatives[1] * np.pi / 180
+F = np.diag([1 + dt * derivatives[0], 1.0])
+G = np.array([[dt * gain_per_degree], [0.0]])
+R = np.array([[(abs(gain_per_degree) / 20) ** 2]])
+gamma = 0.99
+P = solve_discrete_are(
+    np.sqrt(gamma) * F,
+    np.sqrt(gamma) * G,
+    np.array([[1.0, -1.0], [-1.0, 1.0]]),
+    R,
+)
+config = IADPConfig(
+    dt=dt,
+    Q=np.eye(1),
+    R=R,
+    gamma=gamma,
+    F_init=F,
+    G_init=G,
+    P_init=P,
+    gamma_rls=0.9995,
+    phi_init=1e3,
+    policy_eval_window=300,
+    policy_eval_every=20,
+    policy_eval_warmup_updates=40,
+    learning_mode="continuous",
+    u_magnitude_limit=10.0,
+    u_rate_limit=60.0,
+)
+print("Trim alpha / stabilator [deg]:", np.rad2deg(solution.x))
+print("Trim residual:", solution.fun)
 ```
 
-The same settings and 15% command-gain fault at 20 s are used without retuning. Consecutive-window metrics, trailing RMSE and learning-parameter histories are saved to `outputs/f16-iadp-500s/`.
+The controller limits are ±10° of residual command and 60°/s of command slew.
+They do not replace the plant's own limits on actual servo angle and velocity.
+A nominal prior is explicit model knowledge; this is not a model-free
+initialization or a reproduction of the paper's full-state aircraft controller.
 
-![Long-horizon iADP and PID comparison](../../../../assets/images/iadp_500s_f16.svg)
+## 3. Run independent healthy and faulty aircraft
 
-| Controller | RMSE 20–500 s, deg/s | RMSE 400–500 s, deg/s |
-|---|---:|---:|
-| iADP + integral, continuous learning | 0.027711 | 0.021719 |
-| PID | 0.012796 | 0.011003 |
-| iADP + integral, parameters frozen at 20 s | **0.007337** | **0.003484** |
+Both runs start from the same trim and fresh agent. Only the environment receives
+the fault schedule. Each transition follows `predict → env.step → learn`, with
+continuous model and critic updates even after the fault.
 
-**The continuously learning iADP advantage at 60 s does not persist to 500 s.** A late tracking-error peak reaches 0.776325 deg/s at 302.74 s. The healthy aircraft also exhibits degradation: final-100-second RMSE is 0.023597 deg/s versus PID's 0.009361 and frozen iADP's 0.002388. Integral feedback remains active in the frozen controller.
+For a moving servo, the requested command differs from the surface that acted on
+the aircraft during the interval. The feedback below approximates mean surface
+position with the trapezoidal mean of its endpoints, converts it to degrees, and
+subtracts the same trim used by the controller. With refined integration, use a
+composite average across the substeps while retaining the 0.02 s control period.
 
-Refining the physics step to 10 ms while retaining the 20 ms control period reproduces the finding: post-event RMSE is 0.027904 deg/s and the late peak is 0.779260 deg/s at 302.72 s. State and actuator limits hold and parameters remain finite. Tracking nonetheless deteriorates while model and critic parameters change; long-term convergence is not established.
+```python
+runs = {}
+for label, failed in (("Healthy", False), ("Fault", True)):
+    events = (
+        [
+            DamageEvent(
+                trigger_time=fault_time,
+                event_type="control_failure",
+                payload={
+                    "surface": "stab_left",
+                    "mode": "efficiency_loss",
+                    "efficiency": 1.0 - loss,
+                },
+                label="collective_stabilator_command_gain_loss",
+            )
+        ]
+        if failed
+        else []
+    )
+    env = NonlinearLongitudinalF16(
+        initial_state=initial.copy(),
+        reference_signal=reference,
+        number_time_steps=steps + 1,
+        state_space=["alpha", "wz", "stab", "dstab"],
+        control_space=["stab"],
+        tracking_states=["wz"],
+        use_reward=False,
+        dt=dt,
+        integrator="rk4",
+        airspeed=params.V,
+        control_bias=float(np.rad2deg(surface_trim)),
+        damage_profile=DamageProfile(events=events),
+    )
+    agent = IADPAgent(1, 1, copy.deepcopy(config))
+    observation, _ = env.reset(seed=17)
+    state = env.model.current_state
+    states, commands, actual, learning = [state.copy()], [], [], []
+    failure = None
+    try:
+        for k in range(steps):
+            command = agent.predict(observation[1:2], reference, k)
+            previous_surface = state[2]
+            observation, _, terminated, truncated, _ = env.step(command)
+            state = env.model.current_state
+            applied = np.array(
+                [np.rad2deg(0.5 * (previous_surface + state[2]) - surface_trim)]
+            )
+            agent.learn(observation[1:2], reference, k, applied_action=applied)
+            if not all(np.isfinite(v).all() for v in (state, agent.P, agent.rls.theta)):
+                raise FloatingPointError(f"Nonfinite state or learned parameter at {k}")
+            if abs(state[1]) > np.deg2rad(10) or abs(
+                state[0] - alpha_trim
+            ) > np.deg2rad(10):
+                raise RuntimeError(f"Left the demonstration flight envelope at {k}")
+            if np.linalg.eigvalsh(agent.rls.Phi).min() <= 0 or agent.G[0, 0] >= 0:
+                raise RuntimeError(f"Invalid identifier at {k}")
+            if (
+                abs(state[2]) > env.model.param.maxabsstab + 1e-10
+                or abs(state[3]) > env.model.param.maxabsdstab + 1e-10
+            ):
+                raise RuntimeError(f"Servo limits exceeded at {k}")
+            if (terminated or truncated) and k + 1 < steps:
+                raise RuntimeError(f"Environment ended early at {k}")
+            states.append(state.copy())
+            commands.append(float(command[0]))
+            actual.append(float(applied[0]))
+            learning.append([agent.G[0, 0], np.linalg.norm(agent.P)])
+    except (RuntimeError, ValueError, FloatingPointError, np.linalg.LinAlgError) as exc:
+        failure = str(exc)
+    finally:
+        env.close()
+    runs[label] = {
+        "states": np.asarray(states),
+        "commands": np.asarray(commands),
+        "actual": np.asarray(actual),
+        "learning": np.asarray(learning),
+        "completed_s": len(commands) * dt,
+        "failure": failure,
+    }
+    print(label, f"{len(commands)*dt:.2f}/{duration:.0f} s", failure or "Completed")
 
-The interpretation was checked against the identification-sensitivity and parameter-monitoring discussion in section IV.C of [Konatala et al., 2024](https://doi.org/10.2514/6.2024-2402). This experiment alone neither proves an implementation defect nor isolates identifier versus critic updates as the cause. Full metrics and limitations: `reports/iadp-f16-500s-validation.md` and `.json`.
-
-## Unknown failure time: continuous learning
-
-Freezing at the known event time above is a diagnostic control only. A new example compares **continuously learning iADP** with fixed-gain PID. Only the environment receives the damage schedule.
-
-```bash
-python -m example.reinforcement_learning.incremental_adp.example_iadp_fault_scenarios_f16
+# A plant-only fault cannot change samples strictly before the event interval.
+# This prefix excludes the boundary sample so it also works with endpoint events.
+paired = min(round(fault_time / dt), *(len(run["states"]) for run in runs.values()))
+np.testing.assert_allclose(
+    runs["Healthy"]["states"][:paired],
+    runs["Fault"]["states"][:paired],
+    rtol=0,
+    atol=1e-10,
+)
 ```
 
-The scenarios cover a late 15% command-gain loss, progressive degradation to 20%, intermittent losses and recovery, and symmetric 30% loss of both wing-tip sections. Two schedules were declared before evaluation: 20 runs of 500 s with unchanged controller settings.
+Runtime guards define the demonstration envelope: |q| ≤10°/s, angle-of-attack
+change within ±10° of trim, valid identification covariance, and native servo
+limits. These are experiment guards, not a certified aircraft operating envelope.
+If a guard fails, `completed_s` ends at the last accepted transition and the
+failure remains visible.
 
-![Continuous iADP with unknown fault timing](../../../../assets/images/iadp_unknown_faults_f16.svg)
+## 4. Plot the command, physical motion and learning
 
-PID is more accurate for the late, progressive and wing-damage cases in both schedules. For intermittent faults, iADP's overall RMSE is lower by 0.13% and 2.26%, but its final 100 s are worse in both cases. A sustained advantage of this tuning has not been demonstrated.
-
-The next priorities are separate models of reduced aerodynamic stabilator effectiveness with actual-angle feedback, and actuator slowdown. The aerodynamic case is evaluated in the next section; actuator slowdown remains untested. The sectional wing-damage model is a demonstration approximation, not validated against a damaged real F-16.
-
-Full protocol, physical interpretation and both schedules: `reports/iadp-f16-unknown-faults-validation.md` and `.json`.
-
-## A verified win: aerodynamic effectiveness loss with continuous learning
-
-Executed notebook: `example/reinforcement_learning/incremental_adp/example_iadp_aero_effectiveness_f16.ipynb`.
-
-```bash
-python -m example.reinforcement_learning.incremental_adp.example_iadp_aero_effectiveness_f16
+```python
+fig, axes = plt.subplots(3, 2, figsize=(13, 10), constrained_layout=True)
+for label, run in runs.items():
+    state = run["states"]
+    t = time[: len(state)]
+    q_deg_s = np.rad2deg(state[:, 1])
+    ref_deg_s = np.rad2deg(reference[0, : len(state)])
+    axes[0, 0].plot(t, q_deg_s, label=label)
+    axes[0, 0].plot(t, ref_deg_s, "k--", alpha=0.4)
+    axes[0, 1].plot(t, ref_deg_s - q_deg_s, label=label)
+    axes[1, 0].plot(t[1:], run["actual"], label=f"{label}: mean surface")
+    axes[1, 0].plot(t[1:], run["commands"], ":", alpha=0.6, label=f"{label}: command")
+    if len(run["learning"]):
+        axes[1, 1].plot(t[1:], run["learning"][:, 0], label=label)
+        axes[2, 0].semilogy(
+            t[1:], np.maximum(run["learning"][:, 1], 1e-20), label=label
+        )
+    axes[2, 1].plot(t, np.rad2deg(state[:, 0]), label=label)
+for ax, title in zip(
+    axes.flat,
+    [
+        "Pitch rate / dashed reference [deg/s]",
+        "Reference − rate [deg/s]",
+        "Actual and requested surface from trim [deg]",
+        "Identified discrete input gain",
+        "Critic matrix norm",
+        "Angle of attack [deg]",
+    ],
+):
+    ax.set(title=title, xlabel="Time [s]")
+    ax.axvline(fault_time, color="#b44040", linestyle=":")
+    ax.grid(alpha=0.2)
+    ax.legend(fontsize=8)
+plt.show()
 ```
 
-In a 500 s run, the aerodynamic action of the measured stabilator deflection decreases by 30% at 137 s. Both iADP learning loops remain active. Only the environment receives the schedule; the controller is neither reset nor switched at the event.
+Requested control, actual servo position and the integral/critic diagnostics
+answer different questions. A low rate error alone does not establish correct
+parameter identification or healthy actuator behavior. A time-varying reference
+also requires whole-window tracking metrics rather than step-response metrics.
 
-![Continuous iADP outperforming PID under an aerodynamic fault](../../../../assets/images/iadp_aero_effectiveness_f16.svg)
+## 5. Calculate metrics only over completed samples
 
-| Metric, deg/s | iADP + integral | Stronger PID |
-|---|---:|---:|
-| RMSE 137–500 s | **0.017749** | 0.020507 |
-| RMSE 400–500 s | **0.006591** | 0.007840 |
-| Peak post-event error | **0.818458** | 0.913131 |
+```python
+rows = []
+for label, run in runs.items():
+    row = {
+        "Scenario": label,
+        "Completed [s]": run["completed_s"],
+        "Requested [s]": duration,
+        "Failure": run["failure"] or "None",
+    }
+    if run["completed_s"] > fault_time:
+        measured = np.rad2deg(run["states"][:, 1])
+        metrics = ControlBenchmark().tracking_metrics(
+            np.rad2deg(reference[0, : len(measured)]),
+            measured,
+            dt,
+            start=fault_time,
+            actions=run["actual"],
+        )
+        row.update(
+            {
+                "Post-event RMSE [deg/s]": metrics["combined_rmse"],
+                "Post-event IAE [deg]": metrics["iae"],
+                "Surface RMS [deg]": metrics["control_rms"],
+            }
+        )
+    rows.append(row)
+print(pd.DataFrame(rows).to_string(index=False))
+```
 
-RMSE decreases by **13.45%** after the event and **15.94%** in the final 100 s. iADP was selected from six configurations using only a healthy 500 s task: `policy_eval_blend=1e-6`, `gamma_rls=0.9999`. Critic updates are slow but remain active; the identified input gain changes by about 30% after the fault. PID was retuned on healthy data with expanded bounds: Kp = −135.606952, Ki = −982.693451, Kd = −0.002070702. Its previous Ki bound of 500 no longer limits the comparison. Tuning budgets were not equalized.
+The assessment interval is `(fault_time, completed_s]` for each run. Rate IAE has
+units of degrees because it integrates a deg/s error over seconds. If completion
+is before the event, a post-fault metric is unavailable; it is not zero. Compare
+controllers over a common completed window and report any missing horizon.
 
-The 30% fault advantage persists with different event times, another reference phase, and physics steps of 10 and 5 ms. **PID is better on the healthy aircraft and at 40% loss.** This is a conditional win for this configuration, not a universal iADP advantage.
+The direct SDK example above was executed with both agents continuously learning:
 
-The fault follows `C_fault(delta)=C(0)+eta*(C(delta)-C(0))` for lift and moment coefficients. The native servo and its actual-position measurement remain intact. This is a parametric effectiveness test, not a validated model of a particular damaged aircraft.
+| Scalar rate controller | Completed | RMSE over (20, 60] s | IAE over (20, 60] s | Mean-surface RMS |
+|---|---:|---:|---:|---:|
+| Healthy aircraft | 60.00 s | 0.144936°/s | 3.643438° | 0.412562° |
+| 15% command-gain loss | 60.00 s | 0.158714°/s | 6.061936° | 0.156181° |
 
-Full protocol, physical checks, tuning histories and losses: `reports/iadp-f16-effectiveness-validation.md` and `.json`.
+![Executed 60-second F-16 SDK example with continuous iADP learning](../../../../assets/images/example_iadp_f16_sdk_response.png)
+
+These runs complete the short comparison but retain noticeable tracking error.
+They do not establish superiority over PID or successful 500-second operation.
+The lower surface RMS in the faulty run is an observed outcome, not a measure of
+better control: tracking IAE increases after the loss.
+
+## 6. What the 500-second integral example currently shows
+
+The two linked long-horizon notebooks use the state features
+
+\[
+x_k=[q_k,z_k]^T,\qquad
+z_{k+1}=z_k+\Delta t(q_{\mathrm{ref},k}-q_k),\qquad
+x_k^r=[q_{\mathrm{ref},k},0]^T.
+\]
+
+The added integral is a controller feature, not a new aircraft state. Its update
+is causal: it uses the current measured rate and command. The cost penalizes
+rate and integral error. The saved `INTEGRAL_TUNING` uses integral weight 30,
+`gamma=0.99`, R scale 0.5, RLS forgetting 0.9995, initial covariance 20,000,
+a 300-sample critic window and a fit every 10 steps.
+
+| Saved notebook run | Requested | Last valid time | Fault time | Outcome |
+|---|---:|---:|---:|---|
+| Healthy, command-fault notebook | 500 s | 8.36 s | No fault | Envelope exit |
+| 15% command-gain loss | 500 s | 8.36 s | 20 s | Stops before the fault |
+| Healthy, aerodynamic-fault notebook | 500 s | 8.36 s | No fault | Envelope exit |
+| 30% aerodynamic effectiveness loss | 500 s | 8.36 s | 137 s | Stops before the fault |
+
+![Saved F-16 integral-controller diagnostic ending before the event](../../../../assets/images/example_iadp_f16_diagnostic.png)
+
+Identical healthy/fault histories before the event show that this failure cannot
+be attributed to the injected fault. Neither configuration establishes 500-second
+fault recovery. The notebooks save `summary.json`, per-scenario telemetry CSVs
+and `diagnostic.png` under `outputs/paper-iadp-f16-long-command` or
+`outputs/paper-iadp-f16-long-aerodynamic`. The CSVs contain time, reference, rate,
+angle of attack, actual surface and rate, command, mean surface, integral feature,
+identified F/G, critic norm, parameter-change diagnostics and covariance checks.
+They have no header; the notebook's column indexing follows that order.
+
+The earlier softened-critic tuning and plots used different algorithm updates.
+Their error values cannot be restored as current performance claims. The current
+critic has no ridge term, PSD projection or soft blend; changing its update law
+to recover an old curve would change the algorithm being evaluated.
+
+## 7. Reproduce the diagnostics and tune on healthy data
+
+To rerun the saved notebook, use Jupyter or execute it from the repository root:
+
+```bash
+.venv/bin/jupyter nbconvert --to notebook --execute --ExecutePreprocessor.timeout=600 --output /tmp/iadp-f16-command-executed.ipynb example/reinforcement_learning/incremental_adp/example_iadp_small_fault_f16.ipynb
+```
+
+For the experimental aerodynamic comparison application:
+
+```bash
+.venv/bin/python -m example.reinforcement_learning.incremental_adp.example_iadp_aero_effectiveness_f16 --duration 500 --fault-time 137 --effectiveness 0.7 --output /tmp/iadp-f16-aerodynamic
+```
+
+This command uses the source-tree experiment and may stop at its runtime guard.
+A requested duration does not imply a complete result. The long-horizon notebooks
+retain partial telemetry and report that condition explicitly.
+
+The older `example_iadp_small_fault_f16` CLI also includes event-time-frozen arms
+as an ablation. Those arms intentionally use the event boundary and are not the
+continuous controller illustrated here. Use the two continuously adapting
+notebook trajectories or the direct SDK loop above when assessing an unknown
+fault; do not present a frozen arm as a deployment option.
+
+For renewed tuning:
+
+1. Evaluate the healthy aircraft first and require the full requested horizon.
+2. Inspect feature scales, excitation, critic-window rank, `G` sign, covariance
+   and available servo bandwidth before comparing tracking error.
+3. Tune on a separate healthy reference. The comparison examples use frequencies
+   0.10/0.23 Hz for tuning and 0.12/0.31 Hz for evaluation.
+4. Fix the selected configuration, then vary fault time, severity and reference
+   phase without passing the event schedule to the controller.
+5. Repeat with refined physics integration while keeping the control period
+   fixed; compare actual servo motion as well as error metrics.
+6. Retain all failed runs and their completion times alongside successful runs.
+
+## See also
+
+- [Complete iADP B737 pitch-step and fault example](example_iadp_nonlinear.md).
+- [iADP equations, measurement feedback and current configuration](../../../agent/iadp.md).
+- [Nonlinear longitudinal F-16 model](../../../model/f16_nonlinear_longitudinal.md).
+- [AA-INDI B737 and simultaneous sensor/actuator faults](../aa_indi/example_aaindi_nonlinear.md).
+- [Benchmark tracking-window API](../../../benchmark/bench.md).

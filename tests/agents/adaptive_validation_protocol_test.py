@@ -2,20 +2,17 @@
 
 import importlib.util
 import json
-from functools import wraps
 import sys
+from functools import wraps
 from pathlib import Path
 
 import numpy as np
 import pytest
 
 from tensoraerospace.agent.iadp import IADPAgent
-from tensoraerospace.agent.aa_indi import AAINDIAgent
 
 
-@pytest.mark.parametrize(
-    "kind, agent_type", [("iadp", IADPAgent), ("aaindi", AAINDIAgent)]
-)
+@pytest.mark.parametrize("kind, agent_type", [("iadp", IADPAgent)])
 @pytest.mark.parametrize("plant", ["lapan", "b747"])
 def test_validation_reuses_same_timestamp_observation(
     monkeypatch, tmp_path, kind, agent_type, plant

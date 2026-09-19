@@ -1,128 +1,229 @@
-# Рецепт 08 — Save / load / публикация в HuggingFace
+# Рецепт 08 — Сохранение, продолжение и публикация адаптивных регуляторов
 
-**Цель.** Сохранить чекпойнт адаптивного критика, перезагрузить бит-в-бит и опубликовать на [Hugging Face Hub](https://huggingface.co/). Пять агентов имеют этот общий контракт: IHDP, IM-GDHP, ET-DHP, AA-INDI, iADP.
+**Цель:** сохранить агента с накопленной историей обучения, загрузить его и
+проверить совпадение следующих 50 физических переходов. Затем подготовить
+checkpoint для необязательной загрузки на Hugging Face. Выполняйте локальные
+блоки Python по порядку с установленной текущей версией `tensoraerospace`. Сетевые операции автоматически
+не запускаются.
 
-**Связано.** [Рецепт 06](06_online_adaptive.md) — жизненный цикл агента, в который вписывается чекпойнтинг.
+Для полезного checkpoint нужно понимать его состав. Состояния регулятора и
+симулятора хранятся отдельно, а AA-INDI и iADP используют разные форматы файлов.
 
-## Контракт
+## 1. Определите границу сохранения
 
-Каждый совместимый агент имеет четыре метода:
+| Компонент | Сохраняет агент? | Что должен сохранить эксперимент |
+|---|---|---|
+| Обученная модель / критик | Да, для соответствующего алгоритма | Ту же реализацию и совместимую конфигурацию |
+| История регулятора и фильтры | Включены в текущие checkpoint iADP и AA-INDI | Следующее измерение и порядок вызовов |
+| Состояние самолёта / приводов / двигателей | Нет | Физические состояния, состояния приводов и параметры модели |
+| Часы симуляции и выполненные события | Нет | Время/индекс и уже применённые отказы объекта |
+| Генератор задания / случайных чисел | Внешние генераторы не сохраняются | Их состояния или полные воспроизводимые последовательности |
 
-| Метод | Назначение |
-|---|---|
-| `agent.save(path)` | Записать директорию с датой под `path` со всем необходимым для продолжения. Возвращает абсолютный путь. |
-| `AgentClass.from_pretrained(loc, access_token=None, version=None)` | Загрузить из локальной директории **или** из `namespace/repo` на Hub. |
-| `agent.publish_to_hub(repo_name, folder_path, access_token=None)` | Загрузить уже сохранённую папку на Hub. |
-| `agent.get_param_env()` | Построить JSON-сериализуемый конфиг-dict для `save()`. |
+`reset()` не восстанавливает сохранение. У этих адаптивных агентов он очищает
+историю цикла, сохраняя обученные параметры. Для независимого номинального прогона
+создавайте нового агента; для продолжения сохранённого — вызывайте `from_pretrained`.
 
-Без гимнастики с наследованием. Одинаковы у всех пяти агентов.
+## 2. Создайте checkpoint iADP с реальной историей обучения
 
-## Минимальный round-trip
+Небольшой детерминированный объект описывается `x_next = a*x + b*u`. Номинальная
+инициализация через DARE позволяет сосредоточиться на сохранении; это не регулятор
+самолёта.
+
 
 ```python
+import json
+from pathlib import Path
+import numpy as np
+from scipy.linalg import solve_discrete_are
 from tensoraerospace.agent.iadp import IADPAgent, IADPConfig
 
-agent = IADPAgent(n_state=1, n_control=1, config=IADPConfig(seed=0))
-# ... прогоните несколько шагов среды, чтобы было нетривиальное состояние ...
-
-# 1. Локальное сохранение
-run_dir = agent.save('./checkpoints')     # './checkpoints/Apr19_12-34-56_IADPAgent'
-
-# 2. Перезагрузка из той же директории
-restored = IADPAgent.from_pretrained(run_dir)
-
-# 3. Следующий predict() даёт бит-идентичный результат
-np.testing.assert_allclose(agent.predict(x, ref, k), restored.predict(x, ref, k), atol=1e-12)
+dt = 0.01
+a = np.exp(-2 * dt)
+b = -np.expm1(-2 * dt) / 2
+F = np.diag([a, 1.0])
+G = np.array([[b], [0.0]])
+gamma = 0.9
+R = np.array([[0.01]])
+Q_aug = np.array([[1.0, -1.0], [-1.0, 1.0]])
+P = solve_discrete_are(np.sqrt(gamma) * F, np.sqrt(gamma) * G, Q_aug, R)
+agent = IADPAgent(1, 1, IADPConfig(
+    dt=dt, Q=np.eye(1), R=R, gamma=gamma,
+    F_init=F, G_init=G, P_init=P,
+    learning_mode="continuous", policy_eval_window=100,
+    policy_eval_min_samples=100, policy_eval_every=20,
+    u_magnitude_limit=0.5, u_rate_limit=2.0,
+))
+x, reference = np.zeros(1), np.array([0.05])
+for k in range(200):
+    u = agent.predict(x, reference, k)
+    x = a * x + b * u
+    agent.learn(x, reference, k, applied_action=u)
 ```
 
-## Что лежит на диске
 
-Сохранённая директория содержит:
+Теперь регулятор прошёл 200 переходов. Сохраните его сразу после `learn`, чтобы
+было однозначно понятно, что ожидающих применения команд нет.
 
-| Файл | Содержимое |
+
+```python
+run_dir = Path(agent.save("./checkpoints/recipe08-iadp"))
+# The controller checkpoint does not contain the external plant.
+(run_dir / "simulation.json").write_text(json.dumps({
+    "state": x.tolist(), "next_step": 200,
+    "reference": reference.tolist(), "dt": dt, "a": a, "b": b,
+}, indent=2))
+print("Saved files:", sorted(path.name for path in run_dir.iterdir()))
+
+restored = IADPAgent.from_pretrained(str(run_dir))
+simulation = json.loads((run_dir / "simulation.json").read_text())
+x_restored = np.array(simulation["state"])
+reference_restored = np.array(simulation["reference"])
+for k in range(simulation["next_step"], simulation["next_step"] + 50):
+    u = agent.predict(x, reference, k)
+    u_restored = restored.predict(x_restored, reference_restored, k)
+    np.testing.assert_array_equal(u, u_restored)
+    x = a * x + b * u
+    x_restored = simulation["a"] * x_restored + simulation["b"] * u_restored
+    agent.learn(x, reference, k, applied_action=u)
+    restored.learn(x_restored, reference_restored, k, applied_action=u_restored)
+    np.testing.assert_array_equal(x, x_restored)
+    np.testing.assert_array_equal(agent.P, restored.P)
+    np.testing.assert_array_equal(agent.rls.theta, restored.rls.theta)
+print("50 continued transitions match exactly in this process")
+```
+
+
+Проверяются действия, состояния объекта, коэффициенты RLS и матрицы критика
+на следующих 50 переходах, включая обучение. Точное равенство здесь относится
+к детерминированному продолжению в том же программном окружении. Другая реализация
+BLAS или версия библиотек может изменить результаты вычислений с плавающей точкой.
+
+`simulation.json` принадлежит обвязке примера. Для полного самолёта одного
+скалярного состояния недостаточно: нужно восстановить окружение с теми же
+параметрами, временем, уже применёнными отказами, приводами и генераторами датчиков.
+
+## 3. Разберитесь в файлах каждого агента
+
+| Агент | Текущие файлы и содержимое |
 |---|---|
-| `config.json` | Полный dataclass-конфиг + аргументы конструктора; массивы (Q, R, G_init, …) как списки. |
-| `rls.npz` / `vff_rls.npz` | Матрица параметров RLS `theta`, ковариация, счётчик обновлений, последняя невязка. |
-| `value.npz` | Ядерная матрица `P̃` (iADP), веса критика (IHDP/IMGDHP/ET-DHP) и т.д. |
-| `weights.npz` | Активные Q, R (с подставленными дефолтами). |
-| `loop_state.npz` | Rolling state — `X_prev`, `delta_prev`, состояние интегратора, счётчик шагов. |
-| `window.npz` | Буфер переходов policy-evaluation (iADP). |
-| `deriv_state.npz`, `bias_state.npz` | Состояния сенсорных фильтров (AA-INDI). |
+| iADP | `config.json`: конструктор, настройки и матрицы выходов; `rls.npz`: инкрементальная модель, ковариация и счётчики; `value.npz`: критик; `weights.npz`: веса стоимости; `loop_state.npz`: история команд и переходов; `window.npz`: выборка критика. |
+| AA-INDI | `paper_aaindi.json`: геометрия и настройки, оценки моментов, ковариационное состояние OTSEKF, состояние HOSM, отфильтрованные измерения и ожидающая команда. |
 
-**Mid-episode сохранения бит-идентично восстанавливаются** — гарантия, проверенная тестами библиотеки. Ключевое отличие от наивного `pickle` агента: контракт сохраняет *только нужное*, перезагрузка восстанавливается из `config.json`.
+Используйте путь, возвращённый `save`, вместо ручного составления имени каталога.
+Путь может быть относительным, если относительным был родительский каталог.
+Для независимых прогонов задавайте разные родительские каталоги: метка времени
+в имени имеет точность до секунды.
 
-## Round-trip с HuggingFace Hub
+Для IHDP, IM-GDHP и ET-DHP ориентируйтесь на разделы сохранения
+в [документации IHDP](../agent/ihdp.md), [IM-GDHP](../agent/imgdhp.md)
+и [ET-DHP](../agent/et_dhp.md). Нельзя предполагать одинаковый набор файлов
+и дополнительных аргументов конструктора у всех алгоритмов.
 
-### Загрузка
+## 4. Сохраните AA-INDI через локальный интерфейс
 
-```python
-run_dir = agent.save('./checkpoints')
+Загрузчик AA-INDI принимает **локальный каталог**. Этот самостоятельный пример
+использует номинальную инициализацию B747 и корректный пакет датчиков в СИ;
+проверяется команда на сохранённой метке времени. Полный цикл полёта приведён
+в [рецепте 14](14_aaindi.md).
 
-agent.publish_to_hub(
-    repo_name='your-username/iadp-f16-v1',
-    folder_path=run_dir,
-    access_token='hf_...',        # из https://huggingface.co/settings/tokens
-)
-```
-
-Если `repo_name` не существует на Hub, он создаётся. Загружается весь `run_dir` как есть — добавьте `README.md` с контекстом перед вызовом `publish_to_hub`, если хотите нормальную model card.
-
-### Скачивание
 
 ```python
-restored = IADPAgent.from_pretrained(
-    repo_name='your-username/iadp-f16-v1',
-    access_token='hf_...',        # нужен только для приватных repo
-    version='main',               # опциональная ветка / tag / commit
+from tensoraerospace.agent.aa_indi import AAINDIAgent
+from tensoraerospace.benchmark import B747EngineFailureBenchmark
+
+from tensoraerospace.agent.aa_indi import FlightMeasurement
+
+benchmark = B747EngineFailureBenchmark(dt=0.02)
+aa = benchmark.make_aaindi()
+trim = benchmark.nominal_trim()
+state = trim.to_state()
+action = np.array([trim.elevator_rad, 0.0, 0.0, trim.throttle])
+sample = FlightMeasurement.from_model(benchmark.nominal_model(), applied_action=action, surface_indices=(1, 2))
+rate_command = np.array([0.001, 0.0, 0.0])
+aa.predict(sample, rate_command)
+aa_dir = aa.save("./checkpoints/recipe08-aaindi")
+aa_restored = AAINDIAgent.from_pretrained(aa_dir)
+np.testing.assert_array_equal(
+    aa.predict(sample, rate_command), aa_restored.predict(sample, rate_command),
 )
+print("AA-INDI local checkpoint:", aa_dir)
 ```
 
-Внутри `from_pretrained` вызывает `huggingface_hub.snapshot_download(repo_name)`, когда путь — не локальная директория.
 
-## Минимальная model card
+При сохранении между `predict` и `learn` ожидающая команда сохраняется.
+Продолжайте с её однократного применения и вызова `learn` с новым пакетом датчиков.
+После сохранения за `learn` продолжайте со следующего `predict` на том же пакете.
+Не создавайте другое наблюдение с уже использованной меткой времени.
 
-Добавьте `README.md` в `run_dir` перед `publish_to_hub`:
+## 5. Добавьте контекст для воспроизведения
 
-```markdown
----
-tags:
-  - tensoraerospace
-  - flight-control
-  - iadp
-library_name: tensoraerospace
----
-# iADP на нелинейной F-16 (v1)
+Перед публикацией поместите рядом с checkpoint файл `README.md`. Укажите:
 
-Агент отслеживания угловой скорости тангажа, обучен на `NonlinearLongitudinalF16-v0`
-при `dt = 0.01` с, с DARE-based `P_init` и `policy_eval_blend = 0.1` (см.
-[рецепт cookbook](https://...)).
+- Коммит репозитория, версии Python/зависимостей и класс агента.
+- Конфигурацию самолёта, балансировку, шаг и интегратор.
+- Порядок состояний, переводы СИ/US, абсолютные команды или отклонения от балансировки, ограничения приводов.
+- Задание, seed, коэффициенты регулятора и номинальную инициализацию.
+- Положение сохранения относительно `learn` и способ восстановления объекта.
+- Метрики исправного и аварийного прогонов с окнами оценки, незавершённые и расходящиеся прогоны.
 
-## Назначение
-Онлайн-адаптивное слежение ω_z в точке трима F-16.
+Для B747 добавьте ссылку на [протокол сравнения](../comparison/aaindi_vs_pid_lqr_lqi_b747.md).
+Сохранённая модель сама по себе не описывает допущения оценки и не доказывает
+устойчивость к отказам.
 
-## Гиперпараметры
-- Q = 30 000, R = 0.1, γ = 0.9
-- γ_RLS = 0.9999, φ_init = 1.0
-- policy_eval_blend = 0.1, policy_eval_every = 5
+## 6. Явно запустите публикацию или скачивание
 
-## Воспроизвести
-`IADPAgent.from_pretrained('your-username/iadp-f16-v1')`
+Следующие функции используют установленный пакет `huggingface_hub`. Их можно
+определить локально; примеры вызовов оставлены в комментариях для момента,
+когда понадобится публикация или скачивание. Передавайте `HF_TOKEN` через
+окружение, не записывая токен в ноутбук.
+
+
+```python
+import os
+from huggingface_hub import HfApi, snapshot_download
+
+def upload_checkpoint(folder, repo_id):
+    api = HfApi(token=os.environ["HF_TOKEN"])
+    api.create_repo(repo_id=repo_id, repo_type="model", private=True, exist_ok=True)
+    return api.upload_folder(repo_id=repo_id, repo_type="model", folder_path=str(folder))
+
+def download_aaindi(repo_id, revision):
+    folder = snapshot_download(
+        repo_id=repo_id, revision=revision, token=os.environ.get("HF_TOKEN"),
+    )
+    return AAINDIAgent.from_pretrained(folder)
+
+# Explicit optional network operations, after replacing the repository and revision:
+# upload_checkpoint(aa_dir, "your-username/aaindi-b747")
+# downloaded = download_aaindi("your-username/aaindi-b747", "COMMIT_SHA")
+# downloaded_iadp = IADPAgent.from_pretrained(
+#     "your-username/iadp-example", version="COMMIT_SHA",
+#     access_token=os.environ.get("HF_TOKEN"),
+# )
 ```
 
-Любой YAML frontmatter рендерится Hub'ом нативно.
 
-## Подводные камни
+`create_repo` явно создаёт репозиторий при необходимости. Новый репозиторий
+в этом примере приватный. Для воспроизводимого скачивания указывайте ревизию
+коммита. Текущий iADP также имеет `publish_to_hub`, загружающий файлы в существующий
+репозиторий, и `from_pretrained` с поддержкой Hub. У AA-INDI загрузчик локальный,
+метода `publish_to_hub` нет: сначала скачайте файлы, затем загрузите каталог.
 
-- **Путь, начинающийся с `./`, `../`, `/`, `~`, трактуется как локальный.** Если локального пути нет, `from_pretrained` кидает `FileNotFoundError` вместо попытки Hub-скачивания.
-- **Массивы в `config.json` должны быть JSON-сериализуемы.** Библиотека конвертирует NumPy-массивы в списки внутри `get_param_env()`; если наследуете — сохраните это поведение.
-- **Старые чекпойнты без `loop_state.npz`** получат свежесконструированное нулевое состояние. То есть ep-level перезагрузка безопасна между minor-версиями; mid-episode требует ту же minor-версию, что писала чекпойнт.
-- **Загрузка больших window-буферов.** У агентов с буфером переходов (iADP) `window.npz` растёт с `policy_eval_window`. При `policy_eval_window=300` на 2-D augmented state это ~4 КБ — ничего. При `policy_eval_window=10 000` на 6-DoF стоит проверить.
+## Типичные проблемы
 
-## Живой пример
+| Симптом | Возможная причина и проверка |
+|---|---|
+| Первая команда после загрузки отличается | Различаются измерение объекта, задание, ожидающий переход или время. Сначала сравните их. |
+| Одна команда совпадает, затем начинается расхождение | Восстановите также симулятор, приводы и RNG; сравнивайте несколько шагов обучения. |
+| Нет `paper_aaindi.json` | Каталог не является сохранением текущей реализации AA-INDI. |
+| Старая конфигурация iADP отвергается | Удалённые настройки регуляризации и смешивания критика несовместимы с текущим законом обновления; создайте checkpoint заново. |
+| AA-INDI не загружает `username/repo` | Сначала скачайте репозиторий в локальный каталог. |
+| При публикации репозиторий не найден | Явно создайте его и проверьте доступ. |
 
-Ноутбук [iADP на нелинейной F-16](../example/agent/iadp/example_iadp_nonlinear.md) тестирует полный round-trip в рамках своих тестов.
+В старых checkpoint AA-INDI только по угловой скорости нет физической геометрии
+и независимого навигационного состояния. Их загрузку нельзя считать эквивалентным
+продолжением. Храните ревизию исходников с экспериментом и пересоздавайте
+несовместимые сохранения.
 
-## Куда дальше
-
-- **[Рецепт 09 — Отказоустойчивость](09_fault_tolerance.md)** — сохранение агента в условиях отказа и безопасная перезагрузка.
-- **[Рецепт 10 — Добавить свой объект управления](10_custom_plant.md)** — расширение контракта персистентности на свои агенты.
+**Далее:** [Рецепт 09 — Отказоустойчивость](09_fault_tolerance.md) ·
+[Рецепт 14 — AA-INDI на B737](14_aaindi.md).

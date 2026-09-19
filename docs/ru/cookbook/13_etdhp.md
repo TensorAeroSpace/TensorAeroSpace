@@ -89,5 +89,5 @@ agent.publish_to_hub('me/my-etdhp', folder_path=run_dir, access_token='hf_…')
 ## Куда дальше
 
 - **[Рецепт 14 — AA-INDI](14_aaindi.md)** — не-НС отказоустойчивая альтернатива.
-- **[Рецепт 09 — Отказоустойчивость](09_fault_tolerance.md)** — сравнение в лоб с iADP и AA-INDI.
+- **[Рецепт 09 — Отказоустойчивость](09_fault_tolerance.md)** — сравнение AA-INDI с PID, LQR и LQI при одинаковом отказе двигателя B747.
 - **[Документация ET-DHP](../agent/et_dhp.md)** — теория + API.

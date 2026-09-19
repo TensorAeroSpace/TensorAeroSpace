@@ -145,8 +145,6 @@ def trim_and_agent(cfg):
             policy_eval_window=300,
             policy_eval_every=20,
             policy_eval_warmup_updates=40,
-            policy_eval_regularization=1e-10,
-            policy_eval_blend=0.1,
             u_magnitude_limit=10,
             u_rate_limit=60,
         ),

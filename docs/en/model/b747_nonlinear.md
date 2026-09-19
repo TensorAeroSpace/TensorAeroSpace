@@ -297,3 +297,20 @@ Action-space: either `"virtual"` (physical units) or `"normalized"`
 * Stevens B.L., Lewis F.L., Johnson E.N. *Aircraft Control and
   Simulation*, Wiley, 3rd ed., 2015 — §3.7 (trim algorithm),
   Appendix B (ZYX 321 kinematics).
+
+## Public dynamics and analysis API
+
+`model.dynamics(state, action, time=...)` evaluates the instantaneous native-unit
+ODE; `model.linearize(state, action)` returns continuous A/B Jacobians. Neither
+advances the state or history. Inputs are physical surface angles in radians and
+normalized throttle. `current_time` is the latest state timestamp;
+`applied_action` is a copied input from the preceding integration interval and
+is unavailable before the first transition. `density_at(altitude_ft)` returns SI
+air density. These methods support the AA-INDI sensor adapter directly.
+
+`NonlinearB747(..., damage_profile=profile)` owns the same native damage scheduler
+used by `NonlinearB747Env`. Integration splits at event times. An event at the
+right endpoint affects the following interval, and a time-zero event is active
+at reset. `damage_events_log` records actual scheduled times. `lateral_state`,
+`lateral_transition` and `lateral_linearization` expose the degree-based local
+lateral representation used by the classical and adaptive comparison protocols.

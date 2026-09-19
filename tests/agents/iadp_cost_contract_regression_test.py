@@ -62,11 +62,9 @@ def test_policy_increment_minimizes_admissible_quadratic_cost():
         assert cost(du + offset) >= cost(du) - 1e-12
 
 
-def test_frozen_critic_skips_ill_scaled_fitting_problem():
-    agent = IADPAgent(1, 1, IADPConfig(policy_eval_blend=0.0))
-    previous = agent.P.copy()
-    for _ in range(4):
-        agent._window.append(dict(X=np.full(2, 1e160), Xnext=np.zeros(2), cost=1.0))
-    with np.errstate(over="raise", invalid="raise"):
-        agent._policy_evaluation()
-    np.testing.assert_array_equal(agent.P, previous)
+@pytest.mark.parametrize(
+    "obsolete", ["policy_eval_blend", "policy_eval_regularization", "enforce_psd"]
+)
+def test_removed_critic_extensions_are_rejected(obsolete):
+    with pytest.raises(TypeError, match=obsolete):
+        IADPConfig(**{obsolete: 0})

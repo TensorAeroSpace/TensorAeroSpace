@@ -43,7 +43,7 @@ def test_f16_onboard_ce_reproduces_finite_difference_over_deflection():
 
     eps_fine = 5e-4
     G_ref = np.zeros((3, 3))
-    rate_idx = [2, 4, 3]  # (p, q, r) in this codebase's wx/wy/wz layout.
+    rate_idx = [2, 4, 3]  # (p, q, -r) before changing the yaw sign.
     deflection_idx = [8, 10, 12]
     for j_local, j_state in enumerate(deflection_idx):
         x_plus = x.copy()
@@ -53,6 +53,8 @@ def test_f16_onboard_ce_reproduces_finite_difference_over_deflection():
         f_plus = f16.f16_ode_6dof(x_plus, u, 0.0, params)[rate_idx]
         f_minus = f16.f16_ode_6dof(x_minus, u, 0.0, params)[rate_idx]
         G_ref[:, j_local] = (f_plus - f_minus) / (2 * eps_fine)
+
+    G_ref[2] *= -1.0
 
     # G must NOT be all-zero — the deflection-to-rate gain is real.
     assert np.linalg.norm(G) > 1e-3

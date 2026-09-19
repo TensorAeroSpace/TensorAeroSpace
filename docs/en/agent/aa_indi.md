@@ -1,216 +1,191 @@
 # Active-Adaptive Incremental Nonlinear Dynamic Inversion (AA-INDI)
 
-AA-INDI combines incremental dynamic inversion with online identification of control effectiveness. This implementation uses VFF-RLS and a first-order filtered differentiator. Its residual smoother is a heuristic, not the paper's OTSEKF-HOSM sensor-fault estimator. Tracking and fault recovery depend on excitation, tuning, actuator dynamics and the initial estimate of effectiveness. See [NonlinearLongitudinalF16](../model/f16_nonlinear_longitudinal.md).
+Use `AAINDIAgent(AAINDIConfig(...))` for physical moment identification and independent-navigation OTSEKF–HOSM fault estimation. This is the only AA-INDI implementation. Its configuration requires aircraft geometry and nominal surface derivatives; control accepts `FlightMeasurement` packets. The old rate-only agent and reintegration bias heuristic have been removed.
 
-**Reference**: Atmaca, de Visser, van Kampen (2026), *"Active Incremental Nonlinear Dynamic Inversion for Sensor and Actuator Fault-Tolerant Control"*, TU Delft Aerospace, [research.tudelft.nl](https://research.tudelft.nl/en/publications/active-incremental-nonlinear-dynamic-inversion-for-sensor-and-act/).
+Sources: [Atmaca et al., AA-INDI, 2026](https://doi.org/10.2514/6.2026-1743), and the authors' detailed [OTSEKF–HOSM paper, 2025](https://doi.org/10.2514/1.G009147).
 
-## Key ideas
+## Start with a complete SDK example
 
-- **INDI control law**: the applied control increment \(\Delta u = G^+ \cdot (\nu_{\text{des}} - \dot{\omega}_{\text{meas}})\) requires only the control-effectiveness matrix \(G\), not the full nonlinear dynamics \(f\). This reduces dependence on the full model; effectiveness errors and delays still affect tracking.
-- **Reference model**: a second-order filter shapes the commanded angular rate into a smooth desired rate and its derivative \(\nu_{\text{des}} = \dot{\omega}_{\text{ref}}\).
-- **VFF-RLS**: the forgetting factor \(\lambda_k\) contracts toward a lower bound when the prediction residual grows (fast adaptation during faults/manoeuvres) and relaxes toward the upper bound in quiet operation (noise rejection).
-- **Sensor-filter surrogate**: a low-pass differentiator produces \(\dot{\omega}\) from raw \(\omega\), and a residual smoother supplies an optional heuristic correction. Constant sensor bias is not observable from this reintegration residual alone.
-
-## Differences from related methods
-
-| Aspect | INDI | Adaptive INDI | **AA-INDI** |
-| --- | --- | --- | --- |
-| Control-effectiveness \(G\) | Offline / fixed | Online (basic RLS) | Online VFF-RLS |
-| Sensor fault handling | None | None | Residual heuristic; constant bias is unobservable without an independent reference |
-| Adaptation after faults | Fixed effectiveness | RLS updates | Variable forgetting; recovery must be measured |
-| Noise handling | Measurement filtering | Filtering and RLS tuning | Matched input/output filters and VFF tuning |
-
-## AA-INDI components
-
-| Component | Role | Implementation |
-| --- | --- | --- |
-| VFFRLSEstimator | Online identification of \(G = \partial \dot{\omega}/\partial u\) with variable forgetting | `tensoraerospace.agent.aa_indi.VFFRLSEstimator` |
-| LowPassDerivative | Causal differentiator (HOSM surrogate) | `tensoraerospace.agent.aa_indi.LowPassDerivative` |
-| BiasEstimator | Exponential mean of a supplied innovation | `tensoraerospace.agent.aa_indi.BiasEstimator` |
-| Reference model | 2nd-order filter for \(\nu_{\text{des}}\) | Inline in `AAINDIAgent` |
-| AAINDIAgent | Orchestrates INDI law, estimators, filter | `tensoraerospace.agent.aa_indi.AAINDIAgent` |
-
-## Algorithm
-
-On each control tick \(k\), given the measurement \(\omega_k\) and command \(r_k\):
-
-1. **Measurement conditioning.** Subtract the current bias estimate (if enabled): \(\omega_k^c = \omega_k - \hat{b}\). The low-pass differentiator yields \(\dot{\omega}_k^{\text{meas}}\) (advanced inside `learn()` to avoid double-stepping).
-2. **Reference model.** Second-order filter:
-
-\[
-\ddot{r} = -2\zeta\omega_n \dot{r} + \omega_n^2 (r_{\text{cmd}} - r), \qquad \nu_{\text{des}} = \dot{r}.
-\]
-
-3. **INDI law.**
-
-\[
-\Delta u = G^{+} \cdot (\nu_{\text{des}} - \dot{\omega}^{\text{meas}}), \qquad
-u = \mathrm{clip}(u_{\text{filtered}} + \Delta u,\ \pm u_{\max}),
-\]
-
-   Here the baseline is filtered actuator feedback. Rate limiting is applied to the candidate command relative to the previous actual input, with a limit of \(\dot{u}_{\max} dt\).
-4. **VFF-RLS update.** From \((\Delta u_k, \Delta \dot{\omega}_k)\):
-
-\[
-\varepsilon = \Delta \dot{\omega} - \theta^{\top} \Delta u,\qquad
-\varphi_k = \Delta u_k,\qquad K_k = \frac{P_k\varphi_k}{1+\varphi_k^T P_k\varphi_k},\qquad
-\lambda_k = \mathrm{clip}\left(1-\frac{\|\varepsilon\|^2}{\sigma_\varepsilon^2(1+\varphi_k^T P_k\varphi_k)},\lambda_{\min},\lambda_{\max}\right),
-\]
-
-   followed by the usual RLS gain / covariance recursion with forgetting factor \(\lambda_k\).
-5. **Bias update.** Exponential moving average of the residual between \(\omega\) and its reintegration from \(\dot{\omega}\).
-
-## Relation to the original paper
-
-The VFF gain and forgetting rule follow Eqs. (54)–(57) of
-[Atmaca et al., AIAA 2026-1743](https://repository.tudelft.nl/file/File_ee9931f5-cf45-45a5-b5a3-0225b0f35da2).
-`vff_eps_sensitivity**2` corresponds to Σ₀. The upper limit
-`vff_forgetting_max < 1` is a library extension; set it to 1 to allow the
-paper's maximum. Covariance uses an algebraically equivalent Joseph update
-to avoid cancellation. The previous exponential rule was not Eq. (55).
-Existing checkpoints load, but their adaptation tuning should be revalidated.
-
-This agent uses filtered increments of acceleration and actuator position.
-The paper instead reconstructs aerodynamic moments and fits surface derivatives;
-it also includes OTSEKF-HOSM. These subsystems are not reproduced here.
-An experiment on this class therefore does not establish the performance of
-the complete published AA-INDI architecture.
-
-Nonfinite samples and numerical overflow are rejected before changing RLS
-parameters. Unexcited directions still follow the configured forgetting law:
-this numerical guard does not solve covariance windup or guarantee stability.
-
-## Measurement and actuator timing
-
-Call `predict(measurement, reference, k)`, step the plant, then call
-`learn(next_measurement, reference, k, applied_action=actual_input)` once.
-The next measurement must also be the next call's current measurement.
-Both commands and feedback use the same control units; remove the same trim
-bias from both. Omitting `applied_action` assumes exact command tracking.
-
-`LinearLongitudinalB747` and `LinearLongitudinalLAPAN` expose the actual,
-rate-limited elevator in **degrees** through `info["applied_action"]`.
-For a continuous servo, use measured surface motion over the transition;
-the requested command is not the surface position.
-
-The first prediction primes the differentiator with the initial measurement.
-The actuator feedback uses the same low-pass filter as the acceleration;
-RLS operates on their filtered increments. New checkpoints preserve both
-filters, previous measurements and a pending command. Older checkpoints load,
-but their missing filter/history state requires identification warm-up.
-
-## Quick start
+This example creates a native B737 environment, initializes AA-INDI from a
+healthy trim, commands a +1° pitch step at 15 s and loses 50% elevator authority
+at 30 s. Execute the block with the installed `tensoraerospace` package. It runs
+all 3,000 transitions, plots the reference and response, and prints library metrics.
 
 ```python
 import numpy as np
-from tensoraerospace.agent.aa_indi import AAINDIAgent, AAINDIConfig
-
-# Onboard model snapshot of the control-effectiveness matrix at design trim.
-G_init = np.array([[-2.0, 0.1, 0.0],
-                   [0.05, -1.5, 0.2],
-                   [0.0,  0.05, -0.9]])
-
-cfg = AAINDIConfig(
-    dt=0.01,
-    ref_wn=5.0,
-    ref_zeta=0.7,
-    u_magnitude_limit=25.0,
-    u_rate_limit=200.0,
-    vff_forgetting_min=0.9,
-    vff_forgetting_max=0.999,
-    vff_eps_sensitivity=2.0,
-    sensor_cutoff_hz=50.0,
-    enable_bias_correction=True,
-    G_init=G_init,
-    seed=0,
+import matplotlib.pyplot as plt
+from tensoraerospace.agent.aa_indi import (
+    AAINDIAgent,
+    AAINDIConfig,
+    AircraftGeometry,
+    FlightMeasurement,
+    ObserverConfig,
 )
-agent = AAINDIAgent(n_state=3, n_control=3, config=cfg)
+from tensoraerospace.aerospacemodel.b737.nonlinear import ElevatorEffectiveness
+from tensoraerospace.benchmark import B737PitchStepBenchmark
 
-omega = np.zeros(3)
-ref = np.array([0.2, -0.1, 0.05])  # rad/s targets for roll/pitch/yaw rates
-
-for k in range(500):
-    u = agent.predict(omega, ref, k)
-    # Plant step (placeholder — plug your environment here)
-    omega = omega + cfg.dt * (G_init @ u)
-    metrics = agent.learn(omega, ref, k)
+experiment = B737PitchStepBenchmark(
+    duration=60.0,
+    dt=0.02,
+    step_time=15.0,
+    step_deg=1.0,
+    elevator_fault=ElevatorEffectiveness(time=30.0, effectiveness=0.5),
+)
+env, trim, trim_action = experiment.make_env()
+state, _ = env.reset(seed=experiment.seed)
+theta_trim = state[7]
+geometry = AircraftGeometry.from_parameters(env.model.param)
+measurement = FlightMeasurement.from_model(
+    env.model,
+    applied_action=trim_action,
+    surface_indices=(0,),
+)
+_, B = env.model.linearize(state, trim_action)
+nominal_derivatives = geometry.coefficients(
+    np.zeros(3),
+    B[3:6, 0],
+    measurement.density,
+    measurement.airspeed,
+)[:, None]
+agent = AAINDIAgent(
+    AAINDIConfig(
+        geometry=geometry,
+        nominal_derivatives=nominal_derivatives,
+        observer=ObserverConfig(
+            dt=experiment.dt, gravity=env.model.param.g_ft_s2 * 0.3048
+        ),
+        covariance_init=1.0,
+        rate_feedback=np.full(3, 3.0),
+        acceleration_cutoff_hz=5.0,
+        magnitude_limit=env.model.param.elevator_max_rad,
+        rate_limit=np.deg2rad(20.0),
+        enable_sensor_correction=True,
+    )
+)
+states, actions, rate_commands = [state.copy()], [], []
+try:
+    for k in range(experiment.steps):
+        q_ref = np.clip(
+            0.8 * (theta_trim + experiment.reference[k] - state[7]),
+            -np.deg2rad(3.0),
+            np.deg2rad(3.0),
+        )
+        command = agent.predict(measurement, np.array([0.0, q_ref, 0.0]))
+        action = trim_action.copy()
+        action[0] = command[0]
+        state, _, terminated, truncated, _ = env.step(action)
+        experiment.validate_transition(state, terminated, truncated, k)
+        applied = env.model.applied_action
+        measurement = FlightMeasurement.from_model(env.model, surface_indices=(0,))
+        agent.learn(measurement, applied_action=applied[:1])
+        states.append(state.copy())
+        actions.append(applied)
+        rate_commands.append(q_ref)
+finally:
+    env.close()
+states, actions, rate_commands = map(np.asarray, (states, actions, rate_commands))
+experiment.plot_response(states, actions, rate_commands, "AA-INDI: B737 elevator fault")
+plt.show()
+windows, physical_metrics = experiment.evaluate(states, actions)
+print(experiment.metric_table(windows).to_string())
+print(physical_metrics)
 ```
 
-!!! tip "Warm-start `G_init` matters"
-    INDI needs a reasonable \(G\) on the first few ticks — with the default random init, the pseudo-inverse explodes and the actuator saturates before VFF-RLS has converged. Provide `G_init` from a linearised on-board model.
+`predict` returns an absolute elevator angle in radians; trim is not added again.
+`FlightMeasurement.from_model` supplies SI measurements and actual surface feedback.
+Learning continues at every interval. Set `elevator_fault=None` for a fresh healthy
+comparison. The speed/altitude response belongs to a fixed-throttle pitch task.
 
-## Hyperparameters
+### Choose the next example
 
-### Reference model
+- [Full B737 walkthrough](../example/agent/aa_indi/example_aaindi_nonlinear.md).
+- [Actuator and gyro faults, correction enabled/disabled](https://github.com/TensorAeroSpace/TensorAeroSpace/blob/develop/example/reinforcement_learning/incremental_adp/example_aaindi_sensor_actuator_faults.ipynb).
+- [AA-INDI versus PID, LQR and LQI on B747](../comparison/aaindi_vs_pid_lqr_lqi_b747.md).
 
-| Parameter | Default | Description |
+## Paper architecture
+
+| Block | Implementation | Source |
 | --- | --- | --- |
-| `ref_wn` | 10.0 | Natural frequency of the reference filter (rad/s). Higher → faster tracking, larger Δu. |
-| `ref_zeta` | 0.7 | Damping ratio. 0.7 is underdamped; 1 is critically damped. |
+| Kinematic state estimation with independent navigation | `OTSEKFHOSMObserver`, `OptimalTwoStageEKF` | 2026 Section III.A; 2025 Eqs. (20)–(42) |
+| Four-state nonrecursive differentiator | `HOSMDifferentiator` | 2025 Eqs. (47)–(50) |
+| Rigid-body moment reconstruction | `AircraftGeometry.coefficients` | 2026 Eqs. (7)–(16) |
+| Surface-derivative identification, one scalar VFF-RLS per moment axis | `MomentIdentifier` | 2026 Eqs. (50)–(57) |
+| Incremental inversion from virtual angular acceleration | `AAINDIAgent.predict_acceleration` | 2026 Eq. (9) |
 
-### Actuator bounds
+The measured moment is
+\[
+M = J\dot\omega + \omega\times J\omega,
+\quad C_M = \frac{M}{\bar q S [b,c,b]^T},
+\quad G=J^{-1}\bar q S\operatorname{diag}(b,c,b) C_\delta.
+\]
+Division in the coefficient expression is componentwise. Identification uses **absolute measured surface positions**, paired with reconstructed moment coefficients, and separate forgetting for roll, pitch and yaw. The published settings `sigma0=15`, `forgetting_min=0.25`, and maximum forgetting factor 1 are supplied by default. The input and moment filters share a time constant and are initialized from the same measured interval.
 
-| Parameter | Default | Description |
-| --- | --- | --- |
-| `dt` | 0.01 | Control step (s) |
-| `u_magnitude_limit` | 25.0 | Hard magnitude clamp per channel (same units as env action) |
-| `u_rate_limit` | 60.0 | Max Δu per second per channel |
-| `pinv_rcond` | 1e-6 | Cutoff for `np.linalg.pinv(G)` |
-| `G_init` | None | Warm-start of shape `(n_state, n_control)` |
+The primary control interface receives virtual angular acceleration from an outer controller. `predict(measurement, rate_reference)` supplies a configurable proportional rate-feedback adapter. It does not reproduce the Flying-V C*/roll/sideslip guidance system.
 
-### VFF-RLS
+## Measurements and units
 
-| Parameter | Default | Description |
-| --- | --- | --- |
-| `vff_forgetting_min` | 0.7 | Lower bound on λ — fast-adaptation regime |
-| `vff_forgetting_max` | 0.999 | Upper bound on λ — noise-rejection regime |
-| `vff_eps_sensitivity` | 1.0 | Square root of Σ₀ in Eq. (55) |
-| `vff_cov_init` | 1e2 | Initial covariance scale |
+`FlightMeasurement` contains one timestamp:
 
-### Sensor filter
+| Field | Meaning / units |
+| --- | --- |
+| `angular_rate` | Body `[p,q,r]`, rad/s; may contain sensor faults |
+| `specific_force` | Body accelerometer `[Ax,Ay,Az]`, m/s²: specific force `R.T @ (a_NED - g_NED)` |
+| `ground_velocity` | Independent NED velocity, m/s |
+| `attitude` | Independent `[roll,pitch,yaw]`, radians, 3-2-1 Euler convention |
+| `surface_position` | Actual control surface angles over the preceding interval, radians; ZOH value or measured interval average |
+| `airspeed`, `density` | Air-relative speed in m/s, air density in kg/m³ |
 
-| Parameter | Default | Description |
-| --- | --- | --- |
-| `sensor_cutoff_hz` | 10.0 | Low-pass cutoff of the differentiator |
-| `bias_forgetting` | 0.99 | EMA retention of the bias estimator |
-| `enable_bias_correction` | True | Subtract bias estimate from ω before forming the INDI residual |
+Body axes are forward/right/down; navigation axes are north/east/down. In level unaccelerated flight the body accelerometer reads `[0,0,-g]`. Geometry uses kg·m² for the full inertia tensor, m² for area and metres for span/chord. Convert environment actions in degrees explicitly.
 
-## Supported environments
+The first packet requires both navigation velocity and attitude. Later packets may use `None` for an unavailable navigation channel, e.g. 10 Hz GPS with a 100 Hz IMU. Timestamps must advance exactly `observer.dt`; the next `predict` reuses the packet already passed to `learn`. Navigation must contain independent information: integrating the same faulty gyro to create “attitude” does not make its bias observable. Airspeed must not be replaced with GPS speed in wind.
 
-- Any Gymnasium env whose observation vector contains measurable angular rates (e.g. `[alpha, wz]` in `NonlinearLongitudinalF16-v0` after light shaping, or a full `[p, q, r]` vector from a 6-DoF plant).
+## Interpretation and remaining differences
 
-## Persistence
+The two-stage covariance factorization is checked against an independent augmented Kalman filter, including random bias and correlated process noise. HOSM uses the published simultaneous updates and exponents `3/4`, `2/3`, `1/2`, and `sign`.
 
-Same API as the other adaptive-critic agents:
+**Drift-coordinate interpretation:** the article calls the second filter coordinate state drift, while its propagation uses the integrated input-noise matrix. Here the two-stage coordinate has input-bias units. HOSM therefore differentiates accumulated *physical state drift*: the integrated non-exact kinematic trajectory minus its navigation-corrected estimate. The derivative is converted to body IMU faults using the kinematic channel gains. This is an explicit dimensional interpretation of the architecture, not a verified reproduction of the authors' unpublished implementation. Differentiating an already rate-valued bias would estimate its change, losing a constant fault.
 
-```python
-run_dir = agent.save("./checkpoints")        # creates <date>_AAINDIAgent/
-restored = AAINDIAgent.from_pretrained(run_dir)
-agent.publish_to_hub("me/my-aaindi", folder_path=run_dir, access_token="hf_...")
-```
+Observer process-noise tuning, HOSM gains/scales, filter cutoff and initial parameter covariance are explicit configuration choices. The papers do not supply a complete executable setup. Tests and synthetic rollouts validate this implementation, not the published flight-test results. The default `sigma0=15` can yield slow actuator identification when dimensionless residuals are small; rate tracking alone does not prove derivative convergence. Euler kinematics also restrict operation away from pitch ±90° and ill-conditioned fault-reconstruction attitudes.
 
-Saved artefacts:
+`agent.save(path)` and `AAINDIAgent.from_pretrained(folder)` retain the observer, HOSM, RLS, input/output filters and any pending transition. Save/load is tested for identical continuation. Old rate-only checkpoints cannot supply missing geometry or independent navigation; create a new configuration and checkpoint.
 
-- `config.json` — full `AAINDIConfig` + `n_state` / `n_control`.
-- `vff_rls.npz` — RLS `θ`, covariance `P`, last forgetting factor `λ`, update counter.
-- `bias_state.npz` — exponential bias estimate.
-- `deriv_state.npz` — low-pass differentiator state.
-- `loop_state.npz` — reference-model state, PI integrator, last applied control, cached `ω̇`. Persisting these means a mid-episode save resumes bit-identically on reload (essential when `ref_error_kp` / `ref_error_ki` are non-zero).
-
-## API reference
+## Paper API reference
 
 ::: tensoraerospace.agent.aa_indi.model.AAINDIAgent
 
 ::: tensoraerospace.agent.aa_indi.model.AAINDIConfig
 
-::: tensoraerospace.agent.aa_indi.vff_rls.VFFRLSEstimator
+::: tensoraerospace.agent.aa_indi.observer.ObserverConfig
 
-::: tensoraerospace.agent.aa_indi.sensor_filter.LowPassDerivative
+::: tensoraerospace.agent.aa_indi.kinematics.FlightMeasurement
 
-::: tensoraerospace.agent.aa_indi.sensor_filter.BiasEstimator
+## Nonlinear B737 notebook
 
-## Sources
+[Run the B737 pitch-step example](https://github.com/TensorAeroSpace/TensorAeroSpace/blob/develop/example/reinforcement_learning/incremental_adp/example_aaindi_nonlinear_b737.ipynb): the same cruise trim and +1° step as the IHDP notebook, with an explicit pitch-to-rate outer loop, continuous adaptation, saved plots and `ControlBenchmark` metrics. The example documents its nominal-model initialization and reduced-model assumptions.
 
-- Atmaca, de Visser, van Kampen (2026). *"Active Incremental Nonlinear Dynamic Inversion for Sensor and Actuator Fault-Tolerant Control"*, TU Delft Aerospace, [research.tudelft.nl](https://research.tudelft.nl/en/publications/active-incremental-nonlinear-dynamic-inversion-for-sensor-and-act/).
-- Smeur, Chu, de Croon. *"Adaptive Incremental Nonlinear Dynamic Inversion for Attitude Control of Micro Air Vehicles"*, J. Guid. Control Dyn., 2016.
-- Fortescue, Kershenbaum, Ydstie. *"Implementation of Self-Tuning Regulators with Variable Forgetting Factors"*, Automatica, 1981.
+## Fault examples
+
+- [B737: 50% elevator-authority loss](https://github.com/TensorAeroSpace/TensorAeroSpace/blob/develop/example/reinforcement_learning/incremental_adp/example_aaindi_fault_b737.ipynb), with continuous learning, actual surface feedback and post-fault error metrics.
+- [B747: AA-INDI vs PID, LQR and LQI after an engine failure](https://github.com/TensorAeroSpace/TensorAeroSpace/blob/develop/example/reinforcement_learning/incremental_adp/example_aaindi_vs_pid_lqr_b747.ipynb), with healthy-only baseline tuning and separate validation up to 500 s.
+
+[Comparison with plots and metrics](../comparison/aaindi_vs_pid_lqr_lqi_b747.md).
+
+## Simulator measurements through the public API
+
+For the native nonlinear B737/B747 models, use
+`AircraftGeometry.from_parameters(model.param)` for the SI inertia/geometry and
+`FlightMeasurement.from_model(model, surface_indices=(0,))` for elevator-only
+feedback, or `(1, 2)` for aileron/rudder. Before the first transition, supply
+`applied_action=trim_action` explicitly; later packets use `model.applied_action`
+and `model.current_time`. Surface indices refer to the four-channel physical
+input `[elevator, aileron, rudder, throttle]`.
+
+The adapter simulates ideal IMU and independent navigation using the native
+model's `dynamics` API. It removes gravity and body-frame transport terms from
+accelerometer output and converts US units to SI. It assumes no wind and adds no
+sensor noise or faults. For hardware/noisy sensors, construct `FlightMeasurement`
+from the actual sensor streams. Neither adapter call advances the model.
+
+`model.linearize(state, trim_action)` supplies continuous native-unit A/B
+Jacobians for a nominal prior. Calculate the prior on a healthy model before the
+flight; do not replace it with post-failure derivatives during adaptation.

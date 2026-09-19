@@ -1,7 +1,8 @@
-"""Paired iADP / AA-INDI validation on native B747 and LAPAN environments.
+"""iADP validation on native B747 and LAPAN environments.
 
 Separate online training from held-out frozen/adapting evaluations. Actual
-actuator feedback is supplied when supported; old agents use their legacy API.
+actuator feedback is supplied to the controller. AA-INDI validation, requiring
+independent navigation, is in validate_paper_adaptive.py.
 Dynamics and actuator limits are untouched except for an explicitly simulated
 50% reduction of B in the effectiveness-loss scenario.
 """
@@ -70,7 +71,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--repo", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
-    parser.add_argument("--agent", choices=["iadp", "aaindi"], required=True)
+    parser.add_argument("--agent", choices=["iadp"], required=True)
     parser.add_argument("--plant", choices=["b747", "lapan"], required=True)
     parser.add_argument("--seed", type=int, required=True)
     parser.add_argument("--dt", type=float, default=0.02)
@@ -92,8 +93,6 @@ def main():
         help="Freeze identifier parameters during the diagnostic run.",
     )
     parser.add_argument("--iadp-gamma", type=float, default=0.99)
-    parser.add_argument("--iadp-regularization", type=float, default=1e-10)
-    parser.add_argument("--iadp-blend", type=float, default=0.1)
     parser.add_argument(
         "--reference-mode",
         choices=["sampled", "oscillator", "constant"],
@@ -123,7 +122,6 @@ def main():
     from scipy.linalg import solve_discrete_are
     from scipy.signal import cont2discrete
 
-    from tensoraerospace.agent.aa_indi import AAINDIAgent, AAINDIConfig
     from tensoraerospace.agent.iadp import IADPAgent, IADPConfig
     from tensoraerospace.envs.b747 import LinearLongitudinalB747
     from tensoraerospace.envs.lapan import LinearLongitudinalLAPAN
@@ -135,83 +133,59 @@ def main():
     g = b / args.dt
     rng = np.random.default_rng(args.seed)
     warm_start_factor = float(rng.uniform(0.8, 1.2))
-    if args.agent == "iadp":
-        state_count = 4 if args.full_state else 1
-        q_index = 2 if args.full_state else 0
-        Q = np.zeros((state_count, state_count))
-        Q[q_index, q_index] = 1.0
-        if args.full_state:
-            F = np.zeros((8, 8))
-            F[:4, :4] = probe.model.filt_A
-            F[4:, 4:] = (
-                reference_transition(args.dt)
-                if args.reference_mode == "oscillator"
-                else np.eye(4)
-            )
-            G = np.vstack(
-                [probe.model.filt_B * np.pi / 180 * warm_start_factor, np.zeros((4, 1))]
-            )
-        else:
-            F = np.diag([a, 1.0])
-            G = np.array([[b * warm_start_factor], [0.0]])
-        gamma = args.iadp_gamma
-        R = np.array([[(abs(g) / 20) ** 2]])
-        P = solve_discrete_are(
-            np.sqrt(gamma) * F,
-            np.sqrt(gamma) * G,
-            np.block([[Q, -Q], [-Q, Q]]),
-            R,
+    state_count = 4 if args.full_state else 1
+    q_index = 2 if args.full_state else 0
+    Q = np.zeros((state_count, state_count))
+    Q[q_index, q_index] = 1.0
+    if args.full_state:
+        F = np.zeros((8, 8))
+        F[:4, :4] = probe.model.filt_A
+        F[4:, 4:] = (
+            reference_transition(args.dt)
+            if args.reference_mode == "oscillator"
+            else np.eye(4)
         )
-        agent = IADPAgent(
-            state_count,
-            1,
-            IADPConfig(
-                dt=args.dt,
-                Q=Q,
-                R=R,
-                gamma=gamma,
-                gamma_rls=0.9995,
-                phi_init=1e3,
-                policy_eval_window=args.iadp_window,
-                policy_eval_every=20,
-                policy_eval_warmup_updates=args.iadp_warmup,
-                policy_eval_regularization=args.iadp_regularization,
-                policy_eval_blend=0.0 if args.freeze_critic else args.iadp_blend,
-                F_init=F,
-                G_init=G,
-                P_init=P,
-                u_magnitude_limit=10,
-                u_rate_limit=60,
-                seed=args.seed,
-                **(
-                    {"policy_eval_min_samples": args.critic_min_samples}
-                    if args.critic_min_samples
-                    else {}
-                ),
-            ),
+        G = np.vstack(
+            [probe.model.filt_B * np.pi / 180 * warm_start_factor, np.zeros((4, 1))]
         )
     else:
-        q_index = 0
-        agent = AAINDIAgent(
-            1,
-            1,
-            AAINDIConfig(
-                dt=args.dt,
-                ref_wn=2.5,
-                ref_zeta=0.9,
-                ref_error_kp=0.6,
-                G_init=np.array([[g * warm_start_factor]]),
-                u_magnitude_limit=10,
-                u_rate_limit=60,
-                sensor_cutoff_hz=2.0,
-                vff_cov_init=1e3,
-                vff_forgetting_min=0.98,
-                vff_forgetting_max=0.9995,
-                vff_eps_sensitivity=0.01,
-                enable_bias_correction=False,
-                seed=args.seed,
+        F = np.diag([a, 1.0])
+        G = np.array([[b * warm_start_factor], [0.0]])
+    gamma = args.iadp_gamma
+    R = np.array([[(abs(g) / 20) ** 2]])
+    P = solve_discrete_are(
+        np.sqrt(gamma) * F,
+        np.sqrt(gamma) * G,
+        np.block([[Q, -Q], [-Q, Q]]),
+        R,
+    )
+    agent = IADPAgent(
+        state_count,
+        1,
+        IADPConfig(
+            dt=args.dt,
+            Q=Q,
+            R=R,
+            gamma=gamma,
+            gamma_rls=0.9995,
+            phi_init=1e3,
+            policy_eval_window=args.iadp_window,
+            policy_eval_every=20,
+            policy_training_start_step=sys.maxsize if args.freeze_critic else 0,
+            policy_eval_warmup_updates=args.iadp_warmup,
+            F_init=F,
+            G_init=G,
+            P_init=P,
+            u_magnitude_limit=10,
+            u_rate_limit=60,
+            seed=args.seed,
+            **(
+                {"policy_eval_min_samples": args.critic_min_samples}
+                if args.critic_min_samples
+                else {}
             ),
-        )
+        ),
+    )
     feedback_supported = "applied_action" in inspect.signature(agent.learn).parameters
 
     def rollout(controller, scenario, adaptation, duration, phase, *, training=False):

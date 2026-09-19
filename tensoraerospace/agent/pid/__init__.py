@@ -101,6 +101,9 @@ class PID(BaseRLModel):
         ki: float = 1.0,
         kd: float = 0.5,
         dt: float = 0.01,
+        *,
+        output_limits: tuple[float, float] | None = None,
+        rate_limit: float | None = None,
     ) -> None:
         """Initialize PID controller parameters."""
         self.kp = kp
@@ -112,8 +115,35 @@ class PID(BaseRLModel):
         # Simulink-style: derivative on measurement (avoids derivative kick on setpoint steps)
         self.prev_measurement = 0.0
         self.env = env
+        if output_limits is not None:
+            bounds = np.asarray(output_limits, dtype=float)
+            if (
+                bounds.shape != (2,)
+                or not np.isfinite(bounds).all()
+                or bounds[0] >= bounds[1]
+            ):
+                raise ValueError("output_limits must contain finite low < high")
+            output_limits = (float(bounds[0]), float(bounds[1]))
+        if rate_limit is not None and (
+            not np.isfinite(rate_limit)
+            or rate_limit <= 0
+            or dt is None
+            or not np.isfinite(dt)
+            or dt <= 0
+        ):
+            raise ValueError("rate_limit and dt must be finite and positive")
+        self.output_limits = output_limits
+        self.rate_limit = rate_limit
+        self.prev_output = 0.0
 
-    def select_action(self, setpoint: float, measurement: float) -> float:
+    def select_action(
+        self,
+        setpoint: float,
+        measurement: float,
+        *,
+        measurement_rate: float | None = None,
+        applied_output: float | None = None,
+    ) -> float:
         """Compute and return control signal based on setpoint and measurement.
 
         This method uses the current measurement and setpoint to compute the error,
@@ -122,6 +152,10 @@ class PID(BaseRLModel):
         Args:
             setpoint (float): Desired value that the system should reach.
             measurement (float): Current measured value.
+            measurement_rate: Optional measured derivative in measurement units/s.
+                Otherwise a finite difference supplies the derivative term.
+            applied_output: Actual preceding actuator output for slew limiting;
+                defaults to the preceding requested output.
 
         Returns:
             float: Control signal computed by the PID controller.
@@ -140,7 +174,13 @@ class PID(BaseRLModel):
 
         # Derivative term (on measurement)
         if dt > 0:
-            derivative = -(float(measurement) - float(self.prev_measurement)) / dt
+            if measurement_rate is not None and not np.isfinite(measurement_rate):
+                raise ValueError("measurement_rate must be finite")
+            derivative = (
+                -(float(measurement) - float(self.prev_measurement)) / dt
+                if measurement_rate is None
+                else -float(measurement_rate)
+            )
             integral_candidate = float(self.integral) + error * dt
         else:
             derivative = 0.0
@@ -153,29 +193,59 @@ class PID(BaseRLModel):
         )
         output = output_unsat
 
-        # Optional saturation + anti-windup (if action limits are available)
-        if self.env is not None and hasattr(self.env, "action_space"):
+        limits = self.output_limits
+        if (
+            limits is None
+            and self.env is not None
+            and hasattr(self.env, "action_space")
+        ):
             try:
-                action_space = getattr(self.env, "action_space")
-                low = float(np.asarray(action_space.low).reshape(-1)[0])
-                high = float(np.asarray(action_space.high).reshape(-1)[0])
-                output = float(np.clip(output, low, high))
-                integral_increment = float(self.ki) * (
-                    integral_candidate - float(self.integral)
+                limits = (
+                    float(
+                        np.asarray(getattr(self.env.action_space, "low")).reshape(-1)[0]
+                    ),
+                    float(
+                        np.asarray(getattr(self.env.action_space, "high")).reshape(-1)[
+                            0
+                        ]
+                    ),
                 )
-                if (output_unsat - output) * integral_increment > 0.0:
-                    # Block only integration further into saturation. Let the
-                    # integral unwind, including for negative controller gains.
-                    integral_candidate = float(self.integral)
-                    output_unsat = (
-                        float(self.kp) * error
-                        + float(self.ki) * integral_candidate
-                        + float(self.kd) * derivative
-                    )
-                    output = float(np.clip(output_unsat, low, high))
-            except Exception:
-                # If action_space is not a Box-like object, ignore saturation
-                pass
+            except (AttributeError, TypeError, ValueError, IndexError):
+                limits = None
+        if limits is not None:
+            output = float(np.clip(output_unsat, *limits))
+            integral_increment = float(self.ki) * (
+                integral_candidate - float(self.integral)
+            )
+            if (output_unsat - output) * integral_increment > 0.0:
+                integral_candidate = float(self.integral)
+                output_unsat = (
+                    float(self.kp) * error
+                    + float(self.ki) * integral_candidate
+                    + float(self.kd) * derivative
+                )
+                output = float(np.clip(output_unsat, *limits))
+        if self.rate_limit is not None:
+            previous = (
+                self.prev_output if applied_output is None else float(applied_output)
+            )
+            if not np.isfinite(previous):
+                raise ValueError("applied_output must be finite")
+            limited = float(
+                np.clip(
+                    output,
+                    previous - self.rate_limit * dt,
+                    previous + self.rate_limit * dt,
+                )
+            )
+            if limits is not None:
+                limited = float(np.clip(limited, *limits))
+            if (output - limited) * float(self.ki) * (
+                integral_candidate - float(self.integral)
+            ) > 0:
+                integral_candidate = float(self.integral)
+            output = limited
+        self.prev_output = float(output)
 
         self.integral = float(integral_candidate)
         self.prev_error = float(error)
@@ -191,6 +261,7 @@ class PID(BaseRLModel):
         self.integral = 0.0
         self.prev_error = 0.0
         self.prev_measurement = 0.0
+        self.prev_output = 0.0
 
     @staticmethod
     def _align_reference_to_observation_units(
@@ -964,6 +1035,8 @@ class PID(BaseRLModel):
             "kp": self.kp,
             "kd": self.kd,
             "dt": self.dt,
+            "output_limits": self.output_limits,
+            "rate_limit": self.rate_limit,
         }
         return {
             "env": {"name": env_name, "params": env_params},
@@ -1069,3 +1142,6 @@ class PID(BaseRLModel):
             folder_path = super().from_pretrained(repo_name, access_token, version)
             new_agent = cls.__load(folder_path)
             return new_agent
+
+
+from .aircraft import B747LongitudinalHold, LateralAircraftPID  # noqa: E402,F401
