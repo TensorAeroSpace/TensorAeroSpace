@@ -226,3 +226,20 @@ Action-space: either `"virtual"` (physical units) or `"normalized"`
 * **FAA TCDS A16WE** — Boeing 737 type certificate data sheet.
 * Mattingly J. D. *Aircraft Engine Design*, AIAA Education Series,
   2nd ed., 2002, §8.6.4 (installed-thrust lapse model).
+
+## Public dynamics and analysis API
+
+`model.dynamics(state, action, time=...)` evaluates the instantaneous native-unit
+ODE; `model.linearize(state, action)` returns continuous A/B Jacobians. Neither
+advances the state or history. Inputs are physical surface angles in radians and
+normalized throttle. `current_time` is the latest state timestamp;
+`applied_action` is a copied input from the preceding integration interval and
+is unavailable before the first transition. `density_at(altitude_ft)` returns SI
+air density. These methods support the AA-INDI sensor adapter directly.
+
+`NonlinearB737Env(elevator_fault=ElevatorEffectiveness(time=30, effectiveness=0.5))`
+models a loss of aerodynamic elevator effectiveness. Import `ElevatorEffectiveness`
+from `tensoraerospace.aerospacemodel.b737.nonlinear`. Encoder feedback retains the
+physical surface position; aerodynamic evaluation scales the elevator input.
+`integration_substeps` refines integration without changing the control interval.
+An event inside a step splits the integration at its exact time.

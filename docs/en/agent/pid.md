@@ -231,3 +231,25 @@ print(f"Overshoot: {result.overshoot:.1f}%")
 
 ::: tensoraerospace.agent.pid.StateSpaceNotAvailable
 
+
+## Measured derivatives and actuator limits
+
+`PID(..., output_limits=(-8, 8), rate_limit=20, dt=0.02)` supports explicit
+magnitude and per-second slew limits. Call
+`select_action(setpoint, measurement, measurement_rate=rate, applied_output=previous_actual)`
+when the derivative and actual preceding output are available. The conditional
+integrator prevents windup at both limits. Without these optional arguments,
+the existing finite-difference derivative and environment limits are retained.
+Use the same units for measurements/gains and for all actuator values.
+
+`tensoraerospace.agent.pid.LateralAircraftPID` composes two `PID` instances for
+B747 roll/heading, converts measured body rates to Euler rates, wraps heading
+error and returns aileron/rudder in **degrees**. `B747LongitudinalHold` returns
+absolute elevator in **radians** and normalized throttle. Their default gains
+belong to the documented cruise comparison; reassess them at another trim.
+
+`tensoraerospace.agent.lqr.LQRAgent(A, B, Q, R)` solves the discrete Riccati
+problem and returns `-K @ state` through `predict`. Pass deviation states about a
+valid equilibrium; the class adds no trim input or actuator limits. LQI uses
+caller-supplied augmented matrices and measured error integrals. See the
+[B747 protocol](../cookbook/09_fault_tolerance.md) for the common constraints.

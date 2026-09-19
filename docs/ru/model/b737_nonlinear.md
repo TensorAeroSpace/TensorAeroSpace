@@ -222,3 +222,20 @@ Action-space: либо `"virtual"` (физические единицы), либ
 * **FAA TCDS A16WE** — Boeing 737 type certificate data sheet.
 * Mattingly J. D. *Aircraft Engine Design*, AIAA Education Series,
   2nd ed., 2002, §8.6.4 (installed-thrust lapse model).
+
+## Публичный API динамики и анализа
+
+`model.dynamics(state, action, time=...)` вычисляет правую часть ОДУ в единицах
+модели; `model.linearize(state, action)` возвращает непрерывные якобианы A/B.
+Эти методы не продвигают состояние и историю. Вход — физические углы рулей в
+радианах и нормированный газ. `current_time` — время последнего состояния;
+`applied_action` — копия входа за предыдущий интервал интегрирования, недоступная
+до первого перехода. `density_at(altitude_ft)` возвращает плотность воздуха в СИ.
+Методы напрямую используются адаптером измерений AA-INDI.
+
+`NonlinearB737Env(elevator_fault=ElevatorEffectiveness(time=30, effectiveness=0.5))`
+моделирует потерю аэродинамической эффективности руля высоты. Импортируйте
+`ElevatorEffectiveness` из `tensoraerospace.aerospacemodel.b737.nonlinear`.
+Датчик положения сохраняет физический угол; аэродинамика получает масштабированный
+вход. `integration_substeps` уточняет интегрирование без изменения такта управления.
+Событие внутри шага делит интегрирование точно в момент отказа.

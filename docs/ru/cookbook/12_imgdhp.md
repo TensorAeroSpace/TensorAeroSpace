@@ -73,7 +73,7 @@ restored = IMGDHPAgent.from_pretrained(run_dir)
 agent.publish_to_hub('me/my-imgdhp', folder_path=run_dir, access_token='hf_…')
 ```
 
-Тот же контракт, что у остальных четырёх — см. [Рецепт 08](08_huggingface.md).
+Проверки продолжения и отдельные интерфейсы сохранения агентов разобраны в [рецепте 08](08_huggingface.md).
 
 ## Подводные камни
 
@@ -84,5 +84,5 @@ agent.publish_to_hub('me/my-imgdhp', folder_path=run_dir, access_token='hf_…')
 ## Куда дальше
 
 - **[Рецепт 13 — ET-DHP](13_etdhp.md)** — событийный родственник IM-GDHP.
-- **[Рецепт 14 — AA-INDI](14_aaindi.md)** — не-НС альтернатива с более сильными гарантиями отказоустойчивости.
+- **[Рецепт 14 — AA-INDI](14_aaindi.md)** — регулятор без нейросети с физическими измерениями и воспроизводимыми проверками отказов.
 - **[Документация IM-GDHP](../agent/imgdhp.md)** — теория + API.

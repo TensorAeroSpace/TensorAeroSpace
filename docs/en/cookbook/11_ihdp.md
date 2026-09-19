@@ -41,7 +41,7 @@ cfg = IHDPConfig(
 )
 ```
 
-Like iADP / AA-INDI, IHDP needs a reasonable `G_init`. See [Recipe 06](06_online_adaptive.md) for the PE-excitation warm-start pattern.
+IHDP needs a reasonable input-effectiveness initialization. [Recipe 06](06_online_adaptive.md) explains excitation and online identification using iADP; [Recipe 14](14_aaindi.md) shows AA-INDI's separate physical measurement interface.
 
 ## Step 2 — Step loop
 
@@ -76,7 +76,7 @@ restored = IHDPAgent.from_pretrained(run_dir)
 agent.publish_to_hub('me/my-ihdp', folder_path=run_dir, access_token='hf_…')
 ```
 
-Same contract as all five online-adaptive agents — see [Recipe 08](08_huggingface.md).
+For continuation checks, simulator state and the differences between agent persistence interfaces, see [Recipe 08](08_huggingface.md).
 
 ## Pitfalls
 

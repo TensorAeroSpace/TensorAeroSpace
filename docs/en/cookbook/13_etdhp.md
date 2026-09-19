@@ -89,5 +89,5 @@ agent.publish_to_hub('me/my-etdhp', folder_path=run_dir, access_token='hf_…')
 ## Where to go next
 
 - **[Recipe 14 — AA-INDI](14_aaindi.md)** — non-neural fault-tolerant alternative.
-- **[Recipe 09 — Fault-tolerance](09_fault_tolerance.md)** — head-to-head against iADP and AA-INDI.
+- **[Recipe 09 — Fault-tolerance](09_fault_tolerance.md)** — AA-INDI compared with PID, LQR and LQI on the same B747 engine failure.
 - **[ET-DHP documentation](../agent/et_dhp.md)** — theory + full API.

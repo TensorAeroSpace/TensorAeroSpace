@@ -73,7 +73,7 @@ restored = IMGDHPAgent.from_pretrained(run_dir)
 agent.publish_to_hub('me/my-imgdhp', folder_path=run_dir, access_token='hf_…')
 ```
 
-Same contract as the other four — see [Recipe 08](08_huggingface.md).
+See [Recipe 08](08_huggingface.md) for continuation checks and agent-specific persistence interfaces.
 
 ## Pitfalls
 
@@ -84,5 +84,5 @@ Same contract as the other four — see [Recipe 08](08_huggingface.md).
 ## Where to go next
 
 - **[Recipe 13 — ET-DHP](13_etdhp.md)** — event-triggered cousin of IM-GDHP.
-- **[Recipe 14 — AA-INDI](14_aaindi.md)** — non-neural alternative with stronger fault-tolerance guarantees.
+- **[Recipe 14 — AA-INDI](14_aaindi.md)** — non-neural controller with a physical sensor interface and reproducible fault checks.
 - **[IM-GDHP documentation](../agent/imgdhp.md)** — theory + full API.

@@ -118,6 +118,7 @@ plugins:
                 - Metrics: benchmark/metrics.md
                 - ARM vs x64 Testing: benchmark/arm_testing.md
               - Comparison:
+                - AA-INDI vs PID, LQR and LQI (B747 engine failure): comparison/aaindi_vs_pid_lqr_lqi_b747.md
                 - PPO vs PID (B747): comparison/ppo_vs_pid_b747.md
                 - DSAC vs PID (B747): comparison/dsac_vs_pid_b747.md
                 - DSAC vs PPO vs MPC vs PID (B747): comparison/all_vs_pid_b747.md
@@ -135,9 +136,9 @@ plugins:
               - ET-DHP (Nonlinear F16): example/agent/et_dhp/example_etdhp_nonlinear.md
               - ET-DHP B747 (engine-out yaw hold): example/agent/et_dhp/example_etdhp_b747_engine_failure.md
               - ET-DHP vs PID (nonlinear B747): example/agent/et_dhp/example_etdhp_vs_pid_b747.md
-              - AA-INDI (Nonlinear F16): example/agent/aa_indi/example_aaindi_nonlinear.md
-              - iADP (Nonlinear F16): example/agent/iadp/example_iadp_nonlinear.md
-              - iADP (F16, small actuator fault): example/agent/iadp/example_iadp_small_fault_f16.md
+              - AA-INDI (B737 tracking and faults): example/agent/aa_indi/example_aaindi_nonlinear.md
+              - iADP (B737 tracking and faults): example/agent/iadp/example_iadp_nonlinear.md
+              - iADP (F16 fault diagnostics): example/agent/iadp/example_iadp_small_fault_f16.md
               - SAC F16: example/agent/sac/example-sac-f16.md
               - SAC B747: example/agent/sac/example-sac-b747.md
               - DSAC B747:
@@ -175,7 +176,7 @@ plugins:
               - "11 — IHDP on the nonlinear F-16": cookbook/11_ihdp.md
               - "12 — IM-GDHP on the nonlinear F-16": cookbook/12_imgdhp.md
               - "13 — ET-DHP on the nonlinear F-16": cookbook/13_etdhp.md
-              - "14 — AA-INDI on the nonlinear F-16": cookbook/14_aaindi.md
+              - "14 — AA-INDI on the nonlinear B737": cookbook/14_aaindi.md
               - "15 — ET-DHP under in-flight damage": cookbook/15_etdhp_damage.md
               - "16 — Interactive 3D viewer for F-16 flights": cookbook/16_3d_viewer.md
             - Lessons:
@@ -279,6 +280,7 @@ plugins:
                 - Метрики: benchmark/metrics.md
                 - Тестирование ARM vs x64: benchmark/arm_testing.md
               - Сравнения:
+                - AA-INDI против PID, LQR и LQI (отказ двигателя B747): comparison/aaindi_vs_pid_lqr_lqi_b747.md
                 - PPO vs PID (B747): comparison/ppo_vs_pid_b747.md
                 - DSAC vs PID (B747): comparison/dsac_vs_pid_b747.md
                 - DSAC vs PPO vs MPC vs PID (B747): comparison/all_vs_pid_b747.md
@@ -336,7 +338,7 @@ plugins:
               - "11 — IHDP на нелинейной F-16": cookbook/11_ihdp.md
               - "12 — IM-GDHP на нелинейной F-16": cookbook/12_imgdhp.md
               - "13 — ET-DHP на нелинейной F-16": cookbook/13_etdhp.md
-              - "14 — AA-INDI на нелинейной F-16": cookbook/14_aaindi.md
+              - "14 — AA-INDI на нелинейном B737": cookbook/14_aaindi.md
               - "15 — ET-DHP при повреждении ЛА": cookbook/15_etdhp_damage.md
               - "16 — Интерактивный 3D-просмотрщик F-16": cookbook/16_3d_viewer.md
             - Уроки:
