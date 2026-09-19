@@ -325,3 +325,13 @@ _research/
 !reports/etdhp-b747-step-response.json
 
 !reports/etdhp-b747-tuning-validation.json
+
+# Reproducible iADP paper-conformance oracle.
+!reports/adaptive-paper-conformance-lqr.json
+
+# Reproducible metrics for the published adaptive-controller implementations.
+!reports/adaptive-paper-implementation.json
+
+/outputs/paper-iadp-f16-long-command/
+
+/outputs/paper-iadp-f16-long-aerodynamic/

@@ -18,6 +18,7 @@ def main():
     args.output.parent.mkdir(parents=True, exist_ok=True)
     import json
     import sys
+
     import numpy as np
     from scipy.linalg import solve_discrete_are, solve_discrete_lyapunov
 
@@ -49,48 +50,38 @@ def main():
         0.01,
     ]
     records = []
-    for ridge in [0, 1e-10, 1e-4]:
-        for enforce_psd in [False, True]:
-            a = IADPAgent(
-                4,
-                1,
-                IADPConfig(
-                    Q=np.diag([0, 0, 1, 0]),
-                    R=R,
-                    gamma=gamma,
-                    P_init=fullP,
-                    policy_eval_regularization=ridge,
-                    policy_eval_window=300,
-                    enforce_psd=enforce_psd,
-                ),
-            )
-            for x in states:
-                u = -K @ x
-                xn = F @ x + G @ u
-                X = np.zeros(8)
-                X[idx] = x
-                Xn = np.zeros(8)
-                Xn[idx] = xn
-                a._window.append(dict(X=X, Xnext=Xn, cost=float(x @ Q @ x + u @ R @ u)))
-            features = np.array([np.outer(s["X"], s["X"]).ravel() for s in a._window])
-            a._policy_evaluation()
-            learned = a.P[np.ix_(idx, idx)]
-            kl = np.linalg.solve(
-                R + gamma * G.T @ learned @ G, gamma * G.T @ learned @ F
-            )
-            records.append(
-                dict(
-                    ridge=ridge,
-                    enforce_psd=enforce_psd,
-                    relative_P_error=float(
-                        np.linalg.norm(learned - P) / np.linalg.norm(P)
-                    ),
-                    relative_K_error=float(np.linalg.norm(kl - K) / np.linalg.norm(K)),
-                    physical_closed_loop_radius=float(
-                        max(abs(np.linalg.eigvals(F[:4, :4] - G[:4] @ kl[:, :4])))
-                    ),
-                )
-            )
+    a = IADPAgent(
+        4,
+        1,
+        IADPConfig(
+            Q=np.diag([0, 0, 1, 0]),
+            R=R,
+            gamma=gamma,
+            P_init=fullP,
+            policy_eval_window=300,
+        ),
+    )
+    for x in states:
+        u = -K @ x
+        xn = F @ x + G @ u
+        X = np.zeros(8)
+        X[idx] = x
+        Xn = np.zeros(8)
+        Xn[idx] = xn
+        a._window.append(dict(X=X, Xnext=Xn, cost=float(x @ Q @ x + u @ R @ u)))
+    features = np.array([np.outer(s["X"], s["X"]).ravel() for s in a._window])
+    a._policy_evaluation()
+    learned = a.P[np.ix_(idx, idx)]
+    kl = np.linalg.solve(R + gamma * G.T @ learned @ G, gamma * G.T @ learned @ F)
+    records.append(
+        dict(
+            relative_P_error=float(np.linalg.norm(learned - P) / np.linalg.norm(P)),
+            relative_K_error=float(np.linalg.norm(kl - K) / np.linalg.norm(K)),
+            physical_closed_loop_radius=float(
+                max(abs(np.linalg.eigvals(F[:4, :4] - G[:4] @ kl[:, :4])))
+            ),
+        )
+    )
     result = dict(
         disclaimer="Privileged exact nominal model and synthetic on-policy samples. Algebraic oracle, not flight training.",
         lyapunov_DARE_relative_error=float(

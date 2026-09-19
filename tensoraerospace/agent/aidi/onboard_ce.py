@@ -68,14 +68,14 @@ class F16NonlinearOnboardCE:
     time-scale).
 
     Axis-ordering note: this F-16 codebase stores the body rates in the
-    order ``(wx, wy, wz) = (p, r, q)`` — i.e. ``wy`` is **yaw rate** and
-    ``wz`` is **pitch rate**. The adapter remaps so the returned matrix
+    order ``(wx, wy, wz) = (p, -r, q)``: ``wy`` is the negative conventional
+    yaw rate and ``wz`` is pitch rate. The adapter remaps so the returned matrix
     rows correspond to the conventional ``(p, q, r)`` order expected by
     the AIDI outer loop (CStar/roll/sideslip).
 
     We compute ``G_ij = ∂ω̇_i/∂(deflection_j)`` by central differencing
     ``f16_ode_6dof`` around the operating point: perturb state[8/10/12]
-    in turn, read rows 2/4/3 of the ODE output (= p, q, r). The
+    in turn, read rows 2/4/3 and negate the yaw row (= p, q, r). The
     returned matrix is in the basis ``(p, q, r) × (stab, ail, dir)``.
 
     Args:
@@ -87,7 +87,7 @@ class F16NonlinearOnboardCE:
 
     n_state = 3
     n_control = 3
-    # State indices for (p, q, r) — note this codebase stores wy=r and wz=q.
+    # Native y points up, so conventional body rates are (wx, wz, -wy).
     _RATE_IDX = (2, 4, 3)
     _DEFLECTION_IDX = (8, 10, 12)  # stab, ail, dir actuator positions.
 
@@ -126,4 +126,5 @@ class F16NonlinearOnboardCE:
             f_plus = self._ode(x_plus, u_v, 0.0, self._params)[rate_idx]
             f_minus = self._ode(x_minus, u_v, 0.0, self._params)[rate_idx]
             G[:, j_local] = (f_plus - f_minus) / (2.0 * self._eps)
+        G[2] *= -1.0
         return G

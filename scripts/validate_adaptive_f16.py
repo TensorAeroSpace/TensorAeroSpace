@@ -19,7 +19,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--repo", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
-    parser.add_argument("--agent", choices=["iadp", "aaindi"], required=True)
+    parser.add_argument("--agent", choices=["iadp"], required=True)
     parser.add_argument("--seed", type=int, required=True)
     parser.add_argument("--dt", type=float, default=0.02)
     parser.add_argument("--train-duration", type=float, default=20.0)
@@ -29,15 +29,15 @@ def main():
     import numpy as np
     from scipy.linalg import solve_discrete_are
     from scipy.optimize import root
-    from tensoraerospace.agent.iadp import IADPAgent, IADPConfig
-    from tensoraerospace.agent.aa_indi import AAINDIAgent, AAINDIConfig
-    from tensoraerospace.envs.f16.nonlinear_longitudinal import NonlinearLongitudinalF16
-    from tensoraerospace.aerospacemodel.f16.nonlinear.longitudinal.params import (
-        default_parameters,
-    )
+
     from tensoraerospace.aerospacemodel.f16.nonlinear.longitudinal.dynamics import (
         f16_ode_long,
     )
+    from tensoraerospace.aerospacemodel.f16.nonlinear.longitudinal.params import (
+        default_parameters,
+    )
+    from tensoraerospace.agent.iadp import IADPAgent, IADPConfig
+    from tensoraerospace.envs.f16.nonlinear_longitudinal import NonlinearLongitudinalF16
 
     dt = args.dt
     params = default_parameters()
@@ -64,60 +64,36 @@ def main():
 
     g = derivative(2) * np.pi / 180
     factor = float(np.random.default_rng(args.seed).uniform(0.8, 1.2))
-    if args.agent == "iadp":
-        F = np.diag([1 + dt * derivative(1), 1.0])
-        G = np.array([[dt * g * factor], [0.0]])
-        R = np.array([[(abs(g) / 20) ** 2]])
-        P = solve_discrete_are(
-            np.sqrt(0.99) * F,
-            np.sqrt(0.99) * G,
-            np.array([[1.0, -1.0], [-1.0, 1.0]]),
-            R,
-        )
-        agent = IADPAgent(
-            1,
-            1,
-            IADPConfig(
-                dt=dt,
-                F_init=F,
-                G_init=G,
-                P_init=P,
-                Q=np.eye(1),
-                R=R,
-                gamma=0.99,
-                gamma_rls=0.9995,
-                phi_init=1e3,
-                policy_eval_window=300,
-                policy_eval_every=20,
-                policy_eval_warmup_updates=40,
-                policy_eval_regularization=1e-10,
-                policy_eval_blend=0.1,
-                u_magnitude_limit=10,
-                u_rate_limit=60,
-                seed=args.seed,
-            ),
-        )
-    else:
-        agent = AAINDIAgent(
-            1,
-            1,
-            AAINDIConfig(
-                dt=dt,
-                G_init=np.array([[g * factor]]),
-                ref_wn=2.5,
-                ref_zeta=0.9,
-                ref_error_kp=0.6,
-                sensor_cutoff_hz=2,
-                vff_cov_init=1e3,
-                vff_forgetting_min=0.98,
-                vff_forgetting_max=0.9995,
-                vff_eps_sensitivity=0.01,
-                enable_bias_correction=False,
-                u_magnitude_limit=10,
-                u_rate_limit=60,
-                seed=args.seed,
-            ),
-        )
+    F = np.diag([1 + dt * derivative(1), 1.0])
+    G = np.array([[dt * g * factor], [0.0]])
+    R = np.array([[(abs(g) / 20) ** 2]])
+    P = solve_discrete_are(
+        np.sqrt(0.99) * F,
+        np.sqrt(0.99) * G,
+        np.array([[1.0, -1.0], [-1.0, 1.0]]),
+        R,
+    )
+    agent = IADPAgent(
+        1,
+        1,
+        IADPConfig(
+            dt=dt,
+            F_init=F,
+            G_init=G,
+            P_init=P,
+            Q=np.eye(1),
+            R=R,
+            gamma=0.99,
+            gamma_rls=0.9995,
+            phi_init=1e3,
+            policy_eval_window=300,
+            policy_eval_every=20,
+            policy_eval_warmup_updates=40,
+            u_magnitude_limit=10,
+            u_rate_limit=60,
+            seed=args.seed,
+        ),
+    )
     feedback = "applied_action" in inspect.signature(agent.learn).parameters
 
     def rollout(controller, fault, adapting, duration, phase):

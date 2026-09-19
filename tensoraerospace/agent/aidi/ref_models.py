@@ -179,7 +179,9 @@ class SpeedController:
 class LinearController:
     """Combine the outer-loop desired rates into a virtual-control vector.
 
-    ``ν = ω_des + K_p ⊙ (ω_des − ω)``. With ``K_p = 0`` this is a passthrough.
+    ``ν = K_p ⊙ (ω_des − ω)`` with gains in s⁻¹. The INDI plant
+    behaves as a rate integrator (Ul Haq §III.B), so its virtual input must
+    be an acceleration, not the desired rate itself.
     """
 
     def __init__(
@@ -188,7 +190,7 @@ class LinearController:
         n_y: int = 3,
     ) -> None:
         if rate_kp is None:
-            rate_kp = np.zeros(n_y, dtype=np.float64)
+            rate_kp = np.ones(n_y, dtype=np.float64)
         rate_kp = np.asarray(rate_kp, dtype=np.float64).reshape(-1)
         self.rate_kp = rate_kp
 
@@ -199,4 +201,4 @@ class LinearController:
     ) -> np.ndarray:
         omega_des = np.asarray(omega_des, dtype=np.float64).reshape(-1)
         omega = np.asarray(omega, dtype=np.float64).reshape(-1)
-        return omega_des + self.rate_kp * (omega_des - omega)
+        return self.rate_kp * (omega_des - omega)

@@ -25,18 +25,15 @@ from typing import Sequence
 import numpy as np
 from scipy.optimize import fsolve
 
+from tensoraerospace.aerospacemodel.f16.nonlinear.angular.dynamics import (
+    f16_ode_6dof,
+)
 from tensoraerospace.aerospacemodel.f16.nonlinear.angular.params import (
     default_parameters as default_angular_parameters,
 )
 from tensoraerospace.aerospacemodel.f16.nonlinear.damage.aidi_presets import (
     rudder_total_loss,
     stab_efficiency_step,
-)
-from tensoraerospace.aerospacemodel.f16.nonlinear.longitudinal.dynamics import (
-    f16_ode_long,
-)
-from tensoraerospace.aerospacemodel.f16.nonlinear.longitudinal.params import (
-    default_parameters as default_longitudinal_parameters,
 )
 from tensoraerospace.agent.aidi import AIDIAgent, AIDIConfig, F16NonlinearOnboardCE
 
@@ -50,58 +47,44 @@ SCENARIOS = {
 
 
 def _solve_trim() -> tuple[float, float]:
-    params = default_longitudinal_parameters()
+    params = default_angular_parameters()
 
     def trim_residual(z):
         alpha, stab = z
-        x = np.array([alpha, 0.0, stab, 0.0])
-        return list(f16_ode_long(x, np.array([stab]), 0.0, params)[:2])
+        x = np.zeros(14)
+        x[0] = x[7] = alpha
+        x[8] = stab
+        return f16_ode_6dof(x, np.array([stab, 0.0, 0.0]), 0.0, params)[[0, 4]]
 
     sol, _info, ier, _msg = fsolve(
         trim_residual,
         x0=[math.radians(2.0), math.radians(-2.0)],
         full_output=True,
     )
-    if ier != 1:
+    if ier != 1 or np.max(np.abs(trim_residual(sol))) > 1e-8:
         raise RuntimeError("F-16 trim solver did not converge")
     return float(sol[0]), float(sol[1])
 
 
 def _build_agent(method: str) -> AIDIAgent:
-    if method == "adaptive":
-        cfg = AIDIConfig(
-            dt=0.01,
-            u_magnitude_limit=math.radians(20.0),
-            u_rate_limit=math.radians(60.0),
-            rls_lambda_min=0.7,
-            rls_lambda_max=0.999,
-            rls_cov_init=10.0,
-            cstar_kp=0.5,
-            cstar_ki=0.2,
-            roll_omega_n=1.5,
-            roll_zeta=0.8,
-            sideslip_kp=0.5,
-            sideslip_ki=0.05,
-            seed=0,
-        )
-    elif method == "frozen":
-        cfg = AIDIConfig(
-            dt=0.01,
-            u_magnitude_limit=math.radians(20.0),
-            u_rate_limit=math.radians(60.0),
-            rls_lambda_min=0.999,
-            rls_lambda_max=0.9999,
-            rls_cov_init=10.0,
-            cstar_kp=0.5,
-            cstar_ki=0.2,
-            roll_omega_n=1.5,
-            roll_zeta=0.8,
-            sideslip_kp=0.5,
-            sideslip_ki=0.05,
-            seed=0,
-        )
-    else:
+    if method not in {"adaptive", "frozen"}:
         raise ValueError(f"unknown method: {method}")
+    # Identical controller/identifier settings: only learn(adapt=...) differs.
+    cfg = AIDIConfig(
+        dt=0.01,
+        u_magnitude_limit=math.radians(20.0),
+        u_rate_limit=math.radians(60.0),
+        rls_lambda_min=0.7,
+        rls_lambda_max=0.999,
+        rls_cov_init=10.0,
+        cstar_kp=0.5,
+        cstar_ki=0.2,
+        roll_omega_n=1.5,
+        roll_zeta=0.8,
+        sideslip_kp=0.5,
+        sideslip_ki=0.05,
+        seed=0,
+    )
     return AIDIAgent(
         n_state=3,
         n_control=3,
@@ -119,52 +102,78 @@ def _run_episode(
 ) -> dict[str, float]:
     from tensoraerospace.envs.f16.nonlinear_angular import NonlinearAngularF16
 
+    if n_steps < 200:
+        raise ValueError("at least 200 steps are needed for the 2 s RMSE warmup")
     agent = _build_agent(method)
     profile = SCENARIOS[scenario_name]()
     initial_state = np.zeros(14)
-    initial_state[0] = alpha_trim
+    initial_state[0] = initial_state[7] = alpha_trim
     initial_state[8] = stab_trim
     env = NonlinearAngularF16(
         initial_state=initial_state,
         number_time_steps=n_steps + 2,
         dt=0.01,
         integrator="rk4",
-        airspeed=200.0,
+        airspeed=default_angular_parameters().V,
         damage_profile=profile,
     )
     obs_arr, _ = env.reset()
+    model = env.model
+    if model is None:
+        raise RuntimeError("reset did not initialize the aircraft model")
+    agent.reset(initial_action=obs_arr[[8, 10, 12]])
     rmse_p_sq = rmse_q_sq = rmse_r_sq = 0.0
     n = 0
     for k in range(n_steps):
         observation = {
-            "omega": np.array([obs_arr[2], obs_arr[4], obs_arr[3]]),
+            "omega": np.array([obs_arr[2], obs_arr[4], -obs_arr[3]]),
             "alpha": float(obs_arr[0]),
             "beta": float(obs_arr[1]),
             "theta": float(obs_arr[7]),
             "phi": float(obs_arr[5]),
-            "V": float(env.airspeed),
+            "V": float(model.param.V),
             "state": obs_arr.copy(),
         }
-        refs = {"C_star": 1.0, "phi_cmd": 0.0, "beta_cmd": 0.0, "V_cmd": 200.0}
+        refs = {
+            "C_star": 1.0,
+            "phi_cmd": 0.0,
+            "beta_cmd": 0.0,
+            "V_cmd": float(model.param.V),
+        }
         u_rad = agent.predict(observation, references=refs, time_step=k)
-        obs_arr, _r, _term, _trunc, _info = env.step(np.rad2deg(u_rad))
+        previous_actuators = obs_arr[[8, 10, 12]].copy()
+        obs_arr, _r, terminated, truncated, _info = env.step(np.rad2deg(u_rad))
+        if not np.all(np.isfinite(obs_arr)):
+            raise RuntimeError(f"non-finite state at step {k + 1}")
+        if (terminated or truncated) and k + 1 < n_steps:
+            raise RuntimeError(
+                f"episode ended before requested horizon at step {k + 1}"
+            )
         next_obs = {
-            "omega": np.array([obs_arr[2], obs_arr[4], obs_arr[3]]),
+            "omega": np.array([obs_arr[2], obs_arr[4], -obs_arr[3]]),
             "alpha": float(obs_arr[0]),
             "beta": float(obs_arr[1]),
             "theta": float(obs_arr[7]),
             "phi": float(obs_arr[5]),
-            "V": float(env.airspeed),
+            "V": float(model.param.V),
             "state": obs_arr.copy(),
         }
-        agent.learn(next_obs, references=refs, time_step=k)
+        # A rate difference measures mean acceleration over the interval.
+        # Trapezoidal servo feedback approximates the matching mean deflection.
+        applied = 0.5 * (previous_actuators + obs_arr[[8, 10, 12]])
+        agent.learn(
+            next_obs,
+            references=refs,
+            time_step=k,
+            applied_action=applied,
+            adapt=method == "adaptive",
+        )
         # Skip the first 2s of transient before sampling RMSE.
-        if k * env.dt >= 2.0:
+        if (k + 1) * env.dt >= 2.0:
             rmse_p_sq += float(obs_arr[2] ** 2)
             rmse_q_sq += float(obs_arr[4] ** 2)  # wz = q.
-            rmse_r_sq += float(obs_arr[3] ** 2)  # wy = r.
+            rmse_r_sq += float(obs_arr[3] ** 2)  # wy = -r (squaring removes the sign).
             n += 1
-    n = max(n, 1)
     return {
         "p": math.sqrt(rmse_p_sq / n),
         "q": math.sqrt(rmse_q_sq / n),
@@ -176,6 +185,13 @@ def _emit(rows: list[dict], out_md: Path, out_csv: Path | None) -> None:
     cols = ["method", "scenario", "p_rmse", "q_rmse", "r_rmse"]
     with open(out_md, "w", encoding="utf-8") as f:
         f.write("# AIDI benchmark report\n\n")
+        f.write(
+            "Body-rate RMSE (rad/s), sampled from t = 2 s. "
+            "These are rate-hold metrics, not a full tracking/stability assessment. "
+            "Frozen disables identification for the entire episode. "
+            "Stab scenario suffixes specify remaining command effectiveness; "
+            "they do not scale aerodynamic coefficients.\n\n"
+        )
         f.write("| " + " | ".join(cols) + " |\n")
         f.write("|" + "|".join(["---"] * len(cols)) + "|\n")
         for r in rows:
@@ -210,11 +226,19 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--csv", default=None)
     args = parser.parse_args(argv)
 
+    if args.episodes < 1 or args.steps < 200:
+        parser.error("episodes must be positive and steps must be at least 200")
+
     if args.env != "f16_nonlinear_angular":
         raise SystemExit(f"unsupported env: {args.env}")
 
     methods = ["adaptive"] + [b.strip() for b in args.baselines.split(",") if b.strip()]
     scenarios = [s.strip() for s in args.scenarios.split(",") if s.strip()]
+    if not scenarios:
+        parser.error("at least one scenario is required")
+    for method in methods:
+        if method not in {"adaptive", "frozen"}:
+            parser.error(f"unknown method: {method}")
     for s in scenarios:
         if s not in SCENARIOS:
             raise SystemExit(f"unknown scenario: {s}")
@@ -234,7 +258,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                 )
                 for k in agg:
                     agg[k] += ep[k]
-            n = max(args.episodes, 1)
+            n = args.episodes
             rows.append(
                 {
                     "method": method,
