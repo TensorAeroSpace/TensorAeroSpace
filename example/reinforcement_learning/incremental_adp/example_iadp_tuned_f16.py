@@ -67,12 +67,23 @@ def make_agent(cfg, tuning):
         settings.F_init, settings.G_init = F, G
     settings.Q = Q
     Q_aug = np.block([[Q, -Q], [-Q, Q]])
-    settings.P_init = solve_discrete_are(
-        np.sqrt(settings.gamma) * settings.F_init,
-        np.sqrt(settings.gamma) * settings.G_init,
+    F_prior, G_prior = settings.F_init, settings.G_init
+    lift = np.eye(2 * n_state)
+    if integral:
+        # The shared offset of z and z_ref has exactly zero cost. Solve in
+        # [q, z - z_ref, q_ref] and lift back to the full agent coordinates.
+        # This preserves the same dynamics/cost without asking the Riccati
+        # solver to recover a null eigenvalue to machine precision.
+        lift = np.array([[1, 0, 0, 0], [0, 1, 0, -1], [0, 0, 1, 0]])
+        F_prior, G_prior = F_prior[:3, :3], G_prior[:3]
+        Q_aug = Q_aug[:3, :3]
+    P_prior = solve_discrete_are(
+        np.sqrt(settings.gamma) * F_prior,
+        np.sqrt(settings.gamma) * G_prior,
         Q_aug,
         settings.R,
     )
+    settings.P_init = lift.T @ P_prior @ lift
     return initial_state, IADPAgent(n_state, 1, settings), trim
 
 
