@@ -220,8 +220,7 @@ PID and 88.34 s for LQI**. Standard LQR retains a nonzero offset. Thus, “not r
 in the 90 s run does not imply that PID or LQI diverged. Inspect the full trajectory
 and the required horizon before drawing that conclusion.
 
-The [saved validation report](https://github.com/TensorAeroSpace/TensorAeroSpace/blob/develop/reports/aaindi-b747-engine-loss.md)
-contains the separately executed extended runs and physical regression checks.
+Set `RUN_EXTENDED_VALIDATION=True` above to recompute the extended cases through the SDK and inspect their metrics locally.
 
 ## 7. Extend the experiment to other kinds of failure
 

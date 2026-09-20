@@ -17,7 +17,7 @@ from tensoraerospace.agent.iadp import IADPAgent
 def test_validation_reuses_same_timestamp_observation(
     monkeypatch, tmp_path, kind, agent_type, plant
 ):
-    path = Path(__file__).resolve().parents[2] / "scripts/validate_adaptive_tracking.py"
+    path = Path(__file__).with_name("_adaptive_validation.py")
     spec = importlib.util.spec_from_file_location("adaptive_validator", path)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
@@ -51,7 +51,7 @@ def test_validation_reuses_same_timestamp_observation(
         [
             str(path),
             "--repo",
-            str(path.parents[1]),
+            str(path.parents[2]),
             "--output",
             str(tmp_path / "result.json"),
             "--agent",
@@ -80,7 +80,7 @@ def test_validation_reuses_same_timestamp_observation(
 
 
 def test_public_b747_observation_preserves_velocity_units():
-    path = Path(__file__).resolve().parents[2] / "scripts/validate_adaptive_tracking.py"
+    path = Path(__file__).with_name("_adaptive_validation.py")
     spec = importlib.util.spec_from_file_location("adaptive_validator_units", path)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
@@ -93,7 +93,7 @@ def test_public_b747_observation_preserves_velocity_units():
 @pytest.mark.parametrize("dt", [0.005, 0.02, 0.1])
 @pytest.mark.parametrize("phase", [0.2, 0.7, 1.3])
 def test_oscillator_reference_obeys_autonomous_transition(dt, phase):
-    path = Path(__file__).resolve().parents[2] / "scripts/validate_adaptive_tracking.py"
+    path = Path(__file__).with_name("_adaptive_validation.py")
     spec = importlib.util.spec_from_file_location("adaptive_reference", path)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)

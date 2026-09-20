@@ -77,7 +77,7 @@ The agent keeps the same save/load/Hugging-Face round-trip API as `aa_indi`/`et_
 
 New checkpoints preserve synchronized filter history and pending transitions. Legacy checkpoints retain learned parameters but reinitialize measurement history. They cannot exactly replay the old, incorrect rate loop or yaw convention.
 
-Reproducible multi-axis and long-horizon checks are available in `scripts/validate_aidi_measurements.py`. Inspect completion status and attitude bounds together with tracking errors; a finite identifier alone does not establish stability.
+Use the public SDK benchmark CLI below for multi-axis body-rate checks. Inspect completion status and attitude bounds together with tracking errors; a finite identifier alone does not establish stability.
 
 ## Worked example
 

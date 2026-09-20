@@ -12,7 +12,6 @@
 
 [Выполненный ноутбук](https://github.com/TensorAeroSpace/TensorAeroSpace/blob/develop/example/reinforcement_learning/incremental_adp/example_aaindi_vs_pid_lqr_b747.ipynb)
 · [Код регуляторов и моделирования](https://github.com/TensorAeroSpace/TensorAeroSpace/blob/develop/tensoraerospace/benchmark/engine_failure.py)
-· [Отчёт о проверках](https://github.com/TensorAeroSpace/TensorAeroSpace/blob/develop/reports/aaindi-b747-engine-loss.md)
 
 ## Сценарий и заданные сигналы
 
