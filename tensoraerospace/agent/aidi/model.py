@@ -33,6 +33,8 @@ from typing import Any, Dict, Optional, Union
 
 import numpy as np
 
+from tensoraerospace.optimization.agent import OptimizableAgent
+
 from .allocator import MoorePenroseAllocator
 from .onboard_ce import OnboardCEModel
 from .pch import PseudoControlHedge
@@ -123,7 +125,7 @@ def _clamp(x: np.ndarray, lo: float | np.ndarray, hi: float | np.ndarray) -> np.
     return np.clip(x, lo, hi)
 
 
-class AIDIAgent:
+class AIDIAgent(OptimizableAgent):
     """Adaptive Incremental Dynamic Inversion control agent."""
 
     def __init__(
@@ -363,6 +365,35 @@ class AIDIAgent:
             V=float(observation["V"]),
         )
         omega_des = np.array([p_des, q_des, r_des], dtype=np.float64)
+        return self._command_from_rates(observation, omega_des)
+
+    def predict_rates(self, observation: dict, desired_rates: np.ndarray) -> np.ndarray:
+        """Native AIDI inner loop with an externally supplied body-rate command.
+
+        Rates use conventional (p, q, r) in rad/s. This application boundary
+        bypasses C*/roll/sideslip guidance; the same allocator, filtered input
+        baseline, limits and online ScalingRLS are used. Call learn after step.
+        """
+        self._check_obs(observation)
+        omega = np.asarray(observation["omega"], dtype=float).reshape(-1)
+        desired = np.asarray(desired_rates, dtype=float).reshape(-1)
+        if (
+            omega.shape != (self.n_state,)
+            or desired.shape != omega.shape
+            or not np.isfinite([omega, desired]).all()
+        ):
+            raise ValueError(
+                "Measured and desired rates must be finite n_state vectors"
+            )
+        if self.deriv._prev_x is None:
+            self.deriv.step(omega)
+        return self._command_from_rates(observation, desired)
+
+    def _command_from_rates(
+        self, observation: dict, omega_des: np.ndarray
+    ) -> np.ndarray:
+        omega = np.asarray(observation["omega"], dtype=float).reshape(-1)
+        omega_dot_meas = self._omega_dot_cached.copy()
         nu_des = self.linear.combine(omega_des=omega_des, omega=omega)
 
         # Inner loop — AIDI law.

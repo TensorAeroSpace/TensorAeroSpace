@@ -21,6 +21,8 @@ import numpy as np
 import torch
 from torch import nn, optim
 
+from tensoraerospace.optimization.agent import OptimizableAgent
+
 from .incremental_model import IncrementalModelRLS
 from .networks import GDHPActor, GDHPCritic
 
@@ -84,7 +86,7 @@ class IMGDHPConfig:
     history: dict = field(default_factory=dict)
 
 
-class IMGDHPAgent:
+class IMGDHPAgent(OptimizableAgent):
     """Online error-feedback IGDHP, with predict/step/learn interaction.
 
     ``n_obs`` describes the environment packet. Only ``tracking_indices``

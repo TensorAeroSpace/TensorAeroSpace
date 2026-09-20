@@ -51,12 +51,14 @@ class HyperParamOptimizationBase(ABC):
 class HyperParamOptimizationOptuna(HyperParamOptimizationBase):
     """Hyperparameter optimization using Optuna."""
 
-    def __init__(self, direction: str) -> None:
+    def __init__(self, direction: str = "minimize", **study_options: Any) -> None:
         """Create an Optuna study for hyperparameter optimization.
 
         Args:
             direction: Optimization direction. One of ``'minimize'`` or
                 ``'maximize'``.
+            **study_options: Options for optuna.create_study, e.g. sampler,
+                pruner, storage, study_name and load_if_exists.
 
         Raises:
             ValueError: If ``direction`` is not supported.
@@ -64,16 +66,20 @@ class HyperParamOptimizationOptuna(HyperParamOptimizationBase):
         super().__init__()
         if direction not in ["minimize", "maximize"]:
             raise ValueError("direction must be 'minimize' or 'maximize'")
-        self.study = optuna.create_study(direction=direction)
+        self.study = optuna.create_study(direction=direction, **study_options)
 
-    def run_optimization(self, func: Callable, n_trials: int) -> None:
+    def run_optimization(
+        self, func: Callable, n_trials: int, **optimize_options: Any
+    ) -> None:
         """Run hyperparameter search.
 
         Args:
             func: Objective function to optimize.
             n_trials: Number of trials to run.
+            **optimize_options: Options for study.optimize, e.g. timeout,
+                callbacks and show_progress_bar.
         """
-        self.study.optimize(func, n_trials=n_trials)
+        self.study.optimize(func, n_trials=n_trials, **optimize_options)
 
     def get_best_param(self) -> dict[str, Any]:
         """Return the best hyperparameters found by Optuna.

@@ -23,6 +23,8 @@ import torch
 import torch.nn as nn
 from tqdm import tqdm
 
+from tensoraerospace.optimization.agent import OptimizableAgent
+
 from ..base import (
     BaseRLModel,
     TheEnvironmentDoesNotMatch,
@@ -259,7 +261,7 @@ def _to_1d(x: TensorLike, *, dtype: torch.dtype, device: torch.device) -> torch.
     return xt.reshape(-1)
 
 
-class MPC:
+class MPC(OptimizableAgent):
     """Projected-gradient MPC over a differentiable dynamics model.
 
     This solver optimizes a control sequence U using torch/autograd and applies

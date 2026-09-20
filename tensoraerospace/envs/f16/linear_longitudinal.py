@@ -25,6 +25,7 @@ class LinearLongitudinalF16(gym.Env):
         initial_state: Initial state.
         reference_signal: Reference signal.
         number_time_steps: Number of simulation steps.
+        dt: Integration step in seconds; forwarded on construction and reset.
         tracking_states: Tracked states.
         state_space: State space.
         control_space: Control space.
@@ -45,6 +46,7 @@ class LinearLongitudinalF16(gym.Env):
             Callable[[np.ndarray, np.ndarray, int], np.ndarray | float] | None
         ) = None,
         use_reward: bool = True,
+        dt: float = 0.01,
     ) -> None:
         """Initialize LinearLongitudinalF16 environment.
 
@@ -61,6 +63,9 @@ class LinearLongitudinalF16(gym.Env):
         """
         super(LinearLongitudinalF16, self).__init__()
 
+        if not np.isfinite(dt) or dt <= 0:
+            raise ValueError("dt must be finite and positive")
+        self.dt = float(dt)
         self.max_action_value = 25.0
         self.initial_state = initial_state
         self.reference_signal = reference_signal
@@ -84,6 +89,7 @@ class LinearLongitudinalF16(gym.Env):
             model_x0,
             number_time_steps=number_time_steps,
             selected_state_output=self.state_space,
+            dt=self.dt,
         )
 
         self.indices_tracking_states = [
@@ -216,6 +222,7 @@ class LinearLongitudinalF16(gym.Env):
             model_x0,
             number_time_steps=self.number_time_steps,
             selected_state_output=self.state_space,
+            dt=self.dt,
         )
         info = self._get_info()
 

@@ -102,3 +102,28 @@ def test_aidi_agent_n_z_reconstruction_when_missing():
     obs_with_nz["n_z"] = 1.5
     u2 = agent.predict(obs_with_nz, references=_refs(), time_step=0)
     assert u2.shape == (3,)
+
+
+def test_rate_command_boundary_matches_same_native_inner_loop(monkeypatch):
+    a = AIDIAgent(3, 3, _toy_onboard_ce(), AIDIConfig(dt=0.01))
+    b = AIDIAgent(3, 3, _toy_onboard_ce(), AIDIConfig(dt=0.01))
+    desired = np.array([0.03, 0.02, -0.01])
+    monkeypatch.setattr(a.roll_ref, "step", lambda **kwargs: desired[0])
+    monkeypatch.setattr(a.cstar, "step", lambda **kwargs: desired[1])
+    monkeypatch.setattr(a.sideslip, "step", lambda **kwargs: desired[2])
+    for k in range(4):
+        obs = _make_obs(p=0.001 * k, q=0.002 * k)
+        np.testing.assert_array_equal(
+            a.predict(obs, _refs()), b.predict_rates(obs, desired)
+        )
+        following = _make_obs(p=0.001 * (k + 1), q=0.002 * (k + 1))
+        a.learn(following, _refs())
+        b.learn(following, {})
+        np.testing.assert_array_equal(a.rls.theta, b.rls.theta)
+
+
+@pytest.mark.parametrize("rates", [[0.0, 0.0], [0.0, float("nan"), 0.0]])
+def test_rate_command_boundary_validates_vector(rates):
+    agent = AIDIAgent(3, 3, _toy_onboard_ce())
+    with pytest.raises(ValueError, match="finite n_state"):
+        agent.predict_rates(_make_obs(), rates)

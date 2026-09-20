@@ -161,7 +161,7 @@ def test_agent_last_action_tracks_predict_between_triggers():
     agent = _make_agent()
     obs = np.array([0.1, 0.0])
     agent.reset()
-    a = agent.predict(obs, None, 0)
+    agent.predict(obs, None, 0)
     agent.learn(obs + 1e-6, None, 0, dt=0.01)
     assert agent.last_action().shape == (1,)
     # After a non-trigger step, last_action should be unchanged relative to
@@ -179,3 +179,15 @@ def test_agent_reset_rearms_trigger():
     assert agent.event_trigger.num_triggers == 1
     agent.reset()
     assert agent.event_trigger.num_triggers == 0
+
+
+def test_online_identifier_uses_applied_action_feedback(monkeypatch):
+    agent = _make_agent(online_model_fit=True)
+    fitted = []
+    monkeypatch.setattr(
+        agent, "fit_plant_model", lambda x, u, y, **kw: fitted.append(u.copy())
+    )
+    monkeypatch.setattr(agent.event_trigger, "should_trigger", lambda *a: True)
+    agent.predict(np.array([0.1, 0.0]))
+    agent.learn(np.array([0.2, 0.0]), applied_action=np.array([0.123]))
+    np.testing.assert_array_equal(fitted[0], [[0.123]])

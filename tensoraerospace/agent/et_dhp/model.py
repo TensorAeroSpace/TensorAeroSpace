@@ -43,6 +43,8 @@ import numpy as np
 import torch
 from torch import nn, optim
 
+from tensoraerospace.optimization.agent import OptimizableAgent
+
 from ..metrics import MetricWriter, create_metric_writer, schema
 from .event_trigger import EventTrigger
 from .networks import ETDHPActor, ETDHPCritic, PlantModelNN
@@ -163,7 +165,7 @@ def _jacobians_per_output(
     return jacs
 
 
-class ETDHPAgent:
+class ETDHPAgent(OptimizableAgent):
     """Event-triggered DHP agent with bounded actor and costate critic.
 
     The agent operates on a **regulation state** ``x̃`` — typically the
@@ -444,6 +446,7 @@ class ETDHPAgent:
         time_step: int = 0,
         *,
         dt: float = 1.0,
+        applied_action: np.ndarray | None = None,
     ) -> dict[str, float]:
         """Run the event-triggered update step.
 
@@ -460,6 +463,10 @@ class ETDHPAgent:
                 (same index that was passed to :meth:`predict`).
             dt: Simulation step (s). Used only to advance the internal
                 wall-clock that ``cfg.exploration_fn`` receives.
+            applied_action: Actual input used by the plant for this transition.
+                Optional actuator feedback for online plant-model fitting;
+                defaults to the requested action. It does not change the held
+                policy command between events.
 
         Returns:
             Dictionary of scalar metrics: ``triggered`` (1/0),
@@ -469,6 +476,14 @@ class ETDHPAgent:
         if self._transition_state is None:
             raise RuntimeError("learn() requires predict() for the current transition")
         x_measured = self.obs_to_state(next_obs, reference_signal, time_step + 1)
+        transition_action = self._last_action.copy()
+        if applied_action is not None:
+            transition_action = np.asarray(applied_action, dtype=float).reshape(-1)
+            if (
+                transition_action.shape != (self.n_control,)
+                or not np.isfinite(transition_action).all()
+            ):
+                raise ValueError("applied_action must be a finite n_control vector")
         transition_state = self._transition_state
         self._transition_state = None
 
@@ -493,7 +508,7 @@ class ETDHPAgent:
             # Fit the actual latest transition, not the older trigger state.
             self.fit_plant_model(
                 transition_state.reshape(1, -1),
-                self._last_action.reshape(1, -1),
+                transition_action.reshape(1, -1),
                 x_measured.reshape(1, -1),
                 batch_size=1,
                 epochs=1,

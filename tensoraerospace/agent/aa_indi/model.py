@@ -16,6 +16,8 @@ from pathlib import Path
 
 import numpy as np
 
+from tensoraerospace.optimization.agent import OptimizableAgent
+
 from .kinematics import FlightMeasurement
 from .moments import AircraftGeometry, MomentIdentifier
 from .observer import ObserverConfig, OTSEKFHOSMObserver
@@ -65,7 +67,7 @@ class AAINDIConfig:
                 raise ValueError(f"{name} must be finite and positive")
 
 
-class AAINDIAgent:
+class AAINDIAgent(OptimizableAgent):
     """Published inner-loop architecture with explicit physical sensor inputs.
 
     Online adaptation and fault reconstruction remain enabled throughout an

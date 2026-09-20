@@ -53,6 +53,8 @@ from typing import Any, Optional, Union, cast
 
 import numpy as np
 
+from tensoraerospace.optimization.agent import OptimizableAgent
+
 from .rls import IncrementalRLS
 
 
@@ -191,7 +193,7 @@ def _validate_cost_weight(weight: np.ndarray, name: str) -> np.ndarray:
     return symmetric
 
 
-class IADPAgent:
+class IADPAgent(OptimizableAgent):
     """Incremental Approximate Dynamic Programming control agent.
 
     The agent tracks a user-supplied reference on the observed state and

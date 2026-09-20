@@ -12,12 +12,14 @@ from typing import Any, Optional, Union
 import numpy as np
 import torch
 
+from tensoraerospace.optimization.agent import OptimizableAgent
+
 from .Actor import Actor
 from .Critic import Critic
 from .Incremental_model import IncrementalModel
 
 
-class IHDPAgent(object):
+class IHDPAgent(OptimizableAgent):
     """IHDP Control Agent.
 
     Args:
