@@ -340,3 +340,12 @@ _research/
 !reports/ihdp-imgdhp-paper-audit.json
 !reports/ihdp-imgdhp-tuning-trials.json
 !reports/ihdp-imgdhp-alpha-training-trials.json
+
+# Reproducible controller searches and linked validation data.
+!reports/adaptive-controller-optimization.json
+!reports/adaptive-controller-iadp-search.txt
+!reports/declarative-controller-tuning.json
+!reports/controller-parameter-audit.json
+!reports/controller-parameter-search.json
+!reports/controller-search-speed.json
+!reports/controller-search-continuation.json

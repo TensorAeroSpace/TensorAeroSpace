@@ -1,5 +1,7 @@
 # Recipe 07 — Hyperparameter search with Optuna
 
+For adaptive agents and CPI with accuracy constraints, see the [complete AA-INDI tuning tutorial](../example/optimization/example_optimization.md) and [shared optimization API](../optimization/optuna_based.md). This recipe retains the low-level PID interface.
+
 Tune PID gains end-to-end: define an objective (late-window RMSE), run 25 Optuna trials, retrieve the best gains, plot the history.
 
 Source notebook: [`example/cookbook/recipe_07_optuna.ipynb`](https://github.com/TensorAeroSpace/TensorAeroSpace/blob/develop/example/cookbook/recipe_07_optuna.ipynb).
@@ -93,7 +95,7 @@ Best gains:
 Best RMSE:  0.00004 rad (0.0020 deg)
 ```
 
-25 trials is plenty for 3 roughly-convex PID parameters. The Optuna default `TPESampler` converges on the minimum basin within ~15 trials.
+The necessary budget depends on parameter bounds, noise and the control problem. These illustrative results do not guarantee convergence within a fixed number of trials.
 
 ## Step 4 — Plot the search history
 
@@ -151,7 +153,7 @@ plt.tight_layout(); plt.show()
 ## Variants worth exploring
 
 - **Add a pruner.** `optuna.pruners.MedianPruner` cuts obviously-bad trials early. Attach via `opt.study = optuna.create_study(..., pruner=MedianPruner())`.
-- **Parallel workers.** Use a shared `sqlite://` storage to run several trial workers concurrently.
+- **Parallel workers.** Use a shared PostgreSQL study for independent process workers. Reserve SQLite for local serial searches.
 - **Multi-objective.** Return a tuple `(rmse, control_effort)` and pick from the Pareto frontier.
 
 ## Where to go next

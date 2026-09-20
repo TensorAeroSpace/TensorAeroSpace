@@ -1,0 +1,1858 @@
+{
+  "annealing": {
+    "best_params": {
+      "rate_gain": 2.8561394539255787,
+      "cutoff_hz": 9.122522379036573
+    },
+    "best_value": 3.4141495318419532,
+    "best_trial_number": 10,
+    "protocol": {
+      "version": 1,
+      "experiment_id": null,
+      "space": {
+        "rate_gain": "{\"name\": \"FloatDistribution\", \"attributes\": {\"step\": null, \"low\": 1.0, \"high\": 12.0, \"log\": true}}",
+        "cutoff_hz": "{\"name\": \"FloatDistribution\", \"attributes\": {\"step\": null, \"low\": 2.0, \"high\": 15.0, \"log\": true}}"
+      },
+      "metric": "cpi",
+      "constraints": {
+        "relative_tail_max_error": 0.02,
+        "pre_step_relative_error": 0.02,
+        "command_settling_time": 12.0
+      },
+      "seeds": [
+        0
+      ],
+      "scenarios": [
+        "default"
+      ],
+      "aggregation": "mean"
+    },
+    "trials": [
+      {
+        "number": 0,
+        "state": "COMPLETE",
+        "value": 3.4763775629196716,
+        "params": {
+          "rate_gain": 3.0,
+          "cutoff_hz": 5.0
+        },
+        "details": {
+          "initial_params": true,
+          "evaluations": [
+            {
+              "scenario": "default",
+              "seed": 0,
+              "metrics": {
+                "overshoot": 0.018217945939850162,
+                "settling_time": 7.72,
+                "damping_degree": 0.0,
+                "static_error": 0.0003038041851461948,
+                "rise_time": 5.48,
+                "peak_time": 20.0,
+                "maximum_deviation": 1.0003789259819633,
+                "iae": 2.85878084572733,
+                "ise": 1.6139871375941703,
+                "itae": 7.067847796735082,
+                "oscillation_count": 0.0,
+                "steady_state_value": 1.0,
+                "performance_index": 3.4763775629196716,
+                "command_settling_time": 7.74,
+                "command_overshoot": 0.0,
+                "tail_error": 6.752771779093978e-06,
+                "tail_max_error": 1.0883836126202723e-05,
+                "relative_tail_error": 0.00038690532295713325,
+                "relative_tail_max_error": 0.0006235978749434313,
+                "pre_step_max_error": 6.61292435608779e-06,
+                "pre_step_relative_error": 0.000378892655843098,
+                "cpi": 3.4763775629196716,
+                "theta.overshoot": 0.018217945939850162,
+                "theta.settling_time": 7.72,
+                "theta.damping_degree": 0.0,
+                "theta.static_error": 0.0003038041851461948,
+                "theta.rise_time": 5.48,
+                "theta.peak_time": 20.0,
+                "theta.maximum_deviation": 1.0003789259819633,
+                "theta.iae": 2.85878084572733,
+                "theta.ise": 1.6139871375941703,
+                "theta.itae": 7.067847796735082,
+                "theta.oscillation_count": 0.0,
+                "theta.steady_state_value": 1.0,
+                "theta.performance_index": 3.4763775629196716,
+                "theta.command_settling_time": 7.74,
+                "theta.command_overshoot": 0.0,
+                "theta.tail_error": 6.752771779093978e-06,
+                "theta.tail_max_error": 1.0883836126202723e-05,
+                "theta.relative_tail_error": 0.00038690532295713325,
+                "theta.relative_tail_max_error": 0.0006235978749434313,
+                "theta.pre_step_max_error": 6.61292435608779e-06,
+                "theta.pre_step_relative_error": 0.000378892655843098,
+                "theta.cpi": 3.4763775629196716
+              }
+            }
+          ]
+        },
+        "duration_seconds": 2.195885
+      },
+      {
+        "number": 1,
+        "state": "COMPLETE",
+        "value": 3.448399999997086,
+        "params": {
+          "rate_gain": 3.490520928391973,
+          "cutoff_hz": 3.288213765892254
+        },
+        "details": {
+          "evaluations": [
+            {
+              "scenario": "default",
+              "seed": 0,
+              "metrics": {
+                "overshoot": 0.021183562389067705,
+                "settling_time": 7.82,
+                "damping_degree": 0.0,
+                "static_error": -0.0010285666840368357,
+                "rise_time": 5.5600000000000005,
+                "peak_time": 20.0,
+                "maximum_deviation": 0.9999999999999891,
+                "iae": 2.8424551884705282,
+                "ise": 1.590394509338563,
+                "itae": 7.020013709459618,
+                "oscillation_count": 0.0,
+                "steady_state_value": 1.0,
+                "performance_index": 3.448399999997086,
+                "command_settling_time": 7.78,
+                "command_overshoot": 0.11421919564542637,
+                "tail_error": 1.623434220799861e-05,
+                "tail_max_error": 1.993501032992312e-05,
+                "relative_tail_error": 0.0009301592916894145,
+                "relative_tail_max_error": 0.0011421919564542937,
+                "pre_step_max_error": 7.892991815694472e-16,
+                "pre_step_relative_error": 4.5223511877059386e-14,
+                "cpi": 3.448399999997086,
+                "theta.overshoot": 0.021183562389067705,
+                "theta.settling_time": 7.82,
+                "theta.damping_degree": 0.0,
+                "theta.static_error": -0.0010285666840368357,
+                "theta.rise_time": 5.5600000000000005,
+                "theta.peak_time": 20.0,
+                "theta.maximum_deviation": 0.9999999999999891,
+                "theta.iae": 2.8424551884705282,
+                "theta.ise": 1.590394509338563,
+                "theta.itae": 7.020013709459618,
+                "theta.oscillation_count": 0.0,
+                "theta.steady_state_value": 1.0,
+                "theta.performance_index": 3.448399999997086,
+                "theta.command_settling_time": 7.78,
+                "theta.command_overshoot": 0.11421919564542637,
+                "theta.tail_error": 1.623434220799861e-05,
+                "theta.tail_max_error": 1.993501032992312e-05,
+                "theta.relative_tail_error": 0.0009301592916894145,
+                "theta.relative_tail_max_error": 0.0011421919564542937,
+                "theta.pre_step_max_error": 7.892991815694472e-16,
+                "theta.pre_step_relative_error": 4.5223511877059386e-14,
+                "theta.cpi": 3.448399999997086
+              }
+            }
+          ]
+        },
+        "duration_seconds": 2.184043
+      },
+      {
+        "number": 2,
+        "state": "COMPLETE",
+        "value": 3.6841488789597974,
+        "params": {
+          "rate_gain": 5.0683292235462005,
+          "cutoff_hz": 4.803639340915679
+        },
+        "details": {
+          "evaluations": [
+            {
+              "scenario": "default",
+              "seed": 0,
+              "metrics": {
+                "overshoot": 0.2875139571461801,
+                "settling_time": 8.1,
+                "damping_degree": 0.0,
+                "static_error": 0.0023141454612348733,
+                "rise_time": 5.72,
+                "peak_time": 17.44,
+                "maximum_deviation": 0.9999999999999911,
+                "iae": 2.8584422657984856,
+                "ise": 1.5410735974824459,
+                "itae": 7.525541621343957,
+                "oscillation_count": 0.0,
+                "steady_state_value": 1.0,
+                "performance_index": 3.6841488789597974,
+                "command_settling_time": 8.16,
+                "command_overshoot": 0.16023989598297206,
+                "tail_error": 2.2149830343107952e-05,
+                "tail_max_error": 6.113244652364985e-05,
+                "relative_tail_error": 0.0012690917955908941,
+                "relative_tail_max_error": 0.0035026311771143384,
+                "pre_step_max_error": 5.551115123125783e-16,
+                "pre_step_relative_error": 3.1805546814635174e-14,
+                "cpi": 3.6841488789597974,
+                "theta.overshoot": 0.2875139571461801,
+                "theta.settling_time": 8.1,
+                "theta.damping_degree": 0.0,
+                "theta.static_error": 0.0023141454612348733,
+                "theta.rise_time": 5.72,
+                "theta.peak_time": 17.44,
+                "theta.maximum_deviation": 0.9999999999999911,
+                "theta.iae": 2.8584422657984856,
+                "theta.ise": 1.5410735974824459,
+                "theta.itae": 7.525541621343957,
+                "theta.oscillation_count": 0.0,
+                "theta.steady_state_value": 1.0,
+                "theta.performance_index": 3.6841488789597974,
+                "theta.command_settling_time": 8.16,
+                "theta.command_overshoot": 0.16023989598297206,
+                "theta.tail_error": 2.2149830343107952e-05,
+                "theta.tail_max_error": 6.113244652364985e-05,
+                "theta.relative_tail_error": 0.0012690917955908941,
+                "theta.relative_tail_max_error": 0.0035026311771143384,
+                "theta.pre_step_max_error": 5.551115123125783e-16,
+                "theta.pre_step_relative_error": 3.1805546814635174e-14,
+                "theta.cpi": 3.6841488789597974
+              }
+            }
+          ]
+        },
+        "duration_seconds": 2.211312
+      },
+      {
+        "number": 3,
+        "state": "COMPLETE",
+        "value": 3.7243281032197637,
+        "params": {
+          "rate_gain": 2.6534278128743676,
+          "cutoff_hz": 5.057594775861733
+        },
+        "details": {
+          "evaluations": [
+            {
+              "scenario": "default",
+              "seed": 0,
+              "metrics": {
+                "overshoot": 0.01313938212027203,
+                "settling_time": 7.5600000000000005,
+                "damping_degree": 0.0,
+                "static_error": 0.00446943114770082,
+                "rise_time": 5.34,
+                "peak_time": 20.0,
+                "maximum_deviation": 1.00037925511064,
+                "iae": 2.9162737389947653,
+                "ise": 1.6414802358710059,
+                "itae": 7.662770331118267,
+                "oscillation_count": 0.0,
+                "steady_state_value": 1.0,
+                "performance_index": 3.7243281032197637,
+                "command_settling_time": 7.76,
+                "command_overshoot": 0.0,
+                "tail_error": 7.904066766316902e-05,
+                "tail_max_error": 8.208806160244983e-05,
+                "relative_tail_error": 0.004528696666995749,
+                "relative_tail_max_error": 0.004703299478230285,
+                "pre_step_max_error": 6.618687592826328e-06,
+                "pre_step_relative_error": 0.0003792228649845509,
+                "cpi": 3.7243281032197637,
+                "theta.overshoot": 0.01313938212027203,
+                "theta.settling_time": 7.5600000000000005,
+                "theta.damping_degree": 0.0,
+                "theta.static_error": 0.00446943114770082,
+                "theta.rise_time": 5.34,
+                "theta.peak_time": 20.0,
+                "theta.maximum_deviation": 1.00037925511064,
+                "theta.iae": 2.9162737389947653,
+                "theta.ise": 1.6414802358710059,
+                "theta.itae": 7.662770331118267,
+                "theta.oscillation_count": 0.0,
+                "theta.steady_state_value": 1.0,
+                "theta.performance_index": 3.7243281032197637,
+                "theta.command_settling_time": 7.76,
+                "theta.command_overshoot": 0.0,
+                "theta.tail_error": 7.904066766316902e-05,
+                "theta.tail_max_error": 8.208806160244983e-05,
+                "theta.relative_tail_error": 0.004528696666995749,
+                "theta.relative_tail_max_error": 0.004703299478230285,
+                "theta.pre_step_max_error": 6.618687592826328e-06,
+                "theta.pre_step_relative_error": 0.0003792228649845509,
+                "theta.cpi": 3.7243281032197637
+              }
+            }
+          ]
+        },
+        "duration_seconds": 2.21023
+      },
+      {
+        "number": 4,
+        "state": "COMPLETE",
+        "value": 3.713477613881246,
+        "params": {
+          "rate_gain": 2.6313642996977453,
+          "cutoff_hz": 3.586335296284918
+        },
+        "details": {
+          "evaluations": [
+            {
+              "scenario": "default",
+              "seed": 0,
+              "metrics": {
+                "overshoot": 0.0125161967844302,
+                "settling_time": 7.5200000000000005,
+                "damping_degree": 0.0,
+                "static_error": 0.004465918230335264,
+                "rise_time": 5.32,
+                "peak_time": 20.0,
+                "maximum_deviation": 1.0003738300279423,
+                "iae": 2.917159584414302,
+                "ise": 1.6480008020785155,
+                "itae": 7.629435134232383,
+                "oscillation_count": 0.0,
+                "steady_state_value": 1.0,
+                "performance_index": 3.713477613881246,
+                "command_settling_time": 7.72,
+                "command_overshoot": 0.0,
+                "tail_error": 7.892842182578066e-05,
+                "tail_max_error": 8.182349570098196e-05,
+                "relative_tail_error": 0.004522265454245484,
+                "relative_tail_max_error": 0.004688140968673103,
+                "pre_step_max_error": 6.52389867245029e-06,
+                "pre_step_relative_error": 0.0003737918599024024,
+                "cpi": 3.713477613881246,
+                "theta.overshoot": 0.0125161967844302,
+                "theta.settling_time": 7.5200000000000005,
+                "theta.damping_degree": 0.0,
+                "theta.static_error": 0.004465918230335264,
+                "theta.rise_time": 5.32,
+                "theta.peak_time": 20.0,
+                "theta.maximum_deviation": 1.0003738300279423,
+                "theta.iae": 2.917159584414302,
+                "theta.ise": 1.6480008020785155,
+                "theta.itae": 7.629435134232383,
+                "theta.oscillation_count": 0.0,
+                "theta.steady_state_value": 1.0,
+                "theta.performance_index": 3.713477613881246,
+                "theta.command_settling_time": 7.72,
+                "theta.command_overshoot": 0.0,
+                "theta.tail_error": 7.892842182578066e-05,
+                "theta.tail_max_error": 8.182349570098196e-05,
+                "theta.relative_tail_error": 0.004522265454245484,
+                "theta.relative_tail_max_error": 0.004688140968673103,
+                "theta.pre_step_max_error": 6.52389867245029e-06,
+                "theta.pre_step_relative_error": 0.0003737918599024024,
+                "theta.cpi": 3.713477613881246
+              }
+            }
+          ]
+        },
+        "duration_seconds": 2.198151
+      },
+      {
+        "number": 5,
+        "state": "COMPLETE",
+        "value": 3.4785292737353024,
+        "params": {
+          "rate_gain": 4.073680261092447,
+          "cutoff_hz": 4.9065249232735075
+        },
+        "details": {
+          "evaluations": [
+            {
+              "scenario": "default",
+              "seed": 0,
+              "metrics": {
+                "overshoot": 0.025441382755308606,
+                "settling_time": 7.98,
+                "damping_degree": 0.0,
+                "static_error": -0.0024774833852792,
+                "rise_time": 5.7,
+                "peak_time": 20.0,
+                "maximum_deviation": 0.9999999999999908,
+                "iae": 2.8351160733693628,
+                "ise": 1.5648511707635484,
+                "itae": 7.118751322197053,
+                "oscillation_count": 0.0,
+                "steady_state_value": 1.0,
+                "performance_index": 3.4785292737353024,
+                "command_settling_time": 7.86,
+                "command_overshoot": 0.2614612946830741,
+                "tail_error": 4.118276816838269e-05,
+                "tail_max_error": 4.563360458746668e-05,
+                "relative_tail_error": 0.0023595988047140403,
+                "relative_tail_max_error": 0.0026146129468306734,
+                "pre_step_max_error": 6.817463260588852e-16,
+                "pre_step_relative_error": 3.906118718172382e-14,
+                "cpi": 3.4785292737353024,
+                "theta.overshoot": 0.025441382755308606,
+                "theta.settling_time": 7.98,
+                "theta.damping_degree": 0.0,
+                "theta.static_error": -0.0024774833852792,
+                "theta.rise_time": 5.7,
+                "theta.peak_time": 20.0,
+                "theta.maximum_deviation": 0.9999999999999908,
+                "theta.iae": 2.8351160733693628,
+                "theta.ise": 1.5648511707635484,
+                "theta.itae": 7.118751322197053,
+                "theta.oscillation_count": 0.0,
+                "theta.steady_state_value": 1.0,
+                "theta.performance_index": 3.4785292737353024,
+                "theta.command_settling_time": 7.86,
+                "theta.command_overshoot": 0.2614612946830741,
+                "theta.tail_error": 4.118276816838269e-05,
+                "theta.tail_max_error": 4.563360458746668e-05,
+                "theta.relative_tail_error": 0.0023595988047140403,
+                "theta.relative_tail_max_error": 0.0026146129468306734,
+                "theta.pre_step_max_error": 6.817463260588852e-16,
+                "theta.pre_step_relative_error": 3.906118718172382e-14,
+                "theta.cpi": 3.4785292737353024
+              }
+            }
+          ]
+        },
+        "duration_seconds": 2.225162
+      },
+      {
+        "number": 6,
+        "state": "COMPLETE",
+        "value": 3.490938386030162,
+        "params": {
+          "rate_gain": 4.209579897177334,
+          "cutoff_hz": 7.727785025063058
+        },
+        "details": {
+          "evaluations": [
+            {
+              "scenario": "default",
+              "seed": 0,
+              "metrics": {
+                "overshoot": 0.027072665950925504,
+                "settling_time": 8.02,
+                "damping_degree": 0.0,
+                "static_error": -0.0027202978699683023,
+                "rise_time": 5.72,
+                "peak_time": 20.0,
+                "maximum_deviation": 0.9999999999999917,
+                "iae": 2.8344647140257253,
+                "ise": 1.5582304648628391,
+                "itae": 7.155579167237104,
+                "oscillation_count": 0.0,
+                "steady_state_value": 1.0,
+                "performance_index": 3.490938386030162,
+                "command_settling_time": 7.9,
+                "command_overshoot": 0.286379658375413,
+                "tail_error": 4.524535878767067e-05,
+                "tail_max_error": 4.998267949387486e-05,
+                "relative_tail_error": 0.002592368101088681,
+                "relative_tail_max_error": 0.002863796583754116,
+                "pre_step_max_error": 6.539907504432563e-16,
+                "pre_step_relative_error": 3.747090984099206e-14,
+                "cpi": 3.490938386030162,
+                "theta.overshoot": 0.027072665950925504,
+                "theta.settling_time": 8.02,
+                "theta.damping_degree": 0.0,
+                "theta.static_error": -0.0027202978699683023,
+                "theta.rise_time": 5.72,
+                "theta.peak_time": 20.0,
+                "theta.maximum_deviation": 0.9999999999999917,
+                "theta.iae": 2.8344647140257253,
+                "theta.ise": 1.5582304648628391,
+                "theta.itae": 7.155579167237104,
+                "theta.oscillation_count": 0.0,
+                "theta.steady_state_value": 1.0,
+                "theta.performance_index": 3.490938386030162,
+                "theta.command_settling_time": 7.9,
+                "theta.command_overshoot": 0.286379658375413,
+                "theta.tail_error": 4.524535878767067e-05,
+                "theta.tail_max_error": 4.998267949387486e-05,
+                "theta.relative_tail_error": 0.002592368101088681,
+                "theta.relative_tail_max_error": 0.002863796583754116,
+                "theta.pre_step_max_error": 6.539907504432563e-16,
+                "theta.pre_step_relative_error": 3.747090984099206e-14,
+                "theta.cpi": 3.490938386030162
+              }
+            }
+          ]
+        },
+        "duration_seconds": 2.205282
+      },
+      {
+        "number": 7,
+        "state": "COMPLETE",
+        "value": 3.4492799241303422,
+        "params": {
+          "rate_gain": 2.7464537795258948,
+          "cutoff_hz": 8.965839033567105
+        },
+        "details": {
+          "evaluations": [
+            {
+              "scenario": "default",
+              "seed": 0,
+              "metrics": {
+                "overshoot": 0.017089664753305082,
+                "settling_time": 7.68,
+                "damping_degree": 0.0,
+                "static_error": 0.00017446755999384056,
+                "rise_time": 5.42,
+                "peak_time": 20.0,
+                "maximum_deviation": 1.0003958673850941,
+                "iae": 2.857704855274472,
+                "ise": 1.626254882880111,
+                "itae": 6.988400095069092,
+                "oscillation_count": 0.0,
+                "steady_state_value": 1.0,
+                "performance_index": 3.4492799241303422,
+                "command_settling_time": 7.68,
+                "command_overshoot": 0.0,
+                "tail_error": 4.408210734657987e-06,
+                "tail_max_error": 8.29578666928718e-06,
+                "relative_tail_error": 0.0002525718703001667,
+                "relative_tail_max_error": 0.000475313563891046,
+                "pre_step_max_error": 6.909038754469507e-06,
+                "pre_step_relative_error": 0.00039585876112342586,
+                "cpi": 3.4492799241303422,
+                "theta.overshoot": 0.017089664753305082,
+                "theta.settling_time": 7.68,
+                "theta.damping_degree": 0.0,
+                "theta.static_error": 0.00017446755999384056,
+                "theta.rise_time": 5.42,
+                "theta.peak_time": 20.0,
+                "theta.maximum_deviation": 1.0003958673850941,
+                "theta.iae": 2.857704855274472,
+                "theta.ise": 1.626254882880111,
+                "theta.itae": 6.988400095069092,
+                "theta.oscillation_count": 0.0,
+                "theta.steady_state_value": 1.0,
+                "theta.performance_index": 3.4492799241303422,
+                "theta.command_settling_time": 7.68,
+                "theta.command_overshoot": 0.0,
+                "theta.tail_error": 4.408210734657987e-06,
+                "theta.tail_max_error": 8.29578666928718e-06,
+                "theta.relative_tail_error": 0.0002525718703001667,
+                "theta.relative_tail_max_error": 0.000475313563891046,
+                "theta.pre_step_max_error": 6.909038754469507e-06,
+                "theta.pre_step_relative_error": 0.00039585876112342586,
+                "theta.cpi": 3.4492799241303422
+              }
+            }
+          ]
+        },
+        "duration_seconds": 2.195328
+      },
+      {
+        "number": 8,
+        "state": "COMPLETE",
+        "value": 3.5917309456538673,
+        "params": {
+          "rate_gain": 1.7053387895791914,
+          "cutoff_hz": 12.77410564845747
+        },
+        "details": {
+          "evaluations": [
+            {
+              "scenario": "default",
+              "seed": 0,
+              "metrics": {
+                "overshoot": 0.0025508307233939155,
+                "settling_time": 6.98,
+                "damping_degree": 0.0,
+                "static_error": 0.0050913326762479505,
+                "rise_time": 4.92,
+                "peak_time": 20.0,
+                "maximum_deviation": 1.0003966029290823,
+                "iae": 2.9293080631703794,
+                "ise": 1.74749592066335,
+                "itae": 7.230556028109621,
+                "oscillation_count": 0.0,
+                "steady_state_value": 1.0,
+                "performance_index": 3.5917309456538673,
+                "command_settling_time": 7.18,
+                "command_overshoot": 0.0,
+                "tail_error": 8.906764870910048e-05,
+                "tail_max_error": 8.976278561692932e-05,
+                "relative_tail_error": 0.0051032003621852935,
+                "relative_tail_max_error": 0.005143028773187661,
+                "pre_step_max_error": 6.921947784973778e-06,
+                "pre_step_relative_error": 0.0003965983940889262,
+                "cpi": 3.5917309456538673,
+                "theta.overshoot": 0.0025508307233939155,
+                "theta.settling_time": 6.98,
+                "theta.damping_degree": 0.0,
+                "theta.static_error": 0.0050913326762479505,
+                "theta.rise_time": 4.92,
+                "theta.peak_time": 20.0,
+                "theta.maximum_deviation": 1.0003966029290823,
+                "theta.iae": 2.9293080631703794,
+                "theta.ise": 1.74749592066335,
+                "theta.itae": 7.230556028109621,
+                "theta.oscillation_count": 0.0,
+                "theta.steady_state_value": 1.0,
+                "theta.performance_index": 3.5917309456538673,
+                "theta.command_settling_time": 7.18,
+                "theta.command_overshoot": 0.0,
+                "theta.tail_error": 8.906764870910048e-05,
+                "theta.tail_max_error": 8.976278561692932e-05,
+                "theta.relative_tail_error": 0.0051032003621852935,
+                "theta.relative_tail_max_error": 0.005143028773187661,
+                "theta.pre_step_max_error": 6.921947784973778e-06,
+                "theta.pre_step_relative_error": 0.0003965983940889262,
+                "theta.cpi": 3.5917309456538673
+              }
+            }
+          ]
+        },
+        "duration_seconds": 2.223592
+      },
+      {
+        "number": 9,
+        "state": "COMPLETE",
+        "value": 3.4487153774056694,
+        "params": {
+          "rate_gain": 1.5556456232572267,
+          "cutoff_hz": 9.708664425315304
+        },
+        "details": {
+          "evaluations": [
+            {
+              "scenario": "default",
+              "seed": 0,
+              "metrics": {
+                "overshoot": 0.0003473536373486379,
+                "settling_time": 6.84,
+                "damping_degree": -2.425829611041972e-08,
+                "static_error": 0.003828177398775945,
+                "rise_time": 4.84,
+                "peak_time": 19.28,
+                "maximum_deviation": 1.0003968508294352,
+                "iae": 2.911894903084971,
+                "ise": 1.7755734611043823,
+                "itae": 6.846041305591116,
+                "oscillation_count": 9.0,
+                "steady_state_value": 1.0,
+                "performance_index": 3.4487153774056694,
+                "command_settling_time": 6.96,
+                "command_overshoot": 0.0,
+                "tail_error": 6.685770993999475e-05,
+                "tail_max_error": 6.703269238683696e-05,
+                "relative_tail_error": 0.003830664607471552,
+                "relative_tail_max_error": 0.0038406903631644828,
+                "pre_step_max_error": 6.926294677802106e-06,
+                "pre_step_relative_error": 0.0003968474527019851,
+                "cpi": 3.4487153774056694,
+                "theta.overshoot": 0.0003473536373486379,
+                "theta.settling_time": 6.84,
+                "theta.damping_degree": -2.425829611041972e-08,
+                "theta.static_error": 0.003828177398775945,
+                "theta.rise_time": 4.84,
+                "theta.peak_time": 19.28,
+                "theta.maximum_deviation": 1.0003968508294352,
+                "theta.iae": 2.911894903084971,
+                "theta.ise": 1.7755734611043823,
+                "theta.itae": 6.846041305591116,
+                "theta.oscillation_count": 9.0,
+                "theta.steady_state_value": 1.0,
+                "theta.performance_index": 3.4487153774056694,
+                "theta.command_settling_time": 6.96,
+                "theta.command_overshoot": 0.0,
+                "theta.tail_error": 6.685770993999475e-05,
+                "theta.tail_max_error": 6.703269238683696e-05,
+                "theta.relative_tail_error": 0.003830664607471552,
+                "theta.relative_tail_max_error": 0.0038406903631644828,
+                "theta.pre_step_max_error": 6.926294677802106e-06,
+                "theta.pre_step_relative_error": 0.0003968474527019851,
+                "theta.cpi": 3.4487153774056694
+              }
+            }
+          ]
+        },
+        "duration_seconds": 2.272911
+      },
+      {
+        "number": 10,
+        "state": "COMPLETE",
+        "value": 3.4141495318419532,
+        "params": {
+          "rate_gain": 2.8561394539255787,
+          "cutoff_hz": 9.122522379036573
+        },
+        "details": {
+          "evaluations": [
+            {
+              "scenario": "default",
+              "seed": 0,
+              "metrics": {
+                "overshoot": 0.019336767255555342,
+                "settling_time": 7.74,
+                "damping_degree": 0.0,
+                "static_error": -0.0013827349749231388,
+                "rise_time": 5.46,
+                "peak_time": 20.0,
+                "maximum_deviation": 1.0003958473365009,
+                "iae": 2.844736531420196,
+                "ise": 1.6175173609056166,
+                "itae": 6.908188085071488,
+                "oscillation_count": 0.0,
+                "steady_state_value": 1.0,
+                "performance_index": 3.4141495318419532,
+                "command_settling_time": 7.68,
+                "command_overshoot": 0.1488465745347778,
+                "tail_error": 2.2599355521677075e-05,
+                "tail_max_error": 2.5978628059464964e-05,
+                "relative_tail_error": 0.0012948476911077695,
+                "relative_tail_max_error": 0.0014884657453474786,
+                "pre_step_max_error": 6.908685206551135e-06,
+                "pre_step_relative_error": 0.0003958385043198475,
+                "cpi": 3.4141495318419532,
+                "theta.overshoot": 0.019336767255555342,
+                "theta.settling_time": 7.74,
+                "theta.damping_degree": 0.0,
+                "theta.static_error": -0.0013827349749231388,
+                "theta.rise_time": 5.46,
+                "theta.peak_time": 20.0,
+                "theta.maximum_deviation": 1.0003958473365009,
+                "theta.iae": 2.844736531420196,
+                "theta.ise": 1.6175173609056166,
+                "theta.itae": 6.908188085071488,
+                "theta.oscillation_count": 0.0,
+                "theta.steady_state_value": 1.0,
+                "theta.performance_index": 3.4141495318419532,
+                "theta.command_settling_time": 7.68,
+                "theta.command_overshoot": 0.1488465745347778,
+                "theta.tail_error": 2.2599355521677075e-05,
+                "theta.tail_max_error": 2.5978628059464964e-05,
+                "theta.relative_tail_error": 0.0012948476911077695,
+                "theta.relative_tail_max_error": 0.0014884657453474786,
+                "theta.pre_step_max_error": 6.908685206551135e-06,
+                "theta.pre_step_relative_error": 0.0003958385043198475,
+                "theta.cpi": 3.4141495318419532
+              }
+            }
+          ]
+        },
+        "duration_seconds": 2.213463
+      },
+      {
+        "number": 11,
+        "state": "COMPLETE",
+        "value": 3.690869647010086,
+        "params": {
+          "rate_gain": 2.3085045662387884,
+          "cutoff_hz": 7.915662182819236
+        },
+        "details": {
+          "evaluations": [
+            {
+              "scenario": "default",
+              "seed": 0,
+              "metrics": {
+                "overshoot": 0.009792875477232172,
+                "settling_time": 7.42,
+                "damping_degree": 0.0,
+                "static_error": 0.004614925279414206,
+                "rise_time": 5.24,
+                "peak_time": 20.0,
+                "maximum_deviation": 1.0003956995605618,
+                "iae": 2.9185486959401583,
+                "ise": 1.666838869328719,
+                "itae": 7.555438810457879,
+                "oscillation_count": 0.0,
+                "steady_state_value": 1.0,
+                "performance_index": 3.690869647010086,
+                "command_settling_time": 7.640000000000001,
+                "command_overshoot": 0.0,
+                "tail_error": 8.133178136042514e-05,
+                "tail_max_error": 8.367590084705154e-05,
+                "relative_tail_error": 0.0046599678122331385,
+                "relative_tail_max_error": 0.004794275965491204,
+                "pre_step_max_error": 6.906120038261548e-06,
+                "pre_step_relative_error": 0.00039569153100311343,
+                "cpi": 3.690869647010086,
+                "theta.overshoot": 0.009792875477232172,
+                "theta.settling_time": 7.42,
+                "theta.damping_degree": 0.0,
+                "theta.static_error": 0.004614925279414206,
+                "theta.rise_time": 5.24,
+                "theta.peak_time": 20.0,
+                "theta.maximum_deviation": 1.0003956995605618,
+                "theta.iae": 2.9185486959401583,
+                "theta.ise": 1.666838869328719,
+                "theta.itae": 7.555438810457879,
+                "theta.oscillation_count": 0.0,
+                "theta.steady_state_value": 1.0,
+                "theta.performance_index": 3.690869647010086,
+                "theta.command_settling_time": 7.640000000000001,
+                "theta.command_overshoot": 0.0,
+                "theta.tail_error": 8.133178136042514e-05,
+                "theta.tail_max_error": 8.367590084705154e-05,
+                "theta.relative_tail_error": 0.0046599678122331385,
+                "theta.relative_tail_max_error": 0.004794275965491204,
+                "theta.pre_step_max_error": 6.906120038261548e-06,
+                "theta.pre_step_relative_error": 0.00039569153100311343,
+                "theta.cpi": 3.690869647010086
+              }
+            }
+          ]
+        },
+        "duration_seconds": 2.194253
+      }
+    ]
+  },
+  "genetic": {
+    "best_params": {
+      "rate_gain": 1.1552680028079323,
+      "cutoff_hz": 11.454791487656054
+    },
+    "best_value": 3.3051780992103263,
+    "best_trial_number": 4,
+    "protocol": {
+      "version": 1,
+      "experiment_id": null,
+      "space": {
+        "rate_gain": "{\"name\": \"FloatDistribution\", \"attributes\": {\"step\": null, \"low\": 1.0, \"high\": 12.0, \"log\": true}}",
+        "cutoff_hz": "{\"name\": \"FloatDistribution\", \"attributes\": {\"step\": null, \"low\": 2.0, \"high\": 15.0, \"log\": true}}"
+      },
+      "metric": "cpi",
+      "constraints": {
+        "relative_tail_max_error": 0.02,
+        "pre_step_relative_error": 0.02,
+        "command_settling_time": 12.0
+      },
+      "seeds": [
+        0
+      ],
+      "scenarios": [
+        "default"
+      ],
+      "aggregation": "mean"
+    },
+    "trials": [
+      {
+        "number": 0,
+        "state": "COMPLETE",
+        "value": 3.4763775629196716,
+        "params": {
+          "rate_gain": 3.0,
+          "cutoff_hz": 5.0
+        },
+        "details": {
+          "initial_params": true,
+          "evaluations": [
+            {
+              "scenario": "default",
+              "seed": 0,
+              "metrics": {
+                "overshoot": 0.018217945939850162,
+                "settling_time": 7.72,
+                "damping_degree": 0.0,
+                "static_error": 0.0003038041851461948,
+                "rise_time": 5.48,
+                "peak_time": 20.0,
+                "maximum_deviation": 1.0003789259819633,
+                "iae": 2.85878084572733,
+                "ise": 1.6139871375941703,
+                "itae": 7.067847796735082,
+                "oscillation_count": 0.0,
+                "steady_state_value": 1.0,
+                "performance_index": 3.4763775629196716,
+                "command_settling_time": 7.74,
+                "command_overshoot": 0.0,
+                "tail_error": 6.752771779093978e-06,
+                "tail_max_error": 1.0883836126202723e-05,
+                "relative_tail_error": 0.00038690532295713325,
+                "relative_tail_max_error": 0.0006235978749434313,
+                "pre_step_max_error": 6.61292435608779e-06,
+                "pre_step_relative_error": 0.000378892655843098,
+                "cpi": 3.4763775629196716,
+                "theta.overshoot": 0.018217945939850162,
+                "theta.settling_time": 7.72,
+                "theta.damping_degree": 0.0,
+                "theta.static_error": 0.0003038041851461948,
+                "theta.rise_time": 5.48,
+                "theta.peak_time": 20.0,
+                "theta.maximum_deviation": 1.0003789259819633,
+                "theta.iae": 2.85878084572733,
+                "theta.ise": 1.6139871375941703,
+                "theta.itae": 7.067847796735082,
+                "theta.oscillation_count": 0.0,
+                "theta.steady_state_value": 1.0,
+                "theta.performance_index": 3.4763775629196716,
+                "theta.command_settling_time": 7.74,
+                "theta.command_overshoot": 0.0,
+                "theta.tail_error": 6.752771779093978e-06,
+                "theta.tail_max_error": 1.0883836126202723e-05,
+                "theta.relative_tail_error": 0.00038690532295713325,
+                "theta.relative_tail_max_error": 0.0006235978749434313,
+                "theta.pre_step_max_error": 6.61292435608779e-06,
+                "theta.pre_step_relative_error": 0.000378892655843098,
+                "theta.cpi": 3.4763775629196716
+              }
+            }
+          ]
+        },
+        "duration_seconds": 2.695571
+      },
+      {
+        "number": 1,
+        "state": "COMPLETE",
+        "value": 3.6306900200702663,
+        "params": {
+          "rate_gain": 2.536276934555762,
+          "cutoff_hz": 13.581985352179869
+        },
+        "details": {
+          "evaluations": [
+            {
+              "scenario": "default",
+              "seed": 0,
+              "metrics": {
+                "overshoot": 0.012574639111696012,
+                "settling_time": 7.54,
+                "damping_degree": 0.0,
+                "static_error": 0.0032678421900037558,
+                "rise_time": 5.32,
+                "peak_time": 20.0,
+                "maximum_deviation": 1.0003959270014389,
+                "iae": 2.8989865408927575,
+                "ise": 1.6449741482623197,
+                "itae": 7.425463582357497,
+                "oscillation_count": 0.0,
+                "steady_state_value": 1.0,
+                "performance_index": 3.6306900200702663,
+                "command_settling_time": 7.7,
+                "command_overshoot": 0.0,
+                "tail_error": 5.803241453272121e-05,
+                "tail_max_error": 6.098336421025974e-05,
+                "relative_tail_error": 0.003325012427678589,
+                "relative_tail_max_error": 0.0034940893897570384,
+                "pre_step_max_error": 6.9100876212997014e-06,
+                "pre_step_relative_error": 0.00039591885676606726,
+                "cpi": 3.6306900200702663,
+                "theta.overshoot": 0.012574639111696012,
+                "theta.settling_time": 7.54,
+                "theta.damping_degree": 0.0,
+                "theta.static_error": 0.0032678421900037558,
+                "theta.rise_time": 5.32,
+                "theta.peak_time": 20.0,
+                "theta.maximum_deviation": 1.0003959270014389,
+                "theta.iae": 2.8989865408927575,
+                "theta.ise": 1.6449741482623197,
+                "theta.itae": 7.425463582357497,
+                "theta.oscillation_count": 0.0,
+                "theta.steady_state_value": 1.0,
+                "theta.performance_index": 3.6306900200702663,
+                "theta.command_settling_time": 7.7,
+                "theta.command_overshoot": 0.0,
+                "theta.tail_error": 5.803241453272121e-05,
+                "theta.tail_max_error": 6.098336421025974e-05,
+                "theta.relative_tail_error": 0.003325012427678589,
+                "theta.relative_tail_max_error": 0.0034940893897570384,
+                "theta.pre_step_max_error": 6.9100876212997014e-06,
+                "theta.pre_step_relative_error": 0.00039591885676606726,
+                "theta.cpi": 3.6306900200702663
+              }
+            }
+          ]
+        },
+        "duration_seconds": 2.23961
+      },
+      {
+        "number": 2,
+        "state": "COMPLETE",
+        "value": 3.7300455784869566,
+        "params": {
+          "rate_gain": 6.1652988679205905,
+          "cutoff_hz": 6.681790353582674
+        },
+        "details": {
+          "evaluations": [
+            {
+              "scenario": "default",
+              "seed": 0,
+              "metrics": {
+                "overshoot": 0.2958400904559045,
+                "settling_time": 8.22,
+                "damping_degree": 0.0,
+                "static_error": 0.002327048191960057,
+                "rise_time": 5.84,
+                "peak_time": 17.52,
+                "maximum_deviation": 0.9999999999999919,
+                "iae": 2.8609459749123243,
+                "ise": 1.5228820128639853,
+                "itae": 7.654311888125453,
+                "oscillation_count": 0.0,
+                "steady_state_value": 1.0,
+                "performance_index": 3.7300455784869566,
+                "command_settling_time": 8.28,
+                "command_overshoot": 0.18174446920078413,
+                "tail_error": 1.9854704354780372e-05,
+                "tail_max_error": 6.611346092829859e-05,
+                "relative_tail_error": 0.0011375907630089318,
+                "relative_tail_max_error": 0.0037880222801945796,
+                "pre_step_max_error": 4.631711680858075e-16,
+                "pre_step_relative_error": 2.6537753123461222e-14,
+                "cpi": 3.7300455784869566,
+                "theta.overshoot": 0.2958400904559045,
+                "theta.settling_time": 8.22,
+                "theta.damping_degree": 0.0,
+                "theta.static_error": 0.002327048191960057,
+                "theta.rise_time": 5.84,
+                "theta.peak_time": 17.52,
+                "theta.maximum_deviation": 0.9999999999999919,
+                "theta.iae": 2.8609459749123243,
+                "theta.ise": 1.5228820128639853,
+                "theta.itae": 7.654311888125453,
+                "theta.oscillation_count": 0.0,
+                "theta.steady_state_value": 1.0,
+                "theta.performance_index": 3.7300455784869566,
+                "theta.command_settling_time": 8.28,
+                "theta.command_overshoot": 0.18174446920078413,
+                "theta.tail_error": 1.9854704354780372e-05,
+                "theta.tail_max_error": 6.611346092829859e-05,
+                "theta.relative_tail_error": 0.0011375907630089318,
+                "theta.relative_tail_max_error": 0.0037880222801945796,
+                "theta.pre_step_max_error": 4.631711680858075e-16,
+                "theta.pre_step_relative_error": 2.6537753123461222e-14,
+                "theta.cpi": 3.7300455784869566
+              }
+            }
+          ]
+        },
+        "duration_seconds": 2.224727
+      },
+      {
+        "number": 3,
+        "state": "COMPLETE",
+        "value": 3.431693698810804,
+        "params": {
+          "rate_gain": 1.4735754951307984,
+          "cutoff_hz": 2.7386388058464264
+        },
+        "details": {
+          "evaluations": [
+            {
+              "scenario": "default",
+              "seed": 0,
+              "metrics": {
+                "overshoot": 0.03527945760194968,
+                "settling_time": 6.6000000000000005,
+                "damping_degree": 0.0,
+                "static_error": 0.004643410427590755,
+                "rise_time": 4.72,
+                "peak_time": 13.48,
+                "maximum_deviation": 1.0003723547016035,
+                "iae": 2.9268552538385264,
+                "ise": 1.8200828123750319,
+                "itae": 6.741511705851003,
+                "oscillation_count": 0.0,
+                "steady_state_value": 1.0,
+                "performance_index": 3.431693698810804,
+                "command_settling_time": 6.74,
+                "command_overshoot": 0.0,
+                "tail_error": 8.089525406377188e-05,
+                "tail_max_error": 8.122795073605554e-05,
+                "relative_tail_error": 0.004634956640492651,
+                "relative_tail_max_error": 0.0046540187556725525,
+                "pre_step_max_error": 6.498218098763622e-06,
+                "pre_step_relative_error": 0.0003723204714146816,
+                "cpi": 3.431693698810804,
+                "theta.overshoot": 0.03527945760194968,
+                "theta.settling_time": 6.6000000000000005,
+                "theta.damping_degree": 0.0,
+                "theta.static_error": 0.004643410427590755,
+                "theta.rise_time": 4.72,
+                "theta.peak_time": 13.48,
+                "theta.maximum_deviation": 1.0003723547016035,
+                "theta.iae": 2.9268552538385264,
+                "theta.ise": 1.8200828123750319,
+                "theta.itae": 6.741511705851003,
+                "theta.oscillation_count": 0.0,
+                "theta.steady_state_value": 1.0,
+                "theta.performance_index": 3.431693698810804,
+                "theta.command_settling_time": 6.74,
+                "theta.command_overshoot": 0.0,
+                "theta.tail_error": 8.089525406377188e-05,
+                "theta.tail_max_error": 8.122795073605554e-05,
+                "theta.relative_tail_error": 0.004634956640492651,
+                "theta.relative_tail_max_error": 0.0046540187556725525,
+                "theta.pre_step_max_error": 6.498218098763622e-06,
+                "theta.pre_step_relative_error": 0.0003723204714146816,
+                "theta.cpi": 3.431693698810804
+              }
+            }
+          ]
+        },
+        "duration_seconds": 2.217974
+      },
+      {
+        "number": 4,
+        "state": "COMPLETE",
+        "value": 3.3051780992103263,
+        "params": {
+          "rate_gain": 1.1552680028079323,
+          "cutoff_hz": 11.454791487656054
+        },
+        "details": {
+          "evaluations": [
+            {
+              "scenario": "default",
+              "seed": 0,
+              "metrics": {
+                "overshoot": 0.33032848012076704,
+                "settling_time": 6.3,
+                "damping_degree": 0.0,
+                "static_error": 0.0038952676658090546,
+                "rise_time": 4.54,
+                "peak_time": 10.74,
+                "maximum_deviation": 1.0003978932869588,
+                "iae": 2.9141945218012846,
+                "ise": 1.891760916998866,
+                "itae": 6.2060200909665655,
+                "oscillation_count": 0.0,
+                "steady_state_value": 1.0,
+                "performance_index": 3.3051780992103263,
+                "command_settling_time": 6.38,
+                "command_overshoot": 0.0,
+                "tail_error": 6.767747304171914e-05,
+                "tail_max_error": 6.840249386603353e-05,
+                "relative_tail_error": 0.0038776335734009132,
+                "relative_tail_max_error": 0.003919174206693224,
+                "pre_step_max_error": 6.944571423176185e-06,
+                "pre_step_relative_error": 0.0003978946330751551,
+                "cpi": 3.3051780992103263,
+                "theta.overshoot": 0.33032848012076704,
+                "theta.settling_time": 6.3,
+                "theta.damping_degree": 0.0,
+                "theta.static_error": 0.0038952676658090546,
+                "theta.rise_time": 4.54,
+                "theta.peak_time": 10.74,
+                "theta.maximum_deviation": 1.0003978932869588,
+                "theta.iae": 2.9141945218012846,
+                "theta.ise": 1.891760916998866,
+                "theta.itae": 6.2060200909665655,
+                "theta.oscillation_count": 0.0,
+                "theta.steady_state_value": 1.0,
+                "theta.performance_index": 3.3051780992103263,
+                "theta.command_settling_time": 6.38,
+                "theta.command_overshoot": 0.0,
+                "theta.tail_error": 6.767747304171914e-05,
+                "theta.tail_max_error": 6.840249386603353e-05,
+                "theta.relative_tail_error": 0.0038776335734009132,
+                "theta.relative_tail_max_error": 0.003919174206693224,
+                "theta.pre_step_max_error": 6.944571423176185e-06,
+                "theta.pre_step_relative_error": 0.0003978946330751551,
+                "theta.cpi": 3.3051780992103263
+              }
+            }
+          ]
+        },
+        "duration_seconds": 2.226569
+      },
+      {
+        "number": 5,
+        "state": "COMPLETE",
+        "value": 3.5018295619558324,
+        "params": {
+          "rate_gain": 4.453608604723945,
+          "cutoff_hz": 8.329844231669222
+        },
+        "details": {
+          "evaluations": [
+            {
+              "scenario": "default",
+              "seed": 0,
+              "metrics": {
+                "overshoot": 0.02802883914088089,
+                "settling_time": 8.06,
+                "damping_degree": 0.0,
+                "static_error": -0.0027281967170902366,
+                "rise_time": 5.74,
+                "peak_time": 20.0,
+                "maximum_deviation": 0.9999999999999918,
+                "iae": 2.834701956978412,
+                "ise": 1.5521197649379406,
+                "itae": 7.1884397203812,
+                "oscillation_count": 0.0,
+                "steady_state_value": 1.0,
+                "performance_index": 3.5018295619558324,
+                "command_settling_time": 7.94,
+                "command_overshoot": 0.28768770897940055,
+                "tail_error": 4.530632327042388e-05,
+                "tail_max_error": 5.021097739209973e-05,
+                "relative_tail_error": 0.002595861108650638,
+                "relative_tail_max_error": 0.002876877089794108,
+                "pre_step_max_error": 6.29704621779581e-16,
+                "pre_step_relative_error": 3.607941716785177e-14,
+                "cpi": 3.5018295619558324,
+                "theta.overshoot": 0.02802883914088089,
+                "theta.settling_time": 8.06,
+                "theta.damping_degree": 0.0,
+                "theta.static_error": -0.0027281967170902366,
+                "theta.rise_time": 5.74,
+                "theta.peak_time": 20.0,
+                "theta.maximum_deviation": 0.9999999999999918,
+                "theta.iae": 2.834701956978412,
+                "theta.ise": 1.5521197649379406,
+                "theta.itae": 7.1884397203812,
+                "theta.oscillation_count": 0.0,
+                "theta.steady_state_value": 1.0,
+                "theta.performance_index": 3.5018295619558324,
+                "theta.command_settling_time": 7.94,
+                "theta.command_overshoot": 0.28768770897940055,
+                "theta.tail_error": 4.530632327042388e-05,
+                "theta.tail_max_error": 5.021097739209973e-05,
+                "theta.relative_tail_error": 0.002595861108650638,
+                "theta.relative_tail_max_error": 0.002876877089794108,
+                "theta.pre_step_max_error": 6.29704621779581e-16,
+                "theta.pre_step_relative_error": 3.607941716785177e-14,
+                "theta.cpi": 3.5018295619558324
+              }
+            }
+          ]
+        },
+        "duration_seconds": 2.206484
+      },
+      {
+        "number": 6,
+        "state": "COMPLETE",
+        "value": 3.418475842413384,
+        "params": {
+          "rate_gain": 1.0524813290090214,
+          "cutoff_hz": 6.681790353582674
+        },
+        "details": {
+          "evaluations": [
+            {
+              "scenario": "default",
+              "seed": 0,
+              "metrics": {
+                "overshoot": 0.8518259215291634,
+                "settling_time": 6.16,
+                "damping_degree": 0.0,
+                "static_error": 0.0039890495914235435,
+                "rise_time": 4.46,
+                "peak_time": 9.84,
+                "maximum_deviation": 1.0003895632251047,
+                "iae": 2.939011424528599,
+                "ise": 1.9393138758411628,
+                "itae": 6.1809627694277145,
+                "oscillation_count": 0.0,
+                "steady_state_value": 1.0,
+                "performance_index": 3.418475842413384,
+                "command_settling_time": 6.24,
+                "command_overshoot": 0.4510444711364414,
+                "tail_error": 6.935874314971742e-05,
+                "tail_max_error": 6.984626969554902e-05,
+                "relative_tail_error": 0.003973963254810719,
+                "relative_tail_max_error": 0.004001896468287461,
+                "pre_step_max_error": 6.798985990739276e-06,
+                "pre_step_relative_error": 0.00038955320223793316,
+                "cpi": 3.418475842413384,
+                "theta.overshoot": 0.8518259215291634,
+                "theta.settling_time": 6.16,
+                "theta.damping_degree": 0.0,
+                "theta.static_error": 0.0039890495914235435,
+                "theta.rise_time": 4.46,
+                "theta.peak_time": 9.84,
+                "theta.maximum_deviation": 1.0003895632251047,
+                "theta.iae": 2.939011424528599,
+                "theta.ise": 1.9393138758411628,
+                "theta.itae": 6.1809627694277145,
+                "theta.oscillation_count": 0.0,
+                "theta.steady_state_value": 1.0,
+                "theta.performance_index": 3.418475842413384,
+                "theta.command_settling_time": 6.24,
+                "theta.command_overshoot": 0.4510444711364414,
+                "theta.tail_error": 6.935874314971742e-05,
+                "theta.tail_max_error": 6.984626969554902e-05,
+                "theta.relative_tail_error": 0.003973963254810719,
+                "theta.relative_tail_max_error": 0.004001896468287461,
+                "theta.pre_step_max_error": 6.798985990739276e-06,
+                "theta.pre_step_relative_error": 0.00038955320223793316,
+                "theta.cpi": 3.418475842413384
+              }
+            }
+          ]
+        },
+        "duration_seconds": 2.231493
+      },
+      {
+        "number": 7,
+        "state": "COMPLETE",
+        "value": 3.3051780992103263,
+        "params": {
+          "rate_gain": 1.1552680028079323,
+          "cutoff_hz": 14.117589064341336
+        },
+        "details": {
+          "evaluations": [
+            {
+              "scenario": "default",
+              "seed": 0,
+              "metrics": {
+                "overshoot": 0.33032848012076704,
+                "settling_time": 6.3,
+                "damping_degree": 0.0,
+                "static_error": 0.0038952676658090546,
+                "rise_time": 4.54,
+                "peak_time": 10.74,
+                "maximum_deviation": 1.0003978932869588,
+                "iae": 2.9141945218012846,
+                "ise": 1.891760916998866,
+                "itae": 6.2060200909665655,
+                "oscillation_count": 0.0,
+                "steady_state_value": 1.0,
+                "performance_index": 3.3051780992103263,
+                "command_settling_time": 6.38,
+                "command_overshoot": 0.0,
+                "tail_error": 6.767747304171914e-05,
+                "tail_max_error": 6.840249386603353e-05,
+                "relative_tail_error": 0.0038776335734009132,
+                "relative_tail_max_error": 0.003919174206693224,
+                "pre_step_max_error": 6.944571423176185e-06,
+                "pre_step_relative_error": 0.0003978946330751551,
+                "cpi": 3.3051780992103263,
+                "theta.overshoot": 0.33032848012076704,
+                "theta.settling_time": 6.3,
+                "theta.damping_degree": 0.0,
+                "theta.static_error": 0.0038952676658090546,
+                "theta.rise_time": 4.54,
+                "theta.peak_time": 10.74,
+                "theta.maximum_deviation": 1.0003978932869588,
+                "theta.iae": 2.9141945218012846,
+                "theta.ise": 1.891760916998866,
+                "theta.itae": 6.2060200909665655,
+                "theta.oscillation_count": 0.0,
+                "theta.steady_state_value": 1.0,
+                "theta.performance_index": 3.3051780992103263,
+                "theta.command_settling_time": 6.38,
+                "theta.command_overshoot": 0.0,
+                "theta.tail_error": 6.767747304171914e-05,
+                "theta.tail_max_error": 6.840249386603353e-05,
+                "theta.relative_tail_error": 0.0038776335734009132,
+                "theta.relative_tail_max_error": 0.003919174206693224,
+                "theta.pre_step_max_error": 6.944571423176185e-06,
+                "theta.pre_step_relative_error": 0.0003978946330751551,
+                "theta.cpi": 3.3051780992103263
+              }
+            }
+          ]
+        },
+        "duration_seconds": 2.20571
+      },
+      {
+        "number": 8,
+        "state": "COMPLETE",
+        "value": 3.7841976940752917,
+        "params": {
+          "rate_gain": 7.9132791523391175,
+          "cutoff_hz": 3.0678895924589225
+        },
+        "details": {
+          "evaluations": [
+            {
+              "scenario": "default",
+              "seed": 0,
+              "metrics": {
+                "overshoot": 0.3606864010926046,
+                "settling_time": 8.06,
+                "damping_degree": 0.0,
+                "static_error": 0.003520923720865432,
+                "rise_time": 5.88,
+                "peak_time": 15.98,
+                "maximum_deviation": 0.9996270726290674,
+                "iae": 2.8651768395840382,
+                "ise": 1.5092465747407169,
+                "itae": 7.770904459901209,
+                "oscillation_count": 0.0,
+                "steady_state_value": 1.0,
+                "performance_index": 3.7841976940752917,
+                "command_settling_time": 8.24,
+                "command_overshoot": 0.0,
+                "tail_error": 6.659573915888032e-05,
+                "tail_max_error": 7.717470968364101e-05,
+                "relative_tail_error": 0.00381565478735795,
+                "relative_tail_max_error": 0.004421785150020036,
+                "pre_step_max_error": 6.5075494063530914e-06,
+                "pre_step_relative_error": 0.00037285511595689654,
+                "cpi": 3.7841976940752917,
+                "theta.overshoot": 0.3606864010926046,
+                "theta.settling_time": 8.06,
+                "theta.damping_degree": 0.0,
+                "theta.static_error": 0.003520923720865432,
+                "theta.rise_time": 5.88,
+                "theta.peak_time": 15.98,
+                "theta.maximum_deviation": 0.9996270726290674,
+                "theta.iae": 2.8651768395840382,
+                "theta.ise": 1.5092465747407169,
+                "theta.itae": 7.770904459901209,
+                "theta.oscillation_count": 0.0,
+                "theta.steady_state_value": 1.0,
+                "theta.performance_index": 3.7841976940752917,
+                "theta.command_settling_time": 8.24,
+                "theta.command_overshoot": 0.0,
+                "theta.tail_error": 6.659573915888032e-05,
+                "theta.tail_max_error": 7.717470968364101e-05,
+                "theta.relative_tail_error": 0.00381565478735795,
+                "theta.relative_tail_max_error": 0.004421785150020036,
+                "theta.pre_step_max_error": 6.5075494063530914e-06,
+                "theta.pre_step_relative_error": 0.00037285511595689654,
+                "theta.cpi": 3.7841976940752917
+              }
+            }
+          ]
+        },
+        "duration_seconds": 2.194513
+      },
+      {
+        "number": 9,
+        "state": "COMPLETE",
+        "value": 3.466744163060834,
+        "params": {
+          "rate_gain": 1.5711660805029095,
+          "cutoff_hz": 2.8941442788596317
+        },
+        "details": {
+          "evaluations": [
+            {
+              "scenario": "default",
+              "seed": 0,
+              "metrics": {
+                "overshoot": 0.0019460239912033582,
+                "settling_time": 6.74,
+                "damping_degree": 6.262289464764592e-09,
+                "static_error": 0.004563856482545314,
+                "rise_time": 4.8,
+                "peak_time": 16.34,
+                "maximum_deviation": 1.0003726325652966,
+                "iae": 2.92511884087547,
+                "ise": 1.7946437365232744,
+                "itae": 6.871243659133208,
+                "oscillation_count": 1.0,
+                "steady_state_value": 1.0,
+                "performance_index": 3.466744163060834,
+                "command_settling_time": 6.88,
+                "command_overshoot": 0.0,
+                "tail_error": 7.961518915394579e-05,
+                "tail_max_error": 7.969978160870389e-05,
+                "relative_tail_error": 0.004561614323656822,
+                "relative_tail_max_error": 0.004566461114293112,
+                "pre_step_max_error": 6.503058224284486e-06,
+                "pre_step_relative_error": 0.00037259779017934064,
+                "cpi": 3.466744163060834,
+                "theta.overshoot": 0.0019460239912033582,
+                "theta.settling_time": 6.74,
+                "theta.damping_degree": 6.262289464764592e-09,
+                "theta.static_error": 0.004563856482545314,
+                "theta.rise_time": 4.8,
+                "theta.peak_time": 16.34,
+                "theta.maximum_deviation": 1.0003726325652966,
+                "theta.iae": 2.92511884087547,
+                "theta.ise": 1.7946437365232744,
+                "theta.itae": 6.871243659133208,
+                "theta.oscillation_count": 1.0,
+                "theta.steady_state_value": 1.0,
+                "theta.performance_index": 3.466744163060834,
+                "theta.command_settling_time": 6.88,
+                "theta.command_overshoot": 0.0,
+                "theta.tail_error": 7.961518915394579e-05,
+                "theta.tail_max_error": 7.969978160870389e-05,
+                "theta.relative_tail_error": 0.004561614323656822,
+                "theta.relative_tail_max_error": 0.004566461114293112,
+                "theta.pre_step_max_error": 6.503058224284486e-06,
+                "theta.pre_step_relative_error": 0.00037259779017934064,
+                "theta.cpi": 3.466744163060834
+              }
+            }
+          ]
+        },
+        "duration_seconds": 2.180623
+      },
+      {
+        "number": 10,
+        "state": "COMPLETE",
+        "value": 3.623981839727402,
+        "params": {
+          "rate_gain": 2.129769105510178,
+          "cutoff_hz": 2.7386388058464264
+        },
+        "details": {
+          "evaluations": [
+            {
+              "scenario": "default",
+              "seed": 0,
+              "metrics": {
+                "overshoot": 0.0067792224472692595,
+                "settling_time": 7.22,
+                "damping_degree": 0.0,
+                "static_error": 0.004518948522614141,
+                "rise_time": 5.1000000000000005,
+                "peak_time": 20.0,
+                "maximum_deviation": 1.0003715338801886,
+                "iae": 2.9212760288318087,
+                "ise": 1.7032869954206538,
+                "itae": 7.353277992674216,
+                "oscillation_count": 0.0,
+                "steady_state_value": 1.0,
+                "performance_index": 3.623981839727402,
+                "command_settling_time": 7.4,
+                "command_overshoot": 0.0,
+                "tail_error": 7.93956542751135e-05,
+                "tail_max_error": 8.099191716498533e-05,
+                "relative_tail_error": 0.004549035901643816,
+                "relative_tail_max_error": 0.004640495028226828,
+                "pre_step_max_error": 6.483812558214994e-06,
+                "pre_step_relative_error": 0.00037149509473964056,
+                "cpi": 3.623981839727402,
+                "theta.overshoot": 0.0067792224472692595,
+                "theta.settling_time": 7.22,
+                "theta.damping_degree": 0.0,
+                "theta.static_error": 0.004518948522614141,
+                "theta.rise_time": 5.1000000000000005,
+                "theta.peak_time": 20.0,
+                "theta.maximum_deviation": 1.0003715338801886,
+                "theta.iae": 2.9212760288318087,
+                "theta.ise": 1.7032869954206538,
+                "theta.itae": 7.353277992674216,
+                "theta.oscillation_count": 0.0,
+                "theta.steady_state_value": 1.0,
+                "theta.performance_index": 3.623981839727402,
+                "theta.command_settling_time": 7.4,
+                "theta.command_overshoot": 0.0,
+                "theta.tail_error": 7.93956542751135e-05,
+                "theta.tail_max_error": 8.099191716498533e-05,
+                "theta.relative_tail_error": 0.004549035901643816,
+                "theta.relative_tail_max_error": 0.004640495028226828,
+                "theta.pre_step_max_error": 6.483812558214994e-06,
+                "theta.pre_step_relative_error": 0.00037149509473964056,
+                "theta.cpi": 3.623981839727402
+              }
+            }
+          ]
+        },
+        "duration_seconds": 2.20903
+      },
+      {
+        "number": 11,
+        "state": "COMPLETE",
+        "value": 3.718786712711053,
+        "params": {
+          "rate_gain": 3.6838954793622753,
+          "cutoff_hz": 4.775384543356069
+        },
+        "details": {
+          "evaluations": [
+            {
+              "scenario": "default",
+              "seed": 0,
+              "metrics": {
+                "overshoot": 0.01913688760627424,
+                "settling_time": 7.82,
+                "damping_degree": 0.0,
+                "static_error": 0.0032910587791904478,
+                "rise_time": 5.58,
+                "peak_time": 20.0,
+                "maximum_deviation": 0.9996220476109264,
+                "iae": 2.8910504022342183,
+                "ise": 1.5804386778177184,
+                "itae": 7.706959660156777,
+                "oscillation_count": 0.0,
+                "steady_state_value": 1.0,
+                "performance_index": 3.718786712711053,
+                "command_settling_time": 7.98,
+                "command_overshoot": 0.0,
+                "tail_error": 5.900334360715252e-05,
+                "tail_max_error": 6.337342793171288e-05,
+                "relative_tail_error": 0.003380642565850047,
+                "relative_tail_max_error": 0.003631029953763635,
+                "pre_step_max_error": 6.595159130415307e-06,
+                "pre_step_relative_error": 0.00037787478338996726,
+                "cpi": 3.718786712711053,
+                "theta.overshoot": 0.01913688760627424,
+                "theta.settling_time": 7.82,
+                "theta.damping_degree": 0.0,
+                "theta.static_error": 0.0032910587791904478,
+                "theta.rise_time": 5.58,
+                "theta.peak_time": 20.0,
+                "theta.maximum_deviation": 0.9996220476109264,
+                "theta.iae": 2.8910504022342183,
+                "theta.ise": 1.5804386778177184,
+                "theta.itae": 7.706959660156777,
+                "theta.oscillation_count": 0.0,
+                "theta.steady_state_value": 1.0,
+                "theta.performance_index": 3.718786712711053,
+                "theta.command_settling_time": 7.98,
+                "theta.command_overshoot": 0.0,
+                "theta.tail_error": 5.900334360715252e-05,
+                "theta.tail_max_error": 6.337342793171288e-05,
+                "theta.relative_tail_error": 0.003380642565850047,
+                "theta.relative_tail_max_error": 0.003631029953763635,
+                "theta.pre_step_max_error": 6.595159130415307e-06,
+                "theta.pre_step_relative_error": 0.00037787478338996726,
+                "theta.cpi": 3.718786712711053
+              }
+            }
+          ]
+        },
+        "duration_seconds": 2.210501
+      },
+      {
+        "number": 12,
+        "state": "COMPLETE",
+        "value": 3.5559591803245034,
+        "params": {
+          "rate_gain": 1.0524813290090214,
+          "cutoff_hz": 3.596444270828741
+        },
+        "details": {
+          "evaluations": [
+            {
+              "scenario": "default",
+              "seed": 0,
+              "metrics": {
+                "overshoot": 1.1934019174663517,
+                "settling_time": 6.12,
+                "damping_degree": 0.0,
+                "static_error": 0.00436232160531691,
+                "rise_time": 4.46,
+                "peak_time": 9.64,
+                "maximum_deviation": 1.0003760936273953,
+                "iae": 2.966652292023458,
+                "ise": 1.9581664131218406,
+                "itae": 6.335030578956242,
+                "oscillation_count": 0.0,
+                "steady_state_value": 1.0,
+                "performance_index": 3.5559591803245034,
+                "command_settling_time": 6.2,
+                "command_overshoot": 0.7533400516457789,
+                "tail_error": 7.589949863829073e-05,
+                "tail_max_error": 7.623680228466961e-05,
+                "relative_tail_error": 0.004348720939132998,
+                "relative_tail_max_error": 0.004368047014484882,
+                "pre_step_max_error": 6.563618299015514e-06,
+                "pre_step_relative_error": 0.0003760676268684254,
+                "cpi": 3.5559591803245034,
+                "theta.overshoot": 1.1934019174663517,
+                "theta.settling_time": 6.12,
+                "theta.damping_degree": 0.0,
+                "theta.static_error": 0.00436232160531691,
+                "theta.rise_time": 4.46,
+                "theta.peak_time": 9.64,
+                "theta.maximum_deviation": 1.0003760936273953,
+                "theta.iae": 2.966652292023458,
+                "theta.ise": 1.9581664131218406,
+                "theta.itae": 6.335030578956242,
+                "theta.oscillation_count": 0.0,
+                "theta.steady_state_value": 1.0,
+                "theta.performance_index": 3.5559591803245034,
+                "theta.command_settling_time": 6.2,
+                "theta.command_overshoot": 0.7533400516457789,
+                "theta.tail_error": 7.589949863829073e-05,
+                "theta.tail_max_error": 7.623680228466961e-05,
+                "theta.relative_tail_error": 0.004348720939132998,
+                "theta.relative_tail_max_error": 0.004368047014484882,
+                "theta.pre_step_max_error": 6.563618299015514e-06,
+                "theta.pre_step_relative_error": 0.0003760676268684254,
+                "theta.cpi": 3.5559591803245034
+              }
+            }
+          ]
+        },
+        "duration_seconds": 2.189373
+      },
+      {
+        "number": 13,
+        "state": "COMPLETE",
+        "value": 3.6177990724059423,
+        "params": {
+          "rate_gain": 4.57404222364463,
+          "cutoff_hz": 2.6490836340777935
+        },
+        "details": {
+          "evaluations": [
+            {
+              "scenario": "default",
+              "seed": 0,
+              "metrics": {
+                "overshoot": 0.1266643969024898,
+                "settling_time": 8.040000000000001,
+                "damping_degree": -0.007821702649110529,
+                "static_error": 0.0003471273837067912,
+                "rise_time": 5.66,
+                "peak_time": 13.68,
+                "maximum_deviation": 0.9999999999999895,
+                "iae": 2.857660436688127,
+                "ise": 1.5570764543848972,
+                "itae": 7.424089028178714,
+                "oscillation_count": 1.0,
+                "steady_state_value": 1.0,
+                "performance_index": 3.6177990724059423,
+                "command_settling_time": 8.02,
+                "command_overshoot": 0.1684078290158153,
+                "tail_error": 7.276386723239573e-06,
+                "tail_max_error": 3.375524645604297e-05,
+                "relative_tail_error": 0.0004169062493466542,
+                "relative_tail_max_error": 0.0019340331583551917,
+                "pre_step_max_error": 6.245004513516506e-16,
+                "pre_step_relative_error": 3.578124016646457e-14,
+                "cpi": 3.6177990724059423,
+                "theta.overshoot": 0.1266643969024898,
+                "theta.settling_time": 8.040000000000001,
+                "theta.damping_degree": -0.007821702649110529,
+                "theta.static_error": 0.0003471273837067912,
+                "theta.rise_time": 5.66,
+                "theta.peak_time": 13.68,
+                "theta.maximum_deviation": 0.9999999999999895,
+                "theta.iae": 2.857660436688127,
+                "theta.ise": 1.5570764543848972,
+                "theta.itae": 7.424089028178714,
+                "theta.oscillation_count": 1.0,
+                "theta.steady_state_value": 1.0,
+                "theta.performance_index": 3.6177990724059423,
+                "theta.command_settling_time": 8.02,
+                "theta.command_overshoot": 0.1684078290158153,
+                "theta.tail_error": 7.276386723239573e-06,
+                "theta.tail_max_error": 3.375524645604297e-05,
+                "theta.relative_tail_error": 0.0004169062493466542,
+                "theta.relative_tail_max_error": 0.0019340331583551917,
+                "theta.pre_step_max_error": 6.245004513516506e-16,
+                "theta.pre_step_relative_error": 3.578124016646457e-14,
+                "theta.cpi": 3.6177990724059423
+              }
+            }
+          ]
+        },
+        "duration_seconds": 2.190764
+      },
+      {
+        "number": 14,
+        "state": "COMPLETE",
+        "value": 3.3644785873790717,
+        "params": {
+          "rate_gain": 1.1552680028079323,
+          "cutoff_hz": 3.603084612270474
+        },
+        "details": {
+          "evaluations": [
+            {
+              "scenario": "default",
+              "seed": 0,
+              "metrics": {
+                "overshoot": 0.6078975484303556,
+                "settling_time": 6.24,
+                "damping_degree": 0.0,
+                "static_error": 0.004157174253379026,
+                "rise_time": 4.5200000000000005,
+                "peak_time": 10.24,
+                "maximum_deviation": 1.0003757753337175,
+                "iae": 2.9264235586162415,
+                "ise": 1.9121080821368142,
+                "itae": 6.195139612095686,
+                "oscillation_count": 0.0,
+                "steady_state_value": 1.0,
+                "performance_index": 3.3644785873790717,
+                "command_settling_time": 6.34,
+                "command_overshoot": 0.19143798502025966,
+                "tail_error": 7.224671979081488e-05,
+                "tail_max_error": 7.286032159260075e-05,
+                "relative_tail_error": 0.004139432127677972,
+                "relative_tail_max_error": 0.004174588921221924,
+                "pre_step_max_error": 6.558031733579564e-06,
+                "pre_step_relative_error": 0.0003757475402469718,
+                "cpi": 3.3644785873790717,
+                "theta.overshoot": 0.6078975484303556,
+                "theta.settling_time": 6.24,
+                "theta.damping_degree": 0.0,
+                "theta.static_error": 0.004157174253379026,
+                "theta.rise_time": 4.5200000000000005,
+                "theta.peak_time": 10.24,
+                "theta.maximum_deviation": 1.0003757753337175,
+                "theta.iae": 2.9264235586162415,
+                "theta.ise": 1.9121080821368142,
+                "theta.itae": 6.195139612095686,
+                "theta.oscillation_count": 0.0,
+                "theta.steady_state_value": 1.0,
+                "theta.performance_index": 3.3644785873790717,
+                "theta.command_settling_time": 6.34,
+                "theta.command_overshoot": 0.19143798502025966,
+                "theta.tail_error": 7.224671979081488e-05,
+                "theta.tail_max_error": 7.286032159260075e-05,
+                "theta.relative_tail_error": 0.004139432127677972,
+                "theta.relative_tail_max_error": 0.004174588921221924,
+                "theta.pre_step_max_error": 6.558031733579564e-06,
+                "theta.pre_step_relative_error": 0.0003757475402469718,
+                "theta.cpi": 3.3644785873790717
+              }
+            }
+          ]
+        },
+        "duration_seconds": 2.188512
+      },
+      {
+        "number": 15,
+        "state": "COMPLETE",
+        "value": 3.7004569111865253,
+        "params": {
+          "rate_gain": 2.485254280893948,
+          "cutoff_hz": 5.0132478040090245
+        },
+        "details": {
+          "evaluations": [
+            {
+              "scenario": "default",
+              "seed": 0,
+              "metrics": {
+                "overshoot": 0.011671566391204247,
+                "settling_time": 7.48,
+                "damping_degree": 0.0,
+                "static_error": 0.004447771141098733,
+                "rise_time": 5.3,
+                "peak_time": 20.0,
+                "maximum_deviation": 1.0003791374657218,
+                "iae": 2.916774847821245,
+                "ise": 1.6552221619893308,
+                "itae": 7.59008433278138,
+                "oscillation_count": 0.0,
+                "steady_state_value": 1.0,
+                "performance_index": 3.7004569111865253,
+                "command_settling_time": 7.68,
+                "command_overshoot": 0.0,
+                "tail_error": 7.855032151713897e-05,
+                "tail_max_error": 8.127356682397988e-05,
+                "relative_tail_error": 0.004500601902327722,
+                "relative_tail_max_error": 0.004656632364988514,
+                "pre_step_max_error": 6.616638976776959e-06,
+                "pre_step_relative_error": 0.00037910548793107935,
+                "cpi": 3.7004569111865253,
+                "theta.overshoot": 0.011671566391204247,
+                "theta.settling_time": 7.48,
+                "theta.damping_degree": 0.0,
+                "theta.static_error": 0.004447771141098733,
+                "theta.rise_time": 5.3,
+                "theta.peak_time": 20.0,
+                "theta.maximum_deviation": 1.0003791374657218,
+                "theta.iae": 2.916774847821245,
+                "theta.ise": 1.6552221619893308,
+                "theta.itae": 7.59008433278138,
+                "theta.oscillation_count": 0.0,
+                "theta.steady_state_value": 1.0,
+                "theta.performance_index": 3.7004569111865253,
+                "theta.command_settling_time": 7.68,
+                "theta.command_overshoot": 0.0,
+                "theta.tail_error": 7.855032151713897e-05,
+                "theta.tail_max_error": 8.127356682397988e-05,
+                "theta.relative_tail_error": 0.004500601902327722,
+                "theta.relative_tail_max_error": 0.004656632364988514,
+                "theta.pre_step_max_error": 6.616638976776959e-06,
+                "theta.pre_step_relative_error": 0.00037910548793107935,
+                "theta.cpi": 3.7004569111865253
+              }
+            }
+          ]
+        },
+        "duration_seconds": 2.186165
+      }
+    ]
+  }
+}

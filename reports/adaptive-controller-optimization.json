@@ -1,0 +1,741 @@
+{
+  "best_params": {
+    "config.rate_feedback.1": 1.3467532529516106,
+    "config.acceleration_cutoff_hz": 4.551830162586262
+  },
+  "best_value": 3.3068872498163824,
+  "best_trial_number": 13,
+  "protocol": {
+    "version": 1,
+    "experiment_id": null,
+    "space": {
+      "config.rate_feedback.1": "{\"name\": \"FloatDistribution\", \"attributes\": {\"step\": null, \"low\": 1.0, \"high\": 12.0, \"log\": true}}",
+      "config.acceleration_cutoff_hz": "{\"name\": \"FloatDistribution\", \"attributes\": {\"step\": null, \"low\": 2.0, \"high\": 15.0, \"log\": true}}"
+    },
+    "metric": "cpi",
+    "constraints": {
+      "relative_tail_max_error": 0.01,
+      "command_settling_time": 10.0,
+      "command_overshoot": 10.0,
+      "pre_step_relative_error": 0.01
+    },
+    "seeds": [
+      0
+    ],
+    "scenarios": [
+      "default"
+    ],
+    "aggregation": "mean"
+  },
+  "trials": [
+    {
+      "number": 0,
+      "state": "COMPLETE",
+      "value": 3.75224343588735,
+      "params": {
+        "config.rate_feedback.1": 3.0,
+        "config.acceleration_cutoff_hz": 5.0
+      },
+      "details": {
+        "initial_params": true,
+        "evaluations": [
+          {
+            "scenario": "default",
+            "seed": 0,
+            "metrics": {
+              "overshoot": 0.014366224152998293,
+              "settling_time": 7.7,
+              "damping_degree": 0.0,
+              "static_error": 0.0040784814499256195,
+              "rise_time": 5.48,
+              "peak_time": 20.0,
+              "maximum_deviation": 1.0003861459049217,
+              "iae": 2.9185508726542286,
+              "ise": 1.6233202194191418,
+              "itae": 7.750105258222734,
+              "oscillation_count": 0.0,
+              "steady_state_value": 1.0,
+              "performance_index": 3.75224343588735,
+              "command_settling_time": 7.9,
+              "command_overshoot": 0.0,
+              "tail_error": 7.235826420443829e-05,
+              "tail_max_error": 7.576813374787425e-05,
+              "relative_tail_error": 0.004145823151806853,
+              "relative_tail_max_error": 0.004341194285335935,
+              "pre_step_max_error": 6.7378148492086565e-06,
+              "pre_step_relative_error": 0.0003860483540002312,
+              "cpi": 3.75224343588735
+            }
+          }
+        ]
+      },
+      "duration_seconds": 9.925581
+    },
+    {
+      "number": 1,
+      "state": "PRUNED",
+      "value": 5.684485262445449,
+      "params": {
+        "config.rate_feedback.1": 2.536276934555762,
+        "config.acceleration_cutoff_hz": 13.581985352179869
+      },
+      "details": {
+        "evaluations": [
+          {
+            "scenario": "default",
+            "seed": 0,
+            "metrics": {
+              "overshoot": 4.028120010713187,
+              "settling_time": 7.46,
+              "damping_degree": 0.0,
+              "static_error": 7.21479396418312e-05,
+              "rise_time": 5.44,
+              "peak_time": 14.540000000000001,
+              "maximum_deviation": 1.0004219039388524,
+              "iae": 3.0919681824342344,
+              "ise": 1.6639851266819272,
+              "itae": 10.533168024075099,
+              "oscillation_count": 0.0,
+              "steady_state_value": 1.0,
+              "performance_index": 5.684485262445449,
+              "command_settling_time": 7.24,
+              "command_overshoot": 4.701343893160859,
+              "tail_error": 0.00011294997305114387,
+              "tail_max_error": 0.0003972231358774954,
+              "relative_tail_error": 0.006471556751946929,
+              "relative_tail_max_error": 0.022759209210732115,
+              "pre_step_max_error": 7.359455300615103e-06,
+              "pre_step_relative_error": 0.0004216657282404279,
+              "cpi": 5.684485262445449
+            }
+          }
+        ],
+        "rejection_reason": "Constraint relative_tail_max_error: 0.022759209210732115 exceeds 0.01"
+      },
+      "duration_seconds": 5.832764
+    },
+    {
+      "number": 2,
+      "state": "COMPLETE",
+      "value": 3.574555602356399,
+      "params": {
+        "config.rate_feedback.1": 6.1652988679205905,
+        "config.acceleration_cutoff_hz": 6.681790353582674
+      },
+      "details": {
+        "evaluations": [
+          {
+            "scenario": "default",
+            "seed": 0,
+            "metrics": {
+              "overshoot": 0.17815982649633655,
+              "settling_time": 8.08,
+              "damping_degree": 0.0,
+              "static_error": -0.00275877397352442,
+              "rise_time": 5.84,
+              "peak_time": 16.46,
+              "maximum_deviation": 1.000404293194004,
+              "iae": 2.833012255522366,
+              "ise": 1.5349469165700527,
+              "itae": 7.312362176072777,
+              "oscillation_count": 0.0,
+              "steady_state_value": 1.0,
+              "performance_index": 3.574555602356399,
+              "command_settling_time": 7.94,
+              "command_overshoot": 0.502172561370684,
+              "tail_error": 5.6450318629763257e-05,
+              "tail_max_error": 7.520442770798594e-05,
+              "relative_tail_error": 0.003234365009654159,
+              "relative_tail_max_error": 0.0043088963083643015,
+              "pre_step_max_error": 7.053179143769184e-06,
+              "pre_step_relative_error": 0.00040411739708766994,
+              "cpi": 3.574555602356399
+            }
+          }
+        ]
+      },
+      "duration_seconds": 7.399095
+    },
+    {
+      "number": 3,
+      "state": "COMPLETE",
+      "value": 3.3495162017367126,
+      "params": {
+        "config.rate_feedback.1": 1.4735754951307984,
+        "config.acceleration_cutoff_hz": 2.7386388058464264
+      },
+      "details": {
+        "evaluations": [
+          {
+            "scenario": "default",
+            "seed": 0,
+            "metrics": {
+              "overshoot": 0.015356882458975532,
+              "settling_time": 6.72,
+              "damping_degree": 0.0,
+              "static_error": 0.00306257908784191,
+              "rise_time": 4.8,
+              "peak_time": 14.84,
+              "maximum_deviation": 1.0003749268684028,
+              "iae": 2.9052853841365067,
+              "ise": 1.8002948866551827,
+              "itae": 6.565817176457111,
+              "oscillation_count": 0.0,
+              "steady_state_value": 1.0,
+              "performance_index": 3.3495162017367126,
+              "command_settling_time": 6.82,
+              "command_overshoot": 0.0,
+              "tail_error": 5.3278989564313135e-05,
+              "tail_max_error": 5.370920997438064e-05,
+              "relative_tail_error": 0.0030526612387566992,
+              "relative_tail_max_error": 0.003077311052513955,
+              "pre_step_max_error": 6.5427119817773605e-06,
+              "pre_step_relative_error": 0.0003748697831255175,
+              "cpi": 3.3495162017367126
+            }
+          }
+        ]
+      },
+      "duration_seconds": 10.326327
+    },
+    {
+      "number": 4,
+      "state": "PRUNED",
+      "value": 10.029905162871005,
+      "params": {
+        "config.rate_feedback.1": 1.1552680028079323,
+        "config.acceleration_cutoff_hz": 11.454791487656054
+      },
+      "details": {
+        "evaluations": [
+          {
+            "scenario": "default",
+            "seed": 0,
+            "metrics": {
+              "overshoot": 2.4315819830029706,
+              "settling_time": 9.06,
+              "damping_degree": 0.0,
+              "static_error": -0.08795662593017872,
+              "rise_time": 6.18,
+              "peak_time": 15.48,
+              "maximum_deviation": 1.0004235624587905,
+              "iae": 3.9594144054722675,
+              "ise": 2.000481105367964,
+              "itae": 21.858490810308062,
+              "oscillation_count": 0.0,
+              "steady_state_value": 1.0,
+              "performance_index": 10.029905162871005,
+              "command_settling_time": null,
+              "command_overshoot": 12.125891065697303,
+              "tail_error": 0.0016518109837167525,
+              "tail_max_error": 0.0018838680746555599,
+              "relative_tail_error": 0.09464179792032267,
+              "relative_tail_max_error": 0.10793768983719987,
+              "pre_step_max_error": 7.388872469940577e-06,
+              "pre_step_relative_error": 0.0004233512078879993,
+              "cpi": 10.029905162871005
+            }
+          }
+        ],
+        "rejection_reason": "Constraint relative_tail_max_error: 0.10793768983719987 exceeds 0.01"
+      },
+      "duration_seconds": 10.070602
+    },
+    {
+      "number": 5,
+      "state": "COMPLETE",
+      "value": 3.5694341735497286,
+      "params": {
+        "config.rate_feedback.1": 1.0552731312411672,
+        "config.acceleration_cutoff_hz": 2.0243140908510804
+      },
+      "details": {
+        "evaluations": [
+          {
+            "scenario": "default",
+            "seed": 0,
+            "metrics": {
+              "overshoot": 1.2204705521890415,
+              "settling_time": 6.2,
+              "damping_degree": 0.0,
+              "static_error": 0.0036000835089536887,
+              "rise_time": 4.5200000000000005,
+              "peak_time": 9.84,
+              "maximum_deviation": 1.0003732682105584,
+              "iae": 2.973610655742283,
+              "ise": 1.9525639815758873,
+              "itae": 6.360786176203913,
+              "oscillation_count": 0.0,
+              "steady_state_value": 1.0,
+              "performance_index": 3.5694341735497286,
+              "command_settling_time": 6.26,
+              "command_overshoot": 0.8593617476316817,
+              "tail_error": 6.226544455962747e-05,
+              "tail_max_error": 6.337095551829999e-05,
+              "relative_tail_error": 0.0035675471827724668,
+              "relative_tail_max_error": 0.003630888294909864,
+              "pre_step_max_error": 6.513975517805082e-06,
+              "pre_step_relative_error": 0.00037322330502177623,
+              "cpi": 3.5694341735497286
+            }
+          }
+        ]
+      },
+      "duration_seconds": 12.20175
+    },
+    {
+      "number": 6,
+      "state": "COMPLETE",
+      "value": 3.7757039657382676,
+      "params": {
+        "config.rate_feedback.1": 11.125160042739047,
+        "config.acceleration_cutoff_hz": 2.073708640439904
+      },
+      "details": {
+        "evaluations": [
+          {
+            "scenario": "default",
+            "seed": 0,
+            "metrics": {
+              "overshoot": 0.10459322730117407,
+              "settling_time": 8.46,
+              "damping_degree": 0.0,
+              "static_error": 8.095416793429955e-05,
+              "rise_time": 6.0,
+              "peak_time": 18.32,
+              "maximum_deviation": 1.0003746052579925,
+              "iae": 2.8824756455535328,
+              "ise": 1.5114490929018838,
+              "itae": 7.875514207793197,
+              "oscillation_count": 0.0,
+              "steady_state_value": 1.0,
+              "performance_index": 3.7757039657382676,
+              "command_settling_time": 8.42,
+              "command_overshoot": 0.16636695141272195,
+              "tail_error": 1.0770283782253867e-05,
+              "tail_max_error": 2.9036510686576006e-05,
+              "relative_tail_error": 0.0006170918048813439,
+              "relative_tail_max_error": 0.0016636695141273173,
+              "pre_step_max_error": 6.536756108288522e-06,
+              "pre_step_relative_error": 0.0003745285367112932,
+              "cpi": 3.7757039657382676
+            }
+          }
+        ]
+      },
+      "duration_seconds": 20.954506
+    },
+    {
+      "number": 7,
+      "state": "COMPLETE",
+      "value": 3.471870798836844,
+      "params": {
+        "config.rate_feedback.1": 1.9691489305728092,
+        "config.acceleration_cutoff_hz": 3.645193211532532
+      },
+      "details": {
+        "evaluations": [
+          {
+            "scenario": "default",
+            "seed": 0,
+            "metrics": {
+              "overshoot": 0.006103190605295018,
+              "settling_time": 7.24,
+              "damping_degree": 0.0,
+              "static_error": 0.0023462591815782696,
+              "rise_time": 5.12,
+              "peak_time": 20.0,
+              "maximum_deviation": 1.0003783919785507,
+              "iae": 2.895517574451094,
+              "ise": 1.7095056539181375,
+              "itae": 6.967119747871323,
+              "oscillation_count": 0.0,
+              "steady_state_value": 1.0,
+              "performance_index": 3.471870798836844,
+              "command_settling_time": 7.34,
+              "command_overshoot": 0.0,
+              "tail_error": 4.1434416713520214e-05,
+              "tail_max_error": 4.2924900992714204e-05,
+              "relative_tail_error": 0.002374017204271027,
+              "relative_tail_max_error": 0.0024594156628994415,
+              "pre_step_max_error": 6.602954191275989e-06,
+              "pre_step_relative_error": 0.0003783214074783319,
+              "cpi": 3.471870798836844
+            }
+          }
+        ]
+      },
+      "duration_seconds": 12.86037
+    },
+    {
+      "number": 8,
+      "state": "COMPLETE",
+      "value": 3.741430193216649,
+      "params": {
+        "config.rate_feedback.1": 5.083828263199577,
+        "config.acceleration_cutoff_hz": 3.454124326861547
+      },
+      "details": {
+        "evaluations": [
+          {
+            "scenario": "default",
+            "seed": 0,
+            "metrics": {
+              "overshoot": 0.39921165946866816,
+              "settling_time": 8.08,
+              "damping_degree": 0.0,
+              "static_error": 0.0033334007639121976,
+              "rise_time": 5.74,
+              "peak_time": 17.080000000000002,
+              "maximum_deviation": 1.0003776194011764,
+              "iae": 2.874644281695678,
+              "ise": 1.553194282627019,
+              "itae": 7.600775370680269,
+              "oscillation_count": 0.0,
+              "steady_state_value": 1.0,
+              "performance_index": 3.741430193216649,
+              "command_settling_time": 8.18,
+              "command_overshoot": 0.1718277568885096,
+              "tail_error": 3.9528176570931004e-05,
+              "tail_max_error": 7.388817173687237e-05,
+              "relative_tail_error": 0.0022647976893622494,
+              "relative_tail_max_error": 0.0042334803964606,
+              "pre_step_max_error": 6.58930671517538e-06,
+              "pre_step_relative_error": 0.00037753946469676135,
+              "cpi": 3.741430193216649
+            }
+          }
+        ]
+      },
+      "duration_seconds": 9.110758
+    },
+    {
+      "number": 9,
+      "state": "COMPLETE",
+      "value": 3.4292019533567717,
+      "params": {
+        "config.rate_feedback.1": 1.674479483888512,
+        "config.acceleration_cutoff_hz": 3.1886607530759523
+      },
+      "details": {
+        "evaluations": [
+          {
+            "scenario": "default",
+            "seed": 0,
+            "metrics": {
+              "overshoot": 0.0010974762438853796,
+              "settling_time": 6.96,
+              "damping_degree": 0.0,
+              "static_error": 0.003033254141738717,
+              "rise_time": 4.94,
+              "peak_time": 20.0,
+              "maximum_deviation": 1.0003765425520295,
+              "iae": 2.904232599477996,
+              "ise": 1.7559630383380052,
+              "itae": 6.816493106931981,
+              "oscillation_count": 0.0,
+              "steady_state_value": 1.0,
+              "performance_index": 3.4292019533567717,
+              "command_settling_time": 7.08,
+              "command_overshoot": 0.0,
+              "tail_error": 5.3036189816555776e-05,
+              "tail_max_error": 5.337257757069211e-05,
+              "relative_tail_error": 0.0030387498379433617,
+              "relative_tail_max_error": 0.003058023436535258,
+              "pre_step_max_error": 6.570802690487876e-06,
+              "pre_step_relative_error": 0.00037647926217816144,
+              "cpi": 3.4292019533567717
+            }
+          }
+        ]
+      },
+      "duration_seconds": 11.182058
+    },
+    {
+      "number": 10,
+      "state": "PRUNED",
+      "value": 5.303902078797471,
+      "params": {
+        "config.rate_feedback.1": 4.337397364816878,
+        "config.acceleration_cutoff_hz": 8.148620962775666
+      },
+      "details": {
+        "evaluations": [
+          {
+            "scenario": "default",
+            "seed": 0,
+            "metrics": {
+              "overshoot": 4.535213952892209,
+              "settling_time": 7.1000000000000005,
+              "damping_degree": 0.0,
+              "static_error": 0.014978423962728415,
+              "rise_time": 5.34,
+              "peak_time": 14.280000000000001,
+              "maximum_deviation": 1.0004235245234707,
+              "iae": 2.962996221461868,
+              "ise": 1.5699305896585458,
+              "itae": 9.422217630889026,
+              "oscillation_count": 0.0,
+              "steady_state_value": 1.0,
+              "performance_index": 5.303902078797471,
+              "command_settling_time": 7.36,
+              "command_overshoot": 3.632021080722514,
+              "tail_error": 0.00015079788717904557,
+              "tail_max_error": 0.00045856501694424914,
+              "relative_tail_error": 0.008640082494849259,
+              "relative_tail_max_error": 0.026273840103250557,
+              "pre_step_max_error": 7.3874235413801115e-06,
+              "pre_step_relative_error": 0.0004232681903966686,
+              "cpi": 5.303902078797471
+            }
+          }
+        ],
+        "rejection_reason": "Constraint relative_tail_max_error: 0.026273840103250557 exceeds 0.01"
+      },
+      "duration_seconds": 11.525524
+    },
+    {
+      "number": 11,
+      "state": "COMPLETE",
+      "value": 3.4058452666734698,
+      "params": {
+        "config.rate_feedback.1": 1.6130201453776842,
+        "config.acceleration_cutoff_hz": 3.1051985286608383
+      },
+      "details": {
+        "evaluations": [
+          {
+            "scenario": "default",
+            "seed": 0,
+            "metrics": {
+              "overshoot": 0.0001409258457699057,
+              "settling_time": 6.9,
+              "damping_degree": 2.259563617021146e-09,
+              "static_error": 0.0030322936338326167,
+              "rise_time": 4.88,
+              "peak_time": 19.16,
+              "maximum_deviation": 1.0003762567549992,
+              "iae": 2.904014171923904,
+              "ise": 1.7676363861736368,
+              "itae": 6.746906317587152,
+              "oscillation_count": 6.0,
+              "steady_state_value": 1.0,
+              "performance_index": 3.4058452666734698,
+              "command_settling_time": 7.0,
+              "command_overshoot": 0.0,
+              "tail_error": 5.294247210546751e-05,
+              "tail_max_error": 5.3031964312538066e-05,
+              "relative_tail_error": 0.0030333802086323775,
+              "relative_tail_max_error": 0.0030385077343968313,
+              "pre_step_max_error": 6.565838979462335e-06,
+              "pre_step_relative_error": 0.0003761948624856754,
+              "cpi": 3.4058452666734698
+            }
+          }
+        ]
+      },
+      "duration_seconds": 10.043082
+    },
+    {
+      "number": 12,
+      "state": "COMPLETE",
+      "value": 3.3641897871427884,
+      "params": {
+        "config.rate_feedback.1": 1.6398225652373841,
+        "config.acceleration_cutoff_hz": 2.7388767649988868
+      },
+      "details": {
+        "evaluations": [
+          {
+            "scenario": "default",
+            "seed": 0,
+            "metrics": {
+              "overshoot": 0.0006096666765951805,
+              "settling_time": 6.92,
+              "damping_degree": 0.0,
+              "static_error": 0.002351373235436882,
+              "rise_time": 4.92,
+              "peak_time": 20.0,
+              "maximum_deviation": 1.0003746580681279,
+              "iae": 2.895174666197716,
+              "ise": 1.7638645329015048,
+              "itae": 6.646305101617169,
+              "oscillation_count": 0.0,
+              "steady_state_value": 1.0,
+              "performance_index": 3.3641897871427884,
+              "command_settling_time": 7.0,
+              "command_overshoot": 0.0,
+              "tail_error": 4.1092834917979946e-05,
+              "tail_max_error": 4.128514930228436e-05,
+              "relative_tail_error": 0.002354446009028069,
+              "relative_tail_max_error": 0.002365464811588369,
+              "pre_step_max_error": 6.537990350434508e-06,
+              "pre_step_relative_error": 0.0003745992535771554,
+              "cpi": 3.3641897871427884
+            }
+          }
+        ]
+      },
+      "duration_seconds": 10.046107
+    },
+    {
+      "number": 13,
+      "state": "COMPLETE",
+      "value": 3.3068872498163824,
+      "params": {
+        "config.rate_feedback.1": 1.3467532529516106,
+        "config.acceleration_cutoff_hz": 4.551830162586262
+      },
+      "details": {
+        "evaluations": [
+          {
+            "scenario": "default",
+            "seed": 0,
+            "metrics": {
+              "overshoot": 0.03822425510916358,
+              "settling_time": 6.6000000000000005,
+              "damping_degree": 0.0,
+              "static_error": 0.0030275130927167604,
+              "rise_time": 4.72,
+              "peak_time": 13.6,
+              "maximum_deviation": 1.0003842951408677,
+              "iae": 2.9032746122226154,
+              "ise": 1.8254515753133145,
+              "itae": 6.42265442167306,
+              "oscillation_count": 0.0,
+              "steady_state_value": 1.0,
+              "performance_index": 3.3068872498163824,
+              "command_settling_time": 6.68,
+              "command_overshoot": 0.0,
+              "tail_error": 5.2592162889447936e-05,
+              "tail_max_error": 5.3235826053332075e-05,
+              "relative_tail_error": 0.0030133089690299194,
+              "relative_tail_max_error": 0.003050188151748518,
+              "pre_step_max_error": 6.705875266466155e-06,
+              "pre_step_relative_error": 0.000384218350709677,
+              "cpi": 3.3068872498163824
+            }
+          }
+        ]
+      },
+      "duration_seconds": 8.190346
+    },
+    {
+      "number": 14,
+      "state": "COMPLETE",
+      "value": 3.422091969648693,
+      "params": {
+        "config.rate_feedback.1": 1.0207222167815988,
+        "config.acceleration_cutoff_hz": 4.913706104375283
+      },
+      "details": {
+        "evaluations": [
+          {
+            "scenario": "default",
+            "seed": 0,
+            "metrics": {
+              "overshoot": 0.9695542901747709,
+              "settling_time": 6.16,
+              "damping_degree": 0.0,
+              "static_error": 0.002482653076238295,
+              "rise_time": 4.48,
+              "peak_time": 9.8,
+              "maximum_deviation": 1.0003876153257036,
+              "iae": 2.9440711830128445,
+              "ise": 1.946774664298643,
+              "itae": 6.123678114735704,
+              "oscillation_count": 0.0,
+              "steady_state_value": 1.0,
+              "performance_index": 3.422091969648693,
+              "command_settling_time": 6.2,
+              "command_overshoot": 0.7208990491723188,
+              "tail_error": 4.298179474339973e-05,
+              "tail_max_error": 4.366347008051205e-05,
+              "relative_tail_error": 0.0024626754346943917,
+              "relative_tail_max_error": 0.0025017325545090854,
+              "pre_step_max_error": 6.763814925529743e-06,
+              "pre_step_relative_error": 0.0003875380486404475,
+              "cpi": 3.422091969648693
+            }
+          }
+        ]
+      },
+      "duration_seconds": 11.202499
+    },
+    {
+      "number": 15,
+      "state": "COMPLETE",
+      "value": 3.6560389833950495,
+      "params": {
+        "config.rate_feedback.1": 2.359560379976151,
+        "config.acceleration_cutoff_hz": 4.186654739610771
+      },
+      "details": {
+        "evaluations": [
+          {
+            "scenario": "default",
+            "seed": 0,
+            "metrics": {
+              "overshoot": 0.009629555090706647,
+              "settling_time": 7.46,
+              "damping_degree": 0.0,
+              "static_error": 0.003862488026855404,
+              "rise_time": 5.28,
+              "peak_time": 20.0,
+              "maximum_deviation": 1.0003810511953246,
+              "iae": 2.916140626267965,
+              "ise": 1.6684476731377427,
+              "itae": 7.466835007804527,
+              "oscillation_count": 0.0,
+              "steady_state_value": 1.0,
+              "performance_index": 3.6560389833950495,
+              "command_settling_time": 7.640000000000001,
+              "command_overshoot": 0.0,
+              "tail_error": 6.819146789476858e-05,
+              "tail_max_error": 7.051970516109077e-05,
+              "relative_tail_error": 0.003907083309172093,
+              "relative_tail_max_error": 0.00404048147823743,
+              "pre_step_max_error": 6.649200378072706e-06,
+              "pre_step_relative_error": 0.0003809711188003574,
+              "cpi": 3.6560389833950495
+            }
+          }
+        ]
+      },
+      "duration_seconds": 9.28463
+    }
+  ],
+  "validation": {
+    "step_minus_1": {
+      "cpi": 3.293468,
+      "settling_s": 6.66,
+      "relative_tail_max_error": 0.003022,
+      "passed": true
+    },
+    "step_plus_1_5": {
+      "cpi": 3.284867,
+      "settling_s": 6.68,
+      "relative_tail_max_error": 0.002619,
+      "passed": true
+    },
+    "elevator_effectiveness_0_8_at_27s": {
+      "cpi": 3.412059,
+      "settling_s": 6.68,
+      "relative_tail_max_error": 0.003042,
+      "passed": true
+    }
+  },
+  "validation_precision": "Rounded displayed notebook results; full search trial values above.",
+  "runtime_seconds": {
+    "default_blas": 170.1603209519999,
+    "one_blas_thread_notebook": 32.03
+  },
+  "notebook": "example/optimization/adaptive_controller_tuning.ipynb",
+  "verification": {
+    "agent_tests_passed": 1498,
+    "optimization_and_benchmark_tests_passed": 116,
+    "executed_notebook_cells": 6,
+    "mkdocs_strict_en_ru": "passed",
+    "ruff_black_mypy": "passed"
+  }
+}

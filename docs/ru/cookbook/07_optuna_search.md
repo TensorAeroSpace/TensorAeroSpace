@@ -1,5 +1,7 @@
 # Рецепт 07 — Гиперпоиск через Optuna
 
+Для адаптивных агентов и CPI с ограничениями точности используйте [полный урок подбора AA-INDI](../example/optimization/example_optimization.md) и [общий API оптимизации](../optimization/optuna_based.md). Здесь сохранён низкоуровневый пример PID.
+
 Настройка PID-коэффициентов от и до: задать objective (RMSE на позднем окне), запустить 25 Optuna-trial'ов, получить лучшие коэффициенты, построить историю поиска.
 
 Исходный ноутбук: [`example/cookbook/recipe_07_optuna.ipynb`](https://github.com/TensorAeroSpace/TensorAeroSpace/blob/develop/example/cookbook/recipe_07_optuna.ipynb).
