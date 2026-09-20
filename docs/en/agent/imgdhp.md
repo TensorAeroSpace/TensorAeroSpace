@@ -1,177 +1,111 @@
-# Incremental Model-based Global Dual Heuristic Programming (IMGDHP)
+# Incremental model-based GDHP (IM-GDHP)
 
-IMGDHP is an incremental model-based variant of Global Dual Heuristic Programming from the Adaptive Critic Designs (ACD) family. It is designed for online adaptive control of nonlinear systems under partial observability. The agent combines recursive least squares (RLS) system identification with a dual-head critic that estimates the cost-to-go \(J\) and a separate approximation to its derivative, the costate vector \(\lambda\). The actor uses the fitted costate \(\lambda\) for the future-cost gradient; the independent scalar \(J\) head supplies the reported cost value. See also the nonlinear F-16 model: [NonlinearLongitudinalF16](../model/f16_nonlinear_longitudinal.md).
+The implementation follows **Bo Sun and Erik-Jan van Kampen (2021)**, [Intelligent adaptive optimal control using incremental model-based global dual heuristic programming subject to partial observability](https://doi.org/10.1016/j.asoc.2021.107153). The [author-hosted manuscript](https://pure.tudelft.nl/ws/portalfiles/portal/90401508/1_s2.0_S1568494621000764_main.pdf) is the equation reference. The paper calls the method **IGDHP**; the Python package retains the name `im_gdhp`.
 
-## Key ideas
+## Architecture and equations
 
-- **Incremental model**: online identification of local linearization \(\Delta y_{t+1} = A \Delta y_t + B \Delta u_t\) via RLS — lightweight, interpretable, and does not require a neural network for system ID
-- **GDHP dual critic**: the critic outputs both \(J(o)\) (scalar cost-to-go) and \(\lambda(o)\) (costate vector), training the shared hidden layers with two losses
-- **Model-predictive actor update**: prediction uses the identified matrices \(A\), \(B\); the action gradient flows through \(B\)
-- **Partial observability**: the augmented observation \(o = [y; r; e]\) allows the agent to operate when the environment observation is not the full state
+The actor and critic receive the tracking error. A window of **measured error and input increments** identifies hidden dynamics. Concatenating observation, reference and error does not replace this history or establish observability. Choose `history_length` for the actual plant/reference dynamics and provide sufficient excitation.
 
-## Key differences from related agents
+The critic has **one scalar output**. Autograd computes its exact input derivative and the mixed derivatives needed to train it; there is no independent costate head. Its layers have no bias, so `J(0)=0`. The actor has a constant input of 0.01 and a bounded tanh output. One hidden layer reproduces the paper architecture; additional layers are an optional extension.
 
-This compares implementations in this repository; HDP refers to `ADP(design="hdp")`.
-
-| Aspect | HDP | IHDP | **IMGDHP** |
-| --- | --- | --- | --- |
-| System ID | Known linear model | Least squares over an increment window | Online RLS (incremental linear) |
-| Critic output | \(J(o)\) only | \(J(o)\) only | \(J(o)\) + \(\lambda(o)\) (dual) |
-| Actor update | Through the known model | Through the identified model | Model prediction, action gradient through \(B\) |
-| Input | State and pitch reference | Selected states and reference | Observations, reference and tracking error |
-| Networks / identification | PyTorch / known matrices | PyTorch / NumPy | PyTorch / NumPy |
-
-## IMGDHP components
-
-| Component | Role | Implementation |
-| --- | --- | --- |
-| IncrementalModelRLS | Online identification of \(A\), \(B\) matrices via RLS | `tensoraerospace.agent.im_gdhp.IncrementalModelRLS` |
-| GDHPActor | Deterministic policy network \(u = u_{\max} \tanh(\pi_\theta(o))\) | `tensoraerospace.agent.im_gdhp.GDHPActor` |
-| GDHPCritic | Dual-head critic: shared backbone with \(J\)-head and \(\lambda\)-head | `tensoraerospace.agent.im_gdhp.GDHPCritic` |
-| IMGDHPAgent | Orchestrates all components, training loop, predict/learn interface | `tensoraerospace.agent.im_gdhp.IMGDHPAgent` |
-
-## Algorithm
-
-At each time step \(t\), given observation \(y_t\) and reference \(r_t\):
-
-1. **Augment observation**: \(o_t = [y_t;\; r_t;\; e_t]\), where \(e_t = y_t[\text{tracking}] - r_t\) for unit `obs_scale`; otherwise observations, references and errors use their channel scales
-2. **Actor produces action**: \(u_t = \pi_\theta(o_t)\)
-3. **Execute** \(u_t\) in the environment, observe \(y_{t+1}\)
-4. **Compute one-step cost**: \(c_t = e_t^\top Q e_t\)
-5. **RLS update** (if \(t \geq 1\)): update incremental model using \((y_{t-1}, y_t, y_{t+1}, u_{t-1}, u_t)\) to obtain \(A_t\), \(B_t\)
-6. **Critic update** (GDHP dual loss):
+Equations (31)–(38), (51)–(67), with column-vector Jacobians:
 
 \[
-L = \underbrace{\left( J(o_t) - (c_t + \gamma J(o_{t+1})) \right)^2}_{L_J} + \beta \underbrace{\left\| \lambda(o_t) - \left( \frac{\partial c_t}{\partial y} + \gamma A_t^\top \lambda(o_{t+1}) \right) \right\|^2}_{L_\lambda}
+e_t=y_t[\mathrm{tracking}]-r_t,\qquad
+\hat e_{t+1}=e_t+\sum_{j=0}^{M-1}F_j\Delta e_{t-j}+\sum_{j=0}^{M-1}G_j\Delta u_{t-j}.
 \]
-
-7. **Actor update** (model-predictive):
 
 \[
-\min_\theta \; c(\hat{y}_{t+1}, r_{t+1}) + \gamma \, J\!\left(\hat{o}_{t+1}\right) + \rho \|u_t-u_{t-1}\|^2, \quad \text{gradient flows through } B_t
+J(e)=w_{c2}^{T}\sigma(w_{c1}^{T}e),\qquad
+\lambda(e)=\nabla_e J(e).
 \]
 
-!!! note "Coordinates and critic heads"
-    RLS and model prediction use physical observations. `obs_scale` scales network inputs and tracking errors once, with a separate scale for each tracked channel. Both actor and critic use the scaled tracking cost; the costate target includes the scale factors required by the chain rule.
+\[
+c=e^TQe+u^TRu,\quad
+D=I+F_0+G_0\frac{\partial\pi}{\partial e},\quad
+\lambda_{\rm target}=\nabla_e c+\gamma D^T\lambda(\hat e_{t+1}).
+\]
 
-    `J` and `lambda` are independent heads with a shared backbone. The future-cost contribution to the action gradient is `gamma * B.T @ lambda_next`, in physical coordinates. The implementation does not enforce `lambda == dJ/dy`, so the actor does not substitute the independent `J` gradient for the fitted costate; the action-rate penalty is an actor regularizer and is not part of the critic's immediate cost.
+\[
+E_c=\frac{\beta}{2}(J(e_t)-c-\gamma J(\hat e_{t+1}))^2
++\frac{1-\beta}{2}\|\lambda(e_t)-\lambda_{\rm target}\|^2,
+\qquad \beta=\frac{1}{1+\texttt{beta\_lambda}}.
+\]
 
-## Quick start
+\[
+E_a=\frac12 J(\hat e_{t+1})^2,\qquad
+\nabla_w E_a=J(\hat e_{t+1})\frac{\partial\pi^T}{\partial w}G_0^T\lambda(\hat e_{t+1}).
+\]
+
+For nonzero `control_R`, the derivative of the immediate cost also includes the actor path, `(dπ/de).T @ (2 R u)`. The identity matrix in `D` comes from adding the current error to the predicted increment. The actor objective is the squared predicted cost-to-go, not an extra one-step tracking objective.
+
+## Interaction with the environment
+
+1. `predict(obs, reference, k)` computes the bounded command and records the current error.
+2. `env.step(action)` advances the physical model.
+3. `learn(next_obs, reference, k)` predicts the next error with the **previous identifier**, updates the networks using the previous policy/critic targets, then assimilates the measured transition into RLS (Algorithm 1).
+4. Call `reset()` between episodes. It clears transition buffers but retains learned weights, RLS parameters and learning progress.
+
+If the caller changes the command, pass `applied_action=` to `learn` in the same units as the policy output. Supply the entire reference array, including its next sample. In the F16 example observations are radians and commands are degrees.
+
+## Known, discontinuous references
+
+The paper identifies tracking-error dynamics when the reference dynamics are unknown (Section 3.3). Its reference representation assumes a continuous, piecewise differentiable signal. Fitting an abrupt commanded step directly as an error increment can contaminate the estimated aircraft dynamics.
+
+When the command is available, select the explicit **known-reference extension**:
 
 ```python
-import numpy as np
-import gymnasium as gym
-from tensoraerospace.agent.im_gdhp import IMGDHPAgent, IMGDHPConfig
-from tensoraerospace.utils import generate_time_period
-from tensoraerospace.signals.standard import sinusoid
-
-dt = 0.01
-tp = generate_time_period(tn=20, dt=dt)
-number_time_steps = len(tp)
-reference_signal = sinusoid(
-    degree=3, tp=tp, frequency=0.1, output_rad=True
-).reshape(1, -1)
-
-env = gym.make(
-    "NonlinearLongitudinalF16-v0",
-    number_time_steps=number_time_steps,
-    initial_state=np.array([0.0, 0.0]),
-    reference_signal=reference_signal,
-    dt=dt,
-)
-
-config = IMGDHPConfig(
-    gamma=0.95,
-    actor_hidden=(32, 32),
-    critic_hidden=(64, 64),
-    actor_lr=1e-3,
-    critic_lr=5e-3,
-    track_Q=(1.0,),
-    warmup_steps=5,
-    forgetting=0.9995,
-    u_max=25.0,
-)
-
-agent = IMGDHPAgent(
-    n_obs=2,
-    n_action=1,
-    reference_size=1,
-    tracking_indices=[0],
-    config=config,
-)
-
-obs, info = env.reset()
-for t in range(number_time_steps - 1):
-    action = agent.predict(obs, reference_signal, t)
-    obs_next, reward, terminated, truncated, info = env.step(action)
-    metrics = agent.learn(obs_next, reference_signal, t)
-    obs = obs_next
-    if terminated or truncated:
-        break
+cfg = IMGDHPConfig(identifier_mode="output", history_length=4)
 ```
 
-!!! tip
-    `tracking_indices` must align with the observation indices that correspond to the tracked reference signal. For example, if the observation is `[alpha, wz]` and you track `alpha`, use `tracking_indices=[0]`.
+RLS then fits measured output increments and control increments. Both actor and critic updates use `predicted_output - next_reference`. Network inputs and the tracking cost still contain only the tracking error. This keeps a commanded jump out of the plant identifier while preserving the published network losses and their derivative paths. No measurement of the next plant output is used in the predicted learning target.
 
-## Hyperparameters
+The default `identifier_mode="tracking_error"` retains the paper's unknown-reference formulation. Select the mode before collecting transitions; changing it on an active agent would mix histories with different meanings. Checkpoints save the mode and the matching history.
 
-### General
+## Configuration
 
-| Parameter | Default | Description |
-| --- | --- | --- |
-| `gamma` | 0.95 | Discount factor |
-| `warmup_steps` | 5 | Steps with frozen actor/critic (exploration only) |
-| `critic_only_steps` | 0 | Additional steps with frozen actor after warmup |
-| `seed` | None | RNG seed for reproducibility |
-| `device` | `"cpu"` | PyTorch device |
+| Parameter | Meaning |
+| --- | --- |
+| `identifier_mode` | Identifier input: `tracking_error` (paper default) or `output` (explicit known-reference extension). |
+| `history_length` | Increment window M; default 1 is the full-state special case. The F16 lesson uses 4. |
+| `track_Q`, `control_R` | Diagonal nonnegative tracking/input cost weights; R is zero when omitted. |
+| `obs_scale` | Per-observation scaling. Network inputs and tracking cost use it; identification and lambda use physical error coordinates. |
+| `beta_lambda` | Derivative/scalar loss ratio; the paper beta equals `1/(1+beta_lambda)`. Zero gives value-only critic learning. |
+| `actor_lr`, `critic_lr` | Initial learning rates. |
+| `actor_lr_decay`, `critic_lr_decay` | Per-update multipliers, default 1. |
+| `actor_lr_min`, `critic_lr_min` | Lower bounds on learning rates, default 0. |
+| `weight_limit` | Weight magnitude bound, default 20. |
+| `forgetting`, `cov_init` | RLS forgetting factor and initial covariance: positive scalar or positive diagonal entries in regressor order. |
+| `actor_bias_input` | Constant actor input ba in Eq. (64), default 0.01; its scale affects trim-command learning. |
+| `optimizer` | `sgd` by default. `adam` is an optional extension. |
+| `warmup_steps`, `critic_only_steps` | Initial identification period and optional extra critic-only updates. |
+| `max_grad_norm` | Optional gradient clipping; disabled by default. |
+| `target_update_tau` | Optional target smoothing; default 0 uses the current critic. |
 
-### Actor
+The default initialization uses network weights in `[-0.1, 0.1]`, identity F blocks and zero G, following Section 5.2. Hyperparameters are configurable: defaults and the F16 lesson are **not** a reproduction of the paper's 1 kHz experiment, noise, actuator or Monte Carlo study. The lesson explicitly enables gradient clipping and critic warmup and scales the errors. Its learning rates are retuned for 100 Hz.
 
-| Parameter | Default | Description |
-| --- | --- | --- |
-| `actor_hidden` | (32, 32) | Hidden layer sizes |
-| `actor_lr` | 1e-3 | Learning rate |
-| `u_max` | 25.0 | Per-channel control bound |
-| `exploration_noise_std` | 0.0 | Gaussian exploration noise during training |
+### Retuning an already trained actor
 
-### Critic
+`agent.retune_actor_inputs(feedback_gain=..., bias_input=...)` is an SDK operation for a reproducible tuning stage between experiments. `feedback_gain` multiplies first-layer error weights; the bias change inversely rescales its weights so the zero-error action is preserved. With feedback gain one, the full current policy is preserved while its subsequent learning sensitivity changes. The method validates weight limits, rejects pending predict/learn transitions and clears optimizer moments for the transformed layer. Saving the agent includes the new bias scale and weights.
 
-| Parameter | Default | Description |
-| --- | --- | --- |
-| `critic_hidden` | (64, 64) | Backbone hidden layer sizes |
-| `critic_lr` | 5e-3 | Learning rate |
-| `beta_lambda` | 1.0 | Weight of \(\lambda\)-loss in GDHP dual objective |
-| `critic_updates_per_step` | 1 | Gradient steps per environment transition |
-| `target_update_tau` | 0.0 | Polyak coefficient for target critic (0 = no target network) |
-| `critic_weight_decay` | 0.0 | L2 regularization |
-| `max_grad_norm` | 5.0 | Gradient clipping threshold |
+The F16 lesson derives a positive online SGD rate from the local Eq. (67) gradients and follows retuning with a zero-reference training episode. This is an explicit experimental procedure; the standard actor update does not add a PID or integral-control term.
 
-### Cost function
+## Complete examples
 
-| Parameter | Default | Description |
-| --- | --- | --- |
-| `track_Q` | (1.0,) | Diagonal weights of tracking cost \(e^\top Q e\) |
-| `action_rate_penalty` | 1e-3 | Coefficient \(\rho\) for \(\| \Delta u \|^2\) penalty |
+- [F16 lesson: linear tracking and nonlinear identification](../example/agent/imgdhp/example_imgdhp_nonlinear.md) — full construction, learning loop and plots.
+- [Recipe 12](../cookbook/12_imgdhp.md) — executable SDK walkthrough and interpretation.
 
-### Incremental model (RLS)
+## Migration and checkpoints
 
-| Parameter | Default | Description |
-| --- | --- | --- |
-| `forgetting` | 0.9995 | RLS forgetting factor \(\in (0, 1]\) |
-| `cov_init` | 1e2 | Initial covariance matrix scale |
+The former implementation had independent J/lambda heads, no measured history, an incomplete costate target and an additional actor tracking/rate objective. Checkpoints from that architecture are rejected with a retraining message. Set `action_rate_penalty=0`; use `control_R` for the paper's input cost. Previous tuned learning rates are not interchangeable.
 
-### Observation
+`save(path, save_gradients=True)` saves networks, optimizers, learning rates, RLS, history and exploration RNG. Load with `IMGDHPAgent.from_pretrained(path, load_gradients=True)`. Exact continuation also requires the same environment state, reference and time index. For a new episode, call `reset()`.
 
-| Parameter | Default | Description |
-| --- | --- | --- |
-| `obs_scale` | None | Per-component observation scaling factors |
+## Limits of the evidence
 
-## Supported environments
+The numerical tests check the derivatives against independent equations and recover a hidden second-order system from measured history. A tracking experiment checks one chosen plant and set of signals. Neither establishes global closed-loop stability. The paper itself notes this limitation in Remark 2 and reports failures for some initial conditions. Accurate one-step identification of a nonlinear aircraft is not evidence of a successful nonlinear control policy.
 
-- `NonlinearLongitudinalF16-v0`
-- `LinearLongitudinalF16-v0`
-
-## API reference
+## API
 
 ::: tensoraerospace.agent.im_gdhp.model.IMGDHPAgent
 
@@ -183,13 +117,21 @@ for t in range(number_time_steps - 1):
 
 ::: tensoraerospace.agent.im_gdhp.networks.GDHPCritic
 
-## Sources
+## Step-response validation
 
-- Sun, Z. & van Kampen, E.-J. (2021). *Intelligent adaptive optimal control using incremental model-based global dual heuristic programming subject to partial observability*. Applied Soft Computing, 103, 107153.
-- Zhou, Y., van Kampen, E.-J., & Chu, Q. P. (2020). *Incremental model based online dual heuristic programming for nonlinear adaptive control*. Control Engineering Practice, 95, 104242.
+The complete F16 lesson commands **alpha only** (`reference_size=1`, `tracking_indices=[0]`). It uses known-reference identification and sensitivity-based tuning, followed by a zero-reference training episode. The primary step starts at 20 s and lasts 38 s in total; `ControlBenchmark` scores the response. **Recomputed result, seed 0:** zero-hold maximum error **0.000120°**, 38-second tail mean error **+0.000212°**, command overshoot **4.50%**, command-band settling **3.38 s**, **CPI 0.9237**. All 12 seed/amplitude assessments pass the final-five-second 0.1%-accuracy condition at 60 s. The command sequence retains larger finite-time residuals: its largest final-five-second mean magnitude is about 0.00192°. These are measured finite-horizon errors, not a claim of mathematically exact zero error for every signal.
 
-## Resuming training
+### Scaling the RLS prior
 
-`save(path, save_gradients=True)` saves networks, optimizers, RLS, the warmup counter, current transition history and the exploration RNG state. Load with `IMGDHPAgent.from_pretrained(path, load_gradients=True)` to continue training. Reproducing a trajectory also requires restoring the environment state, reference and step index. Call `agent.reset()` when starting a new episode; learned weights, RLS and the total training counter are retained.
+`cov_init` also accepts `M * (n_tracked + n_action)` diagonal entries, ordered as all state-increment history blocks, then all action-increment history blocks. For example, with two radian measurements, degree-valued commands and M=4:
 
-Legacy checkpoints without `training_state.json` load with empty history and a zero warmup counter. Exploration uses an agent-local generator and is unaffected by unrelated `np.random` calls.
+```python
+scale = 180 / np.pi
+covariance_diagonal = (1e4 * scale**2,) * 8 + (1e4,) * 4
+cfg = IMGDHPConfig(track_Q=(1.0, 0.0), history_length=4,
+                  cov_init=covariance_diagonal, actor_bias_input=0.01)
+```
+
+This prior is equivalent to starting a normalized-regressor RLS with covariance `1e4 * I`; the SDK still predicts in physical units. It does not guarantee convergence. Unit-conversion equivalence, covariance reset and checkpoint continuation are regression-tested. The original scalar covariance and bias-input defaults are preserved.
+
+**Scope of the result:** the updated step, amplitude, seed, delayed-step and command-sequence checks use continuing adaptation. The 500-second rollout stays numerically bounded in alpha and control, but accumulates a large pitch angle; it is not nonlinear-flight validation. The 2° sine with a 4-second period is still tracked inaccurately (12-second RMSE 1.685°). Empirical tests do not establish stability for arbitrary signals or initial states.

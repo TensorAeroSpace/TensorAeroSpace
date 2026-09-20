@@ -145,3 +145,15 @@ ut = agent.predict(xt, reference, time_step=0)
 
 - [Incremental Model Based Heuristic Dynamic Programming for Nonlinear Adaptive Flight Control](https://www.researchgate.net/publication/313696777_Incremental_Model_Based_Heuristic_Dynamic_Programming_for_Nonlinear_Adaptive_Flight_Control)
 - [IHDP (reference implementation)](https://github.com/joigalcar3/IHDP)
+
+## Paper audit and learning-rate migration
+
+Reference: [Zhou, van Kampen and Chu (2016), Incremental Model Based Heuristic Dynamic Programming for Nonlinear Adaptive Flight Control](https://www.imavs.org/papers/2016/25.pdf), especially Eq. (12). The actor minimizes `0.5 * J_next**2`. For `u = maximum_input * tanh(z)`, the weight gradient must include `maximum_input`; sigmoid output scaling contributes twice that factor.
+
+The former SISO implementation omitted that factor. The linked [TensorFlow reference implementation](https://github.com/joigalcar3/IHDP/tree/bddfeb7736f32ec158b6b3f6fa3044b19c12b0e0) has the same omission; it is not an error introduced solely by the PyTorch port. This repository belongs to José Ignacio de Alvear Cárdenas, not the authors of the 2016 paper.
+
+Divide previously tuned SISO actor rates and their floors by the output gain as a starting point, then validate the closed loop. `learning_rate_min` controls the alpha-decay schedule floor (default 0.001). MIMO gradients already included their output gains. The nonlinear F16 lesson further retunes the actor rate to `2 / 15 * 2` and floor to `0.001 / 15 * 2`; B737 uses `1.5 / 4 * 1.01` and `0.001 / 4 * 1.01`.
+
+Incremental least squares now solves the measured design matrix directly, avoiding the squared condition number of normal equations. Unavailable initial samples contribute zeros instead of random fabricated measurements. `Q_weights` accepts a diagonal vector or a full symmetric positive-semidefinite matrix and preserves cross terms.
+
+The nonlinear F16 accuracy is for **IHDP with inverse-model feedforward**; the B737 example includes **integral correction**. These additions are explicitly outside the basic paper algorithm.

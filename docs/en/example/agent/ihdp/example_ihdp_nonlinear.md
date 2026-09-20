@@ -1,5 +1,7 @@
 # Example: IHDP on the nonlinear F-16 — sinusoidal α-tracking
 
+The actor gradient includes the physical output scale. The corrected, retuned actor uses `learning_rate=2/15*2` and `learning_rate_min=0.001/15*2`. These results include the inverse-model feedforward; they are not an IHDP-only result.
+
 This example trains an **Incremental Heuristic Dynamic Programming (IHDP)** agent to track a sinusoidal angle-of-attack reference on the pure-NumPy [nonlinear F-16 longitudinal model](../../../model/f16_nonlinear_longitudinal.md). The source notebook lives at `example/reinforcement_learning/incremental_adp/example_ihdp_nonlinear_f16.ipynb`.
 
 ## Key idea: feedforward + IHDP residual
@@ -130,14 +132,15 @@ env = gym.make(
 Two changes versus the canonical linear-F-16 IHDP example matter here:
 
 - **`Q_weights = [200]`** (vs. 8 in the linear example). The FF covers most of the tracking, so the residual error is small. A higher Q amplifies that small error to give the actor a usable gradient.
-- **`NN_initial = 47`** is the best seed from a sweep over `[1, 100]` with `Q=200, lr=2`: it gives MAE ≈ 0.05° on this exact reference. `NN_initial=120` is a safe middle (~0.14°).
+- **`NN_initial = 47`** is the fixed initialization for this comparison, not a guarantee of robustness.
 
 ```python
 actor_settings = {
     "start_training": 5,
     "layers": (25, 1),
     "activations": ("tanh", "tanh"),
-    "learning_rate": 2,
+    "learning_rate": 2.0 / 15.0 * 2,
+    "learning_rate_min": 0.001 / 15.0 * 2,
     "learning_rate_exponent_limit": 10,
     "type_PE": "combined",
     "amplitude_3211": 3,
@@ -204,9 +207,9 @@ Late-half metrics (40 s → 80 s, after the agent has settled):
 
 | Metric | Value |
 |--------|-------|
-| Mean absolute error | **0.053°** (1.77 % of amplitude) |
-| RMS error | 0.074° |
-| Max abs error | 0.174° (5.81 % of amplitude) |
+| Mean absolute error | **0.0744°** (2.48 % of amplitude) |
+| RMS error | 0.1040° |
+| Max abs error | 0.2493° (8.31 % of amplitude) |
 
 ## 8. Ablation — what each ingredient buys you
 
@@ -217,13 +220,13 @@ Running the same simulation with increasingly-stripped configurations:
 | No FF, IHDP only (Q=8) | 1.91° |
 | FF lookahead only (Q=8) | 0.67° |
 | FF lookahead + gain (Q=8) | 0.22° |
-| FF lookahead + gain (**Q=200**) | **0.053°** |
+| FF lookahead + gain (**Q=200**) | **0.0744°** |
 
 The phase-compensating lookahead does most of the work. The amplitude gain closes the remaining undershoot. The higher Q is only useful once the residual is already small.
 
 ## Notes
 
 - **Why the gain helps.** The static FF assumes equilibrium; for a moving reference the elevator must overshoot the static target by exactly the amount needed to accelerate α. The optimal gain depends on the reference frequency; for slower references it approaches 1.0.
-- **NN_initial sweep.** IHDP is sensitive to weight initialisation. A sweep over `NN_initial ∈ [1, 100]` with `Q=200, lr=2` gave best MAE 0.049° (seed 47), median ~0.12°, and ~17 seeds diverged. Picking a seed is part of IHDP tuning — re-sweep if you change the reference.
+- **Initialization.** These metrics use `NN_initial=47`; change the seed and rerun before drawing conclusions about robustness.
 - **Switching integrator.** Use `integrator="rk4"` for higher numerical fidelity on larger reference amplitudes. For this 3° test the difference is marginal.
 - **Stronger reference.** Amplitudes up to 5–8° stay inside the FF curve range \([-12°, 17°]\); reduce `ff_gain` slightly (toward 1.4) and IHDP will compensate a larger nonlinear residual.

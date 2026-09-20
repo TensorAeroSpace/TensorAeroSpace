@@ -335,3 +335,8 @@ _research/
 /outputs/paper-iadp-f16-long-command/
 
 /outputs/paper-iadp-f16-long-aerodynamic/
+
+# Reproducible IHDP / IM-GDHP paper audit and linked trial journals.
+!reports/ihdp-imgdhp-paper-audit.json
+!reports/ihdp-imgdhp-tuning-trials.json
+!reports/ihdp-imgdhp-alpha-training-trials.json
