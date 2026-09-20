@@ -37,6 +37,7 @@ install-ci: ## Установить зависимости для CI
 test: ## Запустить все тесты
 	@echo "$(BLUE)Запуск всех тестов...$(RESET)"
 	PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 poetry run pytest -p pytest_cov tests/ -v \
+		--cov-config=pyproject.toml \
 		--cov=tensoraerospace --cov-report=html:/tmp/tensoraerospace-coverage/htmlcov --cov-report=term
 
 test-quick: ## Запустить быстрые тесты

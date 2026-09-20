@@ -71,8 +71,11 @@ jobs:
           poetry install --with dev --no-interaction
 
       - name: 🧪 Run tests with coverage
+        # Tests change cwd and spawn workers; pass the project config explicitly
+        # so subprocess coverage uses the same settings as the parent.
         run: |
           poetry run pytest \
+            --cov-config=pyproject.toml \
             --cov=tensoraerospace \
             --cov-report=xml:coverage.xml \
             --cov-report=term-missing:skip-covered \
