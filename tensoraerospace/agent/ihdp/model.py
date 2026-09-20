@@ -136,6 +136,8 @@ class IHDPAgent(object):
             integral_gain=actor_settings.get("integral_gain", 0.0),
             integral_clamp_deg=actor_settings.get("integral_clamp_deg", 5.0),
             integral_warmup_steps=actor_settings.get("integral_warmup_steps", 500),
+            learning_rate_min=actor_settings.get("learning_rate_min", 0.001),
+            learning_rate_decay=actor_settings.get("learning_rate_decay", 0.995),
         )
         self.actor.build_actor_model()
 
@@ -153,6 +155,8 @@ class IHDPAgent(object):
             critic_settings["activations"],
             critic_settings["WB_limits"],
             critic_settings["NN_initial"],
+            learning_rate_min=critic_settings.get("learning_rate_min", 1e-6),
+            learning_rate_decay=critic_settings.get("learning_rate_decay", 0.995),
         )
         self.critic.build_critic_model()
         self.incremental_model = IncrementalModel(
@@ -162,6 +166,7 @@ class IHDPAgent(object):
             incremental_settings["dt"],
             incremental_settings["input_magnitude_limits"],
             incremental_settings["input_rate_limits"],
+            window_size=incremental_settings.get("window_size"),
         )
 
     def predict(

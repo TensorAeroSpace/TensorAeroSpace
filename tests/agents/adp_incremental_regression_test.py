@@ -99,7 +99,7 @@ def test_imgdhp_cost_scales_the_physical_tracking_error_once(scale, monkeypatch)
     agent.learn(np.array([3.0]), reference, 0)
     assert update.call_args.kwargs["c_now_value"] == pytest.approx(scale**2)
     np.testing.assert_allclose(update.call_args.kwargs["err_now_np"], [scale])
-    np.testing.assert_allclose(agent._y_tm1, [2.0])
+    np.testing.assert_allclose(agent._y_tm1, [1.0])
 
 
 @pytest.mark.parametrize("scale", [1.0, 10.0, 0.1])
@@ -114,25 +114,26 @@ def test_imgdhp_costate_target_is_derivative_wrt_physical_state(scale):
         scale**2,
         np.array([scale]),
     )
-    expected = scale**4 + agent.cfg.beta_lambda * (2 * scale**2) ** 2
+    expected = (
+        0.5
+        / (1 + agent.cfg.beta_lambda)
+        * (scale**4 + agent.cfg.beta_lambda * (2 * scale**2) ** 2)
+    )
     assert loss == pytest.approx(expected, rel=1e-5)
 
 
 @pytest.mark.parametrize("scale", [1.0, 10.0, 0.1])
-def test_imgdhp_actor_uses_same_scaled_tracking_cost_as_critic(scale):
+def test_imgdhp_zero_critic_gives_zero_actor_update(scale):
+    """Eq. (67) has no independent next-step tracking/MPC term."""
     agent = make_imgdhp(scale)
     agent.incremental_model.theta[:] = [[0.0], [1.0]]
+    before = [p.detach().clone() for p in agent.actor.parameters()]
     loss = agent._actor_update(
-        y_t_np=np.array([2.0]),
-        ref_now_np=np.array([1.0]),
-        ref_next_np=np.array([1.0]),
-        u_prev_np=np.zeros(1),
-        y_prev_np=np.array([2.0]),
+        np.array([2.0]), np.array([1.0]), np.array([1.0]), np.zeros(1), np.array([1.0])
     )
-    # Zero action predicts y_next=2, so the immediate tracking cost is scale^2.
-    assert loss == pytest.approx(scale**2, rel=1e-5)
-    augmented = agent._augment_torch(torch.tensor([2.0]), torch.tensor([1.0]))
-    assert agent.actor(augmented).item() < 0.0
+    assert loss == 0
+    for actual, expected in zip(agent.actor.parameters(), before):
+        torch.testing.assert_close(actual, expected)
 
 
 @pytest.mark.parametrize("reference", [np.array([1.0]), np.array([1.0, 2.0])])
@@ -145,9 +146,10 @@ def test_imgdhp_each_tracking_channel_uses_its_own_units(reference):
         config=IMGDHPConfig(obs_scale=(10.0, 0.1), track_Q=(1.0, 1.0), device="cpu"),
     )
     observation = np.array([2.0, 3.0])
-    expected_error = (observation - reference) * [10.0, 0.1]
+    expected_error = observation - reference
     augmented = agent._augment(observation, reference)
-    np.testing.assert_allclose(augmented[-2:], expected_error)
+    np.testing.assert_allclose(augmented, expected_error)
+    np.testing.assert_allclose(agent.actor.input_scale.cpu().numpy(), [10.0, 0.1])
     augmented_t = agent._augment_torch(
         torch.as_tensor(observation, dtype=torch.float32),
         torch.as_tensor(reference, dtype=torch.float32),
@@ -156,25 +158,16 @@ def test_imgdhp_each_tracking_channel_uses_its_own_units(reference):
 
 
 @pytest.mark.parametrize("scale", [0.1, 1.0, 10.0])
-def test_imgdhp_actor_follows_learned_costate_in_physical_coordinates(scale):
-    """Independent J and lambda heads can disagree; lambda defines the update."""
-    agent = make_imgdhp(scale, gamma=0.5, track_Q=(0.0,))
+def test_imgdhp_actor_uses_squared_value_gradient(scale):
+    """Eq. (67): dE/du=J_next * B.T * dJ_next/de_next."""
+    agent = make_imgdhp(scale, gamma=0.5, track_Q=(0.0,), actor_hidden=())
     agent.incremental_model.theta[:] = [[0.0], [1.0]]
 
-    class ConflictingCritic(torch.nn.Module):
-        def forward(self, augmented):
-            # Deliberately opposite to the fitted costate; the action update
-            # must use dJ/dy=-2, without an extra observation-scale factor.
-            return 10.0 * augmented[:1], torch.full_like(augmented[:1], -2.0)
+    class QuadraticCritic(torch.nn.Module):
+        def forward(self, error):
+            return 0.5 * (error - 2).square(), error - 2
 
-    agent.critic = ConflictingCritic()
+    agent.critic = QuadraticCritic()
     agent.actor_opt = torch.optim.SGD(agent.actor.parameters(), lr=0.1)
-    agent._actor_update(
-        y_t_np=np.zeros(1),
-        ref_now_np=np.zeros(1),
-        ref_next_np=np.zeros(1),
-        u_prev_np=np.zeros(1),
-        y_prev_np=np.zeros(1),
-    )
-    # dL/du = gamma * B^T * lambda = -1; du/dbias=1 at zero.
-    assert agent.actor.head.bias.item() == pytest.approx(0.1, abs=1e-7)
+    agent._actor_update(np.zeros(1), np.zeros(1), np.zeros(1), np.zeros(1), np.zeros(1))
+    assert agent.actor.head.weight[0, -1].item() == pytest.approx(0.004, abs=1e-7)

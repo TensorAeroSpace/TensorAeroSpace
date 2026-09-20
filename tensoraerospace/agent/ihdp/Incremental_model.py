@@ -31,6 +31,7 @@ class IncrementalModel:
         discretisation_time: float = 0.5,
         input_magnitude_limits: float = 25,
         input_rate_limits: float = 60,
+        window_size: int | None = None,
     ) -> None:
         """Initialize incremental model buffers and limits.
 
@@ -41,6 +42,8 @@ class IncrementalModel:
             discretisation_time: Sampling period.
             input_magnitude_limits: Max control magnitude.
             input_rate_limits: Max control rate change.
+            window_size: LS history length, at least states + inputs; defaults
+                to twice that sum. A sufficient length does not ensure rank.
         """
         # Define the inputs to the incremental model
         self.number_time_steps = number_time_steps
@@ -56,11 +59,19 @@ class IncrementalModel:
         self.xt1_est = np.zeros((self.number_states, 1))
 
         # Define the data window size
-        self.L = 2 * (self.number_inputs + self.number_states)
+        minimum = self.number_inputs + self.number_states
+        if window_size is not None and (
+            isinstance(window_size, bool)
+            or not isinstance(window_size, int)
+            or window_size < minimum
+        ):
+            raise ValueError(f"window_size must be an integer >= {minimum}")
+        self.L = 2 * minimum if window_size is None else window_size
         self.store_delta_xt = np.zeros((self.number_states, self.number_time_steps))
-        self.store_delta_xt_0 = np.random.rand(self.number_states, self.L)
+        # Unobserved history is zero padding, never fabricated measurements.
+        self.store_delta_xt_0 = np.zeros((self.number_states, self.L))
         self.store_delta_ut = np.zeros((self.number_inputs, self.number_time_steps))
-        self.store_delta_ut_0 = np.random.rand(self.number_inputs, self.L)
+        self.store_delta_ut_0 = np.zeros((self.number_inputs, self.L))
         self.store_input = np.zeros((self.number_inputs, self.number_time_steps))
 
         # Define the system identification matrices
@@ -222,12 +233,9 @@ class IncrementalModel:
         # Obtain the A matrix and the x vector
         A_LS_matrix = self.build_A_LS_matrix()
         x_LS_vector = self.build_x_LS_vector()
-        identified_matrices = np.matmul(
-            np.matmul(
-                np.linalg.pinv(np.matmul(A_LS_matrix.T, A_LS_matrix)), A_LS_matrix.T
-            ),
-            x_LS_vector,
-        ).T
+        # Solve the same least-squares problem directly. Forming A.T @ A
+        # squares the condition number and discards weak, observable channels.
+        identified_matrices = np.linalg.lstsq(A_LS_matrix, x_LS_vector, rcond=None)[0].T
         self.F = identified_matrices[:, : self.number_states]
         self.G = identified_matrices[:, self.number_states :]
 
