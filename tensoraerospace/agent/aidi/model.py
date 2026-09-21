@@ -33,8 +33,7 @@ from typing import Any, Dict, Optional, Union
 
 import numpy as np
 
-# Reuse the well-tested low-pass differentiator from aa_indi for ω̇_meas.
-from tensoraerospace.agent.aa_indi.sensor_filter import LowPassDerivative
+from tensoraerospace.optimization.agent import OptimizableAgent
 
 from .allocator import MoorePenroseAllocator
 from .onboard_ce import OnboardCEModel
@@ -47,6 +46,7 @@ from .ref_models import (
     SpeedController,
 )
 from .scaling_rls import ScalingRLS
+from .sensor_filter import LowPassDerivative
 from .utils import reconstruct_n_z
 
 logger = logging.getLogger(__name__)
@@ -114,18 +114,19 @@ class AIDIConfig:
     speed_kd: float = 0.0
     speed_enabled: bool = False
 
-    # Linear controller — additional rate-error feedback.
-    rate_kp: tuple = (0.0, 0.0, 0.0)
+    # Linear controller — rate-error feedback, gains in 1/s.
+    rate_kp: tuple = (1.0, 1.0, 1.0)
 
     seed: int | None = None
     history: dict = field(default_factory=dict)
 
 
-def _clamp(x: np.ndarray, lo: float, hi: float) -> np.ndarray:
+def _clamp(x: np.ndarray, lo: float | np.ndarray, hi: float | np.ndarray) -> np.ndarray:
+    """Clip each command to its scalar or per-channel lower and upper limits."""
     return np.clip(x, lo, hi)
 
 
-class AIDIAgent:
+class AIDIAgent(OptimizableAgent):
     """Adaptive Incremental Dynamic Inversion control agent."""
 
     def __init__(
@@ -206,6 +207,8 @@ class AIDIAgent:
 
         # --- Rolling state --------------------------------------------
         self._u_prev = np.zeros(self.n_control, dtype=np.float64)
+        self._u_filtered = self._u_prev.copy()
+        self._pending_transition = False
         self._omega_dot_cached = np.zeros(self.n_state, dtype=np.float64)
         self._omega_prev: np.ndarray | None = None
         self._omega_dot_prev: np.ndarray | None = None
@@ -219,6 +222,7 @@ class AIDIAgent:
     # Helpers
     # ------------------------------------------------------------------
     def _check_obs(self, obs: dict) -> None:
+        """Require the physical observation fields consumed by the AIDI control law."""
         missing = [k for k in REQUIRED_OBS_KEYS if k not in obs]
         if missing:
             raise KeyError(
@@ -226,7 +230,15 @@ class AIDIAgent:
                 f"AIDI needs: {REQUIRED_OBS_KEYS}"
             )
 
+    def _action_vector(self, action) -> np.ndarray:
+        """Validate and flatten applied controls to one finite value per actuator."""
+        value = np.asarray(action, dtype=np.float64).reshape(-1)
+        if value.size != self.n_control or not np.all(np.isfinite(value)):
+            raise ValueError("applied_action must contain n_control finite values")
+        return value
+
     def _check_refs(self, refs: dict) -> None:
+        """Require all command fields needed by the outer reference controllers."""
         missing = [k for k in REQUIRED_REF_KEYS if k not in refs]
         if missing:
             raise KeyError(
@@ -235,6 +247,7 @@ class AIDIAgent:
             )
 
     def _resolve_n_z(self, obs: dict, q: float) -> float:
+        """Use measured normal load factor or reconstruct it from flight kinematics."""
         if "n_z" in obs:
             return float(obs["n_z"])
         alpha = float(obs["alpha"])
@@ -261,21 +274,34 @@ class AIDIAgent:
         x[0] = float(obs["alpha"])
         x[1] = float(obs["beta"])
         x[2] = float(omega[0])
-        x[3] = float(omega[1])
-        x[4] = float(omega[2])
+        # Native F-16 y points up: (wx, wy, wz) = (p, -r, q).
+        x[3] = -float(omega[2])
+        x[4] = float(omega[1])
+        x[5] = float(obs["phi"])
         x[7] = float(obs["theta"])
+        if self.n_control == 3:
+            x[[8, 10, 12]] = self._u_prev
         return x
 
     # ------------------------------------------------------------------
     # Core API
     # ------------------------------------------------------------------
-    def reset(self) -> None:
-        """Clear per-episode rolling state — keeps Θ and P (lifelong adaptation)."""
-        self._u_prev = np.zeros(self.n_control, dtype=np.float64)
+    def reset(self, *, initial_action: np.ndarray | None = None) -> None:
+        """Reset episode history, retaining Θ/P; optionally start at measured trim.
+
+        ``initial_action`` is the actual actuator position in command units.
+        Omitting it retains the neutral initial position used by older callers.
+        """
+        initial = self._action_vector(
+            np.zeros(self.n_control) if initial_action is None else initial_action
+        )
+        self._u_prev = initial.copy()
+        self._u_filtered = self._u_prev.copy()
+        self._pending_transition = False
         self._omega_dot_cached = np.zeros(self.n_state, dtype=np.float64)
         self._omega_prev = None
         self._omega_dot_prev = None
-        self._last_u_cmd = np.zeros(self.n_control, dtype=np.float64)
+        self._last_u_cmd = initial.copy()
         self._last_nu_des = np.zeros(self.n_state, dtype=np.float64)
         self._alpha_prev = None
         self._last_G_nominal = None
@@ -295,6 +321,14 @@ class AIDIAgent:
         *,
         deterministic: bool = True,
     ) -> np.ndarray:
+        """Compute limited control commands from physical observations and outer
+        references.
+
+        Observations contain body rates in rad/s, angles in radians and airspeed in m/s.
+        Call ``learn`` with the following measurement and applied action to complete
+        this transition. Action units follow the onboard effectiveness model and the
+        configured actuator limits.
+        """
         del deterministic, time_step
         self._check_obs(observation)
         self._check_refs(references)
@@ -302,6 +336,12 @@ class AIDIAgent:
         omega = np.asarray(observation["omega"], dtype=np.float64).reshape(-1)
         if omega.size != self.n_state:
             raise ValueError(f"omega must have length {self.n_state}, got {omega.size}")
+
+        if not np.all(np.isfinite(omega)):
+            raise ValueError("omega must be finite")
+        # Prime with the measured x_0; otherwise learn(x_1) loses transition 0.
+        if self.deriv._prev_x is None:
+            self.deriv.step(omega)
 
         # Use the cached ω̇_meas — `learn` advances the differentiator.
         omega_dot_meas = self._omega_dot_cached.copy()
@@ -338,6 +378,38 @@ class AIDIAgent:
             V=float(observation["V"]),
         )
         omega_des = np.array([p_des, q_des, r_des], dtype=np.float64)
+        return self._command_from_rates(observation, omega_des)
+
+    def predict_rates(self, observation: dict, desired_rates: np.ndarray) -> np.ndarray:
+        """Native AIDI inner loop with an externally supplied body-rate command.
+
+        Rates use conventional (p, q, r) in rad/s. This application boundary
+        bypasses C*/roll/sideslip guidance; the same allocator, filtered input
+        baseline, limits and online ScalingRLS are used. Call learn after step.
+        """
+        self._check_obs(observation)
+        omega = np.asarray(observation["omega"], dtype=float).reshape(-1)
+        desired = np.asarray(desired_rates, dtype=float).reshape(-1)
+        if (
+            omega.shape != (self.n_state,)
+            or desired.shape != omega.shape
+            or not np.isfinite([omega, desired]).all()
+        ):
+            raise ValueError(
+                "Measured and desired rates must be finite n_state vectors"
+            )
+        if self.deriv._prev_x is None:
+            self.deriv.step(omega)
+        return self._command_from_rates(observation, desired)
+
+    def _command_from_rates(
+        self, observation: dict, omega_des: np.ndarray
+    ) -> np.ndarray:
+        """Allocate a control increment, apply slew/amplitude limits and cache the
+        transition.
+        """
+        omega = np.asarray(observation["omega"], dtype=float).reshape(-1)
+        omega_dot_meas = self._omega_dot_cached.copy()
         nu_des = self.linear.combine(omega_des=omega_des, omega=omega)
 
         # Inner loop — AIDI law.
@@ -348,9 +420,15 @@ class AIDIAgent:
 
         # Rate / magnitude clamps.
         du_max = self.cfg.u_rate_limit * self.cfg.dt
-        du = _clamp(du, -du_max, du_max)
+        # The baseline must have the same filtering delay as acceleration
+        # (Ul Haq et al., §III.B). Slew limits constrain successive commands;
+        # the plant enforces its own physical actuator limits.
+        candidate = self._u_filtered + du
+        rate_limited = _clamp(
+            candidate, self._last_u_cmd - du_max, self._last_u_cmd + du_max
+        )
         u_cmd = _clamp(
-            self._u_prev + du,
+            rate_limited,
             -self.cfg.u_magnitude_limit,
             self.cfg.u_magnitude_limit,
         )
@@ -360,6 +438,7 @@ class AIDIAgent:
         self._last_nu_des = nu_des.copy()
         self._alpha_prev = float(observation["alpha"])
         self._last_G_nominal = G_nominal.copy()
+        self._pending_transition = True
         return u_cmd
 
     def learn(
@@ -367,7 +446,18 @@ class AIDIAgent:
         next_observation: dict,
         references: dict,
         time_step: int = 0,
+        *,
+        applied_action: np.ndarray | None = None,
+        adapt: bool = True,
     ) -> Dict[str, float]:
+        """Advance measured history and optionally identify control effectiveness.
+
+        ``applied_action`` is actual actuator feedback for this transition, in
+        command units. With a sampled rate difference, use the mean applied
+        deflection over the interval. None assumes ideal command tracking.
+        ``adapt=False`` keeps the identifier fixed but advances sensor/actuator
+        history, for evaluation of a previously learned controller.
+        """
         del references, time_step
         self._check_obs(next_observation)
         omega = np.asarray(
@@ -377,16 +467,30 @@ class AIDIAgent:
         if omega.size != self.n_state:
             raise ValueError(f"omega must have length {self.n_state}, got {omega.size}")
 
+        if not self._pending_transition:
+            raise RuntimeError("learn() must follow an unconsumed predict()")
+        if not np.all(np.isfinite(omega)):
+            raise ValueError("omega must be finite")
+        applied = self._action_vector(
+            self._last_u_cmd if applied_action is None else applied_action
+        )
         omega_dot_next = self.deriv.step(omega)
         self._omega_dot_cached = omega_dot_next.copy()
 
         residuals = np.zeros(self.n_state, dtype=np.float64)
-        if self._omega_dot_prev is not None and self._last_G_nominal is not None:
-            du = self._last_u_cmd - self._u_prev
+        filtered = self._u_filtered + self.deriv._alpha * (applied - self._u_filtered)
+        if (
+            adapt
+            and self._omega_dot_prev is not None
+            and self._last_G_nominal is not None
+        ):
+            du = filtered - self._u_filtered
             domega = omega_dot_next - self._omega_dot_prev
             residuals = self.rls.update(du, domega, self._last_G_nominal)
 
-        self._u_prev = self._last_u_cmd.copy()
+        self._u_prev = applied.copy()
+        self._u_filtered = filtered.copy()
+        self._pending_transition = False
         self._omega_prev = omega.copy()
         self._omega_dot_prev = omega_dot_next.copy()
         self._step += 1
@@ -407,6 +511,7 @@ class AIDIAgent:
     # Persistence
     # ------------------------------------------------------------------
     def get_param_env(self) -> dict[str, Any]:
+        """Return serializable policy dimensions and configuration, excluding history."""
         agent_name = f"{self.__class__.__module__}.{self.__class__.__name__}"
         cfg_dict = dataclasses.asdict(self.cfg)
         cfg_dict.pop("history", None)
@@ -420,6 +525,12 @@ class AIDIAgent:
         }
 
     def save(self, path: Union[str, Path, None] = None) -> str:
+        """Save configuration, identifier and controller histories in a timestamped
+        folder.
+
+        Return the folder path. The caller must supply the compatible onboard
+        effectiveness model when loading; that callable is not serialized.
+        """
         base = Path.cwd() if path is None else Path(path)
         date_str = datetime.datetime.now().strftime("%b%d_%H-%M-%S")
         run_dir = base / f"{date_str}_{self.__class__.__name__}"
@@ -461,6 +572,8 @@ class AIDIAgent:
         np.savez(
             run_dir / "loop_state.npz",
             u_prev=self._u_prev,
+            u_filtered=self._u_filtered,
+            pending_transition=np.asarray(self._pending_transition),
             omega_dot_cached=self._omega_dot_cached,
             omega_prev=(
                 self._omega_prev if self._omega_prev is not None else np.array([])
@@ -494,6 +607,7 @@ class AIDIAgent:
         folder: Union[str, Path],
         onboard_ce: OnboardCEModel,
     ) -> "AIDIAgent":
+        """Restore saved controller state using the caller-supplied effectiveness model."""
         folder_p = Path(folder)
         with open(folder_p / "config.json", "r", encoding="utf-8") as f:
             cfg = json.load(f)
@@ -551,6 +665,17 @@ class AIDIAgent:
                 npz["last_G_nominal"] if bool(npz["has_last_G_nominal"]) else None
             )
             agent._step = int(npz["step"])
+            if "u_filtered" in npz:
+                agent._u_filtered = npz["u_filtered"].copy()
+                agent._pending_transition = bool(npz["pending_transition"])
+            else:
+                # Old checkpoints have no synchronized input history. Keep
+                # learned weights and re-prime measurements at the next predict.
+                agent._u_filtered = agent._u_prev.copy()
+                agent._pending_transition = False
+                agent._omega_dot_prev = None
+                agent._omega_dot_cached = np.zeros(agent.n_state)
+                agent.deriv.reset()
 
         return agent
 
@@ -563,6 +688,11 @@ class AIDIAgent:
         access_token: Optional[str] = None,
         version: Optional[str] = None,
     ) -> "AIDIAgent":
+        """Load a local checkpoint directory or download a Hugging Face model revision.
+
+        ``onboard_ce`` supplies the compatible nominal effectiveness model.
+        ``access_token`` and ``version`` apply to remote downloads.
+        """
         p = Path(str(repo_name)).expanduser()
         if p.is_dir():
             return cls._load_from_dir(p, onboard_ce=onboard_ce)
@@ -581,6 +711,9 @@ class AIDIAgent:
         folder_path: Union[str, Path],
         access_token: Optional[str] = None,
     ) -> None:
+        """Upload an existing checkpoint folder to the specified Hugging Face model
+        repo.
+        """
         from huggingface_hub import HfApi
 
         api = HfApi()

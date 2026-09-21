@@ -160,14 +160,14 @@ PID_GAIN_BOUNDS = ((0.5, 1000.0), (0.5, 5000.0), (0.001, 100.0))
 
 
 def selected_tuning():
-    """iADP tuning selected on a healthy 500 s trajectory; both updates stay active."""
+    """Starting settings for the unregularized critic; rerun healthy tuning."""
     from .example_iadp_tuned_f16 import Tuning
 
-    return Tuning(blend=1e-6, forgetting=0.9999)
+    return Tuning(forgetting=0.9999)
 
 
 def search_healthy():
-    """Repeat the six-candidate search without evaluating any damaged plant."""
+    """Compare forgetting settings without evaluating any damaged plant."""
     from dataclasses import asdict, replace
 
     from . import example_iadp_tuned_f16 as tuned
@@ -176,23 +176,20 @@ def search_healthy():
     _, nominal, _ = tuned.baseline.trim_and_agent(cfg)
     weight = float(nominal.R[0, 0])
     history = []
-    for blend in (1e-4, 1e-5, 1e-6):
-        for forgetting in (0.9995, 0.9999):
-            tuning = replace(tuned.INTEGRAL_TUNING, blend=blend, forgetting=forgetting)
-            trace, diagnostics = tuned.rollout(cfg, tuning, fault=False, training=True)
-            if diagnostics["events"]:
-                raise AssertionError("Fault data leaked into healthy tuning")
-            error = np.deg2rad(trace[:, 2] - trace[:, 1])
-            history.append(
-                {
-                    "tuning": asdict(tuning),
-                    "cost": float(np.mean(error**2 + weight * trace[:, 7] ** 2)),
-                    "rmse_deg_s": float(np.sqrt(np.mean(np.rad2deg(error) ** 2))),
-                }
-            )
-            print(
-                f"Healthy candidate {len(history)}/6: {history[-1]['cost']}", flush=True
-            )
+    for forgetting in (0.9995, 0.9999):
+        tuning = replace(tuned.INTEGRAL_TUNING, forgetting=forgetting)
+        trace, diagnostics = tuned.rollout(cfg, tuning, fault=False, training=True)
+        if diagnostics["events"]:
+            raise AssertionError("Fault data leaked into healthy tuning")
+        error = np.deg2rad(trace[:, 2] - trace[:, 1])
+        history.append(
+            {
+                "tuning": asdict(tuning),
+                "cost": float(np.mean(error**2 + weight * trace[:, 7] ** 2)),
+                "rmse_deg_s": float(np.sqrt(np.mean(np.rad2deg(error) ** 2))),
+            }
+        )
+        print(f"Healthy candidate {len(history)}/2: {history[-1]['cost']}", flush=True)
     best = min(history, key=lambda row: row["cost"])
     return tuned.Tuning(**best["tuning"]), history
 
@@ -205,8 +202,6 @@ def run_comparison(cfg, aero_fault, *, tuning=None, pid_gains=NOMINAL_PID_GAINS)
     from .example_iadp_long_horizon_f16 import window_metrics
 
     tuning = selected_tuning() if tuning is None else tuning
-    if tuning.blend <= 0:
-        raise ValueError("This comparison requires continuous critic learning")
     if not 0 < aero_fault.time_s < cfg.duration:
         raise ValueError("Fault must occur inside the episode")
     if aero_fault.time_s != cfg.fault_time:

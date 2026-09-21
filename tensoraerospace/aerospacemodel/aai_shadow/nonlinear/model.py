@@ -57,25 +57,38 @@ class NonlinearAAIShadow(ModelBase):
         self._integrator_name = integrator
 
     def get_param(self) -> AAIShadowParameters:
+        """Return the live aircraft parameter object; mutations affect subsequent
+        integration.
+        """
         return self.param
 
     def set_param(self, new_param: AAIShadowParameters) -> None:
+        """Replace the aircraft parameter object used by subsequent integration steps."""
         self.param = new_param
 
     @property
     def current_state(self) -> np.ndarray:
+        """Return an independent flat copy of the latest 12-component state."""
         return np.array(self.x_history[-1], dtype=np.float64, copy=True).reshape(-1)
 
     @property
     def altitude_m(self) -> float:
+        """Return altitude in metres, reversing the NED down-position sign."""
         return float(-self.current_state[11])
 
     @property
     def airspeed_m_s(self) -> float:
+        """Return the magnitude of body-axis velocity in metres per second."""
         s = self.current_state
         return float(np.sqrt(s[0] ** 2 + s[1] ** 2 + s[2] ** 2))
 
     def run_step(self, u: ArrayLike) -> np.ndarray:
+        """Integrate one step with surface radians and throttle; append state/input
+        histories.
+
+        Return a column vector containing the selected output states, or all 12 states
+        when no selection is configured.
+        """
         u_arr = np.asarray(u, dtype=np.float64).reshape(-1)
         if u_arr.size != self.action_space_length:
             raise ValueError(

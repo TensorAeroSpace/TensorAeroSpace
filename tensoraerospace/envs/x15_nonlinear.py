@@ -159,6 +159,9 @@ class NonlinearX15Env(gym.Env):
     def _resolve_initial_state(
         initial_state, flight_condition_id, trim_at, trim_throttle, config
     ) -> np.ndarray:
+        """Resolve a 13-state vector, published flight condition or requested trim
+        state.
+        """
         provided = sum(
             int(x is not None) for x in (initial_state, flight_condition_id, trim_at)
         )
@@ -205,6 +208,9 @@ class NonlinearX15Env(gym.Env):
         return result.to_state()
 
     def _scale_action(self, action: np.ndarray) -> np.ndarray:
+        """Convert normalized controls to surface radians and throttle, or copy virtual
+        controls.
+        """
         if self.action_mode == "virtual":
             return action.astype(np.float64, copy=True)
         u_e, u_a, u_r, u_T = action[0], action[1], action[2], action[3]
@@ -221,6 +227,9 @@ class NonlinearX15Env(gym.Env):
     # ---- gym API -------------------------------------------------------
 
     def reset(self, *, seed: Optional[int] = None, options=None):
+        """Recreate the plant at its initial state and return a copied observation and
+        info.
+        """
         super().reset(seed=seed)
         self.model = NonlinearX15(
             x0=self.initial_state,
@@ -232,6 +241,13 @@ class NonlinearX15Env(gym.Env):
         return self.model.current_state.copy(), {}
 
     def step(self, action):
+        """Advance elevator, aileron, rudder and throttle by one sampling interval.
+
+        Actions use the configured virtual or normalized mode and are clipped before
+        integration. Return the Gymnasium observation, zero reward, termination flag,
+        horizon-truncation flag and info dictionary. Info includes remaining propellant
+        in pounds and the engine-running flag.
+        """
         if self.model is None:
             raise RuntimeError("env.reset() must be called before step()")
 

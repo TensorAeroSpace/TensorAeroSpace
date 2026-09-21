@@ -8,6 +8,27 @@ from example.reinforcement_learning.incremental_adp import (
 )
 
 
+@pytest.mark.parametrize("integral_weight", [3.0, 30.0, 300.0])
+@pytest.mark.parametrize("gamma", [0.95, 0.99, 0.999])
+def test_integral_prior_satisfies_full_discounted_riccati_equation(
+    integral_weight, gamma
+):
+    cfg = example.baseline.Experiment()
+    tuning = example.Tuning(gamma=gamma, integral_weight=integral_weight)
+    _, agent, _ = example.make_agent(cfg, tuning)
+    P, F, G, R = agent.P, agent.F, agent.G, agent.R
+    cost = np.block([[agent.Q, -agent.Q], [-agent.Q, agent.Q]])
+    gain = np.linalg.solve(R + gamma * G.T @ P @ G, gamma * G.T @ P @ F)
+    residual = cost + gamma * F.T @ P @ F - gamma * F.T @ P @ G @ gain - P
+
+    # Verify the full original problem, including both reference coordinates.
+    np.testing.assert_allclose(residual, 0.0, rtol=0, atol=1e-8)
+    np.testing.assert_array_equal(P @ [0.0, 1.0, 0.0, 1.0], np.zeros(4))
+    tolerance = 8 * np.finfo(float).eps * len(P) * np.max(np.abs(P))
+    assert np.linalg.eigvalsh(P).min() >= -tolerance
+    assert np.max(np.abs(np.linalg.eigvals(np.sqrt(gamma) * (F - G @ gain)))) < 1
+
+
 def test_integral_model_matches_causal_error_update():
     cfg = example.baseline.Experiment()
     _, agent, _ = example.make_agent(cfg, example.INTEGRAL_TUNING)
@@ -18,7 +39,7 @@ def test_integral_model_matches_causal_error_update():
     assert agent.n_state == 2
     np.testing.assert_array_equal(agent.Q, np.diag([1.0, 30.0]))
     assert agent.cfg.policy_eval_min_samples == agent.cfg.policy_eval_window == 300
-    assert agent.cfg.policy_eval_blend == 0.0001
+    assert not hasattr(agent.cfg, "policy_eval_blend")
 
 
 def test_integral_feature_is_zero_for_perfect_tracking():

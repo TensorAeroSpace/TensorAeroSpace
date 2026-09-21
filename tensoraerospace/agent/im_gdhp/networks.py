@@ -1,43 +1,37 @@
-"""Actor and GDHP critic networks for IM-GDHP."""
+"""Actor and scalar, analytically differentiated GDHP critic.
+
+Sun & van Kampen (2021), Eqs. (51), (52) and (64). Autograd computes
+both the input derivative and its mixed derivatives with network weights.
+"""
 
 from __future__ import annotations
 
+import math
 from typing import Sequence
 
 import torch
 from torch import nn
 
 
-def _build_mlp(
-    in_features: int,
-    hidden_sizes: Sequence[int],
-    activation: type[nn.Module],
-) -> nn.Sequential:
-    layers: list[nn.Module] = []
+def _build_mlp(in_features, hidden_sizes, activation, *, bias=True):
+    """Build hidden linear/activation layers with the requested per-layer widths."""
+    layers = []
     last = in_features
-    for h in hidden_sizes:
-        layers.append(nn.Linear(last, h))
-        layers.append(activation())
-        last = h
+    for size in hidden_sizes:
+        layers.extend([nn.Linear(last, size, bias=bias), activation()])
+        last = size
     return nn.Sequential(*layers)
 
 
 class GDHPActor(nn.Module):
-    """Deterministic policy network for IM-GDHP.
+    """Bounded policy for a tracking-error vector, Eq. (64).
 
-    Maps an augmented observation ``[y; y_ref; e_track]`` to a bounded
-    control command ``u ∈ [-u_max, u_max]``. Bounding is enforced by a
-    ``tanh`` output head scaled by ``u_max`` — this matches the
-    "symmetrical sigmoid activation in the output layer of the actor"
-    trick from the Sun/van Kampen incremental ADP papers.
-
-    Args:
-        in_features: Size of the augmented observation vector.
-        n_u: Number of control channels.
-        hidden_sizes: Sizes of the hidden layers.
-        u_max: Per-channel absolute bound on the control command.
-        activation: Hidden-layer activation factory.
+    The optional input scale changes network coordinates, not physical units
+    of actions. The constant ``bias_input`` (default 0.01) permits trim control at zero error,
+    as in Eq. (64) and Section 5.2; the output layer has no extra bias.
     """
+
+    input_scale: torch.Tensor
 
     def __init__(
         self,
@@ -46,44 +40,52 @@ class GDHPActor(nn.Module):
         hidden_sizes: Sequence[int] = (32, 32),
         u_max: float = 1.0,
         activation: type[nn.Module] = nn.Tanh,
+        input_scale=None,
+        bias_input: float = 0.01,
     ) -> None:
         super().__init__()
         self.in_features = int(in_features)
         self.n_u = int(n_u)
         self.u_max = float(u_max)
-        self.backbone = _build_mlp(self.in_features, hidden_sizes, activation)
-        last = hidden_sizes[-1] if hidden_sizes else self.in_features
-        self.head = nn.Linear(last, self.n_u)
-
-        # Small init on the output layer keeps initial actions near zero so
-        # the agent starts close to the trim point instead of saturating.
-        nn.init.uniform_(self.head.weight, -1e-3, 1e-3)
-        nn.init.zeros_(self.head.bias)
+        self.bias_input = float(bias_input)
+        if not math.isfinite(self.bias_input) or self.bias_input <= 0:
+            raise ValueError("bias_input must be finite and positive")
+        self.register_buffer(
+            "input_scale",
+            (
+                torch.ones(in_features)
+                if input_scale is None
+                else torch.as_tensor(input_scale, dtype=torch.float32)
+            ),
+        )
+        self.backbone = _build_mlp(
+            in_features + 1, hidden_sizes, activation, bias=False
+        )
+        self.head = nn.Linear(
+            hidden_sizes[-1] if hidden_sizes else in_features + 1, n_u, bias=False
+        )
+        for parameter in self.parameters():
+            nn.init.uniform_(parameter, -0.1, 0.1)
 
     def forward(self, obs: torch.Tensor) -> torch.Tensor:
-        """Compute ``u = u_max · tanh(head(backbone(obs)))``."""
-        h = self.backbone(obs)
-        raw = self.head(h)
-        return self.u_max * torch.tanh(raw)
+        """Return the physical bounded control command."""
+        scaled = obs * self.input_scale
+        features = torch.cat(
+            (scaled, torch.full_like(scaled[..., :1], self.bias_input)), dim=-1
+        )
+        return self.u_max * torch.tanh(self.head(self.backbone(features)))
 
 
 class GDHPCritic(nn.Module):
-    """Dual-head critic for Global Dual Heuristic Programming.
+    """Return J and its exact input gradient; no independent costate head.
 
-    Outputs the scalar cost-to-go ``J(o)`` and a separately fitted
-    costate estimate ``λ(o)`` with the same dimensionality as ``y``.
-    The two losses train a common backbone, but the independent output
-    heads do not enforce ``λ(o) = ∂J/∂y``.
-
-    Args:
-        in_features: Size of the augmented observation vector ``o``
-            (typically ``n_y + n_ref + n_y`` when the tracking error is
-            concatenated).
-        n_y: Size of the observed state vector ``y``. Defines the number
-            of outputs of the λ head.
-        hidden_sizes: Sizes of the shared hidden layers.
-        activation: Hidden-layer activation factory.
+    The bias-free tanh critic satisfies J(0)=0, as in Eqs. (51)--(52).
+    ``n_y`` selects the first input coordinates when used independently;
+    an IMGDHPAgent differentiates all tracked-error coordinates. Input
+    scaling is inside the graph, so lambda retains physical error units.
     """
+
+    input_scale: torch.Tensor
 
     def __init__(
         self,
@@ -91,23 +93,34 @@ class GDHPCritic(nn.Module):
         n_y: int,
         hidden_sizes: Sequence[int] = (32, 32),
         activation: type[nn.Module] = nn.Tanh,
+        input_scale=None,
     ) -> None:
         super().__init__()
-        self.in_features = int(in_features)
-        self.n_y = int(n_y)
-        self.backbone = _build_mlp(self.in_features, hidden_sizes, activation)
-        last = hidden_sizes[-1] if hidden_sizes else self.in_features
-        self.j_head = nn.Linear(last, 1)
-        self.lambda_head = nn.Linear(last, self.n_y)
-
-        nn.init.uniform_(self.j_head.weight, -1e-3, 1e-3)
-        nn.init.zeros_(self.j_head.bias)
-        nn.init.uniform_(self.lambda_head.weight, -1e-3, 1e-3)
-        nn.init.zeros_(self.lambda_head.bias)
+        self.in_features, self.n_y = int(in_features), int(n_y)
+        if not 0 < self.n_y <= self.in_features:
+            raise ValueError("n_y must be in 1..in_features")
+        self.register_buffer(
+            "input_scale",
+            (
+                torch.ones(in_features)
+                if input_scale is None
+                else torch.as_tensor(input_scale, dtype=torch.float32)
+            ),
+        )
+        self.backbone = _build_mlp(in_features, hidden_sizes, activation, bias=False)
+        self.j_head = nn.Linear(
+            hidden_sizes[-1] if hidden_sizes else in_features, 1, bias=False
+        )
+        for parameter in self.parameters():
+            nn.init.uniform_(parameter, -0.1, 0.1)
 
     def forward(self, obs: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
-        """Return ``(J, λ)`` for a batch of augmented observations."""
-        h = self.backbone(obs)
-        j = self.j_head(h)
-        lam = self.lambda_head(h)
-        return j, lam
+        """Differentiate J even during inference; retain mixed gradients in training."""
+        training_graph = torch.is_grad_enabled()
+        with torch.enable_grad():
+            x = obs if obs.requires_grad else obs.detach().requires_grad_(True)
+            j = self.j_head(self.backbone(x * self.input_scale))
+            lam = torch.autograd.grad(
+                j.sum(), x, create_graph=training_graph, retain_graph=training_graph
+            )[0][..., : self.n_y]
+        return (j, lam) if training_graph else (j.detach(), lam.detach())

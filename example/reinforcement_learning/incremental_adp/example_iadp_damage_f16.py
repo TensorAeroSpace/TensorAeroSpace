@@ -192,8 +192,6 @@ def run_iadp(
         policy_eval_window=300,
         policy_eval_every=5,
         policy_eval_warmup_updates=20,
-        policy_eval_regularization=1e-10,
-        policy_eval_blend=0.10,
         F_init=F_init,
         G_init=G_init,
         P_init=P_init,

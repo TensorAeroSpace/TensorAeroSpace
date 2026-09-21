@@ -18,6 +18,8 @@ from typing import Any, Optional
 
 from huggingface_hub import HfApi, snapshot_download
 
+from tensoraerospace.optimization.agent import OptimizableAgent
+
 
 def get_class_from_string(class_path):
     """Dynamically imports and returns a class by string path.
@@ -44,7 +46,7 @@ def get_class_from_string(class_path):
     return cls
 
 
-class BaseRLModel(ABC):
+class BaseRLModel(OptimizableAgent, ABC):
     """Base abstract class for reinforcement learning models.
 
     This class defines a common interface for all reinforcement learning algorithms

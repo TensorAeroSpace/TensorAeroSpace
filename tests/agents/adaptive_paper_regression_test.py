@@ -128,9 +128,7 @@ def test_iadp_critic_uses_model_prediction_as_in_original_fig2():
 
 
 def test_iadp_unregularized_ls_keeps_resolvable_small_feature():
-    agent = IADPAgent(
-        1, 1, IADPConfig(policy_eval_regularization=0.0, policy_eval_blend=1.0)
-    )
+    agent = IADPAgent(1, 1, IADPConfig())
     expected = np.diag([5.0, 2.0])
     for state in [
         np.array([sign * s, x])

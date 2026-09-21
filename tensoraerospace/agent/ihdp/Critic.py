@@ -67,7 +67,7 @@ class Critic:
 
     def __init__(
         self,
-        Q_weights: list[float],
+        Q_weights: list[float] | np.ndarray,
         selected_states: list[str],
         tracking_states: list[str],
         indices_tracking_states: list[int],
@@ -81,11 +81,13 @@ class Critic:
         WB_limits: float = 30,
         NN_initial: int | None = None,
         model_path: str | None = None,
+        learning_rate_min: float = 1e-6,
+        learning_rate_decay: float = 0.995,
     ) -> None:
         """Initialize IHDP Critic network and buffers.
 
         Args:
-            Q_weights: Diagonal weights for Q matrix.
+            Q_weights: Diagonal weights or a symmetric positive-semidefinite Q matrix.
             selected_states: State variable names.
             tracking_states: Tracked states for cost.
             indices_tracking_states: Indices of tracked states.
@@ -93,6 +95,8 @@ class Critic:
             start_training: Step index to start training.
             gamma: Discount factor.
             learning_rate: Optimizer learning rate.
+            learning_rate_min: Decay floor, capped by the initial rate.
+            learning_rate_decay: Per-update decay factor in (0, 1].
             learning_rate_exponent_limit: Exponent limit for LR decay.
             layers: Hidden layer sizes.
             activations: Activation functions per layer.
@@ -113,10 +117,20 @@ class Critic:
         self.Jt = np.zeros((1, 1))
         self.Jt_1 = np.zeros((1, 1))
         self.model_path = model_path
-        if len(Q_weights) < self.number_tracking_states:
-            raise Exception("The size of Q_weights needs to equal the number of states")
-        self.Q = np.zeros((self.number_tracking_states, self.number_tracking_states))
-        np.fill_diagonal(self.Q, Q_weights)
+        weights = np.asarray(Q_weights, dtype=float)
+        self.Q = np.diag(weights) if weights.ndim == 1 else weights.copy()
+        if self.Q.shape != (self.number_tracking_states, self.number_tracking_states):
+            raise ValueError(
+                "The size of Q_weights needs to equal the number of tracked states"
+            )
+        if (
+            not np.isfinite(self.Q).all()
+            or not np.allclose(self.Q, self.Q.T)
+            or np.linalg.eigvalsh(self.Q).min() < 0
+        ):
+            raise ValueError(
+                "Q_weights must be finite, symmetric and positive semidefinite"
+            )
         self.number_time_steps = number_time_steps
         self.time_step = 0
         self.start_training = start_training
@@ -143,6 +157,12 @@ class Critic:
         self.gamma = gamma
         self.learning_rate = learning_rate
         self.learning_rate_0 = learning_rate
+        if not np.isfinite(learning_rate_min) or learning_rate_min < 0:
+            raise ValueError("learning_rate_min must be finite and nonnegative")
+        if not np.isfinite(learning_rate_decay) or not 0 < learning_rate_decay <= 1:
+            raise ValueError("learning_rate_decay must be in (0, 1]")
+        self.learning_rate_min = float(learning_rate_min)
+        self.learning_rate_decay = float(learning_rate_decay)
         self.learning_rate_exponent_limit = learning_rate_exponent_limit
         self.WB_limits = WB_limits
         self.store_J = np.zeros((1, self.number_time_steps))
@@ -386,7 +406,10 @@ class Critic:
                     params[count].data.zero_()
 
             # Update the learning rate
-            self.learning_rate = max(self.learning_rate * 0.995, 0.000001)
+            self.learning_rate = max(
+                self.learning_rate * self.learning_rate_decay,
+                min(self.learning_rate_0, self.learning_rate_min),
+            )
 
     def run_train_critic_online_alpha_decay(
         self, xt: np.ndarray, xt_ref: np.ndarray
@@ -432,7 +455,10 @@ class Critic:
                     params[count].data.zero_()
 
             # Update the learning rate
-            self.learning_rate = max(self.learning_rate * 0.995, 0.000001)
+            self.learning_rate = max(
+                self.learning_rate * self.learning_rate_decay,
+                min(self.learning_rate_0, self.learning_rate_min),
+            )
 
         return np.asarray(self.Jt)
 

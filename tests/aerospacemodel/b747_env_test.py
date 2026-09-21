@@ -338,11 +338,12 @@ def test_rudder_decay_preset_decreases_over_time():
 
 def test_env_damage_event_triggers_in_info_dict():
     env = NonlinearB747Env(
-        flight_condition_id=4, number_time_steps=500, damage_profile=ELEVATOR_50PCT_LOSS
+        flight_condition_id=4, number_time_steps=501, damage_profile=ELEVATOR_50PCT_LOSS
     )
     env.reset()
     triggered = False
-    for k in range(500):
+    # The event at 5 s affects the interval beginning at 5 s.
+    for k in range(501):
         _, _, _, trunc, info = env.step(np.array([0.0, 0.0, 0.0, 0.32]))
         if "damage_events_triggered" in info:
             triggered = True

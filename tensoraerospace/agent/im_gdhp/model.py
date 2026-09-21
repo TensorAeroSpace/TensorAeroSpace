@@ -1,42 +1,11 @@
-"""Incremental Model-based Global Dual Heuristic Programming agent.
+"""Incremental GDHP with an analytically differentiated scalar critic.
 
-Implements an incremental adaptive-critic variant inspired by Sun & van Kampen (2021),
-*"Intelligent adaptive optimal control using incremental model-based
-global dual heuristic programming subject to partial observability"*,
-Applied Soft Computing 103, 107153, with the system identification
-block formulated as block RLS on the incremental model (Zhou et al.
-2020; Sun & van Kampen 2019). The implementation is self-contained in
-pure PyTorch + NumPy and operates directly on the observation vector
-returned by a Gymnasium environment — which is typically a strict
-subset of the full internal state, hence "partial observability".
-
-High-level algorithm::
-
-    At each step t, given the newly observed y_t and reference r_t:
-
-      1. Form the augmented observation o_t = [y_t; r_t; e_t] with
-         e_t = y_t[tracking] − r_t.
-      2. Actor produces u_t = π_θ(o_t).
-      3. Execute u_t in the environment, observe y_{t+1}.
-      4. Compute the tracking cost c_t = e_tᵀ Q e_t in scaled coordinates.
-      5. If t ≥ 1, update the incremental model via one RLS step using
-         (y_{t-1}, y_t, y_{t+1}, u_{t-1}, u_t) in physical units — this gives us
-         current estimates of A_t and B_t.
-      6. Compute λ(t+1) and J(t+1) by passing the measured observation
-         y_{t+1} through the target / online critic.
-      7. Critic loss:
-            L_J  = (J(o_t) − (c_t + γ J(o_{t+1})))²
-            L_λ  = ‖λ(o_t) − (∂c_t/∂y + γ A_tᵀ λ(o_{t+1}))‖²
-            L    = L_J + β L_λ
-      8. Actor loss: minimise predicted next-step tracking cost plus
-         ``γ J(ô_{t+1}) + ρ ‖u_t − u_{t-1}‖²``. The autograd graph
-         uses the fitted costate for the future-cost action gradient
-         ``γ B_t.T λ_next``. The independent scalar J head supplies the
-         reported objective value, not a replacement for that costate.
-
-The resulting agent has three differentiable blocks — actor, critic,
-and the RLS-identified linear increment model — and does not require
-any prior knowledge of the plant dynamics.
+Sun & van Kampen (2021), Applied Soft Computing 103, 107153,
+https://doi.org/10.1016/j.asoc.2021.107153, Eqs. (31)--(38), (51)--(67).
+The public observation/reference adapter supplies tracking error; the actor
+and critic see only this error. A configurable history identifies the local
+error dynamics, including hidden plant and reference dynamics. A history
+length alone does not establish observability or persistent excitation.
 """
 
 from __future__ import annotations
@@ -52,109 +21,79 @@ import numpy as np
 import torch
 from torch import nn, optim
 
+from tensoraerospace.optimization.agent import OptimizableAgent
+
 from .incremental_model import IncrementalModelRLS
 from .networks import GDHPActor, GDHPCritic
 
 
 @dataclass
 class IMGDHPConfig:
-    """Hyper-parameters for :class:`IMGDHPAgent`.
+    """Configuration for the published GDHP equations.
 
-    Args:
-        gamma: Discount factor γ.
-        actor_hidden: Hidden layer sizes of the actor MLP.
-        critic_hidden: Hidden layer sizes of the critic backbone.
-        actor_lr: Actor learning rate.
-        critic_lr: Critic learning rate.
-        beta_lambda: Weight of the λ-loss in the GDHP critic objective.
-        track_Q: Diagonal weights of the quadratic tracking cost over
-            the tracked output channels. Length must equal ``n_track``.
-        action_rate_penalty: ρ coefficient penalising ‖Δu‖² in the
-            actor objective; excluded from the critic's immediate cost.
-        forgetting: RLS forgetting factor for the incremental model.
-        cov_init: Initial scale of the RLS covariance matrix.
-        warmup_steps: Number of initial steps during which only the
-            incremental model is updated (actor and critic are held
-            fixed) so that ``A`` and ``B`` stabilise before being used
-            for policy improvement.
-        critic_only_steps: Number of additional steps beyond
-            ``warmup_steps`` during which the critic is updated but
-            the actor is held fixed. This gives the value function time
-            to settle before the policy gradient starts acting on it,
-            which empirically dampens DHP oscillations.
-        critic_updates_per_step: Number of gradient steps to take on
-            the critic for every environment transition. Multiple
-            critic steps per env step accelerate Bellman convergence
-            without waiting for more samples.
-        target_update_tau: Polyak coefficient for the soft target
-            critic update ``θ_target ← (1-τ)·θ_target + τ·θ``. When
-            ``0.0`` the target network is disabled and the online
-            critic is used for Bellman bootstrapping (legacy
-            behaviour). Typical values ``1e-3`` to ``1e-2``.
-        critic_weight_decay: L2 regularisation coefficient passed to
-            the critic's ``Adam`` optimiser. Prevents the λ-head from
-            drifting during long online runs.
-        obs_scale: Optional per-component multiplier applied to the raw
-            observation and the reference before feeding them to the
-            actor and critic. Useful to compensate for very small
-            (rad-scale) physical units. Length ``n_obs`` or ``None``.
-        max_grad_norm: Gradient clipping applied to both actor and
-            critic optimisers.
-        exploration_noise_std: Std of zero-mean Gaussian noise added to
-            the actor output during training. Set to ``0`` to disable.
-        u_max: Per-channel absolute bound on the control output of the
-            actor, in the units expected by the environment (e.g. deg
-            for the F-16 envs in tensoraerospace).
-        device: Torch device for the networks.
-        seed: Optional seed for torch / numpy RNGs.
+    ``beta_lambda`` is the nonnegative derivative/scalar loss ratio:
+    the article's beta is ``1 / (1 + beta_lambda)``. ``obs_scale`` scales
+    network inputs and the tracking cost, while the identifier and costate
+    use physical error coordinates. ``control_R`` adds the article's
+    quadratic input cost. ``history_length`` is the measured window M;
+    1 is the full-state special case, longer windows can represent hidden
+    dynamics when the observation is informative enough.
+
+    ``identifier_mode="tracking_error"`` retains the paper's unknown-reference
+    formulation. With a known, possibly discontinuous command, ``"output"``
+    identifies measured outputs and subtracts the next reference from the
+    prediction. This explicit known-reference extension prevents command jumps
+    from being fitted as plant dynamics. The policy still sees tracking error
+    only; no additional controller or observation enters the networks.
+
+    SGD is the paper's optimizer. Adam, gradient clipping, target smoothing,
+    multiple critic iterations and a critic-only warmup are optional numerical
+    extensions, disabled by the paper defaults where applicable. The former
+    actor-only action-rate cost is rejected because it changed the objective.
     """
 
     gamma: float = 0.95
-    actor_hidden: Sequence[int] = (32, 32)
-    critic_hidden: Sequence[int] = (64, 64)
+    actor_hidden: Sequence[int] = (32,)
+    critic_hidden: Sequence[int] = (32,)
+    actor_bias_input: float = 0.01
     actor_lr: float = 1e-3
     critic_lr: float = 5e-3
+    actor_lr_decay: float = 1.0
+    critic_lr_decay: float = 1.0
+    actor_lr_min: float = 0.0
+    critic_lr_min: float = 0.0
+    weight_limit: float = 20.0
     beta_lambda: float = 1.0
     track_Q: Sequence[float] = (1.0,)
-    action_rate_penalty: float = 1e-3
+    control_R: Sequence[float] | None = None
+    action_rate_penalty: float = 0.0
+    history_length: int = 1
+    identifier_mode: str = "tracking_error"
     forgetting: float = 0.9995
-    cov_init: float = 1e2
+    cov_init: float | Sequence[float] = 1e2
     warmup_steps: int = 5
     critic_only_steps: int = 0
     critic_updates_per_step: int = 1
     target_update_tau: float = 0.0
     critic_weight_decay: float = 0.0
     obs_scale: Sequence[float] | None = None
-    max_grad_norm: float = 5.0
+    max_grad_norm: float = float("inf")
     exploration_noise_std: float = 0.0
     u_max: float = 25.0
+    optimizer: str = "sgd"
     device: str = "cpu"
     seed: int | None = None
     history: dict = field(default_factory=dict)
 
 
-class IMGDHPAgent:
-    """Online IM-GDHP control agent with partial observability support.
+class IMGDHPAgent(OptimizableAgent):
+    """Online error-feedback IGDHP, with predict/step/learn interaction.
 
-    The agent's public training interface mirrors the online style of
-    :class:`tensoraerospace.agent.ihdp.IHDPAgent`: at each environment
-    step the caller invokes :meth:`predict` with the latest observation
-    and reference, gets back the next control command, executes it in
-    the environment, then calls :meth:`learn` with the new observation
-    to perform one RLS + critic + actor update. A convenience
-    :meth:`train` loop wraps this for episodic training against a
-    Gymnasium environment.
-
-    Args:
-        n_obs: Length of the environment observation vector ``y``.
-        n_action: Number of control channels.
-        reference_size: Length of the reference vector at each time step
-            (typically 1 per tracked channel).
-        tracking_indices: Indices into ``y`` of the states that should
-            track the reference. Used to build the scalar tracking error
-            that drives the reward. Defaults to ``[0]``.
-        config: Optional :class:`IMGDHPConfig` instance. Fields not set
-            fall back to the class defaults.
+    ``n_obs`` describes the environment packet. Only ``tracking_indices``
+    and the corresponding references enter the policy. Set a sufficient
+    ``history_length`` when these errors do not form a full Markov state.
+    The learner uses a model prediction made before assimilating the new
+    transition, as in Algorithm 1. Reset between independent episodes.
     """
 
     def __init__(
@@ -165,255 +104,252 @@ class IMGDHPAgent:
         tracking_indices: Sequence[int] | None = None,
         config: IMGDHPConfig | None = None,
     ) -> None:
-        self.n_obs = int(n_obs)
-        self.n_action = int(n_action)
+        self.n_obs, self.n_action = int(n_obs), int(n_action)
         self.reference_size = int(reference_size)
-        self.tracking_indices = (
-            list(tracking_indices) if tracking_indices is not None else [0]
+        self.tracking_indices = list(
+            [0] if tracking_indices is None else tracking_indices
         )
-        if len(self.tracking_indices) == 0:
-            raise ValueError("tracking_indices must contain at least one index")
-        self.cfg = config if config is not None else IMGDHPConfig()
-
-        if self.cfg.seed is not None:
-            torch.manual_seed(int(self.cfg.seed))
-        self._rng = np.random.default_rng(self.cfg.seed)
-
-        if len(self.cfg.track_Q) != len(self.tracking_indices):
-            raise ValueError(
-                f"track_Q has length {len(self.cfg.track_Q)} but tracking_indices "
-                f"has length {len(self.tracking_indices)}"
-            )
-
+        self.cfg = IMGDHPConfig() if config is None else config
+        self._validate_config()
+        self._validate_learning_rates()
         self.device = torch.device(self.cfg.device)
-
-        # Augmented-observation layout: [y (n_obs); ref (reference_size);
-        # tracking_error (len(tracking_indices))]. The tracking_error is
-        # redundant given y and ref, but providing it explicitly helps the
-        # actor/critic learn faster.
-        self.augmented_size = (
-            self.n_obs + self.reference_size + len(self.tracking_indices)
+        self._rng = np.random.default_rng(self.cfg.seed)
+        if self.cfg.seed is not None:
+            torch.manual_seed(self.cfg.seed)
+        self.augmented_size = len(self.tracking_indices)
+        self._obs_scale_np = (
+            np.ones(self.n_obs)
+            if self.cfg.obs_scale is None
+            else np.asarray(self.cfg.obs_scale, dtype=float)
         )
-
+        if (
+            self._obs_scale_np.shape != (self.n_obs,)
+            or not np.isfinite(self._obs_scale_np).all()
+            or np.any(self._obs_scale_np <= 0)
+        ):
+            raise ValueError("obs_scale must contain n_obs finite positive values")
+        self._scale = self._obs_scale_np[self.tracking_indices]
+        common: dict[str, Any] = dict(
+            in_features=self.augmented_size, input_scale=self._scale
+        )
         self.actor = GDHPActor(
-            in_features=self.augmented_size,
+            **common,
             n_u=self.n_action,
-            hidden_sizes=tuple(self.cfg.actor_hidden),
+            hidden_sizes=self.cfg.actor_hidden,
             u_max=self.cfg.u_max,
+            bias_input=self.cfg.actor_bias_input,
         ).to(self.device)
-
         self.critic = GDHPCritic(
-            in_features=self.augmented_size,
-            n_y=self.n_obs,
-            hidden_sizes=tuple(self.cfg.critic_hidden),
+            **common, n_y=self.augmented_size, hidden_sizes=self.cfg.critic_hidden
         ).to(self.device)
-
-        # Target critic for Bellman bootstrapping. Always constructed so
-        # that hot-swapping ``target_update_tau`` at runtime stays
-        # consistent — when ``tau == 0`` the target net tracks the
-        # online net exactly (hard-copied below) and is never updated,
-        # which reproduces the legacy behaviour.
         self.target_critic = GDHPCritic(
-            in_features=self.augmented_size,
-            n_y=self.n_obs,
-            hidden_sizes=tuple(self.cfg.critic_hidden),
+            **common, n_y=self.augmented_size, hidden_sizes=self.cfg.critic_hidden
         ).to(self.device)
         self.target_critic.load_state_dict(self.critic.state_dict())
-        for p in self.target_critic.parameters():
-            p.requires_grad_(False)
-
-        self.actor_opt = optim.Adam(self.actor.parameters(), lr=self.cfg.actor_lr)
-        self.critic_opt = optim.Adam(
+        for parameter in self.target_critic.parameters():
+            parameter.requires_grad_(False)
+        optimizer = optim.SGD if self.cfg.optimizer == "sgd" else optim.Adam
+        self.actor_opt = optimizer(self.actor.parameters(), lr=self.cfg.actor_lr)
+        self.critic_opt = optimizer(
             self.critic.parameters(),
             lr=self.cfg.critic_lr,
-            weight_decay=float(self.cfg.critic_weight_decay),
+            weight_decay=self.cfg.critic_weight_decay,
         )
-
         self.incremental_model = IncrementalModelRLS(
-            n_y=self.n_obs,
-            n_u=self.n_action,
+            self.augmented_size,
+            self.n_action,
             forgetting=self.cfg.forgetting,
             cov_init=self.cfg.cov_init,
             seed=self.cfg.seed,
+            history_length=self.cfg.history_length,
         )
-
-        self._Q = torch.as_tensor(
-            np.asarray(self.cfg.track_Q, dtype=np.float64),
-            dtype=torch.float32,
-            device=self.device,
+        # Section 5.2 prior: identity error-increment blocks and zero input map.
+        self.incremental_model.theta[:] = 0
+        self.incremental_model.theta[
+            : self.cfg.history_length * self.augmented_size
+        ] = np.tile(np.eye(self.augmented_size), (self.cfg.history_length, 1))
+        self._R = (
+            np.zeros(self.n_action)
+            if self.cfg.control_R is None
+            else np.asarray(self.cfg.control_R, dtype=float)
         )
-
-        if self.cfg.obs_scale is not None:
-            scale = np.asarray(self.cfg.obs_scale, dtype=np.float64).reshape(-1)
-            if scale.size != self.n_obs:
-                raise ValueError(
-                    f"obs_scale has length {scale.size}, expected {self.n_obs}"
-                )
-            self._obs_scale_np = scale
-            self._obs_scale_t = torch.as_tensor(
-                scale, dtype=torch.float32, device=self.device
+        if (
+            self._R.shape != (self.n_action,)
+            or not np.isfinite(self._R).all()
+            or np.any(self._R < 0)
+        ):
+            raise ValueError(
+                "control_R must contain n_action nonnegative finite weights"
             )
-        else:
-            self._obs_scale_np = np.ones(self.n_obs, dtype=np.float64)
-            self._obs_scale_t = torch.ones(
-                self.n_obs, dtype=torch.float32, device=self.device
-            )
-
-        # Each reference channel has the units of its tracked observation.
-        # A shared scalar reference retains the first channel's feature scale;
-        # tracking errors below are scaled separately for every output.
-        self._ref_scale_np = np.full(
-            self.reference_size, self._obs_scale_np[self.tracking_indices[0]]
-        )
-        n_ref_tracks = min(self.reference_size, len(self.tracking_indices))
-        self._ref_scale_np[:n_ref_tracks] = self._obs_scale_np[
-            self.tracking_indices[:n_ref_tracks]
-        ]
-        self._ref_scale_t = torch.as_tensor(
-            self._ref_scale_np, dtype=torch.float32, device=self.device
-        )
-
-        # Rolling buffers: one step of history suffices because learn()
-        # already has access to (y_{t-1}, y_t, y_{t+1}) and (u_{t-1}, u_t)
-        # once called after env.step().
         self._y_tm1: np.ndarray | None = None
         self._u_tm1: np.ndarray | None = None
         self._last_action: np.ndarray | None = None
         self._last_augmented: np.ndarray | None = None
         self._last_obs: np.ndarray | None = None
         self._total_steps = 0
-
-        # Metric log populated by :meth:`train`.
         self.history: dict[str, list[float]] = {
-            "episode_return": [],
-            "critic_loss": [],
-            "actor_loss": [],
-            "rls_pred_error_norm": [],
+            key: []
+            for key in (
+                "episode_return",
+                "critic_loss",
+                "actor_loss",
+                "rls_pred_error_norm",
+            )
         }
 
-    # ------------------------------------------------------------------
-    # Helpers
-    # ------------------------------------------------------------------
-    def _reference_at(self, reference_signal: np.ndarray, time_step: int) -> np.ndarray:
-        """Fetch ``reference_signal[:, t]`` with safe clipping at the end."""
-        ref_arr = np.asarray(reference_signal, dtype=np.float64)
-        if ref_arr.ndim == 1:
-            ref_arr = ref_arr.reshape(1, -1)
-        t_safe = int(np.clip(time_step, 0, ref_arr.shape[1] - 1))
-        return ref_arr[:, t_safe].reshape(-1)
-
-    def _augment(self, y: np.ndarray, ref: np.ndarray) -> np.ndarray:
-        """Build the augmented observation vector ``[y; ref; tracking_err]``.
-
-        The raw observation and reference are multiplied by
-        ``cfg.obs_scale`` (if supplied) to match the natural unit of the
-        tracked channel — this lets a radian-scale observation feed an
-        actor/critic that prefer O(1) inputs without hand-tuning the
-        network initialisation.
+    def _validate_config(self):
+        """Validate dimensions, tracking costs and supported learning/identifier
+        options.
         """
-        y_v = np.asarray(y, dtype=np.float64).reshape(-1)
-        ref_v = np.asarray(ref, dtype=np.float64).reshape(-1)
-        if ref_v.size < self.reference_size:
-            ref_v = np.concatenate([ref_v, np.zeros(self.reference_size - ref_v.size)])
-        elif ref_v.size > self.reference_size:
-            ref_v = ref_v[: self.reference_size]
-        track = y_v[self.tracking_indices]
-        ref_track = ref_v[0] if ref_v.size == 1 else ref_v[: len(self.tracking_indices)]
-        err = (track - ref_track) * self._obs_scale_np[self.tracking_indices]
-        return np.concatenate(
-            [y_v * self._obs_scale_np, ref_v * self._ref_scale_np, err]
-        )
+        if min(self.n_obs, self.n_action, self.reference_size) <= 0:
+            raise ValueError("observation, action and reference sizes must be positive")
+        if (
+            not self.tracking_indices
+            or len(set(self.tracking_indices)) != len(self.tracking_indices)
+            or any(i < 0 or i >= self.n_obs for i in self.tracking_indices)
+        ):
+            raise ValueError(
+                "tracking_indices must be unique valid observation indices"
+            )
+        if self.reference_size not in (1, len(self.tracking_indices)):
+            raise ValueError(
+                "reference_size must be one or the number of tracked channels"
+            )
+        q = np.asarray(self.cfg.track_Q, dtype=float)
+        if (
+            q.shape != (len(self.tracking_indices),)
+            or not np.isfinite(q).all()
+            or np.any(q < 0)
+        ):
+            raise ValueError(
+                "track_Q must contain a nonnegative finite weight per tracked channel"
+            )
+        if (
+            not 0 <= self.cfg.gamma <= 1
+            or not np.isfinite(self.cfg.beta_lambda)
+            or self.cfg.beta_lambda < 0
+        ):
+            raise ValueError("gamma must be in [0,1] and beta_lambda nonnegative")
+        if self.cfg.action_rate_penalty != 0:
+            raise ValueError(
+                "action_rate_penalty is not part of the paper objective; use 0 and control_R for input cost"
+            )
+        if self.cfg.identifier_mode not in ("tracking_error", "output"):
+            raise ValueError("identifier_mode must be tracking_error or output")
+        if self.cfg.optimizer not in ("sgd", "adam"):
+            raise ValueError("optimizer must be sgd or adam")
+        if not 0 <= self.cfg.target_update_tau <= 1:
+            raise ValueError("target_update_tau must be in [0,1]")
 
-    def _augment_torch(self, y: torch.Tensor, ref: torch.Tensor) -> torch.Tensor:
-        """Torch-compatible counterpart of :meth:`_augment`."""
-        ref = ref.reshape(-1)
-        if ref.numel() < self.reference_size:
-            ref = torch.cat([ref, ref.new_zeros(self.reference_size - ref.numel())])
-        else:
-            ref = ref[: self.reference_size]
-        track = y[self.tracking_indices]
-        ref_track = ref[0] if ref.numel() == 1 else ref[: len(self.tracking_indices)]
-        err = (track - ref_track) * self._obs_scale_t[self.tracking_indices]
-        return torch.cat([y * self._obs_scale_t, ref * self._ref_scale_t, err])
+    def _validate_learning_rates(self):
+        """Check finite learning-rate schedules and positive network weight limits."""
+        for name in ("actor", "critic"):
+            rate = getattr(self.cfg, name + "_lr")
+            floor = getattr(self.cfg, name + "_lr_min")
+            decay = getattr(self.cfg, name + "_lr_decay")
+            if (
+                not np.isfinite([rate, floor, decay]).all()
+                or not 0 <= floor <= rate
+                or not 0 < decay <= 1
+            ):
+                raise ValueError(
+                    f"{name} needs 0 <= lr_min <= lr and 0 < lr_decay <= 1, all finite"
+                )
+        if not np.isfinite(self.cfg.weight_limit) or self.cfg.weight_limit <= 0:
+            raise ValueError("weight_limit must be finite and positive")
 
-    # ------------------------------------------------------------------
-    # Interaction
-    # ------------------------------------------------------------------
-    def reset(self) -> None:
-        """Reset the per-episode rolling history.
+    def _tensor(self, value):
+        """Convert a value to a float32 tensor on the agent's configured device."""
+        return torch.as_tensor(value, dtype=torch.float32, device=self.device)
 
-        Does *not* reset the learned weights, the incremental model
-        covariance or the optimiser state — so learning progresses
-        across episodes as expected.
-        """
-        self._y_tm1 = None
-        self._u_tm1 = None
-        self._last_action = None
-        self._last_augmented = None
-        self._last_obs = None
+    def _reference_at(self, reference_signal, time_step):
+        """Validate a channel-by-time reference and copy the requested bounded sample."""
+        reference = np.asarray(reference_signal, dtype=float)
+        if reference.ndim == 1:
+            reference = reference.reshape(1, -1)
+        if (
+            reference.ndim != 2
+            or reference.shape[0] != self.reference_size
+            or not reference.shape[1]
+            or not np.isfinite(reference).all()
+        ):
+            raise ValueError("reference must have finite shape (reference_size, T)")
+        return reference[:, int(np.clip(time_step, 0, reference.shape[1] - 1))].copy()
+
+    def _augment(self, y, ref):
+        """Adapt an environment packet to the physical tracking-error vector."""
+        y = np.asarray(y, dtype=float).reshape(-1)
+        if y.size != self.n_obs or not np.isfinite(y).all():
+            raise ValueError("observation must contain n_obs finite values")
+        return y[self.tracking_indices] - np.asarray(ref).reshape(-1)
+
+    def _augment_torch(self, y, ref):
+        """Torch version of the physical tracking-error adapter."""
+        return y[self.tracking_indices] - ref.reshape(-1)
+
+    def reset(self):
+        """Clear transition/history buffers while retaining learned parameters."""
+        self._y_tm1 = self._u_tm1 = None
+        self._last_action = self._last_augmented = self._last_obs = None
         self.incremental_model.reset()
 
-    def predict(
-        self,
-        obs: np.ndarray,
-        reference_signal: np.ndarray,
-        time_step: int,
-        *,
-        deterministic: bool = False,
-    ) -> np.ndarray:
-        """Compute the control action for a single time step.
+    def retune_actor_inputs(
+        self, *, feedback_gain: float = 1.0, bias_input: float | None = None
+    ) -> None:
+        """Retune a learned actor between experiments without adding a controller.
 
-        Args:
-            obs: Current observation ``y_t`` of length ``n_obs``.
-            reference_signal: Reference trajectory, shape
-                ``(reference_size, T)`` or ``(T,)``.
-            time_step: Current time index used to select
-                ``reference_signal[:, time_step]``.
-            deterministic: If True, no exploration noise is added.
+        ``feedback_gain`` scales the first-layer error weights, changing the
+        policy's error sensitivity. Changing ``bias_input`` inversely rescales
+        its first-layer weights, preserving the zero-error command while
+        changing subsequent SGD sensitivity to that constant input. With gain
+        one, the entire current policy is preserved (up to rounding).
 
-        Returns:
-            A NumPy array of length ``n_action`` with the commanded
-            control.
+        This is an explicit tuning operation, not an online step of the paper
+        algorithm. The critic and identifier are unchanged. Optimizer moments
+        for the transformed layer are cleared; reset before a new rollout.
+        The new weights and bias scale are included in ordinary checkpoints.
         """
-        y = np.asarray(obs, dtype=np.float64).reshape(-1)
-        ref = self._reference_at(reference_signal, time_step)
-        aug = self._augment(y, ref)
-
-        self.actor.eval()
-        with torch.no_grad():
-            u_t = self.actor(
-                torch.as_tensor(aug, dtype=torch.float32, device=self.device)
+        bias = self.cfg.actor_bias_input if bias_input is None else float(bias_input)
+        gain = float(feedback_gain)
+        if not np.isfinite([gain, bias]).all() or min(gain, bias) <= 0:
+            raise ValueError("feedback_gain and bias_input must be finite and positive")
+        if self._last_action is not None:
+            raise RuntimeError(
+                "finish the pending predict/learn transition before retuning"
             )
-        u = u_t.cpu().numpy().astype(np.float64)
+        layer = self.actor.backbone[0] if len(self.actor.backbone) else self.actor.head
+        weights = layer.weight.detach().clone()
+        weights[:, :-1] *= gain
+        weights[:, -1] *= self.actor.bias_input / bias
+        if (
+            not torch.isfinite(weights).all()
+            or weights.abs().max() > self.cfg.weight_limit
+        ):
+            raise ValueError("retuned actor input weights exceed weight_limit")
+        with torch.no_grad():
+            layer.weight.copy_(weights)
+        self.actor.bias_input = self.cfg.actor_bias_input = bias
+        self.actor_opt.state.pop(layer.weight, None)
 
-        if (not deterministic) and self.cfg.exploration_noise_std > 0.0:
-            u = u + self._rng_normal(self.n_action) * self.cfg.exploration_noise_std
-            u = np.clip(u, -self.cfg.u_max, self.cfg.u_max)
+    def predict(self, obs, reference_signal, time_step, *, deterministic=False):
+        """Compute a bounded action; learning happens after the environment step."""
+        error = self._augment(obs, self._reference_at(reference_signal, time_step))
+        with torch.no_grad():
+            action = self.actor(self._tensor(error)).cpu().numpy().astype(float)
+        if not deterministic:
+            action += (
+                self._rng.normal(size=self.n_action) * self.cfg.exploration_noise_std
+            )
+        action = np.clip(action, -self.cfg.u_max, self.cfg.u_max)
+        self._last_action, self._last_augmented = action.copy(), error.copy()
+        self._last_obs = np.asarray(obs, dtype=float).reshape(-1).copy()
+        return action
 
-        self._last_action = u.copy()
-        self._last_augmented = aug.copy()
-        self._last_obs = y.copy()
-        return np.asarray(u)
+    def learn(self, next_obs, reference_signal, time_step, *, applied_action=None):
+        """Update the networks, then identify the just-measured transition.
 
-    def _rng_normal(self, n: int) -> np.ndarray:
-        return self._rng.normal(size=(n,))
-
-    def learn(
-        self,
-        next_obs: np.ndarray,
-        reference_signal: np.ndarray,
-        time_step: int,
-    ) -> dict[str, float]:
-        """Perform one online RLS + critic + actor update.
-
-        Must be called *after* :meth:`predict` and the corresponding
-        environment step. ``next_obs`` is ``y_{t+1}``, and ``time_step``
-        is the index of the step that has just been executed (i.e. the
-        same ``time_step`` that was passed to :meth:`predict`).
-
-        Returns:
-            Dict with latest scalar training metrics (``critic_loss``,
-            ``actor_loss``, ``rls_pred_error_norm``).
+        ``applied_action`` can report a clipped physical command in policy
+        units. The history must describe the same input as the model mapping.
         """
         if (
             self._last_action is None
@@ -421,218 +357,180 @@ class IMGDHPAgent:
             or self._last_obs is None
         ):
             raise RuntimeError("learn() called before predict()")
-
-        y_next = np.asarray(next_obs, dtype=np.float64).reshape(-1)
-        u_t = self._last_action.copy()
-        # Identification and model prediction operate in physical coordinates.
-        y_t_np = self._last_obs.copy()
-
-        # --- 1. RLS update of the incremental model ---------------------
-        rls_err_norm = float("nan")
-        if self._y_tm1 is not None and self._u_tm1 is not None:
-            # Freshest transition (y_{t-1}, y_t, y_{t+1}) with controls
-            # (u_{t-1}, u_t): target = Δy_{t+1}, regressor = [Δy_t; Δu_t].
-            eps = self.incremental_model.update(
-                y_prev=self._y_tm1,
-                y_curr=y_t_np,
-                y_next=y_next,
-                u_prev=self._u_tm1,
-                u_curr=u_t,
-            )
-            rls_err_norm = float(np.linalg.norm(eps))
-
-        # --- 2. Per-step tracking cost --------------------------------
-        # Standard DHP convention: c_t depends on the state AT time t,
-        # not the predicted next one. The tracking error at y_t vs the
-        # reference at time t drives both the Bellman target for J and
-        # the costate target for λ. Costs use scaled errors; derivatives
-        # with respect to physical observations also include the scale.
-        # Changing obs_scale therefore changes the physical cost weights.
-        ref_now = self._reference_at(reference_signal, time_step)
-        ref_next = self._reference_at(reference_signal, time_step + 1)
-
-        err_now = self._augment(y_t_np, ref_now)[-len(self.tracking_indices) :]
-
-        Q_np = np.asarray(self.cfg.track_Q, dtype=np.float64)
-        c_now_value = float(np.sum(Q_np * err_now**2))
-
-        critic_loss_val = float("nan")
-        actor_loss_val = float("nan")
-
-        # --- 3. GDHP training (skipped during warm-up) -----------------
+        action = (
+            self._last_action.copy()
+            if applied_action is None
+            else np.asarray(applied_action, dtype=float).reshape(-1)
+        )
+        if action.shape != (self.n_action,) or not np.isfinite(action).all():
+            raise ValueError("applied_action must contain n_action finite values")
+        error = self._last_augmented.copy()
+        next_error = self._augment(
+            next_obs, self._reference_at(reference_signal, time_step + 1)
+        )
+        model_current, model_next = error, next_error
+        if self.cfg.identifier_mode == "output":
+            model_current = self._last_obs[self.tracking_indices]
+            model_next = np.asarray(next_obs, dtype=float).reshape(-1)[
+                self.tracking_indices
+            ]
+        previous = model_current if self._y_tm1 is None else self._y_tm1
+        previous_action = action if self._u_tm1 is None else self._u_tm1
+        prediction = self.incremental_model.predict_next(
+            model_current, previous, action, previous_action
+        )
+        if self.cfg.identifier_mode == "output":
+            prediction -= self._reference_at(reference_signal, time_step + 1)
+        cost = float(
+            np.sum(np.asarray(self.cfg.track_Q) * (error * self._scale) ** 2)
+            + np.sum(self._R * action**2)
+        )
+        metrics = dict(
+            critic_loss=float("nan"),
+            actor_loss=float("nan"),
+            rls_pred_error_norm=float("nan"),
+        )
         if self._total_steps >= self.cfg.warmup_steps:
-            # Multi-step critic update: iterate the critic optimiser
-            # several times per env step to accelerate Bellman
-            # convergence (useful when critic_only_steps is also > 0).
-            for _ in range(max(1, int(self.cfg.critic_updates_per_step))):
-                critic_loss_val = self._critic_update(
-                    aug_t_np=self._last_augmented,
-                    y_next_np=y_next,
-                    ref_next_np=ref_next,
-                    c_now_value=c_now_value,
-                    err_now_np=err_now,
-                )
-            allow_actor = self._total_steps >= (
-                self.cfg.warmup_steps + self.cfg.critic_only_steps
+            # Freeze the prior policy derivatives before either network changes.
+            policy_jacobian = torch.autograd.functional.jacobian(
+                self.actor, self._tensor(error)
+            ).detach()
+            # The input-cost derivative uses the same applied command as c,
+            # including additive exploration (held fixed for the derivative).
+            policy_action = self._tensor(action)
+            actor_update = (
+                self._total_steps >= self.cfg.warmup_steps + self.cfg.critic_only_steps
+                and self._y_tm1 is not None
             )
-            if allow_actor and self._y_tm1 is not None and self._u_tm1 is not None:
-                actor_loss_val = self._actor_update(
-                    y_t_np=y_t_np,
-                    ref_now_np=ref_now,
-                    ref_next_np=ref_next,
-                    u_prev_np=self._u_tm1,
-                    y_prev_np=self._y_tm1,
+            if actor_update:
+                metrics["actor_loss"] = self._actor_update(
+                    self._last_obs,
+                    self._reference_at(reference_signal, time_step),
+                    self._reference_at(reference_signal, time_step + 1),
+                    previous_action,
+                    previous,
                 )
-
-        # --- 4. Shift the rolling history ------------------------------
-        self._y_tm1 = y_t_np.copy()
-        self._u_tm1 = u_t.copy()
+            for _ in range(max(1, int(self.cfg.critic_updates_per_step))):
+                metrics["critic_loss"] = self._critic_update(
+                    aug_t_np=error,
+                    y_next_np=prediction,
+                    ref_next_np=None,
+                    c_now_value=cost,
+                    err_now_np=error * self._scale,
+                    policy_jacobian=policy_jacobian,
+                    policy_action=policy_action,
+                )
+        if self._y_tm1 is not None and self._u_tm1 is not None:
+            residual = self.incremental_model.update(
+                self._y_tm1, model_current, model_next, self._u_tm1, action
+            )
+            metrics["rls_pred_error_norm"] = float(np.linalg.norm(residual))
+        self._y_tm1, self._u_tm1 = model_current.copy(), action.copy()
+        self._last_action = self._last_augmented = self._last_obs = None
         self._total_steps += 1
-
-        metrics = {
-            "critic_loss": critic_loss_val,
-            "actor_loss": actor_loss_val,
-            "rls_pred_error_norm": rls_err_norm,
-        }
         return metrics
 
-    # ------------------------------------------------------------------
-    # Critic / actor updates
-    # ------------------------------------------------------------------
-    def _soft_update_target(self) -> None:
-        """Polyak update of the target critic ``θ_tgt ← (1-τ)θ_tgt + τ θ``."""
-        tau = float(self.cfg.target_update_tau)
-        if tau <= 0.0:
+    def _soft_update_target(self):
+        """Optional target smoothing, disabled in the paper profile."""
+        if self.cfg.target_update_tau <= 0:
             return
         with torch.no_grad():
-            for tgt, src in zip(
+            for target, source in zip(
                 self.target_critic.parameters(), self.critic.parameters()
             ):
-                tgt.data.mul_(1.0 - tau).add_(src.data, alpha=tau)
+                target.lerp_(source, self.cfg.target_update_tau)
 
     def _critic_update(
         self,
-        aug_t_np: np.ndarray,
-        y_next_np: np.ndarray,
-        ref_next_np: np.ndarray,
-        c_now_value: float,
-        err_now_np: np.ndarray,
-    ) -> float:
-        """Run one GDHP critic update targeting both ``J`` and ``λ``.
-
-        ``J`` target: Bellman-style ``c_t + γ J(o_{t+1})``.
-        ``λ`` target: ``∂c_t/∂y_t + γ Aᵀ λ(o_{t+1})`` where
-        ``c_t = (S(y_t − r_t))ᵀ Q (S(y_t − r_t))`` depends on the state
-        at time ``t``, where ``S`` is the configured observation scale.
-        Lambda and the identified A matrix use physical coordinates, so
-        the cost derivative includes both factors of S.
-
-        When ``target_update_tau > 0`` the Bellman bootstrap uses the
-        slow-moving target critic, which dampens the positive-feedback
-        loop between actor and critic observed in long DHP runs.
-        """
-        aug_t = torch.as_tensor(aug_t_np, dtype=torch.float32, device=self.device)
-        aug_next_np = self._augment(y_next_np, ref_next_np)
-        aug_next = torch.as_tensor(aug_next_np, dtype=torch.float32, device=self.device)
-
-        self.critic.train()
-        bootstrap_net = (
-            self.target_critic if self.cfg.target_update_tau > 0.0 else self.critic
+        aug_t_np,
+        y_next_np,
+        ref_next_np,
+        c_now_value,
+        err_now_np,
+        *,
+        policy_jacobian=None,
+        policy_action=None,
+    ):
+        """Eqs. (54)--(61): Bellman residual and its full policy derivative."""
+        error = self._tensor(aug_t_np)
+        bootstrap = (
+            self.target_critic if self.cfg.target_update_tau > 0 else self.critic
         )
         with torch.no_grad():
-            J_next, lam_next = bootstrap_net(aug_next)
-
-        dc_dy = torch.zeros(self.n_obs, dtype=torch.float32, device=self.device)
-        Q_np = np.asarray(self.cfg.track_Q, dtype=np.float64)
-        for i, idx in enumerate(self.tracking_indices):
-            # lambda is dJ/dy in physical units, while err_now is scaled.
-            dc_dy[idx] = float(2.0 * Q_np[i] * err_now_np[i] * self._obs_scale_np[idx])
-
-        A_mat = torch.as_tensor(
-            self.incremental_model.A, dtype=torch.float32, device=self.device
+            j_next, lam_next = bootstrap(self._tensor(y_next_np))
+        if policy_jacobian is None:
+            policy_jacobian = torch.autograd.functional.jacobian(
+                self.actor, error
+            ).detach()
+        with torch.no_grad():
+            action = self.actor(error) if policy_action is None else policy_action
+        p = self.augmented_size
+        transition = torch.eye(p, device=self.device) + self._tensor(
+            self.incremental_model.A[:, :p]
         )
-        lambda_target = dc_dy + self.cfg.gamma * (A_mat.T @ lam_next)
-        j_target = torch.tensor(
-            c_now_value + self.cfg.gamma * float(J_next.detach().squeeze()),
-            dtype=torch.float32,
-            device=self.device,
+        transition += (
+            self._tensor(self.incremental_model.B[:, : self.n_action]) @ policy_jacobian
         )
-
-        J_pred, lam_pred = self.critic(aug_t)
-        loss_j = (J_pred.squeeze() - j_target).pow(2)
-        loss_lambda = ((lam_pred - lambda_target).pow(2)).sum()
-        loss = loss_j + self.cfg.beta_lambda * loss_lambda
-
+        dc = self._tensor(2 * np.asarray(self.cfg.track_Q) * err_now_np * self._scale)
+        dc += policy_jacobian.T @ (2 * self._tensor(self._R) * action)
+        lambda_target = dc + self.cfg.gamma * transition.T @ lam_next
+        j_target = c_now_value + self.cfg.gamma * j_next.squeeze()
+        j, lam = self.critic(error)
+        beta = 1 / (1 + self.cfg.beta_lambda)
+        loss = 0.5 * (
+            beta * (j.squeeze() - j_target).square()
+            + (1 - beta) * (lam - lambda_target).square().sum()
+        )
         self.critic_opt.zero_grad(set_to_none=True)
         loss.backward()
         nn.utils.clip_grad_norm_(self.critic.parameters(), self.cfg.max_grad_norm)
         self.critic_opt.step()
+        self._finish_update(
+            self.critic,
+            self.critic_opt,
+            self.cfg.critic_lr_decay,
+            self.cfg.critic_lr_min,
+        )
         self._soft_update_target()
         return float(loss.detach())
 
-    def _actor_update(
-        self,
-        y_t_np: np.ndarray,
-        ref_now_np: np.ndarray,
-        ref_next_np: np.ndarray,
-        u_prev_np: np.ndarray,
-        y_prev_np: np.ndarray,
-    ) -> float:
-        """One actor update — Model-Predictive style loss.
-
-        Minimises ``c(ŷ_{t+1}, r_{t+1}) + γ J(ô_{t+1}) + ρ ‖Δu‖²``
-        where ``ŷ_{t+1}`` is built from the current incremental-model
-        estimates: ``ŷ_{t+1} = y_t + A · (y_t − y_{t-1}) + B · (u −
-        u_{t-1})``. The autograd graph flows through ``B · u`` back to
-        the actor weights. It differentiates the scaled tracking cost
-        and action-rate regularizer, and uses the fitted physical costate
-        for the future-cost gradient gamma * B.T @ lambda. The predicted tracking cost
-        supplies a learning signal while the critic is still bootstrapping.
-        """
-        y_t = torch.as_tensor(y_t_np, dtype=torch.float32, device=self.device)
-        y_prev = torch.as_tensor(y_prev_np, dtype=torch.float32, device=self.device)
-        u_prev = torch.as_tensor(u_prev_np, dtype=torch.float32, device=self.device)
-        ref_now = torch.as_tensor(ref_now_np, dtype=torch.float32, device=self.device)
-        ref_next = torch.as_tensor(ref_next_np, dtype=torch.float32, device=self.device)
-
-        A_mat = torch.as_tensor(
-            self.incremental_model.A, dtype=torch.float32, device=self.device
+    def _actor_update(self, y_t_np, ref_now_np, ref_next_np, u_prev_np, y_prev_np):
+        """Eqs. (65)--(67): minimize half the squared predicted cost-to-go."""
+        error = self._augment(y_t_np, ref_now_np)
+        action = self.actor(self._tensor(error))
+        model = self.incremental_model
+        model_current = error
+        if self.cfg.identifier_mode == "output":
+            model_current = np.asarray(y_t_np, dtype=float)[self.tracking_indices]
+        base = model.predict_next(
+            model_current, y_prev_np, np.zeros(self.n_action), u_prev_np
         )
-        B_mat = torch.as_tensor(
-            self.incremental_model.B, dtype=torch.float32, device=self.device
+        if self.cfg.identifier_mode == "output":
+            base -= ref_next_np
+        predicted = (
+            self._tensor(base) + self._tensor(model.B[:, : self.n_action]) @ action
         )
-
-        aug_now = self._augment_torch(y_t, ref_now)
-        u = self.actor(aug_now)
-        du = u - u_prev
-
-        y_next_pred = y_t + A_mat @ (y_t - y_prev) + B_mat @ du
-
-        aug_next_pred = self._augment_torch(y_next_pred, ref_next)
-        err = aug_next_pred[-len(self.tracking_indices) :]
-        c_pred = torch.sum(self._Q * err.pow(2))
-
-        # The critic fits lambda to the Bellman costate equation. Its J
-        # head is independent, so differentiating J does not recover that
-        # learned costate. Use lambda as the physical-state gradient and
-        # keep the scalar J only as the reported objective value.
-        with torch.no_grad():
-            J_next, lambda_next = self.critic(aug_next_pred.detach())
-        future_cost = J_next.squeeze() + torch.sum(
-            lambda_next.detach() * (y_next_pred - y_next_pred.detach())
-        )
-
-        loss = (
-            c_pred
-            + self.cfg.gamma * future_cost
-            + self.cfg.action_rate_penalty * du.pow(2).sum()
-        )
-
+        # Derivatives of J flow through the identified input map to the actor.
+        j, _ = self.critic(predicted)
+        loss = 0.5 * j.square().sum()
         self.actor_opt.zero_grad(set_to_none=True)
-        loss.backward()
+        gradients = torch.autograd.grad(loss, tuple(self.actor.parameters()))
+        for parameter, gradient in zip(self.actor.parameters(), gradients):
+            parameter.grad = gradient
         nn.utils.clip_grad_norm_(self.actor.parameters(), self.cfg.max_grad_norm)
         self.actor_opt.step()
+        self._finish_update(
+            self.actor, self.actor_opt, self.cfg.actor_lr_decay, self.cfg.actor_lr_min
+        )
         return float(loss.detach())
+
+    def _finish_update(self, network, optimizer, decay, minimum):
+        """Section 5.2: bounded weights and configurable descending step sizes."""
+        with torch.no_grad():
+            for parameter in network.parameters():
+                parameter.clamp_(-self.cfg.weight_limit, self.cfg.weight_limit)
+        for group in optimizer.param_groups:
+            group["lr"] = max(group["lr"] * decay, minimum)
 
     # ------------------------------------------------------------------
     # High-level training loop
@@ -721,7 +619,9 @@ class IMGDHPAgent:
         cfg_dict.pop("history", None)
         # Tuples → lists so the round-trip through JSON is type-stable.
         for key, value in list(cfg_dict.items()):
-            if isinstance(value, tuple):
+            if isinstance(value, np.ndarray):
+                cfg_dict[key] = value.tolist()
+            elif isinstance(value, tuple):
                 cfg_dict[key] = list(value)
         return {
             "policy": {
@@ -733,6 +633,7 @@ class IMGDHPAgent:
                     "tracking_indices": list(self.tracking_indices),
                 },
                 "config": cfg_dict,
+                "implementation_version": 2,
             },
         }
 
@@ -793,6 +694,8 @@ class IMGDHPAgent:
         state: dict[str, Any] = {
             "total_steps": self._total_steps,
             "rng_state": self._rng.bit_generator.state,
+            "model_dy_history": [value.tolist() for value in rls.dy_history],
+            "model_du_history": [value.tolist() for value in rls.du_history],
         }
         for name in (
             "_y_tm1",
@@ -828,6 +731,10 @@ class IMGDHPAgent:
         with open(config_path, "r", encoding="utf-8") as f:
             cfg = json.load(f)
         policy = cfg.get("policy", {})
+        if policy.get("implementation_version") != 2:
+            raise ValueError(
+                "Legacy independent-costate IM-GDHP checkpoints require retraining with the paper implementation"
+            )
         params = policy.get("params", {})
         cfg_dict = dict(policy.get("config", {}))
 
@@ -881,7 +788,10 @@ class IMGDHPAgent:
                 agent.incremental_model.theta = npz["theta"]
                 agent.incremental_model.P = npz["P"]
                 agent.incremental_model.alpha = float(npz["forgetting"])
-                agent.incremental_model.cov_init = float(npz["cov_init"])
+                covariance = npz["cov_init"]
+                agent.incremental_model.cov_init = (
+                    float(covariance) if covariance.ndim == 0 else covariance.copy()
+                )
                 agent.incremental_model.num_updates = int(npz["num_updates"])
 
         agent._restore_training_state(folder_p)
@@ -912,6 +822,12 @@ class IMGDHPAgent:
             state = json.load(f)
         self._total_steps = int(state["total_steps"])
         self._rng.bit_generator.state = state["rng_state"]
+        self.incremental_model.dy_history = [
+            np.asarray(v, dtype=float) for v in state.get("model_dy_history", [])
+        ]
+        self.incremental_model.du_history = [
+            np.asarray(v, dtype=float) for v in state.get("model_du_history", [])
+        ]
         for name in (
             "_y_tm1",
             "_u_tm1",

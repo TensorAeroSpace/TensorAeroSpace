@@ -127,7 +127,7 @@ passing raw observations there can change the deployed policy.
 
 ## Validated B747 tracking experiment
 
-For the linear B747 tracking scenario in `scripts/validate_ddpg.py`, reducing
+In an earlier regression experiment on linear B747 tracking, reducing
 critic LR to `1e-4` and decaying OU sigma from `0.3` to `0.05` over 15,000 steps
 improved the mean final RMSE at 60,000 steps from 5.13° to 1.14° across seeds
 11, 29 and 47. Actor LR remained `1e-4`; observation normalization was enabled.
@@ -136,12 +136,7 @@ this experiment does not establish superiority to a tuned classical controller
 or convergence on other tasks. Shorter runs and intermediate evaluations remain
 variable. Removing observation normalization alone did not resolve the issue.
 
-```bash
-.venv/bin/python scripts/validate_ddpg.py --repo . --env-source tensoraerospace/envs/b747_vec_torch.py --seed 11 --frames 60000 --value-lr 0.0001 --noise-min-sigma 0.05 --noise-decay-period 15000 --output /tmp/ddpg-b747-11.json
-```
-
-Repeat for seeds 29 and 47. The script records all final results and learning
-curves, without selecting the best checkpoint.
+For a complete SDK training workflow, see the [DDPG/B747 notebook](https://github.com/TensorAeroSpace/TensorAeroSpace/blob/develop/example/reinforcement_learning/deep_rl/example_ddpg_b747_improved.ipynb). The historical metrics above describe the regression experiment, not a promised result of every notebook run.
 
 ## API reference
 

@@ -90,9 +90,13 @@ class NonlinearQuadrotor(ModelBase):
     # ---- introspection -------------------------------------------------
 
     def get_param(self) -> QuadrotorParameters:
+        """Return the live aircraft parameter object; mutations affect subsequent
+        integration.
+        """
         return self.param
 
     def set_param(self, new_param: QuadrotorParameters) -> None:
+        """Replace the aircraft parameter object used by subsequent integration steps."""
         self.param = new_param
 
     @property
@@ -149,6 +153,9 @@ class NonlinearQuadrotor(ModelBase):
         return x_next_col.copy()
 
     def _integrate_segments(self, state, time, segments) -> np.ndarray:
+        """Integrate time-varying force/moment segments whose durations sum to one
+        ``dt``.
+        """
         durations = np.array([duration for duration, _ in segments])
         if (
             not np.all(np.isfinite(durations))
@@ -160,6 +167,9 @@ class NonlinearQuadrotor(ModelBase):
 
             def rhs(x, _u, t, params):
                 # Clamp only floating-point roundoff at an interval boundary.
+                """Evaluate the physical derivative with the segment's elapsed-time
+                control.
+                """
                 elapsed = np.clip(t - time, 0.0, duration)
                 command = np.asarray(control(float(elapsed)), dtype=np.float64)
                 if command.shape != (4,) or not np.all(np.isfinite(command)):

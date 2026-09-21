@@ -26,8 +26,7 @@ python -m example.reinforcement_learning.incremental_adp.example_etdhp_tuned_b74
 python -m example.reinforcement_learning.incremental_adp.example_etdhp_tuned_b747 held_out
 ```
 
-История, неудачные кандидаты и ограничения: `reports/etdhp-b747-tuning-validation.md`.
-Сопоставление с первоисточником: `reports/etdhp-b747-paper-comparison.md`.
+Выбранные параметры и ограничения описаны в ноутбуке. Команда `held_out` выше повторяет дополнительные проверочные случаи.
 
 ## Базовая настройка до тюнинга
 
@@ -53,6 +52,6 @@ PID настроен на исправном объекте в два этапа
 python -m example.reinforcement_learning.incremental_adp.example_etdhp_vs_pid_b747 --online-model-comparison
 ```
 
-Выполненный notebook: `example/reinforcement_learning/incremental_adp/example_etdhp_vs_pid_b747.ipynb`. Подробный протокол и все проверки: `reports/etdhp-b747-pid-validation.md`, соседний JSON. Пройдены 153 целевых теста.
+Выполненный notebook: `example/reinforcement_learning/incremental_adp/example_etdhp_vs_pid_b747.ipynb`. Для повторного расчёта сравнения и сохранения метрик используйте команды выше.
 
 Алгоритм сопоставлен с [Sun et al., CEAS EuroGNC 2022](https://eurognc.ceas.org/archive/EuroGNC2022/pdf/CEAS-GNC-2022-075.pdf). B747, интегральные состояния и LQR-инициализация — расширения этого примера.

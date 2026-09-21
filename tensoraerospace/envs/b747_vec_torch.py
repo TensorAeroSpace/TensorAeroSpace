@@ -262,6 +262,7 @@ class ImprovedB747VecEnvTorch:
     @property
     def unwrapped(self) -> "ImprovedB747VecEnvTorch":
         # Gymnasium compatibility for serialization utilities
+        """Return this environment for Gymnasium-compatible serialization."""
         return self
 
     def get_init_args(self) -> dict[str, Any]:
@@ -270,13 +271,18 @@ class ImprovedB747VecEnvTorch:
 
     @property
     def _idx_q(self) -> int:
+        """Return the pitch-rate column in the batched physical state."""
         return 2
 
     @property
     def _idx_theta(self) -> int:
+        """Return the pitch-angle column in the batched physical state."""
         return 3
 
     def _alloc(self) -> None:
+        """Allocate device-local state, command history and metric buffers for all
+        environments.
+        """
         n = self.num_envs
         self.state = self._x0.repeat(n, 1).clone()
         self.step_count = torch.zeros((n,), device=self.device, dtype=torch.int64)
@@ -468,6 +474,12 @@ class ImprovedB747VecEnvTorch:
     def reset(
         self, seed: Optional[int] = None, options: Optional[dict[str, Any]] = None
     ):
+        """Reset every environment and sample fresh references, optionally reseeding
+        Torch.
+
+        Return the batched observation tensor and an empty info dictionary. Control
+        histories and per-environment episode counters are cleared.
+        """
         if seed is not None:
             self._gen.manual_seed(int(seed))
 
@@ -486,6 +498,9 @@ class ImprovedB747VecEnvTorch:
         return self._get_obs(), {}
 
     def _get_obs(self) -> torch.Tensor:
+        """Build batched normalized tracking observations, optionally including
+        reference features.
+        """
         theta = self.state[:, self._idx_theta]
         q = self.state[:, self._idx_q]
         idx = torch.clamp(self.step_count, 0, self.number_time_steps - 1)

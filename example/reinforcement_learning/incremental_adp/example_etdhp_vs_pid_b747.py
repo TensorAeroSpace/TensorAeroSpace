@@ -18,12 +18,15 @@ import torch
 from scipy.linalg import solve_discrete_are
 from scipy.optimize import minimize
 
-from tensoraerospace.aerospacemodel.b747.nonlinear import default_parameters, trim
-from tensoraerospace.aerospacemodel.b747.nonlinear._integrators import rk4
-from tensoraerospace.aerospacemodel.b747.nonlinear.damage import EngineFailureEvent
-from tensoraerospace.aerospacemodel.b747.nonlinear.damage.state import B747DamageState
-from tensoraerospace.aerospacemodel.b747.nonlinear.dynamics import b747_ode_6dof
+from tensoraerospace.aerospacemodel.b747.nonlinear import NonlinearB747, trim
+from tensoraerospace.aerospacemodel.b747.nonlinear.damage import (
+    DamageProfile,
+    EngineFailureEvent,
+)
 from tensoraerospace.agent.et_dhp import ETDHPAgent, ETDHPConfig
+from tensoraerospace.agent.pid import B747LongitudinalHold as LongitudinalHold
+from tensoraerospace.agent.pid import LateralAircraftPID as LateralPID
+from tensoraerospace.agent.pid.aircraft import B747_LATERAL_PID_GAINS
 from tensoraerospace.envs.b747_nonlinear import NonlinearB747Env
 
 ALTITUDE = 20000.0
@@ -31,14 +34,7 @@ SPEED = 674.0
 BOUND = 8.0
 INTEGRAL_SCALE = 0.1
 # Two healthy-only Nelder-Mead stages; full histories accompany the report.
-NOMINAL_PID_GAINS = (
-    27.72535093846033,
-    0.6523737554404134,
-    4.729243701446712,
-    1.34289301767933,
-    0.026054165115317957,
-    6.609208606368212,
-)
+NOMINAL_PID_GAINS = B747_LATERAL_PID_GAINS
 STATE_NAMES = (
     "beta_deg",
     "p_deg_s",
@@ -127,64 +123,7 @@ def nominal_trim():
     return result
 
 
-def lateral_state(obs, integrals=None, *, roll_ref_deg=0.0, heading_ref_deg=0.0):
-    obs = np.asarray(obs, dtype=float)
-    if integrals is None:
-        integrals = np.zeros(2)
-    beta = np.rad2deg(np.arcsin(np.clip(obs[1] / np.linalg.norm(obs[:3]), -1, 1)))
-    angles = np.rad2deg(obs[[3, 5, 6, 8]])
-    angles[2] -= roll_ref_deg
-    angles[3] -= heading_ref_deg
-    angles[-1] = (angles[-1] + 180) % 360 - 180
-    return np.r_[beta, angles, INTEGRAL_SCALE * np.asarray(integrals)]
-
-
-class EngineLossEnv(NonlinearB747Env):
-    """Single grid-aligned event applied at the start of its physical interval.
-
-    The native general damage scheduler applies an endpoint event before its
-    entire integration step. This experiment instead applies the engine event
-    at the exact boundary; it does not change the equations of motion.
-    """
-
-    def __init__(self, *, engine_event=None, **kwargs):
-        self.engine_event = engine_event
-        super().__init__(**kwargs)
-        if engine_event is not None and not np.isclose(
-            engine_event.trigger_time / self.dt,
-            round(engine_event.trigger_time / self.dt),
-            atol=1e-8,
-            rtol=0,
-        ):
-            raise ValueError("Engine event must align with physics step")
-
-    def reset(self, **kwargs):
-        obs, info = super().reset(**kwargs)
-        self.model.damage_state = B747DamageState.healthy()
-        self.event_applied = False
-        self._apply_event()
-        return obs, info
-
-    def _apply_event(self):
-        event = self.engine_event
-        if (
-            event is not None
-            and not self.event_applied
-            and self._step_index * self.dt >= event.trigger_time - 1e-10
-        ):
-            event.apply(self.model.damage_state)
-            self.event_applied = True
-            self.damage_events_log.append(
-                {
-                    "time": event.trigger_time,
-                    "engine_id": event.engine_id,
-                    "thrust_fraction": event.thrust_fraction,
-                }
-            )
-
-    def step(self, action):
-        self._apply_event()
-        return super().step(action)
+lateral_state = NonlinearB747.lateral_state
 
 
 def make_env(cfg, *, fault):
@@ -199,120 +138,25 @@ def make_env(cfg, *, fault):
         if fault
         else None
     )
-    return EngineLossEnv(
+    return NonlinearB747Env(
         initial_state=initial,
         dt=cfg.dt / cfg.substeps,
         number_time_steps=cfg.steps * cfg.substeps,
         action_space="virtual",
-        engine_event=event,
+        damage_profile=DamageProfile(events=[event]) if event else None,
     )
-
-
-class LongitudinalHold:
-    """Same measured-state PI/PD hold for both arms; no event/time input."""
-
-    def __init__(self, dt):
-        self.dt = dt
-        self.int_v = self.int_h = self.hdot = 0.0
-        self.prev_h = ALTITUDE
-        tr = nominal_trim()
-        self.elevator = tr.elevator_rad
-        self.throttle = tr.throttle
-
-    def command(self, obs, *, speed_ref_ft_s=SPEED, height_ref_ft=ALTITUDE):
-        tr = nominal_trim()
-        dt = self.dt
-        ev = float(np.linalg.norm(obs[:3]) - speed_ref_ft_s)
-        h = float(-obs[11])
-        eh = h - height_ref_ft
-        self.hdot += (1 - np.exp(-dt / 0.4)) * ((h - self.prev_h) / dt - self.hdot)
-        self.prev_h = h
-        self.int_v = float(np.clip(self.int_v + ev * dt, -800, 800))
-        self.int_h = float(np.clip(self.int_h + eh * dt, -2000, 2000))
-        pitch = np.rad2deg(tr.theta_rad) + np.clip(
-            -0.0012 * eh - 4e-5 * self.int_h - 0.025 * self.hdot, -4, 4
-        )
-        delta = float(
-            np.clip(
-                0.7 * (np.rad2deg(obs[7]) - pitch) + 0.7 * np.rad2deg(obs[4]), -6, 6
-            )
-        )
-        target = tr.elevator_rad + np.deg2rad(delta)
-        self.elevator += float(
-            np.clip(target - self.elevator, -np.deg2rad(0.7) * dt, np.deg2rad(0.7) * dt)
-        )
-        target = float(np.clip(tr.throttle - 0.010 * ev - 0.0015 * self.int_v, 0.2, 1))
-        self.throttle += float(np.clip(target - self.throttle, -0.12 * dt, 0.12 * dt))
-        return self.elevator, self.throttle
-
-
-class LateralPID:
-    """Two fixed-gain PID loops, derivative on measured angle, anti-windup.
-
-    Aileron stabilizes roll; rudder stabilizes heading. The yaw loop has opposite
-    sign because positive rudder produces negative yaw moment in this model.
-    """
-
-    def __init__(self, gains, dt):
-        self.gains = np.asarray(gains).reshape(2, 3)
-        self.dt = dt
-        self.integrals = np.zeros(2)
-
-    def command(self, obs, *, roll_ref_deg=0.0, heading_ref_deg=0.0):
-        phi, theta = obs[6:8]
-        p, q, r = obs[3:6]
-        rates = np.rad2deg(
-            [
-                p + np.tan(theta) * (q * np.sin(phi) + r * np.cos(phi)),
-                (q * np.sin(phi) + r * np.cos(phi)) / np.cos(theta),
-            ]
-        )
-        errors = np.rad2deg(obs[[6, 8]]) - [roll_ref_deg, heading_ref_deg]
-        errors[1] = (errors[1] + 180) % 360 - 180
-        kp, ki, kd = self.gains.T
-        candidate = self.integrals + errors * self.dt
-        effort = kp * errors + ki * candidate + kd * rates
-        accept = (np.abs(effort) <= BOUND) | (effort * ki * errors < 0)
-        self.integrals = np.where(accept, candidate, self.integrals)
-        effort = kp * errors + ki * self.integrals + kd * rates
-        return np.array([-1, 1]) * np.clip(effort, -BOUND, BOUND)
 
 
 def nominal_transition(x, action, dt):
     tr = nominal_trim()
-    obs = tr.to_state()
-    obs[1] = SPEED * np.sin(np.deg2rad(x[0]))
-    obs[:3] *= SPEED / np.linalg.norm(obs[:3])
-    obs[[3, 5, 6, 8]] = np.deg2rad(x[1:5])
-    control = np.r_[tr.elevator_rad, np.deg2rad(action), tr.throttle]
-    nxt = rk4(b747_ode_6dof, obs, control, 0, dt, default_parameters())
-    integrals = x[5:] / INTEGRAL_SCALE + dt * np.rad2deg(nxt[[6, 8]])
-    return lateral_state(nxt, integrals)
+    model = NonlinearB747(tr.to_state(), dt=dt)
+    return model.lateral_transition(x, action, [tr.elevator_rad, 0, 0, tr.throttle])
 
 
 def healthy_linearization(dt):
-    h = 1e-3
-    eye = np.eye(7)
-    act = np.eye(2)
-    zero = np.zeros(7)
-    a = np.column_stack(
-        [
-            (
-                nominal_transition(h * x, [0, 0], dt)
-                - nominal_transition(-h * x, [0, 0], dt)
-            )
-            / (2 * h)
-            for x in eye
-        ]
-    )
-    b = np.column_stack(
-        [
-            (nominal_transition(zero, h * u, dt) - nominal_transition(zero, -h * u, dt))
-            / (2 * h)
-            for u in act
-        ]
-    )
-    return a, b
+    tr = nominal_trim()
+    model = NonlinearB747(tr.to_state(), dt=dt)
+    return model.lateral_linearization([tr.elevator_rad, 0, 0, tr.throttle])
 
 
 def initialize_network(network, matrix, scale=0.02):

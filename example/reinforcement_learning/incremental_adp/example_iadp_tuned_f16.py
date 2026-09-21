@@ -27,7 +27,6 @@ class Tuning:
     r_scale: float = 0.5
     integral_weight: float = 30.0
     gamma: float = 0.99
-    blend: float = 0.0001
     forgetting: float = 0.9995
     covariance: float = 20000.0
     window: int = 300
@@ -39,7 +38,6 @@ INTEGRAL_TUNING = Tuning()
 RATE_TUNING = Tuning(
     r_scale=0.10042337710735787,
     integral_weight=0.0,
-    blend=0.0032139005151721003,
     covariance=20246.43637460468,
 )
 
@@ -56,7 +54,6 @@ def make_agent(cfg, tuning):
     settings.policy_eval_min_samples = tuning.min_samples
     settings.policy_eval_warmup_updates = tuning.min_samples
     settings.policy_eval_every = tuning.every
-    settings.policy_eval_blend = tuning.blend
     integral = tuning.integral_weight > 0
     n_state = 2 if integral else 1
     Q = np.diag([1.0, tuning.integral_weight]) if integral else np.eye(1)
@@ -70,12 +67,23 @@ def make_agent(cfg, tuning):
         settings.F_init, settings.G_init = F, G
     settings.Q = Q
     Q_aug = np.block([[Q, -Q], [-Q, Q]])
-    settings.P_init = solve_discrete_are(
-        np.sqrt(settings.gamma) * settings.F_init,
-        np.sqrt(settings.gamma) * settings.G_init,
+    F_prior, G_prior = settings.F_init, settings.G_init
+    lift = np.eye(2 * n_state)
+    if integral:
+        # The shared offset of z and z_ref has exactly zero cost. Solve in
+        # [q, z - z_ref, q_ref] and lift back to the full agent coordinates.
+        # This preserves the same dynamics/cost without asking the Riccati
+        # solver to recover a null eigenvalue to machine precision.
+        lift = np.array([[1, 0, 0, 0], [0, 1, 0, -1], [0, 0, 1, 0]])
+        F_prior, G_prior = F_prior[:3, :3], G_prior[:3]
+        Q_aug = Q_aug[:3, :3]
+    P_prior = solve_discrete_are(
+        np.sqrt(settings.gamma) * F_prior,
+        np.sqrt(settings.gamma) * G_prior,
         Q_aug,
         settings.R,
     )
+    settings.P_init = lift.T @ P_prior @ lift
     return initial_state, IADPAgent(n_state, 1, settings), trim
 
 
@@ -276,38 +284,33 @@ def nominal_search():
     history = []
     for r_scale in (0.5, 1.0, 2.0):
         for weight in (10.0, 30.0, 60.0):
-            for blend in (0.0001, 0.0003, 0.001):
-                tuning = Tuning(r_scale=r_scale, integral_weight=weight, blend=blend)
-                try:
-                    trace, diagnostics = rollout(
-                        cfg, tuning, fault=False, training=True
-                    )
-                    if diagnostics["events"]:
-                        raise AssertionError("Fault data leaked into nominal search")
-                    error = np.deg2rad(trace[:, 2] - trace[:, 1])
-                    cost = float(np.mean(error**2 + physical_R * trace[:, 7] ** 2))
-                    record = {
-                        "tuning": asdict(tuning),
-                        "cost": cost,
-                        "failed": False,
-                        "rmse_deg_s": float(np.sqrt(np.mean(np.rad2deg(error) ** 2))),
-                    }
-                except (
-                    ValueError,
-                    RuntimeError,
-                    FloatingPointError,
-                    np.linalg.LinAlgError,
-                ) as exc:
-                    record = {
-                        "tuning": asdict(tuning),
-                        "cost": None,
-                        "failed": True,
-                        "reason": str(exc),
-                    }
-                history.append(record)
-                print(
-                    f"Nominal candidate {len(history)}/27: {record['cost']}", flush=True
-                )
+            tuning = Tuning(r_scale=r_scale, integral_weight=weight)
+            try:
+                trace, diagnostics = rollout(cfg, tuning, fault=False, training=True)
+                if diagnostics["events"]:
+                    raise AssertionError("Fault data leaked into nominal search")
+                error = np.deg2rad(trace[:, 2] - trace[:, 1])
+                cost = float(np.mean(error**2 + physical_R * trace[:, 7] ** 2))
+                record = {
+                    "tuning": asdict(tuning),
+                    "cost": cost,
+                    "failed": False,
+                    "rmse_deg_s": float(np.sqrt(np.mean(np.rad2deg(error) ** 2))),
+                }
+            except (
+                ValueError,
+                RuntimeError,
+                FloatingPointError,
+                np.linalg.LinAlgError,
+            ) as exc:
+                record = {
+                    "tuning": asdict(tuning),
+                    "cost": None,
+                    "failed": True,
+                    "reason": str(exc),
+                }
+            history.append(record)
+            print(f"Nominal candidate {len(history)}/27: {record['cost']}", flush=True)
     valid = [record for record in history if not record["failed"]]
     if not valid:
         raise RuntimeError("No valid tuning found")

@@ -93,9 +93,13 @@ class NonlinearX15(ModelBase):
     # ---- introspection ------------------------------------------------
 
     def get_param(self) -> X15Parameters:
+        """Return the live aircraft parameter object; mutations affect subsequent
+        integration.
+        """
         return self.param
 
     def set_param(self, new_param: X15Parameters) -> None:
+        """Replace the aircraft parameter object used by subsequent integration steps."""
         self.param = new_param
 
     @property
@@ -105,10 +109,12 @@ class NonlinearX15(ModelBase):
 
     @property
     def altitude_ft(self) -> float:
+        """Return altitude in feet, reversing the NED down-position sign."""
         return float(-self.current_state[11])
 
     @property
     def airspeed_ft_s(self) -> float:
+        """Return the magnitude of body-axis velocity in feet per second."""
         s = self.current_state
         return float(np.sqrt(s[0] ** 2 + s[1] ** 2 + s[2] ** 2))
 
@@ -130,6 +136,12 @@ class NonlinearX15(ModelBase):
     # ---- step ---------------------------------------------------------
 
     def run_step(self, u: ArrayLike) -> np.ndarray:
+        """Integrate surface-radian and throttle commands, accounting for propellant
+        exhaustion.
+
+        Record the transition and return selected states as a column vector. The full
+        state also contains the remaining propellant mass in pounds.
+        """
         u_arr = np.asarray(u, dtype=np.float64).reshape(-1)
         if u_arr.size != self.action_space_length:
             raise ValueError(
@@ -171,6 +183,9 @@ class NonlinearX15(ModelBase):
         def powered_rhs(x, u, t, params):
             # RK4 samples the endpoint of the powered interval. Evaluate its
             # left limit so that the last stage does not prematurely lose thrust.
+            """Evaluate the powered interval's left limit at the propellant-burnout
+            boundary.
+            """
             x = x.copy()
             x[12] = max(float(x[12]), np.finfo(np.float64).tiny)
             return x15_ode_6dof(x, u, t, params)

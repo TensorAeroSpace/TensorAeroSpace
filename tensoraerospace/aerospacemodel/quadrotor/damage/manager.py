@@ -38,6 +38,7 @@ class RotorDamageManager:
         self._first_update = True
 
     def set_profile(self, profile: DamageProfile) -> None:
+        """Replace the scheduled event profile while retaining current rotor damage."""
         self.profile = profile
 
     def inject_event(self, event: DamageEvent) -> None:

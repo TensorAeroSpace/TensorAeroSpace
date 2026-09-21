@@ -48,6 +48,9 @@ class DamageEvent:
             raise ValueError(f"surface must be one of {SURFACES}; got {self.surface!r}")
 
     def apply(self, state: B747DamageState) -> None:  # pragma: no cover
+        """Apply this event in place to the aircraft damage state; subclasses define the
+        effect.
+        """
         raise NotImplementedError
 
 
@@ -67,6 +70,7 @@ class SurfaceEffectivenessEvent(DamageEvent):
             raise ValueError(f"mu must be in [0, 1]; got {self.mu}")
 
     def apply(self, state: B747DamageState) -> None:
+        """Set the selected surface's dimensionless control-effectiveness multiplier."""
         state.mu[self.surface] = float(self.mu)
 
 
@@ -80,6 +84,7 @@ class SurfaceJamEvent(DamageEvent):
     jam_value: float = 0.0
 
     def apply(self, state: B747DamageState) -> None:
+        """Lock the selected control surface at the configured deflection in radians."""
         state.jam[self.surface] = float(self.jam_value)
 
 
@@ -103,6 +108,9 @@ class SurfaceEffectivenessDecay(DamageEvent):
             raise ValueError(f"mu_floor must be in [0, 1]; got {self.mu_floor}")
 
     def apply(self, state: B747DamageState) -> None:
+        """Start surface-effectiveness decay with the configured time constant and
+        floor.
+        """
         state.tau[self.surface] = float(self.tau)
         state.mu_floor[self.surface] = float(self.mu_floor)
 
@@ -138,6 +146,7 @@ engine.jt9d_thrust_with_asymmetry` from the spanwise engine
             )
 
     def apply(self, state: B747DamageState) -> None:
+        """Set the selected engine's remaining thrust fraction in the damage state."""
         state.engines_mu[self.engine_id] = float(self.thrust_fraction)
 
 
@@ -167,6 +176,7 @@ class FlapJamEvent:
             )
 
     def apply(self, state: B747DamageState) -> None:
+        """Fix the aerodynamic flap configuration at the specified jammed setting."""
         state.flap_jam_config = self.jammed_config
 
 

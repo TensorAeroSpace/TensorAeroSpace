@@ -27,8 +27,7 @@ python -m example.reinforcement_learning.incremental_adp.example_etdhp_tuned_b74
 python -m example.reinforcement_learning.incremental_adp.example_etdhp_tuned_b747 held_out
 ```
 
-Full history, failed candidates and limitations: `reports/etdhp-b747-tuning-validation.md`.
-Paper comparison: `reports/etdhp-b747-paper-comparison.md`.
+The notebook describes the selected parameters and limitations. The `held_out` command above reruns the additional validation cases.
 
 ## Original configuration before tuning
 
@@ -54,6 +53,6 @@ PID was tuned only on healthy data, with 150+180 objective evaluations. The sear
 python -m example.reinforcement_learning.incremental_adp.example_etdhp_vs_pid_b747 --online-model-comparison
 ```
 
-Executed notebook: `example/reinforcement_learning/incremental_adp/example_etdhp_vs_pid_b747.ipynb`. Full protocol and checks: `reports/etdhp-b747-pid-validation.md` and adjacent JSON. 153 targeted tests passed.
+Executed notebook: `example/reinforcement_learning/incremental_adp/example_etdhp_vs_pid_b747.ipynb`. Use the commands above to recompute the comparison and save its metrics.
 
 The implementation was checked against [Sun et al., CEAS EuroGNC 2022](https://eurognc.ceas.org/archive/EuroGNC2022/pdf/CEAS-GNC-2022-075.pdf). B747, integral augmentation and local LQR initialization are extensions in this example.

@@ -145,3 +145,15 @@ ut = agent.predict(xt, reference, time_step=0)
 
 - [Incremental Model Based Heuristic Dynamic Programming for Nonlinear Adaptive Flight Control](https://www.researchgate.net/publication/313696777_Incremental_Model_Based_Heuristic_Dynamic_Programming_for_Nonlinear_Adaptive_Flight_Control)
 - [IHDP (reference implementation)](https://github.com/joigalcar3/IHDP)
+
+## Сверка со статьёй и перенос шагов обучения
+
+Источник: [Zhou, van Kampen и Chu (2016), Incremental Model Based Heuristic Dynamic Programming for Nonlinear Adaptive Flight Control](https://www.imavs.org/papers/2016/25.pdf), в частности уравнение (12). Актор минимизирует `0.5 * J_next**2`. При `u = maximum_input * tanh(z)` градиент по весам содержит множитель `maximum_input`; для sigmoid масштаб вдвое больше.
+
+Прежняя SISO-реализация пропускала этот множитель. В связанной [TensorFlow-реализации](https://github.com/joigalcar3/IHDP/tree/bddfeb7736f32ec158b6b3f6fa3044b19c12b0e0) есть тот же пропуск: он не появился только при переносе на PyTorch. Это репозиторий José Ignacio de Alvear Cárdenas, а не авторов статьи 2016 года.
+
+Начните перенос с деления старого шага SISO-актора и его нижней границы на выходной масштаб, затем проверьте замкнутую систему. `learning_rate_min` задаёт нижнюю границу расписания alpha-decay (по умолчанию 0.001). MIMO-градиент уже учитывал масштабы выходов. Для нелинейного F16 шаг дополнительно подобран: `2 / 15 * 2`, минимум `0.001 / 15 * 2`; для B737 — `1.5 / 4 * 1.01` и `0.001 / 4 * 1.01`.
+
+МНК теперь решается непосредственно по матрице измерений, без возведения числа обусловленности в квадрат через нормальные уравнения. В начале недоступные отсчёты заменены нулями вместо случайных фиктивных измерений. `Q_weights` принимает диагональный вектор или полную симметричную положительно полуопределённую матрицу, сохраняя перекрёстные члены.
+
+Точность нелинейного F16 относится к **IHDP с упреждением по обратной модели**; в примере B737 включена **интегральная коррекция**. Эти дополнения не являются базовым алгоритмом статьи.

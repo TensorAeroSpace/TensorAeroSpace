@@ -7,8 +7,7 @@ Based on the TU Delft / DLR flight-test paper
     Control Laws on CS-25 Class Aircraft"*, AIAA SCITECH 2024,
     DOI: 10.2514/6.2024-2402.
 
-The controller combines the three main blocks in Fig. 2 of the paper,
-with configurable ridge regularization, PSD projection and update blending:
+The controller implements the three main blocks in Fig. 2 of the paper:
 
 1. **Incremental model identification.** An online fixed-forgetting RLS
    tracks the parameter matrix ``Θ̃ = [F̃; G̃]^T`` of the locally
@@ -36,13 +35,10 @@ from the user-supplied observation and reference so the public
 ``predict`` / ``learn`` API matches the other online adaptive-critic
 agents of ``tensoraerospace``.
 
-The agent operates in the paper's **Continuous Learning Approach** by
-default — model learning, controller training and controller assessment
-run concurrently from the first step. Provide
-``model_learning_only_steps > 0`` with ``excitation_signal`` for an
-initial open-loop identification phase with a frozen critic. RLS continues
-adapting afterward; the complete Sequential Learning Approach in the paper
-also freezes model learning and is not selected by this option alone.
+Use ``IADPConfig.paper(...)`` for unregularized batch evaluation, independent
+plant/reference state dimensions and the published CLA/SLA phase schedules.
+The default paper profile is continuous learning, including its initial
+open-loop identification phase. ``IADPConfig()`` uses the same equations with configurable experiment timing.
 """
 
 from __future__ import annotations
@@ -53,97 +49,31 @@ import datetime
 import json
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Optional, Union
+from typing import Any, Optional, Union, cast
 
 import numpy as np
+
+from tensoraerospace.optimization.agent import OptimizableAgent
 
 from .rls import IncrementalRLS
 
 
 @dataclass
 class IADPConfig:
-    """Hyper-parameters for :class:`IADPAgent`.
+    """Configuration of the single published iADP update law.
 
-    Args:
-        dt: Control step [s].
-        Q: Tracking-error weight matrix of shape ``(n_state, n_state)``.
-            Must be finite, symmetric and positive semidefinite.
-            Defaults to the identity.
-        R: Control weight matrix of shape ``(n_control, n_control)``.
-            Defaults to the identity.
-        gamma: Discount factor ``γ ∈ (0, 1)`` used in the Bellman
-            equation of eq. (3). Smaller values keep the cost-to-go
-            short-sighted; the paper uses values around ``0.6–0.9``
-            tuned offline via MOPS.
-        gamma_rls: Constant RLS forgetting factor for the incremental
-            model. See :class:`IncrementalRLS`.
-        phi_init: Initial RLS covariance scale.
-        policy_eval_window: Number of recent transitions used to fit
-            ``P̃`` at each policy-evaluation tick. Must be at least
-            ``max(n_aug**2, 4)`` for the update schedule. Sample count alone does not
-            imply identifiability; symmetric cross-products are duplicates.
-        policy_eval_min_samples: Minimum samples in the current critic window
-            before fitting, including after reset. None keeps the historical
-            max(n_aug**2, 4) threshold. Set equal to policy_eval_window to wait
-            for a complete window; this scheduling option is separate from
-            the identifier's lifetime policy_eval_warmup_updates counter.
-        policy_eval_every: Stride in ``learn()`` ticks between
-            policy-evaluation updates. The paper reports a 20 Hz
-            controller-training loop against a 1 kHz model-learning
-            loop — ``policy_eval_every = 50`` at ``dt = 0.001``.
-            At ``dt = 0.01``, use 5 ticks for a 20 Hz evaluation rate.
-        policy_eval_iterations: Inner fixed-point sweeps per
-            policy-evaluation tick. One sweep is usually enough.
-        policy_eval_regularization: Zero-centered ridge penalty in
-            the LS objective, solved directly with SVD. This is a library
-            extension to the paper's pseudoinverse; 0 disables the penalty.
-        policy_eval_warmup_updates: Skip policy evaluation until the RLS
-            identifier has seen at least this many updates. Gives the
-            incremental model a chance to settle before the LS sees
-            noisy ``F̃``/``G̃`` estimates.
-        enforce_psd: When True, after each batch-LS solve for ``P̃`` the
-            eigenvalues are clipped to ``[psd_floor, +∞)`` and the
-            matrix is reconstructed. The paper defines ``P̃`` to be
-            positive-definite so that the cost-to-go stays convex; in
-            finite-window LS this isn't automatic, and a non-PSD
-            ``P̃`` can destabilise the closed-form policy eq. (11).
-        psd_floor: Lower bound for the eigenvalue clip used when
-            ``enforce_psd`` is True.
-        policy_eval_blend: Exponential-moving-average coefficient for
-            ``P̃`` updates. After each batch-LS solve the new kernel
-            matrix ``P_solved`` is mixed with the previous one via
-            ``P̃ ← blend·P_solved + (1-blend)·P̃``. The default ``1.0``
-            replaces ``P̃`` outright (the paper's behaviour) but causes
-            a small step change in the policy every
-            ``policy_eval_every`` ticks — visible as a sawtooth on the
-            control trace. Values around ``0.2–0.4`` smooth the control
-            output, but tracking quality must be checked for each setup.
-            Setting 0 freezes the critic and skips the LS solve.
-        model_learning_only_steps: Number of initial steps during which
-            the agent ignores the policy and outputs
-            ``excitation_signal`` (or zero if it is ``None``). Replicates
-            the paper's 20–25 s open-loop Sequential Learning phase.
-        excitation_signal: Optional ``(T, n_control)`` schedule of
-            absolute control values used during
-            ``model_learning_only_steps``. When ``None`` the agent
-            outputs zero during the open-loop window. Critic training and
-            its transition buffer start only after this phase.
-        F_init: Optional warm-start for ``F̃``, shape
-            ``(n_aug, n_aug)``.
-        G_init: Optional warm-start for ``G̃``, shape
-            ``(n_aug, n_control)``.
-        P_init: Optional warm-start for the kernel matrix ``P̃``, shape
-            ``(n_aug, n_aug)``. Defaults to the identity, which gives a
-            non-trivial first policy output even before any
-            policy-evaluation tick has fired.
-        u_magnitude_limit: Hard magnitude clamp on the per-channel
-            absolute control value (matches actuator envelope).
-        u_rate_limit: Maximum ``|Δδ|`` per second per channel.
-        pinv_rcond: Cut-off passed to ``numpy.linalg.pinv`` on the
-            policy-improvement matrix inversion.
-        seed: Optional RNG seed — unused by the deterministic update
-            rules but forwarded to NumPy for parity with stochastic
-            agents.
+    ``paper(...)`` supplies the reported CLA/SLA experiment schedule. Direct
+    construction configures another experiment with the same equations.
+    ``Q`` weights output error, ``R`` weights actual control, ``gamma`` is the
+    Bellman discount, and ``gamma_rls`` is fixed RLS forgetting per sample.
+    Output maps have shapes (n_output, n_state) and (n_output, n_reference).
+    ``P_init`` is the initial quadratic value kernel. Its default is a
+    tracking-shaped positive seed, not the unpublished flight-test tuning.
+
+    Critic evaluation is unregularized batch least squares: no eigenvalue
+    projection, update blending or alternative policy inverse is available.
+    Window length, minimum samples and update cadence remain configurable.
+    Sufficient sample count does not imply informative excitation.
     """
 
     dt: float = 0.01
@@ -155,11 +85,7 @@ class IADPConfig:
     policy_eval_window: int = 200
     policy_eval_every: int = 50
     policy_eval_iterations: int = 1
-    policy_eval_regularization: float = 1e-4
     policy_eval_warmup_updates: int = 20
-    enforce_psd: bool = True
-    psd_floor: float = 1e-6
-    policy_eval_blend: float = 1.0
     model_learning_only_steps: int = 0
     excitation_signal: Optional[np.ndarray] = None
     F_init: Optional[np.ndarray] = None
@@ -167,10 +93,86 @@ class IADPConfig:
     P_init: Optional[np.ndarray] = None
     u_magnitude_limit: float = 25.0
     u_rate_limit: float = 60.0
-    pinv_rcond: float = 1e-8
     seed: Optional[int] = None
     history: dict = field(default_factory=dict)
     policy_eval_min_samples: Optional[int] = None
+    # Paper architecture: independent plant/reference states and output maps.
+    n_reference: Optional[int] = None
+    output_matrix: Optional[np.ndarray] = None
+    reference_output_matrix: Optional[np.ndarray] = None
+    learning_mode: str = "continuous"
+    controller_training_steps: Optional[int] = None
+    policy_training_start_step: int = 0
+    continuous_excitation_signal: Optional[np.ndarray] = None
+
+    @classmethod
+    def paper(
+        cls,
+        *,
+        excitation_signal: np.ndarray,
+        dt: float = 0.001,
+        learning_mode: str = "continuous",
+        model_learning_seconds: float = 20.0,
+        controller_training_seconds: float = 40.0,
+        critic_window_seconds: float = 20.0,
+        critic_update_hz: float = 20.0,
+        **kwargs: Any,
+    ) -> "IADPConfig":
+        """Konatala (2024), Fig. 2 and Section III.B experimental protocol.
+
+        Continuous learning retains online identification after excitation.
+        Sequential learning freezes the model after identification and freezes
+        the critic after controller training. Durations are configurable;
+        they are experiment settings, not universal aircraft tuning.
+        No ridge, PSD projection or blending is added to the paper's LS solve.
+        """
+
+        def ticks(seconds: float) -> int:
+            """Convert a positive duration to an exact integer number of sampling
+            intervals.
+            """
+            if not np.isfinite(dt) or dt <= 0 or not np.isfinite(seconds):
+                raise ValueError("dt and durations must be finite and positive")
+            value = seconds / dt
+            if value <= 0 or not np.isclose(value, round(value)):
+                raise ValueError("duration must be a positive integer multiple of dt")
+            return int(round(value))
+
+        if not np.isfinite(critic_update_hz) or critic_update_hz <= 0:
+            raise ValueError("critic_update_hz must be positive")
+        model_steps = ticks(model_learning_seconds)
+        excitation = np.asarray(excitation_signal, dtype=float)
+        if (
+            excitation.ndim != 2
+            or excitation.shape[0] < model_steps
+            or not np.isfinite(excitation).all()
+            or not np.any(np.ptp(excitation, axis=0) > 0)
+        ):
+            raise ValueError(
+                "paper schedule requires varying excitation covering model learning"
+            )
+        training_steps = ticks(controller_training_seconds)
+        window = ticks(critic_window_seconds)
+        settings: dict[str, Any] = dict(
+            dt=dt,
+            learning_mode=learning_mode,
+            model_learning_only_steps=model_steps,
+            controller_training_steps=training_steps,
+            excitation_signal=excitation_signal,
+            policy_eval_window=window,
+            policy_eval_min_samples=window,
+            policy_eval_every=ticks(1 / critic_update_hz),
+            policy_eval_warmup_updates=0,
+            # The reported SLA trial fits during the final five seconds of
+            # controller training (55--60 s with the default phase lengths).
+            policy_training_start_step=(
+                model_steps + max(0, training_steps - round(5.0 / dt))
+                if learning_mode == "sequential"
+                else 0
+            ),
+        )
+        settings.update(kwargs)
+        return cls(**settings)
 
 
 def _as_array(value: Any) -> Optional[np.ndarray]:
@@ -194,20 +196,20 @@ def _validate_cost_weight(weight: np.ndarray, name: str) -> np.ndarray:
     return symmetric
 
 
-class IADPAgent:
+class IADPAgent(OptimizableAgent):
     """Incremental Approximate Dynamic Programming control agent.
 
     The agent tracks a user-supplied reference on the observed state and
-    continuously re-identifies the plant model online. See the
+    re-identifies the plant online in continuous learning mode. See the
     module-level docstring for the full algorithm.
 
     Args:
-        n_state: Number of controlled system states ``x_t``. The
-            augmented state ``X_t = [x_t; x_t^r]`` has dimension
-            ``2 · n_state``.
+        n_state: Number of observed plant states ``x_t``. The augmented
+            state dimension is ``n_state + n_reference``; ``n_reference``
+            defaults to ``n_state`` for compatibility.
         n_control: Number of control channels ``δ_t``.
-        config: :class:`IADPConfig` instance. Defaults fit a moderately
-            fast fixed-wing inner loop at ``dt = 0.01`` s.
+        config: :class:`IADPConfig` instance. Use ``IADPConfig.paper`` for
+            the published algorithm profile. Tuning is plant-specific.
     """
 
     def __init__(
@@ -218,32 +220,13 @@ class IADPAgent:
     ) -> None:
         self.n_state = int(n_state)
         self.n_control = int(n_control)
-        self.n_aug = 2 * self.n_state
         self.cfg = config if config is not None else IADPConfig()
-        if not 0.0 < self.cfg.gamma < 1.0:
-            raise ValueError("gamma must lie in (0, 1)")
+        self._initialize_tracking_config()
 
         if self.cfg.seed is not None:
             np.random.seed(int(self.cfg.seed))
 
-        # --- quadratic weights ---
-        Q = _as_array(self.cfg.Q)
-        if Q is None:
-            Q = np.eye(self.n_state, dtype=np.float64)
-        if Q.shape != (self.n_state, self.n_state):
-            raise ValueError(
-                f"Q must have shape ({self.n_state}, {self.n_state}), got {Q.shape}"
-            )
-        R = _as_array(self.cfg.R)
-        if R is None:
-            R = np.eye(self.n_control, dtype=np.float64)
-        if R.shape != (self.n_control, self.n_control):
-            raise ValueError(
-                f"R must have shape ({self.n_control}, {self.n_control}),"
-                f" got {R.shape}"
-            )
-        self.Q = _validate_cost_weight(Q, "Q")
-        self.R = _validate_cost_weight(R, "R")
+        self._initialize_cost_weights()
 
         # --- incremental model identifier ---
         self.rls = IncrementalRLS(
@@ -272,13 +255,19 @@ class IADPAgent:
         # --- kernel matrix (value function parameters) ---
         P_init = _as_array(self.cfg.P_init)
         if P_init is None:
-            P_init = np.eye(self.n_aug, dtype=np.float64)
+            # The article does not publish its initial P. Couple the plant
+            # and reference outputs with a positive tracking-shaped seed.
+            error_map = np.hstack([self.C, -self.Cr])
+            P_init = error_map.T @ self.Q @ error_map + 1e-6 * np.eye(self.n_aug)
         if P_init.shape != (self.n_aug, self.n_aug):
             raise ValueError(
                 f"P_init must have shape ({self.n_aug}, {self.n_aug}),"
                 f" got {P_init.shape}"
             )
         self.P = 0.5 * (P_init + P_init.T)
+        self.P = _validate_cost_weight(self.P, "P_init")
+        if not np.isfinite(self.rls.theta).all():
+            raise ValueError("F_init and G_init must be finite")
 
         self._validate_policy_sample_threshold()
 
@@ -295,6 +284,66 @@ class IADPAgent:
         self._window: collections.deque = collections.deque(
             maxlen=int(self.cfg.policy_eval_window)
         )
+
+    def _initialize_tracking_config(self) -> None:
+        """Validate output maps and the configured learning schedule."""
+        self.n_reference = (
+            self.n_state if self.cfg.n_reference is None else int(self.cfg.n_reference)
+        )
+        if min(self.n_state, self.n_control, self.n_reference) <= 0:
+            raise ValueError("state, control and reference dimensions must be positive")
+        self.n_aug = self.n_state + self.n_reference
+        self.C = (
+            np.eye(self.n_state)
+            if self.cfg.output_matrix is None
+            else np.asarray(self.cfg.output_matrix, dtype=float)
+        )
+        if self.C.ndim != 2 or self.C.shape[1] != self.n_state:
+            raise ValueError("output_matrix must have n_state columns")
+        self.n_output = self.C.shape[0]
+        self.Cr = (
+            np.eye(self.n_reference)
+            if self.cfg.reference_output_matrix is None
+            else np.asarray(self.cfg.reference_output_matrix, dtype=float)
+        )
+        if self.Cr.shape != (self.n_output, self.n_reference):
+            raise ValueError(
+                "reference_output_matrix must map reference states to outputs"
+            )
+        if not np.isfinite(self.C).all() or not np.isfinite(self.Cr).all():
+            raise ValueError("output maps must be finite")
+        if self.cfg.learning_mode not in ("continuous", "sequential"):
+            raise ValueError("learning_mode must be continuous or sequential")
+        if self.cfg.learning_mode == "sequential" and (
+            self.cfg.controller_training_steps is None
+            or self.cfg.controller_training_steps <= 0
+        ):
+            raise ValueError(
+                "sequential learning requires controller_training_steps > 0"
+            )
+        if not 0.0 < self.cfg.gamma < 1.0:
+            raise ValueError("gamma must lie in (0, 1)")
+
+    def _initialize_cost_weights(self) -> None:
+        """Build and validate the quadratic output and control costs."""
+        # --- quadratic weights ---
+        Q = _as_array(self.cfg.Q)
+        if Q is None:
+            Q = np.eye(self.n_output, dtype=np.float64)
+        if Q.shape != (self.n_output, self.n_output):
+            raise ValueError(
+                f"Q must have shape ({self.n_output}, {self.n_output}), got {Q.shape}"
+            )
+        R = _as_array(self.cfg.R)
+        if R is None:
+            R = np.eye(self.n_control, dtype=np.float64)
+        if R.shape != (self.n_control, self.n_control):
+            raise ValueError(
+                f"R must have shape ({self.n_control}, {self.n_control}),"
+                f" got {R.shape}"
+            )
+        self.Q = _validate_cost_weight(Q, "Q")
+        self.R = _validate_cost_weight(R, "R")
 
     # ------------------------------------------------------------------
     # Views
@@ -313,27 +362,31 @@ class IADPAgent:
     # Helpers
     # ------------------------------------------------------------------
     def _slice_reference(self, reference: np.ndarray, time_step: int) -> np.ndarray:
+        """Select and copy the reference sample, broadcasting scalar commands as needed."""
         ref = np.asarray(reference, dtype=np.float64)
         if ref.ndim == 0:
-            return np.full(self.n_state, float(ref), dtype=np.float64)
+            return np.full(self.n_reference, float(ref), dtype=np.float64)
         if ref.ndim == 1:
-            if ref.size == self.n_state:
+            if ref.size == self.n_reference:
                 return ref.astype(np.float64, copy=True)
             idx = int(np.clip(time_step, 0, ref.size - 1))
-            return np.full(self.n_state, float(ref[idx]), dtype=np.float64)
+            return np.full(self.n_reference, float(ref[idx]), dtype=np.float64)
         if ref.ndim == 2:
             idx = int(np.clip(time_step, 0, ref.shape[1] - 1))
             col = ref[:, idx]
-            if col.size == self.n_state:
+            if col.size == self.n_reference:
                 return col.astype(np.float64, copy=True)
             if col.size == 1:
-                return np.full(self.n_state, float(col[0]), dtype=np.float64)
+                return np.full(self.n_reference, float(col[0]), dtype=np.float64)
             raise ValueError(
-                f"reference column has {col.size} entries, expected {self.n_state}"
+                f"reference column has {col.size} entries, expected {self.n_reference}"
             )
         raise ValueError("reference must be scalar, 1-D, or 2-D")
 
     def _augment(self, x: np.ndarray, ref: np.ndarray) -> np.ndarray:
+        """Concatenate measured plant states and reference states for the value
+        function.
+        """
         return np.concatenate([x, ref])
 
     def _compute_policy_increment(
@@ -349,11 +402,10 @@ class IADPAgent:
         GTP = G.T @ P  # (n_control, n_aug)
         H = R + gamma * (GTP @ G)  # (n_control, n_control)
         rhs = R @ self._delta_prev + gamma * (GTP @ X_t) + gamma * (GTP @ (F @ dX_t))
-        H_inv = np.linalg.pinv(H, rcond=float(self.cfg.pinv_rcond))
-        return np.asarray(-(H_inv @ rhs))
+        return np.asarray(-np.linalg.solve(H, rhs))
 
     def _excitation(self, step: int) -> np.ndarray:
-        """Return the open-loop control at ``step`` (SLA phase)."""
+        """Return the open-loop identification control at ``step``."""
         exc = self.cfg.excitation_signal
         if exc is None:
             return np.zeros(self.n_control, dtype=np.float64)
@@ -376,7 +428,19 @@ class IADPAgent:
     # ------------------------------------------------------------------
     # Core API
     # ------------------------------------------------------------------
-    def reset(self) -> None:
+    @property
+    def phase(self) -> str:
+        """Current experimental phase, independent of reference time indexing."""
+        if self._step < self.cfg.model_learning_only_steps:
+            return "model_learning"
+        if self.cfg.learning_mode == "sequential" and self._step >= (
+            self.cfg.model_learning_only_steps
+            + cast(int, self.cfg.controller_training_steps)
+        ):
+            return "assessment"
+        return "controller_training"
+
+    def reset(self, *, initial_action: Optional[np.ndarray] = None) -> None:
         """Clear per-episode rolling state (keeps learned ``F̃``, ``G̃``,
         ``P̃``)."""
         self._X_prev = None
@@ -387,6 +451,11 @@ class IADPAgent:
         self._last_d_delta = np.zeros(self.n_control, dtype=np.float64)
         self._step = 0
         self._window.clear()
+        if initial_action is not None:
+            initial = np.asarray(initial_action, dtype=float).reshape(-1)
+            if initial.size != self.n_control or not np.isfinite(initial).all():
+                raise ValueError("initial_action must contain n_control finite values")
+            self._delta_prev = initial.copy()
 
     def predict(
         self,
@@ -418,6 +487,8 @@ class IADPAgent:
             raise ValueError(f"x_obs must have length {self.n_state}, got {x.size}")
         ref = self._slice_reference(reference, time_step)
         X_t = self._augment(x, ref)
+        if not np.isfinite(X_t).all():
+            raise ValueError("state and reference must be finite")
 
         if self._X_prev is not None:
             dX_t = X_t - self._X_prev
@@ -425,11 +496,31 @@ class IADPAgent:
             dX_t = np.zeros(self.n_aug, dtype=np.float64)
 
         if self._step < int(self.cfg.model_learning_only_steps):
-            # Sequential-learning open-loop phase.
+            # Initial open-loop identification phase.
             delta_cmd = self._excitation(self._step)
             d_delta = delta_cmd - self._delta_prev
         else:
             d_delta = self._compute_policy_increment(X_t, dX_t)
+            if (
+                self.cfg.continuous_excitation_signal is not None
+                and self.phase != "assessment"
+            ):
+                excitation = np.asarray(
+                    self.cfg.continuous_excitation_signal, dtype=float
+                )
+                if (
+                    excitation.ndim != 2
+                    or excitation.shape[1] != self.n_control
+                    or not len(excitation)
+                    or not np.isfinite(excitation).all()
+                ):
+                    raise ValueError(
+                        "continuous_excitation_signal must have shape (T, n_control) and be finite"
+                    )
+                index = (self._step - self.cfg.model_learning_only_steps) % len(
+                    excitation
+                )
+                d_delta = d_delta + excitation[index]
         # Excitation and policy commands share the same actuator envelope.
         du_max = float(self.cfg.u_rate_limit) * float(self.cfg.dt)
         d_delta = np.clip(d_delta, -du_max, du_max)
@@ -499,17 +590,23 @@ class IADPAgent:
             # Incremental identification needs two consecutive transitions.
             # After reset there is no measured X_{t-1}; assuming dX_t=0
             # attributes the initial free response to control effectiveness.
+            W = np.concatenate([self._last_dX, self._last_d_delta])
             if self._X_prev is not None:
                 dX_target = X_next - self._last_X
-                W = np.concatenate([self._last_dX, self._last_d_delta])
-                eps = self.rls.update(W, dX_target)
+                if (
+                    self.cfg.learning_mode == "continuous"
+                    or self.phase == "model_learning"
+                ):
+                    eps = self.rls.update(W, dX_target)
+                else:
+                    eps = dX_target - self.rls.predict(W)
                 eps_norm = float(np.linalg.norm(eps))
 
             # Cost evaluated at time ``t`` using the action δ_t that was
             # applied to get from X̂_t to X̂_{t+1}.
             x_t = self._last_X[: self.n_state]
             r_t = self._last_X[self.n_state :]
-            err = x_t - r_t
+            err = self.C @ x_t - self.Cr @ r_t
             cost_t = float(
                 err @ self.Q @ err + self._last_delta @ self.R @ self._last_delta
             )
@@ -559,7 +656,7 @@ class IADPAgent:
         self, state: np.ndarray, next_state: np.ndarray, cost: float
     ) -> None:
         """Train the critic only after the model-only identification phase."""
-        if self._step < int(self.cfg.model_learning_only_steps):
+        if self.phase in ("model_learning", "assessment"):
             return
         self._window.append(
             {"X": state.copy(), "Xnext": next_state.copy(), "cost": cost}
@@ -570,57 +667,33 @@ class IADPAgent:
             self.n_aug**2, 4, self.cfg.policy_eval_min_samples or 0
         )
         every = max(1, int(self.cfg.policy_eval_every))
-        if ready and (self._step + 1) % every == 0:
+        if (
+            ready
+            and self._step >= self.cfg.policy_training_start_step
+            and (self._step + 1) % every == 0
+        ):
             self._policy_evaluation()
 
     def _policy_evaluation(self) -> None:
         """Fit ``P̃`` to the Bellman residuals over the current window."""
-        blend = float(np.clip(self.cfg.policy_eval_blend, 0.0, 1.0))
-        if blend == 0.0:
-            return
         n_aug = self.n_aug
-        N = len(self._window)
-        if N < 2:
+        count = len(self._window)
+        if count < 2:
             return
-
-        A = np.zeros((N, n_aug * n_aug), dtype=np.float64)
-        # Precompute regressor rows; they don't depend on the inner sweep.
-        for i, s in enumerate(self._window):
-            X = s["X"]
-            A[i] = np.outer(X, X).ravel()
-
-        P_j = self.P.copy()
-        lam = float(self.cfg.policy_eval_regularization)
-        if not np.isfinite(lam) or lam < 0.0:
-            raise ValueError(
-                "policy_eval_regularization must be finite and nonnegative"
-            )
-        # Solve the same ridge objective in feature space. Forming A.T @ A
-        # squares the condition number and loses small, identifiable features.
-        design = np.vstack([A, np.sqrt(lam) * np.eye(n_aug * n_aug)])
-        # Right-hand side depends on P through the discounted next-step
-        # value; recompute per inner sweep.
+        states = np.stack([sample["X"] for sample in self._window])
+        following = np.stack([sample["Xnext"] for sample in self._window])
+        costs = np.asarray([sample["cost"] for sample in self._window])
+        design = np.einsum("ni,nj->nij", states, states).reshape(count, -1)
+        kernel = self.P.copy()
         for _ in range(max(1, int(self.cfg.policy_eval_iterations))):
-            b = np.empty(N, dtype=np.float64)
-            for i, s in enumerate(self._window):
-                Xn = s["Xnext"]
-                b[i] = s["cost"] + float(self.cfg.gamma) * float(Xn @ P_j @ Xn)
-            target = np.concatenate([b, np.zeros(n_aug * n_aug)])
-            p = np.linalg.lstsq(design, target, rcond=None)[0]
-            P_new = p.reshape(n_aug, n_aug)
-            P_new = 0.5 * (P_new + P_new.T)
-            if bool(self.cfg.enforce_psd):
-                eigvals, eigvecs = np.linalg.eigh(P_new)
-                eigvals = np.clip(eigvals, float(self.cfg.psd_floor), None)
-                P_new = (eigvecs * eigvals) @ eigvecs.T
-            P_j = P_new
-
-        # Exponential-moving-average blend with the incumbent ``P̃`` to
-        # smooth the step-change in the policy at every evaluation tick.
-        if blend < 1.0:
-            self.P = blend * P_j + (1.0 - blend) * self.P
-        else:
-            self.P = P_j
+            target = costs + self.cfg.gamma * np.einsum(
+                "ni,ij,nj->n", following, kernel, following
+            )
+            # SVD least squares is the Moore-Penrose solution in Fig. 2.
+            coefficients = np.linalg.lstsq(design, target, rcond=None)[0]
+            kernel = coefficients.reshape(n_aug, n_aug)
+            kernel = 0.5 * (kernel + kernel.T)
+        self.P = kernel
 
     # ------------------------------------------------------------------
     # Persistence — local save / load and Hugging Face Hub round-trip
@@ -630,7 +703,17 @@ class IADPAgent:
         agent_name = f"{self.__class__.__module__}.{self.__class__.__name__}"
         cfg_dict = dataclasses.asdict(self.cfg)
         cfg_dict.pop("history", None)
-        for key in ("Q", "R", "F_init", "G_init", "P_init", "excitation_signal"):
+        for key in (
+            "Q",
+            "R",
+            "F_init",
+            "G_init",
+            "P_init",
+            "excitation_signal",
+            "output_matrix",
+            "reference_output_matrix",
+            "continuous_excitation_signal",
+        ):
             value = cfg_dict.get(key)
             if isinstance(value, np.ndarray):
                 cfg_dict[key] = value.tolist()
@@ -739,7 +822,17 @@ class IADPAgent:
         params = policy.get("params", {})
         cfg_dict = dict(policy.get("config", {}))
 
-        for key in ("Q", "R", "F_init", "G_init", "P_init", "excitation_signal"):
+        for key in (
+            "Q",
+            "R",
+            "F_init",
+            "G_init",
+            "P_init",
+            "excitation_signal",
+            "output_matrix",
+            "reference_output_matrix",
+            "continuous_excitation_signal",
+        ):
             value = cfg_dict.get(key)
             if value is not None:
                 cfg_dict[key] = np.asarray(value, dtype=np.float64)

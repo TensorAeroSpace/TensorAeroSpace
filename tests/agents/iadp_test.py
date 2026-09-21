@@ -133,8 +133,9 @@ def test_agent_dimensions_and_defaults():
     # Default Q, R are identity of the right size.
     np.testing.assert_allclose(agent.Q, np.eye(2))
     np.testing.assert_allclose(agent.R, np.eye(3))
-    # Default P is identity.
-    np.testing.assert_allclose(agent.P, np.eye(4))
+    # Default value couples plant and reference tracking outputs.
+    expected = np.block([[np.eye(2), -np.eye(2)], [-np.eye(2), np.eye(2)]])
+    np.testing.assert_allclose(agent.P, expected + 1e-6 * np.eye(4))
     # RLS theta has the right shape.
     assert agent.rls.theta.shape == (4 + 3, 4)
 
@@ -299,63 +300,6 @@ def test_agent_policy_evaluation_runs_on_schedule():
         agent.learn(np.array([x_next]), np.array([0.1]), k)
     # P should have moved off its initial value by now.
     assert not np.allclose(P_before, agent.P)
-
-
-def test_agent_policy_eval_blend_smooths_p_trajectory():
-    """With ``policy_eval_blend < 1`` the kernel matrix ``P̃`` should
-    change more gradually between successive policy-evaluation ticks
-    than with the default ``blend = 1``. We run two identical rollouts
-    (same seed, same state sequence) and compare the step-to-step jump
-    in ``‖P̃‖`` over policy updates."""
-
-    def track_p_jumps(blend):
-        agent = _mk_agent(
-            policy_eval_warmup_updates=5,
-            policy_eval_every=5,
-            policy_eval_blend=blend,
-            P_init=np.eye(2) * 3.0,
-        )
-        p_norms = []
-        for k in range(80):
-            agent.predict(np.array([0.0]), np.array([0.1]), k)
-            x_next = _toy_scalar_plant(0.0, 0.0) + 0.001 * k
-            agent.learn(np.array([x_next]), np.array([0.1]), k)
-            p_norms.append(float(np.linalg.norm(agent.P)))
-        diffs = np.abs(np.diff(p_norms))
-        return diffs.max()
-
-    hard_update = track_p_jumps(1.0)
-    soft_update = track_p_jumps(0.2)
-    # Soft update must strictly reduce the largest per-tick ||P̃|| jump.
-    assert soft_update < hard_update, (
-        f"soft blend did not smooth updates: hard={hard_update:.3f}, "
-        f"soft={soft_update:.3f}"
-    )
-
-
-def test_agent_policy_eval_blend_validates_range():
-    """The blend coefficient is clipped to ``[0, 1]``; values outside that
-    range should be accepted (clipped) without raising, and ``blend = 0``
-    should freeze ``P̃`` at its initial value."""
-    agent = _mk_agent(
-        policy_eval_warmup_updates=3,
-        policy_eval_every=5,
-        policy_eval_blend=0.0,  # freeze P̃
-        P_init=np.eye(2) * 7.0,
-    )
-    P_before = agent.P.copy()
-    for k in range(40):
-        agent.predict(np.array([0.0]), np.array([0.1]), k)
-        x_next = _toy_scalar_plant(0.0, 0.0) + 0.001 * k
-        agent.learn(np.array([x_next]), np.array([0.1]), k)
-    np.testing.assert_allclose(agent.P, P_before)
-
-
-def test_agent_p_stays_psd_with_enforcement():
-    agent = _mk_agent(enforce_psd=True, psd_floor=1e-5)
-    _run_closed_loop(agent, ref_value=0.2, n_steps=100)
-    eigs = np.linalg.eigvalsh(agent.P)
-    assert eigs.min() >= 1e-5 - 1e-9
 
 
 # ---------------------------------------------------------------------------

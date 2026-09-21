@@ -1,5 +1,9 @@
 # IHDP / IM-GDHP vs PID — Nonlinear F-16 Alpha Tracking
 
+!!! warning "Historical comparison — previous implementation"
+    The metrics below were produced before the IHDP/IM-GDHP paper audit. IM-GDHP now has a different critic and objective and requires retraining. These historical numbers do not establish performance or contractual compliance of the corrected implementation. See the [current SDK lesson](../example/agent/imgdhp/example_imgdhp_nonlinear.md) for measured results and limits.
+    The historical IM-GDHP section never called `learn`: it used an untrained fixed actor plus an external integrator. Its numbers are not a comparison of trained adaptive IM-GDHP policies.
+
 ## Abstract
 
 This study verifies the technical-task (TT) requirement that *machine-learning controllers achieve roughly 30 % faster transient response than a classical PID controller* on the **nonlinear F-16 longitudinal model**. Two adaptive ML controllers are evaluated against an auto-tuned PID baseline on the same scenario, the same reference signal and the same set of quality metrics:
@@ -96,7 +100,7 @@ This is the standard *feedforward + integral* pattern from aerospace control: th
 cfg = IMGDHPConfig(
     gamma=0.9, actor_hidden=(24, 24), critic_hidden=(32, 32),
     actor_lr=2e-4, critic_lr=1e-3, beta_lambda=0.3, track_Q=[200.0],
-    action_rate_penalty=1e-3, forgetting=0.999, cov_init=1e3,
+    history_length=4, forgetting=0.999, cov_init=1e3,
     warmup_steps=200, critic_only_steps=400, target_update_tau=5e-3,
     exploration_noise_std=0.0,    # deterministic single-pass
     u_max=15.0, seed=0,

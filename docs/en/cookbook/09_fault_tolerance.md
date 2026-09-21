@@ -1,207 +1,256 @@
-# Recipe 09 — Fault-tolerance with online-adaptive agents
+# Recipe 09 — Evaluate fault tolerance on a common aircraft
 
-Inject a 50 % elevator effectiveness loss mid-episode and watch iADP and AA-INDI absorb it. Copy each step below; the numbers and the plot at the end are the ones you should reproduce within ±5 %.
+**Goal:** tune classical controllers on a healthy B747, inject a physical engine
+failure, and compare AA-INDI, PID, LQR and LQI using the same flight and actuator
+constraints. You will run paired healthy/faulty episodes, verify causality, draw
+reference/response plots and measure recovery and control effort.
 
-Source notebook: [`example/cookbook/recipe_09_fault_tolerance.ipynb`](https://github.com/TensorAeroSpace/TensorAeroSpace/blob/develop/example/cookbook/recipe_09_fault_tolerance.ipynb).
+**Notebook:** [recipe_09_fault_tolerance.ipynb](https://github.com/TensorAeroSpace/TensorAeroSpace/blob/develop/example/cookbook/recipe_09_fault_tolerance.ipynb).
+It contains executable cells and saved figures. Run the following Python blocks
+in order in an environment with this version of `tensoraerospace` installed. The complete
+[comparison report](../comparison/aaindi_vs_pid_lqr_lqi_b747.md) includes additional
+physical and adaptation plots.
 
-## Step 1 — Boilerplate and trim
+## 1. Define what actually fails
 
-```python
-import warnings
-warnings.filterwarnings('ignore')
-import math
+The native nonlinear 12-state B747 has four engines. At 30 s, the left outer
+engine loses all thrust. At unchanged throttle and flight condition, total thrust
+falls to 75% of its healthy value and an asymmetric yaw moment appears. The native
+`EngineFailureEvent` changes propulsion inside the physical model.
 
-import gymnasium as gym
-import matplotlib.pyplot as plt
-import numpy as np
-from scipy.linalg import solve_discrete_are
-from scipy.optimize import fsolve
+Aileron and rudder authority remain intact. Multiplying a measured heading or
+adding an arbitrary state jump would describe a different experiment.
 
-import tensoraerospace  # noqa: F401
-from tensoraerospace.aerospacemodel.f16.nonlinear.longitudinal.dynamics import f16_ode_long
-from tensoraerospace.aerospacemodel.f16.nonlinear.longitudinal.params import default_parameters
-from tensoraerospace.agent.iadp import IADPAgent, IADPConfig
-from tensoraerospace.agent.aa_indi import AAINDIAgent, AAINDIConfig
-
-dt = 0.01
-params = default_parameters()
-
-def trim_residual(z):
-    alpha, stab = z
-    return list(f16_ode_long(np.array([alpha, 0, stab, 0]), np.array([stab]), 0, params)[:2])
-
-sol, *_ = fsolve(trim_residual, x0=[math.radians(2.0), math.radians(-2.0)], full_output=True)
-alpha_trim_rad, stab_trim_rad = float(sol[0]), float(sol[1])
-
-def make_env(n):
-    env = gym.make('NonlinearLongitudinalF16-v0',
-        number_time_steps=n + 2,
-        initial_state=[alpha_trim_rad, 0.0, stab_trim_rad, 0.0],
-        reference_signal=np.full((1, n + 2), alpha_trim_rad),
-        state_space=['alpha','wz','stab','dstab'], control_space=['stab'],
-        tracking_states=['alpha'], use_reward=False, dt=dt, integrator='euler',
-        control_bias=math.degrees(stab_trim_rad),
-    ).unwrapped
-    env.reset()
-    return env
-```
-
-## Step 2 — Warm-start via a 3-second PE excitation
-
-```python
-env_pe = make_env(300); obs, _ = env_pe.reset()
-wz_hist, u_hist = [float(obs[1])], [0.0]
-for t in range(300):
-    u = 2.0*math.sin(2*math.pi*0.7*t*dt) + 1.0*math.sin(2*math.pi*1.5*t*dt)
-    obs, *_ = env_pe.step(np.array([u]))
-    wz_hist.append(float(obs[1])); u_hist.append(float(u))
-
-dwz, du = np.diff(wz_hist), np.diff(u_hist)
-A_pe = np.column_stack([dwz[:-1], du[:-1]])
-F_wz, G_wz = np.linalg.lstsq(A_pe, dwz[1:], rcond=None)[0]
-print(f'PE seed: F_wz = {F_wz:+.4f}, G_wz = {G_wz:+.5f}')
-```
-
-**Expected output:**
-
-```
-PE seed: F_wz = +0.9997, G_wz = -0.00139
-```
-
-If `G_wz` is an order of magnitude off, check that the excitation amplitude is ≥ 1 (we use 2 and 1 for the two sines).
-
-## Step 3 — iADP harness
-
-```python
-def run_iadp(wz_cmd, N, fault_gain=1.0, fault_at=None):
-    F_init = np.array([[F_wz, 0.0], [0.0, 1.0]])
-    G_init = np.array([[G_wz], [0.0]])
-    Q, R, gamma = 30_000.0, 0.1, 0.9
-    Q_aug = Q * np.array([[1.0, -1.0], [-1.0, 1.0]])
-    P_dare = solve_discrete_are(np.sqrt(gamma)*F_init, np.sqrt(gamma)*G_init,
-                                Q_aug, np.array([[R]]))
-    cfg = IADPConfig(dt=dt, Q=np.array([[Q]]), R=np.array([[R]]),
-        gamma=gamma, gamma_rls=0.9999, phi_init=1.0,
-        policy_eval_window=300, policy_eval_every=5,
-        policy_eval_warmup_updates=20,
-        policy_eval_regularization=1e-10, policy_eval_blend=0.10,
-        F_init=F_init, G_init=G_init, P_init=P_dare,
-        u_magnitude_limit=8.0, u_rate_limit=200.0, seed=0)
-    agent = IADPAgent(n_state=1, n_control=1, config=cfg)
-    env = make_env(N); obs, _ = env.reset()
-    wz_out, u_out = [], []
-    gain = 1.0
-    for k in range(N):
-        if fault_at is not None and k >= fault_at: gain = fault_gain
-        u = agent.predict(np.array([float(obs[1])]), np.array([wz_cmd[k]]), k)
-        obs, *_ = env.step(u * gain)
-        agent.learn(np.array([float(obs[1])]), np.array([wz_cmd[k]]), k)
-        wz_out.append(float(obs[1])); u_out.append(float(u[0] * gain))
-    return np.asarray(wz_out), np.asarray(u_out)
-```
-
-## Step 4 — AA-INDI harness
-
-```python
-def run_aaindi(wz_cmd, N, fault_gain=1.0, fault_at=None):
-    cfg = AAINDIConfig(
-        dt=dt, ref_wn=2.5, ref_zeta=0.9,
-        u_magnitude_limit=15.0, u_rate_limit=60.0,
-        vff_forgetting_min=0.97, vff_forgetting_max=0.9999,
-        vff_eps_sensitivity=0.1, vff_cov_init=1.0,
-        sensor_cutoff_hz=15.0, bias_forgetting=0.995,
-        enable_bias_correction=False,
-        G_init=np.array([[-0.5]]),
-        ref_error_kp=0.6, ref_error_ki=0.0,
-        seed=0,
-    )
-    agent = AAINDIAgent(n_state=1, n_control=1, config=cfg)
-    env = make_env(N); obs, _ = env.reset()
-    wz_out, u_out = [], []
-    gain = 1.0
-    for k in range(N):
-        if fault_at is not None and k >= fault_at: gain = fault_gain
-        u = agent.predict(np.array([float(obs[1])]), np.array([wz_cmd[k]]), k)
-        obs, *_ = env.step(u * gain)
-        agent.learn(np.array([float(obs[1])]), np.array([wz_cmd[k]]), k)
-        wz_out.append(float(obs[1])); u_out.append(float(u[0] * gain))
-    return np.asarray(wz_out), np.asarray(u_out)
-```
-
-## Step 5 — Head-to-head with fault at t = 10 s
-
-```python
-N = 1800
-t_arr = np.arange(N) * dt
-wz_cmd = math.radians(0.8) * np.sin(2*math.pi*0.12*t_arr)
-fault_step = int(10.0 / dt)
-
-wz_i_f, u_i_f = run_iadp(wz_cmd, N, fault_gain=0.5, fault_at=fault_step)
-wz_a_f, u_a_f = run_aaindi(wz_cmd, N, fault_gain=0.5, fault_at=fault_step)
-
-def rmse(sig, ref, mask):
-    return math.degrees(np.sqrt(np.mean((sig[mask] - ref[mask])**2)))
-
-pre  = np.arange(500, fault_step)
-post = np.arange(fault_step + 100, N)
-print('                 pre-fault RMSE   post-fault RMSE')
-print(f'  iADP          {rmse(wz_i_f, wz_cmd, pre):.4f}°/s       {rmse(wz_i_f, wz_cmd, post):.4f}°/s')
-print(f'  AA-INDI       {rmse(wz_a_f, wz_cmd, pre):.4f}°/s       {rmse(wz_a_f, wz_cmd, post):.4f}°/s')
-```
-
-**Expected output:**
-
-```
-                 pre-fault RMSE   post-fault RMSE
-  iADP          0.0896°/s       0.0982°/s
-  AA-INDI       0.3135°/s       0.3216°/s
-```
-
-**Key observation — look at the delta, not the absolute RMSE.** For both agents the RMSE shifts by only ~1 millidegree/s at the fault event: neither agent is surprised by the 50 % gain loss. The absolute gap between iADP and AA-INDI here is tuning (AA-INDI's PI gains are from the step-command example, not re-tuned for a 0.12 Hz sinusoid).
-
-## Step 6 — Plot
-
-```python
-fig, axes = plt.subplots(2, 1, figsize=(11, 7), sharex=True)
-axes[0].plot(t_arr, np.degrees(wz_cmd), 'k--', label='command')
-axes[0].plot(t_arr, np.degrees(wz_i_f), label='iADP (faulty)', alpha=0.85)
-axes[0].plot(t_arr, np.degrees(wz_a_f), label='AA-INDI (faulty)', alpha=0.85)
-axes[0].axvline(fault_step * dt, color='red', alpha=0.3, linestyle='--', label='fault event')
-axes[0].set_ylabel('ω_z [°/s]'); axes[0].legend(loc='upper right'); axes[0].grid(alpha=0.3)
-
-axes[1].plot(t_arr, u_i_f, label='iADP applied', alpha=0.85)
-axes[1].plot(t_arr, u_a_f, label='AA-INDI applied', alpha=0.85)
-axes[1].axvline(fault_step * dt, color='red', alpha=0.3, linestyle='--')
-axes[1].set_xlabel('time [s]'); axes[1].set_ylabel('Δδₑ (post-fault) [°]')
-axes[1].legend(loc='upper right'); axes[1].grid(alpha=0.3)
-plt.tight_layout(); plt.show()
-```
-
-**Expected plot — compare with yours:**
-
-![iADP vs AA-INDI fault comparison](img/09_fault_comparison.png)
-
-- The command is the black dashed sinusoid.
-- **iADP** tracks within a narrow envelope; the transient at `t = 10 s` is barely visible.
-- **AA-INDI** shows the phase-lag signature of its rate-tracking inner loop — larger amplitude error, but the RMSE delta at the fault event is still ~1 md/s.
-- The red dashed line marks the fault injection.
-
-## What makes this work
-
-- **Continuous RLS identification** — both agents' G-estimate updates every tick; the fault is just a plant change, the identifier converges to the new value.
-- **Incremental action** — INDI-style (AA-INDI) and LQT-incremental (iADP) both command Δδ; halving the gain shifts the *rate*, not the direction.
-- **No fault-detection state machine** — the agents don't need to know a fault happened.
-
-## Common mismatches
-
-| Symptom | Cause |
+| Condition | Common value |
 |---|---|
-| iADP diverges | Forgot DARE `P_init` or used default `policy_eval_regularization`. |
-| AA-INDI oscillates | `G_init` warm-start has the wrong sign. |
-| RMSE delta > 20 % of pre-fault | Fault gain is too aggressive (try `fault_gain=0.7` first). |
+| Altitude / airspeed | 20,000 ft / 674 ft/s |
+| Initial roll / heading | 0.3° / 1° |
+| Roll / heading commands | 0° / 0° throughout |
+| Duration / control interval | 90 s / 0.02 s |
+| Aileron and rudder bounds | ±8° and 20°/s |
+| Longitudinal hold | Same measured-state PI/PD speed/altitude controller |
+| Sensors | Ideal IMU, navigation and actual surface feedback |
 
-## Where to go next
 
-- **[Recipe 06 — Online-adaptive agents](06_online_adaptive.md)** — the lifecycle framework.
-- **[AA-INDI documentation](../agent/aa_indi.md)** — theory + full API.
-- **[iADP documentation](../agent/iadp.md)** — theory + full API.
+```python
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+from tensoraerospace.benchmark import B747EngineFailureBenchmark
+
+experiment = B747EngineFailureBenchmark(
+    duration=90.0, dt=0.02, fault_time=30.0,
+    engine_fraction=0.0, engine_id=1,
+    initial_heading_deg=1.0, initial_roll_deg=0.3, seed=11,
+)
+COLORS = {"AA-INDI": "#176b87", "PID": "#c77835",
+          "LQR": "#8064a2", "LQI": "#4b9b75"}
+```
+
+
+`experiment` configures the simulator/evaluator. The controller constructors do
+not receive the fault schedule. `B747EngineFailureBenchmark` composes the SDK models, AA-INDI sensor
+adapter, `PID`-based lateral loops, `LQRAgent` and `ControlBenchmark`. It manages
+healthy initialization, common limits, complete-episode checks and cleanup. Read [its implementation](https://github.com/TensorAeroSpace/TensorAeroSpace/blob/develop/tensoraerospace/benchmark/engine_failure.py)
+when adapting the example to another aircraft.
+
+## 2. Select the baselines on healthy data
+
+PID has separate roll/heading loops and anti-windup. LQR uses the five lateral
+states; LQI adds two bounded angle-error integrals, allowing integral disturbance
+rejection. Their parameters are selected on a separate **healthy 60 s episode**
+with larger initial errors: 1° roll and 2° heading.
+
+The common objective is the mean of
+`roll_error² + heading_error² + 0.002*(aileron² + rudder²)`, with angles in degrees.
+Seven PID candidates and five weight choices each for LQR and LQI are assessed.
+
+
+```python
+settings, trials = experiment.tune_baselines()
+print(pd.DataFrame([
+    {"Controller": row["algorithm"], "Healthy cost": row["healthy_cost"]}
+    for row in trials
+]).to_string(index=False))
+for name, selected in settings.items():
+    print(name, selected)
+```
+
+
+Keep the selected settings for every subsequent fault scenario. This finite
+candidate search is reproducible but does not establish a globally optimal PID,
+LQR or LQI. AA-INDI uses the nominal derivatives, observer and gains documented
+in the comparison page; it starts fresh for each episode and adapts throughout.
+
+## 3. Run healthy and faulty aircraft independently
+
+Each call constructs a new environment and controller. It returns the complete
+states, actual actions, metrics, event log and AA-INDI diagnostics. Independent
+initialization matters: reusing an already adapted agent would bias the second run.
+
+
+```python
+runs = {}
+for name in experiment.algorithms:
+    for failed in (False, True):
+        runs[(name, failed)] = experiment.run(name, fault=failed, **settings.get(name, {}),
+        )
+        assert len(runs[(name, failed)]["actions"]) == experiment.steps
+    event_index = round(experiment.fault_time / experiment.dt)
+    np.testing.assert_array_equal(
+        runs[(name, False)]["states"][:event_index + 1],
+        runs[(name, True)]["states"][:event_index + 1],
+    )
+    np.testing.assert_array_equal(
+        runs[(name, False)]["actions"][:event_index],
+        runs[(name, True)]["actions"][:event_index],
+    )
+assert runs[("AA-INDI", True)]["updates"] == [experiment.steps] * 3
+print("Eight complete trajectories; pre-failure histories agree")
+```
+
+
+The equality checks include the state at 30 s and every action applied before
+that time. They catch an event leaking into earlier integration stages or a
+controller using different pre-failure settings. The equality is expected because
+this case uses deterministic ideal sensors. With noisy sensors, use paired seeds
+and compare matching noise streams.
+
+AA-INDI performs 4,500 identification updates per moment axis. No algorithm is
+reset, switched or frozen when the failure occurs. The rollout rejects nonfinite
+states, departures from the example envelope and incomplete episodes.
+
+## 4. Plot the reference as well as the response
+
+
+```python
+time = np.arange(experiment.steps + 1) * experiment.dt
+fig, axes = plt.subplots(2, 2, figsize=(14, 8), sharex=True, sharey="row", constrained_layout=True)
+for column, failed in enumerate((False, True)):
+    for algorithm in experiment.algorithms:
+        state = runs[(algorithm, failed)]["states"]
+        for row, index in enumerate((6, 8)):
+            axes[row, column].plot(time, np.rad2deg(state[:, index]),
+                                   color=COLORS[algorithm], label=algorithm)
+    for row, name in enumerate(("Roll", "Heading")):
+        ax = axes[row, column]
+        ax.axhline(0, color="#333333", linestyle="--", label="Command: 0°")
+        ax.axvline(experiment.fault_time, color="#b44040", linestyle=":")
+        ax.set(title=f"{name} · {'engine 1 out' if failed else 'healthy aircraft'}",
+               ylabel=f"{name} [deg]", xlabel="Time [s]")
+        ax.grid(alpha=0.22)
+        ax.legend(fontsize=9, loc="best")
+fig.suptitle("Same task and actuator limits; nominal design before the fault", fontsize=16)
+plt.show()
+```
+
+
+![Healthy and engine-out B747 responses with explicit zero references](../../assets/images/aaindi_b747_engine_failure_attitude.png)
+
+Compare matching rows: roll above, heading below. Shared row scales keep the
+healthy and failed-engine panels comparable. A line at 30 s is an evaluation
+annotation; it is not a signal supplied to the controller.
+
+## 5. Measure both error and control effort
+
+The post-failure window is **(30, 90] s**. `ControlBenchmark.tracking_metrics`, called by the protocol, computes:
+
+- Combined RMSE: `sqrt(mean(roll_error² + heading_error²))`, in degrees.
+- Combined IAE: `dt*sum(abs(roll_error) + abs(heading_error))`, in degree-seconds.
+- Recovery: time since failure until both errors stay within ±0.05° to the end.
+- Surface RMS and total variation across aileron/rudder in the same window.
+
+
+```python
+columns = ["roll_rmse_deg", "heading_rmse_deg", "combined_rmse_deg",
+           "angle_iae_deg_s", "recovery_s", "surface_rms_deg",
+           "surface_total_variation_deg"]
+post_fault = pd.DataFrame({name: runs[(name, True)]["after"]
+                          for name in experiment.algorithms}).T[columns]
+print(post_fault.to_string(float_format=lambda value: f"{value:.6f}",
+                          na_rep="Not reached"))
+healthy = pd.DataFrame({name: runs[(name, False)]["whole"]
+                       for name in experiment.algorithms}).T[columns]
+print("Healthy aircraft, full 90 s:")
+print(healthy.to_string(float_format=lambda value: f"{value:.6f}",
+                       na_rep="Not reached"))
+```
+
+
+| Controller | Combined RMSE, ° | Combined IAE, °·s | Recovery after failure, s |
+|---|---:|---:|---:|
+| AA-INDI | 0.032433 | 2.03693 | 8.68 |
+| PID | 1.086181 | 67.48585 | Not reached |
+| LQR | 0.359953 | 26.10714 | Not reached |
+| LQI | 0.300430 | 24.43503 | Not reached |
+
+AA-INDI has lower angular error in this configuration. Its surface RMS is 3.0300°,
+compared with 2.1685° for LQR and 2.3486° for LQI: improved accuracy requires more
+control activity here. Total variation measures command changes, not physical
+energy use or calibrated actuator wear.
+
+![Combined accumulated error and actual surface activity](../../assets/images/aaindi_b747_engine_failure_effort.png)
+
+This is disturbance rejection at a zero reference, so a percentage overshoot
+normalized by the command is undefined. For a commanded pitch step, use the B737
+`ControlBenchmark` workflow in [Recipe 14](14_aaindi.md). Keep response-to-step and
+response-to-failure windows separate when both events occur in one flight.
+
+## 6. Check whether slow recovery is mistaken for divergence
+
+Enable the following block to run another 12 trajectories: right outer engine
+failure at 20 s, 50% remaining thrust on engine 1 from 45 s, and the original
+failure with a **500 s** horizon. Settings remain unchanged.
+
+
+```python
+RUN_EXTENDED_VALIDATION = False
+if RUN_EXTENDED_VALIDATION:
+    validation = experiment.validate_additional_cases(settings)
+    table = pd.DataFrame([
+        {"Case": row["case"], "Controller": row["algorithm"], **row["after"]}
+        for row in validation
+    ])
+    print(table.to_string(index=False, na_rep="Not reached"))
+```
+
+
+At 500 s, recovery times after the failure are **8.68 s for AA-INDI, 186.10 s for
+PID and 88.34 s for LQI**. Standard LQR retains a nonzero offset. Thus, “not reached”
+in the 90 s run does not imply that PID or LQI diverged. Inspect the full trajectory
+and the required horizon before drawing that conclusion.
+
+Set `RUN_EXTENDED_VALIDATION=True` above to recompute the extended cases through the SDK and inspect their metrics locally.
+
+## 7. Extend the experiment to other kinds of failure
+
+| Question | Appropriate example |
+|---|---|
+| Can the controller reject asymmetric propulsion? | This B747 comparison. |
+| What happens when the elevator loses aerodynamic authority? | [iADP on B737](https://github.com/TensorAeroSpace/TensorAeroSpace/blob/develop/example/reinforcement_learning/incremental_adp/example_iadp_fault_b737.ipynb) and [AA-INDI on B737](https://github.com/TensorAeroSpace/TensorAeroSpace/blob/develop/example/reinforcement_learning/incremental_adp/example_aaindi_fault_b737.ipynb). |
+| Can independent navigation reconstruct a gyro bias? | [AA-INDI sensor/actuator experiment](../example/agent/aa_indi/example_aaindi_nonlinear.md). |
+
+The B737 fault scales the elevator angle **inside the aerodynamic calculation**;
+the encoder still reports the physical angle. Its 60 s examples use a +1° pitch
+step at 15 s and 50% authority loss at 30 s. Post-failure pitch RMSE is 0.129777°
+for the current iADP configuration and 0.003756° for AA-INDI. iADP retains an offset;
+those results should not be described as universal successful zero-error recovery.
+
+## Interpretation and troubleshooting
+
+| Observation | How to investigate |
+|---|---|
+| Healthy/faulty histories differ before the event | Check resets, seeds, scheduled gains and event integration timing. |
+| Small angle error but speed/height deteriorate | Inspect the shared longitudinal loop, available thrust and flight envelope. |
+| Low error but fitted derivatives drift | The AA-INDI regression omits other aerodynamic/engine moments; coefficients can absorb them. |
+| All controls hit limits | Check trim, units, gain signs and actuator authority before tuning learning rates. |
+| No recovery by the last sample | Report “not reached”; extend the horizon and distinguish offset, slow convergence and divergence. |
+
+The B747 model has simplified aerodynamics, ideal sensors, zero-order-held
+surfaces and quasi-steady thrust. Servo lag and engine spool dynamics are absent.
+The advantage belongs to the complete controller/observer/adaptation architecture;
+this comparison does not isolate online parameter learning as its cause or
+establish physical derivative convergence.
+
+**Next:** [Recipe 14 — Physical AA-INDI measurements](14_aaindi.md) ·
+[Recipe 08 — Save and resume](08_huggingface.md).

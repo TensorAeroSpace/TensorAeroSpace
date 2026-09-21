@@ -1,244 +1,170 @@
 # Incremental Approximate Dynamic Programming (iADP)
 
-iADP is an **online adaptive reinforcement-learning flight-control law** built on top of an incremental plant model. It combines
+iADP identifies an incremental plant model with fixed-forgetting RLS, fits a quadratic value function by batch least squares, and computes an analytic control increment. There is one implementation: unregularized critic fitting and the policy equation from [Konatala et al., AIAA 2024-2402](https://doi.org/10.2514/6.2024-2402).
 
-- **online incremental plant identification** via recursive least squares (RLS),
-- an **approximate quadratic cost-to-go** \(V_\pi(X_t) = X_t^T \tilde{P} X_t\) fitted by batch least-squares to Bellman residuals, and
-- a **closed-form policy improvement** derived from Bellman's optimality principle.
+## Start with a complete SDK example
 
-The controller updates an incremental model online. A useful warm start and sufficiently informative data remain necessary; adaptation does not guarantee stability after arbitrary vehicle or actuator changes. The cited paper reports flight tests of its own implementation, not of this library. See [NonlinearLongitudinalF16](../model/f16_nonlinear_longitudinal.md).
-
-**Reference**: Konatala, Milz, Weiser, Looye, van Kampen, *"Flight Testing Reinforcement Learning based Online Adaptive Flight Control Laws on CS-25 Class Aircraft"*, AIAA SCITECH 2024, [DOI 10.2514/6.2024-2402](https://doi.org/10.2514/6.2024-2402).
-
-## Key ideas
-
-- **Incremental model.** Linearising the nonlinear plant around the latest operating point gives \(\Delta X_{t+1} \approx \tilde{F}_t \Delta X_t + \tilde{G}_t \Delta\delta_t\). Stacking \(\tilde{\Theta}_t = [\tilde{F}_t; \tilde{G}_t]^T\) and \(W_t = [\Delta X_t; \Delta \delta_t]\), the recursive update is a standard fixed-forgetting RLS driving \(\tilde{\Theta}^T W \to \Delta X_{t+1}\).
-- **Quadratic value function.** Following the linear-quadratic tracking (LQT) relaxation, \(V_\pi(X) = X^T \tilde{P} X\) with the augmented state \(X_t = [x_t; x_t^r]\) stacking system and reference dynamics — this makes the value function applicable across the entire reachable set rather than only visited samples.
-- **Batch LS policy evaluation.** On a sliding window of transitions, every sample contributes one scalar Bellman equation \((X_t \otimes X_t)^T \mathrm{vec}(\tilde{P}^{j+1}) = c_t + \gamma X_{t+1}^T \tilde{P}^{j} X_{t+1}\); stacking and solving gives a new kernel matrix, which is symmetrised and optionally projected to the PSD cone for stability.
-- **Closed-form improved policy.** Minimising the Bellman RHS with respect to \(\Delta \delta_t\) gives paper eq. (11) — no neural network, no gradient descent: \(\Delta \delta_t = -(R + \gamma \tilde{G}^T \tilde{P} \tilde{G})^{-1} [R \delta_{t-1} + \gamma \tilde{G}^T \tilde{P} X_t + \gamma \tilde{G}^T \tilde{P} \tilde{F} \Delta X_t]\).
-
-## Differences from related methods
-
-| Aspect | IHDP | IM-GDHP | ET-DHP | **iADP** |
-| --- | --- | --- | --- | --- |
-| Model | Online LS on actor/critic gradients | Online RLS (dual) | Online RLS (triggered) | **Online RLS** (paper eq. (9)) |
-| Critic | Neural network | Two heads \(J, \lambda\) | \(\lambda\)-critic | **Parametric quadratic** \(X^T P X\) |
-| Actor | NN + gradient updates | NN + GDHP gradients | NN + triggered updates | **Closed form** eq. (11) |
-| Update schedule | Every step | Every step | Event-triggered | Model 1 kHz / policy 20 Hz |
-| Hyperparameter count | Many (layers, lrs, …) | Many | Many | Few: \(Q\), \(R\), \(\gamma\), \(\gamma_{RLS}\) |
-
-iADP's chief attraction is **interpretability** — LQT-style cost, a matrix that's PSD by construction, and a policy you can write on a napkin. It also has no training-data distribution, no replay buffer and no stochastic gradient descent.
-
-## iADP components
-
-| Component | Role | Implementation |
-| --- | --- | --- |
-| IncrementalRLS | Identify \(\tilde{\Theta} = [\tilde{F}; \tilde{G}]^T\) online with fixed forgetting | `tensoraerospace.agent.iadp.IncrementalRLS` |
-| Policy-evaluation LS | Fit the kernel matrix \(\tilde{P}\) by batch LS on a sliding window | Inline in `IADPAgent._policy_evaluation` |
-| Policy improvement | Closed-form eq. (11) | `IADPAgent._compute_policy_increment` |
-| IADPAgent | Orchestrates identification, evaluation, improvement | `tensoraerospace.agent.iadp.IADPAgent` |
-
-## Algorithm
-
-On each control tick \(k\), given the measurement \(x_k\) and reference \(r_k\):
-
-1. **Augment the state.**
-\[
-X_k = \begin{pmatrix} x_k \\ r_k \end{pmatrix}, \qquad \Delta X_k = X_k - X_{k-1}.
-\]
-
-2. **Policy improvement (eq. (11)).** Using the current model and kernel:
-\[
-\Delta \delta_k = -\bigl(R + \gamma \tilde{G}^T \tilde{P} \tilde{G}\bigr)^{-1}
-\bigl[R \delta_{k-1} + \gamma \tilde{G}^T \tilde{P} X_k + \gamma \tilde{G}^T \tilde{P} \tilde{F} \Delta X_k\bigr].
-\]
-Rate-limit \(\Delta \delta_k\) to \(\pm \dot{u}_{\max} \cdot dt\), then \(\delta_k = \mathrm{clip}(\delta_{k-1} + \Delta \delta_k, \pm u_{\max})\).
-
-3. **Apply to the plant and observe** \(x_{k+1}\).
-
-4. **Model update (RLS).** Build \(W = [\Delta X_{k-1}; \Delta \delta_{k-1}]\) and target \(\Delta X_k\). Then
-\[
-\varepsilon = \Delta X_k - \tilde{\Theta}^T W, \quad
-K = \frac{\Phi W}{\gamma_{RLS} + W^T \Phi W}, \quad
-\tilde{\Theta} \leftarrow \tilde{\Theta} + K \varepsilon^T, \quad
-\Phi \leftarrow \tfrac{1}{\gamma_{RLS}}(\Phi - K W^T \Phi).
-\]
-
-5. **Cost accumulation.** Append \((X_k, X_{k+1}, c_k)\) to the window with
-\(c_k = (x_k - r_k)^T Q (x_k - r_k) + \delta_k^T R \delta_k\).
-
-6. **Policy evaluation (every `policy_eval_every` steps).** With the current \(\tilde{P}^j\), solve the ridge-regularised LS
-\[
-A \mathrm{vec}(\tilde{P}^{j+1}) = b, \quad
-A_i = \mathrm{vec}(X_i X_i^T)^T, \quad
-b_i = c_i + \gamma X_{i+1}^T \tilde{P}^j X_{i+1}.
-\]
-Symmetrise and optionally project to PSD.
-
-## Relation to the original paper
-
-Eq. (10) and Fig. 2 bootstrap the value function from the incremental model:
-`Xnext = X + F @ dX + G @ du`. Measured next states train RLS; the critic stores
-the corresponding model prediction. The first transition after reset retains
-its measured target because no previous state increment exists yet.
-
-The batch solve uses SVD directly, avoiding the squared condition number of
-normal equations. The zero-centered ridge objective is unchanged; ridge,
-PSD projection and blending are library extensions to the paper's pseudoinverse.
-An uninformative window does not identify all coefficients of P. Preserving
-an incumbent P in unobserved directions would require a different objective.
-
-The paper uses persistent excitation and separate model/policy update rates.
-`policy_eval_every=50` with `dt=0.01` gives **2 Hz**, not 20 Hz. Window length,
-forgetting and discount factors are defined per sample and need reconsideration
-when dt changes. Numerical overflow in RLS raises before storing invalid
-parameters; this does not guarantee bounded covariance without excitation.
-
-## Applied control and initialization
-
-Use `learn(next_state, reference, k, applied_action=actual_input)` when the
-actuator clips, lags or otherwise changes the requested command. Feedback must
-use the same units and trim offset as `predict()`; omission assumes exact
-command tracking. Identification, input cost and the next increment all use
-this actual input. The native linear B747/LAPAN environments return it in
-`info["applied_action"]` in degrees.
-
-After reset, the first transition is retained for value-function learning,
-but incremental RLS waits for two consecutive transitions. An unknown previous
-state increment is not replaced with zero. Initial excitation obeys the same
-magnitude and per-second rate limits as the learned policy.
-
-During `model_learning_only_steps`, only the model learns: the critic matrix
-and its buffer stay unchanged. The buffer starts filling with subsequent
-closed-loop transitions. RLS continues adapting afterward; this option alone
-does not implement the paper's complete sequential mode with a frozen model.
-
-## Quick start
+The example below configures iADP, runs 80 s of continuous learning through an
+unknown input-effectiveness change, measures tracking with `ControlBenchmark`
+and plots the command, response, applied control and identified gain.
+The scalar plant equation is explicit; only the plant receives its fault schedule.
+Run the block with the installed `tensoraerospace` package.
 
 ```python
 import numpy as np
+import matplotlib.pyplot as plt
 from tensoraerospace.agent.iadp import IADPAgent, IADPConfig
+from tensoraerospace.benchmark import ControlBenchmark
 
-# Warm-start from an onboard linearisation (trim-point model).
-F_init = np.eye(2)                              # reference dynamics + integrator
-G_init = np.array([[-0.5], [0.0]])              # pitch-rate / elevator sensitivity
-
-cfg = IADPConfig(
-    dt=0.01,
-    Q=np.array([[10.0]]),                       # tracking-error weight
-    R=np.array([[0.1]]),                        # control weight
-    gamma=0.8,                                  # Bellman discount
-    gamma_rls=0.995,                            # RLS forgetting factor
-    policy_eval_window=200,
-    policy_eval_every=50,                       # 2 Hz at dt = 0.01 s; use 5 for 20 Hz
-    policy_eval_warmup_updates=30,
-    F_init=F_init, G_init=G_init,
-    u_magnitude_limit=15.0,
-    u_rate_limit=60.0,
-    seed=0,
+plt.rcParams.update(
+    {
+        "figure.dpi": 125,
+        "font.size": 11,
+        "axes.grid": True,
+        "grid.alpha": 0.2,
+        "axes.spines.top": False,
+        "axes.spines.right": False,
+    }
 )
-agent = IADPAgent(n_state=1, n_control=1, config=cfg)
-
+dt, duration = 0.001, 80.0
+time = np.arange(round(duration / dt) + 1) * dt
+identification_time = np.arange(round(20.0 / dt)) * dt
+excitation = (
+    0.15 * np.sin(2 * np.pi * 0.7 * identification_time)
+    + 0.05 * np.sin(2 * np.pi * 1.7 * identification_time)
+)[:, None]
+period = np.arange(round(10.0 / dt)) * dt
+ongoing_excitation = (0.015 * np.sin(2 * np.pi * 0.7 * period))[:, None]
+config = IADPConfig.paper(
+    excitation_signal=excitation,
+    dt=dt,
+    learning_mode="continuous",
+    Q=np.array([[100.0]]),
+    R=np.array([[0.0001]]),
+    gamma=0.95,
+    gamma_rls=0.999,
+    phi_init=1e6,
+    u_magnitude_limit=0.5,
+    u_rate_limit=2.0,
+    continuous_excitation_signal=ongoing_excitation,
+)
+agent = IADPAgent(1, 1, config)
 x = np.zeros(1)
-for k in range(2000):
-    ref = np.array([0.1 if k > 100 else 0.0])
-    u = agent.predict(x, ref, k)
-    # Plug your environment step here.
-    x = x + cfg.dt * (-0.5 * u - 2.0 * x)
-    agent.learn(x, ref, k)
+reference = np.array([0.05])
+a = np.exp(-2 * dt)
+b = (1 - a) / 2
+
+
+states, actions, estimated_gain, true_gain = [x[0]], [], [], []
+for k, t in enumerate(time[:-1]):
+    command = agent.predict(x, reference, k)
+    # The unknown effectiveness change belongs to the plant only.
+    effectiveness = 1.0 if t < 60.0 else 0.7
+    x = a * x + b * effectiveness * command
+    agent.learn(x, reference, k, applied_action=command)
+    if not np.isfinite(x).all() or not np.isfinite(agent.P).all():
+        raise FloatingPointError(f"Nonfinite state or critic at {time[k+1]:g} s")
+    states.append(x[0])
+    actions.append(command[0])
+    estimated_gain.append(agent.G[0, 0])
+    true_gain.append(b * effectiveness)
+states, actions, estimated_gain, true_gain = map(
+    np.asarray, (states, actions, estimated_gain, true_gain)
+)
+assert len(actions) == len(time) - 1
+assert agent.rls.num_updates == len(actions) - 1
+print(f"Completed {time[-1]:g} s; RLS updates: {agent.rls.num_updates}")
+
+
+benchmark = ControlBenchmark()
+nominal = benchmark.tracking_metrics(0.05, states, dt, start=40.0, end=60.0)
+faulty = benchmark.tracking_metrics(0.05, states, dt, start=65.0, end=80.0)
+print("Nominal RMSE [rad/s]:", nominal["combined_rmse"])
+print("Post-fault RMSE [rad/s]:", faulty["combined_rmse"])
+print("Identified / true final G:", estimated_gain[-1], true_gain[-1])
+print("Final minimum critic eigenvalue:", np.linalg.eigvalsh(agent.P).min())
+
+
+fig, axes = plt.subplots(3, 1, figsize=(11, 8), sharex=True, constrained_layout=True)
+axes[0].plot(time, np.full_like(time, reference[0]), "k--", label="Reference")
+axes[0].plot(time, states, color="#176b91", label="Plant state")
+axes[0].set_ylabel("Rate [rad/s]")
+axes[0].legend()
+axes[1].plot(time[1:], actions, color="#40855b")
+axes[1].set_ylabel("Applied control")
+axes[2].plot(time[1:], true_gain, "k--", label="True discrete gain")
+axes[2].plot(time[1:], estimated_gain, color="#176b91", label="Identified gain")
+axes[2].set_ylabel("G estimate")
+axes[2].legend()
+for ax in axes:
+    ax.axvspan(0, 20, alpha=0.08, color="#40855b")
+    ax.axvline(60, color="#bb4040", linestyle=":")
+axes[-1].set_xlabel("Time [s]")
+fig.suptitle("iADP: identification, tracking and unknown effectiveness loss")
+plt.show()
 ```
 
-!!! tip "Warm-start `G_init` matters"
-    Policy eq. (11) needs a reasonable \(\tilde{G}\) on the first few ticks, otherwise \((R + \gamma \tilde{G}^T \tilde{P} \tilde{G}) \approx R\) gives only the control-regularisation response. Seed `G_init` from a linearised onboard model; the RLS will refine it online.
+These gains and weights belong to this scalar plant. Initial excitation lasts
+20 s; the later periodic excitation keeps providing identification data. The two
+RMSE windows have different adaptation histories, so their values do not measure
+the effect of damage alone.
 
-!!! tip "Warm-start `P_init` from the DARE for faster convergence"
-    The online batch-LS fits \(\tilde{P}\) from transition windows, but finite windows, feature scaling and regularization can substantially degrade the estimate; there is no general bound of a few percent on the performance loss. Seed `P_init` from the analytical LQT DARE computed off the warm-start model:
+### Continue with aircraft examples
 
-    ```python
-    from scipy.linalg import solve_discrete_are
-    Q_aug = Q_val * np.block([[np.eye(n_state), -np.eye(n_state)],
-                              [-np.eye(n_state), np.eye(n_state)]])
-    P_init = solve_discrete_are(
-        np.sqrt(gamma) * F_init, np.sqrt(gamma) * G_init,
-        Q_aug, R,
-    )
-    ```
+- [B737: pitch step and elevator fault](../example/agent/iadp/example_iadp_nonlinear.md).
+- [F-16: servo feedback and fault scenarios](../example/agent/iadp/example_iadp_small_fault_f16.md).
+- [Executed notebook with this learning loop](https://github.com/TensorAeroSpace/TensorAeroSpace/blob/develop/example/reinforcement_learning/incremental_adp/example_iadp_paper.ipynb).
 
-    Discount enters via \(\bar{F} = \sqrt{\gamma}F,\, \bar{G} = \sqrt{\gamma}G\), so `solve_discrete_are` applies directly. See the [nonlinear-F-16 example](../example/agent/iadp/example_iadp_nonlinear.md).
+## State, output and cost
 
-!!! note "Sequential vs Continuous learning"
-    Set `model_learning_only_steps > 0` with `excitation_signal` to replicate the paper's **Sequential Learning Approach** — the first *N* steps run in open loop with a user-supplied multi-sine so the RLS converges before the policy engages. By default both phases run concurrently (**Continuous Learning Approach**).
+The augmented state is `X = [x; reference_state]`, with dimension `n_state + n_reference`. The plant and reference-generator states may have different sizes. Linear output maps define `y = C @ x` and `y_ref = Cr @ reference_state`. The stage cost is
 
-## Hyperparameters
+\[
+c_k = (Cx_k-C_r x_k^r)^T Q(Cx_k-C_r x_k^r) + \delta_k^T R\delta_k.
+\]
 
-### Cost & discount
+Set `n_reference`, `output_matrix` and `reference_output_matrix` explicitly for a reference generator such as a sine oscillator. Identity output maps and equal state sizes are defaults. `Q` has shape `(n_output,n_output)`; `R` has shape `(n_control,n_control)`. Supplying one angular rate does not reconstruct a missing full aircraft state.
 
-| Parameter | Default | Description |
-| --- | --- | --- |
-| `Q` | `I` | Tracking-error weight, shape `(n_state, n_state)` |
-| `R` | `I` | Control weight, shape `(n_control, n_control)` |
-| `gamma` | 0.8 | Bellman discount \(\gamma \in (0, 1)\) |
+## Update equations
 
-### RLS identifier
+1. RLS fits `dX_next = F @ dX + G @ du`, using the **measured** next state and actual applied control. The first transition cannot update the incremental model because the previous state increment is unknown.
+2. The critic stores the model prediction `X_next_hat = X + F @ dX + G @ du` and stage cost. Batch least squares fits `vec(P)` using quadratic state features and the current value of `P` on the right-hand side. SVD computes the Moore–Penrose solution; the resulting matrix is symmetrized.
+3. Policy improvement solves
 
-| Parameter | Default | Description |
-| --- | --- | --- |
-| `gamma_rls` | 0.995 | Constant forgetting factor, closer to 1 ⇒ longer memory |
-| `phi_init` | 1e2 | Initial covariance scale |
-| `F_init` | None | Warm-start for \(\tilde{F}\), shape `(n_aug, n_aug)` |
-| `G_init` | None | Warm-start for \(\tilde{G}\), shape `(n_aug, n_control)` |
+\[
+(R+\gamma G^TPG)\Delta\delta =
+-[R\delta_{k-1}+\gamma G^TPX_k+\gamma G^TPF\Delta X_k].
+\]
 
-### Policy evaluation
+Magnitude and per-second rate limits then constrain the requested command. There is no ridge penalty, PSD projection, critic blending or alternate pseudoinverse policy. A singular policy equation raises an error. The old options `policy_eval_regularization`, `enforce_psd`, `psd_floor`, `policy_eval_blend` and `pinv_rcond` have been removed.
 
-| Parameter | Default | Description |
-| --- | --- | --- |
-| `policy_eval_window` | 200 | Sliding-window size of transitions used by batch LS |
-| `policy_eval_every` | 50 | Stride between LS updates, in `learn()` ticks |
-| `policy_eval_iterations` | 1 | Inner fixed-point sweeps per LS update |
-| `policy_eval_regularization` | 1e-4 | Zero-centered ridge penalty; solved by SVD |
-| `policy_eval_warmup_updates` | 20 | Number of RLS updates to wait before the first LS |
-| `enforce_psd` | True | Clip eigenvalues of \(\tilde{P}\) to stay positive-definite |
-| `psd_floor` | 1e-6 | Lower bound used by the eigen-clip |
-| `policy_eval_blend` | 1.0 | EMA coefficient for \(\tilde{P}\) updates. `1.0` replaces outright; smaller values (0.05–0.2) soft-update \(\tilde{P}\) like a target network and eliminate the control-trace sawtooth that otherwise appears at every LS tick. |
-| `P_init` | `I` | Warm-start kernel matrix |
+## Continuous and sequential learning
 
-### Actuator bounds
+`IADPConfig.paper(...)` supplies the reported experiment schedule. Direct `IADPConfig(...)` construction uses the same algorithm with configurable timings.
 
-| Parameter | Default | Description |
-| --- | --- | --- |
-| `dt` | 0.01 | Control step (s) |
-| `u_magnitude_limit` | 25.0 | Hard magnitude clamp per channel |
-| `u_rate_limit` | 60.0 | Max \(|\Delta\delta|\) per second per channel |
-| `pinv_rcond` | 1e-8 | Cutoff for `np.linalg.pinv` on the policy-improvement matrix |
+| Setting | Paper factory default |
+| --- | --- |
+| Control/model period | `dt=0.001` s |
+| Critic update rate | 20 Hz |
+| Initial open-loop identification | 20 s, caller-supplied varying excitation |
+| Critic transition window | 20 s; wait for a full window |
+| Learning approach | `continuous` (CLA) |
+| SLA controller-training duration | 40 s after model identification |
+| SLA critic fitting interval | Last 5 s of controller training: 55–60 s with the default schedule |
 
-### Sequential-learning phase
+CLA keeps identifying the plant and training the critic online after initialization. SLA freezes the model after identification and the critic after training, as an explicit experimental mode from the paper. Use CLA for adaptation to unknown future faults. Neither mode receives a fault time. `continuous_excitation_signal` optionally adds a cyclic signal throughout controller training; amplitude/rate limits also apply to excitation.
 
-| Parameter | Default | Description |
-| --- | --- | --- |
-| `model_learning_only_steps` | 0 | Open-loop identification window length |
-| `excitation_signal` | None | Optional \((T, n_\text{control})\) schedule of absolute control values |
+## Actuator feedback and initialization
 
-## Supported environments
+If the actuator clips, lags or changes the command, pass its actual input to `learn(..., applied_action=actual_input)`. The cost, RLS regressor and next increment use this feedback. Match units and trim offsets; B747/LAPAN environment feedback is in degrees. For a continuous servo, a transition-average position is an approximation to the effective input.
 
-- Any Gymnasium env whose observation vector contains the controlled states \(x_t\) and whose action space is a continuous control \(\delta_t\). The augmented state \(X_t = [x_t; x_t^r]\) is built internally, so the reference is passed alongside the observation in `predict` / `learn`.
-- Typical targets: `NonlinearLongitudinalF16-v0` (pitch-rate or pitch-angle tracking via elevator), 6-DoF rate inner loops.
+The default initial kernel is `[C,-Cr].T @ Q @ [C,-Cr] + 1e-6*I`, coupling plant and reference outputs. This is an implementation choice: the article does not publish its full initialization. Supply a physically consistent `P_init`, `F_init`, `G_init` when available. `reset(initial_action=trim_input)` initializes control history at a nonzero applied trim; reset preserves learned parameters.
 
-## Persistence
+No excitation with `G=0` still gives zero control. An uninformative window does not identify a full value function. Removing regularization does not prove bounded parameters or closed-loop stability. Check feature scales, excitation and actuator bandwidth on the target aircraft. Flight-test sensor preprocessing and complete tuning are not published or reproduced by this scalar check.
 
-```python
-run_dir = agent.save("./checkpoints")           # creates <date>_IADPAgent/
-restored = IADPAgent.from_pretrained(run_dir)
-agent.publish_to_hub("me/my-iadp", folder_path=run_dir, access_token="hf_...")
-```
+## Persistence and migration
 
-Saved artefacts:
-
-- `config.json` — full `IADPConfig` + `n_state` / `n_control`, arrays stored as lists.
-- `rls.npz` — RLS parameter matrix `theta`, covariance `Phi`, update counter, last residual.
-- `value.npz` — current kernel matrix \(\tilde{P}\).
-- `weights.npz` — active `Q` and `R` (including defaults filled in by the constructor).
-- `loop_state.npz` — \(X_{t-1}\), last control, last increment, cached \(\Delta X\), step counter.
-- `window.npz` — transition buffer used by the policy evaluator, stored as stacked arrays so reload is bit-identical.
+`agent.save(path)` and `IADPAgent.from_pretrained(folder)` preserve output maps, phase, RLS, critic and transition history. Checkpoints/configurations containing the removed numerical options must be regenerated; their softened critic updates cannot be resumed as the same algorithm. Existing F-16 experiments now call the single published update law and need fresh evaluation; historical charts describe their earlier configurations.
 
 ## API reference
 
@@ -248,27 +174,10 @@ Saved artefacts:
 
 ::: tensoraerospace.agent.iadp.rls.IncrementalRLS
 
-## Sources
+## Nonlinear B737 notebook
 
-- Konatala, Milz, Weiser, Looye, van Kampen. *"Flight Testing Reinforcement Learning based Online Adaptive Flight Control Laws on CS-25 Class Aircraft"*, AIAA SCITECH 2024, [DOI 10.2514/6.2024-2402](https://doi.org/10.2514/6.2024-2402).
-- Sieberling, Chu, Mulder. *"Robust Flight Control Using Incremental Nonlinear Dynamic Inversion and Angular Acceleration Prediction"*, J. Guid. Control Dyn., 2010.
-- Lewis, Vrabie, Syrmos. *"Optimal Control"*, Wiley, 2012 — LQT theory underpinning the quadratic cost-to-go.
+[Run the B737 pitch-step example](https://github.com/TensorAeroSpace/TensorAeroSpace/blob/develop/example/reinforcement_learning/incremental_adp/example_iadp_nonlinear_b737.ipynb): the same cruise trim and +1° step as the IHDP notebook, with an explicit pitch-to-rate outer loop, continuous adaptation, saved plots and `ControlBenchmark` metrics. The example documents its nominal-model initialization and reduced-model assumptions.
 
-## Cost assumptions and learning validation
+## Fault examples
 
-Equations (3) and (5) of the original paper require `0 < gamma < 1` and finite symmetric positive-semidefinite `Q` and `R`. The constructor rejects violations; zero weights on selected states remain valid.
-
-`policy_eval_blend=0` skips the least-squares solve entirely, preserving the critic while model identification continues. This is a library diagnostic mode.
-
-Window length alone does not establish identifiability: quadratic features duplicate cross products. For `d` active variables, at most `d*(d+1)/2` features are independent. Rank 15 is normal for five active variables; feature scaling and data informativeness require separate checks.
-
-Zero-centered ridge depends on state units and scale. It changes the paper's objective and need not preserve a good initial policy. `scripts/validate_iadp_lapan_critic.py` compares one policy-evaluation step against Riccati and Lyapunov solutions on samples from a known controller. This checks the algebra, not convergence of flight training.
-
-
-### Waiting for critic data after reset
-
-`policy_eval_warmup_updates` uses the identifier's lifetime update count, which survives episode resets. The critic window is cleared by `reset()`. Set `policy_eval_min_samples=policy_eval_window` to require a new complete window before fitting. `None` preserves the historical `max(n_aug**2, 4)` threshold, including for old checkpoints. The setting is checkpointed and does not change the learning equations.
-
-Konatala et al. describe a collected 20-second window for their sequential flight-test trial (Section IV, p. 11). The sample count and phases still need to be chosen for the simulation. Waiting for a window does not guarantee convergence or informative data.
-
-The validator `scripts/validate_adaptive_tracking.py` supports `--reference-mode oscillator --full-state`, exposing four states of the two-sine generator while only the desired q enters the cost. This provides additional reference information; it does not reproduce an unknown pilot command. A sine's current value alone does not determine its future without phase information. This mode separates incomplete reference representation from implementation errors.
+- [B737: 50% elevator-authority loss](https://github.com/TensorAeroSpace/TensorAeroSpace/blob/develop/example/reinforcement_learning/incremental_adp/example_iadp_fault_b737.ipynb), with continuous learning, actual surface feedback and post-fault error metrics.

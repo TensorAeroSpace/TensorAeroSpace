@@ -16,12 +16,14 @@ RHS = Callable[[np.ndarray, np.ndarray, float, Any], np.ndarray]
 def euler(
     f: RHS, x: np.ndarray, u: np.ndarray, t: float, dt: float, params: Any
 ) -> np.ndarray:
+    """Return one explicit Euler step for ``f(x, u, t, params)`` with constant input."""
     return np.asarray(x + dt * f(x, u, t, params))
 
 
 def rk4(
     f: RHS, x: np.ndarray, u: np.ndarray, t: float, dt: float, params: Any
 ) -> np.ndarray:
+    """Return one classical fourth-order Runge-Kutta step with input held constant."""
     k1 = f(x, u, t, params)
     k2 = f(x + 0.5 * dt * k1, u, t + 0.5 * dt, params)
     k3 = f(x + 0.5 * dt * k2, u, t + 0.5 * dt, params)
