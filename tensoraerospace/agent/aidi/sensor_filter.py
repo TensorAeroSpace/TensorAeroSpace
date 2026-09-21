@@ -56,4 +56,5 @@ class LowPassDerivative:
 
     @property
     def last_output(self) -> np.ndarray:
+        """Return a copy of the latest filtered derivative without advancing the filter."""
         return self._y.copy()

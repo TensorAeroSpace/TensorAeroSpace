@@ -40,14 +40,17 @@ class AnnealingSampler(optuna.samplers.BaseSampler):
         self._independent = optuna.samplers.RandomSampler(seed=seed)
 
     def infer_relative_search_space(self, study, trial):
+        """Expose nonconstant dimensions for joint annealing proposals."""
         return {k: d for k, d in self.space.items() if not d.single()}
 
     def sample_independent(self, study, trial, param_name, param_distribution):
+        """Draw a parameter with the seeded fallback random sampler."""
         return self._independent.sample_independent(
             study, trial, param_name, param_distribution
         )
 
     def sample_relative(self, study, trial, search_space):
+        """Propose a bounded neighbor of the accepted point, using log scales as needed."""
         if study.direction != optuna.study.StudyDirection.MINIMIZE:
             raise ValueError("AnnealingSampler supports minimization")
         if not self._initialized:
@@ -96,6 +99,7 @@ class AnnealingSampler(optuna.samplers.BaseSampler):
         return result
 
     def after_trial(self, study, trial, state, values):
+        """Apply Metropolis acceptance to a finite completed trial, then cool the chain."""
         if (
             state == TrialState.COMPLETE
             and values is not None

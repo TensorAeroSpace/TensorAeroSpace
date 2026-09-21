@@ -41,6 +41,11 @@ class Step:
             raise ValueError("Step.unit must be native, rad or deg")
 
     def values(self, time, initial, native_unit):
+        """Sample the step in native units, using the initial plant state as baseline.
+
+        ``time`` and ``at`` are in seconds. The result is a one-dimensional reference;
+        ``amplitude`` specifies the change rather than the final level.
+        """
         factor = 1.0
         native_unit = native_unit.removesuffix("/s")
         if self.unit != "native":
@@ -70,6 +75,12 @@ class ControlRun:
     units: tuple[str, ...]
 
     def plot(self, *, baseline=None):
+        """Plot commanded states, measured responses and native actuator commands.
+
+        An optional ``baseline`` must have matching states, units, times and references.
+        Angular channels are displayed in degrees. Return the Matplotlib figure without
+        displaying or saving it.
+        """
         import matplotlib.pyplot as plt
 
         if baseline is not None and (
@@ -133,29 +144,37 @@ class TuningResult:
 
     @property
     def best_params(self):
+        """Return the selected feasible trial's controller parameter mapping."""
         return self.optimization.best_params
 
     @property
     def best_value(self):
+        """Return the minimized aggregate score of the selected feasible trial."""
         return self.optimization.best_value
 
     @property
     def study(self):
+        """Return the Optuna study containing all successful and rejected trials."""
         return self.optimization.study
 
     def simulate(self, *, seed=0):
+        """Replay the selected parameters with a fresh controller and the given seed."""
         return self._tuner.simulate(self.best_params, seed=seed)
 
     def plot_response(self, *, baseline=None):
+        """Plot the selected trajectory against its reference and an optional baseline."""
         return self.best_run.plot(baseline=baseline)
 
     def plot_history(self):
+        """Return the optimization history figure for this result's study."""
         return self.optimization.plot_history()
 
     def save(self, path):
+        """Export parameters and per-case metrics to JSON; no trained weights are saved."""
         self.optimization.save(path)
 
     def _active_tuner(self):
+        """Require this result to belong to the tuner's current study before resuming."""
         if (
             self._tuner.optimizer is None
             or self._tuner.optimizer.study is not self.study
@@ -176,6 +195,7 @@ class TuningResult:
 
 
 def _validate_experiment_options(reference, duration, training_episodes, torch_threads):
+    """Validate named steps, simulation duration and training/thread budgets."""
     if not reference or not all(
         isinstance(k, str) and isinstance(v, Step) for k, v in reference.items()
     ):
@@ -262,6 +282,7 @@ class ControllerTuner:
         self._search_n_jobs = None
 
     def _configure_search_space(self, search_space):
+        """Resolve search dimensions and reject aliases that fixed options override."""
         from ._controllers import default_space
         from ._parameters import overlapping, validate_search_parameters
 
@@ -305,6 +326,7 @@ class ControllerTuner:
                     )
 
     def _validate_physical_experiment(self):
+        """Check nominal control effects, metric names and declared state limits."""
         from ._controllers import supported_parameter
 
         extra = {
@@ -358,6 +380,7 @@ class ControllerTuner:
 
     @staticmethod
     def available_controllers():
+        """Return canonical controller names and their supported environment families."""
         return {
             "iadp": "Physical linear F16/B747 and nonlinear B737/B747/F16",
             "imgdhp": "Physical linear F16/B747 and nonlinear B737/B747/F16",
@@ -388,6 +411,7 @@ class ControllerTuner:
         }
 
     def _reference_for(self, physical):
+        """Build sample-by-channel steps in the physical environment's native units."""
         values = []
         for name, step in self.reference.items():
             if name not in physical.names:
@@ -401,6 +425,9 @@ class ControllerTuner:
         return reference
 
     def _check_state(self, physical):
+        """Reject nonfinite states, envelope violations and user-specified limit
+        breaches.
+        """
         state = physical.state
         if not np.isfinite(state).all():
             raise TrialRejected("Nonfinite physical state")
@@ -505,6 +532,7 @@ class ControllerTuner:
         }
 
     def _check_continuation(self):
+        """Require unchanged experiment settings and no running trials before resuming."""
         from ._continuation import same_setting
 
         if self.optimizer is None or self._search_configuration is None:
@@ -527,6 +555,7 @@ class ControllerTuner:
         return self.optimizer
 
     def _validate_n_jobs(self, n_jobs):
+        """Validate the worker count and enforce serial proposals for annealing."""
         if isinstance(n_jobs, bool) or not isinstance(n_jobs, int) or n_jobs < 1:
             raise ValueError("n_jobs must be a positive integer")
         if n_jobs > 1 and self.method == "annealing":
@@ -536,7 +565,10 @@ class ControllerTuner:
             )
 
     def _make_optimizer(self, n_jobs, *, study=None):
+        """Build a serial or process-based evaluator, optionally reusing a study."""
+
         def objective(params, seed):
+            """Return metrics from one complete seeded controller experiment."""
             return self.simulate(params, seed=seed).metrics
 
         if study is None:
@@ -577,6 +609,9 @@ class ControllerTuner:
         return optimizer
 
     def _run_search(self, n_trials, **options):
+        """Run or continue the configured search and replay its best feasible
+        parameters.
+        """
         assert self.optimizer is not None
         result = self.optimizer.optimize(n_trials, **options)
         return TuningResult(

@@ -24,6 +24,7 @@ STATE_DIM = len(STATE_LIST)
 
 
 def default_state() -> np.ndarray:
+    """Return a zero-filled 12-state vector; this is not a trimmed flight condition."""
     return np.zeros(STATE_DIM, dtype=np.float64)
 
 

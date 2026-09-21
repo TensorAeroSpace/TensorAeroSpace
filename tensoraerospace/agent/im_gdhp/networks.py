@@ -14,6 +14,7 @@ from torch import nn
 
 
 def _build_mlp(in_features, hidden_sizes, activation, *, bias=True):
+    """Build hidden linear/activation layers with the requested per-layer widths."""
     layers = []
     last = in_features
     for size in hidden_sizes:

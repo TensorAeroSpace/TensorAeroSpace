@@ -44,6 +44,7 @@ class CStarController:
         self._int_err: float = 0.0
 
     def reset(self) -> None:
+        """Clear accumulated C-star tracking error."""
         self._int_err = 0.0
 
     def step(
@@ -54,6 +55,7 @@ class CStarController:
         V: float,
         hedge: float = 0.0,
     ) -> float:
+        """Return the desired pitch rate from C-star error and the hedged integral."""
         c_star = float(n_z) + (float(V) / self.V_co) * float(q)
         err = float(c_star_cmd) - c_star
         # PCH: subtract the hedge BEFORE integration to keep the integrator
@@ -90,10 +92,12 @@ class RollReferenceModel:
         self._phi: float = 0.0
 
     def reset(self) -> None:
+        """Clear reference roll angle and roll-rate states."""
         self._phi_dot = 0.0
         self._phi = 0.0
 
     def step(self, phi_cmd: float, phi: float, hedge: float = 0.0) -> float:
+        """Advance the second-order roll reference and return its rate in rad/s."""
         phi_ddot = (
             -2.0 * self.zeta * self.omega_n * self._phi_dot
             + self.omega_n**2 * (float(phi_cmd) - float(phi))
@@ -128,10 +132,12 @@ class SideslipCompensator:
         self._int_err: float = 0.0
 
     def reset(self) -> None:
+        """Clear accumulated sideslip error."""
         self._int_err = 0.0
 
     def step(self, beta_cmd: float, beta: float, hedge: float = 0.0) -> float:
         # neg_err = β − β_cmd : positive when sideslip exceeds command.
+        """Return yaw-rate feedback from sideslip excess and its hedged integral."""
         neg_err = float(beta) - float(beta_cmd)
         self._int_err = float(
             np.clip(
@@ -163,10 +169,12 @@ class SpeedController:
         self._prev_err = 0.0
 
     def reset(self) -> None:
+        """Clear speed-error integral and derivative history."""
         self._int_err = 0.0
         self._prev_err = 0.0
 
     def step(self, V_cmd: float, V: float) -> float:
+        """Return the speed PID correction, or zero when the controller is disabled."""
         if not self.enabled:
             return 0.0
         err = float(V_cmd) - float(V)
@@ -199,6 +207,7 @@ class LinearController:
         omega_des: np.ndarray,
         omega: np.ndarray,
     ) -> np.ndarray:
+        """Map desired-minus-measured body rates to virtual angular acceleration."""
         omega_des = np.asarray(omega_des, dtype=np.float64).reshape(-1)
         omega = np.asarray(omega, dtype=np.float64).reshape(-1)
         return self.rate_kp * (omega_des - omega)

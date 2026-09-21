@@ -14,6 +14,8 @@ _BAR_FORMAT = "{desc}: {percentage:3.0f}%|{bar}| {n_fmt}/{total_fmt} [{elapsed},
 
 
 class _SearchProgress:
+    """Track completed trials, rejected candidates and the best feasible score."""
+
     def __init__(self, bar, metric, best_trial):
         self.bar = bar
         self.metric = metric
@@ -24,6 +26,7 @@ class _SearchProgress:
         self._refresh_best(refresh=True)
 
     def _refresh_best(self, *, refresh=False):
+        """Refresh the bar suffix with the incumbent score and rejection count."""
         if self.bar is None:
             return
         if self.best_trial is None:
@@ -48,6 +51,7 @@ class _SearchProgress:
             self.bar.update(1)
 
     def close(self):
+        """Finalize the bar with the actual trial count and the reason for stopping."""
         if self.bar is not None:
             # Keep the actual count on early stop, with no stale remaining ETA.
             self.bar.bar_format = _BAR_FORMAT.replace("{remaining}", "00:00")

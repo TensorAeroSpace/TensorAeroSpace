@@ -128,6 +128,9 @@ class IADPConfig:
         """
 
         def ticks(seconds: float) -> int:
+            """Convert a positive duration to an exact integer number of sampling
+            intervals.
+            """
             if not np.isfinite(dt) or dt <= 0 or not np.isfinite(seconds):
                 raise ValueError("dt and durations must be finite and positive")
             value = seconds / dt
@@ -359,6 +362,7 @@ class IADPAgent(OptimizableAgent):
     # Helpers
     # ------------------------------------------------------------------
     def _slice_reference(self, reference: np.ndarray, time_step: int) -> np.ndarray:
+        """Select and copy the reference sample, broadcasting scalar commands as needed."""
         ref = np.asarray(reference, dtype=np.float64)
         if ref.ndim == 0:
             return np.full(self.n_reference, float(ref), dtype=np.float64)
@@ -380,6 +384,9 @@ class IADPAgent(OptimizableAgent):
         raise ValueError("reference must be scalar, 1-D, or 2-D")
 
     def _augment(self, x: np.ndarray, ref: np.ndarray) -> np.ndarray:
+        """Concatenate measured plant states and reference states for the value
+        function.
+        """
         return np.concatenate([x, ref])
 
     def _compute_policy_increment(

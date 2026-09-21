@@ -120,7 +120,7 @@ dependency-audit: ## Проверить зависимости через pip-au
 # === ДОКУМЕНТАЦИЯ ===
 docs: ## Сгенерировать документацию
 	@echo "$(BLUE)Генерация документации...$(RESET)"
-	poetry run docstr-coverage tensoraerospace --skip-magic --skip-init --fail-under=70
+	poetry run docstr-coverage tensoraerospace --skip-magic --skip-init --skip-file-doc --fail-under=90
 	poetry run mkdocs build
 
 build_docs: ## Собрать документацию (MkDocs)

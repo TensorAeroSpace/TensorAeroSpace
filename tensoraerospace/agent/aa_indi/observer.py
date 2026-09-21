@@ -27,6 +27,13 @@ from .otse import OptimalTwoStageEKF
 
 @dataclass
 class ObserverConfig:
+    """Sampling, noise and drift-reconstruction settings for OTSEKF–HOSM.
+
+    Time is in seconds and gravity in m/s². IMU vectors order specific force then
+    angular rate; navigation vectors order NED velocity then Euler angles. Standard
+    deviations use the corresponding SI measurement units.
+    """
+
     dt: float = 0.01
     gravity: float = 9.80665
     imu_std: np.ndarray = field(
@@ -94,6 +101,9 @@ class OTSEKFHOSMObserver:
 
     @property
     def state(self) -> np.ndarray:
+        """Return estimated body velocity and Euler angles after navigation
+        initialization.
+        """
         if self.filter is None:
             raise RuntimeError(
                 "observer has not received initial navigation measurements"
@@ -101,6 +111,12 @@ class OTSEKFHOSMObserver:
         return self.filter.state
 
     def update(self, measurement: FlightMeasurement) -> np.ndarray:
+        """Assimilate a sensor packet and return bias-corrected IMU measurements.
+
+        The first packet requires attitude and independent ground velocity. Later
+        timestamps must advance by exactly ``cfg.dt``. Updating also reconstructs sensor
+        faults and advances the HOSM differentiator.
+        """
         if self.filter is None:
             if measurement.attitude is None or measurement.ground_velocity is None:
                 raise ValueError(
@@ -129,6 +145,9 @@ class OTSEKFHOSMObserver:
         imu = previous.imu
 
         def rates(x):
+            """Evaluate aircraft kinematics with the current IMU sample and
+            reconstructed faults.
+            """
             return aircraft_kinematics(x, imu, self.faults, self.cfg.gravity)
 
         nominal = rk4(rates, prior, dt)

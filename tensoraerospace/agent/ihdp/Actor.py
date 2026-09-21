@@ -523,6 +523,7 @@ class Actor:
         return float(coeff[0] * self._scaled_output_gradient_gain()[0]) * dut_dparam
 
     def _clip_actor_output(self, ut: np.ndarray) -> np.ndarray:
+        """Enforce configured actuator magnitude limits on the actor output array."""
         return np.clip(
             np.asarray(ut, dtype=float), -self.maximum_input, self.maximum_input
         )

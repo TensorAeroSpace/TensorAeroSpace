@@ -19,6 +19,7 @@ from .metrics import TrialRejected
 
 
 def controller_name(value):
+    """Resolve a controller name or class to the canonical profile key."""
     name = value if isinstance(value, str) else getattr(value, "__name__", "")
     key = name.lower().replace("-", "").replace("_", "").removesuffix("agent")
     aliases = {
@@ -39,6 +40,7 @@ def controller_name(value):
 
 
 def default_space(name):
+    """Return fresh Optuna distributions for the named controller profile."""
     basics: dict[str, dict[str, Any]] = {
         "aa_indi": {
             "rate_gain": Float(1.0, 12.0, log=True),
@@ -189,12 +191,14 @@ _OPTIONS = {
 
 
 def supported_parameter(name, key):
+    """Check whether a profile consumes a shortcut, fixed option or native path."""
     return key in (_OPTIONS[name] | set(default_space(name))) or is_native_parameter(
         name, key
     )
 
 
 def validate_controller(tuner):
+    """Reject unsupported controller/environment pairs and inactive options."""
     kind, name = tuner.environment.kind, tuner.controller
     unknown = {
         key for key in tuner.controller_options if not supported_parameter(name, key)
@@ -243,6 +247,7 @@ def validate_controller(tuner):
 
 
 def _controls(physical, tracking):
+    """Select native action channels that can affect the requested physical states."""
     if physical.kind != "boeing":
         return list(range(len(physical.bias)))
     # The full virtual command always retains nominal throttle and unused surfaces.
@@ -257,12 +262,15 @@ def _controls(physical, tracking):
 
 
 def _healthy_boeing(physical):
+    """Construct an undamaged Boeing model at the episode initial state."""
     return type(physical.model)(
         x0=physical.initial.copy(), dt=physical.dt, config=physical.env.config
     )
 
 
 class _InversionRunner:
+    """Adapt Boeing measurements and reference commands to AA-INDI or AIDI."""
+
     def __init__(self, tuner, physical, params):
         self.agent: Any
         from tensoraerospace.agent.aa_indi import (
@@ -341,6 +349,7 @@ class _InversionRunner:
             raise ValueError(f"Unused profile parameters: {params}")
 
     def _measurement(self, physical):
+        """Build an AA-INDI sensor packet using the measured applied surfaces."""
         from tensoraerospace.agent.aa_indi import FlightMeasurement
 
         return FlightMeasurement.from_model(
@@ -350,6 +359,7 @@ class _InversionRunner:
         )
 
     def _observation(self, physical):
+        """Extract AIDI observations, converting Boeing airspeed from ft/s to m/s."""
         x = physical.state
         return dict(
             omega=x[3:6].copy(),
@@ -361,12 +371,14 @@ class _InversionRunner:
         )
 
     def reset(self):
+        """Reset episode histories and initialize AIDI surfaces at nominal trim."""
         if self.name == "aa_indi":
             self.agent.reset()
         else:
             self.agent.reset(initial_action=self.physical.bias[self.indices])
 
     def predict(self, physical, reference, k):
+        """Convert angle/rate targets to a bounded body-rate command and native action."""
         x = physical.state
         targets = dict(zip(self.tracking, reference[k]))
         euler_rate = self.outer_gain * (
@@ -400,6 +412,7 @@ class _InversionRunner:
         return action
 
     def learn(self, physical, reference, k):
+        """Assimilate applied controls and reject nonfinite effectiveness estimates."""
         if self.name == "aa_indi":
             self.agent.learn(
                 self._measurement(physical),
@@ -418,6 +431,8 @@ class _InversionRunner:
 
 
 class _StateRunner:
+    """Connect state-based controllers to scaled observations and native controls."""
+
     def __init__(self, tuner, physical, reference, params, seed):
         self.agent: Any
         self.name, self.physical = tuner.controller, physical
@@ -445,6 +460,7 @@ class _StateRunner:
         self._initialize_agent(tuner, physical, params, seed)
 
     def _initialize_agent(self, tuner, physical, params, seed):
+        """Build the selected native learner or MPC solver from consumed parameters."""
         cfg: Any
         n, m, r = len(self.scale), len(self.indices), len(self.tracking)
         self.horizon = params.get("horizon", 20)
@@ -486,6 +502,9 @@ class _StateRunner:
             F, G = transform @ F @ inverse, transform @ G
 
             def regulation(obs, ref, k):
+                """Map the current observation and reference sample to regulation
+                coordinates.
+                """
                 return transform @ np.concatenate(
                     (np.asarray(obs).reshape(-1), ref[:, k])
                 )
@@ -525,6 +544,7 @@ class _StateRunner:
             )
 
             def dynamics(x, u):
+                """Advance a batch with the nominal discrete linear model in Torch."""
                 return x @ At.T + u @ Bt.T
 
             q = np.zeros(n)
@@ -558,6 +578,7 @@ class _StateRunner:
             raise ValueError(f"Unused profile parameters: {params}")
 
     def _make_iadp(self, A, B, n, m, r, physical, params, seed):
+        """Initialize iADP from the healthy model and a discounted Riccati prior."""
         from scipy.linalg import block_diag, solve_discrete_are
 
         from tensoraerospace.agent.iadp import IADPAgent, IADPConfig
@@ -600,6 +621,7 @@ class _StateRunner:
         return IADPAgent(n, m, config=cfg)
 
     def _nominal_model(self, physical):
+        """Restrict the nominal model to observed states and scale its coordinates."""
         A, B = physical.nominal_discrete(self.indices)
         A = A[np.ix_(self.state_indices, self.state_indices)]
         B = B[self.state_indices]
@@ -613,14 +635,17 @@ class _StateRunner:
         return A, B
 
     def _state(self, physical):
+        """Return selected physical states as normalized deviations from the offset."""
         return (physical.state[self.state_indices] - self.offset) / self.scale
 
     def reset(self):
+        """Reset supported agent histories and clear the previous normalized action."""
         if self.name != "ihdp":
             self.agent.reset()
         self.previous = np.zeros(len(self.indices))
 
     def predict(self, physical, reference, k):
+        """Compute a normalized action and restore the environment bias and units."""
         x = self._state(physical)
         if self.name == "mpc":
             target = np.zeros(len(x))
@@ -638,6 +663,9 @@ class _StateRunner:
         return result
 
     def learn(self, physical, reference, k):
+        """Update the learner with applied-action feedback and check its numerical
+        state.
+        """
         if self.name == "et_dhp":
             self.agent.learn(
                 self._state(physical),
@@ -682,6 +710,7 @@ def _check_learning_state(agent):
 
 
 def _make_ihdp(tuner, physical, names, tracking, indices, params, seed):
+    """Build IHDP actor, critic and identifier settings for one online episode."""
     from tensoraerospace.agent.ihdp import IHDPAgent
 
     n_actions = len(indices)
@@ -756,6 +785,7 @@ def _make_ihdp(tuner, physical, names, tracking, indices, params, seed):
 
 
 def build_controller(tuner, physical, reference, params, seed):
+    """Create a fresh interaction runner from fixed options and trial parameters."""
     settings = ParameterValues(
         copy.deepcopy(tuner.controller_options), copy.deepcopy(params)
     )
@@ -773,10 +803,13 @@ def run_hdp(tuner, physical, reference, params, seed):
     from tensoraerospace.agent.hdp import HDP
 
     class RecordingEnv(gym.Wrapper):
+        """Record physical pitch and actions during the native HDP training loop."""
+
         def __getattr__(self, name):
             return getattr(self.env, name)
 
         def reset(self, *, seed=None, options=None):
+            """Reset the plant and start a new trajectory with the initial pitch sample."""
             physical.reset(seed)
             tuner._check_state(physical)
             self.outputs = [physical.state[[3]].copy()]
@@ -784,6 +817,7 @@ def run_hdp(tuner, physical, reference, params, seed):
             return physical.observation.copy(), {}
 
         def step(self, action):
+            """Record a native transition and reject premature episode termination."""
             observation, reward, terminated, truncated, info = self.env.step(action)
             physical.observation = np.asarray(observation)
             tuner._check_state(physical)

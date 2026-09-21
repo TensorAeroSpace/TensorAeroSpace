@@ -290,7 +290,7 @@ jobs:
           set -o pipefail
           poetry run docstr-coverage ./tensoraerospace \
             --skip-magic --skip-init --skip-file-doc \
-            --fail-under=70.0 2>&1 | tee docstr-coverage.txt
+            --fail-under=90.0 2>&1 | tee docstr-coverage.txt
 
       - name: 🔢 Extract docstring coverage percent
         id: docstr

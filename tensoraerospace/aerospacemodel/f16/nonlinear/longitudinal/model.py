@@ -65,9 +65,13 @@ class LongitudinalF16(ModelBase):
         self._integrator_name = integrator
 
     def get_param(self) -> F16LongParameters:
+        """Return the live aircraft parameter object; mutations affect subsequent
+        integration.
+        """
         return self.param
 
     def set_param(self, new_param: F16LongParameters) -> None:
+        """Replace the aircraft parameter object used by subsequent integration steps."""
         self.param = new_param
 
     @property
@@ -76,6 +80,12 @@ class LongitudinalF16(ModelBase):
         return np.array(self.x_history[-1], dtype=np.float64, copy=True).reshape(-1)
 
     def run_step(self, u: ArrayLike, *, events=()) -> np.ndarray:
+        """Integrate one stabilator command in radians, splitting at supplied event
+        times.
+
+        Store state and applied-input histories and return selected states as a column
+        vector, or the full state column when no selection is set.
+        """
         u_arr = np.asarray(u, dtype=np.float64).reshape(-1)
         if u_arr.size != self.action_space_length:
             raise ValueError(
@@ -105,12 +115,18 @@ class LongitudinalF16(ModelBase):
         return x_next_col.copy()
 
     def _advance(self, x, u, t, dt):
+        """Integrate one event-free interval and enforce stabilator position/rate
+        limits.
+        """
         control = self._prepare_control(u)
         next_state = self._step_fn(f16_ode_long, x, control, t, dt, self.param)
         return project_actuators(next_state, self.param, ((2, "stab"),))
 
     def _prepare_control(self, u):
         # Damage hooks for ODE corrections (Phase 3 / Phase 7.2)
+        """Attach active damage parameters and apply stabilator failures and magnitude
+        limits.
+        """
         if self.damage_state is not None and self.damage_geometry is not None:
             self.param.damage_state = self.damage_state
             self.param.damage_geometry = self.damage_geometry

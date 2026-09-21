@@ -198,6 +198,9 @@ class IMGDHPAgent(OptimizableAgent):
         }
 
     def _validate_config(self):
+        """Validate dimensions, tracking costs and supported learning/identifier
+        options.
+        """
         if min(self.n_obs, self.n_action, self.reference_size) <= 0:
             raise ValueError("observation, action and reference sizes must be positive")
         if (
@@ -239,6 +242,7 @@ class IMGDHPAgent(OptimizableAgent):
             raise ValueError("target_update_tau must be in [0,1]")
 
     def _validate_learning_rates(self):
+        """Check finite learning-rate schedules and positive network weight limits."""
         for name in ("actor", "critic"):
             rate = getattr(self.cfg, name + "_lr")
             floor = getattr(self.cfg, name + "_lr_min")
@@ -255,9 +259,11 @@ class IMGDHPAgent(OptimizableAgent):
             raise ValueError("weight_limit must be finite and positive")
 
     def _tensor(self, value):
+        """Convert a value to a float32 tensor on the agent's configured device."""
         return torch.as_tensor(value, dtype=torch.float32, device=self.device)
 
     def _reference_at(self, reference_signal, time_step):
+        """Validate a channel-by-time reference and copy the requested bounded sample."""
         reference = np.asarray(reference_signal, dtype=float)
         if reference.ndim == 1:
             reference = reference.reshape(1, -1)

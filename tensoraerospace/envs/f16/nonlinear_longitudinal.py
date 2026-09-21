@@ -220,6 +220,9 @@ class NonlinearLongitudinalF16(gym.Env):
         return x0
 
     def get_init_args(self) -> dict[str, object]:
+        """Return reconstructible constructor settings, rejecting nonserializable damage
+        callbacks.
+        """
         init_args = self.init_args.copy()
         init_args.pop("self", None)
         init_args.pop("__class__", None)
@@ -234,9 +237,11 @@ class NonlinearLongitudinalF16(gym.Env):
         return init_args
 
     def _get_info(self) -> dict[str, object]:
+        """Return the base info mapping before optional damage telemetry is added."""
         return {}
 
     def _build_observation(self, base_obs: np.ndarray) -> np.ndarray:
+        """Convert observed states to float32 and append enabled damage features."""
         if not self.damage_observable or self.damage_manager is None:
             return base_obs.astype(np.float32)
         geo = self._geo_for_damage
@@ -255,6 +260,12 @@ class NonlinearLongitudinalF16(gym.Env):
     def step(
         self, action: np.ndarray
     ) -> tuple[np.ndarray, float, bool, bool, dict[str, object]]:
+        """Apply one stabilator command in degrees and return the Gymnasium transition.
+
+        The configured control bias and optional feedforward are added before clipping
+        and conversion to model radians. The transition includes the tracking reward,
+        horizon truncation and any damage-event information.
+        """
         action_deg = (
             np.asarray(action, dtype=np.float64).reshape(-1) + self.control_bias
         )
@@ -302,6 +313,9 @@ class NonlinearLongitudinalF16(gym.Env):
     def reset(
         self, seed: int | None = None, options: dict | None = None
     ) -> tuple[np.ndarray, dict[str, object]]:
+        """Reset the selected model states, reference index, damage schedule and plot
+        histories.
+        """
         super().reset(seed=seed)
         self.current_step = 0
         self.done = False
@@ -334,6 +348,9 @@ class NonlinearLongitudinalF16(gym.Env):
         return observation, info
 
     def close(self) -> None:
+        """Complete the Gymnasium lifecycle; no persistent renderer resource needs
+        closing.
+        """
         pass
 
     @staticmethod
@@ -385,6 +402,9 @@ class NonlinearLongitudinalF16(gym.Env):
             )
 
     def render(self):
+        """Return the configured figure, RGB image or web view of the recorded
+        trajectory.
+        """
         if self.render_mode is None:
             return None
         if self.render_mode == "human":
@@ -431,6 +451,9 @@ class NonlinearLongitudinalF16(gym.Env):
         raise ValueError(f"Unknown render_mode: {self.render_mode!r}")
 
     def _build_figure(self):
+        """Create a flight figure from the recorded position, attitude and state
+        channels.
+        """
         from tensoraerospace.visualization.flight_3d import build_flight_3d_figure
 
         return build_flight_3d_figure(
@@ -442,6 +465,7 @@ class NonlinearLongitudinalF16(gym.Env):
         )
 
     def _render_3d_web(self):
+        """Build the browser-based 3D view of this environment's recorded flight."""
         from tensoraerospace.visualization.three_d import render as _render_3d
 
         return _render_3d(self)

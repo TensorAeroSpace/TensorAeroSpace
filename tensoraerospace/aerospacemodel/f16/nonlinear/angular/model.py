@@ -117,9 +117,13 @@ class AngularF16(ModelBase):
         return x0_arr
 
     def get_param(self) -> F16AngularParameters:
+        """Return the live aircraft parameter object; mutations affect subsequent
+        integration.
+        """
         return self.param
 
     def set_param(self, new_param: F16AngularParameters) -> None:
+        """Replace the aircraft parameter object used by subsequent integration steps."""
         self.param = new_param
 
     @property
@@ -128,6 +132,11 @@ class AngularF16(ModelBase):
         return np.array(self.x_history[-1], dtype=np.float64, copy=True).reshape(-1)
 
     def run_step(self, u: ArrayLike, *, events=()) -> np.ndarray:
+        """Advance surface commands in radians and optional thrust in newtons.
+
+        Timed event callbacks split the integration interval. Store the new state and
+        applied controls, then return the configured output column.
+        """
         u_arr = np.asarray(u, dtype=np.float64).reshape(-1)
         if u_arr.size != self.action_space_length:
             raise ValueError(
@@ -159,6 +168,9 @@ class AngularF16(ModelBase):
         return x_next_col.copy()
 
     def _advance(self, x, u, t, dt):
+        """Integrate one event-free interval and project actuator states onto physical
+        limits.
+        """
         control, _ = self._prepare_control(u)
         next_state = self._step_fn(f16_ode_6dof, x, control, t, dt, self.param)
         return project_actuators(

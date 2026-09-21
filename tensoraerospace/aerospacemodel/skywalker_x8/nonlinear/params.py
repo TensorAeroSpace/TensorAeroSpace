@@ -87,6 +87,7 @@ def isa_density_kg_m3(altitude_m: float) -> float:
 
 
 def isa_speed_of_sound_m_s(altitude_m: float) -> float:
+    """Return ISA speed of sound in m/s for altitude in metres."""
     if altitude_m < _TROPOPAUSE_M:
         T = _T0_K - _LAPSE_K_M * altitude_m
     else:
@@ -154,6 +155,7 @@ class SkywalkerX8Parameters:
     # thrust model (see :mod:`.engine`).
     @property
     def omega_max_rad_s(self) -> float:
+        """Return ideal no-load motor speed in rad/s from voltage and back-EMF constant."""
         return self.battery_voltage_V / self.motor_KE_V_per_rad_s
 
     # Damage subsystem hooks

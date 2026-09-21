@@ -43,11 +43,14 @@ class _RecordedTrial(optuna.trial.FixedTrial):
             self.set_user_attr(key, value)
 
     def report(self, value, step):
+        """Record a scalar intermediate result under its evaluation-step index."""
         self.intermediate_values[step] = value
 
 
 @dataclass
 class _Evaluation:
+    """Serializable worker outcome with metrics, trial status and intermediate values."""
+
     state: TrialState
     value: float | None
     user_attrs: dict
@@ -58,6 +61,7 @@ _worker_optimizer = None
 
 
 def _initialize_worker(tuner, verbosity):
+    """Install a process-local evaluator and bound Torch threads for its trials."""
     global _worker_optimizer
     optuna.logging.set_verbosity(max(verbosity, optuna.logging.WARNING))
     if tuner.torch_threads is not None:
@@ -66,6 +70,7 @@ def _initialize_worker(tuner, verbosity):
         torch.set_num_threads(tuner.torch_threads)
 
     def objective(params, seed):
+        """Run one seeded controller trajectory and return its benchmark metrics."""
         return tuner.simulate(params, seed=seed).metrics
 
     _worker_optimizer = ControlOptimizer(
@@ -80,6 +85,7 @@ def _initialize_worker(tuner, verbosity):
 
 
 def _evaluate_candidate(params, user_attrs):
+    """Evaluate one candidate and return its status, diagnostics and elapsed time."""
     assert _worker_optimizer is not None
     trial = _RecordedTrial(params, user_attrs)
     trial.set_user_attr("worker_pid", os.getpid())
@@ -121,6 +127,7 @@ class ParallelControllerOptimizer(ControlOptimizer):
             raise ValueError("Parallel controller batches require NopPruner")
 
     def _run_trials(self, n_trials, *, timeout, callbacks):
+        """Evaluate deterministic batches in spawned workers and finish in-flight work."""
         started = time.monotonic()
         submitted, stopped = 0, False
         pending: list[tuple[optuna.Trial, Future[_Evaluation] | None]] = []
@@ -158,6 +165,7 @@ class ParallelControllerOptimizer(ControlOptimizer):
                 raise
 
     def _record_evaluation(self, trial, future, callbacks):
+        """Transfer a worker result to the study and combine callback stop requests."""
         stopped = False
         evaluation = future.result()
         for key, value in evaluation.user_attrs.items():
@@ -170,6 +178,7 @@ class ParallelControllerOptimizer(ControlOptimizer):
         return stopped
 
     def _abort_batch(self, pending):
+        """Cancel pending work and mark remaining running trials as failed."""
         for trial, future in pending:
             if future is not None:
                 future.cancel()

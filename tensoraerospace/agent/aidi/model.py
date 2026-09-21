@@ -122,6 +122,7 @@ class AIDIConfig:
 
 
 def _clamp(x: np.ndarray, lo: float | np.ndarray, hi: float | np.ndarray) -> np.ndarray:
+    """Clip each command to its scalar or per-channel lower and upper limits."""
     return np.clip(x, lo, hi)
 
 
@@ -221,6 +222,7 @@ class AIDIAgent(OptimizableAgent):
     # Helpers
     # ------------------------------------------------------------------
     def _check_obs(self, obs: dict) -> None:
+        """Require the physical observation fields consumed by the AIDI control law."""
         missing = [k for k in REQUIRED_OBS_KEYS if k not in obs]
         if missing:
             raise KeyError(
@@ -229,12 +231,14 @@ class AIDIAgent(OptimizableAgent):
             )
 
     def _action_vector(self, action) -> np.ndarray:
+        """Validate and flatten applied controls to one finite value per actuator."""
         value = np.asarray(action, dtype=np.float64).reshape(-1)
         if value.size != self.n_control or not np.all(np.isfinite(value)):
             raise ValueError("applied_action must contain n_control finite values")
         return value
 
     def _check_refs(self, refs: dict) -> None:
+        """Require all command fields needed by the outer reference controllers."""
         missing = [k for k in REQUIRED_REF_KEYS if k not in refs]
         if missing:
             raise KeyError(
@@ -243,6 +247,7 @@ class AIDIAgent(OptimizableAgent):
             )
 
     def _resolve_n_z(self, obs: dict, q: float) -> float:
+        """Use measured normal load factor or reconstruct it from flight kinematics."""
         if "n_z" in obs:
             return float(obs["n_z"])
         alpha = float(obs["alpha"])
@@ -316,6 +321,14 @@ class AIDIAgent(OptimizableAgent):
         *,
         deterministic: bool = True,
     ) -> np.ndarray:
+        """Compute limited control commands from physical observations and outer
+        references.
+
+        Observations contain body rates in rad/s, angles in radians and airspeed in m/s.
+        Call ``learn`` with the following measurement and applied action to complete
+        this transition. Action units follow the onboard effectiveness model and the
+        configured actuator limits.
+        """
         del deterministic, time_step
         self._check_obs(observation)
         self._check_refs(references)
@@ -392,6 +405,9 @@ class AIDIAgent(OptimizableAgent):
     def _command_from_rates(
         self, observation: dict, omega_des: np.ndarray
     ) -> np.ndarray:
+        """Allocate a control increment, apply slew/amplitude limits and cache the
+        transition.
+        """
         omega = np.asarray(observation["omega"], dtype=float).reshape(-1)
         omega_dot_meas = self._omega_dot_cached.copy()
         nu_des = self.linear.combine(omega_des=omega_des, omega=omega)
@@ -495,6 +511,7 @@ class AIDIAgent(OptimizableAgent):
     # Persistence
     # ------------------------------------------------------------------
     def get_param_env(self) -> dict[str, Any]:
+        """Return serializable policy dimensions and configuration, excluding history."""
         agent_name = f"{self.__class__.__module__}.{self.__class__.__name__}"
         cfg_dict = dataclasses.asdict(self.cfg)
         cfg_dict.pop("history", None)
@@ -508,6 +525,12 @@ class AIDIAgent(OptimizableAgent):
         }
 
     def save(self, path: Union[str, Path, None] = None) -> str:
+        """Save configuration, identifier and controller histories in a timestamped
+        folder.
+
+        Return the folder path. The caller must supply the compatible onboard
+        effectiveness model when loading; that callable is not serialized.
+        """
         base = Path.cwd() if path is None else Path(path)
         date_str = datetime.datetime.now().strftime("%b%d_%H-%M-%S")
         run_dir = base / f"{date_str}_{self.__class__.__name__}"
@@ -584,6 +607,7 @@ class AIDIAgent(OptimizableAgent):
         folder: Union[str, Path],
         onboard_ce: OnboardCEModel,
     ) -> "AIDIAgent":
+        """Restore saved controller state using the caller-supplied effectiveness model."""
         folder_p = Path(folder)
         with open(folder_p / "config.json", "r", encoding="utf-8") as f:
             cfg = json.load(f)
@@ -664,6 +688,11 @@ class AIDIAgent(OptimizableAgent):
         access_token: Optional[str] = None,
         version: Optional[str] = None,
     ) -> "AIDIAgent":
+        """Load a local checkpoint directory or download a Hugging Face model revision.
+
+        ``onboard_ce`` supplies the compatible nominal effectiveness model.
+        ``access_token`` and ``version`` apply to remote downloads.
+        """
         p = Path(str(repo_name)).expanduser()
         if p.is_dir():
             return cls._load_from_dir(p, onboard_ce=onboard_ce)
@@ -682,6 +711,9 @@ class AIDIAgent(OptimizableAgent):
         folder_path: Union[str, Path],
         access_token: Optional[str] = None,
     ) -> None:
+        """Upload an existing checkpoint folder to the specified Hugging Face model
+        repo.
+        """
         from huggingface_hub import HfApi
 
         api = HfApi()

@@ -13,6 +13,7 @@ import numpy as np
 
 
 def body_to_ned(attitude: np.ndarray) -> np.ndarray:
+    """Return the body-to-NED rotation for roll, pitch and yaw angles in radians."""
     phi, theta, psi = np.asarray(attitude, dtype=float)
     sp, st, sy = np.sin([phi, theta, psi])
     cp, ct, cy = np.cos([phi, theta, psi])
@@ -67,10 +68,12 @@ def aircraft_kinematics(
 
 
 def observation_model(state: np.ndarray) -> np.ndarray:
+    """Map body velocity and Euler angles to NED velocity and the same attitude."""
     return np.concatenate([body_to_ned(state[3:]) @ state[:3], state[3:]])
 
 
 def rk4(function, state: np.ndarray, dt: float) -> np.ndarray:
+    """Advance an autonomous state derivative by ``dt`` using fourth-order Runge-Kutta."""
     k1 = function(state)
     k2 = function(state + 0.5 * dt * k1)
     k3 = function(state + 0.5 * dt * k2)
@@ -183,4 +186,5 @@ class FlightMeasurement:
 
     @property
     def imu(self) -> np.ndarray:
+        """Return specific force (m/s²) followed by body angular rates (rad/s)."""
         return np.concatenate([self.specific_force, self.angular_rate])

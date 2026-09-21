@@ -25,6 +25,13 @@ from .observer import ObserverConfig, OTSEKFHOSMObserver
 
 @dataclass
 class AAINDIConfig:
+    """Physical geometry, observer settings and AA-INDI adaptation limits.
+
+    ``nominal_derivatives`` contains three moment-coefficient rows and one column per
+    control surface. Surface magnitude and rate limits use radians and radians per
+    second; acceleration filtering uses hertz.
+    """
+
     geometry: AircraftGeometry
     nominal_derivatives: np.ndarray
     observer: ObserverConfig = field(default_factory=ObserverConfig)
@@ -101,10 +108,17 @@ class AAINDIAgent(OptimizableAgent):
 
     @property
     def dt(self) -> float:
+        """Return the observer and controller sampling interval in seconds."""
         return self.cfg.observer.dt
 
     @property
     def G(self) -> np.ndarray:
+        """Return the identified angular-acceleration effectiveness at measured
+        airspeed.
+
+        The matrix maps surface deflections in radians to angular acceleration in
+        rad/s². A measurement with density and airspeed must be observed first.
+        """
         if self._measurement is None:
             raise RuntimeError("airspeed and density measurements are required for G")
         return self.cfg.geometry.effectiveness(
@@ -114,6 +128,9 @@ class AAINDIAgent(OptimizableAgent):
         )
 
     def _observe(self, measurement: FlightMeasurement) -> None:
+        """Assimilate each timestamp once and update corrected rates and moment
+        estimates.
+        """
         if not isinstance(measurement, FlightMeasurement):
             raise TypeError(
                 "paper AA-INDI requires FlightMeasurement, including independent navigation"
@@ -291,6 +308,7 @@ class AAINDIAgent(OptimizableAgent):
         )
 
         def encode(value):
+            """Convert NumPy arrays and scalars to checkpoint-compatible JSON values."""
             if isinstance(value, np.ndarray):
                 return value.tolist()
             if isinstance(value, np.generic):

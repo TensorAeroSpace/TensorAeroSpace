@@ -98,30 +98,43 @@ class NonlinearB737(NonlinearAircraftAnalysis, ModelBase):
     _rhs = staticmethod(b737_ode_6dof)
 
     def get_param(self) -> B737Parameters:
+        """Return the live aircraft parameter object; mutations affect subsequent
+        integration.
+        """
         return self.param
 
     def set_param(self, new_param: B737Parameters) -> None:
+        """Replace the aircraft parameter object used by subsequent integration steps."""
         self.param = new_param
 
     @property
     def current_state(self) -> np.ndarray:
+        """Return an independent flat copy of the latest 12-component state."""
         return np.array(self.x_history[-1], dtype=np.float64, copy=True).reshape(-1)
 
     @property
     def altitude_ft(self) -> float:
+        """Return altitude in feet, reversing the NED down-position sign."""
         return float(-self.current_state[11])
 
     @property
     def airspeed_ft_s(self) -> float:
+        """Return the magnitude of body-axis velocity in feet per second."""
         s = self.current_state
         return float(np.sqrt(s[0] ** 2 + s[1] ** 2 + s[2] ** 2))
 
     def _aerodynamic_action(self, action, time):
+        """Apply the scheduled elevator effectiveness to a copied native action."""
         if self.elevator_fault is None:
             return np.asarray(action, dtype=float).copy()
         return self.elevator_fault.apply(action, time)
 
     def run_step(self, u: ArrayLike) -> np.ndarray:
+        """Integrate surface-radian and throttle commands over one sampling interval.
+
+        Split integration at elevator-fault times and configured substeps. Store the
+        transition and return selected states as a column vector.
+        """
         u_arr = np.asarray(u, dtype=np.float64).reshape(-1)
         if u_arr.size != self.action_space_length:
             raise ValueError(

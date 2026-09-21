@@ -164,6 +164,9 @@ class NonlinearB747Env(gym.Env):
     def _resolve_initial_state(
         initial_state, flight_condition_id, trim_at, config
     ) -> np.ndarray:
+        """Resolve exactly one explicit state, flight condition or trim point in US
+        units.
+        """
         provided = sum(
             int(x is not None) for x in (initial_state, flight_condition_id, trim_at)
         )
@@ -214,6 +217,9 @@ class NonlinearB747Env(gym.Env):
     # ---- gym API -------------------------------------------------------
 
     def reset(self, *, seed: Optional[int] = None, options=None):
+        """Reset the aircraft and damage logs; optionally override
+        ``options["damage_profile"]``.
+        """
         super().reset(seed=seed)
         profile = self.damage_profile
         if options and "damage_profile" in options:
@@ -232,6 +238,12 @@ class NonlinearB747Env(gym.Env):
         return self.model.current_state.copy(), {}
 
     def step(self, action):
+        """Advance one action with faults applied at their physical event times.
+
+        Actions follow the configured virtual or normalized surface/throttle mode.
+        Return the Gymnasium transition tuple; when damage is enabled, info also reports
+        damage state, effective controls and triggered events.
+        """
         if self.model is None:
             raise RuntimeError("env.reset() must be called before step()")
 

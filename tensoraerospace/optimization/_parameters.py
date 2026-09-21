@@ -80,6 +80,7 @@ def native_parameters(name):
 
 
 def is_native_parameter(name, path):
+    """Recognize constructor paths and canonical integer indices into array fields."""
     for root in native_parameters(name):
         if path == root:
             return True
@@ -176,6 +177,7 @@ _ALIASES = {
 
 
 def destinations(name, key):
+    """Resolve a shortcut to the native settings it changes in this controller."""
     if name == "ihdp" and key == "hidden_size":
         return ("actor_settings.layers", "critic_settings.layers")
     if name == "ihdp" and key == "warmup_steps":
@@ -184,6 +186,7 @@ def destinations(name, key):
 
 
 def overlapping(name, left, right):
+    """Detect aliases or ancestor paths that would modify the same native setting."""
     return any(
         a == b or a.startswith(b + ".") or b.startswith(a + ".")
         for a in destinations(name, left)
@@ -192,6 +195,7 @@ def overlapping(name, left, right):
 
 
 def validate_search_parameters(name, keys):
+    """Reject search dimensions that overwrite one another after alias resolution."""
     keys = list(keys)
     for i, key in enumerate(keys):
         for other in keys[:i]:

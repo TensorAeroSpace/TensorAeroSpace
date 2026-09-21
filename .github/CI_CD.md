@@ -19,7 +19,7 @@
 - **🏷️ Version Tag Gate**: `pyproject.toml` должен совпадать с последним stable git tag (`vX.Y.Z`).
 - **✅ All Python versions passed**: матрица Python 3.10, 3.11, 3.12, 3.13.
 - **🧱 Quality Gates**: `black`, `isort`, fatal `flake8`, baseline gates для `flake8`, `ruff`, `mypy`.
-- **📚 Documentation Coverage**: `docstr-coverage` с порогом 70%.
+- **📚 Documentation Coverage**: `docstr-coverage` с порогом 90% (`--skip-magic --skip-init --skip-file-doc`).
 - **🔒 Security Scan**: baseline gate для `bandit` с конфигом из `pyproject.toml` и baseline gate для `pip-audit`.
 - **🏗️ Build Package**: `poetry build`, `twine check`, package gate по `.github/package-gate.json`.
 - **📦 Wheel installs on all Python versions**: собранный wheel устанавливается через `pip install dist/*.whl` и импортируется на Python 3.10, 3.11, 3.12, 3.13.

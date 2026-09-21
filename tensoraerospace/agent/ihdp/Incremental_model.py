@@ -103,6 +103,7 @@ class IncrementalModel:
         return arr.reshape(self.number_inputs, 1)
 
     def _as_input_signal(self, value: np.ndarray) -> np.ndarray:
+        """Validate and reshape applied inputs into a column with one row per actuator."""
         arr = np.asarray(value, dtype=float)
         if arr.ndim == 1:
             arr = arr.reshape(-1, 1)
@@ -116,6 +117,9 @@ class IncrementalModel:
         return arr
 
     def _apply_input_limits(self, value: np.ndarray) -> np.ndarray:
+        """Limit input slew relative to the previous action, then enforce magnitude
+        bounds.
+        """
         ut_0 = self._as_input_signal(value)
         rate_limited = np.clip(
             ut_0,

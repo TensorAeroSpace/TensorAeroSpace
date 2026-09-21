@@ -39,10 +39,17 @@ class HOSMDifferentiator:
         self.initialized = False
 
     def reset(self) -> None:
+        """Clear differentiator states so the next sample initializes the signal level."""
         self.z.fill(0)
         self.initialized = False
 
     def step(self, sample: np.ndarray) -> np.ndarray:
+        """Advance one sample and return its estimated first time derivative.
+
+        The sample must be a finite vector of length ``n``. The initial estimate is
+        zero; subsequent estimates use the configured sampling interval. Raise
+        ``FloatingPointError`` if the internal differentiator state diverges.
+        """
         sample = np.asarray(sample, dtype=float)
         if sample.shape != (self.n,) or not np.isfinite(sample).all():
             raise ValueError("sample must be a finite vector of length n")

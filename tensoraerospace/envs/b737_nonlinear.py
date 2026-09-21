@@ -121,6 +121,7 @@ class NonlinearB737Env(gym.Env):
 
     @staticmethod
     def _resolve_initial_state(initial_state, trim_at, config) -> np.ndarray:
+        """Resolve an explicit initial state or a trim condition in feet and ft/s."""
         provided = sum(int(x is not None) for x in (initial_state, trim_at))
         if provided == 0:
             raise ValueError("must supply one of: initial_state, trim_at")
@@ -143,6 +144,9 @@ class NonlinearB737Env(gym.Env):
         return result.to_state()
 
     def _scale_action(self, action: np.ndarray) -> np.ndarray:
+        """Convert normalized controls to surface radians and throttle, or copy virtual
+        controls.
+        """
         if self.action_mode == "virtual":
             return action.astype(np.float64, copy=True)
         u_e, u_a, u_r, u_T = action[0], action[1], action[2], action[3]
@@ -159,6 +163,9 @@ class NonlinearB737Env(gym.Env):
     # ---- gym API -------------------------------------------------------
 
     def reset(self, *, seed: Optional[int] = None, options=None):
+        """Recreate the plant at its initial state and return a copied observation and
+        info.
+        """
         super().reset(seed=seed)
         self.model = NonlinearB737(
             x0=self.initial_state,
@@ -172,6 +179,12 @@ class NonlinearB737Env(gym.Env):
         return self.model.current_state.copy(), {}
 
     def step(self, action):
+        """Advance elevator, aileron, rudder and throttle by one sampling interval.
+
+        Actions use the configured virtual or normalized mode and are clipped before
+        integration. Return the Gymnasium observation, zero reward, termination flag,
+        horizon-truncation flag and info dictionary.
+        """
         if self.model is None:
             raise RuntimeError("env.reset() must be called before step()")
         action = np.asarray(action, dtype=np.float64).reshape(-1)

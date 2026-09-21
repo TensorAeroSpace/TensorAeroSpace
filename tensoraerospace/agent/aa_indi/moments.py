@@ -16,6 +16,8 @@ from .vff_rls import VFFRLSEstimator
 
 @dataclass
 class AircraftGeometry:
+    """Aircraft inertia in kg m², area in m², and span/chord in metres."""
+
     inertia: np.ndarray
     area: float
     span: float
@@ -49,6 +51,7 @@ class AircraftGeometry:
         )
 
     def moment_scale(self, density: float, airspeed: float) -> np.ndarray:
+        """Return roll, pitch and yaw moment scales in N m for SI density and airspeed."""
         if (
             not np.isfinite(density)
             or density <= 0
@@ -71,6 +74,12 @@ class AircraftGeometry:
         density: float,
         airspeed: float,
     ) -> np.ndarray:
+        """Infer dimensionless moment coefficients from rigid-body angular motion.
+
+        ``rate`` and ``acceleration`` are body-axis vectors in rad/s and rad/s². Density
+        is in kg/m³ and airspeed in m/s. The inertia cross term includes the gyroscopic
+        coupling between axes.
+        """
         rate, acceleration = np.asarray(rate), np.asarray(acceleration)
         if (
             rate.shape != (3,)
@@ -88,6 +97,7 @@ class AircraftGeometry:
     def effectiveness(
         self, derivatives: np.ndarray, density: float, airspeed: float
     ) -> np.ndarray:
+        """Convert moment-coefficient derivatives per radian to angular effectiveness."""
         return np.linalg.solve(
             self.inertia, self.moment_scale(density, airspeed)[:, None] * derivatives
         )
@@ -133,9 +143,11 @@ class MomentIdentifier:
 
     @property
     def derivatives(self) -> np.ndarray:
+        """Return identified surface derivatives with roll, pitch and yaw as rows."""
         return np.vstack([e.theta[:, 0] for e in self.estimators])
 
     def update(self, surfaces: np.ndarray, coefficients: np.ndarray) -> np.ndarray:
+        """Assimilate surface positions and moment coefficients; return three residuals."""
         surfaces, coefficients = np.asarray(surfaces), np.asarray(coefficients)
         if (
             surfaces.shape != (self.estimators[0].n_u,)

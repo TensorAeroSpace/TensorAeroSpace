@@ -46,6 +46,7 @@ _ANGLES = {
 
 
 def _resolve_environment(environment, kwargs):
+    """Resolve a Gymnasium ID or environment class with copied constructor options."""
     env_class: Any
     if isinstance(environment, str):
         spec = gym.spec(environment)
@@ -63,6 +64,8 @@ def _resolve_environment(environment, kwargs):
 
 
 class ExperimentEnvironment:
+    """Store a validated physical environment specification and sampling horizon."""
+
     def __init__(self, environment, kwargs, duration, references):
         self.env_class: Any
         self.env_class, self.kwargs = _resolve_environment(environment, kwargs)
@@ -113,6 +116,7 @@ class ExperimentEnvironment:
             self.kwargs.setdefault("use_reward", False)
 
     def _validate_options(self):
+        """Reject environment modes that the physical-state adapters cannot represent."""
         if self.kind == "f16_long" and self.kwargs.get("damage_observable", False):
             raise ValueError(
                 "The longitudinal F16 adapter requires physical state observations without damage metadata"
@@ -143,6 +147,7 @@ class ExperimentEnvironment:
 
     @contextmanager
     def open(self, seed):
+        """Yield a freshly seeded physical environment and always close it on exit."""
         env = self.env_class(**copy.deepcopy(self.kwargs))
         try:
             physical = PhysicalEnvironment(env, self.kind, self.dt)
@@ -153,12 +158,15 @@ class ExperimentEnvironment:
 
 
 class PhysicalEnvironment:
+    """Expose native states, units, control limits and applied actions for tuning."""
+
     def __init__(self, env, kind, dt):
         self.env, self.kind, self.dt = env, kind, dt
         self.reference = None
         self.tracking = None
 
     def reset(self, seed):
+        """Reset the plant, derive nominal trim controls and restore the reference."""
         observation, _ = self.env.reset(seed=seed)
         self.observation = np.asarray(observation).reshape(-1)
         self.model = self.env.model
@@ -215,6 +223,7 @@ class PhysicalEnvironment:
 
     @property
     def state(self):
+        """Return the current physical state vector in the declared channel order."""
         if self.kind in ("boeing", "f16_angular"):
             return np.asarray(self.model.current_state).reshape(-1)
         if self.kind == "hdp_b747":
@@ -222,11 +231,17 @@ class PhysicalEnvironment:
         return self.observation
 
     def set_reference(self, reference, tracking):
+        """Store a copied sample-by-channel reference and update the native environment."""
         self.reference, self.tracking = reference.copy(), tracking
         if hasattr(self.env, "reference_signal"):
             self.env.reference_signal[...] = reference.T
 
     def step(self, action):
+        """Apply a clipped native action and retain actual actuator feedback.
+
+        Return Gymnasium termination and truncation flags; rewards are not used by the
+        tuning objective, which scores the completed physical trajectory.
+        """
         self.previous_state = self.state.copy()
         action = np.clip(
             np.asarray(action, dtype=float).reshape(-1), self.low, self.high
@@ -253,6 +268,7 @@ class PhysicalEnvironment:
         return terminated, truncated
 
     def _configure_state_units(self):
+        """Declare channel names and native units for the selected model adapter."""
         if self.kind == "boeing":
             self.names = [
                 "u",
@@ -309,6 +325,7 @@ class PhysicalEnvironment:
             ]
 
     def validate_envelope(self):
+        """Reject trajectories outside the adapter's declared small-maneuver limits."""
         state = self.state
         if self.kind == "boeing":
             if (
@@ -362,6 +379,9 @@ class PhysicalEnvironment:
         raise ValueError("No nominal model adapter for this environment")
 
     def _nominal_f16_discrete(self, indices):
+        """Linearize one undamaged F-16 integration step without mutating the live
+        plant.
+        """
         full_state = np.asarray(self.model.current_state).reshape(-1).copy()
         rows = [self.model.list_state.index(n) for n in self.names]
         parameters = copy.deepcopy(self.model.param)
@@ -371,6 +391,7 @@ class PhysicalEnvironment:
             parameters.damage_geometry = None
 
         def advance(x, u):
+            """Propagate a temporary healthy model with controls converted to radians."""
             model = type(self.model)(x0=x, dt=self.dt, integrator=self.env.integrator)
             model.set_param(copy.deepcopy(parameters))
             command = u.copy()

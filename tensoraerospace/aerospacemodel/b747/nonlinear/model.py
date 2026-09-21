@@ -105,9 +105,13 @@ class NonlinearB747(NonlinearAircraftAnalysis, ModelBase):
     _rhs = staticmethod(b747_ode_6dof)
 
     def get_param(self) -> B747Parameters:
+        """Return the live aircraft parameter object; mutations affect subsequent
+        integration.
+        """
         return self.param
 
     def set_param(self, new_param: B747Parameters) -> None:
+        """Replace the aircraft parameter object used by subsequent integration steps."""
         self.param = new_param
 
     @property
@@ -213,6 +217,9 @@ class NonlinearB747(NonlinearAircraftAnalysis, ModelBase):
         zero = np.zeros(7)
 
         def transition(x, u):
+            """Evaluate the lateral discrete transition at the fixed longitudinal trim
+            action.
+            """
             return self.lateral_transition(
                 x, u, trim_action, dt=dt, integral_scale=integral_scale
             )
@@ -233,6 +240,7 @@ class NonlinearB747(NonlinearAircraftAnalysis, ModelBase):
         return A, B
 
     def _apply_damage_at(self, time):
+        """Apply newly reached damage events and record them before the next interval."""
         if self.damage_manager is None:
             return
         # Boundary tolerance only resolves floating-point representation of a
@@ -258,6 +266,11 @@ class NonlinearB747(NonlinearAircraftAnalysis, ModelBase):
     # ---- step ----------------------------------------------------------
 
     def run_step(self, u: ArrayLike) -> np.ndarray:
+        """Integrate surface-radian and throttle commands with causal damage timing.
+
+        Append state and input histories, update applied-action telemetry, and return
+        the selected output-state column or the full state column.
+        """
         u_arr = np.asarray(u, dtype=np.float64).reshape(-1)
         if u_arr.size != self.action_space_length:
             raise ValueError(

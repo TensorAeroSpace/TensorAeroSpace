@@ -235,6 +235,9 @@ class NonlinearAngularF16(gym.Env):
         return config
 
     def reset(self, *, seed=None, options=None):
+        """Recreate the plant, damage schedule and rendering history; return initial
+        observation.
+        """
         super().reset(seed=seed)
         self.model = AngularF16(
             x0=self.initial_state,
@@ -262,6 +265,12 @@ class NonlinearAngularF16(gym.Env):
         return obs, {}
 
     def step(self, action):
+        """Advance surface commands in degrees and optional thrust in newtons.
+
+        Return the Gymnasium transition tuple with zero reward and horizon truncation.
+        Damage events are applied causally and reported in info; the observation
+        contains damage features only when explicitly enabled.
+        """
         if self.model is None:
             raise RuntimeError("reset() must be called before step()")
         u_rad = self._model_control(action)
@@ -303,6 +312,9 @@ class NonlinearAngularF16(gym.Env):
         return np.deg2rad(action)
 
     def _build_observation(self, model_state: np.ndarray) -> np.ndarray:
+        """Copy the model state and optionally append section losses and thrust
+        effectiveness.
+        """
         if not self.damage_observable or self.damage_manager is None:
             return model_state.copy()
         geo = self._geo_for_obs
@@ -371,6 +383,7 @@ class NonlinearAngularF16(gym.Env):
             )
 
     def render(self):
+        """Render the recorded trajectory using the configured mode, or return ``None``."""
         if self.render_mode is None:
             return None
         if self.render_mode == "human":
@@ -384,6 +397,7 @@ class NonlinearAngularF16(gym.Env):
         raise ValueError(f"Unknown render_mode: {self.render_mode!r}")
 
     def _build_figure(self):
+        """Build a Plotly flight figure from position, attitude and chart histories."""
         from tensoraerospace.visualization.flight_3d import build_flight_3d_figure
 
         return build_flight_3d_figure(
@@ -397,9 +411,13 @@ class NonlinearAngularF16(gym.Env):
     def _render_human(self):
         # Don't auto-open the browser in tests; the caller invokes .show()
         # explicitly when they want the figure displayed.
+        """Return an interactive flight figure for the caller to display explicitly."""
         return self._build_figure()
 
     def _render_rgb_array(self):
+        """Export the flight figure to an RGB array using Pillow and Plotly image
+        rendering.
+        """
         from io import BytesIO
 
         try:
@@ -428,6 +446,7 @@ class NonlinearAngularF16(gym.Env):
         return np.array(Image.open(BytesIO(png_bytes)).convert("RGB"))
 
     def _render_live(self):
+        """Initialize or append the latest sample to the live Plotly figure."""
         from tensoraerospace.visualization.live import LivePlotlyRenderer
 
         if not hasattr(self, "_live_renderer") or self._live_renderer is None:
@@ -451,9 +470,13 @@ class NonlinearAngularF16(gym.Env):
         return self._live_renderer._fig
 
     def _render_3d_web(self):
+        """Build the browser-based 3D view from this environment's trajectory."""
         from tensoraerospace.visualization.three_d import render as _render_3d
 
         return _render_3d(self)
 
     def close(self):
+        """Complete the Gymnasium lifecycle; this environment owns no persistent
+        renderer handle.
+        """
         return None

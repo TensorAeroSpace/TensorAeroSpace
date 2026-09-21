@@ -50,6 +50,9 @@ class DamageManager:
         apply_to_params(self.params, self.geometry, self.state)
 
     def set_profile(self, profile: DamageProfile) -> None:
+        """Replace the event profile and clear its consumed-event markers, retaining
+        damage.
+        """
         self.profile = profile
         self._applied_profile.clear()
 

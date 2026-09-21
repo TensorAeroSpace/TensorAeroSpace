@@ -61,6 +61,7 @@ def _random_state(seed):
 
 
 def _seeds(values):
+    """Validate distinct uint32 seeds and normalize NumPy integers to Python ints."""
     values = tuple(values)
     if not values or any(
         isinstance(s, bool)
@@ -75,6 +76,7 @@ def _seeds(values):
 
 
 def _objectives(objective):
+    """Normalize a callable or named scenario mapping into validated evaluators."""
     result = {"default": objective} if callable(objective) else dict(objective)
     if not result or any(
         not isinstance(name, str) or not name or not callable(fn)
@@ -115,6 +117,9 @@ class OptimizationResult:
         """Save parameters and per-case metrics as portable, strict JSON."""
 
         def safe(value):
+            """Convert nested results to JSON-compatible values, replacing nonfinite
+            numbers.
+            """
             if isinstance(value, Mapping):
                 return {k: safe(v) for k, v in value.items()}
             if isinstance(value, (list, tuple)):
@@ -168,6 +173,7 @@ class OptimizationResult:
 
 
 def _validate_search_space(search_space):
+    """Reject empty search spaces, invalid names and unsupported Optuna distributions."""
     if not search_space or any(
         not isinstance(k, str)
         or not k
@@ -190,6 +196,7 @@ def _validate_search_space(search_space):
 
 
 def _validate_run_options(n_trials, timeout, target, patience, show_progress_bar):
+    """Validate trial budgets, timeout, target, patience and progress options."""
     if not isinstance(show_progress_bar, bool):
         raise ValueError("show_progress_bar must be a boolean")
     if isinstance(n_trials, bool) or not isinstance(n_trials, int) or n_trials < 1:
@@ -330,6 +337,9 @@ class ControlOptimizer(HyperParamOptimizationOptuna):
         constructor_parameters = inspect.signature(agent_class).parameters
 
         def factory(params, seed):
+            """Construct a fresh agent with copied settings, sampled parameters and
+            seed.
+            """
             kwargs = (
                 dict(template(seed)) if callable(template) else copy.deepcopy(template)
             )
@@ -357,6 +367,7 @@ class ControlOptimizer(HyperParamOptimizationOptuna):
         for name, evaluator in _objectives(evaluate).items():
 
             def objective(params, seed, evaluator=evaluator):
+                """Evaluate a newly constructed agent on the bound scenario and seed."""
                 return evaluator(factory(params, seed), seed)
 
             objectives[name] = objective
@@ -365,6 +376,7 @@ class ControlOptimizer(HyperParamOptimizationOptuna):
         return optimizer
 
     def _suggest(self, trial):
+        """Sample each configured distribution through the active Optuna trial."""
         result = {}
         for name, distribution in self.search_space.items():
             if isinstance(distribution, FloatDistribution):
@@ -389,6 +401,7 @@ class ControlOptimizer(HyperParamOptimizationOptuna):
         return result
 
     def _measure(self, objective, params, seed):
+        """Evaluate one seeded case and return metrics plus any feasibility violation."""
         with _random_state(seed):
             raw = objective(copy.deepcopy(params), seed)
         metrics = dict(raw) if isinstance(raw, Mapping) else {self.metric: float(raw)}
@@ -413,9 +426,11 @@ class ControlOptimizer(HyperParamOptimizationOptuna):
         return metrics, reason
 
     def _aggregate(self, values):
+        """Reduce case scores using the configured mean or worst-case objective."""
         return float(np.mean(values) if self.aggregation == "mean" else max(values))
 
     def _objective(self, trial):
+        """Score all scenario/seed cases, retaining diagnostics for rejected trials."""
         params = self._suggest(trial)
         rows = []
         values: list[float] = []
@@ -461,6 +476,7 @@ class ControlOptimizer(HyperParamOptimizationOptuna):
         """Serial driver; callbacks may request a stop by returning True."""
 
         def notify(study, trial):
+            """Invoke completion callbacks and stop Optuna when a callback requests it."""
             stopped = False
             for callback in callbacks:
                 stopped = bool(callback(study, trial)) or stopped
@@ -472,6 +488,7 @@ class ControlOptimizer(HyperParamOptimizationOptuna):
         )
 
     def _enqueue_initial_params(self, initial_params):
+        """Validate a partial warm start and queue it ahead of sampled candidates."""
         if initial_params is not None:
             if not set(initial_params) <= set(self.search_space):
                 raise ValueError(
@@ -541,6 +558,9 @@ class ControlOptimizer(HyperParamOptimizationOptuna):
         stop_reason = None
 
         def stop(study, trial):
+            """Track improvement and request a stop when the target or patience is
+            reached.
+            """
             nonlocal best, stale, stop_reason
             if trial.state == TrialState.COMPLETE and trial.value < best:
                 best, stale = trial.value, 0
@@ -660,6 +680,7 @@ class ControlOptimizer(HyperParamOptimizationOptuna):
         }
 
     def _no_feasible_message(self):
+        """Explain rejected searches using recorded constraints and observed scores."""
         report = self.diagnostics()
         states = ", ".join(
             f"{name}={count}" for name, count in report["trial_states"].items()

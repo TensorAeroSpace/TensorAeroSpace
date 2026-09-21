@@ -17,6 +17,7 @@ def decode_profile(profile):
 
 
 def _trigger_damage(env, timestamp, labels):
+    """Apply events at the timestamp, call the callback and append damage telemetry."""
     manager = env.damage_manager
     triggered = manager.update(timestamp, float(np.nextafter(timestamp, -np.inf)))
     for event in triggered:

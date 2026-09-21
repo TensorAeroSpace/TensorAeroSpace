@@ -154,6 +154,9 @@ class NonlinearQuadrotorEnv(gym.Env):
     # ---- gym API -------------------------------------------------------
 
     def reset(self, *, seed=None, options=None):
+        """Reset the vehicle and rotor faults, optionally using an episode-specific
+        damage profile.
+        """
         super().reset(seed=seed)
         self.model = NonlinearQuadrotor(
             x0=self.initial_state, dt=self.dt, integrator=self.integrator
@@ -176,6 +179,12 @@ class NonlinearQuadrotorEnv(gym.Env):
         return self.model.current_state.copy(), {}
 
     def step(self, action):
+        """Advance commanded rotor speeds squared or virtual thrust/moments by one step.
+
+        Virtual controls use newtons and N m; rotor commands use (rad/s)². Allocation,
+        saturation and timed rotor faults determine applied forces. Return the Gymnasium
+        transition with effective-control and damage info.
+        """
         if self.model is None:
             raise RuntimeError("env.reset() must be called before step()")
 
@@ -236,6 +245,9 @@ class NonlinearQuadrotorEnv(gym.Env):
         return next_state, reward, terminated, truncated, info
 
     def _record_damage_events(self, events) -> list[str]:
+        """Invoke rotor-fault callbacks, append event records and return their display
+        labels.
+        """
         manager = self.damage_manager
         assert manager is not None
         labels = []
@@ -270,6 +282,9 @@ class NonlinearQuadrotorEnv(gym.Env):
                 state = RotorDamageState(**manager.state.snapshot())
 
                 def control(elapsed, state=state):
+                    """Mix rotor commands with the effectiveness reached after the
+                    segment elapsed time.
+                    """
                     return self.allocator.mix(
                         state.effectiveness_after(elapsed) * omega2_cmd
                     )

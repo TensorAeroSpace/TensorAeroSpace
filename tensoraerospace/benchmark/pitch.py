@@ -64,10 +64,12 @@ class B737PitchStepBenchmark:
 
     @property
     def steps(self):
+        """Return the number of control intervals in the experiment."""
         return round(self.duration / self.dt)
 
     @property
     def time(self):
+        """Return sample times in seconds, including the initial state at zero."""
         return np.arange(self.steps + 1) * self.dt
 
     @property
@@ -137,6 +139,11 @@ class B737PitchStepBenchmark:
 
     @staticmethod
     def metric_table(windows):
+        """Convert named metric windows to a DataFrame with degrees and seconds.
+
+        Both final-output and command-relative overshoot/settling measures are retained
+        so a biased final output cannot mask a tracking error.
+        """
         import pandas as pd
 
         rows = {}
@@ -156,6 +163,7 @@ class B737PitchStepBenchmark:
         return pd.DataFrame(rows)
 
     def plot_reference(self, theta_trim):
+        """Plot absolute commanded pitch in degrees, given trim pitch in radians."""
         import matplotlib.pyplot as plt
 
         fig, ax = plt.subplots(figsize=(12, 3), constrained_layout=True)
@@ -177,6 +185,9 @@ class B737PitchStepBenchmark:
         return fig
 
     def plot_response(self, states, actions, q_reference, title):
+        """Plot native state/action traces, pitch-rate commands and cumulative tracking
+        error.
+        """
         import matplotlib.pyplot as plt
 
         time = self.time
@@ -242,6 +253,7 @@ class B737PitchStepBenchmark:
         return fig
 
     def plot_step(self, states, windows):
+        """Plot pitch deviation with the command band and measured settling times."""
         import matplotlib.pyplot as plt
 
         time = self.time - self.step_time

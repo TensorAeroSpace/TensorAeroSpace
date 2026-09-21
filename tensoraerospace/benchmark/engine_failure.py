@@ -31,6 +31,13 @@ from .bench import ControlBenchmark
 
 @dataclass(frozen=True)
 class B747EngineFailureBenchmark:
+    """Configure a common B747 engine-failure experiment for AA-INDI, PID, LQR and LQI.
+
+    Durations use seconds; altitude and speed use feet and ft/s. Initial attitude
+    offsets and actuator limits are specified in degrees. Healthy tuning and
+    failed-aircraft evaluation use the same declared protocol.
+    """
+
     duration: float = 90.0
     dt: float = 0.02
     fault_time: float = 30.0
@@ -88,6 +95,7 @@ class B747EngineFailureBenchmark:
 
     @property
     def steps(self):
+        """Return the number of control intervals over the complete experiment."""
         return round(self.duration / self.dt)
 
     def nominal_trim(self):
@@ -358,6 +366,9 @@ class B747EngineFailureBenchmark:
 
     @staticmethod
     def healthy_cost(run):
+        """Score mean squared roll/heading error plus surface effort, using degree
+        units.
+        """
         angles = np.rad2deg(run["states"][1:, [6, 8]])
         surfaces = np.rad2deg(run["actions"][:, 1:3])
         # Same angle/effort objective for every baseline; no fault trajectory here.

@@ -12,6 +12,7 @@ import numpy as np
 
 
 def covariance(value: np.ndarray, n: int, name: str) -> np.ndarray:
+    """Validate and copy a finite symmetric positive-semidefinite covariance matrix."""
     matrix = np.asarray(value, dtype=float)
     if matrix.shape != (n, n) or not np.isfinite(matrix).all():
         raise ValueError(f"{name} must be a finite ({n}, {n}) matrix")
@@ -48,10 +49,12 @@ class OptimalTwoStageEKF:
 
     @property
     def state(self) -> np.ndarray:
+        """Combine the bias-free state estimate with its estimated bias contribution."""
         return np.asarray(self.x_bar + self.V @ self.bias)
 
     @property
     def state_covariance(self) -> np.ndarray:
+        """Return state covariance including the uncertainty propagated from bias."""
         return np.asarray(self.P_bar + self.V @ self.P_bias @ self.V.T)
 
     def predict(
