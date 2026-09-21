@@ -95,7 +95,8 @@ indices_tracking_states = [0]
 
 actor_settings = {
     "start_training": 5, "layers": (25, 1), "activations": ("tanh", "tanh"),
-    "learning_rate": 2.0, "learning_rate_exponent_limit": 10,
+    "learning_rate": 2.0 / 5.0 * 1,
+    "learning_rate_min": 0.001 / 5.0 * 1, "learning_rate_exponent_limit": 10,
     "type_PE": "combined", "amplitude_3211": 3, "pulse_length_3211": 5/dt,
     "maximum_input": 5, "maximum_q_rate": 20,
     "WB_limits": 30, "NN_initial": 47,

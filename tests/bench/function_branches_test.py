@@ -21,13 +21,10 @@ def test_damping_degree_no_peaks_returns_zero():
     assert damping_degree(s) == 0.0
 
 
-def test_rise_time_none_when_thresholds_not_reached():
-    # Updated after B3 fix: rise_time now uses system_signal for y_final.
-    # Use a negative system response so low/high thresholds (positive) are
-    # never reached, exercising the None-return path.
-    c = np.ones(10)
+def test_rise_time_negative_response_already_crossed_thresholds():
+    c = -np.ones(10)
     s = -np.ones(10)
-    assert rise_time(c, s, low_threshold=0.1, high_threshold=0.9) is None
+    assert rise_time(c, s) == 0.0
 
 
 def test_settling_time_zero_when_never_leaves_range():

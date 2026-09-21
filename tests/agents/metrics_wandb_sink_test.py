@@ -44,8 +44,7 @@ def test_init_calls_wandb_init_with_kwargs(mock_wandb, monkeypatch):
     assert kwargs["name"] == "run-1"
     assert kwargs["tags"] == ["sac", "pendulum"]
     assert kwargs["config"] == {"lr": 1e-3}
-    assert kwargs["reinit"] is True
-    assert kwargs["settings"] == "SETTINGS_OBJ"
+    assert kwargs["reinit"] == "create_new"
 
 
 def test_init_calls_login_when_api_key_missing(mock_wandb, monkeypatch):

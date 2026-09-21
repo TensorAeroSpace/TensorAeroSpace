@@ -84,7 +84,7 @@ def evaluate_episode(agent: DDPG, env: ImprovedB747Env, render: bool = True) -> 
     steps = 0
     while not done:
         # DDPG policy is deterministic; no exploration during eval
-        action = agent.policy_net.get_action(state)
+        action = agent.predict(state)
         state, reward, terminated, truncated, _info = env.step(action)
         if render:
             env.render()

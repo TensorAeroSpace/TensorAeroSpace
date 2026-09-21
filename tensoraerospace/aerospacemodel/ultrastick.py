@@ -9,6 +9,8 @@ from tensoraerospace.aerospacemodel.utils.constant import (
     state_to_latex_rus,
 )
 
+_OUTPUT_ALIASES = {"u": "Va", "w": "alpha"}
+
 
 class Ultrastick(ModelBase):
     """UAV Ultrastick-25e in longitudinal control channel.
@@ -16,49 +18,64 @@ class Ultrastick(ModelBase):
     Args:
         x0: Initial state of the control object.
         number_time_steps: Number of time steps.
-        selected_state_output (optional): Selected states of the control object. Defaults to None.
+        selected_state_output (optional): Selected returned outputs. Defaults to None.
         t0 (int, optional): Initial time. Defaults to 0.
-        dt (float, optional): Discretization frequency. Defaults to 0.01.
+        dt (float, optional): Simulation time step in seconds. Defaults to 0.01.
+        initial_control: Initial [elevator (rad), throttle] actuator position.
+            Defaults to zero; the first command obeys rate limits from here.
 
     Action space:
         ele: Elevator [rad]
-        delta_t: Dimensionless value, 0 — off, 1 — max thrust
+        delta_t: Dimensionless throttle input; inactive in this reduced model.
 
-    State space:
+    State space (perturbations about the trimmed flight condition):
         u: Longitudinal aircraft velocity [m/s]
         w: Normal aircraft velocity [m/s]
-        q: Pitch angular velocity [rad/s]
         theta: Pitch [rad]
+        q: Pitch angular velocity [rad/s]
         h: Altitude [m]
 
-    Output space:
-        u: Longitudinal aircraft velocity [m/s]
-        w: Normal aircraft velocity [m/s]
-        q: Pitch angular velocity [rad/s]
-        theta: Pitch [rad]
-        h: Altitude [m]
+    Output space (returned by run_step):
+        Va: Airspeed perturbation [m/s], legacy alias "u".
+        alpha: Angle-of-attack perturbation [rad], legacy alias "w".
+        theta: Pitch [rad].
+        q: Pitch angular velocity [rad/s].
+        h: Altitude [m].
+
+    State order is ``[u, w, theta, q, h]``. The state and output vectors
+    differ in their first two components; selected_state_output selects
+    returned outputs for compatibility with the historical model API.
+
+    The published reduction has no propulsion dynamics (zero throttle column).
+    Throttle remains accepted and recorded for API compatibility.
     """
 
     def __init__(
         self,
         x0: np.ndarray | list[float],
         number_time_steps: int,
-        selected_state_output: list[int] | None = None,
+        selected_state_output: list[str] | None = None,
         t0: float = 0,
         dt: float = 0.01,
+        initial_control: np.ndarray | list[float] | None = None,
     ) -> None:
         super().__init__(x0, selected_state_output, t0, dt)
 
         self.discretisation_time = dt
 
         # Selected data for the system
-        self.selected_states = ["u", "w", "q", "theta", "h"]
-        self.selected_output = ["u", "w", "q", "theta", "h"]
+        self.selected_states = ["u", "w", "theta", "q", "h"]
+        self.selected_output = ["Va", "alpha", "theta", "q", "h"]
         self.list_state = self.selected_states
         self.selected_input = ["ele", "delta_t"]
         self.control_list = self.selected_input
 
-        self._initialize_selected_state_index(self.selected_states, self.list_state)
+        selected_outputs = (
+            [_OUTPUT_ALIASES.get(name, name) for name in selected_state_output]
+            if selected_state_output
+            else None
+        )
+        self._initialize_selected_state_index(selected_outputs, self.selected_output)
 
         self.state_space = self.selected_states
         self.action_space = self.selected_input
@@ -67,6 +84,13 @@ class Ultrastick(ModelBase):
         # ele (radians), delta_t (dimensionless)
         self.input_magnitude_limits = [np.deg2rad(30), 1]
         self.input_rate_limits = [np.deg2rad(300), 10000]
+        control = np.asarray(
+            [0.0, 0.0] if initial_control is None else initial_control, dtype=float
+        ).reshape(-1)
+        if control.size != 2 or not np.all(np.isfinite(control)):
+            raise ValueError("initial_control must contain two finite values")
+        limits = np.asarray(self.input_magnitude_limits)
+        self.initial_control = np.clip(control, -limits, limits)
 
         # Store the number of inputs, states and outputs
         self.number_inputs = len(self.selected_input)
@@ -88,23 +112,29 @@ class Ultrastick(ModelBase):
         self.initialise_system(x0, number_time_steps)
 
     def import_linear_system(self):
-        """Load (set) stored linearized system matrices."""
+        """Load the straight-and-level linearization of Ahmed et al. (2015).
+
+        Source: DOI 10.4172/2168-9695.1000126, page 6. The source uses
+        [u, w, theta, q, -h]; this API uses positive altitude. With
+        T = diag(1, 1, 1, 1, -1), A = T A_source T and B = T B_source.
+        Output rows are ordered explicitly as [Va, alpha, theta, q, h].
+        """
         self.A = np.array(
             [
-                [-0.5944, -0.8008, 9.791, -0.8747, 5.077e-5],
-                [-0.744, -7.56, 0.5294, -1.572, 0.000939],
+                [-0.5944, 0.8008, -9.791, -0.8747, -5.077e-5],
+                [-0.744, -7.56, -0.5294, 15.72, 0.000939],
                 [0, 0, 0, 1, 0],
-                [1.041, -7.406, 0, 0, 0],
-                [-15.81, -7.284e-3, 0.05399, -0.9985, 0],
+                [1.041, -7.406, 0, -15.81, 7.284e-18],
+                [0.05399, -0.9985, 17, 0, 0],
             ]
         )
 
-        self.B = np.array([[0.4669, 0], [2.703, 0], [0, 0], [133.7, 0], [0, 1]])
+        self.B = np.array([[0.4669, 0], [-2.703, 0], [0, 0], [-133.7, 0], [0, 0]])
 
         self.C = np.array(
             [
                 [0.9985, 0.05399, 0, 0, 0],  # Va
-                [0.003176, 0.05874, 0, 0, 0],  # alpha
+                [-0.003176, 0.05874, 0, 0, 0],  # alpha
                 [0, 0, 1, 0, 0],  # theta
                 [0, 0, 0, 1, 0],  # pitch rate (q)
                 [0, 0, 0, 0, 1],  # altitude (h)
@@ -131,6 +161,15 @@ class Ultrastick(ModelBase):
             number_time_steps: Number of simulation steps.
         """
 
+        initial = np.asarray(x0, dtype=float).reshape(-1)
+        if initial.size != 5 or not np.all(np.isfinite(initial)):
+            raise ValueError("x0 must contain five finite state values")
+        if not np.isfinite(self.dt) or self.dt <= 0:
+            raise ValueError("dt must be positive and finite")
+        if int(number_time_steps) != number_time_steps or number_time_steps < 1:
+            raise ValueError("number_time_steps must be a positive integer")
+        number_time_steps = int(number_time_steps)
+
         # Import the stored system
         self.import_linear_system()
 
@@ -147,8 +186,8 @@ class Ultrastick(ModelBase):
         self.store_input = np.zeros((self.number_inputs, self.number_time_steps))
         self.store_outputs = np.zeros((self.number_outputs, self.number_time_steps))
 
-        self.x0 = x0
-        self.xt = x0
+        self.x0 = initial.copy()
+        self.xt = initial.copy()
         self.store_states[:, self.time_step] = np.reshape(
             self.xt,
             [
@@ -163,16 +202,22 @@ class Ultrastick(ModelBase):
             ut_0 (np.ndarray): Control vector.
 
         Returns:
-            np.ndarray: System output at the current step (via C/D).
+            np.ndarray: System output after the transition (via C/D).
         """
         # Ensure 1D float control vector
         ut_0 = np.asarray(ut_0, dtype=float).reshape(-1)
+        if ut_0.size != self.number_inputs or not np.all(np.isfinite(ut_0)):
+            raise ValueError("control must contain two finite values")
+        if self.time_step >= self.number_time_steps:
+            raise RuntimeError(
+                "Simulation is complete; initialise_system before stepping"
+            )
         if self.time_step != 0:
             ut_1 = np.asarray(
                 self.store_input[:, self.time_step - 1], dtype=float
             ).reshape(-1)
         else:
-            ut_1 = ut_0.copy()
+            ut_1 = self.initial_control
 
         # Rate and magnitude limiting (scalar clipping)
         ut = ut_0.copy()
@@ -198,7 +243,10 @@ class Ultrastick(ModelBase):
         )
 
         self.update_system_attributes()
-        output_flat = np.reshape(output, [output.shape[0]])
+        # The command advances x_t to x_{t+1}; return the corresponding
+        # observation, while store_outputs retains the sampled y_t history.
+        output_next = self.filt_C @ self.xt + self.filt_D @ ut.reshape(-1, 1)
+        output_flat: np.ndarray = output_next.reshape(-1)
         if self.selected_state_output:
             return np.array(output_flat[self.selected_state_index])
         return output_flat
@@ -291,6 +339,7 @@ class Ultrastick(ModelBase):
         Returns:
             np.ndarray: Output history array.
         """
+        state_name = _OUTPUT_ALIASES.get(state_name, state_name)
         self.output_history = output2dict(self.store_outputs, self.selected_output)
         if to_deg:
             return np.asarray(
@@ -328,18 +377,25 @@ class Ultrastick(ModelBase):
             raise Exception(
                 "Неверно указано форматирование, укажите один. to_rad или to_deg."
             )
-        if output_name not in self.list_state:
-            raise Exception(f"{output_name} нет в списке сигналов управления")
+        output_name = _OUTPUT_ALIASES.get(output_name, output_name)
+        if output_name not in self.selected_output:
+            raise Exception(f"{output_name} нет в списке выходных сигналов")
         if not self.output_history:
             self.output_history = output2dict(self.store_outputs, self.selected_output)
         state_hist = self.get_output(output_name, to_deg, to_rad)
-        if output_name == "u":
-            state_hist *= 1.94384
         if lang == "rus":
-            label = state_to_latex_rus[output_name]
+            label = (
+                r"$V_a$, m/s"
+                if output_name == "Va"
+                else state_to_latex_rus[output_name]
+            )
             label_time = "t, c"
         else:
-            label = state_to_latex_eng[output_name]
+            label = (
+                r"$V_a$, m/s"
+                if output_name == "Va"
+                else state_to_latex_eng[output_name]
+            )
             label_time = "t, sec."
         fig = plt.figure(figsize=figsize)
         plt.clf()

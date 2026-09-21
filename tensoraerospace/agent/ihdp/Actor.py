@@ -160,6 +160,8 @@ class Actor:
         integral_gain: float = 0.0,
         integral_clamp_deg: float = 5.0,
         integral_warmup_steps: int = 500,
+        learning_rate_min: float = 0.001,
+        learning_rate_decay: float = 0.995,
     ) -> None:
         """Initialize IHDP Actor network and hyperparameters.
 
@@ -185,6 +187,8 @@ class Actor:
             NN_initial: Optional weight initializer seed.
             cascade_tracking_state: Tracking states for cascade mode.
             model_path: Path to load/save model weights.
+            learning_rate_min: Non-cascade decay floor, capped by the initial rate.
+            learning_rate_decay: Non-cascade per-update decay factor in (0, 1].
             use_integral_correction: Enable an integral compensation term
                 added to the actor's control output. IHDP minimizes a
                 quadratic LQ-functional and therefore has no integral
@@ -248,6 +252,12 @@ class Actor:
         self.layers = layers
         self.activations = activations
         self.learning_rate = learning_rate
+        if not np.isfinite(learning_rate_min) or learning_rate_min < 0:
+            raise ValueError("learning_rate_min must be finite and nonnegative")
+        self.learning_rate_min = float(learning_rate_min)
+        if not np.isfinite(learning_rate_decay) or not 0 < learning_rate_decay <= 1:
+            raise ValueError("learning_rate_decay must be in (0, 1]")
+        self.learning_rate_decay = float(learning_rate_decay)
         self.learning_rate_cascaded = learning_rate_cascaded
         self.learning_rate_0 = learning_rate
         self.learning_rate_exponent_limit = learning_rate_exponent_limit
@@ -508,10 +518,12 @@ class Actor:
         ):
             coeff = coeff * self._scaled_output_gradient_gain()
             return np.tensordot(coeff, dut_dparam, axes=(0, 0))
-        # Legacy SISO path: preserve the historical update scale.
-        return float(coeff[0]) * dut_dparam
+        # Zhou et al. (2016), Eq. (12): differentiate the physical command,
+        # including the conversion from the bounded network output.
+        return float(coeff[0] * self._scaled_output_gradient_gain()[0]) * dut_dparam
 
     def _clip_actor_output(self, ut: np.ndarray) -> np.ndarray:
+        """Enforce configured actuator magnitude limits on the actor output array."""
         return np.clip(
             np.asarray(ut, dtype=float), -self.maximum_input, self.maximum_input
         )
@@ -908,7 +920,10 @@ class Actor:
                         with torch.no_grad():
                             params[count].zero_()
                 # Update the learning rate
-                self.learning_rate = max(self.learning_rate * 0.995, 0.001)
+                self.learning_rate = max(
+                    self.learning_rate * self.learning_rate_decay,
+                    min(self.learning_rate_0, self.learning_rate_min),
+                )
 
             # Code for checking if the actor NN error with the new weights has changed sign
             ut_after = self.evaluate_actor()

@@ -18,18 +18,34 @@ class _StubUltrastickModel:
     selected_states = ["Va", "alpha", "theta", "q", "h"]
 
     def __init__(
-        self, initial_state, number_time_steps, selected_state_output, t0, dt=0.01
+        self,
+        initial_state,
+        number_time_steps,
+        selected_state_output,
+        t0,
+        dt=0.01,
+        initial_control=None,
     ):  # noqa: ARG002
         self._state = np.array(initial_state, dtype=float).reshape(-1)
         self.last_action = None
+        self.store_input = np.zeros((2, number_time_steps))
+        self.time_step = 0
 
     def initialise_system(self, x0, number_time_steps):  # noqa: ARG002
         self._state = np.array(x0, dtype=float).reshape(-1)
+        self.store_input = np.zeros((2, number_time_steps))
+        self.time_step = 0
+
+    @property
+    def xt(self):
+        return self._state
 
     def run_step(self, action):
         # action = [elev_rad, throttle]
         a = np.array(action, dtype=float).reshape(-1)
         self.last_action = a.copy()
+        self.store_input[:, self.time_step] = a
+        self.time_step += 1
         elev_rad = float(a[0])
         # simple deterministic evolution
         y = self._state.copy()

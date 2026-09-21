@@ -239,13 +239,13 @@ def _train_etdhp(
             + 0.1 * rng.normal()
         )
         x_curr = state_transform(obs, ref_at_trim, 0)
-        obs_next, _, done, _, _ = pe_env.step(np.array([u]))
+        obs_next, _, terminated, truncated, _ = pe_env.step(np.array([u]))
         x_next = state_transform(obs_next, ref_at_trim, 0)
         states_buf.append(x_curr)
         actions_buf.append([u])
         next_states_buf.append(x_next)
         obs = obs_next
-        if done:
+        if terminated or truncated:
             break
     states_arr = np.asarray(states_buf, dtype=np.float32)
     actions_arr = np.asarray(actions_buf, dtype=np.float32)
@@ -314,10 +314,10 @@ def _train_etdhp(
         for k in range(n_steps_per_ep - 2):
             agent.predict(obs, reference, k)
             u_cmd = agent.last_action()
-            obs_next, _, done, _, _ = env.step(u_cmd)
+            obs_next, _, terminated, truncated, _ = env.step(u_cmd)
             agent.learn(obs_next, reference, k, dt=DT)
             obs = obs_next
-            if done:
+            if terminated or truncated:
                 break
         tag = "DAMAGED" if is_damaged else "healthy"
         print(f"  ep {ep + 1}/{total_eps} done ({tag})")

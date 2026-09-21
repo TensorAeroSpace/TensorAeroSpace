@@ -66,7 +66,7 @@ class NonlinearB747Env(gym.Env):
         flight_condition_id: Convenience initialiser — pick one of the
             10 published trim points (1..10).
         trim_at: ``(altitude_ft, V_ft_s)`` pair to compute trim
-            on-the-fly via Newton-Raphson. Mutually exclusive with the
+            on-the-fly via bounded least squares. Mutually exclusive with the
             other two initialisers.
         number_time_steps: Episode length cap.
         dt: Discretisation step (s).
@@ -81,6 +81,7 @@ class NonlinearB747Env(gym.Env):
     """
 
     metadata = {"render_modes": []}
+    action_space: spaces.Box
 
     def __init__(
         self,
@@ -104,6 +105,10 @@ class NonlinearB747Env(gym.Env):
         self.initial_state = x0
         self.number_time_steps = int(number_time_steps)
         self.dt = float(dt)
+        if not np.isfinite(self.dt) or self.dt <= 0:
+            raise ValueError("dt must be finite and positive")
+        if self.number_time_steps <= 0:
+            raise ValueError("number_time_steps must be positive")
         self.integrator = integrator
         self.action_mode = action_space
         if action_space not in ("virtual", "normalized"):
@@ -159,6 +164,9 @@ class NonlinearB747Env(gym.Env):
     def _resolve_initial_state(
         initial_state, flight_condition_id, trim_at, config
     ) -> np.ndarray:
+        """Resolve exactly one explicit state, flight condition or trim point in US
+        units.
+        """
         provided = sum(
             int(x is not None) for x in (initial_state, flight_condition_id, trim_at)
         )
@@ -171,9 +179,11 @@ class NonlinearB747Env(gym.Env):
                 "specify exactly one of: initial_state, flight_condition_id, trim_at"
             )
         if initial_state is not None:
-            x0 = np.asarray(initial_state, dtype=np.float64).reshape(-1)
+            x0 = np.array(initial_state, dtype=np.float64, copy=True).reshape(-1)
             if x0.size != 12:
                 raise ValueError(f"initial_state must have 12 elements; got {x0.size}")
+            if not np.all(np.isfinite(x0)):
+                raise ValueError("initial_state must contain only finite values")
             return x0
         if flight_condition_id is not None:
             fc = get_flight_condition(int(flight_condition_id))
@@ -196,11 +206,7 @@ class NonlinearB747Env(gym.Env):
         u_e, u_a, u_r, u_T = action[0], action[1], action[2], action[3]
         return np.array(
             [
-                (
-                    float(u_e) * self.action_space.high[0]
-                    if False
-                    else float(u_e) * np.deg2rad(25.0)
-                ),
+                float(u_e) * np.deg2rad(25.0),
                 float(u_a) * np.deg2rad(20.0),
                 float(u_r) * np.deg2rad(25.0),
                 (float(u_T) + 1.0) * 0.5,
@@ -211,67 +217,51 @@ class NonlinearB747Env(gym.Env):
     # ---- gym API -------------------------------------------------------
 
     def reset(self, *, seed: Optional[int] = None, options=None):
+        """Reset the aircraft and damage logs; optionally override
+        ``options["damage_profile"]``.
+        """
         super().reset(seed=seed)
+        profile = self.damage_profile
+        if options and "damage_profile" in options:
+            profile = options["damage_profile"]
         self.model = NonlinearB747(
             x0=self.initial_state,
             dt=self.dt,
             integrator=self.integrator,
             config=self.config,
+            damage_profile=profile,
+            damage_event_callback=self.damage_event_callback,
         )
         self._step_index = 0
-
-        if self.damage_profile is not None or (options and "damage_profile" in options):
-            from tensoraerospace.aerospacemodel.b747.nonlinear.damage import (
-                B747DamageManager,
-                DamageProfile,
-            )
-
-            profile = self.damage_profile or DamageProfile(events=[])
-            if options and "damage_profile" in options:
-                profile = options["damage_profile"]
-            self.damage_manager = B747DamageManager(profile=profile)
-            self.damage_manager.reset(seed=seed)
-            # Link the manager's mutable state into the model so aero /
-            # engine read engines_mu and flap_jam_config on every step.
-            self.model.damage_state = self.damage_manager.state
-        else:
-            self.damage_manager = None
-            self.model.damage_state = None
-
-        self.damage_events_log = []
+        self.damage_manager = self.model.damage_manager
+        self.damage_events_log = self.model.damage_events_log
         return self.model.current_state.copy(), {}
 
     def step(self, action):
+        """Advance one action with faults applied at their physical event times.
+
+        Actions follow the configured virtual or normalized surface/throttle mode.
+        Return the Gymnasium transition tuple; when damage is enabled, info also reports
+        damage state, effective controls and triggered events.
+        """
         if self.model is None:
             raise RuntimeError("env.reset() must be called before step()")
 
         action = np.asarray(action, dtype=np.float64).reshape(-1)
         if action.size != 4:
             raise ValueError(f"action must have 4 elements; got {action.size}")
+        if not np.all(np.isfinite(action)):
+            raise ValueError("action must contain only finite values")
+        action = np.clip(action, self.action_space.low, self.action_space.high)
         u_virtual = self._scale_action(action)
 
-        # Damage update (BEFORE applying to control surfaces)
-        t_prev = self._step_index * self.dt
-        t_now = (self._step_index + 1) * self.dt
-        triggered_labels: list[str] = []
-        if self.damage_manager is not None:
-            triggered = self.damage_manager.update(t_now, t_prev, self.dt)
-            for ev in triggered:
-                if self.damage_event_callback is not None:
-                    self.damage_event_callback(ev, self.damage_manager.state)
-                triggered_labels.append(ev.label or type(ev).__name__)
-                self.damage_events_log.append(
-                    {
-                        "time": float(t_now),
-                        "label": ev.label or type(ev).__name__,
-                        "kind": type(ev).__name__,
-                    }
-                )
-            # Apply per-surface effectiveness multipliers + jam holds
-            ds = self.damage_manager.state
-            u_virtual = ds.apply(u_virtual)
-
+        # The model splits integration at event times and applies each event
+        # to the following interval, including faults between sample times.
         self.model.run_step(u_virtual)
+        triggered_labels = [
+            event.label or type(event).__name__
+            for event in self.model.last_damage_events
+        ]
         self._step_index += 1
 
         next_state = self.model.current_state.copy()
@@ -282,7 +272,7 @@ class NonlinearB747Env(gym.Env):
         info: dict = {}
         if self.damage_manager is not None:
             info["damage_state"] = self.damage_manager.state.snapshot()
-            info["u_virtual_eff"] = u_virtual.tolist()
+            info["u_virtual_eff"] = self.model.applied_action.tolist()
             if triggered_labels:
                 info["damage_events_triggered"] = list(triggered_labels)
 

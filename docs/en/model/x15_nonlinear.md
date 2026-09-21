@@ -17,7 +17,7 @@ $h = 102\,000$ ft) into post-burnout glide.
 | Coordinates | NED, body axis, ZYX 321 Euler |
 | State dimension | **13** (12-D rigid body + propellant mass) |
 | Control surfaces | All-flying horizontal stabilizer, ailerons, vertical rudder, throttle |
-| Damage subsystem | Hooks open (parity with B-747); not yet wired up |
+| Damage subsystem | Not implemented; environment rejects damage arguments |
 
 ## Geometry & mass (Walker/Wolowicz, Thompson 2000)
 
@@ -48,7 +48,7 @@ from NASA TM X-1669 Table 2 and Thompson 2000 mission timelines.
 
 | FC | Label | h, ft | M | V, ft/s | α₀, deg | δ_e₀, deg | Propellant, lb |
 |---|---|---:|---:|---:|---:|---:|---:|
-| 1 | boost_start         | 45 000  | 0.83 | 797   | 4.5  | −2.5 | 17 900 |
+| 1 | boost_start         | 45 000  | 0.83 | 797   | 4.5  | −2.5 | 13 000 |
 | 2 | boost_climb         | 70 000  | 2.5  | 2 412 | 5.0  | −3.0 | 10 500 |
 | 3 | cruise_M4           | 100 000 | 4.0  | 3 865 | 4.0  | −2.0 | 6 500  |
 | 4 | coast_high          | 200 000 | 5.0  | 4 876 | 10.0 | −1.0 | 0      |
@@ -80,9 +80,9 @@ all-fly  ail  rud   throttle
 
 The X-15 has an **all-flying horizontal tail** (no separate elevator
 on a fixed stabilizer) — the entire surface rotates as one piece.
-Limits: $|\delta_e| \le 15°$, $|\delta_a| \le 15°$, $|\delta_r| \le 8.5°$
-(rudder authority is small because of the small wedge tail), all rate-limited
-to $60\,°/s$.
+Limits: $|\delta_e| \le 15°$, $|\delta_a| \le 15°$, $|\delta_r| \le 8.5°$.
+The environment clips commands to these limits. Actuator rate limits are not
+implemented in this nonlinear model.
 
 ## Hypersonic aerodynamic build
 
@@ -121,14 +121,14 @@ The Reaction Motors XLR99 (Thompson 2000, NASA SP-2000-4222):
 * **Throttleable** from 30 % to 100 % — below 30 % the engine
   treats it as off.
 * **Specific impulse** $I_{sp} = 254$ s (sea-level value, used
-  throughout — vacuum correction ≤ 5 % is ignored).
+  throughout; nozzle back-pressure is not modeled).
 * **Mass flow** at full throttle: $\dot m = T / I_{sp} \approx 224$ lb/s
   → 80 s burn time for the BASIC airframe.
 * **Burnout** is automatic: when ``m_prop ≤ 0`` the engine returns
   zero thrust regardless of throttle command.
 
-Unlike the B-747's air-breathing JT9D, **rocket thrust is independent
-of Mach and altitude** — there is no inlet recovery, no ram effect.
+In this implementation thrust is independent of Mach and altitude. This is a
+modeling approximation: a rocket nozzle can still have a back-pressure effect.
 
 ## Equations of motion
 
@@ -141,13 +141,25 @@ $$
 \dot m_{\text{prop}} = -\dot m_e\bigl(\delta_T,\, m_{\text{prop}}\bigr).
 $$
 
-For an on-axis exhaust the standard "constant-mass with current m"
-form of $m\dot{\vec v} = \Sigma\vec F + \vec T$ is exact (the
-exhaust's *velocity-of-mass-loss* term is already accounted for by
-treating $T$ as the externally measured thrust). Mass and inertias
-in the rotational equations are queried from the parameters object
-*at every ODE evaluation*, so the integrator naturally sees the
-correct values throughout the burn.
+Thrust accounts for axial exhaust momentum flux; the translational equations
+use the current mass without an additional mass-loss force. Inertias are
+interpolated at each RHS evaluation. The rotation model is an instantaneous
+rigid-body approximation: tank geometry, slosh and exhaust angular momentum
+are not explicitly modeled.
+
+If propellant runs out within a step, Euler/RK4 integration splits that step
+at the burnout time. The powered interval uses its powered left limit at the
+endpoint; the remaining interval has zero thrust and zero fuel consumption.
+This avoids applying thrust beyond the available propellant.
+
+`default_state(config=...)` loads the selected configuration's full propellant
+(BASIC: 17,900 lb; A2: 30,900 lb). Named flight conditions retain their own
+partial loads. Inputs must be finite, propellant nonnegative and `dt` positive.
+Damage arguments to the environment raise `NotImplementedError`.
+
+The burnout tests compare an isolated rocket impulse with the ideal rocket
+equation and full trajectories with piecewise DOP853 integration. They check
+internal consistency, not agreement with flight measurements.
 
 ## Trim envelope (or lack thereof)
 

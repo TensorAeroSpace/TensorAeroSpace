@@ -108,41 +108,52 @@ in this MVP — the model is valid for the **clean cruise envelope**.
 
 ## Engine model
 
-Two-engine cluster with Mach-altitude-derated installed thrust
-following Mattingly §8.6.4 (same form as the JT9D model in the
-B-747 module):
+The simplified engine curve is
 
 $$
-T_{inst}(M, h, \delta_T) = T_{SLS} \cdot \sigma(h)^{n_h} \cdot \eta_{ram}(M) \cdot \mathrm{PLA}_{eff}
+T = T_{SLS}\,L_\rho(h)\,\max(1-0.49\sqrt{M},\,0.05)\,\mathrm{PLA}_{eff}.
 $$
 
-with $\eta_{ram}(M) = 1 - 0.49\sqrt{M}$ (clamped to 0.05) and
-$n_h = 0.7$ below tropopause / $1.0$ above. The same correlation
-serves both JT8D-9 (737-100) and CFM56-7B (737-800) — cross-checked
-against FAA TCDS A16WE certified ratings.
+With $h_t=36089$ ft, $\sigma=\rho/\rho_{SL}$, and
+$\sigma_t=\sigma(h_t^-)$:
 
-| Configuration | $T_{SLS}$, lbf | per-engine | Engine type |
-|---|---:|---:|---|
-| 737-100 | 29 000 | 14 500 | P&W JT8D-9 |
-| 737-800 | 54 600 | 27 300 | CFM56-7B27 |
+$$
+L_\rho(h)=\begin{cases}
+\sigma(h)^{0.7}, & h<h_t,\\
+\sigma_t^{0.7}\,\rho(h)/\rho(h_t^+), & h\ge h_t.
+\end{cases}
+$$
+
+The one-sided references account for rounded constants in the ISA branches.
+The upper branch now matches the lower one. Previously, changing the exponent
+without matching the reference caused an artificial 30.5% thrust drop.
+Below the boundary, the thrust law is unchanged. Above it, thrust is about
+43.9% higher than the old discontinuous implementation; existing controllers
+operating there require reevaluation. This is a consistency correction to a
+simplified curve, not calibration against an engine performance deck.
+Actuator rate limits, time constants and engine spool dynamics are not applied
+by this 12-state model.
 
 ## Trim finder
 
-`tensoraerospace.aerospacemodel.b737.nonlinear.trim(h, V)` solves
-$\dot u = \dot w = \dot q = 0$ via Newton-Raphson, returning trimmed
-$(\alpha, \delta_e, \delta_T)$. Unlike the X-15, the 737 is a
-proper transport with air-breathing engines that scale with Mach
-and altitude — **cruise trim converges across the entire normal
-flight envelope**:
+`trim(h, V)` solves the three longitudinal equilibrium equations using bounded
+least squares. Throttle stays in `[0, 1]` and elevator within the configured
+limits. Translational and angular equations are scaled for the solver;
+`residual` reports the unscaled norm of all six body accelerations.
+`converged=True` requires a successful solve and `residual <= tol`.
 
-| Configuration | h, ft | M | V, ft/s | α | δ_e | δ_T |
-|---|---:|---:|---:|---:|---:|---:|
-| B737-100 | 25 000 | 0.74 | 738 | 1.0° | -0.6° | 0.92 |
-| B737-800 | 35 000 | 0.83 | 820 | 2.4° | -1.6° | 0.91 |
-
-Residual norms reach $10^{-13}$ — i.e. machine-precision trim.
+An initial throttle estimate outside the limits is clipped before solving.
+A tiny longitudinal residual no longer hides engine-out yaw acceleration:
+asymmetric steady flight requires a separate solver for lateral controls.
+An unsuccessful result is not a valid initial steady-flight condition.
 
 ## Gymnasium env
+
+The environment copies the initial state and clips commands to its declared
+bounds before integration (and before applying supported damage effects).
+Nonfinite states/actions and invalid time settings are rejected.
+B737 damage profiles/callbacks are not implemented in this environment;
+passing them raises `NotImplementedError` instead of silently ignoring them.
 
 Registered as `"NonlinearB737-v0"`. Two initialisation modes:
 
@@ -215,3 +226,20 @@ Action-space: either `"virtual"` (physical units) or `"normalized"`
 * **FAA TCDS A16WE** — Boeing 737 type certificate data sheet.
 * Mattingly J. D. *Aircraft Engine Design*, AIAA Education Series,
   2nd ed., 2002, §8.6.4 (installed-thrust lapse model).
+
+## Public dynamics and analysis API
+
+`model.dynamics(state, action, time=...)` evaluates the instantaneous native-unit
+ODE; `model.linearize(state, action)` returns continuous A/B Jacobians. Neither
+advances the state or history. Inputs are physical surface angles in radians and
+normalized throttle. `current_time` is the latest state timestamp;
+`applied_action` is a copied input from the preceding integration interval and
+is unavailable before the first transition. `density_at(altitude_ft)` returns SI
+air density. These methods support the AA-INDI sensor adapter directly.
+
+`NonlinearB737Env(elevator_fault=ElevatorEffectiveness(time=30, effectiveness=0.5))`
+models a loss of aerodynamic elevator effectiveness. Import `ElevatorEffectiveness`
+from `tensoraerospace.aerospacemodel.b737.nonlinear`. Encoder feedback retains the
+physical surface position; aerodynamic evaluation scales the elevator input.
+`integration_substeps` refines integration without changing the control interval.
+An event inside a step splits the integration at its exact time.

@@ -56,7 +56,7 @@ def test_gail_writes_canonical_tags(tmp_path: Path):
     # Run enough frames to trigger:
     #   - at least one episode end (every 8 steps)
     #   - at least one discriminator update (every rollout = 8 frames)
-    #   - at least one PPO update (every 3rd rollout, so 24 frames)
+    #   - PPO updates on each rollout
     agent.learn(max_frames=32, max_reward=float("inf"))
     agent.writer.flush()
 

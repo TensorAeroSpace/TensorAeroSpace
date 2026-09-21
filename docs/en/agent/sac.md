@@ -1,8 +1,21 @@
 # Soft Actor‑Critic (SAC)
 
+!!! note "Vector transitions"
+    `train_vector()` samples warmup actions within the environment's action bounds. With auto-reset, `info["final_observation"]` and its optional mask `info["_final_observation"]` preserve the last observation for replay; only true termination removes bootstrapping. Older environments without that metadata retain the conservative terminal mask. `ImprovedB747VecEnvTorch` supplies both fields.
+
 SAC is an off-policy actor-critic with entropy maximization: it learns a stochastic policy while increasing expected reward and entropy (exploration). Our implementation employs twin Q-networks, a target critic, Gaussian/deterministic policy options, a replay buffer, soft updates, and optional automatic entropy tuning.
 
 ![SAC Diagram](../agent/img/sac/sac.png){ width=800 }
+
+## Scalar transition collection
+
+`train()` snapshots the observation before `env.step()`, so environments that
+reuse a mutable observation array cannot corrupt the replay transition.
+At episode boundaries, `final_observation` or `terminal_observation` supplies
+the actual next state when an environment resets automatically. Only true
+termination suppresses bootstrapping; user step caps are logged as truncation.
+Short training runs that finish before replay warmup explicitly log zero
+optimizer updates and satisfy the metrics contract.
 
 ## Components
 
@@ -128,3 +141,58 @@ print(stats['best_reward'], len(stats['episode_rewards']))
 ::: tensoraerospace.agent.sac.model.GaussianPolicy
 
 ::: tensoraerospace.agent.sac.model.DeterministicPolicy
+
+## Continuing training and saving settings
+
+`train()` and `train_vector()` retain `total_updates` and `total_env_steps` across
+calls. Target-network updates follow the cumulative gradient-update count.
+Splitting scalar training at episode boundaries preserves the result with the
+same environment data and random-number stream. `train()` returns updates and
+the best reward **for that call**; `best_reward` is computed with
+`save_best=False` as well.
+
+`policy_lr` controls both Gaussian and Deterministic policy optimizers separately
+from the critic's `lr`. Checkpoints retain both rates, logging frequency and
+cumulative counters. Legacy checkpoints without counters start at zero. Replay,
+environment and RNG states are not saved: loading retains the target-update
+phase, but does not reproduce an uninterrupted run exactly.
+
+Each `train_vector()` call resets the environment and applies its own
+`warmup_steps` budget. Comparisons of vector training chunks must align episode
+boundaries and warmup. With direct `update_parameters(..., updates)` calls, the
+caller owns the update index.
+
+### Evaluation without changing training
+
+`select_action(..., evaluate=True)` and `select_action_batch(..., evaluate=True)`
+compute the mean action without sampling noise. They do not advance the PyTorch
+RNG, mutate Deterministic-policy noise buffers or build gradient graphs.
+Evaluation calls therefore do not change the subsequent training RNG stream.
+If an evaluation environment uses global randomness, isolate that randomness
+separately. `evaluate=False` retains exploratory action selection.
+
+### Deterministic-policy exploration
+
+`policy_type="Deterministic"` draws independent noise for every batch row and
+action component: standard deviation 0.1 in normalized coordinates, clipped to
+±0.25. Noise is then scaled by each action's half-range and the resulting action
+is clipped to the exact action-space bounds. This gives consistent relative
+exploration in radians, degrees and Newtons. The legacy `noise` buffer is retained
+for checkpoint loading but is no longer used to generate samples.
+
+Evaluation remains deterministic. This correction changes exploration sequences
+and training; it does not guarantee a higher reward.
+
+### Squashed Gaussian density near actuator limits
+
+The Gaussian SAC policy evaluates the `tanh` change-of-variables Jacobian from
+the latent sample using a stable softplus expression and accounts separately for
+physical action scaling. This preserves the entropy gradient when float32
+`tanh` rounds to ±1. Action intervals must have finite, positive widths.
+Network parameters and deterministic actions for existing checkpoints are
+unchanged; stochastic log probabilities and subsequent optimization do change.
+This numerical correction does not guarantee closed-loop stability: compare
+tracking errors and boundary violations across seeds and evaluation horizons.
+
+The formula follows [PyTorch's TanhTransform](https://github.com/pytorch/pytorch/blob/main/torch/distributions/transforms.py)
+and the density correction in [SAC](https://arxiv.org/abs/1801.01290).

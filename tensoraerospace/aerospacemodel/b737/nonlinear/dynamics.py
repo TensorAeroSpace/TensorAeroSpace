@@ -27,6 +27,8 @@ from __future__ import annotations
 
 import numpy as np
 
+from tensoraerospace.aerospacemodel.utils.kinematics import body_rates_to_euler_rates
+
 from .aero import AeroState, b737_aero
 from .params import B737Parameters, isa_speed_of_sound_ft_s
 
@@ -97,10 +99,7 @@ def b737_ode_6dof(
 
     sphi, cphi = np.sin(phi), np.cos(phi)
     sth, cth = np.sin(theta), np.cos(theta)
-    tth = sth / max(cth, 1e-9)
-    dphi = p + (q * sphi + r * cphi) * tth
-    dtheta = q * cphi - r * sphi
-    dpsi = (q * sphi + r * cphi) / max(cth, 1e-9)
+    dphi, dtheta, dpsi = body_rates_to_euler_rates(phi, theta, p, q, r)
 
     DCM = np.array(
         [

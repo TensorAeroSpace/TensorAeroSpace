@@ -15,150 +15,195 @@ from tensoraerospace.aerospacemodel import LAPAN
 
 
 class LinearLongitudinalLAPAN(gym.Env):
-    """Legacy LAPAN longitudinal-control environment.
+    """Simulation of LAPAN control object in OpenAI Gym environment for training AI agents.
 
     Args:
-        initial_state: Initial state vector.
-        reference_signal: Reference (target) signal array.
+        initial_state: Initial state.
+        reference_signal: Reference signal.
         number_time_steps: Number of simulation steps.
-        tracking_states: Names of tracked states used for reward computation.
-        state_space: Names of state variables exposed in observations.
-        control_space: Names of control inputs.
-        output_space: Names of model outputs returned by the plant.
-        reward_func: Optional custom reward function.
+        tracking_states: Tracked states.
+        state_space: State space.
+        control_space: Control space.
+        output_space: Full output space (including noise).
+        reward_func: Reward function (WIP status).
     """
 
     def __init__(
         self,
-        initial_state: np.ndarray,
-        reference_signal: np.ndarray,
+        initial_state: np.ndarray | list[float],
+        reference_signal: np.ndarray | Callable,
         number_time_steps: int,
         tracking_states: list[str] | None = None,
         state_space: list[str] | None = None,
         control_space: list[str] | None = None,
         output_space: list[str] | None = None,
-        reward_func: Callable[[np.ndarray, np.ndarray, int], float] | None = None,
+        reward_func: Callable | None = None,
+        dt: float = 0.01,
     ) -> None:
-        """Initialize legacy LAPAN longitudinal environment."""
+        """Initialize LAPAN longitudinal environment."""
         super().__init__()
-        self.max_action_value = 25.0
-        self.initial_state = initial_state
-        self.number_time_steps = number_time_steps
-        self.tracking_states = tracking_states or ["theta", "q"]
-        self.state_space = state_space or ["theta", "q"]
-        self.control_space = control_space or ["stab"]
-        self.output_space = output_space or ["theta", "q"]
+        self.initial_state = np.array(initial_state, dtype=float, copy=True).reshape(-1)
+        self.dt = float(dt)
+        if int(number_time_steps) != number_time_steps or number_time_steps < 2:
+            raise ValueError("number_time_steps must be an integer >= 2")
+        self.number_time_steps = number_time_steps = int(number_time_steps)
+        self.tracking_states = (
+            tracking_states if tracking_states is not None else ["theta", "q"]
+        )
+        self.state_space = state_space if state_space is not None else ["theta", "q"]
+        self.control_space = control_space if control_space is not None else ["stab"]
+        self.output_space = (
+            output_space if output_space is not None else list(self.state_space)
+        )
         self.selected_state_output = self.output_space
-        self.reference_signal = reference_signal
+        if not self.output_space or not self.tracking_states:
+            raise ValueError("output_space and tracking_states must be nonempty")
+        if len(self.control_space) != 1:
+            raise ValueError("LAPAN supports one elevator input")
+        if callable(reference_signal):
+            reference_signal = np.array(
+                [
+                    np.atleast_1d(reference_signal(i * self.dt))
+                    for i in range(number_time_steps)
+                ]
+            ).T
+        self.reference_signal = np.array(reference_signal, dtype=float, copy=True)
+        if (
+            self.reference_signal.ndim != 2
+            or self.reference_signal.shape[1] < 1
+            or not np.all(np.isfinite(self.reference_signal))
+        ):
+            raise ValueError(
+                "reference_signal must be finite with shape (channels, T), T >= 1"
+            )
+        if self.reference_signal.shape[0] not in (1, len(self.tracking_states)):
+            raise ValueError("reference channels must be one or match tracking_states")
         if reward_func:
             self.reward_func = reward_func
         else:
             self.reward_func = self.reward
 
         self.model = LAPAN(
-            initial_state,
+            self.initial_state,
             number_time_steps=number_time_steps,
             selected_state_output=self.output_space,
             t0=0,
+            dt=self.dt,
         )
         self.indices_tracking_states = [
-            self.state_space.index(self.tracking_states[i])
+            self.model.list_state.index(self.tracking_states[i])
             for i in range(len(self.tracking_states))
         ]
 
+        self.ref_signal = self.reference_signal
+        # Preserve the public action contract in degrees; the plant uses radians.
+        self.max_action_value = 25.0
+        self.max_elevator_angle_deg = self.max_action_value
         self.action_space = spaces.Box(
-            low=-25,
-            high=25,
-            shape=(len(self.control_space),),
+            low=-self.max_elevator_angle_deg,
+            high=self.max_elevator_angle_deg,
+            shape=(1,),
             dtype=np.float32,
         )
         self.observation_space = spaces.Box(
-            low=-np.inf,
-            high=np.inf,
-            shape=(len(self.state_space),),
-            dtype=np.float32,
+            low=-np.inf, high=np.inf, shape=(len(self.output_space),), dtype=np.float32
         )
 
-        self.ref_signal = reference_signal
-        # Constructor already invokes initialise_system internally.
-        self.number_time_steps = number_time_steps
         self.current_step = 0
         self.done = False
 
-    @staticmethod
-    def reward(state: np.ndarray, ref_signal: np.ndarray, ts: int) -> float:
-        """Compute tracking reward for the current step.
-
-        Args:
-            state: Current tracked state vector.
-            ref_signal: Reference signal array.
-            ts: Current time step index.
-
-        Returns:
-            float: Reward value (lower is better in the legacy formulation).
-        """
-        ts_safe = int(np.clip(ts, 0, ref_signal.shape[1] - 1))
-        return -float(np.abs(state[0] - ref_signal[:, ts_safe]).item())
-
-    def _get_info(self) -> dict[str, float]:
+    def _get_info(self) -> dict[str, float | np.ndarray]:
         """Return auxiliary info for Gym API (currently empty)."""
         return {}
 
-    def step(
-        self, action: np.ndarray
-    ) -> tuple[np.ndarray, float, bool, bool, dict[str, float]]:
-        """Run one simulation step.
+    @staticmethod
+    def reward(state: np.ndarray, ref_signal: np.ndarray, ts: int) -> float:
+        """Evaluate control performance.
 
         Args:
-            action (np.ndarray): Control input(s).
+            state (np.ndarray): Current state.
+            ref_signal (np.ndarray): Reference signal.
+            ts (int): Time step.
 
         Returns:
-            tuple: ``(observation, reward, terminated, truncated, info)`` in the
-            Gymnasium API format.
+            float: Control evaluation reward.
+        """
+        ts_safe = int(np.clip(ts, 0, ref_signal.shape[1] - 1))
+        reference = ref_signal[:, ts_safe]
+        tracked = np.asarray(state).reshape(-1)
+        # A single reference retains the first-tracked-state objective.
+        error = tracked[:1] - reference if reference.size == 1 else tracked - reference
+        return -float(np.mean(np.abs(error)))
+
+    def step(
+        self, action: np.ndarray
+    ) -> tuple[np.ndarray, float, bool, bool, dict[str, float | np.ndarray]]:
+        """Execute one simulation step.
+
+        Args:
+            action (np.ndarray): Control signal array for selected actuators.
+
+        Returns:
+            tuple: Tuple containing:
+                - next_state (np.ndarray): Next state of the control object.
+                - reward (np.ndarray): Evaluation of control algorithm actions.
+                - done (bool): Simulation status, whether completed or not.
+                - truncated (bool): Whether episode was truncated.
+                - info (dict): Additional information.
         """
         action = np.asarray(action).reshape(-1)
-        action = np.clip(action, -self.max_action_value, self.max_action_value)
+        if action.size != 1 or not np.all(np.isfinite(action)):
+            raise ValueError("action must contain one finite elevator command")
+        action_rad = np.deg2rad(
+            np.clip(action, -self.max_action_value, self.max_action_value)
+        )
+        next_state = self.model.run_step(action_rad)
         self.current_step += 1
-        next_state = self.model.run_step(action)
         reward = self.reward_func(
-            next_state[self.indices_tracking_states],
-            self.ref_signal,
+            np.asarray(self.model.xt).reshape(-1, 1)[self.indices_tracking_states],
+            self.reference_signal,
             self.current_step,
         )
         self.done = self.current_step >= self.number_time_steps - 1
         info = self._get_info()
+        info["applied_action"] = np.rad2deg(
+            self.model.store_input[:, self.model.time_step - 1]
+        ).astype(np.float32)
+
         return (
             np.asarray(next_state).reshape(-1).astype(np.float32),
             float(reward),
-            self.done,
             False,
+            self.done,
             info,
         )
 
     def reset(
         self, seed: int | None = None, options: dict | None = None
-    ) -> tuple[np.ndarray, dict[str, float]]:
-        """Reset environment state to the initial conditions.
+    ) -> tuple[np.ndarray, dict[str, float | np.ndarray]]:
+        """Reset simulation environment to initial conditions.
 
         Args:
-            seed: Random seed (Gymnasium).
-            options: Optional reset options (unused).
+            seed (int, optional): Random seed. Defaults to None.
+            options (dict, optional): Additional initialization options. Defaults to None.
 
         Returns:
-            tuple: ``(observation, info)``.
+            tuple: Tuple containing:
+                - observation (np.ndarray): Initial observation.
+                - info (dict): Additional information.
         """
         super().reset(seed=seed)
 
-        self.current_step = 0
-        self.done = False
-        # Constructor already invokes initialise_system internally.
         self.model = LAPAN(
             self.initial_state,
             number_time_steps=self.number_time_steps,
             selected_state_output=self.output_space,
             t0=0,
+            dt=self.dt,
         )
         self.ref_signal = self.reference_signal
+        self.current_step = 0
+        self.done = False
         info = self._get_info()
         observation = np.array(self.initial_state, dtype=np.float32)[
             self.model.selected_state_index
@@ -166,12 +211,12 @@ class LinearLongitudinalLAPAN(gym.Env):
         return observation, info
 
     def render(self) -> None:
-        """Render the environment (not implemented).
+        """Visual rendering of actions in the environment. Work in progress.
 
         Raises:
-            NotImplementedError: Rendering is not available.
+            NotImplementedError: Rendering is not yet implemented.
         """
-        raise NotImplementedError("Rendering is not implemented for LAPAN env.")
+        raise NotImplementedError("Rendering is not implemented for LAPANEnv.")
 
 
 class ImprovedLAPANEnv(gym.Env):
@@ -215,13 +260,32 @@ class ImprovedLAPANEnv(gym.Env):
         self.dt = float(dt)
         self.initial_state = np.array(initial_state, dtype=float).reshape(-1)
         self.reference_signal = np.array(reference_signal, dtype=float)
+        if int(number_time_steps) != number_time_steps or number_time_steps < 2:
+            raise ValueError("number_time_steps must be an integer >= 2")
         self.number_time_steps = int(number_time_steps)
+        if (
+            self.reference_signal.ndim != 2
+            or self.reference_signal.shape[0] != 1
+            or self.reference_signal.shape[1] < 1
+            or not np.all(np.isfinite(self.reference_signal))
+        ):
+            raise ValueError(
+                "reference_signal must be finite with shape (1, T), T >= 1"
+            )
         self.current_step = 0
         # LAPAN state order: [u, w, q, theta]
         self.state = np.array(self.initial_state, dtype=float).reshape(-1)
 
         # Initial elevator and action history (normalized)
-        self.initial_elevator_deg = float(initial_elevator_deg)
+        if not np.isfinite(initial_elevator_deg):
+            raise ValueError("initial_elevator_deg must be finite")
+        self.initial_elevator_deg = float(
+            np.clip(
+                initial_elevator_deg,
+                -self.max_elevator_angle_deg,
+                self.max_elevator_angle_deg,
+            )
+        )
         self.initial_action_norm = float(
             np.clip(
                 self.initial_elevator_deg / self.max_elevator_angle_deg,
@@ -261,6 +325,7 @@ class ImprovedLAPANEnv(gym.Env):
             selected_state_output=None,
             t0=0,
             dt=self.dt,
+            initial_control=float(np.deg2rad(self.initial_elevator_deg)),
         )
 
     # Helper indices based on LAPAN state order [u, w, q, theta]
@@ -318,6 +383,8 @@ class ImprovedLAPANEnv(gym.Env):
         """Apply normalized action and advance simulation by one step."""
         # action in [-1, 1]
         action = np.asarray(action, dtype=np.float32).reshape(-1)
+        if action.size != 1 or not np.all(np.isfinite(action)):
+            raise ValueError("action must contain one finite elevator command")
         action = np.clip(action, -1.0, 1.0)
 
         # Scale to radians (LAPAN input now expects radians), optionally use
@@ -360,7 +427,8 @@ class ImprovedLAPANEnv(gym.Env):
         e_q_rel = float((q_rad_s - ref_theta_dot) / self.max_pitch_rate_rad_s)
 
         u_applied_norm = float(
-            np.asarray(scaled_action_rad).reshape(-1)[0] / self.max_elevator_angle_rad
+            self.model.store_input[0, self.model.time_step - 1]
+            / self.max_elevator_angle_rad
         )
         u = u_applied_norm
         du = u_applied_norm - float(self.previous_action)
@@ -381,13 +449,12 @@ class ImprovedLAPANEnv(gym.Env):
 
         self.pre_previous_action = float(self.previous_action)
         self.previous_action = float(u_applied_norm)
-        self._last_reward = float(reward)
-
         terminated = False
         if abs(theta_rad) > self.max_pitch_rad:
             reward = -100.0
             terminated = True
 
+        self._last_reward = float(reward)
         truncated = self.current_step >= self.number_time_steps - 1
 
         return (
@@ -395,7 +462,7 @@ class ImprovedLAPANEnv(gym.Env):
             float(reward),
             bool(terminated),
             bool(truncated),
-            {},
+            {"elevator_deg": float(u_applied_norm * self.max_elevator_angle_deg)},
         )
 
     def render(self, mode: str = "human"):

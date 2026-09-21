@@ -10,25 +10,14 @@ from tensoraerospace.aerospacemodel.base import ModelBase
 
 
 class AngularF16(ModelBase):
-    """High-maneuverability F-16 ✈ aircraft control object in angular coordinates.
+    """Linear angular F-16 model with three retained actuator states.
 
-    Action space:
-        stab_act: elevator [deg]
-        ail_act: ailerons [deg]
-        dir_act: rudder [deg]
-
-    State space:
-        alpha: angle of attack [rad]
-        beta: sideslip angle [rad]
-        wx: roll angular velocity [rad/s]
-        wy: yaw angular velocity [rad/s]
-        wz: pitch angular velocity [rad/s]
-        gamma: roll [rad]
-        psi: yaw [rad]
-        theta: pitch [rad]
-        stab: elevator position [rad]
-        ail: aileron position [rad]
-        dir: rudder position [rad]
+    State order: ``[phi, theta, psi, alpha, beta, p, q, r, ele, ail, rud]``.
+    Aircraft angles are in radians, body rates in rad/s, and actuator
+    deflections ``ele/ail/rud`` in degrees, matching the MATLAB matrices.
+    Commands use degrees; each actuator obeys ``d(delta)/dt =
+    20.2 * (command - delta)``. Load factors ``nx/ny/nz`` are outputs,
+    not selectable state components.
     """
 
     def __init__(
@@ -65,7 +54,7 @@ class AngularF16(ModelBase):
             "ny",
             "nz",
         ]
-        self.list_state = self.selected_output
+        self.list_state = self.selected_states
         self.selected_input = ["ele", "ail", "rud"]
         self.control_list = self.selected_input
 
@@ -138,15 +127,11 @@ class AngularF16(ModelBase):
 
         # Создайте новую систему и начальное состояние
         self.filt_A = self.A[selected_rows_states[:, None], selected_rows_states]
-        self.filt_B = (
-            self.A[selected_rows_states[:, None], 12 + selected_rows_input]
-            + self.B[selected_rows_states[:, None], selected_rows_input]
-        )
+        # ele/ail/rud are retained actuator states. Their columns in A
+        # must not be folded into B (that would cancel the actuator gains).
+        self.filt_B = self.B[selected_rows_states[:, None], selected_rows_input]
         self.filt_C = self.C[selected_rows_output[:, None], selected_rows_states]
-        self.filt_D = (
-            self.C[selected_rows_output[:, None], 12 + selected_rows_input]
-            + self.D[selected_rows_output[:, None], selected_rows_input]
-        )
+        self.filt_D = self.D[selected_rows_output[:, None], selected_rows_input]
 
     def create_dictionary(self, file_name):
         """Create dictionaries from available states, inputs, and outputs.
@@ -249,7 +234,9 @@ class AngularF16(ModelBase):
         self.xt1 = np.matmul(self.filt_A, np.reshape(self.xt, [-1, 1])) + np.matmul(
             self.filt_B, np.reshape(ut, [-1, 1])
         )
-        output = np.matmul(self.filt_C, np.reshape(self.xt, [-1, 1]))
+        output = np.matmul(self.filt_C, np.reshape(self.xt, [-1, 1])) + np.matmul(
+            self.filt_D, np.reshape(ut, [-1, 1])
+        )
         self.store_input[:, self.time_step] = np.reshape(ut, [ut.shape[0]])
         self.store_outputs[:, self.time_step] = np.reshape(output, [output.shape[0]])
         self.store_states[:, self.time_step + 1] = np.reshape(
@@ -335,6 +322,6 @@ class AngularF16(ModelBase):
             ]
         if to_rad:
             return np.asarray(
-                np.deg2rad(self.store_states[index][: self.number_time_steps])
+                np.deg2rad(self.store_input[index][: self.number_time_steps])
             )
         return np.asarray(self.store_input[index][: self.number_time_steps])

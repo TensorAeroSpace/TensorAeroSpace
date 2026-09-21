@@ -14,7 +14,7 @@ Main capabilities:
 """
 
 import warnings
-from typing import Any, cast
+from typing import Any
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -77,9 +77,15 @@ class ModelBase:
         self.store_input: np.ndarray = np.empty((0, 0))
         self.store_outputs: np.ndarray = np.empty((0, 0))
         self.output_history: dict[str, np.ndarray] = {}
+        self.yt = None
+        self.ut = None
+        self.state_history: dict[str, np.ndarray] = {}
+        self.control_history: dict[str, np.ndarray] = {}
+        self.list_state: list[str] = []
+        self.control_list: list[str] = []
 
     def _initialize_selected_state_index(self, selected_state_output, list_state):
-        """Initialize selected_state_index based on selected_state_output.
+        """Select returned state indices without changing metadata or histories.
 
         Args:
             selected_state_output: List of selected output states.
@@ -92,18 +98,6 @@ class ModelBase:
         else:
             # Если selected_state_output не задан, используем все состояния
             self.selected_state_index = list(range(len(list_state)))
-        self.yt = None
-        self.ut = None
-
-        # Массивы с обработанными данными
-        self.state_history: dict[str, np.ndarray] = {}
-        self.control_history: dict[str, np.ndarray] = {}
-        self.store_outputs = np.empty((0, 0))
-
-        # Массивы с доступными
-        # Пространством состояний и пространством управления
-        self.list_state: list[str] = []
-        self.control_list: list[str] = []
 
     def run_step(self, u):
         """Calculate control object state.
@@ -119,15 +113,24 @@ class ModelBase:
         Resets all internal variables and state history
         to initial values.
         """
-        self.time_step = 1
+        initial = np.array(self.x0, copy=True)
+        self.xt = initial.copy()
+        self.xt1 = None
+        self.yt = None
+        self.ut = None
         self.u_history = []
-        self.x_history = [self.x0]
-        # Historical public state: callers and tests expect an empty list after
-        # restart. get_state/get_control lazily rebuild the dict representation.
-        self.state_history = cast(Any, [])
-        self.control_history = cast(Any, [])
-        self.list_state = []
-        self.control_list = []
+        self.x_history = [initial.reshape(-1, 1)]
+        self.state_history = {}
+        self.control_history = {}
+        self.output_history = {}
+        # Linear models preallocate buffers and count transitions from zero.
+        # Nonlinear models keep an initial sample in x_history (time_step=1).
+        self.time_step = 0 if self.store_states.size else 1
+        if self.store_states.size:
+            self.store_states.fill(0)
+            self.store_states[:, 0] = initial.reshape(-1)
+            self.store_input.fill(0)
+            self.store_outputs.fill(0)
 
     def get_state(self, state_name: str, to_deg: bool = False, to_rad: bool = False):
         """Get state array.
@@ -149,7 +152,9 @@ class ModelBase:
             )
         if state_name not in self.list_state:
             raise Exception(f"{state_name} is not in the states list")
-        if not self.state_history:
+        if not self.state_history or len(self.state_history[state_name]) != len(
+            self.x_history
+        ):
             self.state_history = state2dict(self.x_history, self.list_state)
         if to_deg:
             return np.rad2deg(self.state_history[state_name][: self.time_step - 1])
@@ -179,7 +184,11 @@ class ModelBase:
             )
         if control_name not in self.control_list:
             raise Exception(f"{control_name} is not in the control signals list")
-        if not self.control_history:
+        if not self.u_history:
+            return np.empty(0, dtype=float)
+        if not self.control_history or len(self.control_history[control_name]) != len(
+            self.u_history
+        ):
             self.control_history = control2dict(self.u_history, self.control_list)
         if to_deg:
             return np.rad2deg(self.control_history[control_name][: self.time_step - 1])

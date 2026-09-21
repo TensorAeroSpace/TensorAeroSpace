@@ -47,6 +47,7 @@ class PseudoControlHedge:
         self.is_frozen = np.zeros(self.n_y, dtype=bool)
 
     def reset(self) -> None:
+        """Clear hedge values, saturation counters and per-axis freeze flags."""
         self.last_hedge = np.zeros(self.n_y, dtype=np.float64)
         self.saturation_counter = np.zeros(self.n_y, dtype=np.int32)
         self.is_frozen = np.zeros(self.n_y, dtype=bool)

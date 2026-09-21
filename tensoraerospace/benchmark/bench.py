@@ -103,8 +103,8 @@ class ControlBenchmark:
         rise_t = rise_time(control_signal, system_signal)
         peak_t = peak_time(system_signal)
         max_dev = maximum_deviation(control_signal, system_signal)
-        iae = integral_absolute_error(control_signal, system_signal)
-        ise = integral_squared_error(control_signal, system_signal)
+        iae = integral_absolute_error(control_signal, system_signal, dt)
+        ise = integral_squared_error(control_signal, system_signal, dt)
         itae = integral_time_absolute_error(control_signal, system_signal, dt)
         osc_count = oscillation_count(system_signal)
         steady_val = steady_state_value(control_signal)
@@ -125,6 +125,159 @@ class ControlBenchmark:
             "steady_state_value": steady_val,
             "performance_index": perf_idx,
         }
+
+    def benchmarking_step_response(
+        self, control_signal, system_signal, signal_val, dt, *, tolerance=0.05
+    ):
+        """Step metrics plus settling/overshoot relative to the commanded step.
+
+        Existing metrics retain their final-output conventions. New
+        ``command_settling_time`` and ``command_overshoot`` use the requested
+        final level and step amplitude, including descending/nonzero-base steps.
+        """
+        reference = np.asarray(control_signal, dtype=float)
+        output = np.asarray(system_signal, dtype=float)
+        if (
+            reference.ndim != 1
+            or output.shape != reference.shape
+            or reference.size < 2
+            or not np.isfinite(reference).all()
+            or not np.isfinite(output).all()
+        ):
+            raise ValueError("Expected matching finite one-dimensional signals")
+        if (
+            not np.isfinite(dt)
+            or dt <= 0
+            or not np.isfinite(tolerance)
+            or tolerance <= 0
+        ):
+            raise ValueError("dt and tolerance must be finite and positive")
+        amplitude = float(reference[-1] - signal_val)
+        if amplitude == 0:
+            raise ValueError("Commanded step amplitude must be nonzero")
+        metrics = self.benchmarking_one_step(reference, output, signal_val, dt)
+        ref, response = find_step_function(reference, output, signal_val)
+        if not np.allclose(ref, reference[-1]):
+            raise ValueError("Expected one constant reference after the step")
+        outside = np.flatnonzero(
+            abs(response - reference[-1]) > tolerance * abs(amplitude)
+        )
+        settled = int(outside[-1] + 1) if len(outside) else 0
+        metrics["command_settling_time"] = (
+            settled * dt if settled < len(response) else None
+        )
+        metrics["command_overshoot"] = float(
+            max(
+                0.0,
+                np.max(np.sign(amplitude) * (response - signal_val)) / abs(amplitude)
+                - 1.0,
+            )
+            * 100
+        )
+        return metrics
+
+    def tracking_metrics(
+        self,
+        reference,
+        output,
+        dt,
+        *,
+        start=0.0,
+        end=None,
+        tolerance=None,
+        actions=None,
+    ):
+        """Assess multichannel tracking over ``(start, end]`` in signal units.
+
+        Output has shape (N, channels), or (N,) for one channel. A reference
+        can be scalar, a constant channel vector, or a matching schedule.
+        Actions, when supplied, have N-1 rows for the preceding physical
+        intervals. Integral errors use a rectangle sum at output timestamps.
+        Recovery is relative to start and requires staying within the absolute
+        tolerance to the end; None means it was not reached.
+        """
+        output, reference, times, mask = self._tracking_samples(
+            reference, output, dt, start, end
+        )
+        error = reference[mask] - output[mask]
+        result = dict(
+            rmse=np.sqrt(np.mean(error**2, axis=0)),
+            mae=np.mean(abs(error), axis=0),
+            combined_rmse=float(np.sqrt(np.mean(np.sum(error**2, axis=1)))),
+            iae=float(np.sum(abs(error)) * dt),
+            peak_error=np.max(abs(error), axis=0),
+            final_error=error[-1].copy(),
+        )
+        if tolerance is not None:
+            tolerance = np.asarray(tolerance, dtype=float)
+            if (
+                tolerance.shape not in ((), (output.shape[1],))
+                or not np.isfinite(tolerance).all()
+                or np.any(tolerance <= 0)
+            ):
+                raise ValueError(
+                    "tolerance must be positive, scalar or one per channel"
+                )
+            outside = np.flatnonzero(np.any(abs(error) > tolerance, axis=1))
+            settled = int(outside[-1] + 1) if len(outside) else 0
+            result["recovery_time"] = (
+                float(times[mask][settled] - start) if settled < len(error) else None
+            )
+        if actions is not None:
+            actions = np.asarray(actions, dtype=float)
+            if actions.ndim == 1:
+                actions = actions[:, None]
+            if (
+                actions.ndim != 2
+                or actions.shape[0] != len(output) - 1
+                or actions.shape[1] == 0
+                or not np.isfinite(actions).all()
+            ):
+                raise ValueError("actions must have N-1 finite rows")
+            selected = actions[mask[1:]]
+            result.update(
+                control_rms=float(np.sqrt(np.mean(selected**2))),
+                control_peak=float(np.max(abs(selected))),
+                control_variation=float(np.sum(abs(np.diff(selected, axis=0)))),
+            )
+        return result
+
+    @staticmethod
+    def _tracking_samples(reference, output, dt, start, end):
+        """Validate tracking signals and select the assessment timestamps."""
+        output = np.asarray(output, dtype=float)
+        if output.ndim == 1:
+            output = output[:, None]
+        if (
+            output.ndim != 2
+            or output.shape[0] < 2
+            or output.shape[1] == 0
+            or not np.isfinite(output).all()
+        ):
+            raise ValueError("output must contain at least two finite samples")
+        reference = np.asarray(reference, dtype=float)
+        if output.shape[1] == 1 and reference.shape == (len(output),):
+            reference = reference[:, None]
+        try:
+            reference = np.broadcast_to(reference, output.shape)
+        except ValueError as exc:
+            raise ValueError("reference does not match output") from exc
+        if not np.isfinite(reference).all() or not np.isfinite(dt) or dt <= 0:
+            raise ValueError("reference must be finite and dt positive")
+        times = np.arange(len(output)) * dt
+        end = times[-1] if end is None else float(end)
+        if (
+            not np.isfinite(start)
+            or not np.isfinite(end)
+            or start < 0
+            or end <= start
+            or end > times[-1] + 1e-10
+        ):
+            raise ValueError("Invalid assessment window")
+        mask = (times > start) & (times <= end)
+        if not mask.any():
+            raise ValueError("Empty assessment window")
+        return output, reference, times, mask
 
     # Backward-compatible alias for the old misspelled method name
     becnchmarking_one_step = benchmarking_one_step
@@ -294,17 +447,25 @@ class ControlBenchmark:
                 "Время установления",
                 (
                     f'{metrics["settling_time"]:.3f}с'
-                    if metrics["settling_time"]
+                    if metrics["settling_time"] is not None
                     else "N/A"
                 ),
             ],
             [
                 "Время нарастания",
-                f'{metrics["rise_time"]:.3f}с' if metrics["rise_time"] else "N/A",
+                (
+                    f'{metrics["rise_time"]:.3f}с'
+                    if metrics["rise_time"] is not None
+                    else "N/A"
+                ),
             ],
             [
                 "Время пика",
-                f'{metrics["peak_time"]:.3f}с' if metrics["peak_time"] else "N/A",
+                (
+                    f'{metrics["peak_time"]:.3f}с'
+                    if metrics["peak_time"] is not None
+                    else "N/A"
+                ),
             ],
             ["Степень затухания", f'{metrics["damping_degree"]:.3f}'],
             ["Статическая ошибка", f'{metrics["static_error"]:.4f}'],
@@ -571,10 +732,14 @@ class ControlBenchmark:
                 f'{metrics["overshoot"]:.1f}',
                 (
                     f'{metrics["settling_time"]:.2f}'
-                    if metrics["settling_time"]
+                    if metrics["settling_time"] is not None
                     else "N/A"
                 ),
-                f'{metrics["rise_time"]:.2f}' if metrics["rise_time"] else "N/A",
+                (
+                    f'{metrics["rise_time"]:.2f}'
+                    if metrics["rise_time"] is not None
+                    else "N/A"
+                ),
                 f'{metrics["oscillation_count"]}',
                 f'{metrics["iae"]:.1f}',
                 f'{metrics["performance_index"]:.2f}',
@@ -756,10 +921,10 @@ class ControlBenchmark:
         )
         settling_rating = (
             "Быстро"
-            if metrics["settling_time"] and metrics["settling_time"] < 2
+            if metrics["settling_time"] is not None and metrics["settling_time"] < 2
             else (
                 "Средне"
-                if metrics["settling_time"] and metrics["settling_time"] < 5
+                if metrics["settling_time"] is not None and metrics["settling_time"] < 5
                 else "Медленно"
             )
         )

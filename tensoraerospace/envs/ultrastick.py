@@ -42,7 +42,7 @@ class LinearLongitudinalUltrastick(gym.Env):
         """Initialize legacy Ultrastick environment."""
         super().__init__()
         self.max_action_value = 25.0
-        self.initial_state = initial_state
+        self.initial_state = np.array(initial_state, dtype=float).copy()
         self.number_time_steps = number_time_steps
         self.tracking_states = (
             tracking_states if tracking_states is not None else ["theta", "q"]
@@ -64,7 +64,7 @@ class LinearLongitudinalUltrastick(gym.Env):
             t0=0,
         )
         # Map state_space to model's full state indices
-        # Model's selected_states: ["u", "w", "q", "theta", "h"]
+        # Model's selected_states: ["u", "w", "theta", "q", "h"]
         model_state_names = self.model.selected_states
         self.state_space_indices = [
             model_state_names.index(state_name) for state_name in self.state_space
@@ -129,6 +129,8 @@ class LinearLongitudinalUltrastick(gym.Env):
         """
         # Ensure action is 1D and get elevator value
         action_flat = np.asarray(action).flatten()
+        if action_flat.size != 1 or not np.all(np.isfinite(action_flat)):
+            raise ValueError("action must contain one finite elevator command")
         ele_deg = float(action_flat[0])
 
         # Clip elevator to limits
@@ -142,9 +144,10 @@ class LinearLongitudinalUltrastick(gym.Env):
         ele_rad = np.deg2rad(ele_deg)
         model_action = np.array([ele_rad, 0.0], dtype=np.float32)
 
+        self.model.run_step(model_action)
         self.current_step += 1
-        next_state_full = self.model.run_step(model_action)
-        # Map full model state to state_space
+        # run_step returns transformed outputs; this environment selects states.
+        next_state_full = np.asarray(self.model.xt).reshape(-1)
         next_state = next_state_full[self.state_space_indices]
         reward = self.reward_func(
             next_state[self.indices_tracking_states],
@@ -156,8 +159,8 @@ class LinearLongitudinalUltrastick(gym.Env):
         return (
             np.asarray(next_state).reshape(-1).astype(np.float32),
             reward,
-            self.done,
             False,
+            self.done,
             info,
         )
 
@@ -246,10 +249,23 @@ class ImprovedUltrastickEnv(gym.Env):
         self.reference_signal = np.array(reference_signal, dtype=float)
         self.number_time_steps = int(number_time_steps)
         self.current_step = 0
+        if self.number_time_steps < 2:
+            raise ValueError("number_time_steps must be at least two")
+        if (
+            self.reference_signal.ndim != 2
+            or self.reference_signal.shape[0] < 1
+            or self.reference_signal.shape[1] < 1
+            or not np.all(np.isfinite(self.reference_signal))
+        ):
+            raise ValueError("reference_signal must be a nonempty finite 2-D array")
 
         # Previous actions (normalized)
-        self.initial_elevator_deg = float(initial_elevator_deg)
-        self.initial_throttle = float(initial_throttle)
+        if not np.all(np.isfinite([initial_elevator_deg, initial_throttle])):
+            raise ValueError("initial actuator positions must be finite")
+        self.initial_elevator_deg = float(
+            np.clip(initial_elevator_deg, -self.max_elevator_deg, self.max_elevator_deg)
+        )
+        self.initial_throttle = float(np.clip(initial_throttle, 0.0, 1.0))
         self.use_initial_action_on_first_step = bool(use_initial_action_on_first_step)
         self.prev_elev_norm = float(
             np.clip(
@@ -301,9 +317,11 @@ class ImprovedUltrastickEnv(gym.Env):
             number_time_steps=self.number_time_steps,
             selected_state_output=None,
             t0=0,
-        )
-        self.model.initialise_system(
-            x0=self.initial_state, number_time_steps=self.number_time_steps
+            dt=self.dt,
+            initial_control=[
+                np.deg2rad(self.initial_elevator_deg),
+                self.initial_throttle,
+            ],
         )
         self.state = np.array(self.initial_state, dtype=float).reshape(-1)
 
@@ -470,6 +488,9 @@ class ImprovedUltrastickEnv(gym.Env):
         # Run model step (Ultrastick expects [ele (rad), delta_t])
         elev_rad = float(np.deg2rad(elev_deg))
         y = self.model.run_step(np.array([elev_rad, thr], dtype=float)).reshape(-1)
+        applied = self.model.store_input[:, self.model.time_step - 1]
+        elev_deg = float(np.rad2deg(applied[0]))
+        thr = float(applied[1])
         self.state = y.copy()
         self.current_step += 1
 

@@ -11,18 +11,27 @@ from typing import Any, Literal, Sequence, Union
 import numpy as np
 
 from tensoraerospace.aerospacemodel.base import ModelBase
+from tensoraerospace.aerospacemodel.utils.nonlinear_analysis import (
+    NonlinearAircraftAnalysis,
+)
 
 from ._integrators import euler, rk4
+from .damage import ElevatorEffectiveness
 from .dynamics import b737_ode_6dof
 from .initial import STATE_LIST
-from .params import B737Configuration, B737Parameters, default_parameters
+from .params import (
+    B737Configuration,
+    B737Parameters,
+    default_parameters,
+    isa_density_slug_ft3,
+)
 
 ArrayLike = Union[np.ndarray, Sequence[Sequence[float]], Sequence[float]]
 
 _CONTROL_LIST = ["de", "da", "dr", "dT"]
 
 
-class NonlinearB737(ModelBase):
+class NonlinearB737(NonlinearAircraftAnalysis, ModelBase):
     """Nonlinear 6-DoF Boeing 737 model.
 
     Args:
@@ -45,8 +54,11 @@ class NonlinearB737(ModelBase):
         dt: float = 0.01,
         integrator: Literal["euler", "rk4"] = "rk4",
         config: B737Configuration = B737Configuration.B737_100,
+        *,
+        elevator_fault: ElevatorEffectiveness | None = None,
+        integration_substeps: int = 1,
     ) -> None:
-        x0_arr = np.asarray(x0, dtype=np.float64).reshape(-1)
+        x0_arr = np.array(x0, dtype=np.float64, copy=True).reshape(-1)
         if x0_arr.size != 12:
             raise ValueError(
                 f"x0 must have 12 elements (see initial.py); got {x0_arr.size}"
@@ -68,27 +80,61 @@ class NonlinearB737(ModelBase):
         else:
             raise ValueError(f"unknown integrator: {integrator!r}")
         self._integrator_name = integrator
+        if elevator_fault is not None and not isinstance(
+            elevator_fault, ElevatorEffectiveness
+        ):
+            raise TypeError("elevator_fault must be ElevatorEffectiveness or None")
+        if (
+            isinstance(integration_substeps, bool)
+            or not isinstance(integration_substeps, (int, np.integer))
+            or integration_substeps < 1
+        ):
+            raise ValueError("integration_substeps must be a positive integer")
+        self.elevator_fault = elevator_fault
+        self.integration_substeps = int(integration_substeps)
+
+    _density = staticmethod(isa_density_slug_ft3)
+
+    _rhs = staticmethod(b737_ode_6dof)
 
     def get_param(self) -> B737Parameters:
+        """Return the live aircraft parameter object; mutations affect subsequent
+        integration.
+        """
         return self.param
 
     def set_param(self, new_param: B737Parameters) -> None:
+        """Replace the aircraft parameter object used by subsequent integration steps."""
         self.param = new_param
 
     @property
     def current_state(self) -> np.ndarray:
-        return np.asarray(self.x_history[-1], dtype=np.float64).reshape(-1)
+        """Return an independent flat copy of the latest 12-component state."""
+        return np.array(self.x_history[-1], dtype=np.float64, copy=True).reshape(-1)
 
     @property
     def altitude_ft(self) -> float:
+        """Return altitude in feet, reversing the NED down-position sign."""
         return float(-self.current_state[11])
 
     @property
     def airspeed_ft_s(self) -> float:
+        """Return the magnitude of body-axis velocity in feet per second."""
         s = self.current_state
         return float(np.sqrt(s[0] ** 2 + s[1] ** 2 + s[2] ** 2))
 
+    def _aerodynamic_action(self, action, time):
+        """Apply the scheduled elevator effectiveness to a copied native action."""
+        if self.elevator_fault is None:
+            return np.asarray(action, dtype=float).copy()
+        return self.elevator_fault.apply(action, time)
+
     def run_step(self, u: ArrayLike) -> np.ndarray:
+        """Integrate surface-radian and throttle commands over one sampling interval.
+
+        Split integration at elevator-fault times and configured substeps. Store the
+        transition and return selected states as a column vector.
+        """
         u_arr = np.asarray(u, dtype=np.float64).reshape(-1)
         if u_arr.size != self.action_space_length:
             raise ValueError(
@@ -99,14 +145,32 @@ class NonlinearB737(ModelBase):
         self.param.damage_geometry = self.damage_geometry
 
         x_prev = np.asarray(self.x_history[-1], dtype=np.float64).reshape(-1)
-        t_now = self.t0 + self.dt * self.time_step
-        x_next = self._step_fn(b737_ode_6dof, x_prev, u_arr, t_now, self.dt, self.param)
+        t_now = self.t0 + self.dt * (self.time_step - 1)
+        cuts = list(np.linspace(t_now, t_now + self.dt, self.integration_substeps + 1))
+        if (
+            self.elevator_fault is not None
+            and t_now < self.elevator_fault.time < t_now + self.dt
+        ):
+            cuts.append(self.elevator_fault.time)
+        x_next = x_prev
+        cuts = sorted(set(cuts))
+        for start, stop in zip(cuts[:-1], cuts[1:]):
+            # Hold one effectiveness through every RK stage of each segment.
+            effective = self._aerodynamic_action(u_arr, start)
+            interval = (
+                self.dt
+                if self.elevator_fault is None and self.integration_substeps == 1
+                else stop - start
+            )
+            x_next = self._step_fn(
+                b737_ode_6dof, x_next, effective, start, interval, self.param
+            )
 
         x_next_col = x_next.reshape(12, 1)
         self.x_history.append(x_next_col)
-        self.u_history.append(u_arr.reshape(-1, 1))
+        self.u_history.append(u_arr.reshape(-1, 1).copy())
         self.time_step += 1
 
         if self.selected_state_output:
             return x_next_col[self.selected_state_index]
-        return x_next_col
+        return x_next_col.copy()

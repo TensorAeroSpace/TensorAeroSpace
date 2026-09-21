@@ -7,7 +7,6 @@ This file shows how to use the new features of the ControlBenchmark class
 to build nice, informative plots for control-quality analysis.
 """
 
-import matplotlib.pyplot as plt
 import numpy as np
 
 from tensoraerospace.benchmark import ControlBenchmark
@@ -22,41 +21,32 @@ def generate_sample_system_response(
     Args:
         time (np.ndarray): Time array
         overshoot (float): Overshoot (0.0 - 1.0)
-        settling_time (float): Settling time
+        settling_time (float): Approximate 2% settling time after the step
         noise_level (float): Noise level
 
     Returns:
         tuple: (control_signal, system_signal)
     """
-    # Reference signal (step)
-    control_signal = np.ones_like(time)
-    control_signal[time < 1.0] = 0
+    if not 0 <= overshoot < 1:
+        raise ValueError("overshoot must be in [0, 1)")
+    if settling_time <= 0:
+        raise ValueError("settling_time must be positive")
+    time = np.asarray(time, dtype=float)
+    control_signal = (time >= 1.0).astype(float)
+    elapsed = np.maximum(time - 1.0, 0.0)
 
-    # Second-order system parameters
-    wn = 4.0 / settling_time  # Natural frequency
-    zeta = -np.log(overshoot) / np.sqrt(
-        np.pi**2 + np.log(overshoot) ** 2
-    )  # Damping ratio
-
-    # Second-order system step response
-    system_signal = np.zeros_like(time)
-
-    for i, t in enumerate(time):
-        if t >= 1.0:
-            tau = t - 1.0
-            if zeta < 1.0:  # Underdamped system
-                wd = wn * np.sqrt(1 - zeta**2)
-                response = 1 - np.exp(-zeta * wn * tau) * (
-                    np.cos(wd * tau) + (zeta * wn / wd) * np.sin(wd * tau)
-                )
-            else:  # Overdamped system
-                r1 = -wn * (zeta + np.sqrt(zeta**2 - 1))
-                r2 = -wn * (zeta - np.sqrt(zeta**2 - 1))
-                response = 1 + (r2 * np.exp(r1 * tau) - r1 * np.exp(r2 * tau)) / (
-                    r2 - r1
-                )
-
-            system_signal[i] = response
+    if overshoot == 0:
+        # Critical damping: (1 + wn*t)*exp(-wn*t) is below 2% at wn*t=6.
+        wn = 6.0 / settling_time
+        system_signal = 1 - (1 + wn * elapsed) * np.exp(-wn * elapsed)
+    else:
+        zeta = -np.log(overshoot) / np.sqrt(np.pi**2 + np.log(overshoot) ** 2)
+        # Ts ~= 4/(zeta*wn), rather than 4/wn.
+        wn = 4.0 / (zeta * settling_time)
+        wd = wn * np.sqrt(1 - zeta**2)
+        system_signal = 1 - np.exp(-zeta * wn * elapsed) * (
+            np.cos(wd * elapsed) + (zeta * wn / wd) * np.sin(wd * elapsed)
+        )
 
     # Add noise
     system_signal += np.random.normal(0, noise_level, len(system_signal))
@@ -154,9 +144,14 @@ def main():
     print("-" * 80)
 
     for system_name, metrics in all_metrics.items():
+        settling = (
+            f"{metrics['settling_time']:.3f}"
+            if metrics["settling_time"] is not None
+            else "N/A"
+        )
         print(
             f"{system_name:<20} {metrics['overshoot']:<12.2f} "
-            f"{metrics['settling_time']:<12.3f} {metrics['damping_degree']:<12.3f} "
+            f"{settling:<12} {metrics['damping_degree']:<12.3f} "
             f"{metrics['static_error']:<12.4f}"
         )
 

@@ -206,6 +206,7 @@ def test_auxiliary_checkpoint_restores_predictions_and_training(
     agent = make_agent()
     batch = _batch(agent)
     agent.learn(*batch)
+    agent.best_reward = 12.5
     if checkpoint == "save":
         model_dir = agent.save(tmp_path / "checkpoint")
     else:
@@ -219,22 +220,19 @@ def test_auxiliary_checkpoint_restores_predictions_and_training(
     restored = PPO.from_pretrained(str(model_dir))
     try:
         assert restored.auxiliary_coef == agent.auxiliary_coef
+        assert restored.best_reward == agent.best_reward
         torch.testing.assert_close(
             restored.actor.predict_reward(batch[0].to(restored.device)).cpu(),
             agent.actor.predict_reward(batch[0]),
         )
-        if checkpoint == "best_sync":
-            # Existing synchronous best checkpoints only persist network weights.
-            before = restored.actor.r.weight.detach().clone()
-            restored.learn(*batch)
-            assert not torch.equal(restored.actor.r.weight, before)
-        else:
-            assert restored.a_opt.state_dict()["state"]
-            # Restored optimizer state must produce the same next update.
-            agent.learn(*batch)
-            restored.learn(*batch)
+        assert restored.a_opt.state_dict()["state"]
+        assert restored.c_opt.state_dict()["state"]
+        # Every checkpoint format must resume the same optimizer trajectory.
+        agent.learn(*batch)
+        restored.learn(*batch)
+        for name in ("actor", "critic"):
             for expected, actual in zip(
-                agent.actor.parameters(), restored.actor.parameters()
+                getattr(agent, name).parameters(), getattr(restored, name).parameters()
             ):
                 torch.testing.assert_close(actual.cpu(), expected.cpu())
     finally:

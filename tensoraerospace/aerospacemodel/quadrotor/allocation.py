@@ -79,11 +79,11 @@ class XConfigAllocator:
     arm_length: float = 0.225
 
     def __post_init__(self) -> None:
-        if self.k_T <= 0:
+        if not np.isfinite(self.k_T) or self.k_T <= 0:
             raise ValueError(f"k_T must be positive; got {self.k_T}")
-        if self.k_M <= 0:
+        if not np.isfinite(self.k_M) or self.k_M <= 0:
             raise ValueError(f"k_M must be positive; got {self.k_M}")
-        if self.arm_length <= 0:
+        if not np.isfinite(self.arm_length) or self.arm_length <= 0:
             raise ValueError(f"arm_length must be positive; got {self.arm_length}")
         a = self.arm_length / np.sqrt(2.0)
         kT, kM = self.k_T, self.k_M
@@ -172,9 +172,9 @@ class XConfigAllocator:
             raise ValueError(
                 f"omega_squared must have 4 elements; got {omega_squared.size}"
             )
-        if omega_min < 0:
+        if not np.isfinite(omega_min) or omega_min < 0:
             raise ValueError(f"omega_min must be non-negative; got {omega_min}")
-        if omega_max <= omega_min:
+        if not np.isfinite(omega_max) or omega_max <= omega_min:
             raise ValueError(
                 f"omega_max must be > omega_min; got {omega_max} <= {omega_min}"
             )

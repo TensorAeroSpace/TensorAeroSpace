@@ -18,6 +18,8 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Optional
 
+import numpy as np
+
 from .state import RotorDamageState
 
 
@@ -30,12 +32,15 @@ class DamageEvent:
     label: Optional[str] = None
 
     def __post_init__(self) -> None:
-        if self.trigger_time < 0:
+        if not np.isfinite(self.trigger_time) or self.trigger_time < 0:
             raise ValueError(f"trigger_time must be >= 0; got {self.trigger_time}")
         if not 0 <= self.rotor_id <= 3:
             raise ValueError(f"rotor_id must be in {{0, 1, 2, 3}}; got {self.rotor_id}")
 
     def apply(self, state: RotorDamageState) -> None:  # pragma: no cover
+        """Apply this event in place to rotor damage state; subclasses define the
+        effect.
+        """
         raise NotImplementedError
 
 
@@ -56,6 +61,7 @@ class RotorDamageEvent(DamageEvent):
             raise ValueError(f"mu must be in [0, 1]; got {self.mu}")
 
     def apply(self, state: RotorDamageState) -> None:
+        """Set the selected rotor's dimensionless effectiveness multiplier."""
         state.mu[self.rotor_id] = self.mu
 
 
@@ -64,6 +70,7 @@ class RotorLossEvent(DamageEvent):
     """Complete rotor stop — ``mu = 0`` (Lanzon 2015 catastrophic case)."""
 
     def apply(self, state: RotorDamageState) -> None:
+        """Remove the rotor's effectiveness and cancel any active decay on that rotor."""
         state.mu[self.rotor_id] = 0.0
         # Cancel any active decay on this rotor since it's already gone
         state.tau[self.rotor_id] = 0.0
@@ -89,12 +96,13 @@ class MotorEfficiencyDecay(DamageEvent):
 
     def __post_init__(self) -> None:
         super().__post_init__()
-        if self.tau <= 0:
+        if not np.isfinite(self.tau) or self.tau <= 0:
             raise ValueError(f"tau must be positive; got {self.tau}")
         if not 0.0 <= self.mu_floor <= 1.0:
             raise ValueError(f"mu_floor must be in [0, 1]; got {self.mu_floor}")
 
     def apply(self, state: RotorDamageState) -> None:
+        """Start motor-efficiency decay with the configured time constant and floor."""
         state.tau[self.rotor_id] = self.tau
         state.mu_floor[self.rotor_id] = self.mu_floor
 

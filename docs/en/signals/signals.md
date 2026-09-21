@@ -1,5 +1,8 @@
 # Signals
 
+!!! note "Time grids and frequency sweeps"
+    Fractional amplitudes are preserved with integer time arrays. `chirp()` starts at zero phase and frequency `f0` at `tp[0]`, reaching `f1` at `tp[-1]`; shifting the time origin preserves the waveform. Exponential sweeps require positive endpoint frequencies and remain stable when these frequencies are almost equal.
+
 Generators of standard test signals for modeling, identification, and verification of control systems in `TensorAeroSpace`.
 
 TensorAeroSpace provides **17 types of signals** for comprehensive system testing and analysis:

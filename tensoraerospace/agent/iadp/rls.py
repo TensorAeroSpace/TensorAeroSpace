@@ -52,8 +52,8 @@ class IncrementalRLS:
     ) -> None:
         if not 0.0 < gamma_rls <= 1.0:
             raise ValueError("gamma_rls must lie in (0, 1]")
-        if phi_init <= 0.0:
-            raise ValueError("phi_init must be > 0")
+        if not np.isfinite(phi_init) or phi_init <= 0.0:
+            raise ValueError("phi_init must be finite and > 0")
         self.n_output = int(n_output)
         self.n_regressor = int(n_regressor)
         self.gamma_rls = float(gamma_rls)
@@ -90,24 +90,37 @@ class IncrementalRLS:
         if y_v.size != self.n_output:
             raise ValueError(f"y must have length {self.n_output}, got {y_v.size}")
 
-        eps = y_v - (self.theta.T @ W_v)
+        if not np.all(np.isfinite(W_v)) or not np.all(np.isfinite(y_v)):
+            raise ValueError("RLS regressor and target must be finite")
+
+        # Keep the paper's fixed-forgetting equations; Joseph form avoids
+        # subtracting almost equal covariance matrices after a large prior.
+        # Commit state only after the complete update passes numerical checks.
+        with np.errstate(over="raise", invalid="raise", divide="raise"):
+            eps = y_v - (self.theta.T @ W_v)
+            PhiW = self.Phi @ W_v
+            denom = float(self.gamma_rls + W_v @ PhiW)
+            if denom <= 0.0:
+                raise FloatingPointError(
+                    "RLS covariance produced nonpositive gain denominator"
+                )
+            K = PhiW / denom
+            theta = self.theta + np.outer(K, eps)
+            residual_map = np.eye(self.n_regressor) - np.outer(K, W_v)
+            covariance = (
+                residual_map @ self.Phi @ residual_map.T / self.gamma_rls
+                + np.outer(K, K)
+            )
+            covariance = 0.5 * covariance + 0.5 * covariance.T
+        if not np.all(np.isfinite(theta)) or not np.all(np.isfinite(covariance)):
+            raise FloatingPointError(
+                "Nonfinite RLS update; check scaling and excitation"
+            )
+        self.theta = theta
+        self.Phi = covariance
         self.last_residual = eps.copy()
-
-        PhiW = self.Phi @ W_v  # (n_regressor,)
-        denom = float(self.gamma_rls + W_v @ PhiW)
-        if denom <= 0.0:
-            denom = 1e-12
-        K = PhiW / denom  # (n_regressor,)
-
-        # Rank-1 parameter update.
-        self.theta = self.theta + np.outer(K, eps)
-        # Covariance update with constant forgetting.
-        self.Phi = (self.Phi - np.outer(K, PhiW)) / self.gamma_rls
-        # Cheap numerical symmetrisation.
-        self.Phi = 0.5 * (self.Phi + self.Phi.T)
-
         self.num_updates += 1
-        return eps
+        return np.asarray(eps)
 
     def reset_covariance(self) -> None:
         """Restore ``Φ`` to its initial large-variance state."""

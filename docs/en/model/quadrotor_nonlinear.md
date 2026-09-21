@@ -1,5 +1,8 @@
 # Quadrotor / multirotor UAV — Nonlinear 6-DoF dynamics
 
+!!! note "Rotor limits and damage"
+    Commands are limited to the motor speed range before effectiveness `mu` is applied. A failed rotor therefore stays at zero thrust even with a positive minimum commanded speed. Events at `t=0` fire on the first step. Gradual degradation uses `mu_next = mu_floor + (mu - mu_floor)*exp(-dt/tau)`, avoiding overshoot below the asymptote on large steps. Model state accessors return independent snapshots.
+
 Rigid-body quadrotor model in the full 6-DoF formulation: 12 states
 (position, velocity, attitude, angular rates), 4 control inputs
 (collective thrust + three body-frame torques). Implemented in pure
@@ -341,6 +344,30 @@ for k in range(2000):
 
 Without `damage_profile` the env is bit-identical to the no-damage
 baseline (rotor-effectiveness $\mu = 1$ on all four motors).
+
+## Event timing and continuous rotor wear
+
+The environment splits an integration step at each scheduled or injected event.
+A failure at the right endpoint changes the next interval's thrust; it does not
+act backward over the completed interval. The event log records `trigger_time`.
+Events are sorted chronologically, with profile order followed by injection
+order used to break ties. Wear decays only after its activation; RK4 evaluates
+the exponential effectiveness at each stage within an interval.
+
+`RotorDamageManager.update()` uses `t_current - t_previous` as elapsed time.
+The `dt` argument is retained for compatibility. `info` and the model control
+history contain **end-of-sample** effective commands, not their averages over
+a step containing an event. The bare model accepts optional `control_segments`
+for piecewise smooth forcing and records one state per outer step.
+
+Initial state arrays are copied. States, actions, event times and decay constants
+must be finite; time steps and rotor-speed limits are validated. Motor limits
+apply to commands before damage, so a stopped rotor cannot regain thrust from
+a minimum-speed clamp.
+
+Analytical free-fall and exponential-thrust tests, plus piecewise DOP853
+comparisons, verify event timing and integration. They do not validate the
+simplified drag, motor parameters or fault model against flight data.
 
 ## Current limitations
 

@@ -1,5 +1,3 @@
-from typing import Any
-
 import matplotlib.pyplot as plt
 import numpy as np
 from scipy.signal import cont2discrete
@@ -13,27 +11,31 @@ from tensoraerospace.aerospacemodel.utils.constant import (
 
 
 class GeoSat(ModelBase):
-    """Geostationary satellite in longitudinal control channel.
+    """Normalized linear deviations from a circular orbit (Hla et al., 2012).
+
+    Time is tau=t/sqrt(R/g); input is F2/(M*g). Legacy state names
+    rho, theta, omega denote radial displacement, radial velocity and
+    angular-rate deviations. In particular, theta is NOT angular position.
 
     Args:
         x0: Initial state of the control object.
         number_time_steps: Number of time steps.
         selected_state_output (optional): Selected states of the control object. Defaults to None.
         t0 (int, optional): Initial time. Defaults to 0.
-        dt (float, optional): Discretization frequency. Defaults to 0.01.
+        dt (float, optional): Step in normalized time tau. Defaults to 0.01.
 
     Action space:
-        thrust: engine thrust [N]
+        thrust: normalized tangential thrust F2/(M*g)
 
     State space:
-        rho: ratio of flight altitude to Earth radius
-        theta: satellite position relative to Earth coordinate system [rad]
-        omega: satellite angular velocity [rad/s]
+        rho: normalized radial displacement delta(r/R)
+        theta: legacy name for radial-velocity deviation d(delta_rho)/d(tau)
+        omega: angular-rate deviation d(delta_theta)/d(tau)
 
     Output space:
-        rho: ratio of flight altitude to Earth radius
-        theta: satellite position relative to Earth coordinate system [rad]
-        omega: satellite angular velocity [rad/s]
+        rho: normalized radial displacement delta(r/R)
+        theta: legacy name for radial-velocity deviation d(delta_rho)/d(tau)
+        omega: angular-rate deviation d(delta_theta)/d(tau)
     """
 
     def __init__(
@@ -43,6 +45,7 @@ class GeoSat(ModelBase):
         selected_state_output: list[str] | None = None,
         t0: float = 0,
         dt: float = 0.01,
+        initial_control: float = 0.0,
     ) -> None:
         """Initialize GeoSat instance.
 
@@ -51,11 +54,16 @@ class GeoSat(ModelBase):
             number_time_steps: Number of time steps.
             selected_state_output: Selected states of the control object. Defaults to None.
             t0: Initial time. Defaults to 0.
-            dt: Discretization frequency. Defaults to 0.01.
+            dt: Step in normalized time tau. Defaults to 0.01.
         """
         super().__init__(x0, selected_state_output, t0, dt)
 
         self.discretisation_time = dt
+        if not np.isfinite(initial_control):
+            raise ValueError("initial_control must be finite")
+        self.initial_control = float(
+            np.clip(initial_control, -np.deg2rad(25), np.deg2rad(25))
+        )
 
         # Selected data for the system
         self.selected_states = ["rho", "theta", "omega"]
@@ -66,13 +74,14 @@ class GeoSat(ModelBase):
         ]
         self.control_list = self.selected_input
 
-        self._initialize_selected_state_index(self.selected_states, self.list_state)
+        self._initialize_selected_state_index(
+            self.selected_state_output, self.list_state
+        )
 
         self.state_space = self.selected_states
         self.action_space = self.selected_input
         # ele
-        # Limitations of the system (model works in radians)
-        # Magnitude: ±25 deg -> radians; Rate: ±60 deg/s -> rad/s
+        # Legacy numerical bounds; these are not calibrated satellite thrust limits.
         self.input_magnitude_limits = [
             float(np.deg2rad(25.0)),
         ]
@@ -94,24 +103,17 @@ class GeoSat(ModelBase):
         self.initialise_system(x0, number_time_steps)
 
     def import_linear_system(self):
-        """Load (set) stored linearized system matrices.
+        """Reduced normalized model of Hla et al. (2012), equations (61), (66).
 
-        Values are taken from the authoritative Simulink reference model
-        ``tensoraerospace/aerospacemodel/simulinkModel/geosat/geosat_data.m``,
-        which is the source of truth for this linearization.
-
-        NOTE: The Russian/English markdown docs under ``docs/**/model/geosat.md``
-        currently list slightly different coefficients (0.7757, -0.1775, 0.1513).
-        Those values actually correspond to the ComSat model (see
-        ``simulinkModel/comsat/comsat_data.m``) and the docs are likely a
-        copy/paste error. The Simulink ``.m`` reference is trusted here.
-        TODO: reconcile ``docs/**/model/geosat.md`` with the Simulink source.
+        The three-state system uses -0.01774; -0.1774 in the old MATLAB
+        fixture disagreed with the reduced equations and orbital Jacobian.
+        Remaining coefficients retain the publication's rounding.
         """
         self.A = np.array(
             [
                 [0.0, 1.0, 0.0],
                 [0.01036, 0, 0.7753],
-                [0, -0.1774, 0],
+                [0, -0.01774, 0],
             ]
         )
 
@@ -149,11 +151,18 @@ class GeoSat(ModelBase):
             number_time_steps: Number of simulation steps.
         """
 
+        initial = np.array(x0, dtype=np.float64, copy=True).reshape(-1)
+        if initial.size != 3 or not np.all(np.isfinite(initial)):
+            raise ValueError("x0 must contain three finite state deviations")
+        if not np.isfinite(self.discretisation_time) or self.discretisation_time <= 0:
+            raise ValueError("dt must be positive and finite")
+        if int(number_time_steps) < 1:
+            raise ValueError("number_time_steps must be >= 1")
         # Import the stored system
         self.import_linear_system()
 
         # Store the number of time steps
-        self.number_time_steps = number_time_steps
+        self.number_time_steps = int(number_time_steps)
         self.time_step = 0
 
         # Discretise the system according to the discretisation time
@@ -165,8 +174,8 @@ class GeoSat(ModelBase):
         self.store_input = np.zeros((self.number_inputs, self.number_time_steps))
         self.store_outputs = np.zeros((self.number_outputs, self.number_time_steps))
 
-        self.x0 = x0
-        self.xt = x0
+        self.x0 = initial.copy()
+        self.xt = initial.copy()
         self.store_states[:, self.time_step] = np.reshape(
             self.xt,
             [
@@ -183,46 +192,21 @@ class GeoSat(ModelBase):
         Returns:
             np.ndarray: Next state at time t+1.
         """
-        if self.time_step != 0:
-            ut_1 = self.store_input[:, self.time_step - 1]
-        else:
-            ut_1 = ut_0
-        ut: Any = [
-            0,
-        ]
-        for i in range(self.number_inputs):
-            ut[i] = max(
-                min(
-                    max(
-                        min(
-                            ut_0[i],
-                            np.reshape(
-                                np.array(
-                                    [
-                                        ut_1[i]
-                                        + self.input_rate_limits[i]
-                                        * self.discretisation_time
-                                    ]
-                                ),
-                                [-1, 1],
-                            ),
-                        ),
-                        np.reshape(
-                            np.array(
-                                [
-                                    ut_1[i]
-                                    - self.input_rate_limits[i]
-                                    * self.discretisation_time
-                                ]
-                            ),
-                            [-1, 1],
-                        ),
-                    ),
-                    np.array([[self.input_magnitude_limits[i]]]),
-                ),
-                -np.array([[self.input_magnitude_limits[i]]]),
-            )
-        ut = np.array(ut)
+        command = np.asarray(ut_0, dtype=np.float64).reshape(-1)
+        if command.size != self.number_inputs or not np.all(np.isfinite(command)):
+            raise ValueError("control must contain one finite value")
+        if self.time_step >= self.number_time_steps:
+            raise RuntimeError("Simulation horizon exhausted; reinitialize the model")
+        previous = (
+            self.store_input[:, self.time_step - 1]
+            if self.time_step
+            else np.array([self.initial_control])
+        )
+        delta = np.asarray(self.input_rate_limits) * self.discretisation_time
+        ut = np.clip(command, previous - delta, previous + delta)
+        ut = np.clip(
+            ut, -np.asarray(self.input_magnitude_limits), self.input_magnitude_limits
+        )
         self.xt1 = np.matmul(self.filt_A, np.reshape(self.xt, [-1, 1])) + np.matmul(
             self.filt_B, np.reshape(ut, [-1, 1])
         )

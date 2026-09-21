@@ -1,180 +1,125 @@
-# Пример: AA-INDI на нелинейной F-16 — слежение за угловой скоростью тангажа с инъекцией отказа
+# AA-INDI: управление нелинейным B737 и отказ руля
 
-Пример демонстрирует агент [**AA-INDI**](../../../agent/aa_indi.md) в задаче слежения за командой по угловой скорости тангажа на [нелинейной модели F-16](../../../model/f16_nonlinear_longitudinal.md), и моделирует потерю 50% эффективности руля высоты в середине эпизода, показывая, как замкнутый контур это переживает. Исходный ноутбук: `example/reinforcement_learning/incremental_adp/example_aaindi_nonlinear_f16.ipynb`.
+Полный пример ниже использует установленную библиотеку `tensoraerospace`:
+создаёт среду, настраивает агент, выполняет `predict → step → learn`, показывает
+задание и отклик и вычисляет метрики переходного процесса.
 
-## Ключевая идея
+Сценарий: B737-800, 20 000 ft и 650 ft/s, 60 с с шагом 0.02 с. На 15 с тангаж
+увеличивается на 1°, на 30 с руль теряет 50% аэродинамической эффективности.
+Газ фиксирован в балансировочном положении; скорость и высота отслеживаются
+на графиках, но не удерживаются отдельными регуляторами. Агент не получает
+расписание отказа и обучается весь полёт.
 
-AA-INDI — **инкрементальный нелинейный динамический инверсный регулятор** в паре с **RLS-идентификатором с переменным фактором забывания** для матрицы эффективности управления `G`. Закон управления
+[Ноутбук без отказа](https://github.com/TensorAeroSpace/TensorAeroSpace/blob/develop/example/reinforcement_learning/incremental_adp/example_aaindi_nonlinear_b737.ipynb) ·
+[ноутбук с отказом](https://github.com/TensorAeroSpace/TensorAeroSpace/blob/develop/example/reinforcement_learning/incremental_adp/example_aaindi_fault_b737.ipynb) ·
+[пошаговый cookbook](../../../cookbook/14_aaindi.md).
 
-\[
-\Delta u = G^{+} \cdot (\nu_{\text{des}} - \dot{\omega}_z^{\text{meas}})
-\]
-
-требует только текущего `G`, а не полной нелинейной аэродинамической модели. Поэтому при внезапной потере половины эффективности привода контур лишь видит увеличение невязки прогноза, VFF-RLS сжимает фактор забывания, и `G̃` отслеживает новый объект.
-
-## 1. Импорты и трим
+## Настройка, цикл управления и графики
 
 ```python
-import math
-import gymnasium as gym
-import matplotlib.pyplot as plt
 import numpy as np
-from scipy.optimize import fsolve
+import matplotlib.pyplot as plt
+from tensoraerospace.agent.aa_indi import (
+    AAINDIAgent,
+    AAINDIConfig,
+    AircraftGeometry,
+    FlightMeasurement,
+    ObserverConfig,
+)
+from tensoraerospace.aerospacemodel.b737.nonlinear import ElevatorEffectiveness
+from tensoraerospace.benchmark import B737PitchStepBenchmark
 
-import tensoraerospace
-from tensoraerospace.aerospacemodel.f16.nonlinear.longitudinal.dynamics import f16_ode_long
-from tensoraerospace.aerospacemodel.f16.nonlinear.longitudinal.params import default_parameters
-from tensoraerospace.agent.aa_indi import AAINDIAgent, AAINDIConfig
-
-dt = 0.01
-params = default_parameters()
-
-def trim_residual(z):
-    alpha, stab = z
-    x = np.array([alpha, 0.0, stab, 0.0])
-    return list(f16_ode_long(x, np.array([stab]), 0.0, params)[:2])
-
-sol, *_ = fsolve(trim_residual, x0=[math.radians(2.0), math.radians(-2.0)], full_output=True)
-alpha_trim_rad, stab_trim_rad = float(sol[0]), float(sol[1])
-# глобальный трим: alpha = +4.918°, руль = -4.447°
-```
-
-## 2. Конструктор среды
-
-```python
-def make_env(n_steps):
-    env = gym.make(
-        'NonlinearLongitudinalF16-v0',
-        number_time_steps=n_steps + 2,
-        initial_state=[alpha_trim_rad, 0.0, stab_trim_rad, 0.0],
-        reference_signal=np.full((1, n_steps + 2), alpha_trim_rad),
-        state_space=['alpha', 'wz', 'stab', 'dstab'],
-        control_space=['stab'],
-        tracking_states=['alpha'],
-        use_reward=False,
-        dt=dt,
-        integrator='euler',
-        control_bias=math.degrees(stab_trim_rad),
-    ).unwrapped
-    env.reset()
-    return env
-```
-
-## 3. Начальная матрица `G_init`
-
-INDI требует разумной оценки эффективности управления на первых шагах. Короткая PE-возбуждающая последовательность даёт представление о знаке и порядке величины; одношаговое дифференцирование недооценивает истинный установившийся коэффициент (постоянная времени привода ≈ 0.03 с сравнима с `dt`), поэтому `G_init` берём чуть большим по модулю, чтобы инверсия INDI была устойчивой.
-
-```python
-# Короткое многосинусное возбуждение для проверки знака и масштаба G.
-N_PE = 300; env_pe = make_env(N_PE); obs, _ = env_pe.reset()
-wz_hist = [float(obs[1])]; u_hist = [0.0]
-for t in range(N_PE):
-    u = 2.0*np.sin(2*np.pi*0.7*t*dt) + 1.0*np.sin(2*np.pi*1.5*t*dt)
-    obs, *_ = env_pe.step(np.array([u]))
-    wz_hist.append(float(obs[1])); u_hist.append(float(u))
-
-wz = np.array(wz_hist); us = np.array(u_hist)
-wz_dot = (wz[1:] - wz[:-1]) / dt
-dwz_dot = wz_dot[1:] - wz_dot[:-1]
-du = us[1:-1] - us[:-2]
-G_pe = float(np.dot(du, dwz_dot) / max(np.dot(du, du), 1e-9))
-
-G_init_value = -0.5  # рад/с² на ° stab — подобрано для устойчивости внутреннего контура
-G_init = np.array([[G_init_value]])
-# Одношаговое PE G (занижено): -0.1386
-# G_init для warm-start AA-INDI: -0.5000
-```
-
-## 4. Harness для замкнутого контура
-
-Чистый «учебный» INDI — это **type-0** контур по угловой скорости: в установившемся режиме выход reference-model `ν_des` стремится к нулю, и объект удерживает ту скорость, которую успел набрать на переходном процессе — обычно на 10% ниже команды из-за запаздывания привода. Стандартный приём INDI — добавить **P-обратную связь по ошибке слежения за reference-model** в `ν_des`. В `AAINDIConfig` это `ref_error_kp` / `ref_error_ki`. `K_p = 0.6, K_i = 0` сводят установившуюся ошибку к нулю на этом объекте.
-
-```python
-def run_aaindi(wz_cmd, n_steps, actuator_fault_gain=1.0, fault_at_step=None,
-               ref_error_kp=0.6, ref_error_ki=0.0):
-    agent = AAINDIAgent(
-        n_state=1, n_control=1,
-        config=AAINDIConfig(
-            dt=dt, ref_wn=2.5, ref_zeta=0.9,
-            u_magnitude_limit=15.0, u_rate_limit=60.0,
-            vff_forgetting_min=0.97, vff_forgetting_max=0.9999,
-            vff_eps_sensitivity=0.1, vff_cov_init=1.0,
-            sensor_cutoff_hz=15.0, bias_forgetting=0.995,
-            enable_bias_correction=False,
-            G_init=G_init.copy(),
-            ref_error_kp=ref_error_kp, ref_error_ki=ref_error_ki,
-            seed=0,
+experiment = B737PitchStepBenchmark(
+    duration=60.0,
+    dt=0.02,
+    step_time=15.0,
+    step_deg=1.0,
+    elevator_fault=ElevatorEffectiveness(time=30.0, effectiveness=0.5),
+)
+env, trim, trim_action = experiment.make_env()
+state, _ = env.reset(seed=experiment.seed)
+theta_trim = state[7]
+geometry = AircraftGeometry.from_parameters(env.model.param)
+measurement = FlightMeasurement.from_model(
+    env.model,
+    applied_action=trim_action,
+    surface_indices=(0,),
+)
+_, B = env.model.linearize(state, trim_action)
+nominal_derivatives = geometry.coefficients(
+    np.zeros(3),
+    B[3:6, 0],
+    measurement.density,
+    measurement.airspeed,
+)[:, None]
+agent = AAINDIAgent(
+    AAINDIConfig(
+        geometry=geometry,
+        nominal_derivatives=nominal_derivatives,
+        observer=ObserverConfig(
+            dt=experiment.dt, gravity=env.model.param.g_ft_s2 * 0.3048
         ),
+        covariance_init=1.0,
+        rate_feedback=np.full(3, 3.0),
+        acceleration_cutoff_hz=5.0,
+        magnitude_limit=env.model.param.elevator_max_rad,
+        rate_limit=np.deg2rad(20.0),
+        enable_sensor_correction=True,
     )
-    env = make_env(n_steps)
-    obs, _ = env.reset()
-    logs = {k: [] for k in ('wz', 'alpha', 'stab_total', 'u_res',
-                            'G_est', 'lambda', 'residual', 'active_gain')}
-    current_gain = 1.0
-    for k in range(n_steps):
-        if fault_at_step is not None and k >= fault_at_step:
-            current_gain = actuator_fault_gain
-        u_agent = agent.predict(np.array([float(obs[1])]),
-                                np.array([wz_cmd[k]]), k)
-        u_applied = u_agent * current_gain
-        obs, *_ = env.step(u_applied)
-        agent.learn(np.array([float(obs[1])]),
-                    np.array([wz_cmd[k]]), k)
-        logs['wz'].append(float(obs[1]))
-        logs['stab_total'].append(math.degrees(stab_trim_rad) + float(u_applied[0]))
-        logs['G_est'].append(float(agent.rls.G[0, 0]))
-        logs['lambda'].append(float(agent.rls.last_lambda))
-        logs['active_gain'].append(current_gain)
-    return {k: np.asarray(v) for k, v in logs.items()}
+)
+states, actions, rate_commands = [state.copy()], [], []
+try:
+    for k in range(experiment.steps):
+        q_ref = np.clip(
+            0.8 * (theta_trim + experiment.reference[k] - state[7]),
+            -np.deg2rad(3.0),
+            np.deg2rad(3.0),
+        )
+        command = agent.predict(measurement, np.array([0.0, q_ref, 0.0]))
+        action = trim_action.copy()
+        action[0] = command[0]
+        state, _, terminated, truncated, _ = env.step(action)
+        experiment.validate_transition(state, terminated, truncated, k)
+        applied = env.model.applied_action
+        measurement = FlightMeasurement.from_model(env.model, surface_indices=(0,))
+        agent.learn(measurement, applied_action=applied[:1])
+        states.append(state.copy())
+        actions.append(applied)
+        rate_commands.append(q_ref)
+finally:
+    env.close()
+states, actions, rate_commands = map(np.asarray, (states, actions, rate_commands))
+experiment.plot_response(states, actions, rate_commands, "AA-INDI: B737 elevator fault")
+plt.show()
+windows, physical_metrics = experiment.evaluate(states, actions)
+print(experiment.metric_table(windows).to_string())
+print(physical_metrics)
 ```
 
-## 5. Базовое слежение за ступенькой без отказа
+## Как читать результаты
 
-Команда 1°/с, подаётся в `t = 2 с`.
+Состояния модели используют ft/s, ft и радианы. `AircraftGeometry.from_parameters`
+и `FlightMeasurement.from_model` выполняют преобразование в СИ. Для первого
+измерения явно передаётся балансировочное управление; после `step` берётся
+фактический вход объекта. `predict` возвращает абсолютный угол руля в радианах.
 
-```python
-N = 2000
-t_arr = np.arange(N) * dt
-wz_cmd = math.radians(1.0) * (t_arr >= 2.0).astype(float)
-baseline = run_aaindi(wz_cmd, N)
-# late-half ω_z MAE: 0.0008 °/s
-# final G_est:       -0.4974
-```
+Сначала сравните заданный и фактический тангаж, затем угловую скорость, руль,
+накопленную ошибку, высоту и скорость. Таблица различает установление около
+конечного выхода и около команды. Для исправного сравнения задайте
+`elevator_fault=None` и повторите весь запуск с новым агентом.
 
-![AA-INDI baseline](img/aaindi_baseline.png)
+## Пример с отказом гироскопа
 
-При `K_p = 0.6` во внешнем контуре обратной связи трекинг **идеальный**: MAE ≈ `0.0008 °/с` (< 0.1% от команды 1 °/с). `G̃` сходится к ≈ `-0.50`, `λ` удерживается вблизи верхнего предела. Поставьте `ref_error_kp=0` в вызове выше, чтобы увидеть «чистый» INDI — трекинг устанавливается на ≈ 0.9 °/с (недотяг 10%).
+[Отдельный ноутбук](https://github.com/TensorAeroSpace/TensorAeroSpace/blob/develop/example/reinforcement_learning/incremental_adp/example_aaindi_sensor_actuator_faults.ipynb) показывает
+создание `AAINDIAgent` и `FlightMeasurement` напрямую, синтетический объект,
+введение отказов и цикл обучения. На 20 с теряется 30% эффективности привода
+тангажа и появляется смещение гироскопа 0.02 рад/с. Сравниваются новые агенты
+с `enable_sensor_correction=True` и `False` при одинаковом шуме.
 
-## 6. Инъекция отказа — 50% потери эффективности руля в `t = 10 с`
+Независимая скорость измеряется на 10 Гц, IMU и ориентация — на 100 Гц.
+Ноутбук строит графики задания, истинных скоростей, оценки смещения и рулей,
+вычисляет RMSE через `ControlBenchmark`. Это аналитическое твёрдое тело;
+параметры и результаты относятся к этому объекту, а не к полной аэродинамике B737.
 
-```python
-fault_step = int(10.0 / dt)
-fault = run_aaindi(wz_cmd, N, actuator_fault_gain=0.5, fault_at_step=fault_step)
-
-# post-fault late tracking MAE: 0.0033 °/s
-# G̃ before fault (t = 9 s):    -0.4974
-# G̃ after fault (final):       -0.4820
-# min λ around fault time:      0.970
-```
-
-![AA-INDI fault](img/aaindi_fault.png)
-
-В `t = 10 с` эффективный коэффициент руля падает вдвое. Объект отвечает на ту же команду медленнее, невязка VFF-RLS подскакивает, а `λ` падает с `0.9999` до `≈ 0.97` — именно тот режим быстрой адаптации, на который и проектировался алгоритм. Внешний контур обратной связи компенсирует ослабленный внутренний отклик; слежение остаётся на задании с **MAE ≈ 0.003 °/с** прямо через переходный процесс отказа.
-
-| Метрика | Базовый | С отказом |
-|---|---|---|
-| Late-half MAE `ω_z` | 0.0008 °/с | 0.0033 °/с |
-| Финальный `G̃` | −0.497 | −0.482 |
-| Мин. `λ` в момент отказа | 0.9999 | 0.97 |
-
-## Заметки
-
-- **Возбуждение важно для идентификации.** В этом демо система уже в установившемся режиме к моменту отказа, поэтому невязка RLS мала и `G̃` дрейфует лишь слегка. При *продолжающемся* возбуждении (синусоидальное задание, ступенчатые манёвры, движения РУС) VFF-RLS «дотянет» `G̃` до истинного пост-отказного значения (≈ `0.5 × G_init`). Главное — инкрементальная структура INDI сохраняет устойчивость, даже если `G̃` обновляется медленно.
-- **Warm-start `G_init`.** INDI со случайной `G` расходится — псевдообратная матрица разлетается, привод насыщается. На практике `G_init` берётся из бортовой линеаризации; здесь мы подобрали эмпирически (`-0.5 рад/с²/°`), поскольку одношаговое PE-выражение даёт заниженную оценку через 2-го порядка привод.
-- **`ref_wn = 2.5 рад/с`** — медленнее полосы привода в ≈ 33 Гц, поэтому ν_des достижимо без «пиления» на ограничителях.
-
-## См. также
-
-- [Документация AA-INDI](../../../agent/aa_indi.md) — теория, полный API, референс гиперпараметров.
-- [IM-GDHP на нелинейной F-16](../imgdhp/example_imgdhp_nonlinear.md) — другой онлайн-идентификатор, основанный на GDHP.
-- [ET-DHP на нелинейной F-16](../et_dhp/example_etdhp_nonlinear.md) — для сравнения: событийный DHP.
+[Измерения и API](../../../agent/aa_indi.md) ·
+[AA-INDI против PID, LQR и LQI на B747](../../../comparison/aaindi_vs_pid_lqr_lqi_b747.md).

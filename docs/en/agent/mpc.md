@@ -10,7 +10,7 @@ MPC uses a dynamics model to predict system behavior and choose an optimal contr
 - Horizon cost \(N\):
 
 $$
-J = \sum_{i=0}^{N-1} (x_{k+i} - x^{\mathrm{ref}}_{k+i})^\top Q (x_{k+i} - x^{\mathrm{ref}}_{k+i})
+J = \sum_{i=0}^{N-1} (x_{k+i+1} - x^{\mathrm{ref}}_{k+i+1})^\top Q (x_{k+i+1} - x^{\mathrm{ref}}_{k+i+1})
     + u_{k+i}^\top R\, u_{k+i} + \Delta u_{k+i}^\top S\, \Delta u_{k+i}
     + \text{terminal\_weight} \cdot (x_{k+N}-x^{\mathrm{ref}}_{k+N})^\top Q (x_{k+N}-x^{\mathrm{ref}}_{k+N})
 $$
@@ -389,3 +389,18 @@ Each example demonstrates the full pipeline:
 ::: tensoraerospace.agent.mpc.NARX
 
 ::: tensoraerospace.agent.mpc.TransformerDynamicsModel
+
+## Solver timing and numerical failures
+
+The implemented stage cost uses the predicted state `x[i+1]`. A reference with
+`horizon` rows specifies `x[1]` through `x[N]`; a reference with `horizon+1` rows
+also contains the initial-state target in row zero. The terminal penalty is
+additional to the last stage cost. `final_cost` belongs to the returned sequence;
+`track_best=True` also evaluates the final optimizer update.
+
+Pass the actual previous actuator input as `u_prev` to constrain the first move.
+Without it, rate limits still constrain consecutive predicted moves, but the
+first move has no known starting position. Bounds must be mutually feasible.
+The solver raises `RuntimeError` on a nonfinite objective or control gradient;
+it does not supply a fallback controller. A finite solution or terminal weight
+alone does not guarantee closed-loop stability.

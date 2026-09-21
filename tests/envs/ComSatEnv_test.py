@@ -85,7 +85,7 @@ def test_render_modes(capsys):
     snapshot = env.render(mode="ansi")
     assert isinstance(snapshot, str)
     assert "step=1" in snapshot
-    assert "action=[10]" in snapshot
+    assert "action=[0.6]" in snapshot  # applied slew-limited thrust
 
 
 def test_invalid_render_mode_rejected():

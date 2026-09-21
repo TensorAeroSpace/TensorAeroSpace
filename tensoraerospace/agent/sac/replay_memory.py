@@ -54,7 +54,13 @@ class ReplayMemory:
             done: Episode termination flag (bool) or mask (0.0/1.0).
 
         """
-        transition = (state, action, reward, next_state, done)
+        transition = (
+            np.array(state, copy=True),
+            np.array(action, copy=True),
+            reward.copy() if isinstance(reward, np.ndarray) else reward,
+            np.array(next_state, copy=True),
+            done,
+        )
         if len(self.buffer) < self.capacity:
             self.buffer.append(transition)
         else:

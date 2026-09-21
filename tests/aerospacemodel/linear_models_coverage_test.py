@@ -66,12 +66,8 @@ PLOTTING_MODELS: list[tuple] = [
 
 
 def _build(cls, n_states, n_ctrls):
-    """Instantiate a model, patch list_state, and run a few steps."""
+    """Instantiate a model and run a few steps using its public metadata."""
     m = cls(np.zeros((n_states, 1)), number_time_steps=12)
-    # The base ``_initialize_selected_state_index`` wipes ``list_state`` to [].
-    # Restore it so plot_output's validation step passes.
-    if hasattr(m, "selected_output"):
-        m.list_state = m.selected_output
     u = np.zeros((n_ctrls, 1))
     for _ in range(3):
         m.run_step(u)
@@ -207,8 +203,6 @@ def test_get_output_returns_history(plot_spec):
 # --------------------------- selected-state subset ------------------------
 def test_selected_state_output_subset_returns_subset():
     # ELVRocket with a subset of outputs returns only the chosen row.
-    # (LongitudinalF16 linear has a very different subset-indexing convention,
-    # so use ELV as the representative smoke case.)
     m = ELVRocket(
         np.zeros((3, 1)),
         number_time_steps=5,
@@ -216,4 +210,4 @@ def test_selected_state_output_subset_returns_subset():
     )
     out = m.run_step(np.zeros((1, 1)))
     # Expected subset shape: one row × 1 column.
-    assert out.ndim == 2 and out.shape[1] == 1
+    assert out.shape == (1, 1)

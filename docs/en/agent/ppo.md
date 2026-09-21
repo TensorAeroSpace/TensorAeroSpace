@@ -106,11 +106,13 @@ agent = PPO(
 # Train
 agent.train()
 
-# Save and load
-agent.save('./runs')
+# Save, then release the original agent's resources
+checkpoint_dir = agent.save('./runs')
+agent.close()
+env.close()
 
-# Load a trained agent
-agent = PPO.load('./runs')
+# Load the directory returned by save()
+agent = PPO.from_pretrained(str(checkpoint_dir))
 ```
 
 !!! tip
@@ -121,6 +123,20 @@ agent = PPO.load('./runs')
 - Increase `rollout_len` for stabler advantage estimates
 - Balance `clip_pram` (typically 0.1–0.3) and `entropy_coef` for exploration
 - Multiple epochs (`num_epochs`) with smaller `batch_size` help convergence—watch for overfitting
+
+## Reproducibility and cleanup
+
+`seed` controls the initial actor and critic weights, including an enabled reward
+head. Seed the environment separately when comparing training runs.
+
+Both synchronous (`save_best_async=False`) and background best checkpoints save
+network weights, Adam optimizer states, the best reward, and enabled normalization
+statistics. Load the checkpoint directory with `PPO.from_pretrained(...)` to
+continue training with those states.
+
+Call `agent.close()` after use to finish pending checkpoint writes and close the
+TensorBoard/W&B writers. It is safe to call more than once. Close the environment
+separately with `agent.env.close()`.
 
 ## Auxiliary Tasks {#auxiliary-tasks}
 
@@ -214,3 +230,9 @@ untouched by the unified interface.
 ## Tested on
 
 - Unity environment
+
+## Rollout boundaries and initial exploration
+
+Time limits bootstrap from the final observation while stopping GAE recursion at the episode boundary. Auto-reset vector environments should return `final_observation` and its optional `_final_observation` mask; without them PPO cannot safely bootstrap a reset observation. Immediate rewards remain unchanged for metrics and auxiliary prediction. Observation normalization applies consistently during vector collection, updates and inference.
+
+New policies initialize log standard deviation near `-0.5` (clipped inside custom bounds), avoiding near-deterministic initialization at the midpoint of `[-20, 0]`. Existing checkpoints retain the same parameter names and forward mapping. Single-transition rollouts use population variance to avoid undefined sample standard deviation.

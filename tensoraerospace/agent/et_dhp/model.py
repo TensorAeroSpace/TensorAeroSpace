@@ -43,6 +43,8 @@ import numpy as np
 import torch
 from torch import nn, optim
 
+from tensoraerospace.optimization.agent import OptimizableAgent
+
 from ..metrics import MetricWriter, create_metric_writer, schema
 from .event_trigger import EventTrigger
 from .networks import ETDHPActor, ETDHPCritic, PlantModelNN
@@ -128,10 +130,10 @@ def _bounded_integral_cost(
     Summing over control channels (the result is a scalar).
     """
     t = torch.tanh(d_nn)
-    # log1p(−t²) is numerically safer than log(1 − t²) near the
-    # saturation band, but 1 − t² = 1/cosh(D)² so log(1 − tanh(D)²)
-    # = −2 · log(cosh(D)) — the form used below avoids NaNs at |D| ≫ 1.
-    log_term = -2.0 * torch.log(torch.cosh(d_nn))
+    # log(cosh(D)) = logaddexp(D, -D) - log(2), without materialising
+    # cosh(D), which overflows for saturated float32 actor outputs.
+    log_cosh = torch.logaddexp(d_nn, -d_nn) - np.log(2.0)
+    log_term = -2.0 * log_cosh
     Y_per = t * d_nn + 0.5 * log_term
     return 2.0 * torch.dot(R * (u_bound**2), Y_per)
 
@@ -144,7 +146,10 @@ def _jacobians_per_output(
     Returns a list of Jacobians with the same length as ``x_inputs``,
     each of shape ``(len(y), x_inputs[i].numel())``.
     """
-    jacs = [torch.zeros((y.numel(), x.numel()), dtype=y.dtype) for x in x_inputs]
+    jacs = [
+        torch.zeros((y.numel(), x.numel()), dtype=y.dtype, device=y.device)
+        for x in x_inputs
+    ]
     n_out = y.numel()
     for i in range(n_out):
         grads = torch.autograd.grad(
@@ -160,7 +165,7 @@ def _jacobians_per_output(
     return jacs
 
 
-class ETDHPAgent:
+class ETDHPAgent(OptimizableAgent):
     """Event-triggered DHP agent with bounded actor and costate critic.
 
     The agent operates on a **regulation state** ``x̃`` — typically the
@@ -260,6 +265,7 @@ class ETDHPAgent:
 
         self._last_action: np.ndarray = np.zeros(self.n_control, dtype=np.float64)
         self._last_state: np.ndarray | None = None
+        self._transition_state: np.ndarray | None = None
         self._last_time_sec: float = 0.0
 
         self.history: dict[str, list[float]] = {
@@ -329,6 +335,7 @@ class ETDHPAgent:
         self.event_trigger.reset()
         self._last_action = np.zeros(self.n_control, dtype=np.float64)
         self._last_state = None
+        self._transition_state = None
         self._last_time_sec = 0.0
 
     # ------------------------------------------------------------------
@@ -405,7 +412,11 @@ class ETDHPAgent:
         *,
         deterministic: bool = True,
     ) -> np.ndarray:
-        """Compute the control action for the current measurement.
+        """Initialize or return the control held since the latest event.
+
+        Call :meth:`learn` after each environment step to process the new
+        measurement and update the held command when the trigger fires.
+        :meth:`reset` releases the hold before a new episode.
 
         ``deterministic`` is accepted for API consistency with other
         tensoraerospace agents but is ignored — exploration is handled
@@ -414,6 +425,10 @@ class ETDHPAgent:
         """
         del deterministic  # kept for API compatibility
         x_tilde = self.obs_to_state(obs, reference_signal, time_step)
+        self._transition_state = x_tilde.copy()
+        if self._last_state is not None:
+            # learn() replaces the held command only when an event fires.
+            return self._last_action.copy()
         self._last_state = x_tilde.copy()
         self.actor.eval()
         with torch.no_grad():
@@ -431,6 +446,7 @@ class ETDHPAgent:
         time_step: int = 0,
         *,
         dt: float = 1.0,
+        applied_action: np.ndarray | None = None,
     ) -> dict[str, float]:
         """Run the event-triggered update step.
 
@@ -447,13 +463,29 @@ class ETDHPAgent:
                 (same index that was passed to :meth:`predict`).
             dt: Simulation step (s). Used only to advance the internal
                 wall-clock that ``cfg.exploration_fn`` receives.
+            applied_action: Actual input used by the plant for this transition.
+                Optional actuator feedback for online plant-model fitting;
+                defaults to the requested action. It does not change the held
+                policy command between events.
 
         Returns:
             Dictionary of scalar metrics: ``triggered`` (1/0),
             ``norm_diff``, ``condition``, ``actor_loss``,
             ``critic_loss``.
         """
+        if self._transition_state is None:
+            raise RuntimeError("learn() requires predict() for the current transition")
         x_measured = self.obs_to_state(next_obs, reference_signal, time_step + 1)
+        transition_action = self._last_action.copy()
+        if applied_action is not None:
+            transition_action = np.asarray(applied_action, dtype=float).reshape(-1)
+            if (
+                transition_action.shape != (self.n_control,)
+                or not np.isfinite(transition_action).all()
+            ):
+                raise ValueError("applied_action must be a finite n_control vector")
+        transition_state = self._transition_state
+        self._transition_state = None
 
         triggered = self.event_trigger.should_trigger(x_measured, time_step + 1)
         metrics = {
@@ -472,14 +504,19 @@ class ETDHPAgent:
             self.history["norm_diff"].append(metrics["norm_diff"])
             return metrics
 
-        # Build the NN-facing state: the update always happens at the
-        # most recently captured (non-noisy) agent state, not the noisy
-        # measurement, so the critic/actor see clean data.
-        x_for_update = (
-            self._last_state.copy()
-            if self._last_state is not None
-            else x_measured.copy()
-        )
+        if self.cfg.online_model_fit:
+            # Fit the actual latest transition, not the older trigger state.
+            self.fit_plant_model(
+                transition_state.reshape(1, -1),
+                transition_action.reshape(1, -1),
+                x_measured.reshape(1, -1),
+                batch_size=1,
+                epochs=1,
+            )
+
+        # The trigger is evaluated at k+1, so update from that same state.
+        x_for_update = x_measured.copy()
+        self._last_state = x_for_update.copy()
         a_loss, c_loss = self._run_inner_updates(x_for_update)
         metrics["actor_loss"] = a_loss
         metrics["critic_loss"] = c_loss
@@ -759,13 +796,14 @@ class ETDHPAgent:
 
         The ``state_transform`` callable is never serialised — on load the
         caller must supply it again via :meth:`from_pretrained` /
-        :meth:`_load_from_dir`. This matches how Gymnasium treats other
-        non-picklable env-side components.
+        :meth:`_load_from_dir`. The same applies to ``exploration_fn``.
         """
         agent_name = f"{self.__class__.__module__}.{self.__class__.__name__}"
         cfg_dict = dataclasses.asdict(self.cfg)
         # Drop runtime-only buffer.
         cfg_dict.pop("history", None)
+        # Callbacks must be re-attached by the caller, like state_transform.
+        cfg_dict.pop("exploration_fn", None)
         # Tuples → lists for JSON stability.
         for key, value in list(cfg_dict.items()):
             if isinstance(value, tuple):
@@ -796,6 +834,8 @@ class ETDHPAgent:
               PyTorch state dicts.
             * ``event_trigger.json`` — supervisor counters and the
               state captured at the last trigger.
+            * ``control_state.json`` — held command, pending transition,
+              simulation time and metric counters.
             * ``actor_optim.pth`` / ``critic_optim.pth`` /
               ``model_optim.pth`` — optimiser state dicts (only when
               ``save_gradients=True``).
@@ -842,6 +882,17 @@ class ETDHPAgent:
         with open(run_dir / "event_trigger.json", "w", encoding="utf-8") as f:
             json.dump(et_state, f, indent=2)
 
+        control_state: dict[str, Any] = {
+            "last_time_sec": self._last_time_sec,
+            "global_env_step": self.global_env_step,
+            "update_count": self.update_count,
+        }
+        for name in ("_last_action", "_last_state", "_transition_state"):
+            value = getattr(self, name)
+            control_state[name] = value.tolist() if value is not None else None
+        with open(run_dir / "control_state.json", "w", encoding="utf-8") as f:
+            json.dump(control_state, f, indent=2)
+
         if save_gradients:
             torch.save(self.actor_opt.state_dict(), run_dir / "actor_optim.pth")
             torch.save(self.critic_opt.state_dict(), run_dir / "critic_optim.pth")
@@ -858,6 +909,7 @@ class ETDHPAgent:
             Callable[[np.ndarray, np.ndarray | None, int], np.ndarray] | None
         ) = None,
         load_gradients: bool = False,
+        exploration_fn: Callable[[float], np.ndarray] | None = None,
     ) -> "ETDHPAgent":
         """Reconstruct an agent from a :meth:`save` directory.
 
@@ -867,6 +919,7 @@ class ETDHPAgent:
                 agent. ``save()`` cannot persist callables; supply the
                 same transform here if you used one during training.
             load_gradients: Also restore optimiser state dicts.
+            exploration_fn: Re-attach the training excitation callback.
         """
         folder_p = Path(folder)
         config_path = folder_p / "config.json"
@@ -888,6 +941,7 @@ class ETDHPAgent:
         ):
             cfg_dict["device"] = "cpu"
 
+        cfg_dict["exploration_fn"] = exploration_fn
         agent_cfg = ETDHPConfig(**cfg_dict)
         agent = cls(
             n_state=params["n_state"],
@@ -936,6 +990,8 @@ class ETDHPAgent:
                 np.asarray(sat, dtype=np.float64) if sat is not None else None
             )
 
+        agent._restore_control_state(folder_p)
+
         # Optimiser states
         if load_gradients:
             for attr, fname in (
@@ -955,6 +1011,27 @@ class ETDHPAgent:
 
         return agent
 
+    def _restore_control_state(self, folder: Path) -> None:
+        """Restore held control and pending transition, or re-arm old snapshots."""
+        state_path = folder / "control_state.json"
+        if not state_path.exists():
+            # Legacy checkpoints lack the command/time needed to resume a hold.
+            self.reset()
+            return
+        with open(state_path, "r", encoding="utf-8") as f:
+            state = json.load(f)
+        self._last_action = np.asarray(state["_last_action"], dtype=np.float64)
+        for name in ("_last_state", "_transition_state"):
+            value = state[name]
+            setattr(
+                self,
+                name,
+                np.asarray(value, dtype=np.float64) if value is not None else None,
+            )
+        self._last_time_sec = float(state["last_time_sec"])
+        self.global_env_step = int(state["global_env_step"])
+        self.update_count = int(state["update_count"])
+
     @classmethod
     def from_pretrained(
         cls,
@@ -965,6 +1042,7 @@ class ETDHPAgent:
             Callable[[np.ndarray, np.ndarray | None, int], np.ndarray] | None
         ) = None,
         load_gradients: bool = False,
+        exploration_fn: Callable[[float], np.ndarray] | None = None,
     ) -> "ETDHPAgent":
         """Load an agent from a local directory or the Hugging Face Hub.
 
@@ -977,6 +1055,7 @@ class ETDHPAgent:
                 transform used during training (optional but required
                 for tracking tasks).
             load_gradients: Also restore optimiser state dicts.
+            exploration_fn: Re-attach the training excitation callback.
 
         Returns:
             ETDHPAgent: Reconstructed agent.
@@ -987,6 +1066,7 @@ class ETDHPAgent:
                 p,
                 state_transform=state_transform,
                 load_gradients=load_gradients,
+                exploration_fn=exploration_fn,
             )
 
         pathlike_prefixes = ("./", "../", "/", "~")
@@ -1004,6 +1084,7 @@ class ETDHPAgent:
             folder_path,
             state_transform=state_transform,
             load_gradients=load_gradients,
+            exploration_fn=exploration_fn,
         )
 
     def publish_to_hub(

@@ -184,8 +184,8 @@ q \\
 !!! tip "Actuator limits"
     The default control bounds are:
 
-    - Maximum magnitude: \(\pm 25^\circ\)
-    - Maximum rate: \(60^\circ/\text{s\)
+    - Maximum magnitude: \(\pm 20^\circ\)
+    - Maximum rate: \(60^\circ/\text{s}\)
 
     Internal computations use radians; the bounds are converted accordingly.
 
@@ -265,3 +265,40 @@ Higher reward (closer to 0) indicates better tracking performance. A custom rewa
 === "Gymnasium environment"
 
     ::: tensoraerospace.envs.f4c.LinearLongitudinalF4C
+## Simulation and policy compatibility
+
+The Python state is a **perturbation** `[u, w, q, theta]` in m/s, m/s, rad/s,
+rad. Do not initialize `u` with the absolute cruise speed. The `-9.81` gravity
+coefficient and the equations on this page use SI units. The separate legacy
+`simulinkModel/f4c/f4c_data.m` uses different coefficients and imperial units;
+it is not an equivalent implementation of this Python model. The precise mapping
+of the Python coefficients to a flight condition in the cited source still needs
+verification. Agreement with a numerical integrator does not validate a real aircraft.
+
+`LongitudinalF4C` applies the ±20° magnitude and 60°/s rate limits in radians,
+including the first step. `initial_control` sets the initial elevator position
+in radians, defaults to zero, and is restored by `initialise_system`. Invalid
+states, commands, clocks and horizons are rejected. `get_output` contains all
+recorded pre-transition outputs; plotting velocity keeps m/s and does not modify
+stored data.
+
+`LinearLongitudinalF4C` retains elevator commands in **degrees**. Its default
+observation order is `[u, w, q, theta]`; `output_space` selects/reorders those state
+names and determines the observation shape. The old `alpha`/`V` labels were not
+computed quantities and are not valid state names. Tracking indices refer to the
+full model state independently of the observation selection. A single reference
+channel tracks the first `tracking_states` entry; multiple channels use the mean
+absolute error. Reference callables receive time in seconds with the configured
+`dt`. The simulation horizon is a truncation, not an absorbing terminal state.
+
+`F4CPitchEnvNormalized` reports the **applied** elevator in its observation and
+smoothness/energy penalties, after actuator limiting. `info['elevator_deg']`
+contains that position. `initial_elevator_deg` initializes the physical actuator;
+`use_initial_action_on_first_step` still controls whether the first requested
+command is overridden. Both pitch and pitch-rate envelope violations terminate
+an episode (30° and 10°/s). The 10°/s bound is a configured environment limit,
+not a certified flight limit.
+
+Existing policies must be evaluated again: the previous-action observation,
+initial actuator response, reward and pitch-rate termination now reflect the
+corrected contracts. Unchanged network shapes do not ensure policy compatibility.

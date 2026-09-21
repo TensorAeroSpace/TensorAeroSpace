@@ -84,10 +84,10 @@ def test_restart_resets_histories():
     m.restart()
     assert m.time_step == 1
     assert m.u_history == []
-    assert m.state_history == []
-    assert m.control_history == []
-    assert m.list_state == []
-    assert m.control_list == []
+    assert m.state_history == {}
+    assert m.control_history == {}
+    assert m.list_state == ["alpha", "theta", "ele"]
+    assert m.control_list == ["ele"]
 
 
 def test_plot_state_warns_on_non_str_lang():

@@ -1,238 +1,84 @@
-# Communication Satellite (ComSat) — Longitudinal Dynamics
+# Communication satellite (ComSat)
 
-A communications satellite operates in orbit to relay and process radio signals. This page mirrors the ELV layout: quick start, math model, derivative tables, and API.
-
-<div class="grid cards" markdown>
-
--   :material-rocket-launch-outline: **Quick start**
-
-    Launch the environment or the model within minutes.
-
-    [:octicons-arrow-right-24: See example](#quick-start)
-
--   :material-cog-outline: **Model API**
-
-    Python class documentation for ComSat.
-
-    [:octicons-arrow-right-24: Go to API](#python-api)
-
--   :material-gamepad-variant-outline: **Gymnasium environment**
-
-    Ready environment for RL agents.
-
-    [:octicons-arrow-right-24: Explore](#python-api)
-
--   :material-book-open-variant: **Theory**
-
-    State equations and numerical parameters.
-
-    [:octicons-arrow-right-24: Learn more](#mathematical-model)
-
-</div>
-
-## Control object structure
-
-The model is defined in the state space:
-
-\[\dot{x} = A x + B u, \quad y = C x + D u\]
-
-where:
-
-\[
- x = \begin{bmatrix} x_1 \\ x_3 \\ x_4 \end{bmatrix} = \begin{bmatrix} \rho \\ \dot{\rho} \\ \dot{\theta} \end{bmatrix}, \quad
- u = u_2
-\]
-
-The linearized system:
-
-\[
-\begin{bmatrix}
-\dot{x}_1 \\
-\dot{x}_3 \\
-\dot{x}_4
-\end{bmatrix}
-=
-\begin{bmatrix}
-0 & 1 & 0 \\
-0.01036 & 0 & 0.7753 \\
-0 & -0.01775 & 0
-\end{bmatrix}
-\begin{bmatrix} x_1 \\ x_3 \\ x_4 \end{bmatrix}
- +
-\begin{bmatrix} 0 \\ 0 \\ 0.1513 \end{bmatrix} u_2
-\]
-
-=== "State Variables"
-
-    - **x₁ = ρ**: radial position - distance from Earth center, km
-    - **x₃ = ρ̇**: radial velocity, m/s
-    - **x₄ = θ̇**: angular velocity, rad/s
-
-=== "Control Input"
-
-    - **u₂**: tangential thrust, N
-        - u₂ > 0 — thrust in direction of motion (acceleration)
-        - u₂ < 0 — thrust against direction of motion (deceleration)
-        - u₂ = 0 — no thrust
-
-=== "System Coefficients"
-
-    - **a₁₃ = 1.0** — radial position changes with radial velocity
-    - **a₃₁ = 0.01036** — radial acceleration component from position
-    - **a₃₄ = 0.7753** — radial acceleration component from angular velocity
-    - **a₄₃ = -0.01775** — angular acceleration component from radial velocity
-    - **b₄ = 0.1513** — tangential thrust influence on angular acceleration
-
-!!! note "Units"
-    Angular rates are in radians. Position in km, velocity in m/s. API methods can convert units.
+ComSat is a **linear model of normalized deviations from a circular orbit**. It is suitable for local control experiments. Its state values, simulation time and input are dimensionless; they are not kilometres, metres per second, seconds or newtons.
 
 ## Mathematical model {#mathematical-model}
 
-$$
-\dot{x} = A x + B u, \qquad y = C x + D u
-$$
-
-Numerical matrices (linearized system):
+The model follows the reduced linearization in [Choudhary (2015), *Design and Analysis of an Optimal Orbit Control for a Communication Satellite*](https://www.naun.org/main/NAUN/communications/2015/a102006-085.pdf), equations (14)–(19):
 
 \[
-\begin{bmatrix}
-\dot{x}_1 \\
-\dot{x}_3 \\
-\dot{x}_4
-\end{bmatrix}
-=
-\begin{bmatrix}
-0 & 1 & 0 \\
-0.01036 & 0 & 0.7753 \\
-0 & -0.01775 & 0 
-\end{bmatrix}
-\begin{bmatrix}
-x_1 \\
-x_3 \\
-x_4 
-\end{bmatrix}
- +
-\begin{bmatrix}
-0 \\
-0 \\
-0.1513
-\end{bmatrix}
-u_2
+\tau = t/\sqrt{R/g},\qquad \rho = r/R,\qquad u_2 = F_2/(M g).
 \]
 
-Expanded form:
+Here \(R\) is the reference radius, \(g\) the reference gravitational acceleration and \(M\) the satellite mass. A prime denotes differentiation with respect to \(\tau\). The published operating point is approximately \(\rho_0=6.6108\), \(\theta'_0=0.0587\).
+
 \[
-\begin{aligned}
-\dot{x}_1 &= x_3 \\
-\dot{x}_3 &= 0.01036 \cdot x_1 + 0.7753 \cdot x_4 \\
-\dot{x}_4 &= -0.01775 \cdot x_3 + 0.1513 \cdot u_2
-\end{aligned}
+x=\begin{bmatrix}\delta\rho\\\delta\rho'\\\delta\theta'\end{bmatrix},\qquad
+x'=Ax+Bu_2,
 \]
 
-### Derivatives (numerical values)
+\[
+A=\begin{bmatrix}
+0&1&0\\
+0.01036&0&0.7757\\
+0&-0.01775&0
+\end{bmatrix},\qquad
+B=\begin{bmatrix}0\\0\\0.1513\end{bmatrix},\qquad C=I,\quad D=0.
+\]
 
-- **Matrix A (state derivatives):**
+These coefficients are rounded. They approximate the Jacobian of the normalized orbital equations, rather than defining an exact nonlinear orbit propagator. With zero input the linear invariant \(\delta\theta'+0.01775\delta\rho\) is conserved.
 
-  | Coefficient | Value | Physical Meaning |
-  |-------------|-------|------------------|
-  | a₁₃ (∂ẋ₁/∂x₃) | 1.0 | Radial position rate = radial velocity |
-  | a₃₁ (∂ẋ₃/∂x₁) | 0.01036 | Position effect on radial acceleration |
-  | a₃₄ (∂ẋ₃/∂x₄) | 0.7753 | Angular velocity effect on radial acceleration |
-  | a₄₃ (∂ẋ₄/∂x₃) | -0.01775 | Radial velocity effect on angular acceleration |
+| API state | Meaning |
+|---|---|
+| `rho` | Normalized radial displacement from the operating orbit |
+| `rho_dot` | Derivative of that displacement with respect to normalized time |
+| `theta_dot` | Angular-rate deviation with respect to normalized time |
 
-- **Matrix B (control input):**
+Use small deviations when drawing physical conclusions. The API does not convert SI states or forces into these coordinates. Such conversion requires explicit choices of \(R\), \(g\), \(M\) and the operating orbit.
 
-  | Coefficient | Value | Physical Meaning |
-  |-------------|-------|------------------|
-  | b₄ (∂ẋ₄/∂u₂) | 0.1513 | Tangential thrust effect on angular acceleration |
+## Input limits and integration
 
-!!! tip "Actuator limits"
-    Default control limits inside the model (normalized):
+`ComSat.run_step()` holds the applied input constant during each `dt` interval and advances the linear system using zero-order-hold discretization. `dt` is an increment of \(\tau\).
 
-    - Maximum magnitude: \(\pm 25^\circ\)
-    - Maximum rate: \(60^\circ/\text{s\)
+The legacy simulation limits are \(|u_2|\le25\) and \(|\Delta u_2|\le60\,dt\). They are **numerical settings, not calibrated thruster specifications**; using their full range can leave the region where the linearization represents orbital physics. Slew limiting starts from `initial_control` (zero by default), including the first step. NaN, infinity and commands with more than one element are rejected.
 
-    Internal computations use radians; limits are converted accordingly.
+## Environment coordinates and rewards
 
-## Sources
+- `ComSatEnv` uses the three deviations directly and accepts normalized thrust in `[-25, 25]`. Its legacy reward penalizes absolute tracking error. A time limit sets `truncated=True`.
+- `ImprovedComSatEnv` exposes `[nominal_rho + delta_rho, delta_rho_prime, delta_theta_prime]` through `state`. It subtracts the offset before passing the state to the linear model. Set `nominal_rho=0` to work directly with deviations. The legacy default `6371.0` is only an external coordinate offset; it does not specify an Earth radius in kilometres.
+- Improved observations contain scaled angular-rate tracking error, radial displacement, radial velocity and the previous applied action. Actions in `[-1, 1]` request thrust in `[-25, 25]`. Rewards combine quadratic tracking/state penalties, applied-input and smoothness penalties, and a survival bonus. The input history and reward use the actual slew-limited input.
+- `use_initial_action_on_first_step=True` applies `initial_thrust` on the first step. Set it to `False` when the controller must choose the first command.
 
-1. Santosh Kumar Choudhary (2015). Design and Analysis of an Optimal Orbit Control for a Communication Satellite. INTERNATIONAL JOURNAL OF COMMUNICATIONS. Volume 9, 2015
-
-## Reward
-
-The default reward function returns the negative absolute tracking error for the radial velocity:
-
-$$r_t = -|\dot{\rho}(t) - \dot{\rho}_{\text{ref}}(t)|$$
-
-Higher reward (closer to 0) indicates better tracking performance. A custom reward function can be passed via the `reward_func` parameter.
+Observation scales and termination thresholds are numerical configuration choices. They do not certify that a trajectory stays within the physical validity range of the linear model.
 
 ## Quick start {#quick-start}
 
-=== "Gymnasium"
+```python
+import numpy as np
+from tensoraerospace.aerospacemodel.comsat import ComSat
+from tensoraerospace.envs.comsat import ImprovedComSatEnv
 
-    ```python
-    import gymnasium as gym
-    import numpy as np
+# Small normalized perturbation; dt is normalized time.
+x0 = np.array([0.01, 0.0, 0.001])
+model = ComSat(x0, number_time_steps=100, dt=0.1)
+trajectory = [model.run_step([0.0]).reshape(-1) for _ in range(100)]
 
-    from tensoraerospace.envs import ComSatEnv
-    from tensoraerospace.utils import generate_time_period
-    from tensoraerospace.signals.standard import unit_step
-
-    dt = 0.01
-    tp = generate_time_period(tn=20, dt=dt)
-    number_time_steps = len(tp)
-    # Reference signal for angular velocity control
-    reference_signals = unit_step(degree=0.1, tp=tp, time_step=10, output_rad=True).reshape(1, -1)
-
-    env = gym.make(
-        'ComSatEnv-v0',
-        number_time_steps=number_time_steps,
-        initial_state=[[6371.0], [0.0], [0.001]],  # [rho (km), rho_dot (m/s), theta_dot (rad/s)]
-        reference_signal=reference_signals,
-    )
-    state, info = env.reset()
-    for _ in range(200):
-        action = np.array([[0.1]])  # Tangential thrust u2
-        state, reward, terminated, truncated, info = env.step(action)
-        if terminated or truncated:
-            break
-    ```
-
-=== "Model only"
-
-    ```python
-    import numpy as np
-    from tensoraerospace.aerospacemodel import ComSat
-
-    dt = 0.01
-    number_time_steps = 200
-
-    # Initial state: [rho (km), rho_dot (m/s), theta_dot (rad/s)]
-    x0 = np.array([6371.0, 0.0, 0.001])
-
-    model = ComSat(
-        x0=x0,
-        number_time_steps=number_time_steps,
-        selected_state_output=["rho", "rho_dot", "theta_dot"],
-        dt=dt,
-    )
-
-    for t in range(number_time_steps - 1):
-        u = np.array([[0.05]])  # Tangential thrust u2
-        x_next = model.run_step(u)
-    
-    # Get state history
-    rho_history = model.get_state('rho')
-    rho_dot_history = model.get_state('rho_dot')
-    theta_dot_history = model.get_state('theta_dot')
-    ```
+env = ImprovedComSatEnv(
+    initial_state=x0,
+    reference_signal=np.zeros((1, 101)),
+    number_time_steps=101,
+    dt=0.1,
+    nominal_rho=0.0,
+    use_initial_action_on_first_step=False,
+)
+observation, info = env.reset(seed=11)
+observation, reward, terminated, truncated, info = env.step(np.zeros(1))
+```
 
 ## Python API
 
-=== "Model"
+::: tensoraerospace.aerospacemodel.comsat.ComSat
 
-    ::: tensoraerospace.aerospacemodel.comsat.ComSat
+::: tensoraerospace.envs.comsat.ComSatEnv
 
-=== "Gymnasium environment"
-
-    ::: tensoraerospace.envs.comsat.ComSatEnv
+::: tensoraerospace.envs.comsat.ImprovedComSatEnv

@@ -1,34 +1,29 @@
-"""Active-Adaptive Incremental Nonlinear Dynamic Inversion (AA-INDI).
+"""AA-INDI: physical moment identification and independent-navigation OTSEKF-HOSM.
 
-Fault-tolerant flight-control agent that combines
-
-* an **INDI control law** (incremental nonlinear dynamic inversion with a
-  reference model) for the nominal tracking loop,
-* **Variable-Forgetting-Factor RLS** for online estimation of the
-  control-effectiveness matrix ``G``, so the controller adapts quickly
-  to actuator faults, and
-* a light-weight **sensor-filter surrogate** (low-pass differentiator +
-  exponential bias estimator) standing in for the OTSEKF-HOSM branch of
-  the TU Delft AA-INDI publication.
-
-Reference:
-    Sun et al., *"Active Incremental Nonlinear Dynamic Inversion for
-    Sensor and Actuator Fault Diagnosis and Fault-Tolerant Flight
-    Control"*, TU Delft,
-    https://research.tudelft.nl/en/publications/
-    active-incremental-nonlinear-dynamic-inversion-for-sensor-and-act/
+Atmaca et al., AIAA 2026-1743 and JGCD 2025, DOI 10.2514/1.G009147.
+The agent requires geometry, IMU, navigation and actual surface measurements.
 """
 
+from .hosm import HOSMDifferentiator as HOSMDifferentiator
+from .kinematics import FlightMeasurement as FlightMeasurement
 from .model import AAINDIAgent as AAINDIAgent
 from .model import AAINDIConfig as AAINDIConfig
-from .sensor_filter import BiasEstimator as BiasEstimator
-from .sensor_filter import LowPassDerivative as LowPassDerivative
+from .moments import AircraftGeometry as AircraftGeometry
+from .moments import MomentIdentifier as MomentIdentifier
+from .observer import ObserverConfig as ObserverConfig
+from .observer import OTSEKFHOSMObserver as OTSEKFHOSMObserver
+from .otse import OptimalTwoStageEKF as OptimalTwoStageEKF
 from .vff_rls import VFFRLSEstimator as VFFRLSEstimator
 
 __all__ = [
     "AAINDIAgent",
     "AAINDIConfig",
+    "FlightMeasurement",
+    "AircraftGeometry",
+    "MomentIdentifier",
+    "ObserverConfig",
+    "OTSEKFHOSMObserver",
+    "OptimalTwoStageEKF",
+    "HOSMDifferentiator",
     "VFFRLSEstimator",
-    "LowPassDerivative",
-    "BiasEstimator",
 ]

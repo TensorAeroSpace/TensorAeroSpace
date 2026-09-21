@@ -45,6 +45,7 @@ class NonlinearSkywalkerX8Env(gym.Env):
     """
 
     metadata = {"render_modes": []}
+    action_space: spaces.Box
 
     def __init__(
         self,
@@ -71,6 +72,14 @@ class NonlinearSkywalkerX8Env(gym.Env):
                 'action_space must be "virtual" or "normalized"; '
                 f"got {action_space!r}"
             )
+        if damage_profile is not None or damage_event_callback is not None:
+            raise NotImplementedError(
+                "Skywalker X8 damage profiles are not implemented"
+            )
+        if not np.isfinite(self.dt) or self.dt <= 0:
+            raise ValueError("dt must be finite and positive")
+        if self.number_time_steps <= 0:
+            raise ValueError("number_time_steps must be positive")
         self.damage_profile = damage_profile
         self.damage_event_callback = damage_event_callback
 
@@ -107,15 +116,18 @@ class NonlinearSkywalkerX8Env(gym.Env):
 
     @staticmethod
     def _resolve_initial_state(initial_state, trim_at) -> np.ndarray:
+        """Resolve an explicit initial state or a trim condition in metres and m/s."""
         provided = sum(int(x is not None) for x in (initial_state, trim_at))
         if provided == 0:
             raise ValueError("must supply one of: initial_state, trim_at")
         if provided > 1:
             raise ValueError("specify exactly one of: initial_state, trim_at")
         if initial_state is not None:
-            x0 = np.asarray(initial_state, dtype=np.float64).reshape(-1)
+            x0 = np.array(initial_state, dtype=np.float64, copy=True).reshape(-1)
             if x0.size != 12:
                 raise ValueError(f"initial_state must have 12 elements; got {x0.size}")
+            if not np.all(np.isfinite(x0)):
+                raise ValueError("initial_state must contain only finite values")
             return x0
         alt, V = trim_at
         result = trim(altitude_m=float(alt), V_m_s=float(V))
@@ -127,6 +139,9 @@ class NonlinearSkywalkerX8Env(gym.Env):
         return result.to_state()
 
     def _scale_action(self, action: np.ndarray) -> np.ndarray:
+        """Convert normalized controls to surface radians and throttle, or copy virtual
+        controls.
+        """
         if self.action_mode == "virtual":
             return action.astype(np.float64, copy=True)
         u_e, u_a, u_T = action[0], action[1], action[2]
@@ -142,6 +157,9 @@ class NonlinearSkywalkerX8Env(gym.Env):
     # ---- gym API -------------------------------------------------------
 
     def reset(self, *, seed: Optional[int] = None, options=None):
+        """Recreate the plant at its initial state and return a copied observation and
+        info.
+        """
         super().reset(seed=seed)
         self.model = NonlinearSkywalkerX8(
             x0=self.initial_state,
@@ -152,12 +170,27 @@ class NonlinearSkywalkerX8Env(gym.Env):
         return self.model.current_state.copy(), {}
 
     def step(self, action):
+        """Advance virtual elevator, aileron and throttle by one sampling interval.
+
+        Actions use the configured virtual or normalized mode and are clipped before
+        integration. Return the Gymnasium observation, zero reward, termination flag,
+        horizon-truncation flag and info dictionary. Physical left/right elevon limits
+        also constrain the virtual surface pair.
+        """
         if self.model is None:
             raise RuntimeError("env.reset() must be called before step()")
         action = np.asarray(action, dtype=np.float64).reshape(-1)
         if action.size != 3:
             raise ValueError(f"action must have 3 elements; got {action.size}")
+        if not np.all(np.isfinite(action)):
+            raise ValueError("action must contain only finite values")
+        action = np.clip(action, self.action_space.low, self.action_space.high)
         u_virtual = self._scale_action(action)
+        # Virtual channels share two physical elevons: right=de+da, left=de-da.
+        de, da = u_virtual[:2]
+        limit = self.model.param.elevon_max_rad
+        right, left = np.clip([de + da, de - da], -limit, limit)
+        u_virtual[:2] = [(right + left) / 2.0, (right - left) / 2.0]
         self.model.run_step(u_virtual)
         self._step_index += 1
 

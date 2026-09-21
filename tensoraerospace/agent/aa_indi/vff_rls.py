@@ -1,21 +1,20 @@
 """Variable-Forgetting-Factor Recursive Least Squares identifier.
 
-Used by :mod:`tensoraerospace.agent.aa_indi` to track the control-effectiveness
-matrix ``G = ∂ω̇/∂u`` online while rejecting noise-driven drift and reacting
-fast to abrupt changes — the key adaptive ingredient of the AA-INDI scheme in
-Sun & van Kampen's TU Delft line of work on fault-tolerant INDI.
+Used by :mod:`tensoraerospace.agent.aa_indi` for its simplified incremental
+regression ``delta(omega_dot) = G @ delta(u)``. The gain and forgetting update
+follow Atmaca, de Visser & van Kampen (AIAA 2026-1743), Eqs. (54)--(57).
+The paper fits reconstructed aerodynamic moments to surface positions; the
+regressors used by this agent are a separate simplification.
 
-Regressor and target are formed in the incremental form::
+With ``a = delta(u)`` and ``Sigma_0 = eps_sensitivity**2``::
 
-    Δω̇ ≈ G · Δu,      φ = Δu,   y = Δω̇
+    K = P @ a / (1 + a.T @ P @ a)
+    lambda = clip(1 - ||epsilon||**2 / (Sigma_0 * (1 + a.T @ P @ a)),
+                  forgetting_min, forgetting_max)
 
-Variable forgetting factor λ_k shrinks toward ``forgetting_min`` when the
-prediction residual grows (fast adaptation during faults / manoeuvres) and
-relaxes back toward ``forgetting_max`` during quiet operation (noise
-rejection). We use the Fortescue–Kershenbaum closed-form update based on the
-residual-to-noise ratio::
+``forgetting_max < 1`` is a library extension; the paper permits lambda = 1.
+The residual norm shares one forgetting factor across multiple output channels.
 
-    λ_k = exp(−‖ε‖² / σ²_ε),   clamped to [λ_min, λ_max].
 """
 
 from __future__ import annotations
@@ -62,8 +61,10 @@ class VFFRLSEstimator:
     ) -> None:
         if not 0.0 < forgetting_min <= forgetting_max <= 1.0:
             raise ValueError("need 0 < forgetting_min ≤ forgetting_max ≤ 1")
-        if eps_sensitivity <= 0.0:
-            raise ValueError("eps_sensitivity must be > 0")
+        if not np.isfinite(eps_sensitivity) or eps_sensitivity <= 0.0:
+            raise ValueError("eps_sensitivity must be finite and > 0")
+        if not np.isfinite(cov_init) or cov_init <= 0.0:
+            raise ValueError("cov_init must be finite and > 0")
         self.n_y = int(n_y)
         self.n_u = int(n_u)
         self.lam_min = float(forgetting_min)
@@ -107,35 +108,38 @@ class VFFRLSEstimator:
         if dy_v.size != self.n_y:
             raise ValueError(f"dy must have length {self.n_y}, got {dy_v.size}")
 
-        phi = du_v.reshape(-1, 1)
+        if not np.all(np.isfinite(du_v)) or not np.all(np.isfinite(dy_v)):
+            raise ValueError("RLS regressor and target must be finite")
 
-        # Prediction residual before the update.
-        pred = self.theta.T @ phi  # (n_y, 1)
-        eps = dy_v - pred.reshape(-1)
-        self.last_prediction_error = eps
-
-        # Variable forgetting factor: exponential fall-off in the residual
-        # energy, clamped into [lam_min, lam_max].
-        eps_norm_sq = float(eps @ eps)
-        lam = float(
-            np.clip(
-                np.exp(-eps_norm_sq / (self.eps_sensitivity**2)),
-                self.lam_min,
-                self.lam_max,
+        # Atmaca et al. Eqs. 54--57: compute K before applying forgetting.
+        # 1 - a @ K = 1 / (1 + a @ P @ a) avoids cancellation in lambda.
+        with np.errstate(over="raise", invalid="raise", divide="raise"):
+            eps = dy_v - self.theta.T @ du_v
+            Pphi = self.P @ du_v
+            denom = 1.0 + float(du_v @ Pphi)
+            if denom <= 0.0:
+                raise FloatingPointError(
+                    "RLS covariance produced nonpositive gain denominator"
+                )
+            K = Pphi / denom
+            scaled_residual = eps / self.eps_sensitivity / np.sqrt(denom)
+            lam = float(
+                np.clip(
+                    1.0 - scaled_residual @ scaled_residual, self.lam_min, self.lam_max
+                )
             )
-        )
+            theta = self.theta + np.outer(K, eps)
+            residual_map = np.eye(self.n_u) - np.outer(K, du_v)
+            covariance = (residual_map @ self.P @ residual_map.T + np.outer(K, K)) / lam
+            covariance = 0.5 * covariance + 0.5 * covariance.T
+        if not np.all(np.isfinite(theta)) or not np.all(np.isfinite(covariance)):
+            raise FloatingPointError(
+                "Nonfinite RLS update; check scaling and excitation"
+            )
+        self.theta = theta
+        self.P = covariance
+        self.last_prediction_error = eps.copy()
         self.last_lambda = lam
-
-        # Gain / covariance recursion.
-        Pphi = self.P @ phi  # (n_u, 1)
-        denom = lam + float((phi.T @ Pphi).item())
-        K = Pphi / denom  # (n_u, 1)
-
-        self.theta = self.theta + K @ eps.reshape(1, -1)
-        self.P = (self.P - K @ Pphi.T) / lam
-        # Numerical symmetrisation — cheap drift insurance.
-        self.P = 0.5 * (self.P + self.P.T)
-
         self.num_updates += 1
         return np.asarray(eps)
 

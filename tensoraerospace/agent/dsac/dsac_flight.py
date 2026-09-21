@@ -77,7 +77,14 @@ def quantile_huber_loss(
 
 
 class DSAC(BaseRLModel):
-    """Distributional SAC (dsac-flight port)."""
+    """Distributional SAC for normalized actions in [-1, 1].
+
+    Evaluation excludes exploration noise. Replay retains pre-step states and
+    available final observations across auto-resets. Training counters, scalar
+    warmup progress and target-update phase continue across calls/checkpoints;
+    vector warmup_steps remains a per-call budget. Environment steps count
+    individual transitions, including all rows of a vector environment.
+    """
 
     def __init__(
         self,
@@ -126,6 +133,8 @@ class DSAC(BaseRLModel):
     ) -> None:
         super().__init__()
         self._global_train_vector_step = 0
+        self.total_env_steps = 0
+        self.total_updates = 0
         self.env = env
         self.seed = int(seed)
         torch.manual_seed(self.seed)
@@ -320,7 +329,7 @@ class DSAC(BaseRLModel):
                 action_t = torch.tanh(mean)
             else:
                 action_t, _ = self._sample(state_t, reparameterize=False)
-            if self.exploration_noise_std > 0.0:
+            if not evaluate and self.exploration_noise_std > 0.0:
                 action_t = action_t + torch.randn_like(action_t) * float(
                     self.exploration_noise_std
                 )
@@ -347,7 +356,7 @@ class DSAC(BaseRLModel):
                 action_t = torch.tanh(mean)
             else:
                 action_t, _ = self._sample(state_t, reparameterize=False)
-            if self.exploration_noise_std > 0.0:
+            if not evaluate and self.exploration_noise_std > 0.0:
                 action_t = action_t + torch.randn_like(action_t) * float(
                     self.exploration_noise_std
                 )
@@ -576,8 +585,9 @@ class DSAC(BaseRLModel):
         save_best = bool(save_best)
         save_best_with_gradients = bool(kwargs.get("save_best_with_gradients", False))
 
-        total_numsteps = 0
-        updates = 0
+        starting_steps = self.total_env_steps
+        starting_updates = self.total_updates
+        self._log_training_progress()
         best_reward = float("-inf")
         episode_rewards: list = []
         ep_iter = range(num_episodes)
@@ -592,7 +602,7 @@ class DSAC(BaseRLModel):
             last_truncated = False
 
             while not done:
-                if total_numsteps < self.learning_starts:
+                if self.total_env_steps < self.learning_starts:
                     action = cast(np.ndarray, self.env.action_space.sample())
                     action = np.asarray(action, dtype=np.float32) * float(
                         self.warmup_action_scale
@@ -605,42 +615,55 @@ class DSAC(BaseRLModel):
                     for _ in range(int(self.updates_per_step)):
                         # Stash cumulative env step so update_parameters labels
                         # its scalars with env_step, not the gradient counter.
-                        self._last_env_step = int(total_numsteps)
-                        self.update_parameters(self.memory, self.batch_size, updates)
-                        updates += 1
+                        self._last_env_step = self.total_env_steps
+                        self.update_parameters(
+                            self.memory, self.batch_size, self.total_updates
+                        )
+                        self.total_updates += 1
 
-                next_state, reward, terminated, truncated, _ = self.env.step(action)
+                state_snapshot = np.array(state, copy=True)
+                next_state, reward, terminated, truncated, info = self.env.step(action)
+                final_state = info.get("final_observation")
+                if final_state is None:
+                    final_state = info.get("terminal_observation")
+                replay_next = (
+                    final_state
+                    if (terminated or truncated) and final_state is not None
+                    else next_state
+                )
                 done_env = bool(terminated or truncated)
                 done_bootstrap = float(bool(terminated))
                 last_terminated = bool(terminated)
                 last_truncated = bool(truncated)
 
                 episode_steps += 1
-                total_numsteps += 1
+                self.total_env_steps += 1
 
                 r = float(reward)
                 if self.reward_clip is not None and (not bool(terminated)):
                     r = float(np.clip(r, -self.reward_clip, self.reward_clip))
 
                 episode_reward += r
-                self.memory.push(state, action, r, next_state, done_bootstrap)
-                state = next_state
+                self.memory.push(state_snapshot, action, r, replay_next, done_bootstrap)
+                state = np.array(next_state, copy=True)
                 done = done_env
                 if max_steps is not None and episode_steps >= int(max_steps):
                     done = True
+                    last_truncated = last_truncated or not last_terminated
 
             episode_rewards.append(float(episode_reward))
             self.writer.log_episode(
                 reward=float(episode_reward),
                 length=int(episode_steps),
-                env_step=int(total_numsteps),
+                env_step=self.total_env_steps,
                 terminated=bool(last_terminated),
                 truncated=bool(last_truncated),
             )
 
-            if save_best and episode_reward > best_reward:
+            if episode_reward > best_reward:
                 best_reward = episode_reward
-                self.save(path=save_path, save_gradients=save_best_with_gradients)
+                if save_best:
+                    self.save(path=save_path, save_gradients=save_best_with_gradients)
 
         self.writer.flush()
         self.writer.assert_contract_satisfied()
@@ -648,9 +671,50 @@ class DSAC(BaseRLModel):
         return {
             "episode_rewards": episode_rewards,
             "best_reward": float(best_reward) if episode_rewards else float("-inf"),
-            "updates": int(updates),
-            "total_steps": int(total_numsteps),
+            "updates": self.total_updates - starting_updates,
+            "total_steps": self.total_env_steps - starting_steps,
         }
+
+    def _log_training_progress(self):
+        """Report valid zero-update training, including episodes before warmup."""
+        self.writer.add_scalar(
+            schema.TRAIN_UPDATES, self.total_updates, env_step=self.total_env_steps
+        )
+        self.writer.add_scalar(
+            schema.TRAIN_LR,
+            float(self.policy_optim.param_groups[0]["lr"]),
+            env_step=self.total_env_steps,
+        )
+        self.writer.add_scalar(
+            schema.TRAIN_REPLAY_SIZE, len(self.memory), env_step=self.total_env_steps
+        )
+
+    @staticmethod
+    def _vector_replay_targets(next_obs, terminated, truncated, info, auto_reset):
+        """Recover final observations when a vector env resets in step()."""
+        next_states = next_obs.detach().cpu().numpy().copy()
+        terminals = terminated.detach().cpu().numpy().reshape(-1).astype(bool)
+        done = terminals | truncated.detach().cpu().numpy().reshape(-1).astype(bool)
+        if not auto_reset:
+            return next_states, terminals.astype(np.float32)
+
+        # Older custom envs do not expose final observations. Keep their
+        # conservative terminal mask instead of bootstrapping across episodes.
+        masks = done.astype(np.float32)
+        final = info.get("final_observation")
+        if final is None:
+            return next_states, masks
+        valid = info.get("_final_observation", done)
+        if torch.is_tensor(final):
+            final = final.detach().cpu().numpy()
+        if torch.is_tensor(valid):
+            valid = valid.detach().cpu().numpy()
+        valid = np.asarray(valid, dtype=bool).reshape(-1)
+        for i in np.flatnonzero(done & valid):
+            if final[i] is not None:
+                next_states[i] = final[i]
+                masks[i] = float(terminals[i])
+        return next_states, masks
 
     def train_vector(
         self,
@@ -673,6 +737,7 @@ class DSAC(BaseRLModel):
             raise ValueError("warmup_steps must be >= 0")
 
         base_step = int(getattr(self, "_global_train_vector_step", 0))
+        self._log_training_progress()
 
         obs, _ = self.env.reset()
         if not torch.is_tensor(obs):
@@ -694,7 +759,6 @@ class DSAC(BaseRLModel):
         ep_returns = np.zeros((num_envs,), dtype=np.float32)
         ep_lengths = np.zeros((num_envs,), dtype=np.int32)
 
-        updates = 0
         best_mean_return = float("-inf")
         auto_reset = bool(getattr(self.env, "auto_reset", False))
 
@@ -702,23 +766,33 @@ class DSAC(BaseRLModel):
         for step in pbar:
             if step < warmup_steps:
                 actions_t = (
-                    (2.0 * torch.rand((num_envs, act_dim), device=self.device) - 1.0)
-                    * float(self.warmup_action_scale)
-                ).to(dtype=torch.float32)
+                    (
+                        (
+                            2.0 * torch.rand((num_envs, act_dim), device=self.device)
+                            - 1.0
+                        )
+                        * float(self.warmup_action_scale)
+                    )
+                    .to(dtype=torch.float32)
+                    .clamp(-1.0, 1.0)
+                )
             else:
                 actions_t = cast(
                     torch.Tensor,
                     self.select_action_batch(obs, evaluate=False, return_tensor=True),
                 )
 
-            next_obs, reward, terminated, truncated, _info = self.env.step(actions_t)
+            obs_np = obs.detach().cpu().numpy().copy()
+            next_obs, reward, terminated, truncated, info = self.env.step(actions_t)
+            self.total_env_steps += num_envs
             if not (torch.is_tensor(next_obs) and torch.is_tensor(reward)):
                 raise TypeError(
                     "train_vector expects env.step() to return torch tensors"
                 )
 
-            obs_np = cast(np.ndarray, obs.detach().cpu().numpy())
-            next_obs_np = cast(np.ndarray, next_obs.detach().cpu().numpy())
+            next_obs_np, done_bootstrap_np = self._vector_replay_targets(
+                next_obs, terminated, truncated, info, auto_reset
+            )
             actions_np = cast(np.ndarray, actions_t.detach().cpu().numpy())
             reward_np = cast(np.ndarray, reward.detach().cpu().numpy()).reshape(-1)
             terminated_np = (
@@ -741,12 +815,6 @@ class DSAC(BaseRLModel):
 
             done_np = np.logical_or(terminated_np, truncated_np)
 
-            done_bootstrap_np = (
-                done_np.astype(np.float32)
-                if auto_reset
-                else terminated_np.astype(np.float32)
-            )
-
             for i in range(num_envs):
                 self.memory.push(
                     obs_np[i],
@@ -763,9 +831,11 @@ class DSAC(BaseRLModel):
                 for _ in range(int(self.updates_per_step)):
                     # Stash cumulative env step so update_parameters labels its
                     # scalars with env_step rather than the gradient counter.
-                    self._last_env_step = int(base_step + step + 1)
-                    self.update_parameters(self.memory, self.batch_size, updates)
-                    updates += 1
+                    self._last_env_step = self.total_env_steps
+                    self.update_parameters(
+                        self.memory, self.batch_size, self.total_updates
+                    )
+                    self.total_updates += 1
 
             ep_returns += reward_np
             ep_lengths += 1
@@ -778,7 +848,7 @@ class DSAC(BaseRLModel):
                     self.writer.log_episode(
                         reward=r_sum,
                         length=l,
-                        env_step=int(base_step + step + 1),
+                        env_step=self.total_env_steps,
                         terminated=bool(terminated_np[i]),
                         truncated=bool(truncated_np[i]),
                     )
@@ -787,7 +857,7 @@ class DSAC(BaseRLModel):
                     episodes_done += 1
 
             if (step + 1) % log_every == 0:
-                global_step = base_step + step + 1
+                global_step = self.total_env_steps
                 if returns_ptr == 0:
                     mean_r = 0.0
                 else:
@@ -802,7 +872,7 @@ class DSAC(BaseRLModel):
                 )
                 self.writer.add_scalar(
                     schema.TRAIN_UPDATES,
-                    updates,
+                    self.total_updates,
                     env_step=global_step,
                 )
                 self.writer.add_scalar(
@@ -814,7 +884,7 @@ class DSAC(BaseRLModel):
                     {
                         "mean_R": f"{mean_r:.3f}",
                         "episodes": episodes_done,
-                        "updates": updates,
+                        "updates": self.total_updates,
                         "replay": len(self.memory),
                     }
                 )
@@ -897,6 +967,10 @@ class DSAC(BaseRLModel):
         log_alpha_path = run_dir / "log_alpha.pth"
 
         config = self.get_param_env()
+        config["training"] = {
+            "total_env_steps": self.total_env_steps,
+            "total_updates": self.total_updates,
+        }
         with open(config_path, "w", encoding="utf-8") as f:
             json.dump(config, f, indent=2)
 
@@ -1040,6 +1114,9 @@ class DSAC(BaseRLModel):
             policy_params["device"] = dev
 
         new_agent = cls(env=env, **policy_params)
+        training = config.get("training", {})
+        new_agent.total_env_steps = int(training.get("total_env_steps", 0))
+        new_agent.total_updates = int(training.get("total_updates", 0))
 
         if new_agent.device.type == "cuda" and not torch.cuda.is_available():
             new_agent.device = torch.device("cpu")

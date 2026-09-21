@@ -213,3 +213,67 @@ for t in range(number_time_steps - 1):
 === "Parameters"
 
     ::: tensoraerospace.aerospacemodel.f16.nonlinear.angular.params.F16AngularParameters
+
+## Force balance and level-flight trim
+
+The axial coefficient `Cx` is not wind-axis drag. In body NED the force vector is `[T - q*S*Cx, q*S*Cz, -q*S*Cy]`; acceleration along the velocity is its dot product with `[cos(alpha)*cos(beta), sin(beta), sin(alpha)*cos(beta)]`, divided by mass, plus the gravity projection. With altitude/speed tracking enabled, thrust also contributes to angle-of-attack and sideslip dynamics.
+
+`find_trim` solves angle of attack, stabilator and thrust together. `converged=True` requires all three residuals (`dalpha`, pitch acceleration and `dV`) within tolerance and feasible actuator/thrust limits. It does not impose an artificial minimum thrust or mutate supplied plant parameters. Old trajectories based on the previous force projection change and should be regenerated.
+
+### Environment contract with altitude and controlled thrust
+
+`NonlinearAngularF16(track_altitude=True)` accepts either 14 initial states or
+16, with altitude in metres and speed in m/s appended. With 14 states, the model
+adds `Oy=3000 m`, `V=120 m/s`. `reset()` and `step()` return the same observation
+size, including any enabled damage observations.
+
+With `thrust_mode="control"`, the last action is thrust **in Newtons**, bounded
+by `[0, T_max_thrust]` (default `[0, 130000]`). Other environment actions remain
+in degrees: stabilator ±25°, aileron ±21.5°, rudder ±30°, converted to radians. Model control history also
+retains the bounded thrust command. Correcting these bounds changes action
+scaling for newly created policies with controlled thrust; existing weights
+cannot automatically be treated as trained for the new scale.
+
+The time step and initial speed must be positive and finite. Nonfinite states
+or controls are rejected before modifying the dynamics.
+
+### Damage timing and environment configuration
+
+Integration steps split at damage timestamps: motion advances to the event,
+parameters change, and the remaining interval is integrated. An event at the
+right boundary affects only subsequent motion. Events at `trigger_time=0` apply
+before the observation returned by `reset()`. Profile and injected events run
+in chronological order; each profile event runs once per reset.
+
+`damage_events_log` and `damage_state_log` retain actual event times. Model
+histories retain one sample per outer step; control history records the effective
+command at its end, not an average over a step containing a failure.
+
+With `track_altitude=True`, `thrust_factor` and `hard_failure` reduce thrust in
+the speed, angle-of-attack and sideslip equations. The reduced constant-speed
+mode does not model the translational response to engine failure.
+
+`get_init_args()` supports standard agent checkpoints, including the damage
+profile restored from JSON configuration. `reset(options={"damage_profile": profile})`
+also works without a constructor profile. `damage_event_callback` cannot be
+serialized; saving with a callback raises an explicit error. This saves a new
+episode's configuration, not the current flight state.
+
+### Actuator saturation
+
+Actual actuator position and rate are bounded. Hard stops remove outward motion
+while allowing reversal, preventing hidden rate windup. Each accepted integration
+step projects numerical overshoot back within the limits. Inside the limits the
+original linear second-order equation is unchanged.
+
+Commands are bounded before efficiency loss and after jam substitution, so an
+oversized command cannot cancel a failure. Control history records the bounded
+effective command; state history records actual deflection. RK4 retains fourth
+order on smooth intervals; convergence near saturation and stops must be checked
+by reducing the time step.
+
+With `split_stab=True`, each half is bounded before calculating mean and
+differential commands. The differential moment remains an instantaneous
+approximation, without separate left/right actuator dynamics. The corrected
+`action_space` changes aileron and rudder scaling; policies previously trained
+with those channels need reevaluation.

@@ -69,6 +69,7 @@ _GAMMA_AIR = 1.4
 
 
 def isa_density_kg_m3(altitude_m: float) -> float:
+    """Return ISA air density in kg/m³ for altitude in metres."""
     if altitude_m < _TROPOPAUSE_M:
         T = _T0_K - _LAPSE_K_M * altitude_m
         return float(_RHO0_KG_M3 * (T / _T0_K) ** 4.2561)
@@ -77,6 +78,7 @@ def isa_density_kg_m3(altitude_m: float) -> float:
 
 
 def isa_speed_of_sound_m_s(altitude_m: float) -> float:
+    """Return ISA speed of sound in m/s for altitude in metres."""
     if altitude_m < _TROPOPAUSE_M:
         T = _T0_K - _LAPSE_K_M * altitude_m
     else:

@@ -106,6 +106,43 @@ def _atomic_np_savez(path: Path, **kwargs: Any) -> None:
     os.replace(tmp_path, path)
 
 
+def _write_best_checkpoint(job: Mapping[str, Any]) -> None:
+    """Persist a complete best checkpoint for either saving mode."""
+    model_dir = Path(job["model_dir"])
+    model_dir.mkdir(parents=True, exist_ok=True)
+
+    _atomic_write_json(model_dir / "config.json", job["config"])
+    _atomic_torch_save(model_dir / "actor.pth", job["actor_state"])
+    _atomic_torch_save(model_dir / "critic.pth", job["critic_state"])
+    if job.get("actor_opt_state") is not None:
+        _atomic_torch_save(model_dir / "actor_opt.pth", job["actor_opt_state"])
+    if job.get("critic_opt_state") is not None:
+        _atomic_torch_save(model_dir / "critic_opt.pth", job["critic_opt_state"])
+    if job.get("train_state") is not None:
+        _atomic_write_json(model_dir / "train_state.json", job["train_state"])
+
+    if job.get("obs_rms") is not None:
+        d = job["obs_rms"]
+        _atomic_np_savez(
+            model_dir / "obs_rms.npz",
+            mean=d["mean"],
+            var=d["var"],
+            count=d["count"],
+        )
+    if job.get("ret_rms") is not None:
+        d = job["ret_rms"]
+        _atomic_np_savez(
+            model_dir / "ret_rms.npz",
+            mean=d["mean"],
+            var=d["var"],
+            count=d["count"],
+        )
+
+    # Extra metadata (optional)
+    if job.get("meta") is not None:
+        _atomic_write_json(model_dir / "best_meta.json", job["meta"])
+
+
 class _AsyncBestCheckpointSaver:
     """Background writer for best-model checkpoints (non-blocking training).
 
@@ -184,45 +221,7 @@ class _AsyncBestCheckpointSaver:
                 if job is None:
                     break
 
-                model_dir = Path(job["model_dir"])
-                model_dir.mkdir(parents=True, exist_ok=True)
-
-                _atomic_write_json(model_dir / "config.json", job["config"])
-                _atomic_torch_save(model_dir / "actor.pth", job["actor_state"])
-                _atomic_torch_save(model_dir / "critic.pth", job["critic_state"])
-                if job.get("actor_opt_state") is not None:
-                    _atomic_torch_save(
-                        model_dir / "actor_opt.pth", job["actor_opt_state"]
-                    )
-                if job.get("critic_opt_state") is not None:
-                    _atomic_torch_save(
-                        model_dir / "critic_opt.pth", job["critic_opt_state"]
-                    )
-                if job.get("train_state") is not None:
-                    _atomic_write_json(
-                        model_dir / "train_state.json", job["train_state"]
-                    )
-
-                if job.get("obs_rms") is not None:
-                    d = job["obs_rms"]
-                    _atomic_np_savez(
-                        model_dir / "obs_rms.npz",
-                        mean=d["mean"],
-                        var=d["var"],
-                        count=d["count"],
-                    )
-                if job.get("ret_rms") is not None:
-                    d = job["ret_rms"]
-                    _atomic_np_savez(
-                        model_dir / "ret_rms.npz",
-                        mean=d["mean"],
-                        var=d["var"],
-                        count=d["count"],
-                    )
-
-                # Extra metadata (optional)
-                if job.get("meta") is not None:
-                    _atomic_write_json(model_dir / "best_meta.json", job["meta"])
+                _write_best_checkpoint(job)
             except Exception as exc:
                 # Never crash training due to background saving, but do not
                 # hide a broken checkpoint path or serialization issue.
@@ -406,13 +405,23 @@ class Actor(nn.Module):
         # Log std of the action distribution
         self.delta = nn.Linear(hidden_dim, out_dim)
         self.delta = init_layer_uniform(self.delta)
-        # NOTE:
-        # The original implementation used (-20, 0) which can make std extremely small
-        # (e.g. exp(-10) ~ 4e-5 at init), causing near-deterministic policies and
-        # stalled PPO updates (KL ~ 0, clip_fraction ~ 0). We keep the defaults for
-        # backwards compatibility but allow PPO to override them.
         self.log_std_min = float(log_std_min)
         self.log_std_max = float(log_std_max)
+        width = self.log_std_max - self.log_std_min
+        if not math.isfinite(width) or width <= 0:
+            raise ValueError("log_std bounds must be finite and strictly increasing")
+        # A zero head maps to the midpoint of [-20, 0], giving std≈4e-5.
+        # Initialize at log(std)≈-0.5 instead, retaining the existing parameter
+        # names and forward mapping so saved policies load without conversion.
+        initial_log_std = float(
+            np.clip(
+                -0.5,
+                self.log_std_min + 0.001 * width,
+                self.log_std_max - 0.001 * width,
+            )
+        )
+        head_bias = math.atanh(2.0 * (initial_log_std - self.log_std_min) / width - 1.0)
+        nn.init.constant_(self.delta.bias, head_bias)
         # Keep the default parameter layout compatible with existing checkpoints.
         self.r = nn.Linear(hidden_dim, 1) if reward_prediction else None
 
@@ -638,6 +647,8 @@ class PPO(BaseRLModel):
             if device is None
             else torch.device(device)
         )
+        # Seed before creating either network so initial weights are reproducible.
+        torch.manual_seed(seed)
         self.actor = Actor(
             env.observation_space.shape[0],
             env.action_space.shape[0],
@@ -661,7 +672,6 @@ class PPO(BaseRLModel):
         self.normalize_obs = normalize_obs
         self.normalize_reward = normalize_reward
         self.eval_freq = eval_freq
-        torch.manual_seed(seed)
         self.rollout_len = rollout_len
         self.max_episodes = max_episodes
         self.num_epochs = num_epochs
@@ -859,6 +869,51 @@ class PPO(BaseRLModel):
             return x.to(self.device, dtype=dtype)
         return torch.as_tensor(x, dtype=dtype, device=self.device)
 
+    def _normalize_tensor_obs(self, obs: torch.Tensor) -> torch.Tensor:
+        """Apply the same frozen observation statistics during collection and inference."""
+        if not self.normalize_obs:
+            return obs
+        mean = self._to_tensor(self.obs_rms.mean)
+        var = self._to_tensor(self.obs_rms.var)
+        return torch.clamp((obs - mean) / torch.sqrt(var + 1e-8), -10.0, 10.0)
+
+    def _timeout_bootstrap(
+        self,
+        next_obs: Any,
+        terminated: Any,
+        truncated: Any,
+        info: Any,
+        *,
+        vector: bool = False,
+    ) -> torch.Tensor:
+        """Return gamma*V(final observation) for time limits, zero for terminals.
+
+        The episode boundary still stops GAE recursion. Keep this correction
+        separate from actual rewards used by metrics and the auxiliary head.
+        Legacy auto-reset environments without final observations cannot safely
+        bootstrap: their returned observation belongs to a different episode.
+        """
+        timeout = self._to_tensor(truncated, dtype=torch.bool).reshape(-1)
+        timeout = timeout & ~self._to_tensor(terminated, dtype=torch.bool).reshape(-1)
+        bonus = torch.zeros((timeout.numel(), 1), device=self.device)
+        if not torch.any(timeout):
+            return bonus
+        final_obs = info.get("final_observation") if isinstance(info, dict) else None
+        if final_obs is not None:
+            next_obs = final_obs
+            if vector and "_final_observation" in info:
+                timeout = timeout & self._to_tensor(
+                    info["_final_observation"], dtype=torch.bool
+                ).reshape(-1)
+        elif bool(getattr(self.env, "auto_reset", False)):
+            return bonus
+        if torch.any(timeout):
+            final_t = self._to_tensor(next_obs).reshape(timeout.numel(), -1)
+            final_t = self._normalize_tensor_obs(final_t[timeout])
+            with torch.no_grad():
+                bonus[timeout] = self.gamma * self.critic(final_t)
+        return bonus
+
     def _train_vector(self, initial_obs: Any) -> None:
         """Training loop for vectorized environments (batched obs/action)."""
         # Force batched initial obs
@@ -906,6 +961,8 @@ class PPO(BaseRLModel):
             buf_rewards: list[torch.Tensor] = []
             buf_dones: list[torch.Tensor] = []
             buf_values: list[torch.Tensor] = []
+            buf_timeouts: list[torch.Tensor] = []
+            raw_states: list[torch.Tensor] = []
 
             # Episode bookkeeping for logging
             ep_ret = torch.zeros((n_envs,), device=self.device, dtype=torch.float32)
@@ -916,10 +973,13 @@ class PPO(BaseRLModel):
             trunc_events = 0.0
 
             for _ in range(self.rollout_len):
-                # Critic value
+                # Snapshot before step(): an environment may reuse its obs buffer.
+                if self.normalize_obs:
+                    raw_states.append(obs.clone())
+                state_t = self._normalize_tensor_obs(obs).clone()
                 with torch.no_grad():
-                    value = self.critic(obs)
-                    action, dist = self.actor(obs)
+                    value = self.critic(state_t)
+                    action, dist = self.actor(state_t)
                     env_action = torch.clamp(action, low, high)
                     # Compute log_prob from the UNCLAMPED sampled action to avoid
                     # biased gradients when actions saturate at the bounds.
@@ -944,17 +1004,24 @@ class PPO(BaseRLModel):
                     done_t = self._to_tensor(terminated, dtype=torch.float32).view(
                         -1, 1
                     )
+                    terminated_t = done_t
+                    truncated_t = torch.zeros_like(done_t)
 
+                buf_timeouts.append(
+                    self._timeout_bootstrap(
+                        next_obs, terminated_t, truncated_t, info, vector=True
+                    )
+                )
                 next_obs_t = self._to_tensor(next_obs, dtype=torch.float32)
                 reward_t = self._to_tensor(reward, dtype=torch.float32).view(-1, 1)
 
-                buf_states.append(obs)
+                buf_states.append(state_t)
                 # Store the UNCLAMPED sampled action so that old/new log-probs
                 # are computed w.r.t. the same point in the distribution's
                 # support (matching the unclamped log_prob computed above).
                 buf_actions.append(action)
                 buf_logp.append(logp)
-                buf_rewards.append(reward_t)
+                buf_rewards.append(reward_t.clone())
                 buf_dones.append(done_t)
                 buf_values.append(value)
 
@@ -975,7 +1042,9 @@ class PPO(BaseRLModel):
 
             # Bootstrap value for last state
             with torch.no_grad():
-                next_value = self.critic(obs)
+                next_value = self.critic(self._normalize_tensor_obs(obs))
+            if self.normalize_obs:
+                self.obs_rms.update(torch.cat(raw_states).cpu().numpy())
 
             # Stack buffers
             states = torch.stack(buf_states, dim=0)  # (T, N, obs_dim)
@@ -992,6 +1061,7 @@ class PPO(BaseRLModel):
             for t in reversed(range(T)):
                 delta = (
                     rewards[t]
+                    + buf_timeouts[t]
                     + self.gamma * values[t + 1] * (1.0 - dones[t])
                     - values[t]
                 )
@@ -1023,9 +1093,9 @@ class PPO(BaseRLModel):
             with torch.no_grad():
                 y_true = returns
                 y_pred = values[:-1]
-                var_y = torch.var(y_true)
+                var_y = torch.var(y_true, unbiased=False)
                 explained_var = (
-                    (1.0 - torch.var(y_true - y_pred) / (var_y + 1e-8))
+                    (1.0 - torch.var(y_true - y_pred, unbiased=False) / (var_y + 1e-8))
                     .detach()
                     .cpu()
                     .item()
@@ -1041,7 +1111,7 @@ class PPO(BaseRLModel):
             old_values_f = values[:-1].reshape(T * n_envs, 1).detach()
 
             # Advantage normalization
-            adv_f = (adv_f - adv_f.mean()) / (adv_f.std() + 1e-8)
+            adv_f = (adv_f - adv_f.mean()) / (adv_f.std(unbiased=False) + 1e-8)
 
             # Train epochs
             all_aloss = []
@@ -1312,25 +1382,8 @@ class PPO(BaseRLModel):
             self._best_saver.submit(job)
             return
 
-        # Synchronous fallback (still atomic, but will block).
-        _atomic_write_json(model_dir / "config.json", config)
-        _atomic_torch_save(model_dir / "actor.pth", actor_state)
-        _atomic_torch_save(model_dir / "critic.pth", critic_state)
-        if obs_rms is not None:
-            _atomic_np_savez(
-                model_dir / "obs_rms.npz",
-                mean=obs_rms["mean"],
-                var=obs_rms["var"],
-                count=obs_rms["count"],
-            )
-        if ret_rms is not None:
-            _atomic_np_savez(
-                model_dir / "ret_rms.npz",
-                mean=ret_rms["mean"],
-                var=ret_rms["var"],
-                count=ret_rms["count"],
-            )
-        _atomic_write_json(model_dir / "best_meta.json", meta)
+        # Use the same checkpoint contents as the background worker.
+        _write_best_checkpoint(job)
 
     def eval(self) -> "PPO":
         """Switch actor and critic networks to evaluation mode.
@@ -1343,12 +1396,17 @@ class PPO(BaseRLModel):
         return self
 
     def close(self) -> None:
-        """Flush and stop background saver (safe to call multiple times)."""
-        if self._best_saver is not None:
-            # Ensure the last best checkpoint is fully written.
-            self._best_saver.flush(timeout=30.0)
-            self._best_saver.close(timeout=5.0)
-            self._best_saver = None
+        """Finish checkpoint writes and metrics (safe to call multiple times)."""
+        try:
+            if self._best_saver is not None:
+                try:
+                    # Ensure the last best checkpoint is fully written.
+                    self._best_saver.flush(timeout=30.0)
+                finally:
+                    self._best_saver.close(timeout=5.0)
+                    self._best_saver = None
+        finally:
+            self.writer.close()
 
     def auxiliary_task(
         self, states: torch.Tensor, rewards: torch.Tensor
@@ -1528,6 +1586,7 @@ class PPO(BaseRLModel):
         values: list[torch.Tensor],
         probs: list[torch.Tensor],
         gamma: float,
+        timeout_bootstraps: Optional[list[torch.Tensor]] = None,
     ) -> Tuple[
         torch.Tensor,
         torch.Tensor,
@@ -1546,6 +1605,7 @@ class PPO(BaseRLModel):
             values: State values.
             probs: Log probabilities of actions.
             gamma: Discount coefficient.
+            timeout_bootstraps: Optional gamma*V(final state) at time limits.
 
         Returns:
             tuple: Tuple containing processed states, actions, rewards, advantages and probabilities.
@@ -1565,6 +1625,8 @@ class PPO(BaseRLModel):
         g2 = torch.zeros_like(values2[0])
         for i in reversed(range(len(rewards))):
             delta2 = rewards2[i] + gamma * values2[i + 1] * (1 - dones2[i]) - values2[i]
+            if timeout_bootstraps is not None:
+                delta2 = delta2 + timeout_bootstraps[i].reshape_as(delta2)
             g2 = delta2 + gamma * self.gae_lambda * (1 - dones2[i]) * g2
             returns2.insert(0, g2 + values2[i].view(-1, 1))
 
@@ -1669,6 +1731,7 @@ class PPO(BaseRLModel):
                 # mus = []
                 # deltas = []
                 dones = []
+                timeout_bootstraps = []
                 values = []
                 scores = []
                 score = 0
@@ -1676,15 +1739,16 @@ class PPO(BaseRLModel):
                 curr_ep_len = 0
                 rollout_states = []  # For obs normalization update
                 for step in range(self.rollout_len):
-                    rollout_states.append(state)
+                    rollout_states.append(np.array(state, copy=True))
                     # Inline actor forward so we can store the UNCLAMPED sampled
                     # action alongside its log-prob. Storing the clamped action
                     # while computing log-prob from the unclamped sample (or
                     # vice versa) produces inconsistent old/new log-probs in the
                     # PPO ratio and biases the policy gradient when actions
                     # saturate at the bounds.
-                    state_normalized = (
-                        self._normalize_obs(state) if self.normalize_obs else state
+                    state_normalized = np.array(
+                        self._normalize_obs(state) if self.normalize_obs else state,
+                        copy=True,
                     )
                     state_t = torch.as_tensor(
                         np.array([state_normalized]),
@@ -1716,11 +1780,15 @@ class PPO(BaseRLModel):
                     # Single-env training step: advance counter by 1.
                     self.global_env_step += 1
                     if len(step_return) > 4:
-                        next_state, reward, terminated, trunkated, info = step_return
-                        done = terminated or trunkated
+                        next_state, reward, terminated, truncated, info = step_return
+                        done = terminated or truncated
                     else:
                         next_state, reward, terminated, info = step_return
+                        truncated = False
                         done = terminated
+                    timeout_bootstraps.append(
+                        self._timeout_bootstrap(next_state, terminated, truncated, info)
+                    )
                     score += reward
                     curr_ep_len += 1
                     dones.append(
@@ -1758,11 +1826,7 @@ class PPO(BaseRLModel):
                         else:
                             state = reset_return
 
-                # Update observation normalization statistics
-                if self.normalize_obs:
-                    self.obs_rms.update(np.array(rollout_states))
-
-                # Calculate next state value for the terminal state
+                # Bootstrap with the same statistics used throughout the rollout.
                 next_state_normalized = (
                     self._normalize_obs(next_state)
                     if self.normalize_obs
@@ -1777,9 +1841,18 @@ class PPO(BaseRLModel):
                         )
                     )
                 values.append(next_value)
+                if self.normalize_obs:
+                    self.obs_rms.update(np.array(rollout_states))
 
                 _, _, returns_list, _, _, _ = self.preprocess1(
-                    states, actions, rewards, dones, values, probs, self.gamma
+                    states,
+                    actions,
+                    rewards,
+                    dones,
+                    values,
+                    probs,
+                    self.gamma,
+                    timeout_bootstraps=timeout_bootstraps,
                 )
                 states_tensor = torch.stack(states)
                 actions_tensor = torch.stack(actions)
@@ -1807,14 +1880,14 @@ class PPO(BaseRLModel):
                 with torch.no_grad():
                     y_pred = values_tensor[:-1]
                     y_true = returns_tensor
-                    var_y = torch.var(y_true)
+                    var_y = torch.var(y_true, unbiased=False)
                     explained_var = (
-                        1 - torch.var(y_true - y_pred) / (var_y + 1e-8)
+                        1 - torch.var(y_true - y_pred, unbiased=False) / (var_y + 1e-8)
                     ).item()
 
                 # Normalize advantages for stability
                 advantages = (advantages - advantages.mean()) / (
-                    advantages.std() + 1e-8
+                    advantages.std(unbiased=False) + 1e-8
                 )
 
                 # Train for a number of epochs with KL early stopping

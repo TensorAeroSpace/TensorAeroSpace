@@ -201,3 +201,11 @@ for k in range(number_time_steps - 2):
 - Sun, B., Liu, C., Dally, K., van Kampen, E.-J. (2022). *Intelligent Aircraft Stabilization Control with Event-Triggered Scheme*. CEAS EuroGNC 2022.
 - Abu-Khalaf, M., Lewis, F. L. (2005). *Nearly optimal control laws for nonlinear systems with saturating actuators using a neural network HJB approach*. Automatica, 41(5), 779–791.
 - Modares, H., Lewis, F. L. (2014). *Optimal tracking control of nonlinear partially-unknown constrained-input systems using integral reinforcement learning*. Automatica, 50(7), 1780–1792.
+
+## Обновление модели и продолжение обучения
+
+При `online_model_fit=True` каждое событие запускает один шаг обучения модели на последнем реальном переходе: текущее наблюдение, применённая команда, следующее наблюдение. Между событиями веса модели и удерживаемая команда не меняются. Используйте последовательность `predict → env.step → learn` на каждом шаге.
+
+`save(path, save_gradients=True)` сохраняет оптимизаторы, состояние триггера, удерживаемую команду, незавершённый переход, время и счётчики метрик. Для продолжения используйте `ETDHPAgent.from_pretrained(path, load_gradients=True)` и восстановите состояние среды и индекс шага. При новом эпизоде вызовите `agent.reset()`.
+
+Функции `state_transform` и `exploration_fn` не записываются в JSON. Передайте их снова одноимёнными аргументами `from_pretrained()`, если они использовались. Старые файлы без `control_state.json` загружаются с заново взведённым триггером для нового эпизода.

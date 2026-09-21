@@ -169,6 +169,30 @@ def _materialize_builtin_model(
         model(torch.zeros((1, *obs_shape), dtype=torch.float32, device=_DEVICE))
 
 
+def _initialize_target(model: nn.Module, target: nn.Module, env: Any) -> None:
+    """Start the lagged Q network from independent copies of online weights."""
+    if model is target:
+        raise ValueError("Online and target Q networks must be separate instances")
+    if any(
+        isinstance(p, nn.parameter.UninitializedParameter) for p in model.parameters()
+    ):
+        shape = _obs_shape_from_env(env)
+        with torch.no_grad():
+            model(torch.zeros((1, *shape), dtype=torch.float32, device=_DEVICE))
+    target.load_state_dict(model.state_dict())
+    target.eval()
+
+
+def _replay_next_observation(
+    next_obs: np.ndarray, done: bool, info: Mapping[str, Any]
+) -> np.ndarray:
+    """Use the final transition state when step() also resets the environment."""
+    final = info.get("final_observation")
+    if final is None:
+        final = info.get("terminal_observation")
+    return final if done and final is not None else next_obs
+
+
 def test_model():
     """Function to test model functionality."""
 
@@ -249,6 +273,8 @@ class SumTree:
             priority (int): Priority of updated transition.
         """
 
+        if idx == 0:
+            return
         parent = (idx - 1) // 2
         self.tree[parent] += change
         if parent != 0:
@@ -285,7 +311,7 @@ class SumTree:
         right = left + 1
         if left >= len(self.tree):
             return idx
-        if s <= self.tree[left]:
+        if s <= self.tree[left] and self.tree[left] > 0:
             return self._retrieve(left, s)
         else:
             return self._retrieve(right, s - self.tree[left])
@@ -370,6 +396,7 @@ class DQNAgent:
         self.device = _DEVICE
         self.model = model.to(self.device)
         self.target_model = target_model.to(self.device)
+        _initialize_target(self.model, self.target_model, env)
         self.optimizer = torch.optim.Adam(self.model.parameters(), lr=learning_rate)
         self.log_dir = Path(log_dir) if log_dir is not None else None
         self.wandb_project = wandb_project
@@ -400,7 +427,7 @@ class DQNAgent:
 
         # replay buffer params [(s, a, r, ns, done), ...]
         self.b_obs = np.empty((self.batch_size,) + self.env.observation_space.shape)
-        self.b_actions = np.empty(self.batch_size, dtype=np.int8)
+        self.b_actions = np.empty(self.batch_size, dtype=np.int64)
         self.b_rewards = np.empty(self.batch_size, dtype=np.float32)
         self.b_next_states = np.empty(
             (self.batch_size,) + self.env.observation_space.shape
@@ -460,31 +487,53 @@ class DQNAgent:
         elif max_steps is not None:
             # Allow overriding the step cap without touching num_episodes.
             self.train_nums = int(max_steps)
+        if self.train_nums < 1:
+            raise ValueError("The training step budget must be positive.")
+        # Warmup-only runs still have a valid update count and learning rate.
+        self.writer.add_scalar(
+            schema.TRAIN_UPDATES, self.global_step, env_step=self.global_env_step
+        )
+        self.writer.add_scalar(
+            schema.TRAIN_LR,
+            float(self.optimizer.param_groups[0]["lr"]),
+            env_step=self.global_env_step,
+        )
         obs, _info = self.env.reset()
         episode_reward = 0.0
         episode_length = 0
-        pbar = tqdm(range(1, self.train_nums), desc="DQNAgent Train", unit="step")
+        pbar = tqdm(
+            range(1, self.train_nums + 1),
+            desc="DQNAgent Train",
+            unit="step",
+            disable=not verbose,
+        )
         recent_loss = None
         for t in pbar:
-            self.global_env_step = t
+            self.global_env_step += 1
             input_obs = obs.reshape([1, -1])
             best_action, _q_values = self.model.action_value(input_obs)
             # input the obs to the network model
             action = self.get_action(best_action)  # get the real action
+            obs_snapshot = np.array(obs, copy=True)
             next_obs, reward, terminated, truncated, info = self.env.step(action)
+            # The final collected transition can end an unfinished episode.
+            truncated = bool(truncated or (t == self.train_nums and not terminated))
             done = bool(terminated or truncated)
             episode_reward += float(reward)
             episode_length += 1
-            if t == 1:
+            if self.num_in_buffer == 0:
                 p = self.p1
             else:
                 p = np.max(self.replay_buffer.tree[-self.replay_buffer.capacity :])
+            # Time limits end the episode but still allow bootstrapping.
+            replay_next = _replay_next_observation(next_obs, done, info)
+            ready_to_update = self.num_in_buffer >= self.buffer_size
             self.store_transition(
-                p, obs, action, reward, next_obs, done
-            )  # store that transition into replay butter
+                p, obs_snapshot, action, reward, replay_next, bool(terminated)
+            )
             self.num_in_buffer = min(self.num_in_buffer + 1, self.buffer_size)
 
-            if t > self.buffer_size:
+            if ready_to_update:
                 # if t % self.replay_period == 0:  # transition sampling and update
                 recent_loss = self.train_step()
                 if t % 200 == 0 and recent_loss is not None:
@@ -492,7 +541,7 @@ class DQNAgent:
                         {"loss": f"{recent_loss:.4f}", "eps": f"{self.epsilon:.3f}"}
                     )
 
-            if t % self.target_update_iter == 0:
+            if self.global_env_step % self.target_update_iter == 0:
                 self.update_target_model()
             if done:
                 # Episode end logging (canonical schema)
@@ -515,9 +564,6 @@ class DQNAgent:
             else:
                 obs = next_obs
         self.writer.flush()
-        # Note: don't assert_contract_satisfied() if max_steps is so small that the
-        # warmup never ends and no train_step() ever runs. The smoke test uses a
-        # small-but-sufficient budget that does cross the warmup threshold.
         self.writer.assert_contract_satisfied()
         return {"episodes": int(self.episode_idx)}
 
@@ -754,7 +800,13 @@ class DQNAgent:
     ) -> None:
         """Store a transition in the replay buffer."""
 
-        transition = [obs, action, reward, next_state, done]
+        transition = [
+            np.array(obs, copy=True),
+            action,
+            reward,
+            np.array(next_state, copy=True),
+            done,
+        ]
         self.replay_buffer.add(priority, transition)
 
     # rank-based prioritization sampling
@@ -789,7 +841,8 @@ class DQNAgent:
     def e_decay(self) -> None:
         """Function for reducing network exploration probability."""
 
-        self.epsilon *= self.epsilon_decay
+        if self.epsilon > self.min_epsilon:
+            self.epsilon = max(self.min_epsilon, self.epsilon * self.epsilon_decay)
 
     def save(
         self,
@@ -844,6 +897,11 @@ class DQNAgent:
             "alpha": self.alpha,
             "beta": self.beta,
             "beta_increment_per_sample": self.beta_increment_per_sample,
+            "training": {
+                "global_env_step": self.global_env_step,
+                "global_step": self.global_step,
+                "episode_idx": self.episode_idx,
+            },
         }
         with open(config_path, "w", encoding="utf-8") as f:
             json.dump(config, f)
@@ -924,6 +982,13 @@ class DQNAgent:
             beta=config.get("beta", 0.4),
             beta_increment_per_sample=config.get("beta_increment_per_sample", 0.001),
         )
+
+        # Construction synchronizes fresh targets; a saved lagged target must survive loading.
+        agent.target_model.load_state_dict(target_state)
+        training = config.get("training", {})
+        agent.global_env_step = int(training.get("global_env_step", 0))
+        agent.global_step = int(training.get("global_step", 0))
+        agent.episode_idx = int(training.get("episode_idx", 0))
 
         if load_gradients and optim_path.exists():
             state = _safe_torch_load_dict(
@@ -1094,6 +1159,7 @@ class PERNARXAgent:
         self.device = _DEVICE
         self.model = model.to(self.device)
         self.target_model = target_model.to(self.device)
+        _initialize_target(self.model, self.target_model, env)
         self.optimizer = torch.optim.Adam(self.model.parameters(), lr=learning_rate)
         self.log_dir = Path(log_dir) if log_dir is not None else None
         self.wandb_project = wandb_project
@@ -1124,7 +1190,7 @@ class PERNARXAgent:
 
         # replay buffer params [(s, a, r, ns, done), ...]
         self.b_obs = np.empty((self.batch_size,) + self.env.observation_space.shape)
-        self.b_actions = np.empty(self.batch_size, dtype=np.int8)
+        self.b_actions = np.empty(self.batch_size, dtype=np.int64)
         self.b_rewards = np.empty(self.batch_size, dtype=np.float32)
         self.b_next_states = np.empty((self.batch_size,) + env.observation_space.shape)
         self.b_dones = np.empty(self.batch_size, dtype=np.bool_)
@@ -1166,32 +1232,51 @@ class PERNARXAgent:
             self.train_nums = int(num_episodes) * int(max_steps)
         elif max_steps is not None:
             self.train_nums = int(max_steps)
+        if self.train_nums < 1:
+            raise ValueError("The training step budget must be positive.")
+        # Warmup-only runs still have a valid update count and learning rate.
+        self.writer.add_scalar(
+            schema.TRAIN_UPDATES, self.global_step, env_step=self.global_env_step
+        )
+        self.writer.add_scalar(
+            schema.TRAIN_LR,
+            float(self.optimizer.param_groups[0]["lr"]),
+            env_step=self.global_env_step,
+        )
         obs, _info = self.env.reset()
-        prev_action = [0]
         episode_reward = 0.0
         episode_length = 0
-        pbar = tqdm(range(1, self.train_nums), desc="PERNARXAgent Train", unit="step")
+        pbar = tqdm(
+            range(1, self.train_nums + 1),
+            desc="PERNARXAgent Train",
+            unit="step",
+            disable=not verbose,
+        )
         recent_loss = None
         for t in pbar:
-            self.global_env_step = t
-            print(obs, prev_action)
+            self.global_env_step += 1
             best_action, _q_values = self.model.action_value(obs[None])
 
             action = self.get_action(best_action)  # get the real action
-            next_obs, reward, terminated, truncated, _info = self.env.step(action)
+            obs_snapshot = np.array(obs, copy=True)
+            next_obs, reward, terminated, truncated, info = self.env.step(action)
+            # The final collected transition can end an unfinished episode.
+            truncated = bool(truncated or (t == self.train_nums and not terminated))
             done = bool(terminated or truncated)
             episode_reward += float(reward)
             episode_length += 1
-            if t == 1:
+            if self.num_in_buffer == 0:
                 p = self.p1
             else:
                 p = np.max(self.replay_buffer.tree[-self.replay_buffer.capacity :])
+            # Time limits end the episode but still allow bootstrapping.
+            replay_next = _replay_next_observation(next_obs, done, info)
+            ready_to_update = self.num_in_buffer >= self.buffer_size
             self.store_transition(
-                p, obs, action, reward, next_obs, done
-            )  # store that transition into replay butter
+                p, obs_snapshot, action, reward, replay_next, bool(terminated)
+            )
             self.num_in_buffer = min(self.num_in_buffer + 1, self.buffer_size)
-            prev_action = best_action
-            if t > self.buffer_size:
+            if ready_to_update:
                 # if t % self.replay_period == 0:  # transition sampling and update
                 recent_loss = self.train_step()
                 if t % 200 == 0 and recent_loss is not None:
@@ -1199,7 +1284,7 @@ class PERNARXAgent:
                         {"loss": f"{recent_loss:.4f}", "eps": f"{self.epsilon:.3f}"}
                     )
 
-            if t % self.target_update_iter == 0:
+            if self.global_env_step % self.target_update_iter == 0:
                 self.update_target_model()
             if done:
                 # Episode end logging (canonical schema)
@@ -1222,8 +1307,6 @@ class PERNARXAgent:
             else:
                 obs = next_obs
         self.writer.flush()
-        # Note: don't assert_contract_satisfied() if max_steps is so small that the
-        # warmup never ends and no train_step() ever runs.
         self.writer.assert_contract_satisfied()
         return {"episodes": int(self.episode_idx)}
 
@@ -1476,7 +1559,13 @@ class PERNARXAgent:
             ep_reward (float): Total reward for the episode.
         """
 
-        transition = [obs, action, reward, next_state, done]
+        transition = [
+            np.array(obs, copy=True),
+            action,
+            reward,
+            np.array(next_state, copy=True),
+            done,
+        ]
         self.replay_buffer.add(priority, transition)
 
     # rank-based prioritization sampling
@@ -1522,7 +1611,8 @@ class PERNARXAgent:
     def e_decay(self) -> None:
         """Function for reducing network exploration probability."""
 
-        self.epsilon *= self.epsilon_decay
+        if self.epsilon > self.min_epsilon:
+            self.epsilon = max(self.min_epsilon, self.epsilon * self.epsilon_decay)
 
     def save(
         self,
@@ -1577,6 +1667,11 @@ class PERNARXAgent:
             "alpha": self.alpha,
             "beta": self.beta,
             "beta_increment_per_sample": self.beta_increment_per_sample,
+            "training": {
+                "global_env_step": self.global_env_step,
+                "global_step": self.global_step,
+                "episode_idx": self.episode_idx,
+            },
         }
         with open(config_path, "w", encoding="utf-8") as f:
             json.dump(config, f)

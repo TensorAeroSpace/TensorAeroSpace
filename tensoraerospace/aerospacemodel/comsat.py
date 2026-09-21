@@ -11,8 +11,6 @@ Main components:
     - Methods for orbital motion simulation and attitude control
 """
 
-from typing import Any
-
 import matplotlib.pyplot as plt
 import numpy as np
 from scipy.signal import cont2discrete
@@ -26,27 +24,32 @@ from tensoraerospace.aerospacemodel.utils.constant import (
 
 
 class ComSat(ModelBase):
-    """Communication satellite in longitudinal control channel.
+    """Normalized linear perturbations of a circular satellite orbit.
+
+    Uses the reduced matrices of Choudhary (2015), equation (19). States are
+    deviations around the operating orbit, not absolute radius or SI velocities.
+    tau = t / sqrt(R/g), rho = r/R, u2 = F2/(M*g). The legacy actuator bounds
+    (25 magnitude, 60 per tau) are simulation settings, not measured thruster data.
 
     Args:
         x0: Initial state of the control object.
         number_time_steps: Number of time steps.
         selected_state_output (optional): Selected states of the control object. Defaults to None.
         t0 (int, optional): Initial time. Defaults to 0.
-        dt (float, optional): Discretization frequency. Defaults to 0.01.
+        dt (float, optional): Step in normalized time tau. Defaults to 0.01.
 
     Action space:
-        u2: tangential thrust (N) - positive accelerates satellite, negative decelerates
+        u2: normalized tangential thrust F2/(M*g)
 
     State space:
-        rho: radial position - distance from Earth center [km]
-        rho_dot: radial velocity [m/s]
-        theta_dot: angular velocity [rad/s]
+        rho: normalized radial-position deviation delta(r/R)
+        rho_dot: derivative of normalized radial deviation with respect to tau
+        theta_dot: angular-rate deviation with respect to normalized time tau
 
     Output space:
-        rho: radial position - distance from Earth center [km]
-        rho_dot: radial velocity [m/s]
-        theta_dot: angular velocity [rad/s]
+        rho: normalized radial-position deviation delta(r/R)
+        rho_dot: derivative of normalized radial deviation with respect to tau
+        theta_dot: angular-rate deviation with respect to normalized time tau
     """
 
     def __init__(
@@ -56,6 +59,7 @@ class ComSat(ModelBase):
         selected_state_output: list[str] | None = None,
         t0: float = 0,
         dt: float = 0.01,
+        initial_control: float = 0.0,
     ) -> None:
         """Initialize ComSat instance.
 
@@ -64,7 +68,8 @@ class ComSat(ModelBase):
             number_time_steps: Number of time steps.
             selected_state_output: Selected states of the control object. Defaults to None.
             t0: Initial time. Defaults to 0.
-            dt: Discretization frequency. Defaults to 0.01.
+            dt: Step in normalized time tau. Defaults to 0.01.
+            initial_control: Applied input before the first step; bounded to ±25.
         """
         super().__init__(x0, selected_state_output, t0, dt)
 
@@ -79,7 +84,9 @@ class ComSat(ModelBase):
         ]
         self.control_list = self.selected_input
 
-        self._initialize_selected_state_index(self.selected_states, self.list_state)
+        self._initialize_selected_state_index(
+            self.selected_state_output, self.list_state
+        )
 
         self.state_space = self.selected_states
         self.action_space = self.selected_input
@@ -103,6 +110,9 @@ class ComSat(ModelBase):
         self.C: np.ndarray = np.empty((0, 0))
         self.D: np.ndarray = np.empty((0, 0))
 
+        if not np.isfinite(initial_control):
+            raise ValueError("initial_control must be finite")
+        self.initial_control = float(np.clip(initial_control, -25.0, 25.0))
         self.initialise_system(x0, number_time_steps)
 
     def import_linear_system(self):
@@ -113,13 +123,13 @@ class ComSat(ModelBase):
 
         Equations:
         ẋ₁ = x₃  (radial position rate = radial velocity)
-        ẋ₃ = 0.01036·x₁ + 0.7753·x₄  (radial acceleration)
+        ẋ₃ = 0.01036·x₁ + 0.7757·x₄  (radial acceleration)
         ẋ₄ = -0.01775·x₃ + 0.1513·u₂  (angular acceleration)
         """
         self.A = np.array(
             [
                 [0.0, 1.0, 0.0],
-                [0.01036, 0.0, 0.7753],
+                [0.01036, 0.0, 0.7757],
                 [0.0, -0.01775, 0.0],
             ]
         )
@@ -158,11 +168,18 @@ class ComSat(ModelBase):
             number_time_steps: Number of simulation steps.
         """
 
+        initial = np.array(x0, dtype=np.float64, copy=True).reshape(-1)
+        if initial.size != 3 or not np.all(np.isfinite(initial)):
+            raise ValueError("x0 must contain three finite state deviations")
+        if not np.isfinite(self.discretisation_time) or self.discretisation_time <= 0:
+            raise ValueError("dt must be positive and finite")
+        if int(number_time_steps) < 1:
+            raise ValueError("number_time_steps must be >= 1")
         # Import the stored system
         self.import_linear_system()
 
         # Store the number of time steps
-        self.number_time_steps = number_time_steps
+        self.number_time_steps = int(number_time_steps)
         self.time_step = 0
 
         # Discretise the system according to the discretisation time
@@ -174,8 +191,8 @@ class ComSat(ModelBase):
         self.store_input = np.zeros((self.number_inputs, self.number_time_steps))
         self.store_outputs = np.zeros((self.number_outputs, self.number_time_steps))
 
-        self.x0 = x0
-        self.xt = x0
+        self.x0 = initial.copy()
+        self.xt = initial.copy()
         self.store_states[:, self.time_step] = np.reshape(
             self.xt,
             [
@@ -192,46 +209,23 @@ class ComSat(ModelBase):
         Returns:
             np.ndarray: Next state at time t+1.
         """
-        if self.time_step != 0:
-            ut_1 = self.store_input[:, self.time_step - 1]
-        else:
-            ut_1 = ut_0
-        ut: Any = [
-            0,
-        ]
-        for i in range(self.number_inputs):
-            ut[i] = max(
-                min(
-                    max(
-                        min(
-                            ut_0[i],
-                            np.reshape(
-                                np.array(
-                                    [
-                                        ut_1[i]
-                                        + self.input_rate_limits[i]
-                                        * self.discretisation_time
-                                    ]
-                                ),
-                                [-1, 1],
-                            ),
-                        ),
-                        np.reshape(
-                            np.array(
-                                [
-                                    ut_1[i]
-                                    - self.input_rate_limits[i]
-                                    * self.discretisation_time
-                                ]
-                            ),
-                            [-1, 1],
-                        ),
-                    ),
-                    np.array([[self.input_magnitude_limits[i]]]),
-                ),
-                -np.array([[self.input_magnitude_limits[i]]]),
-            )
-        ut = np.array(ut)
+        command = np.asarray(ut_0, dtype=np.float64).reshape(-1)
+        if command.size != self.number_inputs or not np.all(np.isfinite(command)):
+            raise ValueError("control must contain one finite value")
+        if self.time_step >= self.number_time_steps:
+            raise RuntimeError("simulation horizon exhausted; reset the model")
+        previous = (
+            self.store_input[:, self.time_step - 1]
+            if self.time_step
+            else np.array([self.initial_control])
+        )
+        increment = np.asarray(self.input_rate_limits) * self.discretisation_time
+        limits = np.asarray(self.input_magnitude_limits)
+        ut = np.clip(
+            np.clip(command, previous - increment, previous + increment),
+            -limits,
+            limits,
+        )
         self.xt1 = np.matmul(self.filt_A, np.reshape(self.xt, [-1, 1])) + np.matmul(
             self.filt_B, np.reshape(ut, [-1, 1])
         )

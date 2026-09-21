@@ -34,6 +34,8 @@ from tensoraerospace.visualization.kinematics import (
     _body_velocity,
 )
 
+from ._damage import decode_profile, reset_damage, step_with_damage
+
 MODEL_STATE_ORDER = ["alpha", "wz", "stab", "dstab"]
 
 
@@ -132,7 +134,7 @@ class NonlinearLongitudinalF16(gym.Env):
         self.reward_func = (
             reward_func if reward_func is not None else self.default_reward
         )
-        self.damage_profile = damage_profile
+        self.damage_profile = decode_profile(damage_profile)
         self.damage_observable = damage_observable
         self.damage_event_callback = damage_event_callback
         self._geo_for_damage = (
@@ -218,16 +220,28 @@ class NonlinearLongitudinalF16(gym.Env):
         return x0
 
     def get_init_args(self) -> dict[str, object]:
+        """Return reconstructible constructor settings, rejecting nonserializable damage
+        callbacks.
+        """
         init_args = self.init_args.copy()
         init_args.pop("self", None)
         init_args.pop("__class__", None)
         init_args.pop("model_x0", None)
+        if self.damage_event_callback is not None:
+            raise ValueError(
+                "damage_event_callback cannot be serialized; remove it before saving"
+            )
+        init_args["damage_profile"] = (
+            self.damage_profile.to_dict() if self.damage_profile is not None else None
+        )
         return init_args
 
     def _get_info(self) -> dict[str, object]:
+        """Return the base info mapping before optional damage telemetry is added."""
         return {}
 
     def _build_observation(self, base_obs: np.ndarray) -> np.ndarray:
+        """Convert observed states to float32 and append enabled damage features."""
         if not self.damage_observable or self.damage_manager is None:
             return base_obs.astype(np.float32)
         geo = self._geo_for_damage
@@ -246,6 +260,12 @@ class NonlinearLongitudinalF16(gym.Env):
     def step(
         self, action: np.ndarray
     ) -> tuple[np.ndarray, float, bool, bool, dict[str, object]]:
+        """Apply one stabilator command in degrees and return the Gymnasium transition.
+
+        The configured control bias and optional feedforward are added before clipping
+        and conversion to model radians. The transition includes the tracking reward,
+        horizon truncation and any damage-event information.
+        """
         action_deg = (
             np.asarray(action, dtype=np.float64).reshape(-1) + self.control_bias
         )
@@ -255,38 +275,13 @@ class NonlinearLongitudinalF16(gym.Env):
                 dtype=np.float64,
             ).reshape(-1)
             action_deg = action_deg + ff
+        if action_deg.shape != (1,) or not np.all(np.isfinite(action_deg)):
+            raise ValueError("action must contain one finite stabilator command")
         action_deg = np.clip(action_deg, -self.max_action_value, self.max_action_value)
         action_rad = np.deg2rad(action_deg)
+
+        next_state, triggered_labels = step_with_damage(self, action_rad)
         self.current_step += 1
-
-        # Damage events (window: prior step → current step)
-        triggered_labels: list[str] = []
-        if self.damage_manager is not None:
-            t_now = self.current_step * self.dt
-            t_prev = (self.current_step - 1) * self.dt
-            triggered = self.damage_manager.update(t_now, t_prev)
-            for ev in triggered:
-                if self.damage_event_callback:
-                    self.damage_event_callback(ev, self.damage_manager.state)
-                triggered_labels.append(ev.label or ev.event_type)
-                self.damage_events_log.append(
-                    {
-                        "time": float(t_now),
-                        "label": ev.label or ev.event_type,
-                        "event_type": ev.event_type,
-                        "payload": dict(ev.payload),
-                    }
-                )
-            if triggered:
-                # Snapshot the post-event damage state
-                self.damage_state_log.append(
-                    {
-                        "time": float(t_now),
-                        "state": self.damage_manager.state.snapshot(),
-                    }
-                )
-
-        next_state = self.model.run_step(action_rad)
         # Track histories using the FULL 4-element model state (next_state may
         # be a sliced observation, depending on selected_state_output).
         self._update_history(self.model.current_state)
@@ -310,14 +305,17 @@ class NonlinearLongitudinalF16(gym.Env):
         return (
             self._build_observation(base_obs),
             reward_value,
-            self.done,
             False,
+            self.done,
             info,
         )
 
     def reset(
         self, seed: int | None = None, options: dict | None = None
     ) -> tuple[np.ndarray, dict[str, object]]:
+        """Reset the selected model states, reference index, damage schedule and plot
+        histories.
+        """
         super().reset(seed=seed)
         self.current_step = 0
         self.done = False
@@ -329,38 +327,12 @@ class NonlinearLongitudinalF16(gym.Env):
             dt=self.dt,
             integrator=self.integrator,
         )
-        if self.damage_profile is not None or self.damage_observable:
-            geo = self._geo_for_damage
-            if geo is None:
-                raise RuntimeError("Damage mode requires F-16 geometry.")
-            self.damage_manager = DamageManager(
-                geometry=geo,
-                params=self.model.param,
-                profile=(self.damage_profile or DamageProfile(events=[])),
-            )
-            if options and "damage_profile" in options:
-                self.damage_manager.set_profile(options["damage_profile"])
-            self.damage_manager.reset(seed=seed)
-            setattr(self.model, "damage_state", self.damage_manager.state)
-            setattr(self.model, "damage_geometry", geo)
-        else:
-            self.damage_manager = None
+        reset_damage(self, options, seed)
         info = self._get_info()
         base_obs = np.asarray(model_x0, dtype=np.float32)[
             self.model.selected_state_index
         ].reshape(-1)
         observation = self._build_observation(base_obs)
-
-        # Reset accumulator buffers and snapshot initial damage state
-        self.damage_events_log = []
-        self.damage_state_log = []
-        if self.damage_manager is not None:
-            self.damage_state_log.append(
-                {
-                    "time": 0.0,
-                    "state": self.damage_manager.state.snapshot(),
-                }
-            )
 
         self.position_history = np.zeros((1, 3), dtype=np.float64)
         self.attitude_history = np.array([[0.0, self.initial_pitch, 0.0]])
@@ -376,6 +348,9 @@ class NonlinearLongitudinalF16(gym.Env):
         return observation, info
 
     def close(self) -> None:
+        """Complete the Gymnasium lifecycle; no persistent renderer resource needs
+        closing.
+        """
         pass
 
     @staticmethod
@@ -427,6 +402,9 @@ class NonlinearLongitudinalF16(gym.Env):
             )
 
     def render(self):
+        """Return the configured figure, RGB image or web view of the recorded
+        trajectory.
+        """
         if self.render_mode is None:
             return None
         if self.render_mode == "human":
@@ -473,6 +451,9 @@ class NonlinearLongitudinalF16(gym.Env):
         raise ValueError(f"Unknown render_mode: {self.render_mode!r}")
 
     def _build_figure(self):
+        """Create a flight figure from the recorded position, attitude and state
+        channels.
+        """
         from tensoraerospace.visualization.flight_3d import build_flight_3d_figure
 
         return build_flight_3d_figure(
@@ -484,6 +465,7 @@ class NonlinearLongitudinalF16(gym.Env):
         )
 
     def _render_3d_web(self):
+        """Build the browser-based 3D view of this environment's recorded flight."""
         from tensoraerospace.visualization.three_d import render as _render_3d
 
         return _render_3d(self)

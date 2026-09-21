@@ -41,19 +41,19 @@ class LongitudinalB747(ModelBase):
         dt (float, optional): Discretization frequency. Defaults to 0.01.
 
     Action space:
-        ele: elevator [deg]
+        ele: elevator [rad]
 
     State space:
         u: Longitudinal aircraft velocity [m/s]
         w: Normal aircraft velocity [m/s]
-        q: Pitch angular velocity [deg/s]
-        theta: Pitch [deg]
+        q: Pitch angular velocity [rad/s]
+        theta: Pitch [rad]
 
     Output space:
         u: Longitudinal aircraft velocity [m/s]
         w: Normal aircraft velocity [m/s]
-        q: Pitch angular velocity [deg/s]
-        theta: Pitch [deg]
+        q: Pitch angular velocity [rad/s]
+        theta: Pitch [rad]
     """
 
     def __init__(
@@ -64,6 +64,9 @@ class LongitudinalB747(ModelBase):
         t0: int = 0,
         dt: float = 0.01,
     ) -> None:
+        dt = float(dt)
+        if not np.isfinite(dt) or dt <= 0:
+            raise ValueError("dt must be finite and positive")
         super().__init__(x0, selected_state_output, t0, dt)
 
         self.discretisation_time = dt
@@ -77,7 +80,9 @@ class LongitudinalB747(ModelBase):
         ]
         self.control_list = self.selected_input
 
-        self._initialize_selected_state_index(self.selected_states, self.list_state)
+        self._initialize_selected_state_index(
+            self.selected_state_output, self.list_state
+        )
 
         self.state_space = self.selected_states
         self.action_space = self.selected_input
@@ -152,6 +157,16 @@ class LongitudinalB747(ModelBase):
             number_time_steps: Number of simulation steps.
         """
 
+        initial = np.array(x0, dtype=float, copy=True).reshape(-1)
+        if initial.size != 4 or not np.all(np.isfinite(initial)):
+            raise ValueError("x0 must contain four finite states")
+        if (
+            not np.isfinite(number_time_steps)
+            or int(number_time_steps) != number_time_steps
+            or number_time_steps < 1
+        ):
+            raise ValueError("number_time_steps must be a positive integer")
+        number_time_steps = int(number_time_steps)
         # Import the stored system
         self.import_linear_system()
 
@@ -168,8 +183,8 @@ class LongitudinalB747(ModelBase):
         self.store_input = np.zeros((self.number_inputs, self.number_time_steps))
         self.store_outputs = np.zeros((self.number_outputs, self.number_time_steps))
 
-        self.x0 = x0
-        self.xt = x0
+        self.x0 = initial.copy()
+        self.xt = initial.copy()
         self.store_states[:, self.time_step] = np.reshape(
             self.xt,
             [
@@ -186,10 +201,16 @@ class LongitudinalB747(ModelBase):
         Returns:
             np.ndarray: Next state at time t+1.
         """
+        ut_0 = np.asarray(ut_0, dtype=float).reshape(-1)
+        if ut_0.size != 1 or not np.all(np.isfinite(ut_0)):
+            raise ValueError("input must contain one finite elevator command")
+        if self.time_step >= self.number_time_steps:
+            raise RuntimeError("simulation history is full; restart the model")
         if self.time_step != 0:
             ut_1 = self.store_input[:, self.time_step - 1]
         else:
-            ut_1 = ut_0
+            # The actuator starts at neutral, including after restart().
+            ut_1 = np.zeros(self.number_inputs)
         ut: Any = [
             0,
         ]

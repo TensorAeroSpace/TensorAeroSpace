@@ -158,23 +158,31 @@ with ISA dynamic pressure $q_{dyn} = \tfrac12\rho V^2$.
 
 ## JT9D-7 engine
 
-The 4 × JT9D-7 cluster installed thrust follows
-[Mattingly *Aircraft Engine Design* §8.6.4](#references):
+The simplified engine curve is
 
 $$
-T_{inst}(M, h, \mathrm{PLA}) = T_{SLS} \cdot \sigma(h)^{n_h} \cdot \eta_{ram}(M) \cdot \mathrm{PLA}_{eff}
+T = T_{SLS}\,L_\rho(h)\,\max(1-0.49\sqrt{M},\,0.05)\,\mathrm{PLA}_{eff}.
 $$
 
-with $T_{SLS} = 188\,400$ lb (Boeing 747-100 TCDS A20WE),
-$\sigma(h) = \rho(h)/\rho_{SL}$, $n_h = 0.7$ below the tropopause /
-$1.0$ above, $\eta_{ram}(M) = 1 - 0.49\sqrt{M}$ (clamped ≥ 0.05).
+With $h_t=36089$ ft, $\sigma=\rho/\rho_{SL}$, and
+$\sigma_t=\sigma(h_t^-)$:
 
-| h, ft | M | δ_T | T_inst, lb |
-|---:|---:|---:|---:|
-| 0 | 0.0 | 1.0 | 188 400 |
-| 0 | 0.2 | 1.0 | 147 115 |
-| 35 000 | 0.85 | 0.80 | 36 843 |
-| 40 000 | 0.90 | 0.85 | 21 281 |
+$$
+L_\rho(h)=\begin{cases}
+\sigma(h)^{0.7}, & h<h_t,\\
+\sigma_t^{0.7}\,\rho(h)/\rho(h_t^+), & h\ge h_t.
+\end{cases}
+$$
+
+The one-sided references account for rounded constants in the ISA branches.
+The upper branch now matches the lower one. Previously, changing the exponent
+without matching the reference caused an artificial 30.5% thrust drop.
+Below the boundary, the thrust law is unchanged. Above it, thrust is about
+43.9% higher than the old discontinuous implementation; existing controllers
+operating there require reevaluation. This is a consistency correction to a
+simplified curve, not calibration against an engine performance deck.
+Actuator rate limits, time constants and engine spool dynamics are not applied
+by this 12-state model.
 
 ## Damage subsystem
 
@@ -232,14 +240,22 @@ Built-in presets:
 
 ## Trim finder
 
-`tensoraerospace.aerospacemodel.b747.nonlinear.trim(h, V)` solves
-(u̇, ẇ, q̇) = 0 via Newton-Raphson (`scipy.optimize.fsolve`),
-returning trimmed (α, δ_e, δ_T) at the requested (altitude,
-airspeed, configuration). For the landing configuration (FC1,
-V=221 ft/s) the trimmer returns α=8.17°, matching the published
-8.50° within 0.35° (figure-digitisation noise).
+`trim(h, V)` solves the three longitudinal equilibrium equations using bounded
+least squares. Throttle stays in `[0, 1]` and elevator within the configured
+limits. Translational and angular equations are scaled for the solver;
+`residual` reports the unscaled norm of all six body accelerations.
+`converged=True` requires a successful solve and `residual <= tol`.
+
+An initial throttle estimate outside the limits is clipped before solving.
+A tiny longitudinal residual no longer hides engine-out yaw acceleration:
+asymmetric steady flight requires a separate solver for lateral controls.
+An unsuccessful result is not a valid initial steady-flight condition.
 
 ## Gymnasium env
+
+The environment copies the initial state and clips commands to its declared
+bounds before integration (and before applying supported damage effects).
+Nonfinite states/actions and invalid time settings are rejected.
 
 Registered as `"NonlinearB747-v0"`. Three initialisation modes:
 
@@ -281,3 +297,20 @@ Action-space: either `"virtual"` (physical units) or `"normalized"`
 * Stevens B.L., Lewis F.L., Johnson E.N. *Aircraft Control and
   Simulation*, Wiley, 3rd ed., 2015 — §3.7 (trim algorithm),
   Appendix B (ZYX 321 kinematics).
+
+## Public dynamics and analysis API
+
+`model.dynamics(state, action, time=...)` evaluates the instantaneous native-unit
+ODE; `model.linearize(state, action)` returns continuous A/B Jacobians. Neither
+advances the state or history. Inputs are physical surface angles in radians and
+normalized throttle. `current_time` is the latest state timestamp;
+`applied_action` is a copied input from the preceding integration interval and
+is unavailable before the first transition. `density_at(altitude_ft)` returns SI
+air density. These methods support the AA-INDI sensor adapter directly.
+
+`NonlinearB747(..., damage_profile=profile)` owns the same native damage scheduler
+used by `NonlinearB747Env`. Integration splits at event times. An event at the
+right endpoint affects the following interval, and a time-zero event is active
+at reset. `damage_events_log` records actual scheduled times. `lateral_state`,
+`lateral_transition` and `lateral_linearization` expose the degree-based local
+lateral representation used by the classical and adaptive comparison protocols.

@@ -56,7 +56,7 @@ def test_improved_lapan_action_clamping(lapan_env_default):
     env = lapan_env_default
     env.reset()
     env.step(np.array([2.0], dtype=np.float32))  # clamp to 1.0
-    assert env.previous_action == pytest.approx(1.0, abs=1e-6)
+    assert env.previous_action == pytest.approx(3.0 / 25.0, abs=1e-6)
 
 
 def test_improved_lapan_truncation_flag():

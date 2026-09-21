@@ -129,12 +129,14 @@ class Net(nn.Module):
         """
         self.train()
         mu, sigma, values = self.forward(s)
-        td = v_t - values
+        td = v_t.reshape(s.shape[0], 1) - values
         c_loss = td.pow(2)
 
         base = self.distribution(mu, sigma)
-        dist = torch.distributions.Independent(base, 1) if self.a_dim > 1 else base
-        log_prob = dist.log_prob(a)  # shape: [batch]
+        # Treat even a one-dimensional control as one event. Otherwise
+        # [batch, 1] log probabilities broadcast against [batch] advantages.
+        dist = torch.distributions.Independent(base, 1)
+        log_prob = dist.log_prob(a.reshape(s.shape[0], self.a_dim))
         entropy = dist.entropy()  # shape: [batch]
         exp_v = log_prob * td.detach().squeeze(-1) + 0.005 * entropy
         a_loss = -exp_v
@@ -263,7 +265,7 @@ class Worker(mp.Process):
 
     def run(self) -> None:
         """Execute worker process containing agent training."""
-        total_step = 1
+        total_step = 0
         # Create the env inside the worker process. Under fork-based
         # multiprocessing, creating envs in the parent and passing them
         # to children would result in a single env object being shared
@@ -283,6 +285,8 @@ class Worker(mp.Process):
             buffer_s, buffer_a, buffer_r = [], [], []
             ep_r = 0.0
             for t in range(self.max_ep_step):
+                # Some environments reuse their observation buffer in step().
+                s = np.array(s, dtype=np.float32, copy=True)
                 if self.render and self.name == "w0" and hasattr(self.env, "render"):
                     self.env.render()
                 a = self.lnet.choose_action(v_wrap(s[None, :]))
@@ -297,22 +301,35 @@ class Worker(mp.Process):
                     low, high = -np.inf, np.inf
                 a_clipped = np.clip(a, low, high)
                 step_out: Any = self.env.step(a_clipped)
+                total_step += 1
                 # Bump the shared env-step counter exactly once per env.step.
                 # Used as the canonical TB X-axis for all scalar writes.
                 if self.global_env_step is not None:
                     with self.global_env_step.get_lock():
                         self.global_env_step.value += 1
                 if isinstance(step_out, tuple) and len(step_out) == 5:
-                    s_, r, terminated, truncated, _ = step_out
+                    s_, r, terminated, truncated, info = step_out
                     done = terminated or truncated
                 else:
-                    s_, r, done, _ = step_out
-                    terminated, truncated = done, False
+                    s_, r, done, info = step_out
+                    truncated = bool(
+                        done
+                        and isinstance(info, Mapping)
+                        and info.get("TimeLimit.truncated", False)
+                    )
+                    terminated = bool(done and not truncated)
                 if t == self.max_ep_step - 1:
+                    truncated = bool(truncated or not terminated)
                     done = True
+                if done and isinstance(info, Mapping):
+                    for key in ("final_observation", "terminal_observation"):
+                        if info.get(key) is not None:
+                            s_ = info[key]
+                            break
+                s_ = np.array(s_, dtype=np.float32, copy=True)
                 r_float = float(r)
                 ep_r += r_float
-                buffer_a.append(a)
+                buffer_a.append(np.array(a, copy=True))
                 buffer_s.append(s)
                 # use raw rewards
                 # normalization strategy should be config-driven
@@ -326,7 +343,7 @@ class Worker(mp.Process):
                         self.opt,
                         self.lnet,
                         self.gnet,
-                        done,
+                        bool(terminated),
                         s_,
                         buffer_s,
                         buffer_a,
@@ -395,7 +412,6 @@ class Worker(mp.Process):
                         )
                         break
                 s = s_
-                total_step += 1
 
         self.res_queue.put(None)
 

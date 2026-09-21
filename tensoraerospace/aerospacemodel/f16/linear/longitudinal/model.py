@@ -21,10 +21,10 @@ class LongitudinalF16(ModelBase):
         theta: pitch [rad]
         alpha: angle of attack [rad]
         q: pitch angular velocity [rad/s]
-        ele: elevator position [rad]
+        ele: elevator position [deg]
 
     Control:
-        ele: stabilizer deflection [rad]
+        ele: stabilizer deflection command [deg]
 
     Args:
         x0 (np.ndarray | list[float]): Initial model state in internal-model order
@@ -51,7 +51,8 @@ class LongitudinalF16(ModelBase):
     Notes:
         - Matrices are loaded from the ``../data`` directory relative to this file.
         - Discretization is performed using ``scipy.signal.cont2discrete``.
-        - Units: angles and angular rates inside the model are in radians.
+        - Units: theta/alpha are in radians, q in rad/s; elevator state and
+          command are in degrees, as in the supplied MATLAB matrices.
     """
 
     def __init__(
@@ -64,16 +65,15 @@ class LongitudinalF16(ModelBase):
         # Selected data for the system
         self.selected_states = ["theta", "alpha", "q", "ele"]
         self.selected_output = ["theta", "alpha", "q", "nz"]
-        self.list_state = self.selected_output
+        self.list_state = self.selected_states
         self.selected_input = [
             "ele",
         ]
         self.control_list = self.selected_input
 
-        if self.selected_state_output:
-            self.selected_state_index = [
-                self.list_state.index(val) for val in self.selected_state_output
-            ]
+        self._initialize_selected_state_index(
+            self.selected_state_output, self.list_state
+        )
 
         self.state_space = self.selected_states
         self.action_space = self.selected_input
@@ -140,15 +140,11 @@ class LongitudinalF16(ModelBase):
 
         # Create the new system and initial condition
         self.filt_A = self.A[selected_rows_states[:, None], selected_rows_states]
-        self.filt_B = (
-            self.A[selected_rows_states[:, None], 12 + selected_rows_input]
-            + self.B[selected_rows_states[:, None], selected_rows_input]
-        )
+        # Elevator actuator dynamics remain in A because "ele" is a state.
+        # Folding its A column into B would cancel the actuator input.
+        self.filt_B = self.B[selected_rows_states[:, None], selected_rows_input]
         self.filt_C = self.C[selected_rows_output[:, None], selected_rows_states]
-        self.filt_D = (
-            self.C[selected_rows_output[:, None], 12 + selected_rows_input]
-            + self.D[selected_rows_output[:, None], selected_rows_input]
-        )
+        self.filt_D = self.D[selected_rows_output[:, None], selected_rows_input]
 
     def create_dictionary(self, file_name: str) -> dict[str, int]:
         """Create a dictionary that maps quantity names to indices (state/input/output).
@@ -205,7 +201,7 @@ class LongitudinalF16(ModelBase):
         """Perform one evolution step subject to control constraints.
 
         Args:
-            ut_0 (np.ndarray): Control vector at the current step (rad).
+            ut_0 (np.ndarray): Elevator command at the current step (deg).
 
         Returns:
             np.ndarray: Next-step state ``x[t+1]``.

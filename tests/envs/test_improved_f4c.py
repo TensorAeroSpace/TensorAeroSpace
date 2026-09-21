@@ -374,7 +374,7 @@ class TestConstruction:
         env = _make_improved_env()
         env.reset()
         env.step(np.array([-5.0], dtype=np.float32))  # clamp to -1.0
-        assert env.previous_action == pytest.approx(-1.0, abs=1e-6)
+        assert env.previous_action == pytest.approx(-0.6 / 20.0, abs=1e-6)
 
 
 # ===========================================================================
@@ -392,7 +392,7 @@ class TestActionHistory:
         first_prev = env.previous_action
         env.step(np.array([0.7], dtype=np.float32))
         assert env.pre_previous_action == pytest.approx(first_prev, abs=1e-6)
-        assert env.previous_action == pytest.approx(0.7, abs=1e-6)
+        assert env.previous_action == pytest.approx(1.2 / 20.0, abs=1e-6)
 
     def test_reset_restores_action_history(self):
         env = _make_improved_env(initial_elevator_deg=3.0)

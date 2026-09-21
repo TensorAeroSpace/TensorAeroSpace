@@ -91,7 +91,7 @@ def constant_line(tp: np.ndarray, value_state: float = 2) -> np.ndarray:
         >>> const = constant_line(t, value_state=5.0)
         >>> # Creates a signal with constant value 5.0
     """
-    return np.full_like(tp, value_state)
+    return np.full_like(tp, value_state, dtype=float)
 
 
 def sinusoid_vertical_shift(
@@ -277,7 +277,7 @@ def chirp(
 
     Creates a swept-frequency sinusoid (chirp) for system identification
     and frequency response analysis. The instantaneous frequency increases
-    from f0 to f1 over the duration of the signal.
+    from f0 at tp[0] to f1 at tp[-1], starting with zero phase.
 
     Args:
         tp: Time array in seconds.
@@ -303,31 +303,28 @@ def chirp(
     """
     if f0 <= 0:
         raise ValueError("f0 must be positive")
+    if method not in ("linear", "exponential"):
+        raise ValueError("method must be 'linear' or 'exponential'")
+    if method == "exponential" and f1 <= 0:
+        raise ValueError("f1 must be positive for an exponential chirp")
 
-    if len(tp) == 0:
-        return tp
-
-    t_max = tp[-1] if tp[-1] > tp[0] else 1.0
+    times = np.asarray(tp, dtype=float)
+    if times.size == 0:
+        return times
+    elapsed = times - times[0]
+    duration = elapsed[-1] if elapsed[-1] > 0 else 1.0
 
     if method == "linear":
-        # Linear frequency sweep
-        phase = 2 * np.pi * (f0 * tp + (f1 - f0) * tp**2 / (2 * t_max))
-    elif method == "exponential":
-        # When f0 == f1, k = 1 and log(k) = 0; fall back to constant frequency
-        if f0 == f1:
-            constant_signal: np.ndarray = np.asarray(
-                amplitude * np.sin(2 * np.pi * f0 * tp),
-                dtype=float,
-            )
-            return constant_signal
-        # Exponential frequency sweep
-        k = (f1 / f0) ** (1.0 / t_max)
-        phase = 2 * np.pi * f0 * (k**tp - 1) / np.log(k)
+        phase = 2 * np.pi * (f0 * elapsed + (f1 - f0) * elapsed**2 / (2 * duration))
+    elif f0 == f1:
+        phase = 2 * np.pi * f0 * elapsed
     else:
-        raise ValueError("method must be 'linear' or 'exponential'")
+        # Integrate f(t)=f0*exp(beta*t). expm1 avoids cancellation when
+        # the sweep is almost constant; computing k**t - 1 loses it.
+        beta = np.log(f1 / f0) / duration
+        phase = 2 * np.pi * f0 * np.expm1(beta * elapsed) / beta
 
-    signal: np.ndarray = np.asarray(amplitude * np.sin(phase), dtype=float)
-    return signal
+    return np.asarray(amplitude * np.sin(phase), dtype=float)
 
 
 def doublet(
@@ -401,7 +398,7 @@ def multi_step(tp: np.ndarray, step_times: list, step_values: list) -> np.ndarra
     if len(step_times) != len(step_values):
         raise ValueError("step_times and step_values must have the same length")
 
-    signal = np.zeros_like(tp)
+    signal = np.zeros_like(tp, dtype=float)
     for time, value in zip(step_times, step_values):
         signal += value * (tp >= time)
 
@@ -525,7 +522,7 @@ def multisine(
     elif len(phases) != len(frequencies):
         raise ValueError("phases must have the same length as frequencies")
 
-    signal = np.zeros_like(tp)
+    signal = np.zeros_like(tp, dtype=float)
     for freq, amp, phase in zip(frequencies, amplitudes, phases):
         signal += amp * np.sin(2 * np.pi * freq * tp + phase)
 

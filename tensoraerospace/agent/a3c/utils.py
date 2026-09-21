@@ -85,8 +85,9 @@ def push_and_pull(opt, lnet, gnet, done, s_, bs, ba, br, gamma):
     c_loss = td.pow(2)
 
     base = lnet.distribution(mu, sigma)
-    dist = torch.distributions.Independent(base, 1) if lnet.a_dim > 1 else base
-    log_prob = dist.log_prob(a_batch)
+    # One joint action probability per transition, including scalar controls.
+    dist = torch.distributions.Independent(base, 1)
+    log_prob = dist.log_prob(a_batch.reshape(len(bs), lnet.a_dim))
     entropy = dist.entropy()
     exp_v = log_prob * td.detach().squeeze(-1) + 0.005 * entropy
     a_loss = -exp_v

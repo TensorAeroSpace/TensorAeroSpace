@@ -1,6 +1,6 @@
 """F-16 6-DoF angular ODE right-hand side.
 
-Direct line-by-line port of angular/matlab_code/F16ODE.m.
+Based on angular/matlab_code/F16ODE.m with consistent body-to-wind force projections.
 
 State vector (14 elements):
     [alpha, beta, wx, wy, wz, gamma, psi, theta,
@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import numpy as np
 
+from .._actuators import actuator_derivatives
 from .aero import get_cx, get_cy, get_cz, get_mx, get_my, get_mz
 from .params import F16AngularParameters, _isa_dynamic_pressure
 
@@ -60,11 +61,11 @@ def f16_ode_6dof(
     wz = float(x[I_WZ])
     gamma = float(x[I_GAMMA])
     theta = float(x[I_THETA])
-    stab = float(x[I_STAB])
+    stab = float(np.clip(x[I_STAB], -params.maxabsstab, params.maxabsstab))
     dstab = float(x[I_DSTAB])
-    ail = float(x[I_AIL])
+    ail = float(np.clip(x[I_AIL], -params.maxabsail, params.maxabsail))
     dail = float(x[I_DAIL])
-    direc = float(x[I_DIR])
+    direc = float(np.clip(x[I_DIR], -params.maxabsdir, params.maxabsdir))
     ddir = float(x[I_DDIR])
 
     # Unpack control
@@ -134,7 +135,17 @@ def f16_ode_6dof(
     # ----------------------------------------------------------------
     # Resultant forces and moments (shifted to actual CG)
     # ----------------------------------------------------------------
-    Rx = X
+    # Russian body axes are x-forward, y-up, z-right. In conventional
+    # body NED the force is [X + thrust, Z, -Y]. Thrust participates in
+    # alpha/beta as well as speed when the translational states are active.
+    thrust = 0.0
+    if track_altitude:
+        thrust = p.T_active if np.isfinite(p.T_active) else p.T_thrust
+        if damage_state is not None:
+            from ..damage.propulsion import effective_thrust
+
+            thrust = effective_thrust(thrust, damage_state)
+    Rx = X + thrust
     Ry = Y
     Rz = Z
     MRx = Mx
@@ -182,8 +193,8 @@ def f16_ode_6dof(
     )
 
     # Aerodynamic-frame force components
-    Ya = -sin_a * Rx + cos_a * Ry
-    Za = cos_a * sin_b * Rx + sin_a * sin_b * Ry + cos_b * Rz
+    Ya = sin_a * Rx + cos_a * Ry
+    Za = -cos_a * sin_b * Rx + sin_a * sin_b * Ry + cos_b * Rz
 
     dalpha = (
         wz
@@ -206,19 +217,19 @@ def f16_ode_6dof(
     # Actuator models (second-order with rate and position limiting)
     # ----------------------------------------------------------------
     # Stabilator
-    dstab_out = float(np.clip(dstab, -p.maxabsdstab, p.maxabsdstab))
-    stab_act_c = float(np.clip(stab_act, -p.maxabsstab, p.maxabsstab))
-    ddstab = (-2.0 * p.Tstab * p.Xistab * dstab - stab + stab_act_c) / (p.Tstab**2)
+    dstab_out, ddstab = actuator_derivatives(
+        stab, dstab, stab_act, p.Tstab, p.Xistab, p.maxabsstab, p.maxabsdstab
+    )
 
     # Aileron
-    dail_out = float(np.clip(dail, -p.maxabsdail, p.maxabsdail))
-    ail_act_c = float(np.clip(ail_act, -p.maxabsail, p.maxabsail))
-    ddail = (-2.0 * p.Tail * p.Xiail * dail - ail + ail_act_c) / (p.Tail**2)
+    dail_out, ddail = actuator_derivatives(
+        ail, dail, ail_act, p.Tail, p.Xiail, p.maxabsail, p.maxabsdail
+    )
 
     # Rudder
-    ddir_out = float(np.clip(ddir, -p.maxabsddir, p.maxabsddir))
-    dir_act_c = float(np.clip(dir_act, -p.maxabsdir, p.maxabsdir))
-    dddir = (-2.0 * p.Tdir * p.Xidir * ddir - direc + dir_act_c) / (p.Tdir**2)
+    ddir_out, dddir = actuator_derivatives(
+        direc, ddir, dir_act, p.Tdir, p.Xidir, p.maxabsdir, p.maxabsddir
+    )
 
     # ---- Altitude / airspeed dynamics (only when track_altitude) ----
     if track_altitude:
@@ -238,16 +249,11 @@ def f16_ode_6dof(
         sin_gamma_path = -v_inertial_z / max(V_state, 1e-3)
         sin_gamma_path = max(-1.0, min(1.0, sin_gamma_path))
 
-        # Drag magnitude (D = q·S·Cx; X = -D in body x convention).
-        drag = q_now * p.S * cx
-
-        # Thrust: from runtime override if set, otherwise from constant.
-        thrust = p.T_active
-        if not (thrust == thrust):  # NaN check
-            thrust = p.T_thrust
-
-        # Energy: dV/dt = (T·cos(α)·cos(β) − D) / m − g·sin(γ)
-        dV = (thrust * cos_a * cos_b - drag) / p.m - p.g * sin_gamma_path
+        # Project the full body force onto the velocity direction. Cx is
+        # an axial coefficient, not wind-axis drag: the normal and side
+        # forces contribute whenever alpha or beta is nonzero.
+        force_along_velocity = Rx * cos_a * cos_b - Ry * sin_a * cos_b + Rz * sin_b
+        dV = force_along_velocity / p.m - p.g * sin_gamma_path
 
     base_dx = [
         dalpha,

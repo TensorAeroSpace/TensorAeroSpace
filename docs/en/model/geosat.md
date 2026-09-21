@@ -1,207 +1,73 @@
-# Geostationary Satellite (GeoSat) — Longitudinal Dynamics
+# Geostationary satellite (GeoSat)
 
-Geostationary satellites are spacecraft on geosationary orbits stationary relative to Earth’s surface. This page mirrors the ELV layout: quick start, math model, derivative tables, and API.
-
-<div class="grid cards" markdown>
-
--   :material-rocket-launch-outline: **Quick start**
-
-    Launch the environment or the model within minutes.
-
-    [:octicons-arrow-right-24: See example](#quick-start)
-
--   :material-cog-outline: **Model API**
-
-    Python class documentation for GeoSat.
-
-    [:octicons-arrow-right-24: Go to API](#python-api)
-
--   :material-gamepad-variant-outline: **Gymnasium environment**
-
-    Ready environment for RL agents.
-
-    [:octicons-arrow-right-24: Explore](#python-api)
-
--   :material-book-open-variant: **Theory**
-
-    State equations and numerical parameters.
-
-    [:octicons-arrow-right-24: Learn more](#mathematical-model)
-
-</div>
-
-## Control object structure
-
-The model is defined in the state space:
-
-\[\dot{x} = A x + B u, \quad y = C x + D u\]
-
-where:
-
-\[
- x = \begin{bmatrix} \rho & \theta & \omega \end{bmatrix}^{\top}, \quad
- u_{in} = \eta
-\]
-
-The typical matrix structure is:
-
-\[
-\begin{bmatrix}
-\dot{\rho} \\
-\dot{\theta} \\
-\dot{\omega}
-\end{bmatrix}
-=
-\begin{bmatrix}
-0 & 1 & 0 \\
- f_1(\rho, \omega) & 0 & f_2(\rho, \omega) \\
-0 & f_3(\omega, r) & 0
-\end{bmatrix}
-\begin{bmatrix} \rho \\ \theta \\ \omega \end{bmatrix}
- +
-\begin{bmatrix} 0 \\ 0 \\ g(r) \end{bmatrix} \eta
-\]
-
-=== "Variables"
-
-    - **ρ**: altitude-to-Earth-radius ratio (dimensionless)
-    - **θ**: satellite position relative to the Earth frame, rad
-    - **ω**: angular velocity, rad/s
-    - **η**: control input (thrust)
-
-=== "Coefficients"
-
-    - **f1(ρ, ω) ≈ 0.01036** — derivative with respect to ρ
-    - **f2(ρ, ω) ≈ 0.7757** — derivative with respect to ω in the θ̇ equation
-    - **f3(ω, r) ≈ -0.1775** — derivative with respect to θ in the ω̇ equation
-    - **g(r) ≈ 0.1513** — thrust influence on ω̇
-
-!!! note "Units"
-    Angles and angular rates are in radians. API methods can output in degrees.
+GeoSat implements a three-state **linear model of normalized orbital deviations**. States, input and time are dimensionless. Use it for small perturbations around the operating orbit.
 
 ## Mathematical model {#mathematical-model}
 
-$$
-\dot{x} = A x + B u, \qquad y = C x + D u
-$$
-
-Numerical matrices (example linearization):
+The model uses the reduced equations (61), (66) and (70) in [Hla et al. (2012), *Implementation of a Communication Satellite Orbit Controller Design Using State Space Techniques*](https://ajstd.ubd.edu.bn/journal/vol29/iss1/2/).
 
 \[
-\begin{bmatrix}
-\dot{\rho} \\
-\dot{\theta} \\
-\dot{\omega}
-\end{bmatrix}
-=
-\begin{bmatrix}
-0 & 1 & 0 \\
-0.01036 & 0 & 0.7757 \\
-0 & -0.1775 & 0 
-\end{bmatrix}
-\begin{bmatrix}
-\rho \\
-\theta \\
-\omega 
-\end{bmatrix}
- +
-\begin{bmatrix}
-0 \\
-0 \\
-0.1513
-\end{bmatrix}
-\eta
+\tau=t/\sqrt{R/g},\quad \rho=r/R,\quad u_2=F_2/(M g),\qquad
+x=[\delta\rho,\delta\rho',\delta\theta']^{\mathsf T}.
 \]
 
-### Derivatives (numerical values)
+A prime denotes differentiation with respect to normalized time \(\tau\). The reference values \(R\), \(g\), and \(M\) must be specified separately before converting to SI units.
 
-- **Matrix A (derivatives):**
+\[
+x'=Ax+Bu_2,\qquad
+A=\begin{bmatrix}0&1&0\\0.01036&0&0.7753\\0&-0.01774&0\end{bmatrix},\quad
+B=\begin{bmatrix}0\\0\\0.1512\end{bmatrix},\quad C=I,\quad D=0.
+\]
 
-  | Coefficient | Value |
-  |-------------|----------|
-  | a_ρθ (∂ρ̇/∂θ) | 1.0 |
-  | a_θρ (∂θ̇/∂ρ) | 0.01036 |
-  | a_θω (∂θ̇/∂ω) | 0.7757 |
-  | a_ωθ (∂ω̇/∂θ) | -0.1775 |
+The old Python/MATLAB coefficient `-0.1774` did not match the reduced equations. The corrected `-0.01774` also agrees approximately with the orbital Jacobian entry `-2*omega0/rho0`. The publication contains inconsistent numerical entries in its earlier four-state presentation; the reduced three-state equations are used here.
 
-- **Input η (column B):**
+### State names retained for compatibility
 
-  | Coefficient | Value |
-  |-------------|----------|
-  | b_η→ω (∂ω̇/∂η) | 0.1513 |
+| API name | Physical meaning in this model |
+|---|---|
+| `rho` | Normalized radial displacement from the operating orbit |
+| `theta` | **Radial-velocity deviation**, derivative of `rho` with respect to `tau` |
+| `omega` | Angular-rate deviation with respect to `tau` |
 
-## Sources
+`theta` is a legacy name, **not angular position**. The model does not include the angular-position state. Likewise, the legacy control key `ele` denotes normalized tangential thrust, not an elevator angle. Do not use the historical degree-conversion helpers as conversions to physical thrust or SI velocity.
 
-1. Tun, Hla & Mon, Lae & Lwin, Kyaw & Naing, Zaw. (2012). Implementation of Communication Satellite Orbit Controller Design Using State Space Techniques. ASEAN Journal on Science and Technology for Development. 29. 29‑49. 10.29037/ajstd.48.
+The matrices are rounded approximations of the local orbital Jacobian. At zero input the linear invariant `omega + 0.01774*rho` is conserved. Large deviations require a nonlinear orbital model.
 
-## Reward
+## Inputs and integration
 
-The default reward function returns the negative absolute tracking error for the angular position:
+`run_step()` uses exact zero-order-hold discretization of the linear system. `dt` is a normalized-time increment. Legacy numerical limits remain `abs(u2) <= pi*25/180` and `abs(delta_u2) <= (pi*60/180)*dt`. Their origin in degree conversions does not make them angular actuator limits; they are uncalibrated simulation settings.
 
-$$r_t = -|\theta(t) - \theta_{\text{ref}}(t)|$$
+Slew limiting applies from the first step, relative to `initial_control=0` by default. Invalid nonfinite inputs and commands with the wrong size are rejected before state advancement.
 
-Higher reward (closer to 0) indicates better tracking performance. A custom reward function can be passed via the `reward_func` parameter.
+## Gymnasium environment and reward
+
+- `GeoSatEnv` accepts one continuous thrust command within the model's magnitude limits. Its `dt` argument defaults to `0.01`.
+- `output_space` selects observation components and order. If omitted, it follows `state_space`. The observation Box matches the selected components.
+- Tracking uses the full model state, so tracked components may be omitted from the observation.
+- A single reference channel tracks the first entry of `tracking_states`, preserving the legacy objective. Multiple reference channels must match `tracking_states`; the default reward is the negative mean absolute tracking error.
+- `reference_signal` may be an array `(channels, T)` or a callable sampled at `i*dt`. Short nonempty array references hold their last value.
+- Reaching the episode time limit sets `truncated=True`, `terminated=False`. This preserves the future-value term when training an agent.
 
 ## Quick start {#quick-start}
 
-=== "Gymnasium"
+```python
+import numpy as np
+from tensoraerospace.envs.geosat import GeoSatEnv
 
-    ```python
-    import gymnasium as gym 
-    import numpy as np
-
-    from tensoraerospace.envs import GeoSatEnv
-    from tensoraerospace.utils import generate_time_period
-    from tensoraerospace.signals.standard import unit_step
-
-    dt = 0.01
-    tp = generate_time_period(tn=20, dt=dt)
-    number_time_steps = len(tp)
-    reference_signals = unit_step(degree=5, tp=tp, time_step=10, output_rad=True).reshape(1, -1)
-
-    env = gym.make(
-        'GeoSat-v0',
-        number_time_steps=number_time_steps, 
-        initial_state=[[0],[0],[0]],
-        reference_signal=reference_signals,
-    )
-    state, info = env.reset()
-    for _ in range(200):
-        action = np.array([[0.1]])
-        state, reward, terminated, truncated, info = env.step(action)
-        if terminated or truncated:
-            break
-    ```
-
-=== "Model only"
-
-    ```python
-    import numpy as np
-    from tensoraerospace.aerospacemodel import GeoSat
-
-    dt = 0.01
-    number_time_steps = 200
-
-    x0 = np.array([0.0, 0.0, 0.0])  # [rho, theta, omega]
-
-    model = GeoSat(
-        x0=x0,
-        number_time_steps=number_time_steps,
-        selected_state_output=["rho", "theta", "omega"],
-        dt=dt,
-    )
-
-    for t in range(number_time_steps - 1):
-        u = np.array([[0.05]])
-        x_next = model.run_step(u)
-    ```
+env = GeoSatEnv(
+    initial_state=[0.01, 0.0, 0.001],
+    reference_signal=np.zeros((1, 101)),
+    number_time_steps=101,
+    dt=0.1,
+    tracking_states=["omega"],
+    output_space=["rho", "theta", "omega"],
+)
+observation, info = env.reset(seed=11)
+observation, reward, terminated, truncated, info = env.step(np.zeros(1))
+```
 
 ## Python API
 
-=== "Model"
+::: tensoraerospace.aerospacemodel.geosat.GeoSat
 
-    ::: tensoraerospace.aerospacemodel.geosat.GeoSat
-
-=== "Gymnasium environment"
-
-    ::: tensoraerospace.envs.geosat.GeoSatEnv
+::: tensoraerospace.envs.geosat.GeoSatEnv

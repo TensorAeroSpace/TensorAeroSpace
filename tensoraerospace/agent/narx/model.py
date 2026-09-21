@@ -52,26 +52,29 @@ class NARX(nn.Module):
         """Compute one forward step.
 
         Args:
-            input_tensor (Tensor): Current input tensor.
-            last_output (Tensor): Previous output tensor.
+            input_tensor (Tensor): Current features, shape ``(..., input_size)``.
+            last_output (Tensor): Previous outputs, shape ``(..., output_size)``.
+                Leading dimensions must match those of ``input_tensor``.
 
         Returns:
-            Tensor: Model output tensor.
+            Tensor: Predictions of shape ``(..., output_size)``.
         """
-        combined = torch.cat((input_tensor, last_output), 0)
+        # Leading dimensions identify independent examples or time positions.
+        combined = torch.cat((input_tensor, last_output), dim=-1)
         hidden = torch.tanh(self.input_layer(combined))
         output = self.output_layer(hidden)
         return output
 
     def train(self, mode=True, *args, **kwargs):
-        """Perform one gradient update step.
+        """Set module mode or perform a legacy ``train(prediction, target)`` update.
 
-        Note:
-            This method name shadows ``torch.nn.Module.train``.
+        Boolean calls retain ``torch.nn.Module.train`` behavior. For an update,
+        prediction and target must have identical shapes; implicit broadcasting
+        can couple unrelated examples and is rejected before optimizer changes.
 
         Args:
             predcit_tensor (Tensor): Predicted tensor.
-            target_tensor (Tensor): Target tensor.
+            target_tensor (Tensor): Targets with the same shape as predictions.
 
         Returns:
             float: Loss value after one update step.
@@ -82,6 +85,8 @@ class NARX(nn.Module):
         if not args:
             raise TypeError("NARX.train() missing target_tensor")
         target_tensor = args[0]
+        if predcit_tensor.shape != target_tensor.shape:
+            raise ValueError("prediction and target must have the same shape")
         loss = self.criterion(predcit_tensor, target_tensor)
         self.optimizer.zero_grad()
         loss.backward()

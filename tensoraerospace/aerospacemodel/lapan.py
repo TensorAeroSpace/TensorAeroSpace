@@ -1,5 +1,3 @@
-from typing import Any
-
 import matplotlib.pyplot as plt
 import numpy as np
 from scipy.signal import cont2discrete
@@ -20,7 +18,8 @@ class LAPAN(ModelBase):
         number_time_steps: Number of time steps.
         selected_state_output (optional): Selected states of the control object. Defaults to None.
         t0 (int, optional): Initial time. Defaults to 0.
-        dt (float, optional): Discretization frequency. Defaults to 0.01.
+        dt (float, optional): Time step in seconds. Defaults to 0.01.
+        initial_control: Initial elevator position in radians, clipped to limits.
 
     Action space:
         ele: elevator [rad]
@@ -45,6 +44,7 @@ class LAPAN(ModelBase):
         selected_state_output: list[str] | None = None,
         t0: float = 0,
         dt: float = 0.01,
+        initial_control: float = 0.0,
     ) -> None:
         """Initialize LAPAN instance.
 
@@ -68,7 +68,9 @@ class LAPAN(ModelBase):
         ]
         self.control_list = self.selected_input
 
-        self._initialize_selected_state_index(self.selected_states, self.list_state)
+        self._initialize_selected_state_index(
+            self.selected_state_output, self.list_state
+        )
 
         self.state_space = self.selected_states
         self.action_space = self.selected_input
@@ -80,6 +82,16 @@ class LAPAN(ModelBase):
         self.input_rate_limits = [
             np.deg2rad(300),
         ]
+
+        if not np.isfinite(initial_control):
+            raise ValueError("initial_control must be finite")
+        self.initial_control = float(
+            np.clip(
+                initial_control,
+                -self.input_magnitude_limits[0],
+                self.input_magnitude_limits[0],
+            )
+        )
 
         # Store the number of inputs, states and outputs
         self.number_inputs = len(self.selected_input)
@@ -141,6 +153,15 @@ class LAPAN(ModelBase):
             number_time_steps: Number of simulation steps.
         """
 
+        initial = np.asarray(x0, dtype=float).reshape(-1)
+        if initial.size != self.number_states or not np.all(np.isfinite(initial)):
+            raise ValueError("x0 must contain four finite state values")
+        if not np.isfinite(self.dt) or self.dt <= 0:
+            raise ValueError("dt must be positive and finite")
+        if int(number_time_steps) != number_time_steps or number_time_steps < 1:
+            raise ValueError("number_time_steps must be a positive integer")
+        number_time_steps = int(number_time_steps)
+
         # Import the stored system
         self.import_linear_system()
 
@@ -157,8 +178,8 @@ class LAPAN(ModelBase):
         self.store_input = np.zeros((self.number_inputs, self.number_time_steps))
         self.store_outputs = np.zeros((self.number_outputs, self.number_time_steps))
 
-        self.x0 = x0
-        self.xt = x0
+        self.x0 = initial.copy()
+        self.xt = initial.copy()
         self.store_states[:, self.time_step] = np.reshape(
             self.xt,
             [
@@ -175,46 +196,25 @@ class LAPAN(ModelBase):
         Returns:
             np.ndarray: Next state at time t+1.
         """
-        if self.time_step != 0:
-            ut_1 = self.store_input[:, self.time_step - 1]
-        else:
-            ut_1 = ut_0
-        ut: Any = [
-            0,
-        ]
-        for i in range(self.number_inputs):
-            ut[i] = max(
-                min(
-                    max(
-                        min(
-                            ut_0[i],
-                            np.reshape(
-                                np.array(
-                                    [
-                                        ut_1[i]
-                                        + self.input_rate_limits[i]
-                                        * self.discretisation_time
-                                    ]
-                                ),
-                                [-1, 1],
-                            ),
-                        ),
-                        np.reshape(
-                            np.array(
-                                [
-                                    ut_1[i]
-                                    - self.input_rate_limits[i]
-                                    * self.discretisation_time
-                                ]
-                            ),
-                            [-1, 1],
-                        ),
-                    ),
-                    np.array([[self.input_magnitude_limits[i]]]),
-                ),
-                -np.array([[self.input_magnitude_limits[i]]]),
+        command = np.asarray(ut_0, dtype=float).reshape(-1)
+        if command.size != self.number_inputs or not np.all(np.isfinite(command)):
+            raise ValueError("control must contain one finite elevator command")
+        if self.time_step >= self.number_time_steps:
+            raise RuntimeError(
+                "Simulation is complete; initialise_system before stepping"
             )
-        ut = np.array(ut)
+        previous = (
+            self.store_input[:, self.time_step - 1]
+            if self.time_step
+            else np.array([self.initial_control])
+        )
+        increment = np.asarray(self.input_rate_limits) * self.discretisation_time
+        magnitude = np.asarray(self.input_magnitude_limits)
+        ut = np.clip(
+            np.clip(command, previous - increment, previous + increment),
+            -magnitude,
+            magnitude,
+        )
         self.xt1 = np.matmul(self.filt_A, np.reshape(self.xt, [-1, 1])) + np.matmul(
             self.filt_B, np.reshape(ut, [-1, 1])
         )
@@ -324,13 +324,13 @@ class LAPAN(ModelBase):
         self.output_history = output2dict(self.store_outputs, self.selected_output)
         if to_deg:
             return np.asarray(
-                np.rad2deg(self.output_history[state_name][: self.time_step - 1])
+                np.rad2deg(self.output_history[state_name][: self.time_step])
             )
         if to_rad:
             return np.asarray(
-                np.deg2rad(self.output_history[state_name][: self.time_step - 1])
+                np.deg2rad(self.output_history[state_name][: self.time_step])
             )
-        return np.asarray(self.output_history[state_name][: self.time_step - 1])
+        return np.asarray(self.output_history[state_name][: self.time_step])
 
     def plot_output(
         self,
@@ -363,8 +363,6 @@ class LAPAN(ModelBase):
         if not self.output_history:
             self.output_history = output2dict(self.store_outputs, self.selected_output)
         state_hist = self.get_output(output_name, to_deg, to_rad)
-        if output_name == "u":
-            state_hist *= 1.94384
         if lang == "rus":
             label = state_to_latex_rus[output_name]
             label_time = "t, c"
@@ -373,7 +371,7 @@ class LAPAN(ModelBase):
             label_time = "t, sec."
         fig = plt.figure(figsize=figsize)
         plt.clf()
-        plt.plot(time[: self.time_step - 1], state_hist, label=label)
+        plt.plot(time[: self.time_step], state_hist, label=label)
         plt.legend()
         plt.xlabel(label_time)
         plt.ylabel(label)

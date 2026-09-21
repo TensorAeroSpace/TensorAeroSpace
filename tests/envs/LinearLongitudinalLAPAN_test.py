@@ -9,7 +9,7 @@ from tensoraerospace.envs.lapan import (  # Import the environment from where it
 from tensoraerospace.signals.standard import unit_step
 from tensoraerospace.utils import convert_tp_to_sec_tp, generate_time_period
 
-INITIAL_STATE = [[0], [0], [0], [0]]
+INITIAL_STATE = [[0.01], [0.02], [0.03], [0.04]]
 dt = 0.01  # Дискретизация
 tp = generate_time_period(tn=20, dt=dt)  # Временной периуд
 tps = convert_tp_to_sec_tp(tp, dt=dt)
@@ -53,7 +53,9 @@ def test_step_function(env_setup):
     ), "Reward should be a float or array."
     assert isinstance(done, bool), "Done should be a boolean."
     assert isinstance(info, dict), "Info should be a dictionary."
-    assert next_state.shape == (4,), "Next state should have shape (4,)."
+    assert env.observation_space.shape == (2,)
+    assert env.observation_space.contains(next_state)
+    np.testing.assert_allclose(next_state, env.model.xt.reshape(-1)[[3, 2]], rtol=1e-6)
 
     # Test action clamping — env should accept out-of-range actions without error
     high_action = np.array([100], dtype=np.float32)  # exceeds max_action_value
@@ -70,4 +72,8 @@ def test_reset_function(env_setup):
     state, info = env.reset()
     assert env.current_step == 0, "Reset should set step back to zero."
     assert not env.done, "Reset should set done to False."
-    assert state.shape == (4,), "Reset state should have shape (4,)."
+    assert env.observation_space.shape == (2,)
+    assert env.observation_space.contains(state)
+    np.testing.assert_allclose(
+        state, np.asarray(INITIAL_STATE).reshape(-1)[[3, 2]], rtol=1e-6
+    )

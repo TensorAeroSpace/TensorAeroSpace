@@ -7,7 +7,8 @@ provides time-window queries used by DamageManager (Task 6.2).
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import asdict, dataclass, field
+from math import isfinite
 from typing import Literal, Optional
 
 EventType = Literal[
@@ -38,8 +39,10 @@ class DamageEvent:
                 f"Unknown event_type {self.event_type!r}; expected one of "
                 f"{_VALID_EVENT_TYPES}"
             )
-        if self.trigger_time < 0:
-            raise ValueError(f"trigger_time must be >= 0; got {self.trigger_time}")
+        if not isfinite(self.trigger_time) or self.trigger_time < 0:
+            raise ValueError(
+                f"trigger_time must be finite and >= 0; got {self.trigger_time}"
+            )
 
 
 @dataclass
@@ -52,3 +55,15 @@ class DamageProfile:
     ) -> list[DamageEvent]:
         """Events triggering in the half-open interval (t_previous, t_current]."""
         return [e for e in self.events if t_previous < e.trigger_time <= t_current]
+
+    def to_dict(self) -> dict:
+        """Return an independent configuration for JSON serialization."""
+        return asdict(self)
+
+    @classmethod
+    def from_dict(cls, data: dict) -> "DamageProfile":
+        """Restore event dataclasses from a saved environment configuration."""
+        return cls(
+            events=[DamageEvent(**event) for event in data.get("events", [])],
+            seed=data.get("seed"),
+        )

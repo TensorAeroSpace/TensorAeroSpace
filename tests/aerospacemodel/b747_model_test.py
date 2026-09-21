@@ -95,21 +95,16 @@ def test_b747_get_control_rud_alias_and_invalid():
 
 
 def test_b747_selected_state_output():
-    """Cover line 243: selected_state_output triggers the if branch."""
-    # Note: B747 has a bug where it passes self.selected_states instead of
-    # self.selected_state_output to _initialize_selected_state_index, so
-    # the actual filtering doesn't work. But we still cover line 243.
+    """Return exactly the requested states in their requested order."""
     model = LongitudinalB747(
-        x0=np.zeros(4),
+        x0=np.array([0.01, 0.02, 0.03, 0.04]),
         number_time_steps=5,
-        selected_state_output=["q", "theta"],  # triggers the if branch
+        selected_state_output=["q", "theta"],
         dt=0.01,
     )
-    # selected_state_output is truthy, so line 243 branch is covered
-    assert model.selected_state_output is not None
     x1 = model.run_step(np.array([1.0]))
-    # Due to implementation bug, returns all 4 states
-    assert x1.shape[0] == 4
+    assert x1.shape == (2, 1)
+    np.testing.assert_allclose(x1, model.xt[[2, 3]])
 
 
 def test_b747_plot_output_validation_errors():

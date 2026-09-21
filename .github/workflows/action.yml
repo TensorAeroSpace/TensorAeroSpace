@@ -119,10 +119,13 @@ jobs:
             --ignore=tests/optimization/ray_test.py
 
       - name: 📊 Run tests with coverage
+        # Tests change cwd and spawn workers; pass the project config explicitly
+        # so subprocess coverage uses the same settings as the parent.
         if: matrix.python-version == '3.11'
         run: |
           set -o pipefail
           poetry run pytest --maxfail=1 --disable-warnings \
+            --cov-config=pyproject.toml \
             --cov=tensoraerospace \
             --cov-fail-under=92 \
             --cov-report=xml:coverage.xml \
@@ -287,7 +290,7 @@ jobs:
           set -o pipefail
           poetry run docstr-coverage ./tensoraerospace \
             --skip-magic --skip-init --skip-file-doc \
-            --fail-under=70.0 2>&1 | tee docstr-coverage.txt
+            --fail-under=90.0 2>&1 | tee docstr-coverage.txt
 
       - name: 🔢 Extract docstring coverage percent
         id: docstr

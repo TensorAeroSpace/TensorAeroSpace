@@ -13,6 +13,7 @@ The model owning the params reads them on the next integrator step.
 
 from __future__ import annotations
 
+from math import isfinite
 from typing import Optional
 
 from .events import DamageEvent, DamageProfile
@@ -35,6 +36,7 @@ class DamageManager:
         self.profile: DamageProfile = profile or DamageProfile(events=[])
         self.state = DamageState.healthy(geometry)
         self._injected: list[DamageEvent] = []
+        self._applied_profile: set[int] = set()
 
     def reset(self, *, seed: Optional[int] = None) -> None:
         """Clear all damage and re-apply baseline params.
@@ -44,37 +46,50 @@ class DamageManager:
         """
         self.state = DamageState.healthy(self.geometry)
         self._injected = []
+        self._applied_profile.clear()
         apply_to_params(self.params, self.geometry, self.state)
 
     def set_profile(self, profile: DamageProfile) -> None:
+        """Replace the event profile and clear its consumed-event markers, retaining
+        damage.
+        """
         self.profile = profile
+        self._applied_profile.clear()
 
     def inject_event(self, event: DamageEvent) -> None:
         """Add a one-shot event to be triggered on the next matching window."""
         self._injected.append(event)
 
+    def pending_events(self, t_current: float, t_previous: float) -> list[DamageEvent]:
+        """Unconsumed profile and injected events, in stable chronological order."""
+        if not all(map(isfinite, (t_current, t_previous))) or t_current < t_previous:
+            raise ValueError("event window must be finite and ordered")
+        profile = [
+            ev
+            for i, ev in enumerate(self.profile.events)
+            if i not in self._applied_profile
+        ]
+        return sorted(
+            [
+                ev
+                for ev in profile + self._injected
+                if t_previous < ev.trigger_time <= t_current
+            ],
+            key=lambda ev: ev.trigger_time,
+        )
+
     def update(self, t_current: float, t_previous: float) -> list[DamageEvent]:
-        """Trigger any events in (t_previous, t_current]; return them."""
-        triggered: list[DamageEvent] = []
-
-        # Profile events
-        for ev in self.profile.get_pending_events(t_current, t_previous):
+        """Apply each event once in (t_previous, t_current], ordered by time."""
+        triggered = self.pending_events(t_current, t_previous)
+        for ev in triggered:
             self._apply_event(ev)
-            triggered.append(ev)
-
-        # Injected events (single-fire, then removed)
-        remaining: list[DamageEvent] = []
-        for ev in self._injected:
-            if t_previous < ev.trigger_time <= t_current:
-                self._apply_event(ev)
-                triggered.append(ev)
-            else:
-                remaining.append(ev)
-        self._injected = remaining
-
+        triggered_ids = {id(ev) for ev in triggered}
+        self._applied_profile.update(
+            i for i, ev in enumerate(self.profile.events) if id(ev) in triggered_ids
+        )
+        self._injected = [ev for ev in self._injected if id(ev) not in triggered_ids]
         if triggered:
             apply_to_params(self.params, self.geometry, self.state)
-
         return triggered
 
     def _apply_event(self, ev: DamageEvent) -> None:

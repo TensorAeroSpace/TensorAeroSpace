@@ -55,7 +55,7 @@ repos:
         name: docstr-coverage
         entry: poetry run docstr-coverage
         language: system
-        args: [tensoraerospace, --skip-magic, --skip-init, --skip-file-doc, --fail-under=70]
+        args: [tensoraerospace, --skip-magic, --skip-init, --skip-file-doc, --fail-under=90]
         pass_filenames: false
 
   # Быстрые тесты

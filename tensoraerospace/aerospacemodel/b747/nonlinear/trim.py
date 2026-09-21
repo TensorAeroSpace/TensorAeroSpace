@@ -1,4 +1,4 @@
-"""Newton-Raphson trim-finder for the B-747 nonlinear 6-DoF model.
+"""Bounded trim-finder for the B-747 nonlinear 6-DoF model.
 
 Given (altitude, true airspeed, configuration), solve for the steady
 level-flight trim:
@@ -14,9 +14,9 @@ such that, in body-axis NED frame with γ = 0 (level flight) and
     ẇ = 0     (no vertical acceleration ⇒ L = W·cosθ)
     q̇ = 0     (zero pitching moment)
 
-The solution is the same set of three equations Stevens-Lewis Ch. 3 §3.7
-solves analytically; here we just call :func:`scipy.optimize.fsolve` on
-the model's ODE — it converges in a few Newton steps.
+The three longitudinal equations are solved with bounded least squares.
+Convergence additionally requires all six accelerations to vanish;
+asymmetric engine-out trim requires a separate lateral-control solver.
 """
 
 from __future__ import annotations
@@ -24,7 +24,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 import numpy as np
-from scipy.optimize import fsolve
+from scipy.optimize import least_squares
 
 from .dynamics import b747_ode_6dof
 from .params import B747Configuration, B747Parameters, default_parameters
@@ -35,8 +35,8 @@ class TrimResult:
     """Trimmed flight condition returned by :func:`trim`.
 
     All angles in radians, throttle in [0, 1], airspeed in ft/s, altitude
-    in ft. ``residual`` is the L2 norm of the (u̇, ẇ, q̇) at convergence
-    — should be ≪ 1 in well-behaved cases.
+    in ft. ``residual`` is the L2 norm of all six body accelerations
+    — including lateral accelerations, not just longitudinal balance.
     """
 
     altitude_ft: float
@@ -71,6 +71,19 @@ class TrimResult:
         )
 
 
+def _validate_trim_inputs(altitude, speed, guess, elevator_limit, tol):
+    if not np.isfinite(speed) or speed <= 0:
+        raise ValueError("V_ft_s must be finite and positive")
+    if not np.isfinite(altitude):
+        raise ValueError("altitude_ft must be finite")
+    if not np.isfinite(tol) or tol <= 0:
+        raise ValueError("tol must be finite and positive")
+    if not np.isfinite(elevator_limit) or elevator_limit <= 0:
+        raise ValueError("elevator_max_rad must be finite and positive")
+    if len(guess) != 3 or not np.all(np.isfinite(guess)):
+        raise ValueError("initial_guess must contain three finite values")
+
+
 def trim(
     altitude_ft: float,
     V_ft_s: float,
@@ -94,9 +107,10 @@ def trim(
         :class:`TrimResult` with the trimmed angles and throttle.
     """
     p = params if params is not None else default_parameters(config)
+    _validate_trim_inputs(altitude_ft, V_ft_s, initial_guess, p.elevator_max_rad, tol)
 
     def residual(z: np.ndarray) -> np.ndarray:
-        alpha, de, dT = float(z[0]), float(z[1]), float(np.clip(z[2], 0.0, 1.0))
+        alpha, de, dT = float(z[0]), float(z[1]), float(z[2])
         # In level flight γ = 0 ⇒ θ = α
         u_b = V_ft_s * np.cos(alpha)
         w_b = V_ft_s * np.sin(alpha)
@@ -120,13 +134,38 @@ def trim(
         u = np.array([de, 0.0, 0.0, dT], dtype=np.float64)
         dx = b747_ode_6dof(x, u, 0.0, p)
         # Three equations: u̇, ẇ, q̇  (indices 0, 2, 4)
-        return np.array([dx[0], dx[2], dx[4]], dtype=np.float64)
+        return np.array([dx[0], dx[2], dx[4] * p.cbar_ft]) / p.g_ft_s2
 
-    z0 = np.array(initial_guess, dtype=np.float64)
-    z, info, ier, msg = fsolve(residual, z0, full_output=True, xtol=tol)
-    res_norm = float(np.linalg.norm(info["fvec"]))
-    converged = (ier == 1) and (res_norm < 1e-3)
-    alpha, de, dT = float(z[0]), float(z[1]), float(np.clip(z[2], 0.0, 1.0))
+    lower = np.array([-np.pi / 2 + 1e-6, -p.elevator_max_rad, 0.0])
+    upper = np.array([np.pi / 2 - 1e-6, p.elevator_max_rad, 1.0])
+    fit = least_squares(
+        residual,
+        np.clip(initial_guess, lower, upper),
+        bounds=(lower, upper),
+        xtol=1e-12,
+        ftol=1e-12,
+        gtol=1e-12,
+    )
+    alpha, de, dT = map(float, fit.x)
+    state = np.array(
+        [
+            V_ft_s * np.cos(alpha),
+            0,
+            V_ft_s * np.sin(alpha),
+            0,
+            0,
+            0,
+            0,
+            alpha,
+            0,
+            0,
+            0,
+            -altitude_ft,
+        ]
+    )
+    acceleration = b747_ode_6dof(state, np.array([de, 0, 0, dT]), 0.0, p)[:6]
+    res_norm = float(np.linalg.norm(acceleration))
+    converged = bool(fit.success and np.isfinite(res_norm) and res_norm <= tol)
     return TrimResult(
         altitude_ft=altitude_ft,
         V_ft_s=V_ft_s,

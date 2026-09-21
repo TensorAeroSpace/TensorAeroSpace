@@ -211,3 +211,35 @@ Two numerical integrators are available:
 === "Parameters"
 
     ::: tensoraerospace.aerospacemodel.f16.nonlinear.longitudinal.params.F16LongParameters
+
+## Damage and episode boundaries
+
+Failures of `stab_left` and `stab_right` apply to the single stabilator channel
+before integration. As in the merged angular layout, multiple failures of that
+channel modify its command in sequence. This reduced model cannot represent
+independent left/right surface motion or the resulting roll; use the angular
+model with `split_stab=True` for that configuration.
+
+Damage events split the integration step at their actual timestamps. Events at
+zero apply before the reset observation, and `reset(options={"damage_profile": ...})`
+can activate damage without a constructor profile. Checkpoints retain the profile
+in environment configuration; damage callbacks cannot be serialized.
+
+The `number_time_steps - 1` cap returns `terminated=False, truncated=True`, so
+agents can bootstrap from the last observation at a trajectory cutoff. End loops
+on `terminated or truncated`; see [Gymnasium's time-limit documentation](https://gymnasium.farama.org/tutorials/gymnasium_basics/handling_time_limits/).
+Nonfinite or incorrectly sized commands are rejected before time, plant state
+or damage state changes.
+
+### Actuator saturation
+
+Actual actuator position and rate are bounded. Hard stops remove outward motion
+while allowing reversal, preventing hidden rate windup. Each accepted integration
+step projects numerical overshoot back within the limits. Inside the limits the
+original linear second-order equation is unchanged.
+
+Commands are bounded before efficiency loss and after jam substitution, so an
+oversized command cannot cancel a failure. Control history records the bounded
+effective command; state history records actual deflection. RK4 retains fourth
+order on smooth intervals; convergence near saturation and stops must be checked
+by reducing the time step.

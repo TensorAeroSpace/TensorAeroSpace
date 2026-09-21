@@ -37,6 +37,7 @@ install-ci: ## Установить зависимости для CI
 test: ## Запустить все тесты
 	@echo "$(BLUE)Запуск всех тестов...$(RESET)"
 	PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 poetry run pytest -p pytest_cov tests/ -v \
+		--cov-config=pyproject.toml \
 		--cov=tensoraerospace --cov-report=html:/tmp/tensoraerospace-coverage/htmlcov --cov-report=term
 
 test-quick: ## Запустить быстрые тесты
@@ -119,7 +120,7 @@ dependency-audit: ## Проверить зависимости через pip-au
 # === ДОКУМЕНТАЦИЯ ===
 docs: ## Сгенерировать документацию
 	@echo "$(BLUE)Генерация документации...$(RESET)"
-	poetry run docstr-coverage tensoraerospace --skip-magic --skip-init --fail-under=70
+	poetry run docstr-coverage tensoraerospace --skip-magic --skip-init --skip-file-doc --fail-under=90
 	poetry run mkdocs build
 
 build_docs: ## Собрать документацию (MkDocs)

@@ -75,12 +75,12 @@ class NonlinearX15Env(gym.Env):
         integrator: ``"euler"`` or ``"rk4"`` (default).
         action_space: ``"virtual"`` or ``"normalized"``.
         config: BASIC or A2.
-        damage_profile: Reserved for the future damage subsystem
-            (parity with B-747 env). Currently a no-op pass-through.
-        damage_event_callback: Same as B-747 env.
+        damage_profile: Unsupported; non-None raises NotImplementedError.
+        damage_event_callback: Unsupported; non-None raises NotImplementedError.
     """
 
     metadata = {"render_modes": []}
+    action_space: spaces.Box
 
     def __init__(
         self,
@@ -105,6 +105,10 @@ class NonlinearX15Env(gym.Env):
         self.initial_state = x0
         self.number_time_steps = int(number_time_steps)
         self.dt = float(dt)
+        if not np.isfinite(self.dt) or self.dt <= 0:
+            raise ValueError("dt must be finite and positive")
+        if self.number_time_steps <= 0:
+            raise ValueError("number_time_steps must be positive")
         self.integrator = integrator
         self.action_mode = action_space
         if action_space not in ("virtual", "normalized"):
@@ -112,6 +116,8 @@ class NonlinearX15Env(gym.Env):
                 'action_space must be "virtual" or "normalized"; '
                 f"got {action_space!r}"
             )
+        if damage_profile is not None or damage_event_callback is not None:
+            raise NotImplementedError("X15 damage profiles are not implemented")
         self.config = config
         self.damage_profile = damage_profile
         self.damage_event_callback = damage_event_callback
@@ -153,6 +159,9 @@ class NonlinearX15Env(gym.Env):
     def _resolve_initial_state(
         initial_state, flight_condition_id, trim_at, trim_throttle, config
     ) -> np.ndarray:
+        """Resolve a 13-state vector, published flight condition or requested trim
+        state.
+        """
         provided = sum(
             int(x is not None) for x in (initial_state, flight_condition_id, trim_at)
         )
@@ -165,9 +174,13 @@ class NonlinearX15Env(gym.Env):
                 "specify exactly one of: initial_state, flight_condition_id, trim_at"
             )
         if initial_state is not None:
-            x0 = np.asarray(initial_state, dtype=np.float64).reshape(-1)
+            x0 = np.array(initial_state, dtype=np.float64, copy=True).reshape(-1)
             if x0.size != 13:
                 raise ValueError(f"initial_state must have 13 elements; got {x0.size}")
+            if not np.all(np.isfinite(x0)) or x0[12] < 0:
+                raise ValueError(
+                    "initial_state must be finite with nonnegative propellant"
+                )
             return x0
         if flight_condition_id is not None:
             fc = get_flight_condition(int(flight_condition_id))
@@ -195,6 +208,9 @@ class NonlinearX15Env(gym.Env):
         return result.to_state()
 
     def _scale_action(self, action: np.ndarray) -> np.ndarray:
+        """Convert normalized controls to surface radians and throttle, or copy virtual
+        controls.
+        """
         if self.action_mode == "virtual":
             return action.astype(np.float64, copy=True)
         u_e, u_a, u_r, u_T = action[0], action[1], action[2], action[3]
@@ -211,6 +227,9 @@ class NonlinearX15Env(gym.Env):
     # ---- gym API -------------------------------------------------------
 
     def reset(self, *, seed: Optional[int] = None, options=None):
+        """Recreate the plant at its initial state and return a copied observation and
+        info.
+        """
         super().reset(seed=seed)
         self.model = NonlinearX15(
             x0=self.initial_state,
@@ -222,12 +241,22 @@ class NonlinearX15Env(gym.Env):
         return self.model.current_state.copy(), {}
 
     def step(self, action):
+        """Advance elevator, aileron, rudder and throttle by one sampling interval.
+
+        Actions use the configured virtual or normalized mode and are clipped before
+        integration. Return the Gymnasium observation, zero reward, termination flag,
+        horizon-truncation flag and info dictionary. Info includes remaining propellant
+        in pounds and the engine-running flag.
+        """
         if self.model is None:
             raise RuntimeError("env.reset() must be called before step()")
 
         action = np.asarray(action, dtype=np.float64).reshape(-1)
         if action.size != 4:
             raise ValueError(f"action must have 4 elements; got {action.size}")
+        if not np.all(np.isfinite(action)):
+            raise ValueError("action must contain only finite values")
+        action = np.clip(action, self.action_space.low, self.action_space.high)
         u_virtual = self._scale_action(action)
 
         self.model.run_step(u_virtual)

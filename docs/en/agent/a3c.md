@@ -582,3 +582,23 @@ the values passed to the `Agent` constructor (`max_episodes`,
 - Gymnasium continuous control tasks
 - TensorAeroSpace LinearLongitudinal* environments
 - Custom aerospace control environments
+
+## Rollout and scalar-action correctness
+
+Each rollout action is paired with its own advantage. The joint action log
+probability and entropy have shape `(batch,)`, including a single control
+channel. Multiplying `(batch, 1)` log probabilities by `(batch,)` advantages
+would mix different transitions; both `Net.loss_func` and the worker update
+use the joint distribution consistently.
+
+Workers snapshot observations before `env.step()`. For autoreset environments,
+bootstrapping uses `final_observation` or `terminal_observation`. Gymnasium
+truncation and legacy `TimeLimit.truncated` preserve value bootstrapping;
+true termination disables it. The update interval counts every transition,
+including the final step of each episode. Sampled latent actions remain in the
+rollout while the environment receives clipped actions.
+
+These corrections change training trajectories and update counts. Finite losses
+and passing unit tests do not guarantee improved policy quality or convergence;
+evaluate fixed seeds and checkpoints on the target plant. Single-worker results
+do not establish reproducibility under asynchronous worker scheduling.
