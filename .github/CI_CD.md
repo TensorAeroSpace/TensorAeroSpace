@@ -8,7 +8,7 @@
 **Триггер:** push во все ветки.
 
 **Jobs:**
-- **⚡ Quick Test (Python 3.10, Ubuntu)**: `poetry check --lock`, установка runtime/test зависимостей, `compileall`, быстрые env-тесты и import smoke.
+- **⚡ Quick Test (Python 3.11, Ubuntu)**: `poetry check --lock`, установка runtime/test зависимостей, `compileall`, быстрые env-тесты и import smoke.
 - **📝 Code Quality Check**: `black --check`, `isort --check-only`, fatal `flake8`, baseline gate для `flake8` и `ruff`.
 - **🔒 Dependency Security Check**: `pip-audit` по `poetry.lock` для групп `main,dev,test` через baseline gate.
 
@@ -17,12 +17,12 @@
 
 **Required gates:**
 - **🏷️ Version Tag Gate**: `pyproject.toml` должен совпадать с последним stable git tag (`vX.Y.Z`).
-- **✅ All Python versions passed**: матрица Python 3.10, 3.11, 3.12, 3.13.
+- **✅ All Python versions passed**: матрица Python 3.11, 3.12, 3.13.
 - **🧱 Quality Gates**: `black`, `isort`, fatal `flake8`, baseline gates для `flake8`, `ruff`, `mypy`.
 - **📚 Documentation Coverage**: `docstr-coverage` с порогом 90% (`--skip-magic --skip-init --skip-file-doc`).
 - **🔒 Security Scan**: baseline gate для `bandit` с конфигом из `pyproject.toml` и baseline gate для `pip-audit`.
 - **🏗️ Build Package**: `poetry build`, `twine check`, package gate по `.github/package-gate.json`.
-- **📦 Wheel installs on all Python versions**: собранный wheel устанавливается через `pip install dist/*.whl` и импортируется на Python 3.10, 3.11, 3.12, 3.13.
+- **📦 Wheel installs on all Python versions**: собранный wheel устанавливается через `pip install dist/*.whl` и импортируется на Python 3.11, 3.12, 3.13.
 - **🐳 Docker image builds**: сборка `Dockerfile` из исходников, smoke-проверка установленного wheel и примеров внутри runtime-образа.
 
 ### Docs Build (`docs-build.yml`)
@@ -67,7 +67,7 @@
 Публикация работает по схеме build-once/publish-from-artifact:
 - `test-before-publish` запускает тесты, quality/security gates, `poetry build`, `twine check` и package gate.
 - перед релизной публикацией `pyproject.toml` сверяется с release tag; для ручной публикации в PyPI версия сверяется с последним stable git tag.
-- собранный wheel устанавливается и импортируется на Python 3.10, 3.11, 3.12, 3.13.
+- собранный wheel устанавливается и импортируется на Python 3.11, 3.12, 3.13.
 - `publish-testpypi` публикует уже проверенный artifact в TestPyPI.
 - `publish-pypi` публикует уже проверенный artifact в PyPI.
 - `continue-on-error` для публикации не используется.

@@ -40,10 +40,10 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: 🐍 Set up Python 3.10
+      - name: 🐍 Set up Python 3.11
         uses: actions/setup-python@v7
         with:
-          python-version: '3.10'
+          python-version: '3.11'
 
       - name: 📦 Cache Poetry dependencies
         uses: actions/cache@v6
@@ -51,9 +51,9 @@ jobs:
           path: |
             ~/.cache/pypoetry
             ~/.cache/pip
-          key: ubuntu-latest-poetry-publish-3.10-${{ hashFiles('**/poetry.lock') }}
+          key: ubuntu-latest-poetry-publish-3.11-${{ hashFiles('**/poetry.lock') }}
           restore-keys: |
-            ubuntu-latest-poetry-publish-3.10-
+            ubuntu-latest-poetry-publish-3.11-
 
       - name: 🎭 Install Poetry
         run: |
@@ -142,7 +142,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: ['3.10', '3.11', '3.12', '3.13']
+        python-version: ['3.11', '3.12', '3.13']
 
     steps:
       - name: 📥 Download build artifacts
@@ -190,10 +190,10 @@ jobs:
         run: |
           echo "Aggregated result of the wheel install matrix: ${{ needs.package-install-matrix.result }}"
           if [ "${{ needs.package-install-matrix.result }}" != "success" ]; then
-            echo "::error::Built wheel did not install/import on every Python version (3.10/3.11/3.12/3.13). Blocking publication."
+            echo "::error::Built wheel did not install/import on every Python version (3.11/3.12/3.13). Blocking publication."
             exit 1
           fi
-          echo "Built wheel installed and imported on Python 3.10/3.11/3.12/3.13."
+          echo "Built wheel installed and imported on Python 3.11/3.12/3.13."
 
   publish-testpypi:
     name: 📦 Publish to TestPyPI
@@ -209,10 +209,10 @@ jobs:
           name: dist
           path: dist
 
-      - name: 🐍 Set up Python 3.10
+      - name: 🐍 Set up Python 3.11
         uses: actions/setup-python@v7
         with:
-          python-version: '3.10'
+          python-version: '3.11'
 
       - name: 📦 Install Twine
         run: |
@@ -240,10 +240,10 @@ jobs:
           name: dist
           path: dist
 
-      - name: 🐍 Set up Python 3.10
+      - name: 🐍 Set up Python 3.11
         uses: actions/setup-python@v7
         with:
-          python-version: '3.10'
+          python-version: '3.11'
 
       - name: 📦 Install Twine
         run: |

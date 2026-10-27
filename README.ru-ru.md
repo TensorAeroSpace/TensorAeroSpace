@@ -10,7 +10,7 @@
 [![Coverage Status](https://coveralls.io/repos/github/TensorAeroSpace/TensorAeroSpace/badge.svg?branch=main)](https://coveralls.io/github/TensorAeroSpace/TensorAeroSpace?branch=main)
 [![Documentation Status](https://readthedocs.org/projects/tensoraerospace/badge/?version=latest)](https://tensoraerospace.readthedocs.io/en/latest/?badge=latest)
 [![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/TensorAeroSpace/TensorAeroSpace)
-[![Python](https://img.shields.io/badge/python-3.10--3.13-blue.svg)](https://www.python.org/downloads/)
+[![Python](https://img.shields.io/badge/python-3.11--3.13-blue.svg)](https://www.python.org/downloads/)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![GitHub stars](https://img.shields.io/github/stars/TensorAeroSpace/TensorAeroSpace.svg)](https://github.com/TensorAeroSpace/TensorAeroSpace/stargazers)
 
@@ -101,7 +101,7 @@
 | **CPU** | 4 ядра, AVX | 8+ ядер, AVX2/FMA |
 | **RAM** | 8 ГБ | 16–32 ГБ для RL/Simulink |
 | **GPU** | Необязательно | NVIDIA RTX с ≥8 ГБ VRAM для SAC/DSAC/PPO, поддержка CUDA ≥ 12.0 |
-| **Python** | 3.10–3.13 | 3.11/3.12 |
+| **Python** | 3.11–3.13 | 3.11/3.12 |
 | **Доп. ПО** | Git, Poetry или pip, Docker | MATLAB/Simulink R2022b+ (Simulink-примеры), Unity 2021.3.5f1/2023.2.20f1 |
 
 ### 📦 Установка
