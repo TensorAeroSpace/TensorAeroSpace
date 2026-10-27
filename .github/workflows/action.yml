@@ -144,7 +144,7 @@ jobs:
 
       - name: 💬 Pytest coverage comment
         if: github.event_name == 'pull_request' && matrix.python-version == '3.11'
-        uses: MishaKav/pytest-coverage-comment@v1.12.3
+        uses: MishaKav/pytest-coverage-comment@v1.12.5
         with:
           pytest-coverage-path: ./pytest-coverage.txt
           pytest-xml-coverage-path: ./coverage.xml
