@@ -16,7 +16,7 @@
 | Component | Minimum | Recommended |
 |---|---|---|
 | **OS** | Linux x86_64, Windows 10, macOS 13 | Ubuntu 22.04 LTS / Windows 11 / macOS 14 |
-| **Python** | 3.10 | 3.11 or 3.12 |
+| **Python** | 3.11 | 3.11 or 3.12 |
 | **CPU** | 4 cores, AVX | 8+ cores, AVX2 / FMA |
 | **RAM** | 8 GB | 16–32 GB for RL training |
 | **Disk** | 2 GB | 5 GB (PyTorch wheels + checkpoints) |
@@ -28,11 +28,10 @@
 
 | :material-python: Python | Status | Notes |
 |---:|:---:|---|
-| 3.10 | :material-check-circle: | Minimum supported |
-| 3.11 | :material-check-circle: | **Recommended** |
+| 3.11 | :material-check-circle: | Minimum supported; **recommended** |
 | 3.12 | :material-check-circle: | Recommended for latest PyTorch |
 | 3.13 | :material-flask-outline: | Experimental — some optional deps may lag |
-| ≤ 3.9 | :material-close-circle: | Unsupported (uses 3.10+ syntax) |
+| ≤ 3.10 | :material-close-circle: | Unsupported |
 
 ---
 
