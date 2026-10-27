@@ -16,7 +16,7 @@
 | Компонент | Минимум | Рекомендовано |
 |---|---|---|
 | **ОС** | Linux x86_64, Windows 10, macOS 13 | Ubuntu 22.04 LTS / Windows 11 / macOS 14 |
-| **Python** | 3.10 | 3.11 или 3.12 |
+| **Python** | 3.11 | 3.11 или 3.12 |
 | **CPU** | 4 ядра, AVX | 8+ ядер, AVX2 / FMA |
 | **RAM** | 8 ГБ | 16–32 ГБ для RL-обучения |
 | **Диск** | 2 ГБ | 5 ГБ (PyTorch wheels + checkpoints) |
@@ -28,11 +28,10 @@
 
 | :material-python: Python | Статус | Комментарий |
 |---:|:---:|---|
-| 3.10 | :material-check-circle: | Минимум |
-| 3.11 | :material-check-circle: | **Рекомендуется** |
+| 3.11 | :material-check-circle: | Минимум; **рекомендуется** |
 | 3.12 | :material-check-circle: | Рекомендуется для свежего PyTorch |
 | 3.13 | :material-flask-outline: | Экспериментально — некоторые опц. зависимости отстают |
-| ≤ 3.9 | :material-close-circle: | Не поддерживается (используется синтаксис 3.10+) |
+| ≤ 3.10 | :material-close-circle: | Не поддерживается |
 
 ---
 

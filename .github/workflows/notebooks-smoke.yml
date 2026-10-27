@@ -95,10 +95,10 @@ jobs:
       - name: 📥 Checkout code
         uses: actions/checkout@v7
 
-      - name: 🐍 Set up Python 3.10
+      - name: 🐍 Set up Python 3.11
         uses: actions/setup-python@v7
         with:
-          python-version: '3.10'
+          python-version: '3.11'
 
       - name: 📦 Cache Poetry dependencies
         uses: actions/cache@v6
@@ -106,9 +106,9 @@ jobs:
           path: |
             ~/.cache/pypoetry
             ~/.cache/pip
-          key: ubuntu-latest-poetry-3.10-${{ hashFiles('**/poetry.lock') }}
+          key: ubuntu-latest-poetry-3.11-${{ hashFiles('**/poetry.lock') }}
           restore-keys: |
-            ubuntu-latest-poetry-3.10-
+            ubuntu-latest-poetry-3.11-
 
       - name: 🎭 Install Poetry
         run: |

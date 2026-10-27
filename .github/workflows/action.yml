@@ -25,10 +25,10 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: 🐍 Set up Python 3.10
+      - name: 🐍 Set up Python 3.11
         uses: actions/setup-python@v7
         with:
-          python-version: '3.10'
+          python-version: '3.11'
 
       - name: 🎭 Install Poetry
         run: |
@@ -57,7 +57,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: ['3.10', '3.11', '3.12', '3.13']
+        python-version: ['3.11', '3.12', '3.13']
 
     steps:
       - name: 🧹 Free up disk space
@@ -144,7 +144,7 @@ jobs:
 
       - name: 💬 Pytest coverage comment
         if: github.event_name == 'pull_request' && matrix.python-version == '3.11'
-        uses: MishaKav/pytest-coverage-comment@v1.12.2
+        uses: MishaKav/pytest-coverage-comment@v1.12.3
         with:
           pytest-coverage-path: ./pytest-coverage.txt
           pytest-xml-coverage-path: ./coverage.xml
@@ -179,10 +179,10 @@ jobs:
         run: |
           echo "Aggregated result of the test matrix: ${{ needs.test.result }}"
           if [ "${{ needs.test.result }}" != "success" ]; then
-            echo "::error::Tests did not pass on every Python version (3.10/3.11/3.12/3.13). Blocking the PR."
+            echo "::error::Tests did not pass on every Python version (3.11/3.12/3.13). Blocking the PR."
             exit 1
           fi
-          echo "All Python versions (3.10/3.11/3.12/3.13) passed."
+          echo "All Python versions (3.11/3.12/3.13) passed."
 
   quality-gates:
     name: 🧱 Quality Gates
@@ -192,10 +192,10 @@ jobs:
       - name: 📥 Checkout code
         uses: actions/checkout@v7
 
-      - name: 🐍 Set up Python 3.10
+      - name: 🐍 Set up Python 3.11
         uses: actions/setup-python@v7
         with:
-          python-version: '3.10'
+          python-version: '3.11'
 
       - name: 📦 Cache Poetry dependencies
         uses: actions/cache@v6
@@ -203,9 +203,9 @@ jobs:
           path: |
             ~/.cache/pypoetry
             ~/.cache/pip
-          key: ubuntu-latest-poetry-quality-3.10-${{ hashFiles('**/poetry.lock') }}
+          key: ubuntu-latest-poetry-quality-3.11-${{ hashFiles('**/poetry.lock') }}
           restore-keys: |
-            ubuntu-latest-poetry-quality-3.10-
+            ubuntu-latest-poetry-quality-3.11-
 
       - name: 🎭 Install Poetry
         run: |
@@ -251,10 +251,10 @@ jobs:
       - name: 📥 Checkout code
         uses: actions/checkout@v7
 
-      - name: 🐍 Set up Python 3.10
+      - name: 🐍 Set up Python 3.11
         uses: actions/setup-python@v7
         with:
-          python-version: '3.10'
+          python-version: '3.11'
 
       - name: 📦 Cache Poetry dependencies
         uses: actions/cache@v6
@@ -262,9 +262,9 @@ jobs:
           path: |
             ~/.cache/pypoetry
             ~/.cache/pip
-          key: ubuntu-latest-poetry-docs-3.10-${{ hashFiles('**/poetry.lock') }}
+          key: ubuntu-latest-poetry-docs-3.11-${{ hashFiles('**/poetry.lock') }}
           restore-keys: |
-            ubuntu-latest-poetry-docs-3.10-
+            ubuntu-latest-poetry-docs-3.11-
 
       - name: 🎭 Install Poetry
         run: |
@@ -353,10 +353,10 @@ jobs:
       - name: 📥 Checkout code
         uses: actions/checkout@v7
 
-      - name: 🐍 Set up Python 3.10
+      - name: 🐍 Set up Python 3.11
         uses: actions/setup-python@v7
         with:
-          python-version: '3.10'
+          python-version: '3.11'
 
       - name: 📦 Cache Poetry dependencies
         uses: actions/cache@v6
@@ -364,9 +364,9 @@ jobs:
           path: |
             ~/.cache/pypoetry
             ~/.cache/pip
-          key: ubuntu-latest-poetry-security-3.10-${{ hashFiles('**/poetry.lock') }}
+          key: ubuntu-latest-poetry-security-3.11-${{ hashFiles('**/poetry.lock') }}
           restore-keys: |
-            ubuntu-latest-poetry-security-3.10-
+            ubuntu-latest-poetry-security-3.11-
 
       - name: 🎭 Install Poetry
         run: |
@@ -405,10 +405,10 @@ jobs:
       - name: 📥 Checkout code
         uses: actions/checkout@v7
 
-      - name: 🐍 Set up Python 3.10
+      - name: 🐍 Set up Python 3.11
         uses: actions/setup-python@v7
         with:
-          python-version: '3.10'
+          python-version: '3.11'
 
       - name: 📦 Cache Poetry dependencies
         uses: actions/cache@v6
@@ -416,9 +416,9 @@ jobs:
           path: |
             ~/.cache/pypoetry
             ~/.cache/pip
-          key: ubuntu-latest-poetry-build-3.10-${{ hashFiles('**/poetry.lock') }}
+          key: ubuntu-latest-poetry-build-3.11-${{ hashFiles('**/poetry.lock') }}
           restore-keys: |
-            ubuntu-latest-poetry-build-3.10-
+            ubuntu-latest-poetry-build-3.11-
 
       - name: 🎭 Install Poetry
         run: |
@@ -473,7 +473,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: ['3.10', '3.11', '3.12', '3.13']
+        python-version: ['3.11', '3.12', '3.13']
 
     steps:
       - name: 📥 Download build artifacts
@@ -521,10 +521,10 @@ jobs:
         run: |
           echo "Aggregated result of the wheel install matrix: ${{ needs.package-install-matrix.result }}"
           if [ "${{ needs.package-install-matrix.result }}" != "success" ]; then
-            echo "::error::Built wheel did not install/import on every Python version (3.10/3.11/3.12/3.13). Blocking the PR."
+            echo "::error::Built wheel did not install/import on every Python version (3.11/3.12/3.13). Blocking the PR."
             exit 1
           fi
-          echo "Built wheel installed and imported on Python 3.10/3.11/3.12/3.13."
+          echo "Built wheel installed and imported on Python 3.11/3.12/3.13."
 
   readthedocs-build:
     name: 📚 Trigger Read the Docs (develop)

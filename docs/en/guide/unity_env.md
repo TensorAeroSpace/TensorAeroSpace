@@ -35,7 +35,7 @@
 ## Requirements
 
 - **Unity Hub** and **Unity 2021.3.5f1** (tested)
-- **Python 3.8+** (3.10–3.11 recommended) with `pip`
+- **Python 3.11** with `pip`
 - Access to the `UnityAirplaneEnvironment` repository
 
 !!! note "Version compatibility"

@@ -421,7 +421,7 @@ hide:
     docker run --rm -p 8888:8888 ghcr.io/tensoraerospace/tas-jupyter
     ```
 
-Python 3.10–3.12, MATLAB не требуется, нет проприетарных code paths.
+Python 3.11–3.13, MATLAB не требуется, нет проприетарных code paths.
 
 ---
 

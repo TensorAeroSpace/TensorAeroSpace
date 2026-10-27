@@ -10,10 +10,7 @@ import tempfile
 from pathlib import Path
 from typing import Any, Mapping
 
-try:
-    import tomllib
-except ModuleNotFoundError:  # pragma: no cover - Python 3.10 fallback
-    import tomli as tomllib
+import tomllib
 
 from packaging.markers import InvalidMarker, Marker, default_environment
 

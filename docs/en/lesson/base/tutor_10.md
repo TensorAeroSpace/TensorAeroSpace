@@ -20,7 +20,7 @@ TensorAeroSpace environment.
 
 | Requirement | Version |
 |---|---|
-| Python | >= 3.10 |
+| Python | >= 3.11 |
 | PyTorch | >= 2.0 |
 | TensorAeroSpace | latest |
 | matplotlib | any |

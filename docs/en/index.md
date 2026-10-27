@@ -421,7 +421,7 @@ Real numbers from runnable example notebooks:
     docker run --rm -p 8888:8888 ghcr.io/tensoraerospace/tas-jupyter
     ```
 
-Python 3.10–3.12, no MATLAB required, no proprietary code paths.
+Python 3.11–3.13, no MATLAB required, no proprietary code paths.
 
 ---
 

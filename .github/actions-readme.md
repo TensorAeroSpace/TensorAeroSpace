@@ -38,7 +38,7 @@ Required checks configured in `.github/settings.yml`:
 - `🐳 Docker image builds`
 - `🏗️ mkdocs build --strict`
 
-`🏷️ Version Tag Gate` requires `[tool.poetry].version` in `pyproject.toml` to match the latest stable `vX.Y.Z` git tag. `🧱 Quality Gates` uses `.github/ci-baselines.json` to prevent new `flake8`, `ruff`, and `mypy` regressions while existing debt is paid down incrementally. `🔒 Security Scan` applies the same baseline approach to Bandit and runs `pip-audit` against pinned packages from `poetry.lock` for the `main,dev,test` groups. `📦 Wheel installs on all Python versions` installs the built wheel and imports `tensoraerospace` on Python 3.10, 3.11, 3.12, and 3.13.
+`🏷️ Version Tag Gate` requires `[tool.poetry].version` in `pyproject.toml` to match the latest stable `vX.Y.Z` git tag. `🧱 Quality Gates` uses `.github/ci-baselines.json` to prevent new `flake8`, `ruff`, and `mypy` regressions while existing debt is paid down incrementally. `🔒 Security Scan` applies the same baseline approach to Bandit and runs `pip-audit` against pinned packages from `poetry.lock` for the `main,dev,test` groups. `📦 Wheel installs on all Python versions` installs the built wheel and imports `tensoraerospace` on Python 3.11, 3.12, and 3.13.
 
 ## Publication Gates
 
@@ -53,7 +53,7 @@ Before upload, the workflow runs:
 - `poetry build`;
 - `twine check dist/*`;
 - `scripts/package_gate.py`;
-- wheel install/import checks on Python 3.10, 3.11, 3.12, and 3.13.
+- wheel install/import checks on Python 3.11, 3.12, and 3.13.
 
 ## Docker Image Gates
 

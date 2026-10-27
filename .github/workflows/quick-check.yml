@@ -8,7 +8,7 @@ on:
 
 jobs:
   quick-test:
-    name: ⚡ Quick Test (Python 3.10, Ubuntu)
+    name: ⚡ Quick Test (Python 3.11, Ubuntu)
     runs-on: ubuntu-latest
     timeout-minutes: 10
 
@@ -35,19 +35,19 @@ jobs:
     - name: 📥 Checkout code
       uses: actions/checkout@v7
 
-    - name: 🐍 Set up Python 3.10
+    - name: 🐍 Set up Python 3.11
       uses: actions/setup-python@v7
       with:
-        python-version: '3.10'
+        python-version: '3.11'
 
     - name: 📦 Cache Poetry dependencies
       uses: actions/cache@v6
       with:
         path: |
           ~/.cache/pypoetry
-        key: ubuntu-latest-poetry-3.10-${{ hashFiles('**/poetry.lock') }}
+        key: ubuntu-latest-poetry-3.11-${{ hashFiles('**/poetry.lock') }}
         restore-keys: |
-          ubuntu-latest-poetry-3.10-
+          ubuntu-latest-poetry-3.11-
 
     - name: 🎭 Install Poetry
       run: |
@@ -106,10 +106,10 @@ jobs:
     - name: 📥 Checkout code
       uses: actions/checkout@v7
 
-    - name: 🐍 Set up Python 3.10
+    - name: 🐍 Set up Python 3.11
       uses: actions/setup-python@v7
       with:
-        python-version: '3.10'
+        python-version: '3.11'
 
     - name: 🎭 Install Poetry
       run: |
@@ -172,10 +172,10 @@ jobs:
     - name: 📥 Checkout code
       uses: actions/checkout@v7
 
-    - name: 🐍 Set up Python 3.10
+    - name: 🐍 Set up Python 3.11
       uses: actions/setup-python@v7
       with:
-        python-version: '3.10'
+        python-version: '3.11'
         cache: 'pip'
 
     - name: 🎭 Install Poetry
@@ -190,9 +190,9 @@ jobs:
         path: |
           ~/.cache/pypoetry/virtualenvs
           ~/.cache/pypoetry/cache
-        key: poetry-venv-${{ runner.os }}-py3.10-${{ hashFiles('poetry.lock') }}
+        key: poetry-venv-${{ runner.os }}-py3.11-${{ hashFiles('poetry.lock') }}
         restore-keys: |
-          poetry-venv-${{ runner.os }}-py3.10-
+          poetry-venv-${{ runner.os }}-py3.11-
 
     - name: 🔒 Verify lock file
       run: |

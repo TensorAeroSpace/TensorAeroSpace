@@ -26,7 +26,7 @@ What are you trying to achieve?
 
 ## 🖥️ System information
 - OS: [e.g., Ubuntu 20.04, macOS 14, Windows 11]
-- Python version: [e.g., 3.10.13]
+- Python version: [e.g., 3.11.13]
 - TensorAeroSpace version: [e.g., 0.3.0]
 
 ## 📄 Additional context
