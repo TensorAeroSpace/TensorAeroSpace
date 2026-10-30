@@ -1,3 +1,5 @@
+from types import SimpleNamespace
+
 import numpy as np
 import pytest
 
@@ -136,3 +138,48 @@ def test_invalid_state_is_rejected():
         agent.predict([1.0, 2.0])
     with pytest.raises(ValueError, match="next_state"):
         agent.update([1.0], [np.nan])
+
+
+def test_projection_bounds_the_complete_gain_vector_per_control_channel():
+    baseline = SimpleNamespace(
+        A=np.diag([1.0, 0.5]),
+        B=np.array([[1.0], [0.0]]),
+        K=np.array([[0.5, 0.0]]),
+    )
+    agent = LQRPMRACAgent(
+        baseline,
+        LQRPMRACConfig(
+            dt=0.05,
+            adaptation_gain=10.0,
+            normalization=0.01,
+            parameter_limit=0.01,
+            rbf_centers=np.array([-1.0, 0.0, 1.0]),
+        ),
+    )
+    state = np.array([100.0, 100.0])
+    agent.update(state, state)
+    assert np.linalg.norm(agent.state_gains[0, :]) <= 0.01 + 1e-12
+    assert np.linalg.norm(agent.theta[:, 0]) <= 0.01 + 1e-12
+
+
+def test_parameter_norm_combines_all_parameters_by_sum_of_squares():
+    agent = make_agent()
+    agent.state_gains[0, 0] = 3.0
+    agent.theta[:, 0] = 4.0
+    assert agent.diagnostics["parameter_norm"] == pytest.approx(np.sqrt(57.0))
+
+
+def test_negative_real_reference_eigenvalue_has_a_clear_error():
+    baseline = SimpleNamespace(
+        A=np.array([[0.0]]), B=np.array([[1.0]]), K=np.array([[1.0]])
+    )
+    with pytest.raises(ValueError, match="negative real eigenvalues"):
+        LQRPMRACAgent(baseline)
+
+
+def test_singular_reference_dynamics_has_a_clear_error():
+    baseline = SimpleNamespace(
+        A=np.array([[0.0]]), B=np.array([[1.0]]), K=np.array([[0.0]])
+    )
+    with pytest.raises(ValueError, match="nonsingular"):
+        LQRPMRACAgent(baseline)

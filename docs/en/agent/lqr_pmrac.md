@@ -1,6 +1,6 @@
 # LQR with Predictor-Based MRAC (LQR–PMRAC)
 
-`LQRPMRACAgent` implements the predictor-based augmentation from Lavretsky, Gadient and Gregory. In addition to the reference-model error, its adaptive laws use the error between a state predictor and the measured plant. This distinguishes PMRAC from conventional MRAC and is intended to improve transient control activity.
+`LQRPMRACAgent` implements a simplified predictor-based augmentation inspired by Lavretsky, Gadient and Gregory. In addition to the reference-model error, its adaptive laws use the error between a state predictor and the measured plant. Unlike the full predictor in the paper, this implementation does not feed the current adaptive parameter estimates back into the predictor.
 
 ## Method structure
 
@@ -20,7 +20,7 @@ command = agent.predict(state, reference_state)
 agent.update(state, next_state, reference_state)
 ```
 
-The reference model is the nominal LQR closed loop. The predictor transition is discretized exactly; adaptive updates include normalization, a deadzone, parameter projection and a bounded adaptive command. RBFs act on the first state coordinate, angle of attack in the F-16 example.
+The reference model is the nominal LQR closed loop. The predictor transition is discretized exactly; adaptive updates include normalization, a deadzone, per-control-channel parameter projection and a bounded adaptive command. RBFs act on the first state coordinate, angle of attack in the F-16 example. Construction requires a nonsingular `A-BK` without negative real eigenvalues and with a finite real matrix logarithm; this restriction is not present in conventional MRAC.
 
 The method requires full state feedback and addresses matched uncertainty, such as reduced actuator effectiveness. Structural wing damage also changes aerodynamics and inertia and must not be presented as a matched actuator fault. Numerical safeguards do not prove stability of a nonlinear closed-loop system.
 

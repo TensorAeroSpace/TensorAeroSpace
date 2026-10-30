@@ -1,4 +1,4 @@
-"""Predictor-based MRAC augmentation following Lavretsky et al."""
+"""Simplified predictor-based MRAC augmentation inspired by Lavretsky et al."""
 
 from dataclasses import dataclass, field
 
@@ -48,14 +48,14 @@ class LQRPMRACConfig:
 
 
 class LQRPMRACAgent:
-    """Add predictor-based direct adaptive compensation to discrete LQR.
+    """Add simplified predictor-based direct adaptive compensation to LQR.
 
-    The reference model is the nominal LQR closed loop. The predictor adds the
-    prediction error to the adaptive laws, unlike conventional MRAC. RBFs act on
-    the first state coordinate. This implementation addresses matched uncertainty.
-    The predictor is discretized exactly; adaptive updates use Euler steps,
-    normalization and projection. These safeguards do not prove stability of a
-    nonlinear closed-loop system.
+    The reference model is the nominal LQR closed loop. Unlike the full
+    Lavretsky et al. predictor, this predictor does not include the current
+    adaptive parameter estimates. RBFs act on the first state coordinate.
+    The predictor transition is discretized exactly; adaptive updates use Euler
+    steps, normalization and projection. A finite real logarithm of ``A-BK`` is
+    required. These safeguards do not prove nonlinear closed-loop stability.
     """
 
     def __init__(self, baseline: LQRAgent, config: LQRPMRACConfig | None = None):
@@ -67,7 +67,17 @@ class LQRPMRACAgent:
         self.n_state = self.A.shape[0]
         self.n_control = self.B.shape[1]
         self.reference_dynamics: np.ndarray = self.A - self.B @ self.K
+        eigenvalues = np.linalg.eigvals(self.reference_dynamics)
+        if np.any(np.isclose(eigenvalues, 0.0, rtol=0.0, atol=1e-12)):
+            raise ValueError("PMRAC requires nonsingular reference dynamics")
+        negative_real = (eigenvalues.real < 0.0) & np.isclose(
+            eigenvalues.imag, 0.0, rtol=0.0, atol=1e-12
+        )
+        if np.any(negative_real):
+            raise ValueError("PMRAC does not support negative real eigenvalues in A-BK")
         reference_continuous = logm(self.reference_dynamics) / self.cfg.dt
+        if not np.isfinite(reference_continuous).all():
+            raise ValueError("PMRAC requires a finite logarithm of A-BK")
         if not np.allclose(reference_continuous.imag, 0.0, atol=1e-10):
             raise ValueError("PMRAC requires real logarithm of the reference dynamics")
         reference_continuous = reference_continuous.real
@@ -155,9 +165,10 @@ class LQRPMRACAgent:
                 * np.outer(features, training)
                 / scale
             )
-            for parameters in (self.state_gains, self.theta):
-                norms = np.linalg.norm(parameters, axis=0)
-                parameters /= np.maximum(1.0, norms / self.cfg.parameter_limit)
+            gain_norms = np.linalg.norm(self.state_gains, axis=1, keepdims=True)
+            self.state_gains /= np.maximum(1.0, gain_norms / self.cfg.parameter_limit)
+            rbf_norms = np.linalg.norm(self.theta, axis=0, keepdims=True)
+            self.theta /= np.maximum(1.0, rbf_norms / self.cfg.parameter_limit)
         self.reference_state = reference_next
         self.predictor_state = predictor_next
 
@@ -178,12 +189,16 @@ class LQRPMRACAgent:
 
     @property
     def diagnostics(self):
+        """Return errors, command and the combined Frobenius parameter norm."""
         return {
             "reference_error": self._last_error.copy(),
             "prediction_error": self._last_prediction_error.copy(),
             "adaptive_command": self._last_adaptive.copy(),
             "parameter_norm": float(
-                np.linalg.norm(self.state_gains) + np.linalg.norm(self.theta)
+                np.sqrt(
+                    np.linalg.norm(self.state_gains) ** 2
+                    + np.linalg.norm(self.theta) ** 2
+                )
             ),
         }
 

@@ -1,6 +1,6 @@
 # LQR with Model-Reference Adaptive Control (LQR–MRAC)
 
-`LQRMRACAgent` adds a bounded adaptive command to an existing `LQRAgent`. The reference model is the nominal closed loop `A-BK`; consequently, an exact healthy model produces zero reference error and no parameter update.
+`LQRMRACAgent` adds a bounded adaptive command to an existing `LQRAgent`. The reference model is the nominal closed loop `A-BK`. On an exact healthy model, the reference error and parameter updates are zero only after `reset(initial_state)` synchronizes the reference model and while the baseline command is not saturated. External magnitude or rate limits are not included in the reference model, so saturation produces a nonzero error.
 
 ## Method structure
 

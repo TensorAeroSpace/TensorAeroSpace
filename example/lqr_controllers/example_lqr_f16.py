@@ -133,7 +133,7 @@ TRACE_COLUMNS = (
 @dataclass(frozen=True)
 class Experiment:
     duration: float = 20.0
-    amplitude_deg: float = 2.0
+    reference_scale_deg_s: float = 0.1
     frequency_hz: float = 0.1
     phase: float = 0.0
     fault_time: float = 10.0
@@ -147,14 +147,11 @@ class Experiment:
 
 
 def q_reference(cfg):
+    """Two-harmonic pitch-rate reference with a scale in degrees per second."""
     time = np.arange(cfg.steps + 1) * DT
-    q = (
-        cfg.amplitude_deg
-        / 20.0
-        * (
-            0.5 * np.sin(2 * np.pi * cfg.frequency_hz * time + cfg.phase)
-            + 0.15 * np.sin(6.2 * np.pi * cfg.frequency_hz * time + cfg.phase)
-        )
+    q = cfg.reference_scale_deg_s * (
+        0.5 * np.sin(2 * np.pi * cfg.frequency_hz * time + cfg.phase)
+        + 0.15 * np.sin(6.2 * np.pi * cfg.frequency_hz * time + cfg.phase)
     )
     return np.deg2rad(q)
 
@@ -327,7 +324,7 @@ def rollout(
                     command,
                     np.rad2deg(applied - setup.stab_trim_rad),
                     np.linalg.norm(diagnostics["reference_error"]),
-                    np.rad2deg(diagnostics["adaptive_command"][0]),
+                    diagnostics["adaptive_command"][0],
                     diagnostics["parameter_norm"],
                     np.linalg.norm(diagnostics.get("prediction_error", np.zeros(4))),
                 ]

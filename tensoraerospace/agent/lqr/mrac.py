@@ -39,11 +39,12 @@ class LQRMRACAgent:
     """Add bounded direct MRAC compensation to a baseline :class:`LQRAgent`.
 
     The reference model is the healthy closed loop ``A-BK`` driven by the same
-    feedforward term as the baseline controller. Full state measurements are
-    required. The adaptive term compensates matched uncertainty; its update is
-    normalized, projected and may be disabled without changing the LQR feedback.
-    These safeguards bound the adaptive command but do not prove stability of a
-    nonlinear closed-loop system.
+    feedforward term as the baseline controller. Zero error on an exact model
+    requires a synchronized :meth:`reset` and no external command saturation.
+    Full state measurements are required. The adaptive term compensates matched
+    uncertainty; its update is normalized, projected and may be disabled without
+    changing the LQR feedback. These safeguards bound the adaptive command but do
+    not prove stability of a nonlinear closed-loop system.
     """
 
     def __init__(self, baseline: LQRAgent, config: LQRMRACConfig | None = None):
@@ -121,6 +122,7 @@ class LQRMRACAgent:
 
     @property
     def diagnostics(self):
+        """Return copies of the latest errors, command and parameter norm."""
         return {
             "reference_error": self._last_error.copy(),
             "adaptive_command": self._last_adaptive.copy(),

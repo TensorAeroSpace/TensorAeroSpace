@@ -4,8 +4,8 @@ Run from the repository root:
     python -m example.lqr_controllers.example_lqr_mrac_f16 --output outputs/lqr-mrac-f16
 """
 
-from pathlib import Path
 import argparse
+from pathlib import Path
 
 from example.lqr_controllers.example_lqr_f16 import (
     Experiment,
