@@ -2,6 +2,12 @@
 
 `LQRPMRACAgent` implements the predictor-based augmentation from Lavretsky, Gadient and Gregory. In addition to the reference-model error, its adaptive laws use the error between a state predictor and the measured plant. This distinguishes PMRAC from conventional MRAC and is intended to improve transient control activity.
 
+## Method structure
+
+![LQR–PMRAC structure](../../assets/images/lqr_pmrac_scheme_en.svg){ width=1200 }
+
+The predictor produces the state `z`, while the training signal `J` combines the reference error `e` and prediction error `e_p`. These errors update the state gains `K_ad` and RBF parameters `θ`; the adaptive command is added to the baseline LQR command.
+
 ```python
 from tensoraerospace.agent.lqr import LQRPMRACAgent, LQRPMRACConfig
 

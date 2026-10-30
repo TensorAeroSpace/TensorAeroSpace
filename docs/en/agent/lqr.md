@@ -2,6 +2,12 @@
 
 `LQRAgent` implements discrete state feedback for a supplied linear model. It solves the algebraic Riccati equation with `scipy.linalg.solve_discrete_are` and returns `u = -K(x-x_ref)`.
 
+## Method structure
+
+![Discrete LQR structure](../../assets/images/lqr_scheme_en.svg){ width=1000 }
+
+The gain `K` is computed offline from the model and weights. During operation, the agent uses the reference `x_ref` and measured state `x_k`; command limits and plant dynamics are external to `LQRAgent`.
+
 ```python
 import numpy as np
 from tensoraerospace.agent.lqr import LQRAgent

@@ -2,6 +2,12 @@
 
 `LQRMRACAgent` adds a bounded adaptive command to an existing `LQRAgent`. The reference model is the nominal closed loop `A-BK`; consequently, an exact healthy model produces zero reference error and no parameter update.
 
+## Method structure
+
+![LQR–MRAC structure](../../assets/images/lqr_mrac_scheme_en.svg){ width=1200 }
+
+The LQR command and adaptive augmentation are summed before the plant. The error between the measured and reference states updates the parameters `θ`, which produce compensation at the next step. Normalization, a deadzone, projection and the adaptive-command bound are applied in the update law.
+
 ```python
 from tensoraerospace.agent.lqr import LQRMRACAgent, LQRMRACConfig
 
