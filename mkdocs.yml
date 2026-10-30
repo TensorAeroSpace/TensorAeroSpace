@@ -94,6 +94,9 @@ plugins:
               
             - Agents:
               - PID: agent/pid.md
+              - LQR: agent/lqr.md
+              - LQR–MRAC: agent/lqr_mrac.md
+              - LQR–PMRAC: agent/lqr_pmrac.md
               - IHDP: agent/ihdp.md
               - IMGDHP: agent/imgdhp.md
               - ET-DHP: agent/et_dhp.md
@@ -256,6 +259,9 @@ plugins:
               - Unity окружение: model/unity_env.md
             - Алгоритмы управления:
               - PID: agent/pid.md
+              - LQR: agent/lqr.md
+              - LQR–MRAC: agent/lqr_mrac.md
+              - LQR–PMRAC: agent/lqr_pmrac.md
               - IHDP: agent/ihdp.md
               - IMGDHP: agent/imgdhp.md
               - ET-DHP: agent/et_dhp.md

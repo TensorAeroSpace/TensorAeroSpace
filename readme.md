@@ -209,7 +209,15 @@ What's modelled: **section loss** (mass / S / b / MAC / c.g. / inertia tensor / 
 | Algorithm | Description |
 |---|---|
 | **PID** | Proportional-Integral-Derivative with anti-windup and MATLAB-style autotuning. Strong baseline for state-space tasks; the autotuner extracts the env's `(A,B,C,D)` matrices and optimises gains via differential evolution against the step-response criterion. |
+| **LQR** | Discrete Linear-Quadratic Regulator with state feedback and gains computed through the algebraic Riccati equation. Supports reference tracking and caller-defined LQI augmentation. |
 | **MPC** | Model-Predictive Control with three swappable plant-model variants — MLP, NARX, Transformer — over a QP / numerical receding-horizon optimisation. Use when the plant is known or can be learned from data. |
+
+### Model-reference adaptive control
+
+| Algorithm | Description |
+|---|---|
+| **LQR–MRAC** | Model-Reference Adaptive Control on top of LQR. Uses the reference-model error for normalized adaptation with a deadzone, parameter projection and a bounded adaptive command; intended for matched uncertainty. |
+| **LQR–PMRAC** | Predictor-based MRAC combining reference-model and prediction errors in the adaptation law. Adds exact predictor discretization, state gains and RBF compensation to the baseline LQR. |
 
 ### Deep RL — on-policy
 
