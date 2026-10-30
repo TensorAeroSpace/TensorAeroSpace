@@ -270,6 +270,7 @@ package-lock.json
 .ruff_cache/
 
 # Project specific
+/article/
 /example/data/
 backend/*.env
 backend/*.rdb

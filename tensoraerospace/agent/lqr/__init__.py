@@ -58,4 +58,13 @@ class LQRAgent:
         return -self.K @ state
 
 
-__all__ = ["LQRAgent"]
+from .mrac import LQRMRACAgent, LQRMRACConfig
+from .pmrac import LQRPMRACAgent, LQRPMRACConfig
+
+__all__ = [
+    "LQRAgent",
+    "LQRMRACAgent",
+    "LQRMRACConfig",
+    "LQRPMRACAgent",
+    "LQRPMRACConfig",
+]
