@@ -54,7 +54,7 @@ class LQRMRACAgent:
         self.K = baseline.K
         self.n_state = self.A.shape[0]
         self.n_control = self.B.shape[1]
-        self.reference_dynamics = self.A - self.B @ self.K
+        self.reference_dynamics: np.ndarray = self.A - self.B @ self.K
         self.P = solve_discrete_lyapunov(
             self.reference_dynamics.T, np.eye(self.n_state)
         )

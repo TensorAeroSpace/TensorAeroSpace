@@ -66,7 +66,7 @@ class LQRPMRACAgent:
         self.K = baseline.K
         self.n_state = self.A.shape[0]
         self.n_control = self.B.shape[1]
-        self.reference_dynamics = self.A - self.B @ self.K
+        self.reference_dynamics: np.ndarray = self.A - self.B @ self.K
         reference_continuous = logm(self.reference_dynamics) / self.cfg.dt
         if not np.allclose(reference_continuous.imag, 0.0, atol=1e-10):
             raise ValueError("PMRAC requires real logarithm of the reference dynamics")

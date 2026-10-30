@@ -58,8 +58,8 @@ class LQRAgent:
         return -self.K @ state
 
 
-from .mrac import LQRMRACAgent, LQRMRACConfig
-from .pmrac import LQRPMRACAgent, LQRPMRACConfig
+from .mrac import LQRMRACAgent, LQRMRACConfig  # noqa: E402
+from .pmrac import LQRPMRACAgent, LQRPMRACConfig  # noqa: E402
 
 __all__ = [
     "LQRAgent",

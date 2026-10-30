@@ -1,7 +1,6 @@
 import numpy as np
 
-from article.experiments.f16_control import make_setup
-from example.lqr_controllers.example_lqr_f16 import Experiment, rollout
+from example.lqr_controllers.example_lqr_f16 import Experiment, make_setup, rollout
 
 
 def test_f16_examples_execute_and_frozen_shares_pre_event_trace():
