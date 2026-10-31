@@ -21,7 +21,7 @@ from typing import Optional
 import numpy as np
 
 from .dynamics import f16_ode_6dof
-from .params import F16AngularParameters
+from .params import F16AngularParameters, _validate_air_density
 
 
 @dataclass
@@ -72,6 +72,7 @@ def find_trim(
         raise ValueError("h_target must be finite and tol positive and finite")
     # Solver iterations must not modify the caller's live plant parameters.
     params = copy(params) if params is not None else F16AngularParameters()
+    _validate_air_density(params.air_density_kg_m3)
 
     def _state(alpha: float, stab: float) -> np.ndarray:
         x = np.zeros(16, dtype=np.float64)

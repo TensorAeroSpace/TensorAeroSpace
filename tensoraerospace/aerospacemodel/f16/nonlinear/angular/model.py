@@ -16,7 +16,7 @@ from tensoraerospace.aerospacemodel.base import ModelBase
 from .._actuators import project_actuators, surface_limits
 from .._integrators import euler, integrate_events, rk4
 from .dynamics import f16_ode_6dof
-from .params import F16AngularParameters, default_parameters
+from .params import F16AngularParameters, _validate_air_density, default_parameters
 
 ArrayLike = Union[np.ndarray, Sequence[Sequence[float]], Sequence[float]]
 
@@ -28,6 +28,22 @@ class AngularF16(ModelBase):
     Action when split_stab=True:        [stab_left, stab_right, ail, dir] (rad);
         differential = (L - R)/2 generates a roll moment via
         F16AngularParameters.delta_stab_roll_gain.
+
+    With ``track_altitude=True``, ``V``, ``alpha`` and ``beta`` are air-relative.
+    An external simulator computes wind and the global atmosphere, then supplies
+    local air density in kg/m³ before a step. The model does not apply wind twice
+    or integrate a full NED position. Its scalar altitude uses air-relative
+    velocity and omits vertical wind, so an external world should set it before
+    every step::
+
+        model.set_air_relative_state(
+            altitude_m=altitude,
+            airspeed_mps=airspeed,
+            alpha_rad=alpha,
+            beta_rad=beta,
+        )
+        model.param.air_density_kg_m3 = local_density
+        model.run_step(control, events=damage_events)
     """
 
     def __init__(
@@ -131,12 +147,58 @@ class AngularF16(ModelBase):
         """Independent snapshot of the most recent state as a flat 1-D ndarray."""
         return np.array(self.x_history[-1], dtype=np.float64, copy=True).reshape(-1)
 
+    def set_air_relative_state(
+        self,
+        *,
+        altitude_m: float,
+        airspeed_mps: float,
+        alpha_rad: float,
+        beta_rad: float,
+    ) -> None:
+        """Set altitude and air-relative velocity before the next integration step.
+
+        ``V``, ``alpha`` and ``beta`` describe motion relative to the air. An
+        external simulator must convert inertial velocity using its wind field;
+        wind is not applied again inside the ODE. This method does not advance
+        time or append a history sample: it replaces the most recent sample in
+        ``x_history`` in place.
+
+        Args:
+            altitude_m: Altitude in metres.
+            airspeed_mps: Positive air-relative speed in metres per second.
+            alpha_rad: Air-relative angle of attack in radians.
+            beta_rad: Air-relative sideslip angle in radians, with magnitude
+                strictly less than pi/2.
+
+        Raises:
+            RuntimeError: If ``track_altitude`` is disabled.
+            ValueError: If a value is nonfinite, airspeed is not positive, or
+                sideslip reaches the singular range.
+        """
+        if not self.track_altitude:
+            raise RuntimeError("set_air_relative_state requires track_altitude=True")
+        values = (altitude_m, airspeed_mps, alpha_rad, beta_rad)
+        if not all(np.isfinite(value) for value in values):
+            raise ValueError("air-relative state values must be finite")
+        if airspeed_mps <= 0:
+            raise ValueError("airspeed_mps must be positive")
+        if not -np.pi / 2 < beta_rad < np.pi / 2:
+            raise ValueError("beta_rad must satisfy |beta_rad| < pi/2")
+
+        state = self.current_state
+        state[14] = altitude_m
+        state[15] = airspeed_mps
+        state[0] = alpha_rad
+        state[1] = beta_rad
+        self.x_history[-1] = state.reshape(self.n_state, 1)
+
     def run_step(self, u: ArrayLike, *, events=()) -> np.ndarray:
         """Advance surface commands in radians and optional thrust in newtons.
 
         Timed event callbacks split the integration interval. Store the new state and
         applied controls, then return the configured output column.
         """
+        _validate_air_density(self.param.air_density_kg_m3)
         u_arr = np.asarray(u, dtype=np.float64).reshape(-1)
         if u_arr.size != self.action_space_length:
             raise ValueError(
