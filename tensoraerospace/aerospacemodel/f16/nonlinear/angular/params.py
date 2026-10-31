@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass, field
+from numbers import Real
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -17,12 +18,29 @@ _L = 0.0065
 _R = 287.0531
 _T0 = 288.15
 _RHO0 = 1.225
+_H_TROPOPAUSE = 11000.0
+_T_STRATOSPHERE = 216.65
 
 
 def _isa_dynamic_pressure(altitude_m: float, velocity_mps: float, g: float) -> float:
-    T = _T0 - _L * altitude_m
-    rho = _RHO0 * (T / _T0) ** (g / (_L * _R) - 1.0)
+    if altitude_m <= _H_TROPOPAUSE:
+        T = _T0 - _L * altitude_m
+        rho = _RHO0 * (T / _T0) ** (g / (_L * _R) - 1.0)
+    else:
+        rho11 = _RHO0 * (_T_STRATOSPHERE / _T0) ** (g / (_L * _R) - 1.0)
+        rho = rho11 * math.exp(
+            -g * (altitude_m - _H_TROPOPAUSE) / (_R * _T_STRATOSPHERE)
+        )
     return float(0.5 * rho * velocity_mps**2)
+
+
+def _validate_air_density(air_density_kg_m3: float | None) -> None:
+    if air_density_kg_m3 is None:
+        return
+    if isinstance(air_density_kg_m3, bool) or not isinstance(air_density_kg_m3, Real):
+        raise TypeError("air_density_kg_m3 must be a real number or None")
+    if not math.isfinite(air_density_kg_m3) or air_density_kg_m3 < 0:
+        raise ValueError("air_density_kg_m3 must be finite and non-negative")
 
 
 @dataclass
@@ -87,11 +105,19 @@ class F16AngularParameters:
     g: float = 9.80665
     Oy: float = 3000.0
     V: float = 120.0
-    q: float = field(init=False)
+    # External air density in kg/m³. None preserves the ISA calculation.
+    air_density_kg_m3: float | None = None
 
     def __post_init__(self) -> None:
         self.rcgx = -0.05 * self.bA
-        self.q = _isa_dynamic_pressure(self.Oy, self.V, self.g)
+
+    @property
+    def q(self) -> float:
+        """Dynamic pressure at the configured ``Oy`` and ``V``, in pascals."""
+        _validate_air_density(self.air_density_kg_m3)
+        if self.air_density_kg_m3 is None:
+            return _isa_dynamic_pressure(self.Oy, self.V, self.g)
+        return float(0.5 * self.air_density_kg_m3 * self.V**2)
 
 
 def default_parameters() -> F16AngularParameters:

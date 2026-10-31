@@ -20,7 +20,7 @@ import numpy as np
 
 from .._actuators import actuator_derivatives
 from .aero import get_cx, get_cy, get_cz, get_mx, get_my, get_mz
-from .params import F16AngularParameters, _isa_dynamic_pressure
+from .params import F16AngularParameters, _isa_dynamic_pressure, _validate_air_density
 
 # State indices
 I_ALPHA, I_BETA, I_WX, I_WY, I_WZ = 0, 1, 2, 3, 4
@@ -52,6 +52,7 @@ def f16_ode_6dof(
         Time derivative of the state vector.
     """
     p = params
+    _validate_air_density(p.air_density_kg_m3)
 
     # Unpack state
     alpha = float(x[I_ALPHA])
@@ -78,7 +79,10 @@ def f16_ode_6dof(
     if track_altitude:
         h_state = float(x[14])
         V_state = float(x[15])
-        q_now = _isa_dynamic_pressure(h_state, V_state, p.g)
+        if p.air_density_kg_m3 is None:
+            q_now = _isa_dynamic_pressure(h_state, V_state, p.g)
+        else:
+            q_now = float(0.5 * p.air_density_kg_m3 * V_state**2)
     else:
         h_state = p.Oy
         V_state = p.V

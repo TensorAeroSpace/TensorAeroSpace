@@ -237,6 +237,51 @@ cannot automatically be treated as trained for the new scale.
 The time step and initial speed must be positive and finite. Nonfinite states
 or controls are rejected before modifying the dynamics.
 
+### External atmosphere and air-relative state
+
+With `track_altitude=True`, `V`, `alpha` and `beta` describe motion relative to
+the air. The external simulator computes `V_air = V_inertial - wind_ned`,
+converts it to airspeed and aerodynamic angles, and supplies those values before
+the step. Wind is not applied again inside the ODE. TensorAeroSpace integrates
+only the dynamics of one aircraft; it does not create a global wind field or
+integrate a full NED position. The scalar altitude is integrated from the
+air-relative velocity and therefore omits vertical wind. When the external world
+owns the trajectory, set `altitude_m` before every `run_step`.
+
+By default, dynamic pressure uses the ISA density at the current altitude, with
+an isothermal stratosphere above 11 km. Set `model.param.air_density_kg_m3` to a
+local density in **kg/m³** to override it in either state mode. The value must be
+a finite, non-negative real number and remains constant throughout an RK4 step.
+It may be changed between steps. Set it to `None` to restore ISA behavior.
+Damage recomputation preserves the override. `param.q` is computed from the
+current `Oy`, `V` and density settings.
+
+For `NonlinearAngularF16`, pass `air_density_kg_m3` to the constructor. The
+configured value is included in `get_init_args()` and restored by every
+`reset()`.
+
+```python
+model.set_air_relative_state(
+    altitude_m=altitude,      # m
+    airspeed_mps=airspeed,    # m/s
+    alpha_rad=alpha,          # rad
+    beta_rad=beta,            # rad
+)
+model.param.air_density_kg_m3 = local_density  # kg/m³
+model.run_step(control, events=damage_events)
+```
+
+The setter changes only altitude, airspeed, angle of attack and sideslip. It does
+not change attitude, angular rates, actuators, controls, damage, time or history
+length. Airspeed must be positive, all four values must be finite, and `|beta|`
+must be strictly less than `pi/2`. The setter replaces `x_history[-1]` in place,
+so the previously integrated value of that sample is overwritten rather than
+retained as a separate record.
+
+The environment's `position_history` and 3D visualization are also reconstructed
+from air-relative velocity without wind. An external simulator with wind should
+use its own inertial NED trajectory for logging and visualization.
+
 ### Damage timing and environment configuration
 
 Integration steps split at damage timestamps: motion advances to the event,
