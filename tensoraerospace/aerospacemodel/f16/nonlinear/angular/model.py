@@ -23,14 +23,36 @@ from .params import F16AngularParameters, _validate_air_density, default_paramet
 ArrayLike = Union[np.ndarray, Sequence[Sequence[float]], Sequence[float]]
 
 
-def _accepts_euler_rates(rhs) -> bool:
-    """Whether an ODE right-hand side takes the ``euler_rates`` keyword."""
+def _accepts(rhs, keyword: str) -> bool:
+    """Whether an ODE right-hand side takes ``keyword``."""
     try:
         parameters = inspect.signature(rhs).parameters
     except (TypeError, ValueError):
         return False
-    return "euler_rates" in parameters or any(
+    return keyword in parameters or any(
         item.kind is inspect.Parameter.VAR_KEYWORD for item in parameters.values()
+    )
+
+
+def _body_velocity(alpha: float, beta: float, speed: float) -> np.ndarray:
+    """Body-axis velocity (x forward, y right, z down) for V, alpha and beta."""
+    return speed * np.array(
+        [
+            np.cos(alpha) * np.cos(beta),
+            np.sin(beta),
+            np.sin(alpha) * np.cos(beta),
+        ],
+        dtype=np.float64,
+    )
+
+
+def _air_data(velocity: np.ndarray) -> tuple[float, float, float]:
+    """``(V, alpha, beta)`` with alpha in (-pi, pi] and beta in [-pi/2, pi/2]."""
+    u, v, w = (float(item) for item in velocity)
+    return (
+        float(np.sqrt(u * u + v * v + w * w)),
+        float(np.arctan2(w, u)),
+        float(np.arctan2(v, np.hypot(u, w))),
     )
 
 
@@ -77,9 +99,20 @@ class AngularF16(ModelBase):
         track_altitude: bool = False,
         thrust_mode: Literal["constant", "control"] = "constant",
         attitude: Literal["quaternion", "euler"] = "quaternion",
+        translation: Literal["body", "wind"] | None = None,
     ) -> None:
         if attitude not in ("quaternion", "euler"):
             raise ValueError("attitude must be quaternion or euler")
+        if translation is None:
+            translation = (
+                "body" if track_altitude and attitude == "quaternion" else "wind"
+            )
+        if translation not in ("body", "wind"):
+            raise ValueError("translation must be body or wind")
+        if translation == "body" and not (track_altitude and attitude == "quaternion"):
+            raise ValueError(
+                "translation='body' requires track_altitude and quaternion attitude"
+            )
         x0_arr = self._prepare_initial_state(x0, dt, track_altitude, thrust_mode)
         n_state = x0_arr.size
         super().__init__(x0_arr, selected_state_output, t0, dt)
@@ -133,6 +166,10 @@ class AngularF16(ModelBase):
         # "quaternion" integrates attitude without the Euler-rate singularity at
         # theta = ±90°; "euler" keeps the legacy Euler-angle integration.
         self.attitude = attitude
+        # "body" integrates body-axis velocity (u, v, w) and derives V, alpha and
+        # beta from it, avoiding the 1/cos(beta) singularity of the wind-axis
+        # equations; "wind" integrates V, alpha and beta directly (legacy).
+        self.translation = translation
 
     @staticmethod
     def _prepare_initial_state(x0, dt, track_altitude, thrust_mode):
@@ -280,14 +317,26 @@ class AngularF16(ModelBase):
             return self._step_fn(rhs, x, control, t, dt, self.param)
         n = x.size
         reference = (float(x[5]), float(x[6]))
-        z0 = np.concatenate([x, euler_to_quaternion(x[5], x[6], x[7])])
-
-        flag = _accepts_euler_rates(rhs)
+        flag = _accepts(rhs, "euler_rates")
+        body = self.translation == "body" and n == 16 and _accepts(rhs, "body_velocity")
+        parts = [x, euler_to_quaternion(x[5], x[6], x[7])]
+        if body:
+            parts.append(_body_velocity(x[0], x[1], x[15]))
+        z0 = np.concatenate(parts)
 
         def augmented(z, u, t_stage, params):
-            q = z[n:] / np.linalg.norm(z[n:])
+            q = z[n : n + 4] / np.linalg.norm(z[n : n + 4])
             stage = np.array(z[:n], dtype=np.float64, copy=True)
             stage[5], stage[6], stage[7] = quaternion_to_euler(q, reference)
+            rates = quaternion_rate(q, stage[2], stage[3], stage[4])
+            if body:
+                stage[15], stage[0], stage[1] = _air_data(z[n + 4 :])
+                dx = rhs(
+                    stage, u, t_stage, params, euler_rates=False, body_velocity=True
+                )
+                accelerations = dx[[0, 1, 15]].copy()
+                dx[[0, 1, 15]] = 0.0
+                return np.concatenate([dx, rates, accelerations])
             if flag:
                 dx = rhs(stage, u, t_stage, params, euler_rates=False)
             else:
@@ -296,15 +345,15 @@ class AngularF16(ModelBase):
                 with np.errstate(divide="ignore", invalid="ignore", over="ignore"):
                     dx = np.array(rhs(stage, u, t_stage, params), dtype=np.float64)
                 dx[5:8] = 0.0
-            return np.concatenate(
-                [dx, quaternion_rate(q, stage[2], stage[3], stage[4])]
-            )
+            return np.concatenate([dx, rates])
 
         z1 = self._step_fn(augmented, z0, control, t, dt, self.param)
         next_state = np.array(z1[:n], dtype=np.float64, copy=True)
         next_state[5], next_state[6], next_state[7] = quaternion_to_euler(
-            z1[n:], reference
+            z1[n : n + 4], reference
         )
+        if body:
+            next_state[15], next_state[0], next_state[1] = _air_data(z1[n + 4 :])
         return next_state
 
     def _prepare_control(self, u_arr):

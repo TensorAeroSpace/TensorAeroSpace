@@ -19,7 +19,15 @@ def _model() -> AngularF16:
 
 
 def test_none_density_preserves_baseline_step():
-    model = _model()
+    # Snapshot of the legacy wind-axis integration; body-axis integration of the
+    # same equations differs by O(dt^4) RK4 truncation (1e-10 at dt = 0.01 s).
+    model = AngularF16(
+        x0=np.zeros(14),
+        dt=0.01,
+        integrator="rk4",
+        track_altitude=True,
+        translation="wind",
+    )
 
     model.run_step(np.array([0.02, -0.01, 0.03]))
 

@@ -200,3 +200,108 @@ def test_quaternion_matches_legacy_away_from_vertical(integrator):
 def test_attitude_option_is_validated():
     with pytest.raises(ValueError, match="attitude"):
         AngularF16(x0=np.zeros(14), attitude="matrix")
+
+
+def test_body_velocity_equations_match_wind_axis_equations():
+    """du, dv, dw equal the chain rule applied to dalpha, dbeta, dV."""
+    from tensoraerospace.aerospacemodel.f16.nonlinear.angular.dynamics import (
+        f16_ode_6dof,
+    )
+    from tensoraerospace.aerospacemodel.f16.nonlinear.angular.params import (
+        default_parameters,
+    )
+
+    rng = np.random.default_rng(1)
+    for _ in range(300):
+        params = default_parameters()
+        params.air_density_kg_m3 = rng.uniform(0.3, 1.2)
+        params.T_active = rng.uniform(0, 130000)
+        x = np.zeros(16)
+        x[0], x[1] = rng.uniform(-0.3, 1.5), rng.uniform(-0.5, 0.5)
+        x[2:5] = rng.normal(0, 1, 3)
+        x[5:8] = rng.uniform(-3, 3), rng.uniform(-3, 3), rng.uniform(-1.4, 1.4)
+        x[[8, 10, 12]] = rng.uniform(-0.4, 0.4, 3)
+        x[14], x[15] = rng.uniform(500, 9000), rng.uniform(40, 450)
+        u = rng.uniform(-0.3, 0.3, 3)
+        wind = f16_ode_6dof(x, u, 0.0, params)
+        body = f16_ode_6dof(x, u, 0.0, params, body_velocity=True)
+        a, b, speed = x[0], x[1], x[15]
+        da, db, dv = wind[0], wind[1], wind[15]
+        chain = [
+            dv * math.cos(a) * math.cos(b)
+            - speed * math.sin(a) * math.cos(b) * da
+            - speed * math.cos(a) * math.sin(b) * db,
+            dv * math.sin(b) + speed * math.cos(b) * db,
+            dv * math.sin(a) * math.cos(b)
+            + speed * math.cos(a) * math.cos(b) * da
+            - speed * math.sin(a) * math.sin(b) * db,
+        ]
+        np.testing.assert_allclose(body[[0, 1, 15]], chain, rtol=1e-11, atol=1e-9)
+        others = [i for i in range(16) if i not in (0, 1, 15)]
+        np.testing.assert_array_equal(body[others], wind[others])
+
+
+def _ned_velocity(state):
+    gamma, psi, theta = state[5], state[6], state[7]
+    alpha, beta, speed = state[0], state[1], state[15]
+    body = speed * np.array(
+        [
+            math.cos(alpha) * math.cos(beta),
+            math.sin(beta),
+            math.sin(alpha) * math.cos(beta),
+        ]
+    )
+    return _ned_from_euler(gamma, psi, theta) @ body
+
+
+@pytest.mark.parametrize("translation", ["body", "wind"])
+def test_tumbling_without_air_falls_exactly_through_any_sideslip(translation):
+    """With zero air density and thrust only gravity acts: v_ned = v0 + g t.
+
+    A torque-free tumble sweeps the velocity through every body direction, so
+    beta passes ±90 deg (and alpha ±180 deg). Body-axis integration follows
+    the exact solution; the legacy wind-axis equations divide by cos(beta).
+    """
+    model, _ = _model("quaternion")
+    if translation == "wind":
+        model.translation = "wind"
+    state = model.current_state
+    # Mostly a yaw spin: the velocity sweeps sideways through beta = ±90 deg.
+    state[2:5] = 0.3, 3.0, 0.2
+    model.x_history[-1] = state.reshape(-1, 1)
+    model.param.air_density_kg_m3 = 0.0
+    v0 = _ned_velocity(state)
+    worst = 0.0
+    peak = 0.0
+    tail_first = 0.0
+    with np.errstate(all="ignore"):
+        for tick in range(1, 361):
+            model.run_step(np.array([0.0, 0.0, 0.0, 0.0]))
+            current = model.current_state
+            if not np.all(np.isfinite(current)):
+                worst = math.inf
+                break
+            expected = v0 + np.array([0.0, 0.0, model.param.g]) * tick * model.dt
+            worst = max(worst, np.max(np.abs(_ned_velocity(current) - expected)))
+            peak = max(peak, abs(current[1]))
+            tail_first = max(tail_first, abs(current[0]))
+    if translation == "body":
+        # Sampled at 120 Hz, beta peaks just below 90 deg; alpha near 180 deg
+        # shows the flow came from behind after passing side-on.
+        assert math.degrees(peak) > 85.0
+        assert math.degrees(tail_first) > 170.0
+        # RK4 in the rotating frame (3 rad/s): ~1e-5 m/s after 3 s at 250 m/s.
+        assert worst < 1e-4
+    else:
+        # The wind-axis equations lose ~1e-2 m/s crossing beta = 90 deg here,
+        # and divide by zero if a step lands on it.
+        assert worst > 1e-3
+
+
+def test_translation_option_is_validated():
+    with pytest.raises(ValueError, match="translation"):
+        AngularF16(x0=np.zeros(14), translation="inertial")
+    with pytest.raises(ValueError, match="track_altitude"):
+        AngularF16(x0=np.zeros(14), translation="body")
+    assert AngularF16(x0=np.zeros(14)).translation == "wind"
+    assert AngularF16(x0=np.zeros(14), track_altitude=True).translation == "body"

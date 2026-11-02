@@ -36,6 +36,7 @@ def f16_ode_6dof(
     t: float,
     params: F16AngularParameters,
     euler_rates: bool = True,
+    body_velocity: bool = False,
 ) -> np.ndarray:
     """Compute the 6-DoF angular ODE right-hand side.
 
@@ -54,6 +55,13 @@ def f16_ode_6dof(
         ``cos(theta)`` and are singular at ``theta = ±90°``. ``AngularF16``
         integrates attitude as a quaternion (see ``attitude.py``) and passes
         ``False``; the three entries are then zero and unused.
+    body_velocity : bool, default False
+        Requires ``track_altitude`` (16 states). Return the body-axis velocity
+        derivatives ``(du, dv, dw)`` (x forward, y right, z down; Newton's law in
+        the rotating body frame) in the ``alpha``, ``beta`` and ``V`` slots
+        instead of ``(dalpha, dbeta, dV)``. Same equations, but without the
+        ``1/cos(beta)`` and ``tan(beta)`` singularity at ``beta = ±90°``.
+        ``AngularF16`` integrates body velocities this way by default.
 
     Returns
     -------
@@ -205,17 +213,30 @@ def f16_ode_6dof(
         sin_th * cos_a * sin_b - cos_g * cos_th * sin_a * sin_b + sin_g * cos_th * cos_b
     )
 
-    # Aerodynamic-frame force components
-    Ya = sin_a * Rx + cos_a * Ry
-    Za = -cos_a * sin_b * Rx + sin_a * sin_b * Ry + cos_b * Rz
+    if body_velocity:
+        if not track_altitude:
+            raise ValueError("body_velocity requires track_altitude (16 states)")
+        # Body axes x forward, y right, z down: force (Rx, Rz, -Ry), rates
+        # (p, q, r) = (wx, wz, -wy), gravity from the attitude matrix.
+        u_b = V_state * cos_a * cos_b
+        v_b = V_state * sin_b
+        w_b = V_state * sin_a * cos_b
+        p_b, q_b, r_b = wx, wz, -wy
+        dalpha = r_b * v_b - q_b * w_b + Rx / p.m - p.g * sin_th
+        dbeta = p_b * w_b - r_b * u_b + Rz / p.m + p.g * cos_th * sin_g
+        dw_body = q_b * u_b - p_b * v_b - Ry / p.m + p.g * cos_th * cos_g
+    else:
+        # Aerodynamic-frame force components
+        Ya = sin_a * Rx + cos_a * Ry
+        Za = -cos_a * sin_b * Rx + sin_a * sin_b * Ry + cos_b * Rz
 
-    dalpha = (
-        wz
-        + (wy * sin_a - wx * cos_a) * np.tan(beta)
-        - (Ya + p.m * gay) / (p.m * V_state * cos_b)
-    )
+        dalpha = (
+            wz
+            + (wy * sin_a - wx * cos_a) * np.tan(beta)
+            - (Ya + p.m * gay) / (p.m * V_state * cos_b)
+        )
 
-    dbeta = wx * sin_a + wy * cos_a + (Za + p.m * gaz) / (p.m * V_state)
+        dbeta = wx * sin_a + wy * cos_a + (Za + p.m * gaz) / (p.m * V_state)
 
     # ----------------------------------------------------------------
     # Euler-angle kinematics (Dx.gamma, Dx.theta, Dx.psi)
@@ -268,6 +289,8 @@ def f16_ode_6dof(
         # forces contribute whenever alpha or beta is nonzero.
         force_along_velocity = Rx * cos_a * cos_b - Ry * sin_a * cos_b + Rz * sin_b
         dV = force_along_velocity / p.m - p.g * sin_gamma_path
+        if body_velocity:
+            dV = dw_body
 
     base_dx = [
         dalpha,
