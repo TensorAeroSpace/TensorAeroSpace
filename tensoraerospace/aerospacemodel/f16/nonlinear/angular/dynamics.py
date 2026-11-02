@@ -31,7 +31,11 @@ I_DIR, I_DDIR = 12, 13
 
 
 def f16_ode_6dof(
-    x: np.ndarray, u: np.ndarray, t: float, params: F16AngularParameters
+    x: np.ndarray,
+    u: np.ndarray,
+    t: float,
+    params: F16AngularParameters,
+    euler_rates: bool = True,
 ) -> np.ndarray:
     """Compute the 6-DoF angular ODE right-hand side.
 
@@ -45,6 +49,11 @@ def f16_ode_6dof(
         Current time (unused; kept for integrator compatibility).
     params : F16AngularParameters
         Aircraft and flight parameters.
+    euler_rates : bool, default True
+        Compute ``dgamma``, ``dpsi`` and ``dtheta``. These divide by
+        ``cos(theta)`` and are singular at ``theta = ±90°``. ``AngularF16``
+        integrates attitude as a quaternion (see ``attitude.py``) and passes
+        ``False``; the three entries are then zero and unused.
 
     Returns
     -------
@@ -211,11 +220,12 @@ def f16_ode_6dof(
     # ----------------------------------------------------------------
     # Euler-angle kinematics (Dx.gamma, Dx.theta, Dx.psi)
     # ----------------------------------------------------------------
-    dgamma = wx - cos_g * np.tan(theta) * wy + sin_g * np.tan(theta) * wz
-
-    dtheta = sin_g * wy + cos_g * wz
-
-    dpsi = (cos_g / cos_th) * wy - (sin_g / cos_th) * wz
+    if euler_rates:
+        dgamma = wx - cos_g * np.tan(theta) * wy + sin_g * np.tan(theta) * wz
+        dtheta = sin_g * wy + cos_g * wz
+        dpsi = (cos_g / cos_th) * wy - (sin_g / cos_th) * wz
+    else:
+        dgamma = dtheta = dpsi = 0.0
 
     # ----------------------------------------------------------------
     # Actuator models (second-order with rate and position limiting)

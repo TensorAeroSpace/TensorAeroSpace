@@ -7,6 +7,7 @@ Control (3): [stab_act, ail_act, dir_act]
 
 from __future__ import annotations
 
+import inspect
 from typing import Any, Literal, Sequence, Union
 
 import numpy as np
@@ -15,10 +16,22 @@ from tensoraerospace.aerospacemodel.base import ModelBase
 
 from .._actuators import project_actuators, surface_limits
 from .._integrators import euler, integrate_events, rk4
+from .attitude import euler_to_quaternion, quaternion_rate, quaternion_to_euler
 from .dynamics import f16_ode_6dof
 from .params import F16AngularParameters, _validate_air_density, default_parameters
 
 ArrayLike = Union[np.ndarray, Sequence[Sequence[float]], Sequence[float]]
+
+
+def _accepts_euler_rates(rhs) -> bool:
+    """Whether an ODE right-hand side takes the ``euler_rates`` keyword."""
+    try:
+        parameters = inspect.signature(rhs).parameters
+    except (TypeError, ValueError):
+        return False
+    return "euler_rates" in parameters or any(
+        item.kind is inspect.Parameter.VAR_KEYWORD for item in parameters.values()
+    )
 
 
 class AngularF16(ModelBase):
@@ -44,6 +57,13 @@ class AngularF16(ModelBase):
         )
         model.param.air_density_kg_m3 = local_density
         model.run_step(control, events=damage_events)
+
+    ``attitude="quaternion"`` (default) integrates orientation as a unit
+    quaternion, so loops and vertical flight pass ``theta = ±90°`` without the
+    Euler-rate singularity; ``theta`` is reported in ``[-π/2, π/2]`` and
+    ``gamma``/``psi`` change by about π across the vertical. Away from the
+    vertical results match ``attitude="euler"`` (legacy) to integration
+    round-off.
     """
 
     def __init__(
@@ -56,7 +76,10 @@ class AngularF16(ModelBase):
         split_stab: bool = False,
         track_altitude: bool = False,
         thrust_mode: Literal["constant", "control"] = "constant",
+        attitude: Literal["quaternion", "euler"] = "quaternion",
     ) -> None:
+        if attitude not in ("quaternion", "euler"):
+            raise ValueError("attitude must be quaternion or euler")
         x0_arr = self._prepare_initial_state(x0, dt, track_altitude, thrust_mode)
         n_state = x0_arr.size
         super().__init__(x0_arr, selected_state_output, t0, dt)
@@ -107,6 +130,9 @@ class AngularF16(ModelBase):
         else:
             raise ValueError(f"unknown integrator: {integrator!r}")
         self._integrator_name = integrator
+        # "quaternion" integrates attitude without the Euler-rate singularity at
+        # theta = ±90°; "euler" keeps the legacy Euler-angle integration.
+        self.attitude = attitude
 
     @staticmethod
     def _prepare_initial_state(x0, dt, track_altitude, thrust_mode):
@@ -234,10 +260,52 @@ class AngularF16(ModelBase):
         limits.
         """
         control, _ = self._prepare_control(u)
-        next_state = self._step_fn(f16_ode_6dof, x, control, t, dt, self.param)
+        next_state = self._integrate(f16_ode_6dof, x, control, t, dt)
         return project_actuators(
             next_state, self.param, ((8, "stab"), (10, "ail"), (12, "dir"))
         )
+
+    def _integrate(self, rhs, x, control, t, dt):
+        """One integrator step of ``rhs``; attitude as a quaternion by default.
+
+        In quaternion mode the integrator state is ``[x, q]``. At every stage the
+        Euler entries of ``x`` are recomputed from ``q`` (only their sines and
+        cosines enter the dynamics) and ``rhs`` is called with
+        ``euler_rates=False``. After the step the normalized quaternion is
+        written back as Euler angles with ``theta`` in ``[-π/2, π/2]`` and roll
+        and heading continuous with the previous step.
+        """
+        x = np.asarray(x, dtype=np.float64).reshape(-1)
+        if self.attitude == "euler":
+            return self._step_fn(rhs, x, control, t, dt, self.param)
+        n = x.size
+        reference = (float(x[5]), float(x[6]))
+        z0 = np.concatenate([x, euler_to_quaternion(x[5], x[6], x[7])])
+
+        flag = _accepts_euler_rates(rhs)
+
+        def augmented(z, u, t_stage, params):
+            q = z[n:] / np.linalg.norm(z[n:])
+            stage = np.array(z[:n], dtype=np.float64, copy=True)
+            stage[5], stage[6], stage[7] = quaternion_to_euler(q, reference)
+            if flag:
+                dx = rhs(stage, u, t_stage, params, euler_rates=False)
+            else:
+                # A replacement RHS without the flag still returns Euler rates;
+                # they are unused here, so ignore their 1/cos(theta) overflow.
+                with np.errstate(divide="ignore", invalid="ignore", over="ignore"):
+                    dx = np.array(rhs(stage, u, t_stage, params), dtype=np.float64)
+                dx[5:8] = 0.0
+            return np.concatenate(
+                [dx, quaternion_rate(q, stage[2], stage[3], stage[4])]
+            )
+
+        z1 = self._step_fn(augmented, z0, control, t, dt, self.param)
+        next_state = np.array(z1[:n], dtype=np.float64, copy=True)
+        next_state[5], next_state[6], next_state[7] = quaternion_to_euler(
+            z1[n:], reference
+        )
+        return next_state
 
     def _prepare_control(self, u_arr):
         """Recompute applied commands after events, before split-stab merging."""
