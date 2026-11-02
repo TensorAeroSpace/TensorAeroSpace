@@ -7,6 +7,7 @@ Control (3): [stab_act, ail_act, dir_act]
 
 from __future__ import annotations
 
+import inspect
 from typing import Any, Literal, Sequence, Union
 
 import numpy as np
@@ -15,10 +16,44 @@ from tensoraerospace.aerospacemodel.base import ModelBase
 
 from .._actuators import project_actuators, surface_limits
 from .._integrators import euler, integrate_events, rk4
+from .attitude import euler_to_quaternion, quaternion_rate, quaternion_to_euler
 from .dynamics import f16_ode_6dof
-from .params import F16AngularParameters, default_parameters
+from .params import F16AngularParameters, _validate_air_density, default_parameters
 
 ArrayLike = Union[np.ndarray, Sequence[Sequence[float]], Sequence[float]]
+
+
+def _accepts(rhs, keyword: str) -> bool:
+    """Whether an ODE right-hand side takes ``keyword``."""
+    try:
+        parameters = inspect.signature(rhs).parameters
+    except (TypeError, ValueError):
+        return False
+    return keyword in parameters or any(
+        item.kind is inspect.Parameter.VAR_KEYWORD for item in parameters.values()
+    )
+
+
+def _body_velocity(alpha: float, beta: float, speed: float) -> np.ndarray:
+    """Body-axis velocity (x forward, y right, z down) for V, alpha and beta."""
+    return speed * np.array(
+        [
+            np.cos(alpha) * np.cos(beta),
+            np.sin(beta),
+            np.sin(alpha) * np.cos(beta),
+        ],
+        dtype=np.float64,
+    )
+
+
+def _air_data(velocity: np.ndarray) -> tuple[float, float, float]:
+    """``(V, alpha, beta)`` with alpha in (-pi, pi] and beta in [-pi/2, pi/2]."""
+    u, v, w = (float(item) for item in velocity)
+    return (
+        float(np.sqrt(u * u + v * v + w * w)),
+        float(np.arctan2(w, u)),
+        float(np.arctan2(v, np.hypot(u, w))),
+    )
 
 
 class AngularF16(ModelBase):
@@ -28,6 +63,29 @@ class AngularF16(ModelBase):
     Action when split_stab=True:        [stab_left, stab_right, ail, dir] (rad);
         differential = (L - R)/2 generates a roll moment via
         F16AngularParameters.delta_stab_roll_gain.
+
+    With ``track_altitude=True``, ``V``, ``alpha`` and ``beta`` are air-relative.
+    An external simulator computes wind and the global atmosphere, then supplies
+    local air density in kg/m³ before a step. The model does not apply wind twice
+    or integrate a full NED position. Its scalar altitude uses air-relative
+    velocity and omits vertical wind, so an external world should set it before
+    every step::
+
+        model.set_air_relative_state(
+            altitude_m=altitude,
+            airspeed_mps=airspeed,
+            alpha_rad=alpha,
+            beta_rad=beta,
+        )
+        model.param.air_density_kg_m3 = local_density
+        model.run_step(control, events=damage_events)
+
+    ``attitude="quaternion"`` (default) integrates orientation as a unit
+    quaternion, so loops and vertical flight pass ``theta = ±90°`` without the
+    Euler-rate singularity; ``theta`` is reported in ``[-π/2, π/2]`` and
+    ``gamma``/``psi`` change by about π across the vertical. Away from the
+    vertical results match ``attitude="euler"`` (legacy) to integration
+    round-off.
     """
 
     def __init__(
@@ -40,7 +98,21 @@ class AngularF16(ModelBase):
         split_stab: bool = False,
         track_altitude: bool = False,
         thrust_mode: Literal["constant", "control"] = "constant",
+        attitude: Literal["quaternion", "euler"] = "quaternion",
+        translation: Literal["body", "wind"] | None = None,
     ) -> None:
+        if attitude not in ("quaternion", "euler"):
+            raise ValueError("attitude must be quaternion or euler")
+        if translation is None:
+            translation = (
+                "body" if track_altitude and attitude == "quaternion" else "wind"
+            )
+        if translation not in ("body", "wind"):
+            raise ValueError("translation must be body or wind")
+        if translation == "body" and not (track_altitude and attitude == "quaternion"):
+            raise ValueError(
+                "translation='body' requires track_altitude and quaternion attitude"
+            )
         x0_arr = self._prepare_initial_state(x0, dt, track_altitude, thrust_mode)
         n_state = x0_arr.size
         super().__init__(x0_arr, selected_state_output, t0, dt)
@@ -91,6 +163,13 @@ class AngularF16(ModelBase):
         else:
             raise ValueError(f"unknown integrator: {integrator!r}")
         self._integrator_name = integrator
+        # "quaternion" integrates attitude without the Euler-rate singularity at
+        # theta = ±90°; "euler" keeps the legacy Euler-angle integration.
+        self.attitude = attitude
+        # "body" integrates body-axis velocity (u, v, w) and derives V, alpha and
+        # beta from it, avoiding the 1/cos(beta) singularity of the wind-axis
+        # equations; "wind" integrates V, alpha and beta directly (legacy).
+        self.translation = translation
 
     @staticmethod
     def _prepare_initial_state(x0, dt, track_altitude, thrust_mode):
@@ -131,12 +210,58 @@ class AngularF16(ModelBase):
         """Independent snapshot of the most recent state as a flat 1-D ndarray."""
         return np.array(self.x_history[-1], dtype=np.float64, copy=True).reshape(-1)
 
+    def set_air_relative_state(
+        self,
+        *,
+        altitude_m: float,
+        airspeed_mps: float,
+        alpha_rad: float,
+        beta_rad: float,
+    ) -> None:
+        """Set altitude and air-relative velocity before the next integration step.
+
+        ``V``, ``alpha`` and ``beta`` describe motion relative to the air. An
+        external simulator must convert inertial velocity using its wind field;
+        wind is not applied again inside the ODE. This method does not advance
+        time or append a history sample: it replaces the most recent sample in
+        ``x_history`` in place.
+
+        Args:
+            altitude_m: Altitude in metres.
+            airspeed_mps: Positive air-relative speed in metres per second.
+            alpha_rad: Air-relative angle of attack in radians.
+            beta_rad: Air-relative sideslip angle in radians, with magnitude
+                strictly less than pi/2.
+
+        Raises:
+            RuntimeError: If ``track_altitude`` is disabled.
+            ValueError: If a value is nonfinite, airspeed is not positive, or
+                sideslip reaches the singular range.
+        """
+        if not self.track_altitude:
+            raise RuntimeError("set_air_relative_state requires track_altitude=True")
+        values = (altitude_m, airspeed_mps, alpha_rad, beta_rad)
+        if not all(np.isfinite(value) for value in values):
+            raise ValueError("air-relative state values must be finite")
+        if airspeed_mps <= 0:
+            raise ValueError("airspeed_mps must be positive")
+        if not -np.pi / 2 < beta_rad < np.pi / 2:
+            raise ValueError("beta_rad must satisfy |beta_rad| < pi/2")
+
+        state = self.current_state
+        state[14] = altitude_m
+        state[15] = airspeed_mps
+        state[0] = alpha_rad
+        state[1] = beta_rad
+        self.x_history[-1] = state.reshape(self.n_state, 1)
+
     def run_step(self, u: ArrayLike, *, events=()) -> np.ndarray:
         """Advance surface commands in radians and optional thrust in newtons.
 
         Timed event callbacks split the integration interval. Store the new state and
         applied controls, then return the configured output column.
         """
+        _validate_air_density(self.param.air_density_kg_m3)
         u_arr = np.asarray(u, dtype=np.float64).reshape(-1)
         if u_arr.size != self.action_space_length:
             raise ValueError(
@@ -172,10 +297,64 @@ class AngularF16(ModelBase):
         limits.
         """
         control, _ = self._prepare_control(u)
-        next_state = self._step_fn(f16_ode_6dof, x, control, t, dt, self.param)
+        next_state = self._integrate(f16_ode_6dof, x, control, t, dt)
         return project_actuators(
             next_state, self.param, ((8, "stab"), (10, "ail"), (12, "dir"))
         )
+
+    def _integrate(self, rhs, x, control, t, dt):
+        """One integrator step of ``rhs``; attitude as a quaternion by default.
+
+        In quaternion mode the integrator state is ``[x, q]``. At every stage the
+        Euler entries of ``x`` are recomputed from ``q`` (only their sines and
+        cosines enter the dynamics) and ``rhs`` is called with
+        ``euler_rates=False``. After the step the normalized quaternion is
+        written back as Euler angles with ``theta`` in ``[-π/2, π/2]`` and roll
+        and heading continuous with the previous step.
+        """
+        x = np.asarray(x, dtype=np.float64).reshape(-1)
+        if self.attitude == "euler":
+            return self._step_fn(rhs, x, control, t, dt, self.param)
+        n = x.size
+        reference = (float(x[5]), float(x[6]))
+        flag = _accepts(rhs, "euler_rates")
+        body = self.translation == "body" and n == 16 and _accepts(rhs, "body_velocity")
+        parts = [x, euler_to_quaternion(x[5], x[6], x[7])]
+        if body:
+            parts.append(_body_velocity(x[0], x[1], x[15]))
+        z0 = np.concatenate(parts)
+
+        def augmented(z, u, t_stage, params):
+            q = z[n : n + 4] / np.linalg.norm(z[n : n + 4])
+            stage = np.array(z[:n], dtype=np.float64, copy=True)
+            stage[5], stage[6], stage[7] = quaternion_to_euler(q, reference)
+            rates = quaternion_rate(q, stage[2], stage[3], stage[4])
+            if body:
+                stage[15], stage[0], stage[1] = _air_data(z[n + 4 :])
+                dx = rhs(
+                    stage, u, t_stage, params, euler_rates=False, body_velocity=True
+                )
+                accelerations = dx[[0, 1, 15]].copy()
+                dx[[0, 1, 15]] = 0.0
+                return np.concatenate([dx, rates, accelerations])
+            if flag:
+                dx = rhs(stage, u, t_stage, params, euler_rates=False)
+            else:
+                # A replacement RHS without the flag still returns Euler rates;
+                # they are unused here, so ignore their 1/cos(theta) overflow.
+                with np.errstate(divide="ignore", invalid="ignore", over="ignore"):
+                    dx = np.array(rhs(stage, u, t_stage, params), dtype=np.float64)
+                dx[5:8] = 0.0
+            return np.concatenate([dx, rates])
+
+        z1 = self._step_fn(augmented, z0, control, t, dt, self.param)
+        next_state = np.array(z1[:n], dtype=np.float64, copy=True)
+        next_state[5], next_state[6], next_state[7] = quaternion_to_euler(
+            z1[n : n + 4], reference
+        )
+        if body:
+            next_state[15], next_state[0], next_state[1] = _air_data(z1[n + 4 :])
+        return next_state
 
     def _prepare_control(self, u_arr):
         """Recompute applied commands after events, before split-stab merging."""

@@ -29,6 +29,7 @@ from gymnasium import spaces
 from tensoraerospace.aerospacemodel.f16.nonlinear._actuators import surface_limits
 from tensoraerospace.aerospacemodel.f16.nonlinear.angular import AngularF16
 from tensoraerospace.aerospacemodel.f16.nonlinear.angular.params import (
+    _validate_air_density,
     default_parameters,
 )
 from tensoraerospace.aerospacemodel.f16.nonlinear.damage import (
@@ -74,7 +75,9 @@ class NonlinearAngularF16(gym.Env):
         dt: Discretisation step (s). Defaults to 0.01.
         integrator: ``"euler"`` or ``"rk4"`` (default).
         airspeed: True airspeed (m/s) used to reconstruct inertial position.
-            Constant for the episode.
+            Constant for the episode. Wind is not included in position history.
+        air_density_kg_m3: Optional external air density in kg/m³. Restored on
+            every reset; None uses ISA.
         render_mode: One of ``None``, ``"human"``, ``"rgb_array"``, ``"live"``.
             Render is wired in a follow-up commit.
         chart_states: Names of state channels to track for the chart strip.
@@ -105,11 +108,13 @@ class NonlinearAngularF16(gym.Env):
         split_stab: bool = False,
         track_altitude: bool = False,
         thrust_mode: Literal["constant", "control"] = "constant",
+        air_density_kg_m3: float | None = None,
     ) -> None:
         super().__init__()
         initial_state = self._validate_initial_state(
             initial_state, track_altitude, dt, number_time_steps, airspeed, thrust_mode
         )
+        _validate_air_density(air_density_kg_m3)
         for name in chart_states:
             if name not in MODEL_STATE_ORDER:
                 raise ValueError(
@@ -127,6 +132,7 @@ class NonlinearAngularF16(gym.Env):
         self.split_stab = split_stab
         self.track_altitude = track_altitude
         self.thrust_mode = thrust_mode
+        self.air_density_kg_m3 = air_density_kg_m3
         self.damage_profile = decode_profile(damage_profile)
         self.damage_observable = damage_observable
         self.damage_event_callback = damage_event_callback
@@ -226,6 +232,7 @@ class NonlinearAngularF16(gym.Env):
             "split_stab",
             "track_altitude",
             "thrust_mode",
+            "air_density_kg_m3",
         )
         config = {name: getattr(self, name) for name in names}
         config["initial_state"] = self.initial_state.copy()
@@ -248,6 +255,7 @@ class NonlinearAngularF16(gym.Env):
             track_altitude=self.track_altitude,
             thrust_mode=self.thrust_mode,
         )
+        self.model.param.air_density_kg_m3 = self.air_density_kg_m3
         self._step_index = 0
 
         reset_damage(self, options, seed)

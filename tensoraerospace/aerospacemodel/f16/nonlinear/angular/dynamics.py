@@ -20,7 +20,7 @@ import numpy as np
 
 from .._actuators import actuator_derivatives
 from .aero import get_cx, get_cy, get_cz, get_mx, get_my, get_mz
-from .params import F16AngularParameters, _isa_dynamic_pressure
+from .params import F16AngularParameters, _isa_dynamic_pressure, _validate_air_density
 
 # State indices
 I_ALPHA, I_BETA, I_WX, I_WY, I_WZ = 0, 1, 2, 3, 4
@@ -31,7 +31,12 @@ I_DIR, I_DDIR = 12, 13
 
 
 def f16_ode_6dof(
-    x: np.ndarray, u: np.ndarray, t: float, params: F16AngularParameters
+    x: np.ndarray,
+    u: np.ndarray,
+    t: float,
+    params: F16AngularParameters,
+    euler_rates: bool = True,
+    body_velocity: bool = False,
 ) -> np.ndarray:
     """Compute the 6-DoF angular ODE right-hand side.
 
@@ -45,6 +50,18 @@ def f16_ode_6dof(
         Current time (unused; kept for integrator compatibility).
     params : F16AngularParameters
         Aircraft and flight parameters.
+    euler_rates : bool, default True
+        Compute ``dgamma``, ``dpsi`` and ``dtheta``. These divide by
+        ``cos(theta)`` and are singular at ``theta = ±90°``. ``AngularF16``
+        integrates attitude as a quaternion (see ``attitude.py``) and passes
+        ``False``; the three entries are then zero and unused.
+    body_velocity : bool, default False
+        Requires ``track_altitude`` (16 states). Return the body-axis velocity
+        derivatives ``(du, dv, dw)`` (x forward, y right, z down; Newton's law in
+        the rotating body frame) in the ``alpha``, ``beta`` and ``V`` slots
+        instead of ``(dalpha, dbeta, dV)``. Same equations, but without the
+        ``1/cos(beta)`` and ``tan(beta)`` singularity at ``beta = ±90°``.
+        ``AngularF16`` integrates body velocities this way by default.
 
     Returns
     -------
@@ -52,6 +69,7 @@ def f16_ode_6dof(
         Time derivative of the state vector.
     """
     p = params
+    _validate_air_density(p.air_density_kg_m3)
 
     # Unpack state
     alpha = float(x[I_ALPHA])
@@ -78,7 +96,10 @@ def f16_ode_6dof(
     if track_altitude:
         h_state = float(x[14])
         V_state = float(x[15])
-        q_now = _isa_dynamic_pressure(h_state, V_state, p.g)
+        if p.air_density_kg_m3 is None:
+            q_now = _isa_dynamic_pressure(h_state, V_state, p.g)
+        else:
+            q_now = float(0.5 * p.air_density_kg_m3 * V_state**2)
     else:
         h_state = p.Oy
         V_state = p.V
@@ -192,26 +213,40 @@ def f16_ode_6dof(
         sin_th * cos_a * sin_b - cos_g * cos_th * sin_a * sin_b + sin_g * cos_th * cos_b
     )
 
-    # Aerodynamic-frame force components
-    Ya = sin_a * Rx + cos_a * Ry
-    Za = -cos_a * sin_b * Rx + sin_a * sin_b * Ry + cos_b * Rz
+    if body_velocity:
+        if not track_altitude:
+            raise ValueError("body_velocity requires track_altitude (16 states)")
+        # Body axes x forward, y right, z down: force (Rx, Rz, -Ry), rates
+        # (p, q, r) = (wx, wz, -wy), gravity from the attitude matrix.
+        u_b = V_state * cos_a * cos_b
+        v_b = V_state * sin_b
+        w_b = V_state * sin_a * cos_b
+        p_b, q_b, r_b = wx, wz, -wy
+        dalpha = r_b * v_b - q_b * w_b + Rx / p.m - p.g * sin_th
+        dbeta = p_b * w_b - r_b * u_b + Rz / p.m + p.g * cos_th * sin_g
+        dw_body = q_b * u_b - p_b * v_b - Ry / p.m + p.g * cos_th * cos_g
+    else:
+        # Aerodynamic-frame force components
+        Ya = sin_a * Rx + cos_a * Ry
+        Za = -cos_a * sin_b * Rx + sin_a * sin_b * Ry + cos_b * Rz
 
-    dalpha = (
-        wz
-        + (wy * sin_a - wx * cos_a) * np.tan(beta)
-        - (Ya + p.m * gay) / (p.m * V_state * cos_b)
-    )
+        dalpha = (
+            wz
+            + (wy * sin_a - wx * cos_a) * np.tan(beta)
+            - (Ya + p.m * gay) / (p.m * V_state * cos_b)
+        )
 
-    dbeta = wx * sin_a + wy * cos_a + (Za + p.m * gaz) / (p.m * V_state)
+        dbeta = wx * sin_a + wy * cos_a + (Za + p.m * gaz) / (p.m * V_state)
 
     # ----------------------------------------------------------------
     # Euler-angle kinematics (Dx.gamma, Dx.theta, Dx.psi)
     # ----------------------------------------------------------------
-    dgamma = wx - cos_g * np.tan(theta) * wy + sin_g * np.tan(theta) * wz
-
-    dtheta = sin_g * wy + cos_g * wz
-
-    dpsi = (cos_g / cos_th) * wy - (sin_g / cos_th) * wz
+    if euler_rates:
+        dgamma = wx - cos_g * np.tan(theta) * wy + sin_g * np.tan(theta) * wz
+        dtheta = sin_g * wy + cos_g * wz
+        dpsi = (cos_g / cos_th) * wy - (sin_g / cos_th) * wz
+    else:
+        dgamma = dtheta = dpsi = 0.0
 
     # ----------------------------------------------------------------
     # Actuator models (second-order with rate and position limiting)
@@ -254,6 +289,8 @@ def f16_ode_6dof(
         # forces contribute whenever alpha or beta is nonzero.
         force_along_velocity = Rx * cos_a * cos_b - Ry * sin_a * cos_b + Rz * sin_b
         dV = force_along_velocity / p.m - p.g * sin_gamma_path
+        if body_velocity:
+            dV = dw_body
 
     base_dx = [
         dalpha,
